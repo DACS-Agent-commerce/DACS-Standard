@@ -13,6 +13,14 @@ The format used per release:
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Demos logical→native address mapping did not match the StorageProgram SDK** (§6.2, §6.3.4). v0.1 stated `native_address := "stor-" + sha256(logical_address)` and required consumers to recompute the native address from the logical pattern. The actual Demos SDK (`storage/StorageProgram.ts`) derives `"stor-" + first40hex(sha256(deployerAddress + ":" + programName + ":" + nonce + ":" + salt))` — it folds in the deployer address and the per-write transaction nonce, so the native address is **not** recomputable from the logical address alone, and there is no SDK path to anchor at a caller-chosen address. The §6.2 universal rule now distinguishes pure mappings (consumer recomputes directly) from write-input mappings (implementation MUST publish the logical→native binding via record metadata + discovery; consumer resolves through it). The §6.3.4 Demos binding block now shows the actual derivation and requires binding publication, with a forward note that a chosen-address SDK capability or a logical-only native function would restore direct recomputation. Surfaced by the `agent-commerce-demo` reference implementation.
+
+---
+
 ## [0.1] — 2026-05-31
 
 First publicly released version.

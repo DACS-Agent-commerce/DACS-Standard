@@ -115,7 +115,12 @@ A mapping of which substrate primitives are live today, what extensions are need
 - 🟢 StorageProgramData per SDK at kynesyslabs/sdks/src/storage/StorageProgram.ts. Content-addressed at stor-{sha256(…)}. 128 KB cap. JSONB-backed in GCR_Main.data. ACL modes (private/public/restricted). Provenance via createdByTx, lastModifiedByTx, interactionTxs.
 - 🟡 Native multi-party Storage Program signature helper so buyer + seller co-signature of a closed AttestationBundle is a single transaction — current SDK supports owner-signed writes only.
 
-**Logical vs native addresses (applies universally).** Throughout this document, addresses of the form dacs1:…, dacs2:…, dacs3:…, dacs4:…, dacs5:… are *logical* addresses: substrate-independent, human-readable, stable identifiers the protocol reasons about. Each substrate maps them to its native addressing under a deterministic rule. On Demos the mapping is native_address := "stor-" + sha256(logical_address); the colon-containing logical string is not used directly as a StorageProgram name (Demos does not permit colons in names). Other substrates substitute their own mapping; the requirement is that the mapping is deterministic, one-to-one, and reversible by any party knowing the logical pattern. Implementations on a given substrate MUST anchor at the native address and MAY carry the logical address as descriptive metadata; consumers MUST resolve the native address from the logical pattern before reading.
+**Logical vs native addresses (applies universally).** Throughout this document, addresses of the form dacs1:…, dacs2:…, dacs3:…, dacs4:…, dacs5:… are *logical* addresses: substrate-independent, human-readable, stable identifiers the protocol reasons about. Each substrate maps them to its native addressing. Two cases:
+
+- **Pure mapping.** Where a substrate's native address is a pure function of the logical address, the mapping MUST be deterministic, one-to-one, and reversible, and consumers compute the native address directly from the logical pattern before reading.
+- **Write-input mapping.** Where a substrate folds write-time inputs (deployer address, transaction nonce, salt) into its native address — as Demos's StorageProgram derivation does (§6.3.4) — the native address is **not** recomputable from the logical address alone. In this case the implementation MUST publish the logical→native binding: as descriptive metadata on the anchored record AND via the discovery surfaces (§6.3.5 well-known index, §6.3.6 catalog). Consumers resolve the native address through that published binding before reading.
+
+In both cases implementations MUST anchor at the native address, the anchor transaction is the canonical pointer, and consumers MUST verify the content hash after dereferencing.
 
 ### 6.3 SR-3 — DAHR (Data Agnostic HTTPS Relay)
 
@@ -708,12 +713,16 @@ A listing MUST be anchored using SR-2.
 **Demos binding.** On Demos, the substrate’s StorageProgram addressing requires colon-free names and resolves writes to a sha256-derived handle of the form stor-<hex>. The Demos binding for a DACS listing therefore is:
 
 ```
-logical_address := "dacs1:" + sellerPrimaryClaim + ":" + listingId + ":v" + listingVersion
+logical_address    := "dacs1:" + sellerPrimaryClaim + ":" + listingId + ":v" + listingVersion
+storageProgramName := colon-free encoding of logical_address   // Demos rejects ":" in names
 
-native_address  := "stor-" + sha256(logical_address)
+// Actual StorageProgram address derivation (SDK: storage/StorageProgram.ts):
+native_address     := "stor-" + first40hex( sha256( deployerAddress + ":" + storageProgramName + ":" + nonce + ":" + salt ) )
 ```
 
-Implementations on Demos MUST anchor at native_address and MAY carry logical_address as descriptive metadata on the anchored record. Consumers resolve a listing by computing native_address from logical_address and reading the StorageProgram at native_address. Other substrates substitute their own native-address mapping; the requirement is that the mapping be deterministic, one-to-one, and reversible by any party knowing the logical pattern. The anchor transaction (the on-chain write) is the canonical pointer; the substrate’s native address is the addressable handle.
+Because the derivation folds in the **deployer address** and the **per-write transaction nonce** (and truncates to 40 hex / 160 bits), the native address is **not** recomputable from the logical address alone — this is the write-input-mapping case of §6.2. Implementations on Demos MUST therefore: (a) anchor at native_address; (b) carry logical_address as descriptive metadata on the anchored record; and (c) publish the logical→native binding via the listings index (§6.3.5) and catalog (§6.3.6). Consumers resolve a listing by looking up native_address for the logical_address through the published binding, then reading the StorageProgram at native_address and verifying the content hash. The anchor transaction (the on-chain write) is the canonical pointer; the substrate's native address is the addressable handle.
+
+*Forward note.* A future SDK capability to anchor a StorageProgram at a caller-chosen address — or a Demos-native deterministic `logical → native` function that hashes only the logical address — would restore direct recomputation (the pure-mapping case) and let consumers resolve without the published binding. Until then the binding-publication requirement above governs.
 Substrates MAY use equivalent addressing schemes; the requirement is that any party with substrate access can dereference an anchor reference to the canonical content and verify the content hash.
 **Size cap.** The canonical JSON form of a listing MUST NOT exceed 16,384 bytes (16 KB). Listings exceeding the cap MUST use the extendedDescriptionUrl + extendedDescriptionHash pattern to host verbose offering descriptions externally with content-hash binding. The cap applies after canonicalisation; the actual on-chain payload size may differ slightly due to substrate encoding. On substrates whose SR-2 implementation has a smaller per-record cap, the substrate cap governs (the lesser of 16 KB and the substrate cap). Implementations MUST reject listings exceeding the applicable cap at the validation step (LR-2).
 **Versioning, immutability, revocation**

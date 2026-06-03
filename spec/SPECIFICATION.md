@@ -1996,6 +1996,11 @@ type AgreementDocument = {
 
     deadline: number                   // unix ms; settle-by deadline
 
+    // Optional DAHR-attested reference price snapshot both parties sign against.
+    // When present, both parties attest that price was determined relative to this anchor.
+    // Does not replace or constrain terms.price — it is an informational audit record.
+    priceAnchor?: PriceAnchor
+
     additionalTerms?: Record<string, unknown>
 
   }
@@ -2048,6 +2053,40 @@ type CompetitiveContext = {
 
 // AgreementDocument.terms.additionalTerms MAY include "competitiveContext: CompetitiveContext".
 
+// Optional: SR-3-attested reference price snapshot included in the agreement for audit purposes.
+// Both parties sign the AgreementDocument (including priceAnchor when present), so the snapshot
+// becomes part of the agreement's content hash and cannot be altered after commitment.
+//
+// priceAnchor does NOT constrain terms.price — the agreed price may differ from the snapshot
+// (e.g. due to negotiation, markup, or discount). Its purpose is to provide an auditable,
+// consensus-backed reference point for price-discovery analysis and dispute context.
+
+type PriceAnchor = {
+
+  // The asset whose price is being snapshotted (e.g. "BTC", "ETH", "SOL").
+  asset: string
+
+  // The currency in which the price is expressed (e.g. "USD", "USDC").
+  quoteCurrency: string
+
+  // The price at snapshot time, in CD-1 canonical decimal form.
+  price: string
+
+  // The SR-3 DAHR attestation that produced this price snapshot.
+  // attestationRef.anchor points to the on-chain commitment of the fetch;
+  // attestationRef.contentHash is sha256 of the raw response body bytes.
+  attestationRef: AttestationRef
+
+  // The unix ms timestamp at which the SR-3 fetch was performed.
+  // SHOULD match the timestamp in the DAHR on-chain commitment record.
+  observedAt: number
+
+  // The URL template used to fetch the price (e.g. exchange API endpoint).
+  // Included so consumers can independently verify the data source.
+  sourceUrl: string
+
+}
+
 type AgreementSignature = {
 
   party: ClaimReference
@@ -2064,6 +2103,8 @@ type AgreementSignature = {
 The agreement’s canonical form is the RFC 8785 JCS serialisation with the signatures field omitted. **Rule CD-1 (canonical decimal).** Because RFC 8785 JCS canonicalises JSON numbers but preserves string bytes verbatim, every `PriceTerm.amount` string MUST be in minimal-digit canonical decimal form: no leading zeros (except a single `0` before the decimal point), no trailing zeros after the decimal point, `.` as the only separator, no `+` sign, and no exponent. Producers MUST canonicalise `amount` per CD-1 before computing any agreement hash, `SettlementEvidence` hash, or other JCS hash; verifiers MUST canonicalise `amount` per CD-1 before the §8.5.2 price-band and price-equality comparisons. Two parties formatting the same economic value differently (e.g. `"1.50"` vs `"1.5"`) MUST therefore reproduce identical canonical bytes, hashes, and signatures. The agreement hash is sha256(canonical_form), hex-encoded. Each AgreementSignature.value is computed over the domain-separated payload per chapter 7§7.7:
 signed_bytes := "dacs-agreement:v1:" || agreement_hash
 Verifiers MUST recompute the canonical form, agreement hash, and domain-separated payload, and for each required party, resolve the primary claim’s key (per DACS-2 verification) and verify the signature. Required signers: negotiate-fixed-price — buyer + seller (seller signature may be an auto-accept instance signature per §8.4.1); negotiate-rfq — buyer + seller; negotiate-sealed-envelope — seller + winning bidder (non-winning bidders’ signatures are not required).
+
+**`priceAnchor` canonical-form note.** When `terms.priceAnchor` is present, it is included in the JCS canonical form (the same as any other field in `terms`) and therefore covered by both parties’ signatures. `priceAnchor.price` MUST be in CD-1 canonical decimal form. Verifiers that do not understand `priceAnchor` MUST NOT reject the agreement on that basis — the field is optional and non-normative for agreement validity; it is informational.
 
 #### 8.5.2 Listing conformance validation
 
@@ -3532,7 +3573,7 @@ This chapter sketches the test categories an implementer should cover to claim c
 - **negotiate-fixed-price.** Live signature path; auto-accept commitment + instance-signature path; rejection of pre-issued per-instance signatures.
 - **negotiate-rfq (RFQ-1..RFQ-4).** maxTurns enforcement; turn-timeout enforcement; out-of-band-terms rejection by commit-agreement.
 - **negotiate-sealed-envelope (SE-1..SE-7).** commitDeadline enforcement (chain-timestamped); reveal-window enforcement against SR-2 anchor timestamp (SE-3); reveal-mismatch exclusion; deterministic selection with anchor-timestamp tie-break and lexicographic-bidHash fallback (SE-5); rule-ref content-hash binding and mismatch-fails-the-phase (SE-6); domain-separated bidHash (`dacs-sealed-bid:v1:`) and bid-commitment salt floor — ≥256-bit entropy, non-reuse, base64url encoding (SE-7).
-- **Agreement validation (§8.5.2).** Price-band check; rail-acceptance check; deliverable-conformance check; deadline-bound check; pattern-match check.
+- **Agreement validation (§8.5.2).** Price-band check; rail-acceptance check; deliverable-conformance check; deadline-bound check; pattern-match check; `priceAnchor` when present: `attestationRef` MUST resolve to a valid SR-3 attestation, `price` MUST be CD-1 canonical — implementations MUST NOT reject an otherwise-valid agreement solely because `priceAnchor` is absent.
 - **commit-agreement (CA-1..CA-4).** Refuse advance until ok-true; double-commit rejection; immutability after anchor; domain-separated commitment signature.
 
 ### 14.4 DACS-4 — Settle

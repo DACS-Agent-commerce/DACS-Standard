@@ -2468,7 +2468,7 @@ The v0.1 closed set. Each is a PhaseType from chapter 6’s closed enumeration, 
 
 #### 9.5.1 Common contract
 
-Every pay-* phase handler MUST: (PC-1) accept a PaymentPhaseInput conforming to the shape below; (PC-2) produce SettlementEvidence anchored via SR-2 at dacs4:payment:{jobId}:{railId} (or substrate equivalent); (PC-3) return a PhaseHandlerResult with attestationRef pointing to the evidence; (PC-4) classify outcomes as exactly one of ok: true (payment confirmed at the chain’s finality semantics), ok: false with errorClass: "permanent" (refused by chain, insufficient balance, invalid signature), errorClass: "transient" (RPC failure, mempool congestion), errorClass: "counterparty" (AP2 mandate revoked, x402 server refused), errorClass: "substrate" (SR-2 unavailable), or errorClass: "settlement-atomicity" (cross-chain only; lock succeeded on one side, the other side timed out); (PC-5) before settling, verify that `amount.currency` resolves to `rail.asset` and reject a mismatch as `ok: false` with `errorClass: "permanent"`. "Resolves" is defined per AssetSpec kind: for `erc20` and `spl`, `amount.currency` MUST equal `rail.asset.symbol`; for `native-evm` and `native-solana`, `amount.currency` MUST equal `rail.asset.symbol`; for `fiat-via-ap2`, `amount.currency` MUST equal `rail.asset.isoCurrency`; for `stablecoin-cross-chain`, `amount.currency` MUST equal `rail.asset.canonicalSymbol`. Handlers MUST NOT settle a payment whose `amount.currency` does not resolve under this mapping.
+Every pay-* phase handler MUST: (PC-1) accept a PaymentPhaseInput conforming to the shape below; (PC-2) produce SettlementEvidence anchored via SR-2 at dacs4:payment:{jobId}:{railId} (or substrate equivalent); (PC-3) return a PhaseHandlerResult with attestationRef pointing to the evidence; (PC-4) classify outcomes as exactly one of ok: true (payment confirmed at the chain’s finality semantics), ok: false with errorClass: "permanent" (refused by chain, insufficient balance, invalid signature), errorClass: "transient" (RPC failure, mempool congestion), errorClass: "counterparty" (AP2 mandate revoked, x402 server refused), errorClass: "substrate" (SR-2 unavailable), or errorClass: "settlement-atomicity" (cross-chain only; lock succeeded on one side, the other side timed out); (PC-5) before settling, verify that `amount.currency` resolves to `rail.asset` and reject a mismatch as `ok: false` with `errorClass: "permanent"`; (PC-6) when outcome is `success`, populate `settlementFinality` in the produced SettlementEvidence with the finality model and parameters actually applied — the field MUST be present on any `success`-outcome payment evidence record and MUST be absent on delivery evidence records. "Resolves" is defined per AssetSpec kind: for `erc20` and `spl`, `amount.currency` MUST equal `rail.asset.symbol`; for `native-evm` and `native-solana`, `amount.currency` MUST equal `rail.asset.symbol`; for `fiat-via-ap2`, `amount.currency` MUST equal `rail.asset.isoCurrency`; for `stablecoin-cross-chain`, `amount.currency` MUST equal `rail.asset.canonicalSymbol`. Handlers MUST NOT settle a payment whose `amount.currency` does not resolve under this mapping.
 
 ```
 type PaymentPhaseInput = {
@@ -2627,6 +2627,10 @@ type SettlementEvidence = {
 
   attestationRef?: AttestationRef              // for deliver-attested-payload
 
+  // Finality model used for this settlement (optional, payment phases only)
+
+  settlementFinality?: SettlementFinalityRecord
+
   // Optional cross-references
 
   amendmentRefs?: AttestationRef[]             // refunds / partial refunds linked here
@@ -2634,6 +2638,33 @@ type SettlementEvidence = {
   observedAt: number                           // unix ms
 
   signature: ComponentSignature                // signer is the phase orchestrator
+
+}
+
+// Records the finality model applied when the phase handler declared the payment confirmed.
+// Populated by payment phases only (pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc,
+// pay-cross-chain-liquidity-tank, pay-ap2, pay-x402); delivery phases MUST omit it.
+type SettlementFinalityRecord = {
+
+  model: "block-depth"          // EVM / UTXO: wait for N blocks (finalityBlocks from rail.parameters)
+       | "commitment-level"     // Solana: wait for a named commitment (finalityCommitmentLevel from rail.parameters)
+       | "provider-receipt"     // Fiat (AP2) or x402: provider-issued receipt is the finality signal
+       | "htlc-reveal"          // Cross-chain HTLC: on-chain preimage reveal on both legs
+       | "liquidity-tank"       // Native bridge liquidity-tank: bridge status transitions to "completed"
+
+  // For model == "block-depth": the number of blocks waited before declaring confirmation.
+  // Sourced from rail.parameters.finalityBlocks; echoed here so the evidence record is self-describing.
+  finalityBlocks?: number
+
+  // For model == "commitment-level": the Solana commitment level accepted.
+  // Sourced from rail.parameters.commitmentLevel; echoed here so the evidence record is self-describing.
+  finalityCommitmentLevel?: "processed" | "confirmed" | "finalized"
+
+  // Wall-clock unix ms at which the finality condition was observed to be met.
+  // For block-depth: block timestamp of the Nth confirmation block.
+  // For commitment-level: timestamp at which the commitment level was reached.
+  // For provider-receipt / htlc-reveal / liquidity-tank: timestamp of the decisive event.
+  finalityObservedAt: number
 
 }
 
@@ -3538,7 +3569,7 @@ This chapter sketches the test categories an implementer should cover to claim c
 ### 14.4 DACS-4 — Settle
 
 - **Rail authoring (RD-1..RD-5).** Steward-key signature with domain separator; anchoring; version monotonicity; railType/asset/network consistency.
-- **Payment common contract (PC-1..PC-5).** For each of the six pay-* phases: input-shape validation; anchored SettlementEvidence; PhaseHandlerResult with correct attestationRef; outcome classification across all errorClass values; and currency-resolution (PC-5) — `amount.currency` MUST resolve to `rail.asset` per AssetSpec kind (symbol for erc20/spl/native, isoCurrency for fiat-via-ap2, canonicalSymbol for stablecoin-cross-chain) and a mismatch MUST be rejected as `ok:false`/`errorClass:"permanent"`.
+- **Payment common contract (PC-1..PC-6).** For each of the six pay-* phases: input-shape validation; anchored SettlementEvidence; PhaseHandlerResult with correct attestationRef; outcome classification across all errorClass values; currency-resolution (PC-5) — `amount.currency` MUST resolve to `rail.asset` per AssetSpec kind (symbol for erc20/spl/native, isoCurrency for fiat-via-ap2, canonicalSymbol for stablecoin-cross-chain) and a mismatch MUST be rejected as `ok:false`/`errorClass:"permanent"`; settlement-finality population (PC-6) — a `success`-outcome payment evidence record MUST carry a `settlementFinality` field with the correct `model` for the rail and the `finalityBlocks` or `finalityCommitmentLevel` parameter sourced from rail.parameters, and a delivery evidence record MUST NOT carry `settlementFinality`.
 - **pay-evm-erc20 / pay-solana-spl.** Decimal-conversion correctness (no float arithmetic); chain-finality wait; SettlementEvidence with correct txRef kind.
 - **Canonical decimal (CD-1).** PriceTerm.amount canonicalisation: economically-equal forms (`"1.50"`, `"01.5"`, `"1.500"`) all normalise to `"1.5"` and produce identical agreement/SettlementEvidence JCS hashes and signatures; non-canonical input on read either canonicalises or is rejected per implementation policy; §8.5.2 price-band and price-equality checks compare canonicalised decimals, not raw strings.
 - **pay-cross-chain-htlc (HTLC-1..HTLC-10).** buyerSalt entropy enforcement; HKDF preimage-derivation correctness (IKM=buyerSalt, salt=jobId, info=agreementHash) with input-uniqueness (unique jobId / collision-resistant agreementHash); salt-non-reuse across sessions; pre-finality-reveal rejection; **canonical claim order** — payer (preimage holder) locks the longer-timelock source (beneficiary = payee), payee locks the shorter-timelock destination (beneficiary = payer), payer claims the destination first (revealing), payee then claims the source; timelock-refund path; per-chain native hashlock functions (keccak256 on EVM, sha256 on Solana, blake2b on Cosmos) producing distinct hashlocks from the same preimage; timelock asymmetry (timelock_source > timelock_dest + finality, finality margin ≥ 2× dest P99 latency) enforced on absolute expiry instants under the source-lock-finality epoch (HTLC-7/HTLC-8), with mis-configured routes rejected; asymmetric-settlement (dest-revealed / source-claim-pending — payer received on destination, payee owed source) surfaced as evidence, not a refund (HTLC-9); free-option disclosure (HTLC-10).

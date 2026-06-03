@@ -873,6 +873,10 @@ GET /api/dacs/listings
 
     priceMax=<decimal>                 # advisory; uses summary.priceHint
 
+    minCompletionRate=<float>          # advisory; filters on reputationHint.completionRate when present
+
+    minRating=<float>                  # advisory; filters on reputationHint.averageSellerRating when present
+
     cursor=<opaque>                    # pagination
 
     limit=<int, default 50, max 200>
@@ -921,6 +925,43 @@ type ListingSummary = {
   status: "active" | "revoked"
 
   catalogObservedAt: number
+
+  // Optional: catalog-computed reputation snapshot for this seller in the listing's category.
+  // Derived from the seller's DACS-5 bundles scoped to offerings.category using the
+  // category-scoped derivation algorithm in §10.5.4. When present, consumers MAY use this
+  // as a lightweight pre-filter; they MUST NOT treat it as authoritative without deriving
+  // reputation themselves from the underlying bundles (§10.5.3 computation surfaces).
+  reputationHint?: ReputationHint
+
+}
+
+// Lightweight reputation snapshot attached to a ListingSummary.
+// Scoped to the listing's offering.category prefix (e.g. "data.finance")
+// so buyers see reputation for relevant transaction types, not overall lifetime metrics.
+
+type ReputationHint = {
+
+  // The category scope used to filter the bundles for this derivation
+  // (MUST equal or be a prefix of the listing's offering.category).
+  categoryScope: string
+
+  // Completion rate in [0, 1] across bundles scoped to categoryScope;
+  // null when no qualifying bundles exist (same semantics as ReputationDerivation.metrics.completionRate).
+  completionRate: number | null
+
+  // Average seller rating across bundles scoped to categoryScope; null when none.
+  averageSellerRating: number | null
+
+  // Number of bundles in the derivation window that contributed to this hint.
+  bundleCount: number
+
+  // The DACS-5 derivation window applied (unix ms).
+  windowStart: number
+  windowEnd: number
+
+  // When the catalog last computed this hint. Consumers SHOULD treat hints older
+  // than 24 hours as stale and fall back to deriving reputation themselves.
+  computedAt: number
 
 }
 ```
@@ -3182,6 +3223,32 @@ The same wallet may hold multiple primary claims (key:…, did:…, lei:…). DA
 
 Derivation MAY be computed: (a) lazily by a querying party (over a set of bundles they fetched themselves — highest trust); (b) by a DACS-5 catalog operator (similar to a DACS-1 catalog — indexed for performance, but consumers MUST verify against the underlying bundles for high-stakes decisions); (c) on chain via an ERC-8004 reputation registry write per §10.7. Each surface is a different point on the trust / performance trade-off; the algorithm is the same.
 
+#### 10.5.4 Category-scoped derivation
+
+The §10.5.1 derivation algorithm is unscoped: it aggregates all bundles for a party within a time window regardless of the service category involved. This is useful for overall reputation but obscures domain-specific track records — a party with excellent DeFi data delivery and a poor regulatory-data track record looks identical to one that is mediocre across the board.
+
+**Category-scoped derivation** restricts the bundle set to sessions whose `AgreementDocument.offering.category` matches a given category prefix before applying the §10.5.1 algorithm:
+
+```
+derive_category_scoped(party, bundles, windowStart, windowEnd, categoryScope):
+
+  // 1. Filter to bundles whose agreement's category is within categoryScope
+  category_bundles := [b for b in bundles
+                        where b.agreementRef is present
+                        AND fetch_category(b.agreementRef) starts_with categoryScope]
+
+  // 2. Apply the standard §10.5.1 derive() algorithm over category_bundles
+  return derive(party, category_bundles, windowStart, windowEnd)
+```
+
+`fetch_category` resolves the bundle's `agreementRef` to its `AgreementDocument` (per the §7.5.2 attestation resolution algorithm) and returns `offering.category` from the referenced listing. Bundles whose `agreementRef` cannot be resolved MUST be excluded from the category-scoped set (not treated as matching any category).
+
+**`categoryScope` matching rule.** A bundle's category matches `categoryScope` if and only if `agreement.listing.offering.category == categoryScope` OR `agreement.listing.offering.category` starts with `categoryScope + "."`. Examples: scope `"data.finance"` matches `"data.finance"`, `"data.finance.fx"`, `"data.finance.equities"` but NOT `"data.financetools"`.
+
+**Use in `ReputationHint` (§6.3.6).** The `ReputationHint` attached to a `ListingSummary` is computed by applying `derive_category_scoped` with `categoryScope` equal to the listing's `offering.category` (or a prefix thereof — catalogs MAY broaden the scope when the listing category has fewer than a minimum number of qualifying bundles, provided the `reputationHint.categoryScope` field accurately reflects which scope was used). Consumers MUST read `reputationHint.categoryScope` to understand what population is reflected; the hint is only a fast-path pre-filter and MUST be verified against underlying bundles for high-stakes decisions.
+
+**Relationship to §10.5.2 per-primary-claim keying.** Category scoping is an orthogonal filter applied after the per-primary-claim scope; it does not change the identity keying rule.
+
 ### 10.6 The rate phase (optional)
 
 A DACS-5 phase that produces structured ratings between parties at session end.
@@ -3555,6 +3622,7 @@ This chapter sketches the test categories an implementer should cover to claim c
 - **Bundle consumption.** Two-sided lookup; one-sided-bundle → aborted-by-self classification; divergent-bundles → disputed classification.
 - **Reputation derivation.** All outcome partitions (completed / failed-perm / failed-counterparty / failed-substrate / aborted-by-self / aborted-by-other); party-fault denominator excluding failed-substrate; null vs zero metric distinction; rating aggregation via ratingRefs fetch.
 - **Per-primary-claim keying.** Reputation computed against the bundle party's primaryClaim (sourced from bundle.presentedBy); no inheritance across tiers.
+- **Category-scoped derivation (§10.5.4).** Bundle set filtered to matching `categoryScope` prefix before applying §10.5.1; non-resolving agreementRefs excluded; categoryScope prefix-match rule (exact match OR `category + "."` prefix); a bundle outside the scope is excluded, not counted as a failure; `ReputationHint.categoryScope` accurately reflects the scope used.
 - **Rate phase.** Run-after-settle ordering; one-record-per-direction; signature with rating domain separator; bundle-inclusion; RT-1 producer-reject of out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText`; RT-2 deriver-exclude of a non-conforming self-signed rating from the average; `dimensions` treated as opaque (not aggregated).
 - **ERC-8004 publication (optional).** Token-owner-signed entry; bundle-anchor pointer correctness; rate-limit enforcement.
 

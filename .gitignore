@@ -13,3 +13,7 @@ Thumbs.db
 # Python
 __pycache__/
 *.pyc
+
+# Bun / TypeScript SDK
+node_modules/
+packages/*/dist/

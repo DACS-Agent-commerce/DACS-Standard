@@ -25,6 +25,20 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.9'
+
+      - name: Install Bun workspace
+        run: bun install --frozen-lockfile
+
+      - name: Build SDK package
+        run: bun run sdk:build
+
+      - name: Test SDK package
+        run: bun run sdk:test
+
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
 

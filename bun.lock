@@ -1,0 +1,16 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "dacs-standard",
+    },
+    "packages/dacs-sdk": {
+      "name": "@dacs-standard/sdk",
+      "version": "0.0.0",
+    },
+  },
+  "packages": {
+    "@dacs-standard/sdk": ["@dacs-standard/sdk@workspace:packages/dacs-sdk"],
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "dacs-standard",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "sdk:build": "bun run --cwd packages/dacs-sdk build",
+    "sdk:test": "bun run --cwd packages/dacs-sdk test"
+  }
+}

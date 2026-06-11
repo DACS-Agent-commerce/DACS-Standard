@@ -1,0 +1,18 @@
+{
+  "name": "@dacs-standard/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TypeScript helpers for DACS artifacts, validators, Demos rails adapters, and conformance fixtures.",
+  "exports": {
+    ".": "./dist/index.js",
+    "./artifacts": "./dist/artifacts/index.js",
+    "./validators": "./dist/validators/index.js",
+    "./rails/demos": "./dist/rails/demos/index.js",
+    "./conformance": "./dist/conformance/index.js"
+  },
+  "scripts": {
+    "build": "bun build src/index.ts src/artifacts/index.ts src/validators/index.ts src/rails/demos/index.ts src/conformance/index.ts --outdir dist --target=node --format=esm",
+    "test": "bun test"
+  }
+}

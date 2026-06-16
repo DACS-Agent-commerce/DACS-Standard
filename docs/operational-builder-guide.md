@@ -27,7 +27,7 @@ This is a non-normative outline for operators preparing to implement DACS in pro
 - Map each rail's confirmation rule to the application's finality threshold.
 - Do not mark `ok: true` before the rail-specific finality semantics are satisfied.
 - Surface chain reorganizations, bridge delays, and recovery windows in operator dashboards.
-- For success-outcome payment evidence, populate the v0.1 `settlementFinality` record with the finality model and parameters actually applied (PC-6); keep it absent from delivery evidence.
+- Populate `settlementFinality` on success-outcome payment evidence with the finality model actually applied (PC-6).
 
 ## 5. Key custody and HSM practice
 

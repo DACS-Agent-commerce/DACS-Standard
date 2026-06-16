@@ -11,7 +11,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | BR-* | Bundle readers for IdentityBundle | §6.3.2 | §14.1 |
 | CA-* | Commit-agreement phase validation | §8.6 | §14.3 |
 | CD-* | Canonical decimal handling | §8.5.1 | §14.6 |
-| CF-* | Canonical form and logical-address encoding | §B.1 / §6.3.4 | §14.6 |
+| CF-* | Canonical form and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
@@ -20,9 +20,9 @@ This non-normative index helps implementers locate labelled conformance rules in
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
 | MA-* | Bundle-requirement matching | §6.3.3 | §14.1 |
-| PA-* | Progressive-anchoring phases | §11.2.6 | §14.7 |
+| PA-* | Progressive-anchoring phases | §7.4.4 | §14.7 |
 | PC-* | Payment phase common contract | §9.5 | §14.4 |
-| PIPE-* | Pipeline shape and phase ordering | §9.5.1 | §14.4 |
+| PIPE-* | Pipeline shape and phase ordering | §9.9 | §14.4 |
 | PS-* | Negotiation pattern selection | §8.8 | §14.3 |
 | PSP-* | ParserSpec parse/match semantics | §7.4.1 | §14.2 |
 | RA-* | Recipe authoring and resolution | §7.4.3 | §14.2 |

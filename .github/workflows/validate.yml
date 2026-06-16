@@ -37,6 +37,9 @@ jobs:
       - name: Validate rule-ID index pointers
         run: python3 scripts/validate_rule_id_index.py
 
+      - name: Validate conformance § references
+        run: python3 scripts/validate_spec_refs.py
+
       - name: Validate selected spec tables
         run: python3 scripts/validate_spec_tables.py
 

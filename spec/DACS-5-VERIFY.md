@@ -217,16 +217,16 @@ type BundleSignature = {
 
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
 
-  value: string                               // ed25519/ecdsa over the domain-separated payload "dacs-bundle:v1:" || bundleHash, NOT the raw bundle hash (§10.4.1)
+  value: string                               // ed25519/ecdsa over the domain-separated payload "dacs-bundle:v1:" || attestation_bundle_hash, NOT the raw bundle hash (§10.4.1)
 
 }
 ```
 
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
-Per the §B.2 canonical-form template, omitting the `signatures` **and `anchoredByRole`** fields. The bundle's `bundleHash.value` field carries that artifact hash — sha256(canonical_form), hex-encoded (distinct from `BundleParty.bundleHash`, which hashes a party's IdentityBundle). Each BundleSignature.value MUST be computed over a domain-separated payload:
+Per the §B.2 canonical-form template, omitting the `signatures` **and `anchoredByRole`** fields. The **attestation-bundle hash** (`attestation_bundle_hash`) is the content hash of that canonical form — sha256(canonical_form), hex-encoded — a computed value, not a stored field (distinct from `BundleParty.bundleHash`, which hashes a party's IdentityBundle). Each BundleSignature.value MUST be computed over a domain-separated payload:
 
-signed_bytes = "dacs-bundle:v1:" || bundleHash.value
+signed_bytes := "dacs-bundle:v1:" || attestation_bundle_hash
 
 > **Note (non-normative).** `anchoredByRole` is per-copy — buyer vs seller vs orchestrator — and is carried only for derive()'s perspective read (§10.5.1); it is excluded from the hashed canonical form exactly like `signatures` so the two-sided copies remain canonically equal in the happy path. This is a recognised, specified omission, not a SIG-5 silent strip.
 

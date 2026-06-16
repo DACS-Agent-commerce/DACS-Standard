@@ -19,15 +19,24 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
 - [`examples/rating-record.json`](./examples/rating-record.json) — a
   machine-readable RatingRecord example for §10.6.
 
-## Roadmap/prototype fixtures
+## Shared fixture packs
 
 The repository also includes small shared fixtures outside this vector directory.
-These are non-normative prototype artifacts for roadmap items; they do not add new
-v0.1 conformance requirements and are excluded from the canonical
-`validate_conformance_vectors.py` default vector run:
+They are excluded from the canonical `validate_conformance_vectors.py` default
+vector run; check `conformance/MANIFEST.json` for each fixture's normative status
+and validation command.
+
+### v0.1 hardening fixtures
 
 - `conformance/fixtures/identity/identity-tier-*.json` — deterministic
-  `identityTier` cases for institutional, verified, and self-declared bundles.
+  `identityTier` cases for institutional, verified, and self-declared bundles
+  (IT-1..IT-3).
+
+### Roadmap/prototype fixtures
+
+These are non-normative prototype artifacts for roadmap items; they do not add new
+v0.1 conformance requirements:
+
 - `conformance/fixtures/reputation/reputation-suspicious-pattern-flags.json` —
   advisory `suspiciousPatternFlags` on a ReputationDerivation / derivation surface.
 - `conformance/fixtures/settlement/htlc9-asymmetric.json` — the HTLC-9

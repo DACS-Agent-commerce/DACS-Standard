@@ -795,7 +795,7 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Role | Requirements |
 | --- | --- |
 | Method implementer | CM-1 through CM-5 |
-| Recipe author | RA-1 through RA-5; PSP field semantics (§7.3.6) when declaring a ParserSpec |
+| Recipe author | RA-1 through RA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
 | Recipe-availability consumer | RAV-1 through RAV-4 |
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
 | Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-4; PSP-1 through PSP-5; WN-1 through WN-4 |

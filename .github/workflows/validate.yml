@@ -40,6 +40,9 @@ jobs:
       - name: Validate conformance § references
         run: python3 scripts/validate_spec_refs.py
 
+      - name: Validate conformance artifact shapes
+        run: python3 scripts/validate_artifact_shapes.py
+
       - name: Validate selected spec tables
         run: python3 scripts/validate_spec_tables.py
 

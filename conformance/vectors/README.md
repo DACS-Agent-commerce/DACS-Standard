@@ -3,14 +3,25 @@
 This directory contains machine-readable fixtures for implementers who want a
 small, repeatable check against the DACS v0.1 artifact lifecycle.
 
+> **⚠️ Stale — do not copy as ground truth (pending regeneration, #133/D2).**
+> The two lifecycle vectors below were hand-authored against a pre-v0.1 draft and
+> carry **out-of-date artifact shapes** (e.g. a `SettlementEvidence` with
+> `amount`/`asset`/`chainId` instead of the v0.1 `phase`/`outcome`/`paymentAmount`).
+> `scripts/validate_artifact_shapes.py` quarantines them (it checks every *other*
+> and every future vector against the spec `type` blocks) until they are
+> **regenerated from a reference verifier** (`pathos-dacs-ref` / `agent-commerce-demo`).
+> For a current, verifier-emitted conformance suite use
+> [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (186 cases).
+
 ## Included vectors
 
 - [`dacs-v0.1-happy-path.json`](./dacs-v0.1-happy-path.json) — one minimal
   positive session covering all five stages in order:
-  `DACS-1 → DACS-2 → DACS-3 → DACS-4 → DACS-5`.
+  `DACS-1 → DACS-2 → DACS-3 → DACS-4 → DACS-5`. *(stale shapes — see notice above)*
 - [`dacs-v0.1-negative-paths.json`](./dacs-v0.1-negative-paths.json) — negative
   examples that conforming implementations are expected to reject or classify as
-  failures, with rule references for the expected failures.
+  failures, with rule references for the expected failures. Uniquely asserts a few
+  negative rules not yet in `golden.json` (RAV-R2, RT-1/2, BP-3). *(stale shapes — see notice above)*
 
 ## Core artifact examples
 

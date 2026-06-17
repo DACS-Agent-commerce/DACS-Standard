@@ -116,7 +116,7 @@ type NegotiateFixedPriceOutput = PhaseHandlerResult & {
 
 **Procedure.** The orchestrator (or buyer agent, depending on actor) MUST:
 
-1. construct an AgreementDocument with derivedFromPattern: "fixed-price", copying terms directly from the listing’s pricing, acceptedRails (using the buyer’s selected rail), deliverable, and deadline (computed as now + listing.terms.deadlineSecAfterCommit);
+1. construct an AgreementDocument with derivedFromPattern: "fixed-price", copying terms directly from the listing’s pricing, acceptedRails (using the buyer’s selected rail; `terms.rail` is omitted for a zero-pay pipeline per §8.5.2 rule 3), deliverable, and deadline (computed as now + listing.terms.deadlineSecAfterCommit);
 2. collect buyer signature;
 3. collect seller co-signature;
 4. anchor the agreement document via SR-2;
@@ -304,7 +304,7 @@ type AgreementDocument = {
 
     price: PriceTerm                   // DACS-4 reference
 
-    rail: PaymentRailRef               // DACS-4 reference (must appear in listing.acceptedRails)
+    rail?: PaymentRailRef              // DACS-4 reference; present iff the pipeline has a pay-* phase (§8.5.2 rule 3). When present, MUST appear in listing.acceptedRails
 
     deadline: number                   // unix ms; settle-by deadline
 
@@ -440,7 +440,7 @@ A verifier MUST validate the agreement against its referenced listing — checke
    - *Negotiable pricing* — within the band declared by the negotiable variant's `minPct` / `maxPct` (non-negative percentages) around `bandCenter`. The admissible band is the **inclusive** interval [`bandCenter.amount × (100 − minPct) / 100`, `bandCenter.amount × (100 + maxPct) / 100`]. Each computed bound MUST be **rounded half-up to the number of fractional digits of `bandCenter.amount` in its CD-1 canonical form** (CORE §B.2) — NOT to any "currency precision", which is undefined at listing time (settlement precision is tied to `rail.asset.decimals`, not the listing currency) — then canonicalised per CD-1. `terms.price.amount`, compared as a full-precision CD-1 decimal, MUST be ≥ the lower bound and ≤ the upper bound (boundaries inclusive). A verifier MUST reject the listing if the computed lower bound is ≤ 0.
    - *fixed-price over negotiable pricing* — if `derivedFromPattern == "fixed-price"`, `terms.price` MUST instead equal `bandCenter` exactly per CD-1, not merely lie within the band (see PS-3).
    - *Fixed pricing* — equal to the listed price.
-3. **Rail** — `terms.rail` MUST appear in `listing.acceptedRails`.
+3. **Rail** — `terms.rail` MUST be present if and only if the listing pipeline contains a `pay-*` phase (PIPE-1, §9.5). When present, it MUST appear in `listing.acceptedRails`. For a zero-pay (intake-only / settled-out-of-band) pipeline — one with no `pay-*` phase — `terms.rail` MUST be absent.
 4. **Deliverable** — `terms.deliverable` MUST conform to the listing’s `offering.deliverable`: `terms.deliverable.deliverableType` MUST equal the listing `offering.deliverable` kind; `terms.deliverable.hash` MUST equal the canonical `DeliverableRef.hash` of the listing’s `offering.deliverable` (per §9.3); `terms.deliverable.schemaUrl` MUST equal the listing `offering.deliverable.schemaUrl` (both absent, or both present and equal).
 5. **Deadline** — `terms.deadline` MUST be ≤ `committedAt + listing.terms.deadlineSecAfterCommit`, where `committedAt` is the SR-2 anchor timestamp of the commitment record (§8.6) — the same objective, substrate-determined clock SE-2 uses — NOT the self-reported `generatedAt`, which a party could backdate to widen the settle window.
 6. **Not expired** — the listing's `validity.notAfter` (if set) MUST be ≥ `committedAt`; the listing MUST NOT have expired between read and commit-agreement (the §6.3.4 step-3 read-time check governs discovery; this re-check governs commit, closing the read-to-commit interval).

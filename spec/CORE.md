@@ -304,6 +304,21 @@ For composite-payload separators each appended value MUST be a fixed-length hex 
 - `artifact_hash` MUST be the lowercase hex string of the sha256 digest.
 - The `domain_separator` (a UTF-8 string) and `artifact_hash` (an ASCII hex string) are concatenated as UTF-8 byte sequences with no separator byte.
 
+### B.8 Session nonce
+
+The **session nonce** is the value that binds an identity presentation — and the DACS-2 checks performed against it — to one specific session, so a presentation captured in one session cannot be replayed in another. It is the anti-replay anchor referenced by the DACS-1 presentation binding (§6.3.2), the §6.6 replay defence, and the DACS-2 holder-binding / attestation-binding checks (§7.3.2). Its *conveyance* is artifact-specific (the DACS-1 `sessionNonce` field for per-claim/session-key presentations, or the SIWD `Nonce` for the `siwd` kind — §6.3.2); its *provenance* is the shared discipline defined here.
+
+A session nonce is **a challenge the verifier issues**, not a value the presenter chooses. The "verifier" is the party that performs the §6.3.2 nonce-match check — the counterparty receiving the presentation, or the orchestrator acting on its behalf.
+
+**Conformance — session nonce (SN-1..SN-4).**
+
+- (SN-1) **Generator.** The verifier MUST generate the session nonce; a presenter-supplied nonce MUST NOT be trusted as the session binding. (A bundle MAY carry a `sessionNonce` the presenter copied from the verifier's challenge — what SN-1 forbids is the verifier accepting a nonce it did not itself issue for this session.)
+- (SN-2) **Entropy.** The nonce MUST carry at least 128 bits of entropy from a cryptographically secure RNG and MUST be fresh per session. The native `sessionNonce` field (§6.3.2) MUST be a lowercase-hex string of at least 32 hex characters; for the `siwd` kind the EIP-4361 `Nonce` carries the entropy.
+- (SN-3) **Issuance and binding.** The verifier MUST issue the nonce to the presenter before the presentation is produced, bound to the session's `jobId`. The transport of the challenge is substrate- and protocol-specific and is out of scope; the value the verifier matches against MUST be the one it generated for this session.
+- (SN-4) **Single-use.** A nonce MUST be single-use within its session: a verifier MUST reject a presentation whose nonce it did not issue for the current session, and MUST NOT accept the same nonce more than once.
+
+> **Note (non-normative).** This is the standard SIWD/EIP-4361 challenge-response shape, lifted to a shared primitive because both DACS-1 (presentation) and DACS-2 (holder-/attestation-binding) depend on the same nonce having these properties. Constraining provenance — not just the match check — is what stops two conforming implementations from disagreeing on the very value the replay defence rests on.
+
 ## C. Composed open standards
 
 DACS composes with the following open standards. Each per-stage chapter cites the relevant entries by name; backwards-compatibility implications are stated per-stage.

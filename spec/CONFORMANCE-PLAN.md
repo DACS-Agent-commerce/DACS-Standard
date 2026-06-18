@@ -93,7 +93,7 @@ A cross-cutting test category that every conforming implementation runs once:
 
   An address whose variable segments are left raw (unescaped) MUST be rejected as malformed.
 - **CD-1 (canonical decimal).** `"1.50"` and `"1.5"` as `PriceTerm.amount` MUST produce identical agreement hashes and signatures.
-- **SN-1..SN-4 (session nonce).** A presenter-chosen nonce the verifier did not issue MUST be rejected (SN-1); a native `sessionNonce` below 128 bits / not ≥32 lowercase-hex chars MUST be rejected (SN-2); a nonce not bound to the session's `jobId`, or a nonce replayed within or across sessions, MUST be rejected (SN-3/SN-4).
+- **SN-1..SN-4 (session nonce).** A presenter-chosen nonce the verifier did not issue MUST be rejected (SN-1); a native `sessionNonce` below 128 bits / not ≥32 lowercase-hex chars MUST be rejected (SN-2); a **same-session** replay of an already-consumed nonce MUST be rejected (SN-4); a nonce still unconsumed past its bounded challenge lifetime MUST be rejected (SN-4 retention); and a nonce issued for one `jobId` MUST NOT validate a presentation for another `jobId` — the cross-session case is caught by the §6.3.2 match against the jobId-issued nonce (SN-3), not SN-4.
 - **SIG-5 (preserve-unknown).** A verifier built against schema vN MUST successfully verify the signature on a document produced under vN+1 that adds an unknown field, by hashing the document as received (unknown field included); a verifier that strips the unknown field before hashing (and thus rejects) FAILS this test.
 
 ### 14.7 Governance (GOV-1..GOV-3)

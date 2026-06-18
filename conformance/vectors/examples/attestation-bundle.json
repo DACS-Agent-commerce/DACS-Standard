@@ -1,0 +1,72 @@
+{
+  "kind": "AttestationBundle",
+  "dacsVersion": "0.1",
+  "specRefs": [
+    "§10.4",
+    "§14.6"
+  ],
+  "artifact": {
+    "bundleVersion": "1",
+    "jobId": "regen-lifecycle-0001",
+    "outcome": "completed",
+    "anchoredByRole": "buyer",
+    "listingRef": {
+      "listingId": "lst-regen-0001",
+      "version": 1,
+      "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+    },
+    "parties": [
+      {
+        "role": "buyer",
+        "bundleHash": "ffa1e49081af8c35f14da2a7b928416a9b981e729f95e9bd1a2b71a44b5291b9",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      },
+      {
+        "role": "seller",
+        "bundleHash": "a001bd5927fdd14669b57de2f568fd9839801748c894a88e9cbd8984efa1de1a",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        }
+      }
+    ],
+    "phaseSummary": [
+      {
+        "index": 0,
+        "kind": "vet-credentials",
+        "outcome": "ok"
+      },
+      {
+        "index": 1,
+        "kind": "settle",
+        "outcome": "ok"
+      }
+    ],
+    "vetRecords": [],
+    "settlementEvidence": [],
+    "recipeRegistryVersion": 1,
+    "railRegistryVersion": 1,
+    "finalisedAt": 1767225600000,
+    "signatures": [
+      {
+        "party": {
+          "scheme": "cci",
+          "identifier": "db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "algorithm": "ed25519",
+        "value": "JYS+9se78kv2FkyQtYDblJpKb2PFcjARro8t37UEPzP++f19BbxFZatfsbGx/5JOcA7js8ktCIyUBmf3T224BQ=="
+      },
+      {
+        "party": {
+          "scheme": "cci",
+          "identifier": "2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "algorithm": "ed25519",
+        "value": "k08pOBCAKt1dn7aKtVxypNQD6G9yYjawm4hA+p4qhHCM16LGrWgK34mY2JYxgUzcTjKnQNvihN0BhJPIXTJxAg=="
+      }
+    ]
+  }
+}

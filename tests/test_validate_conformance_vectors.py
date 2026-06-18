@@ -9,6 +9,7 @@ SCRIPT = ROOT / "scripts" / "validate_conformance_vectors.py"
 VECTORS = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
 IDENTITY_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "identity-bundle.json"
 RATING_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "rating-record.json"
+BUNDLE_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "attestation-bundle.json"
 NEGATIVE_VECTOR = ROOT / "conformance" / "vectors" / "dacs-v0.1-negative-paths.json"
 INDEX = ROOT / "conformance" / "vectors" / "README.md"
 
@@ -74,6 +75,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         for path, expected_kind in [
             (IDENTITY_EXAMPLE, "IdentityBundle"),
             (RATING_EXAMPLE, "RatingRecord"),
+            (BUNDLE_EXAMPLE, "AttestationBundle"),
         ]:
             with self.subTest(path=path):
                 self.assertTrue(path.exists(), f"missing {path.relative_to(ROOT)}")

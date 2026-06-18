@@ -29,6 +29,14 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
   machine-readable IdentityBundle example for §6.3.2.
 - [`examples/rating-record.json`](./examples/rating-record.json) — a
   machine-readable RatingRecord example for §10.6.
+- [`examples/attestation-bundle.json`](./examples/attestation-bundle.json) — a
+  machine-readable, **verifier-emitted** AttestationBundle example for §10.4,
+  regenerated from the `pathos-dacs-ref` reference verifier (real ed25519
+  signatures over the `dacs-bundle:v1:` scope; `verifyBundleV1` → accept). This is
+  the DACS-5 portion of the #133/D2 regeneration: the bundle artifact matches the
+  current spec `type AttestationBundle` shape. The full five-stage lifecycle
+  vectors stay quarantined until DACS-1/2/4 are regenerated from a verifier that
+  emits the current spec shapes (the SDK / `agent-commerce-demo`).
 
 ## Shared fixture packs
 

@@ -1,0 +1,60 @@
+{
+  "kind": "AttestationBundle",
+  "dacsVersion": "0.1",
+  "specRefs": [
+    "§10.4",
+    "§14.6"
+  ],
+  "artifact": {
+    "bundleVersion": "1",
+    "jobId": "regen-lifecycle-0001",
+    "outcome": "completed",
+    "anchoredByRole": "buyer",
+    "listingRef": {
+      "listingId": "lst-regen-0001",
+      "version": 1,
+      "contentHash": "fa8f61b621e5c45c8cf226f3c67bc7b3042f06afaf9998f11639b15ba52b5569"
+    },
+    "parties": [
+      {
+        "role": "buyer",
+        "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+        "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      {
+        "role": "seller",
+        "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+        "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+      }
+    ],
+    "phaseSummary": [
+      {
+        "index": 0,
+        "kind": "vet-credentials",
+        "outcome": "ok"
+      },
+      {
+        "index": 1,
+        "kind": "settle",
+        "outcome": "ok"
+      }
+    ],
+    "vetRecords": [],
+    "settlementEvidence": [],
+    "recipeRegistryVersion": 1,
+    "railRegistryVersion": 1,
+    "finalisedAt": 1767225600000,
+    "signatures": [
+      {
+        "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+        "algorithm": "ed25519",
+        "value": "6lBFFazEYwO/YsRET5CGqAQss4dcCnuvahehv/BuJumD58+rBkvu1PgZXKtrZok3eCe+Yu4/yLdOAGNRS2A3BA=="
+      },
+      {
+        "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+        "algorithm": "ed25519",
+        "value": "z54bNMUe+Kws9IV23W/aco4jabs7qYmvVMB+iw4+sCudjEQdEWO+9zcMDPuJsCszldUXCVSW43aY8qmuzX2zDQ=="
+      }
+    ]
+  }
+}

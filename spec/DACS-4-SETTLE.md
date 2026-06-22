@@ -216,10 +216,10 @@ Maturity by rail:
 | --- | --- |
 | `pay-evm-erc20`, `pay-solana-spl`, `pay-cross-chain-htlc` | Reference-backed: exercised by the reference implementation, with §14 conformance vectors |
 | `pay-cross-chain-liquidity-tank` | Partially live: only the Phase-1 testnet route (ETH Sepolia → Polygon Amoy, USDC, unidirectional); other routes to-add |
-| `pay-x402` | Exercised by the reference implementation; §14 conformance vector pending; **not** `operator_gated` (see note) |
+| `pay-x402` | Exercised by the reference implementation; §14 conformance vector present (`settlement-x402-pass`); **not** `operator_gated` (see note) |
 | `pay-ap2` | Specified, not yet reference-backed: no live settlement path, no §14 conformance vector; `operator_gated` (see note) |
 
-> **Note (non-normative).** *pay-x402* (§9.5.7) — x402 settles a gasless USDC transfer **on its settlement chain** (e.g. Base), so a `pay-x402` `SettlementEvidence` record is chain-verifiable against the settlement chain via `settlementTxHash`/`chainId`, exactly like the `evm` rail. The reference implementation runs x402 end-to-end as a primary rail: a buyer-side x402 client signing an EIP-3009/Permit2 authorisation and settling USDC on Base. It therefore meets the live-path + reference-implementation bar; the only outstanding item for parity with the rails above is a §14 conformance vector.
+> **Note (non-normative).** *pay-x402* (§9.5.7) — x402 settles a gasless USDC transfer **on its settlement chain** (e.g. Base), so a `pay-x402` `SettlementEvidence` record is chain-verifiable against the settlement chain via `settlementTxHash`/`chainId`, exactly like the `evm` rail. The reference implementation runs x402 end-to-end as a primary rail: a buyer-side x402 client signing an EIP-3009/Permit2 authorisation and settling USDC on Base. It therefore meets the live-path + reference-implementation bar, and now has parity with the rails above, including a §14 conformance vector (`settlement-x402-pass`).
 >
 > *pay-ap2* (§9.5.6) — the handler procedure, registry entries, and evidence shape are defined, but there is no live path. `pay-ap2` settles **off-chain** (a provider receipt, not chain-verifiable) and requires AP2 provider onboarding (Visa Direct / Mastercard Send / Stripe PaymentIntents); AP2 itself was donated to the FIDO Alliance only in April 2026. Bringing it to reference-backed status — a live path plus conformance vectors — is roadmap work.
 

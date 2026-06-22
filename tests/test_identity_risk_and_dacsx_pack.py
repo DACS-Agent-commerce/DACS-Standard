@@ -22,7 +22,10 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertIn("`suspiciousPatternFlags` on ReputationDerivation + min-bundleCount gating advice (#101)", text)
         self.assertIn("DACS-X (dispute / execution-verification)", text)
         self.assertIn("DACS-X shared dispute fixtures / verifier pack (#99)", text)
-        self.assertIn("HTLC-9 correction-amendment", text)
+        # HTLC-9 asymmetric settlement resolves via the ST-8 `settle-asymmetric` state
+        # at the settlement layer; the former "correction-amendment" close-out was retired
+        # (Round-4 R4-A, §9.5.4). The roadmap references the current mechanism.
+        self.assertIn("settle-asymmetric", text)
         self.assertIn("non-normative", text)
 
     def test_identity_tier_fixture_set_is_machine_readable(self):

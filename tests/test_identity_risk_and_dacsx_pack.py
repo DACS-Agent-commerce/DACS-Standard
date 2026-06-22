@@ -4,7 +4,6 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "spec" / "SPECIFICATION.md"
 ROADMAP = ROOT / "ROADMAP.md"
 VERIFY_DACSX = ROOT / "scripts" / "verify_dacsx_dispute_pack.py"
 
@@ -19,7 +18,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
     def test_roadmap_tracks_identity_reputation_and_dacsx_improvements(self):
         text = ROADMAP.read_text(encoding="utf-8")
         self.assertIn("`identityTier` on IdentityBundle (#103)", text)
-        self.assertIn("`suspiciousPatternFlags` on ReputationDerivation + min-bundleCount gating advice (#101)", text)
+        self.assertIn("`dacs-sybil-scan` — behavioural-Sybil flag scanner (#101)", text)
         self.assertIn("DACS-X (dispute / execution-verification)", text)
         self.assertIn("DACS-X shared dispute fixtures / verifier pack (#99)", text)
         # HTLC-9 asymmetric settlement resolves via the ST-8 `settle-asymmetric` state

@@ -124,10 +124,12 @@ class ArtifactShapeTests(unittest.TestCase):
         v = load_validator()
         self.assertTrue((v.VECTOR_DIR / "examples").is_dir())
 
-    def test_known_stale_vectors_are_quarantined(self):
+    def test_lifecycle_vectors_no_longer_quarantined(self):
+        # #133: the lifecycle vectors were regenerated to current v0.1 spec shapes,
+        # so the quarantine is lifted — they are now shape-checked, not skipped.
         v = load_validator()
-        self.assertIn("dacs-v0.1-happy-path.json", v.QUARANTINE)
-        self.assertIn("dacs-v0.1-negative-paths.json", v.QUARANTINE)
+        self.assertNotIn("dacs-v0.1-happy-path.json", v.QUARANTINE)
+        self.assertNotIn("dacs-v0.1-negative-paths.json", v.QUARANTINE)
 
 
 if __name__ == "__main__":

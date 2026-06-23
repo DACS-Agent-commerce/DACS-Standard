@@ -47,10 +47,7 @@ VECTOR_DIR = ROOT / "conformance" / "vectors"
 # with a LOUD notice rather than silently — the gap is disclosed, not hidden —
 # so the shape check guards every other (and every future) vector meanwhile.
 # Remove an entry the moment its vector is regenerated to conformant shapes.
-QUARANTINE = {
-    "dacs-v0.1-happy-path.json": "stale pre-v0.1 artifact shapes; pending verifier regeneration (#133/D2)",
-    "dacs-v0.1-negative-paths.json": "stale pre-v0.1 artifact shapes; pending verifier regeneration (#133/D2)",
-}
+QUARANTINE: dict[str, str] = {}  # #133 lifted: lifecycle vectors regenerated to current v0.1 spec shapes (pathos-dacs-ref)
 
 _TYPE_OPEN = re.compile(r"^type\s+([A-Za-z_]\w*)\s*=\s*\{")
 _FIELD = re.compile(r"^\s*([A-Za-z_]\w*)(\??)\s*:\s*(.*)$")

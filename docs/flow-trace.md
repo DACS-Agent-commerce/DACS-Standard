@@ -61,8 +61,24 @@ import { l2ps } from "@kynesyslabs/demosdk";
 The buyer connects to a Demos node, assembles an IdentityBundle, and presents it under a SIWD signature. The orchestrator validates against the seller's listing.
 
 ```typescript
-// === Buyer-side: connect + present ===
-async function buyerPresentsIdentity(privateKey: string, listing: Listing) {
+// === Orchestrator-side: issue the session challenge (CORE §B.8 SN-1/SN-3) ===
+// The VERIFIER generates the nonce — never the presenter — and binds it to the
+// session jobId. ≥128-bit CSPRNG per SN-2. Held in verifier-side state until the
+// session reaches a terminal state, with a bounded challenge lifetime (SN-4).
+const nonceStore = new Map<string, { sessionNonce: string; consumed: boolean; issuedAt: number }>();
+
+function issueChallenge(jobId: string): { jobId: string; sessionNonce: string } {
+  const sessionNonce = randomBytes(16).toString("hex");           // 128 bits, lowercase hex (SN-2)
+  nonceStore.set(jobId, { sessionNonce, consumed: false, issuedAt: Date.now() });
+  return { jobId, sessionNonce };                                  // delivered to the buyer out of band (SN-3)
+}
+
+// === Buyer-side: connect + present, using the verifier-issued challenge ===
+async function buyerPresentsIdentity(
+  privateKey: string,
+  listing: Listing,
+  challenge: { jobId: string; sessionNonce: string },   // received from the orchestrator (SN-1)
+) {
   const demos = new Demos();
   await demos.connect("https://node.demos.network");
   await demos.connectWallet(privateKey);
@@ -74,11 +90,13 @@ async function buyerPresentsIdentity(privateKey: string, listing: Listing) {
     { ref: "iso3166:GB",                  context: "jurisdiction" },
   ];
 
+  // For the siwd kind the nonce lives in the SIWD message, NOT in a top-level
+  // bundle.sessionNonce field (§6.3.2). The presenter does not invent a nonce —
+  // it copies the verifier's challenge into the SIWD `nonce` (SN-1).
   const bundle = {
     id: "bundle:" + ulid(),
     primaryClaim: "lei:529900T8BM49AURSDO55",
     claims,
-    sessionNonce: randomBytes(16).toString("hex"),
     presentedAt: Date.now(),
   };
 
@@ -92,7 +110,7 @@ async function buyerPresentsIdentity(privateKey: string, listing: Listing) {
     address: demos.getAddress(),
     statement: "Sign DACS bundle presentation",
     uri: "https://buyer-agent.example",
-    nonce: bundle.sessionNonce,
+    nonce: challenge.sessionNonce,                                 // verifier-issued challenge, copied in (SN-1)
     issuedAt: new Date(bundle.presentedAt).toISOString(),
     resources: [`dacs:${hexEncode(signedBytes("bundle-presentation", bundleHash))}`],
   });
@@ -109,7 +127,7 @@ async function buyerPresentsIdentity(privateKey: string, listing: Listing) {
 }
 
 // === Orchestrator-side: validate ===
-async function orchestratorValidatesBundle(bundle: Bundle, listing: Listing) {
+async function orchestratorValidatesBundle(bundle: Bundle, listing: Listing, jobId: string) {
   const demos = new Demos();
   await demos.connect("https://node.demos.network");
 
@@ -118,6 +136,16 @@ async function orchestratorValidatesBundle(bundle: Bundle, listing: Listing) {
   const expectedResource = `dacs:${hexEncode(signedBytes("bundle-presentation", bundleHash))}`;
   assert(bundle.presentation.message.includes(expectedResource), "SIWD resource binding mismatch");
   verifySiwdSignature(bundle.presentation);
+
+  // 1b. Session-nonce match + single-use (CORE §B.8 SN-3 / SN-4). The SIWD Nonce
+  //     MUST equal the nonce THIS verifier issued for jobId, and MUST be unconsumed
+  //     and within its challenge lifetime. Consume on attempt (not only on success).
+  const issued = nonceStore.get(jobId);
+  const presentedNonce = parseSiwdNonce(bundle.presentation.message);
+  assert(issued && !issued.consumed, "no live challenge issued for this session (SN-4)");
+  assert(Date.now() - issued.issuedAt <= CHALLENGE_LIFETIME_MS, "challenge expired (SN-4 bounded lifetime)");
+  assert(presentedNonce === issued.sessionNonce, "session-nonce mismatch — not the issued challenge (SN-3)");
+  issued.consumed = true;                                          // single-use, consumed on attempt (SN-4)
 
   // 2. Resolve every claim via CCI to confirm they share a root identity.
   for (const c of bundle.claims) {

@@ -178,7 +178,7 @@ SIWD is the preferred presentation. The siwd shape matches the return of provide
 **Session nonce binding.** `presentedAt` is always present (a required schema field). A bundle presented in the context of a specific session SHOULD additionally carry a session-binding nonce:
 
 - The nonce is conveyed via the SIWD message’s Nonce field (per EIP-4361) or, for per-claim and session-key presentations, via the top-level `sessionNonce` field on the IdentityBundle — which therefore enters `bundle_hash` and is covered by the presentation signature for those kinds.
-- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the session’s expected nonce, and MUST reject a session-context presentation that carries no session nonce.
+- A verifier in a session context MUST check that the bundle’s `sessionNonce` (or SIWD Nonce) matches the session’s expected nonce, and MUST reject a session-context presentation that carries no session nonce. The nonce's provenance — verifier-generated, ≥128-bit, per-`jobId`, single-use — is governed by **CORE §B.8 (SN-1..SN-4)**; this bullet is the match check that consumes it.
 - For SIWD the nonce lives in the omitted `presentation` field and so is not in `bundle_hash`; the verifier's nonce-match check above is the binding for that kind and is therefore a MUST, not advisory.
 - Bundles presented without session-nonce binding are usable only outside session contexts (e.g., listing publication where the bundle is the seller’s own self-binding to the listing).
 

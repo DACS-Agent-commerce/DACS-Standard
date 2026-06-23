@@ -17,6 +17,10 @@ The format used per release:
 
 Defect-triage and follow-on hardening on top of v0.1 (steward-merged via the issue triage of the cX3po review wave and the xm33 / DACS-X contributions).
 
+### Added — DACS-4 v0.2
+
+- **`pay-solana-spl` payer-funded ATA-rent** (§9.5.3, §14.4) — v0.1 left unspecified who funds the rent-exempt reserve when a payee's SPL associated token account (ATA) must be created, and whether the handler creates it. Now: a `createPayeeAtaIfMissing` rail parameter (default `false`) gates creation; the **rent-exempt reserve is funded by the payer** (included in the payer's required-balance preflight); and a payer who cannot cover the reserve fails `permanent`. Procedure clarification — no schema change (the param rides on the open `rail.parameters` map).
+
 ### Editorial
 
 - **Conformance-summary tables completed (§7.9, §9.10)** — the role→rule-range summary tables omitted families that carry MUSTs, so an implementer using a table as a checklist would silently miss obligations. DACS-2 §7.9: PSP-1..5 and WN-1..4 added to the Verifier row; WN-5/6 and GOV-3 to the VerifyResult-consumer row; GOV-2 and PA-1..3 to the steward row (renamed "availability & governance"); a ParserSpec cross-ref on the Recipe-author row. DACS-4 §9.10: new "Orchestrator (rail selection)" row carrying RAV-R1..R5; the consumer row's "amendment chain following" made an explicit AMEND-1..4 range. Also tightens the §7.5.1(a) retry summary, which read looser ("transient by default") than the governing VP-R1/VP-R3 (retry only when `retryClass == "transient"`; never in-session for `permanent`), and swaps one "DAHR-attested" type comment in DACS-3 to the substrate-neutral "SR-3-attested". No rule-text changes beyond the §7.5.1(a) alignment; rule families and their semantics are unchanged. Surfaced by the DACS-2/DACS-4 readability reviews; closes the last item of the 2026-06 defect pass.

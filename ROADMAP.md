@@ -30,6 +30,16 @@ The roadmap has two parts:
 
 **Status legend.** **Shipped** — landed in v0.1. **Active** — being worked now (in development / in flight). **Candidate** / **Anticipated** / **Deferred** — queued, not yet started (a *Candidate* is scoped; *Anticipated* is directional; *Deferred* is explicitly out of v0.1). **Live** / **Partially live** — for shipped reference implementations / partially-deployed infrastructure. "design-issue first" means an RFC precedes any PR.
 
+### Proposed rollout (planning milestones)
+
+*Informative and non-binding. DACS versions **per stage** — a stage bumps its own minor when it gains a capability (DACS-4 is already v0.2 from SB-1..3) — so these waves are **planning milestones**, not global versions: each item carries its own stage's version when it lands. Sequenced by readiness + value + dependency; subject to change. (Part 2 ecosystem — SDK, tooling, docs, reference implementations — ships on its own non-normative track, outside these waves.)*
+
+**Wave 1 — v0.2 milestone · harden the rails + fair reputation (contained, near-term):** session-bound settlement evidence (SB-1..3, in review) · ERC-4337 payers (#147) · `pay-solana-spl` ATA-rent · liquidity-tank recovery-pending evidence (#25) · proactive rail-liveness probe (#23) · first-class `cancelled` outcome (#92) · blame-weighted completion metric · transaction-count + FX-normalised volume (#31) · DACS-5 → ERC-8004 cross-claim hint · modular ST-1..8 hoist into CORE · `lei` registration-status → decision mapping (#146, gated on the PATH-OS↔DNO drift-test).
+
+**Wave 2 — v0.3 milestone · bigger features (design-issue first):** `pay-evm-erc8183` escrow with delivery-gate (#8) · fee-split / multi-payee (#85) · HTLC anti-free-option (#24) · cross-currency refunds (AMEND-3) · `FeeSchedule` disclosure · entitlement credential handover (#61) · private / access-controlled deliverables · abandoned-session terminal transition (#148) · canonical rating-`dimensions` namespace (#96) · `negotiate-multi-quote` · dynamic channel membership (#21) · sealed-envelope simultaneous-reveal · encrypted-to-parties anchoring (#68/#78) · primary-claim revocation · `ServiceCategory` vocabulary · DACS-X dispute (already parked here) · generic phase-hook · AML / Travel-Rule hook · per-artifact minor-version signalling (#79/#94 — reconsider; may be superseded by SIG-5).
+
+**Wave 3 — v0.4+ / later · substrate, governance, live-path:** SR-3 / SR-4 wire harmonisation · PA-2 → PA-3 governance · selective / minimised-claim disclosure · streaming / subscription rails (#64) · L2PS key rotation / forward secrecy · CCI-keyed L2PS membership (substrate, in dev) · 6 new CCI contexts · DAHR validator-body-signed · `pay-d402` · `pay-ap2` reference-backing · Liquidity Tank Phase 2–4.
+
 ## Settlement rails (DACS-4)
 
 | Item | Status | Notes |

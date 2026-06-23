@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft (part of DACS v0.1). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; adds SB-1..SB-3 session-bound settlement evidence, §9.5.8). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -536,7 +536,7 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 **Procedure.**
 
 1. Resolve rail; verify `network.kind == "x402-resource"`.
-2. Construct an x402 payment payload (signed authorisation per x402 spec); submit the GET request to the resource with x402 headers.
+2. Construct an x402 payment payload (signed authorisation per x402 spec); the authorisation MUST include the session `jobId` (SB-3, §9.5.8) so the verifier can bind the settlement to this session. Submit the GET request to the resource with x402 headers.
 3. Receive the resource response and an x402 receipt; read the on-chain settlement transaction hash from the x402 `PAYMENT-RESPONSE` header (x402 settles a gasless USDC transfer on its settlement chain, e.g. Base).
 4. Construct SettlementEvidence with `txRef` of kind `x402` carrying httpResource, paymentReceiptHash (sha256 of the receipt), and the x402 `protocolVersion` (#27). The handler MUST populate `settlementTxHash` + `chainId` whenever the facilitator returns them — the normal case. A record carrying `settlementTxHash`/`chainId` is **chain-verifiable directly against the settlement chain, exactly like the `evm` rail**: the primary audit path, with the receipt hash supplementary.
 5. Anchor via SR-2; return success.
@@ -554,6 +554,16 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 - server-side x402 endpoint rejects (insufficient payment, unsupported scheme) → `counterparty`
 - HTTP error after payment submitted → `transient` (retry with idempotency key)
 - payment-receipt signature invalid → `permanent`
+
+#### 9.5.8 Session-bound settlement evidence (SB-1..SB-3)
+
+A cross-chain HTLC settlement is bound to its session by the jobId-derived preimage (HTLC-5), but the single-chain / provider rails (`pay-evm-erc20`, `pay-solana-spl`, `pay-ap2`, `pay-x402`) carry a `ChainTxRef` with no session binding — so a record could cite an unrelated transfer of the agreed amount to the payee (*coincidental-citation*), or reuse one settlement across sessions (*cross-session double-count*).
+
+- **(SB-1) Binding key.** A `SettlementEvidence` record's `paymentTxRefs` are a claim that the referenced transaction(s) settled **this** `(jobId, phaseIndex)`. A consumer MUST key a settlement on the tuple `(settlement-tx-id, jobId, phaseIndex)`, where `settlement-tx-id` is the rail's canonical on-chain reference (`txHash`+`chainId` for evm/x402, `signature` for solana, the facilitator `settlementTxHash` for x402).
+- **(SB-2) Cross-session uniqueness.** A consumer that aggregates settlement evidence across sessions — including the DACS-5 reputation reconciliation (§10.5.1) — MUST NOT count one `settlement-tx-id` under more than one `(jobId, phaseIndex)`. A second binding of the same id is rejected for the later record (earlier `observedAt` wins; ties broken by lower evidence hash). The check is scoped to the consumer's own evidence set; a global cross-network uniqueness index is out of scope. This closes the double-count threat on every rail with no on-chain change.
+- **(SB-3) On-chain session binding (optional, per rail).** A rail MAY bind `jobId` into its on-chain settlement, closing coincidental-citation as well. When a rail declares such a binding, the verifier MUST confirm the on-chain artifact carries the session `jobId` before accepting the evidence. v0.2 defines one: for `pay-x402`, the handler MUST include `jobId` in the EIP-3009 / Permit2 payment authorization signed by the payer (already a signed payload — no new contract), and the verifier MUST check it equals `evidence.jobId`. Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. A rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match, and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements.
+
+> **Note (non-normative).** SB-2 is structurally the §B.8 SN-4 single-use marker with the scope inverted — a settlement-tx-id is single-use per session as a session nonce is. An ERC-4337 smart-account payer forces SB-1's `settlement-tx-id` to bind via the ERC-20 `Transfer(from=payerAccount,…)` event, not `tx.from` (the tx is submitted by the bundler/EntryPoint).
 
 ### 9.6 Delivery phases
 

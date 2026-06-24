@@ -17,6 +17,10 @@ The format used per release:
 
 Defect-triage and follow-on hardening on top of v0.1 (steward-merged via the issue triage of the cX3po review wave and the xm33 / DACS-X contributions).
 
+### Added — DACS-4 v0.2
+
+- **`pay-solana-spl` payer-funded ATA-rent** (§9.5.3, §14.4) — v0.1 left unspecified who funds the rent-exempt reserve when a payee's SPL associated token account (ATA) must be created, and whether the handler creates it. Now: a `createPayeeAtaIfMissing` rail parameter (default `false`) gates creation; the **rent-exempt reserve is funded by the payer** (included in the payer's required-balance preflight); and a payer who cannot cover the reserve fails `permanent`. Procedure clarification — no schema change (the param rides on the open `rail.parameters` map).
+
 ### Added — DACS-5 v0.2
 
 - **Blame-weighted completion + per-currency transaction count** (§10.5.1, §10.5, §14.5) — two additive `ReputationDerivation.metrics` fields. **`counterpartyAdjustedCompletionRate`** is `completionRate` with counterparty-caused outcomes (`failed-counterparty`, `aborted-by-other`) *also* dropped from the denominator, so a party is not penalised for a counterparty's abort/failure — closing the griefing residual v0.1's `completionRate` leaves (a counterparty repeatedly opening-and-aborting could depress an honest party's rate). **`transactionCountByCurrency`** records the per-currency count of completed sessions composing `observedTransactionalVolume`, strengthening the §10.11 anti-collusion "few large vs many small" heuristic. Both additive — `completionRate` and `observedTransactionalVolume` unchanged, no schema migration. Bumps **DACS-5 to v0.2**. (Dropped as low-value: the FX-normalised volume aggregate and the ERC-8004 cross-claim hint. `cancelled` outcome (#92) and abandoned-session terminal transition (#148) remain roadmapped.)

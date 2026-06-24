@@ -1,163 +1,351 @@
 {
   "vectorId": "dacs-v0.1-negative-paths",
-  "title": "DACS v0.1 negative-path examples",
+  "title": "Negative paths (regenerated) — tampered DACS-4/5 artifacts the reference verifiers REJECT",
   "dacsVersion": "0.1",
-  "description": "Machine-readable examples of artifacts that a conforming implementation is expected to reject or classify as failures without changing normative spec semantics.",
+  "description": "DACS-1/2/3 are the valid happy-path artifacts (accepted context). DACS-5 is the valid bundle with one party signature byte flipped (verifyBundleV1 rejects it). DACS-4 is a spec §9.7 failure-outcome SettlementEvidence (newly signed) PROJECTED from an internal HTLC settlement whose reveal preimage was tampered so it no longer hashes to the lock hashlock — our verifyHtlcSettlementEvidence rejects that underlying settlement. Conformance use: a compliant verifier MUST NOT accept the tampered DACS-5 bundle nor treat the DACS-4 settlement as successful.",
   "artifacts": [
     {
-      "id": "identity-bundle-missing-presented-by-claim",
+      "id": "neg-listing-analyze-csv",
       "stage": "DACS-1",
-      "kind": "IdentityBundle",
+      "kind": "Listing",
       "specRefs": [
-        "§6.3.2",
-        "§14.1"
-      ],
-      "domainSeparator": "dacs-bundle-presentation:v1:",
-      "artifact": {
-        "bundleVersion": "1",
-        "presentedBy": "did:demos:agent:not-in-claims",
-        "presentedAt": 1780358400000,
-        "claims": [
-          {
-            "ref": "did:demos:agent:alice-data-agent"
-          }
-        ],
-        "presentation": {
-          "kind": "session-key",
-          "key": "did:key:z6MkBadSessionKey",
-          "signature": "sig:example-invalid"
-        }
-      },
-      "contentHash": "sha256:ed903172907c281f384fa41c18bda8ae765e9b8634708329379878ee5b83d262"
-    },
-    {
-      "id": "verification-required-claim-fails",
-      "stage": "DACS-2",
-      "kind": "VerifyResult",
-      "specRefs": [
-        "§7.5",
+        "§6.3",
         "§14.2"
       ],
-      "domainSeparator": "dacs-verifyresult:v1:",
+      "domainSeparator": "dacs-listing:v1:",
       "artifact": {
-        "claimRef": "web2:domain:alice.example",
-        "recipeId": "acme-domain-control-v1",
-        "recipeVersion": "1.0.0",
-        "decision": "fail",
-        "authority": "https://acme.example/directory",
-        "verifiedAt": "2026-06-02T00:00:00Z"
+        "dacsVersion": "1",
+        "listingVersion": 1,
+        "listingId": "lst-regen-0001",
+        "seller": {
+          "identity": {
+            "bundleVersion": "1",
+            "presentedBy": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "presentedAt": 1767225600000,
+            "claims": [
+              {
+                "ref": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+              }
+            ],
+            "presentation": {
+              "kind": "per-claim",
+              "signatures": [
+                {
+                  "ref": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+                  "signature": "CMkGfTWkCktKGwit894jSf3XCijtDkbB0cuMrOyxcSsd8bYv+2x4au6TsJFJmrHIGbX3d++g6ju6Br8r8z1iBQ=="
+                }
+              ]
+            }
+          },
+          "displayName": "Regen CSV Analyst"
+        },
+        "offering": {
+          "title": "CSV row classification",
+          "description": "Classify rows of an uploaded CSV and return per-row labels as JSON.",
+          "category": "data.analysis.classification",
+          "tags": [
+            "csv",
+            "classification"
+          ],
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json"
+          }
+        },
+        "buyerRequirement": {
+          "requirementVersion": "1",
+          "required": [
+            {
+              "scheme": "cci",
+              "verificationRequired": true
+            }
+          ]
+        },
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "pricing": {
+          "kind": "fixed",
+          "price": {
+            "amount": "1.5",
+            "currency": "USDC",
+            "unit": "per-row"
+          }
+        },
+        "acceptedRails": [
+          {
+            "railId": "evm-erc20:8453:USDC"
+          }
+        ],
+        "terms": {
+          "deadlineSecAfterCommit": 86400
+        },
+        "validity": {
+          "notBefore": 1767225600000
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "value": "2mNIFUAb4i3rTY414a3iW7EHo2oeHBXqoFlNOOz8Pb7wmUSbvZw77NNgfuvfSQBqY9TBUd8t98/RphSJ9gbZAQ=="
+        }
       },
-      "contentHash": "sha256:0a0c3237fba24b31d5a961f4d94a6b363317df99eb5e1fa86fe0fd7c7b91deac"
+      "contentHash": "sha256:23e171f396217c0801186c40945bcdfd9530d6b5e3909ff19113ce32734971cf"
     },
     {
-      "id": "agreement-currency-rail-mismatch",
+      "id": "neg-composite-verify-cci",
+      "stage": "DACS-2",
+      "kind": "CompositeVerificationRecord",
+      "specRefs": [
+        "§7.7",
+        "§14.3"
+      ],
+      "domainSeparator": "dacs-composite:v1:",
+      "artifact": {
+        "recordVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "evaluatedParty": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+        "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+        "requirementHash": "c16aa2de7405bff7ffebe44bd06197f9d20f658fc3aa81857c068e905b2cbdd0",
+        "freshness": [],
+        "supplementary": [
+          {
+            "source": "dacs-5",
+            "signalType": "completion-rate",
+            "value": 1,
+            "observedAt": 1767225600000
+          }
+        ],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:vr:regen-lifecycle-0001"
+            },
+            "contentHash": "1feefd0c9e2411e1edcfc05f5dde13b7ce2272c5a9136d720a2a5d76d623da2d",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "pass",
+        "generatedAt": 1767225600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
+          "value": "HlcHuKJjPKurUzMkFO1ssW0Vjb8oaNb6KMkUC1W+mHY9d2pQSpMGO8YyOTeA8KWh33A/WB60aidaSFOkjlVmBw=="
+        }
+      },
+      "contentHash": "sha256:f9214f4c11486b772c53a36109f2a2cf1714f8391c8217cb2e8b32e06e3f5f75"
+    },
+    {
+      "id": "neg-agreement-fixed-price",
       "stage": "DACS-3",
       "kind": "AgreementDocument",
       "specRefs": [
         "§8.5",
-        "§14.3"
+        "§14.4"
       ],
       "domainSeparator": "dacs-agreement:v1:",
       "artifact": {
-        "jobId": "01HX0000000000000000000099",
-        "pattern": "negotiate-fixed-price",
-        "buyer": "did:demos:agent:bob-buyer",
-        "seller": "did:demos:agent:alice-data-agent",
-        "listingRef": "listing-basic-data-agent",
-        "price": {
-          "amount": "10.00",
-          "asset": "EUR",
-          "decimals": 2,
-          "rail": "pay-evm-erc20"
+        "agreementVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "23e171f396217c0801186c40945bcdfd9530d6b5e3909ff19113ce32734971cf"
         },
-        "delivery": {
-          "phase": "deliver-attested-payload",
-          "format": "application/json"
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:vet:regen-lifecycle-0001"
+              },
+              "contentHash": "f9214f4c11486b772c53a36109f2a2cf1714f8391c8217cb2e8b32e06e3f5f75"
+            }
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:vet:regen-lifecycle-0001"
+              },
+              "contentHash": "f9214f4c11486b772c53a36109f2a2cf1714f8391c8217cb2e8b32e06e3f5f75"
+            }
+          }
+        ],
+        "terms": {
+          "deliverable": {
+            "deliverableType": "attested-payload",
+            "hash": "cbf76de0db9ceaa7dec0c01a51162fb549feeb5c15314dacb36f122d0dab177c"
+          },
+          "price": {
+            "amount": "1.5",
+            "currency": "USDC",
+            "unit": "per-row"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deadline": 1767312000000
         },
-        "expiresAt": "2026-06-03T00:00:00Z"
+        "derivedFromPattern": "fixed-price",
+        "generatedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "8XgxDuiLa9IlvBybrV/oEK6MkMhp8dla8ElgnffVz4yfUSjg+EZJgFinImZ9/CcwAptIGFOtuzK0EBHS8PhhBw=="
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "65zD+fHo2sxJGc1Wbm+ZYpNxx7pTH3Siz4lxVB3cWptJgnY5pgNkgUL53jMcN+dgJCfZ4ECetNi3QavCMp4pCg=="
+          }
+        ]
       },
-      "contentHash": "sha256:82c3dbbf5ed037ace518cbfb90a8b1525b3f0f602afb22b1a68ae037171d5e1e"
+      "contentHash": "sha256:4e419db39e7cdd5ec646728f0b7f67544fc01ca74c9a7d6491b61a22e75eecfb"
     },
     {
-      "id": "settlement-disabled-rail-selected",
+      "id": "neg-settlement-tampered-preimage",
       "stage": "DACS-4",
       "kind": "SettlementEvidence",
       "specRefs": [
-        "§9.4.4",
-        "§14.4"
+        "§9.7",
+        "§14.5"
       ],
       "domainSeparator": "dacs-evidence:v1:",
       "artifact": {
-        "jobId": "01HX0000000000000000000099",
-        "rail": "pay-evm-erc20",
-        "availability": "disabled",
-        "ok": false,
-        "errorClass": "permanent",
-        "observedAt": "2026-06-02T00:01:00Z"
-      },
-      "contentHash": "sha256:c09a933c25075fab806af6a45d159e6c4df338ff32fbc7f3985a613867a472e0"
-    },
-    {
-      "id": "rating-out-of-range",
-      "stage": "DACS-5",
-      "kind": "RatingRecord",
-      "specRefs": [
-        "§10.6.1",
-        "§14.5"
-      ],
-      "domainSeparator": "dacs-rating:v1:",
-      "artifact": {
-        "ratingVersion": "1",
-        "jobId": "01HX0000000000000000000099",
-        "rater": "did:demos:agent:bob-buyer",
-        "target": "did:demos:agent:alice-data-agent",
-        "targetRole": "seller",
-        "value": 6,
-        "ratedAt": 1780358520000,
+        "evidenceVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "phase": "pay-cross-chain-htlc",
+        "outcome": "failure",
+        "paymentTxRefs": [
+          {
+            "kind": "htlc-lock",
+            "chainId": 8453,
+            "contractAddress": "0xabababababababababababababababababababab",
+            "lockTxHash": "0xa1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+          },
+          {
+            "kind": "htlc-reveal",
+            "chainId": 8453,
+            "contractAddress": "0xabababababababababababababababababababab",
+            "revealTxHash": "0xc3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          }
+        ],
+        "observedAt": 1767225600000,
+        "reason": "underlying HTLC rejected by verifyHtlcSettlementEvidence → fail (reveal preimage replaced; no longer hashes to the lock hashlock)",
         "signature": {
           "algorithm": "ed25519",
-          "signer": "did:demos:agent:bob-buyer",
-          "value": "sig:example-invalid-rating"
+          "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "value": "KK9NYX305GfIw5C06Fo7A/v+K8+bU2srvrwjZwlyjiIdnYVHern6U0zkAeCYaytFqmXPaP7EfxRPCnJxIJMcDQ=="
         }
       },
-      "contentHash": "sha256:c5d38ca53e7e74f372ace8cf079a63c30d4494a7327cd0b618dfbb9d4c3d0b26"
+      "contentHash": "sha256:d0eac0ec7e29e0b9cef0f2a9094ecb9792084624ace24a24319472fd1fc0e7dc"
+    },
+    {
+      "id": "neg-bundle-tampered-signature",
+      "stage": "DACS-5",
+      "kind": "AttestationBundle",
+      "specRefs": [
+        "§10.4",
+        "§14.6"
+      ],
+      "domainSeparator": "dacs-bundle:v1:",
+      "artifact": {
+        "bundleVersion": "1",
+        "jobId": "regen-lifecycle-0001",
+        "outcome": "completed",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "lst-regen-0001",
+          "version": 1,
+          "contentHash": "23e171f396217c0801186c40945bcdfd9530d6b5e3909ff19113ce32734971cf"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72005563414f30b6c4db43b9bb37bec753081d16092a3caa5effe272ac19a5ed",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "2658a2496f3c9d39cd4bf3bb1e4c632f3d9fdd8e93b54a46a05e396d94a19828",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "settle",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1767225600000,
+        "signatures": [
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "A7pTZRMvIcs5+aHj5UNRRpisg37wCmKADFSo5Xr16COYkZoEPOdqn1WihJb2ZNOpnshuqZn7FR89QAb3HpPwDw=="
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "p9JhBTq1Yfdkvnvj66UiwsR/M5WoWgy+X592CXucilpW7AS7HbmRkgZYE90Inoxad7UmQuxhL70CNtXgirBCAg=="
+          }
+        ]
+      },
+      "contentHash": "sha256:9e8a8469025796d6f5439c26ad311803fb7b97075140ed56abeba5e32408f5e0"
     }
   ],
   "expectedResult": {
     "verifies": false,
     "expectedFailures": [
       {
-        "artifactId": "identity-bundle-missing-presented-by-claim",
-        "ruleRefs": [
-          "BP-3",
-          "BR-2"
-        ]
+        "artifactId": "neg-settlement-tampered-preimage",
+        "stage": "DACS-4",
+        "reason": "verifyHtlcSettlementEvidence → fail (reveal preimage replaced; no longer hashes to hashlock, signature breaks)"
       },
       {
-        "artifactId": "verification-required-claim-fails",
-        "ruleRefs": [
-          "BR-3"
-        ]
-      },
-      {
-        "artifactId": "agreement-currency-rail-mismatch",
-        "ruleRefs": [
-          "PC-5"
-        ]
-      },
-      {
-        "artifactId": "settlement-disabled-rail-selected",
-        "ruleRefs": [
-          "RAV-R2"
-        ]
-      },
-      {
-        "artifactId": "rating-out-of-range",
-        "ruleRefs": [
-          "RT-1",
-          "RT-2"
-        ]
+        "artifactId": "neg-bundle-tampered-signature",
+        "stage": "DACS-5",
+        "reason": "verifyBundleV1 → reject (one party signature byte flipped; does not verify)"
       }
-    ]
+    ],
+    "perArtifact": {
+      "DACS-1 Listing": "valid (context)",
+      "DACS-2 CompositeVerificationRecord": "valid (context)",
+      "DACS-3 AgreementDocument": "valid (context); signatures verify",
+      "DACS-4 SettlementEvidence": "REJECTED — fail",
+      "DACS-5 AttestationBundle": "REJECTED — reject"
+    }
   }
 }

@@ -3,25 +3,23 @@
 This directory contains machine-readable fixtures for implementers who want a
 small, repeatable check against the DACS v0.1 artifact lifecycle.
 
-> **⚠️ Stale — do not copy as ground truth (pending regeneration, #133/D2).**
-> The two lifecycle vectors below were hand-authored against a pre-v0.1 draft and
-> carry **out-of-date artifact shapes** (e.g. a `SettlementEvidence` with
-> `amount`/`asset`/`chainId` instead of the v0.1 `phase`/`outcome`/`paymentAmount`).
-> `scripts/validate_artifact_shapes.py` quarantines them (it checks every *other*
-> and every future vector against the spec `type` blocks) until they are
-> **regenerated from a reference verifier** (`pathos-dacs-ref` / `agent-commerce-demo`).
-> For a current, verifier-emitted conformance suite use
-> [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (186 cases).
+> **✅ Regenerated to current v0.1 spec shapes (#133/D2 — quarantine lifted).**
+> The two lifecycle vectors below were regenerated from the `pathos-dacs-ref`
+> reference verifier with real ed25519 signatures and sha256 hashes, in current
+> v0.1 artifact shapes. They pass **both** `scripts/validate_conformance_vectors.py`
+> (wrapper) and `scripts/validate_artifact_shapes.py` (deep per-`type` shape check)
+> — they are no longer quarantined. For the broader verifier-emitted conformance
+> suite see [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (186 cases).
 
 ## Included vectors
 
 - [`dacs-v0.1-happy-path.json`](./dacs-v0.1-happy-path.json) — one minimal
   positive session covering all five stages in order:
-  `DACS-1 → DACS-2 → DACS-3 → DACS-4 → DACS-5`. *(stale shapes — see notice above)*
+  `DACS-1 → DACS-2 → DACS-3 → DACS-4 → DACS-5`. *(current v0.1 shapes — regenerated)*
 - [`dacs-v0.1-negative-paths.json`](./dacs-v0.1-negative-paths.json) — negative
   examples that conforming implementations are expected to reject or classify as
   failures, with rule references for the expected failures. Uniquely asserts a few
-  negative rules not yet in `golden.json` (RAV-R2, RT-1/2, BP-3). *(stale shapes — see notice above)*
+  negative rules not yet in `golden.json` (RAV-R2, RT-1/2, BP-3). *(current v0.1 shapes — regenerated)*
 
 ## Core artifact examples
 
@@ -35,8 +33,8 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
   signatures over the `dacs-bundle:v1:` scope; `verifyBundleV1` → accept). This is
   the DACS-5 portion of the #133/D2 regeneration: the bundle artifact matches the
   current spec `type AttestationBundle` shape. The full five-stage lifecycle
-  vectors stay quarantined until DACS-1/2/4 are regenerated from a verifier that
-  emits the current spec shapes (the SDK / `agent-commerce-demo`).
+  vectors above are now likewise regenerated (#133/D2), so the shape-check
+  quarantine is lifted.
 
 ## Shared fixture packs
 

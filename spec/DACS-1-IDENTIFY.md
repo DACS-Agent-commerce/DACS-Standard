@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.2** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.2** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — and honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -424,15 +424,15 @@ type ListingTerms = {
   conflictOfLawsRule?: "buyer-jurisdiction" | "seller-jurisdiction" | "rule-ref:<uri>"
   deadlineSecAfterCommit?: number
   acceptanceModel?: "auto-accept"      // §8.4.1; when set, the seller pre-issues an AutoAcceptCommitment instead of a per-session signature
-  cancellationPolicy?: "none" | "pre-commit" | "with-fee"   // v0.1: informational only — see note below
+  cancellationPolicy?: "none" | "pre-commit" | "with-fee"   // "pre-commit" is honoured as a reputation-neutral cancellation; "none" and "with-fee" are not — see note below
   retentionYears?: number
   transcriptDisclosurePolicy?: "none" | "encrypted-anchored-recommended" | "encrypted-anchored-required"
 }
 ```
 
-**`cancellationPolicy` is informational-only in v0.1.** The field MAY be advertised, but v0.1 gives it no enforced representation: there is no `cancelled` SessionState or AttestationBundle `outcome`, and a session that ends before completion records `aborted-by-self` / `aborted-by-other` per §10.3.1 regardless of any advertised policy. Counterparties MUST NOT treat an advertised `pre-commit` / `with-fee` policy as a binding, reputation-neutral exit in v0.1; the §10.3.1 abort semantics (and their §10.5 reputation treatment) govern.
+**`cancellationPolicy` semantics.** The field MAY be advertised. A signed listing advertising **`pre-commit`** grants a reputation-neutral cancellation right: a party that withdraws while the session is still pre-commit (a `vet-pending` / `negotiate-pending` state, before `commit-completed`) MAY mark the resulting `aborted-by-self` as a policy-permitted cancellation, which a verifier honours as reputation-neutral after resolving this **signed** listing and confirming the policy and the pre-commit timing (DACS-5 §10.3.1 ST-10). The neutrality derives from the *signed, advertised* policy — the mutual notice is what earns it; an unannounced withdrawal (no advertised policy, or a `none` policy) remains an ordinary `aborted-by-self` per §10.3.1 ST-3, and a withdrawal whose listing cannot be resolved is treated as indeterminate, never as a free neutral exit (ST-10 trichotomy).
 
-> **Note (non-normative).** A first-class, reputation-neutral `cancelled` outcome — honouring a pre-agreed cancellation without it reading as a fault — is a roadmap candidate; it composes with the ST-3 "withdrawal is a right" framing.
+**`none`** permits no neutral cancellation. **`with-fee`** — a cancellation owing a fee after `commit-completed` — is **reserved and not defined**: it confers no neutrality, and a session ending after commit records its ordinary §10.3.1 outcome regardless of a `with-fee` advertisement.
 
 ```
 type ListingSignature = {

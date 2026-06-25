@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.2** (on the common DACS v0.1 baseline; adds the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, and the ST-9 session-deadline timeout terminal §10.3.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.2** (on the common DACS v0.1 baseline; adds the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -131,6 +131,15 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
   - **Reputation.** `aborted-by-other` already sits in the §10.5 counterparty-fault set, so the silent party bears the same mark it would by aborting (no cheaper escape than an honest decline) and the waiting party stays neutral (blame-weighted completion drops counterparty-caused outcomes, §10.5.1). The `timeout` marker preserves the audit distinction from a stated decline without changing the reputation treatment.
   - **Precedence.** Lowest. If a party decision (ST-3) or a substrate condition (ST-7) also applies, those win; the timeout fires only when nothing else did and the deadline lapsed. (CORE §B.8 SN-4 separately bounds the verifier's challenge-nonce lifetime for an abandoned session; ST-9 is the complementary state-machine terminal that gives the session a real end state.)
 
+- (ST-10) **Policy-permitted pre-commit cancellation.** A listing MAY advertise a `cancellationPolicy` (DACS-1 §6). When that policy permits cancellation and a party withdraws while the session is still **pre-commit** — a `vet-pending` or `negotiate-pending` state, before `commit-completed` — the withdrawal is the same `aborted-by-self` transition as ST-3, with **no new state and no new `outcome`**; the anchoring party MAY additionally attach a `cancellation` marker (§10.4) recording the `claimedPolicy` value. The marker does not alter the recorded `outcome`; it is an assertion, evaluated at reputation-derivation time, that the withdrawal exercised an **advertised** right rather than bailing on a counterparty who had no notice. Without the marker, a pre-commit withdrawal is an ordinary ST-3 abort.
+  - **Teeth (verification).** A consumer MUST treat the marker as established only if it resolves the bundle's `listingRef` `(listingId, version, contentHash)` to a listing whose `ListingSignature` (DACS-1) is present and verifies over the listing payload, **and** that **signed** listing's `cancellationPolicy` permits cancellation at the point the session ended (`pre-commit` for a pre-commit-state withdrawal), **and** the session did end pre-commit (no `agreementRef`; no `commit-completed` in `phaseSummary`). The binding policy MUST be read from the signed listing, never from the marker's self-asserted `claimedPolicy` — the signature over the listing is what makes the advertised policy non-repudiable.
+  - **Trichotomy (do not collapse).** The teeth check has three outcomes, mirroring the §7.5.1 `pass`/`fail`/`indeterminate` decision semantics and the SB-3 third branch:
+    - *resolves and permits* → the marker is **established**; §10.5.1 treats the `aborted-by-self` as **reputation-neutral**.
+    - *resolves and forbids* (policy `none`, or a `pre-commit` claim on a session that actually reached `commit-completed`) → the marker is **refuted**; the `aborted-by-self` stands as the party-fault it already is.
+    - *cannot be resolved* (listing pruned, signature transiently unverifiable, substrate unreachable) → the claim is **neither established nor refuted**: the consumer MUST NOT grant neutrality — that would rebuild the self-declared "don't count this" the teeth exist to prevent, since any party could cite an unresolvable listing for a free pass — and MUST NOT book the cancellation as a *fresh* fault on the unproven claim. The session is **indeterminate for reputation**, excluded from the derivation denominators pending resolution, exactly as an unresolved §7.5.1 `indeterminate`.
+  - **Symmetry.** A policy-permitted cancellation is neutral for both parties — there is no `-by-self`/`-by-other` blame to split. The counterparty's copy, if any, records `aborted-by-other` per ST-3, and the same teeth check applied to it yields the same neutral result; mutual notice is what earns the mutual neutrality.
+  - **Precedence.** A cancellation is a deliberate party action and ranks **with** abort (ST-3), above the ST-9 timeout: a party electing to cancel within an open deadline does so as a party decision, not a timeout. `with-fee` cancellation — a cancellation owing a fee after `commit-completed` — is **not defined** here; only the `pre-commit` case is honoured, and a `with-fee` value confers no neutrality.
+
 **State → bundle `outcome` mapping (normative).** Every terminal state maps to exactly one AttestationBundle `outcome` (§10.4), partitioned by the terminal phase’s `errorClass` where applicable:
 
 | Terminal state | errorClass | Bundle `outcome` |
@@ -173,6 +182,8 @@ type AttestationBundle = {
 
   agreementRef?: AttestationRef               // present iff the session reached commit-completed or later; omitted only when terminated before commit-agreement (see §10.4.3)
 
+  cancellation?: CancellationMarker           // present only on an aborted-by-self/other claimed as a policy-permitted pre-commit cancellation (§10.3.1 ST-10); verified at reputation-derivation time against the signed listing, never trusted as asserted
+
   parties: BundleParty[]
 
   phaseSummary: BundlePhaseEntry[]
@@ -192,6 +203,12 @@ type AttestationBundle = {
   finalisedAt: number
 
   signatures: BundleSignature[]               // both buyer and seller (and orchestrator if separate)
+
+}
+
+type CancellationMarker = {
+
+  claimedPolicy: "pre-commit"                 // the listing cancellationPolicy value the canceller invokes; only "pre-commit" is honoured (with-fee is reserved, not defined). The consumer reads the binding policy from the signed listing, never from this asserted value (§10.3.1 ST-10).
 
 }
 
@@ -374,6 +391,13 @@ derive(party, bundles, windowStart, windowEnd):
     role_of_party := the role of the BundleParty p in copies[0].parties where p.primaryClaim == party
     self_copy := the b in copies where b.anchoredByRole == role_of_party        // scored party's own copy, if present
     cp        := the b in copies where b.anchoredByRole != role_of_party        // at most one (the buyer/seller counterparty copy)
+    # (ST-10) indeterminate cancellation: if the authoritative copy (self_copy if present, else cp)
+    # carries a `cancellation` marker the consumer CANNOT resolve to a verified signed-listing policy
+    # (listing pruned / signature transiently unverifiable / substrate unreachable), the cancellation
+    # claim is neither established nor refuted — EXCLUDE this jobId from ALL metrics (never neutral,
+    # never a fresh fault), exactly like the §10.4.3(d) dispute `continue` below.
+    cancel_copy := self_copy if self_copy exists else cp
+    if cancel_copy.cancellation exists AND the §10.3.1 ST-10 teeth check cannot be resolved: continue
     if self_copy exists:
       if cp exists AND cp canonically diverges from self_copy (contradictory outcome / phaseSummary):
         continue   // (§10.4.3(d)) genuine dispute — EXCLUDE this jobId from ALL metrics (numerator and denominator), do not silently trust self_copy
@@ -398,11 +422,13 @@ derive(party, bundles, windowStart, windowEnd):
 
   aborted_by_self := [o for o in outcomes where o == "aborted-by-self"]   // party-initiated abort (§10.11): like failed_perm, depresses completionRate via the denominator; no separate metric in v0.1
 
+  cancelled_neutral := [o in aborted_by_self where o's reconciled bundle carries a `cancellation` marker the consumer RESOLVED to a verified policy-permitted pre-commit cancellation (§10.3.1 ST-10)]   // reputation-neutral: an advertised, signed cancellation right — dropped from the fault denominator like failed_substrate, NOT a fault. A marker that resolves-and-forbids is NOT collected here and stays an ordinary aborted-by-self fault; a marker that could not be resolved was already dropped from `outcomes` (loop above). The cancelled count stays observable for any consumer that wants a soft reliability signal — we attribute, we do not hide.
+
   aborted_by_other := [o for o in outcomes where o == "aborted-by-other"]
 
   counterparty_fault_count := |aborted_by_other| + |failed_counterparty|
 
-  party_fault_denom := |outcomes| − |failed_substrate|
+  party_fault_denom := |outcomes| − |failed_substrate| − |cancelled_neutral|   // a verified policy-permitted cancellation (§10.3.1 ST-10) is neutral — dropped from the denominator exactly like failed_substrate, so it neither counts as completion nor as fault
 
   completionRate := |completed| / party_fault_denom   when party_fault_denom > 0 else null
 

@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.2** (on the common DACS v0.1 baseline; pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.2** (on the common DACS v0.1 baseline; pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -341,18 +341,41 @@ type ParserSpec =
 ```
 recipe.parserRules = {
   format: "json",
-  successJsonPath: "$.data[0].attributes.lei",   // present iff GLEIF holds this LEI
+  // PRIMARY signal is registration.status, NOT entity.status. Match selects iff the
+  // registration is current (ISSUED); the data array is filtered by the nested status.
+  successJsonPath: "$.data[?(@.attributes.registration.status=='ISSUED')]",
+  // Real-but-not-current registrations are inconclusive, not false (do-not-collapse):
+  indeterminateOn: [
+    { jsonPath: "$.data[?(@.attributes.registration.status=='LAPSED' || @.attributes.registration.status=='RETIRED' || @.attributes.registration.status=='PENDING_TRANSFER' || @.attributes.registration.status=='PENDING_ARCHIVAL')]" }
+  ],
   dataMap: {
-    legalName:   "$.data[0].attributes.entity.legalName.name",
-    status:      "$.data[0].attributes.entity.status",     // "ACTIVE" | "INACTIVE"
-    jurisdiction:"$.data[0].attributes.entity.jurisdiction"
+    legalName:          "$.data[0].attributes.entity.legalName.name",  // NFC-normalized; this IS the resolvedEntity
+    registrationStatus: "$.data[0].attributes.registration.status",    // PRIMARY for the verdict
+    entityStatus:       "$.data[0].attributes.entity.status",          // diagnostic only — MUST NOT override registration.status
+    jurisdiction:       "$.data[0].attributes.entity.jurisdiction"
   }
 }
-// Body parses as JSON and successJsonPath selects a node  -> decision = pass
-// Body parses as JSON but successJsonPath selects nothing  -> decision = fail
-// Body is not valid JSON / GLEIF returns a 5xx HTML error  -> decision = error
+// registration.status == ISSUED                                  -> decision = pass
+// registration.status in {LAPSED, RETIRED, PENDING_TRANSFER,
+//   PENDING_ARCHIVAL} (indeterminateOn, eval'd before the match)  -> decision = indeterminate
+// registration.status in {ANNULLED, DUPLICATE, MERGED, CANCELLED},
+//   or no `data` record (404)                                     -> decision = fail
+// non-404 transport / 5xx / `errors[]` body (not valid JSON, or
+//   a reachable-but-error authority response)                     -> decision = error
 // (extracted legalName/status/jurisdiction recorded in the VerifyResult — these are public GLEIF registry fields, exempt from §7.5 public-anchor minimisation; a privacy-sensitive recipe MUST instead reduce private fields to predicate outcomes)
 ```
+
+**`lei` status → decision mapping (normative).** The `lei` recipe decides on GLEIF **`registration.status`** — the authority's lifecycle field — **not** `entity.status` (which is diagnostic and MUST NOT override it). The §7.5.1 decision values map as:
+
+| `registration.status` | decision | rationale |
+|---|---|---|
+| `ISSUED` | `pass` | validly issued **and current** |
+| `LAPSED`, `RETIRED`, `PENDING_TRANSFER`, `PENDING_ARCHIVAL` | `indeterminate` | a real, validly-issued registration that is **not current** — inconclusive, not false (do-not-collapse; the same discipline as an unresolvable signer → `indeterminate`) |
+| `ANNULLED`, `DUPLICATE`, `MERGED`, `CANCELLED` | `fail` | the identifier is invalid or superseded — the claim is false |
+| no `data` record (404) | `fail` | not found |
+| reachable-but-error (non-404 / 5xx / `errors[]` body) | `error` | undecidable; retryable per VP-R1 |
+
+A consumer requiring a *current* LEI applies its own risk policy to `indeterminate` (DACS-3 retry-vs-proceed-vs-block); the recipe MUST NOT pre-collapse it to `fail`. **`RETIRED → indeterminate` is a steward decision (#152):** a wound-down entity *was* validly registered, so it reads as "validly-issued, not-current" rather than a false claim — `fail` is the documented alternate under a strict "valid-today" reading. `resolvedEntity` is the NFC-normalized `entity.legalName.name` (the `dataMap.legalName` above). The mapping was source-grounded against **LEI-CDF 3.1** and live-proven by two independent implementations (PATH-OS `pathos-dacs-ref` + DNO) converging on the ISSUED / LAPSED / RETIRED rows (#146).
 
 #### 7.4.2 v0.1 recipe registry contents
 

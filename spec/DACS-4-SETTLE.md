@@ -4,14 +4,14 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, and `pay-solana-spl` payer-funded ATA-rent §9.5.3). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, and the native-DEM `pay-dem` rail §9.5.9). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
 DACS-4 specifies how value is exchanged and the deliverable provided once a DACS-3 agreement is committed. It defines:
 
 - A **payment rail registry** — a versioned, anchored set of payment rails. Each rail is a typed envelope identifying the chain or network, the asset, the settlement contract or protocol, and any rail-specific parameters.
-- A **closed set of payment phases** (DACS-4 phase types) — pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc, pay-cross-chain-liquidity-tank, pay-ap2, pay-x402. Each is a phase with a uniform PhaseHandlerResult shape.
+- A **closed set of payment phases** (DACS-4 phase types) — pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc, pay-cross-chain-liquidity-tank, pay-ap2, pay-x402, pay-dem. Each is a phase with a uniform PhaseHandlerResult shape.
 - A **closed set of delivery phases** — deliver-storage-program, deliver-entitlement, deliver-attested-payload. Each produces SettlementEvidence the rest of the stack consumes.
 - A **uniform SettlementEvidence shape** — the record produced by every payment and delivery phase; the substrate-anchored audit unit referenced by DACS-5.
 - A **cross-chain coordination layer** — atomic settlement primitives (HTLC, Liquidity Tank) so a payment on chain A and a delivery on chain B succeed together or not at all.
@@ -94,7 +94,7 @@ type ChainTxRef =
 
   | { kind: "solana"; cluster: "mainnet" | "devnet" | "testnet"; signature: string }
 
-  | { kind: "demos"; txHash: string }
+  | { kind: "demos"; txHash: string; blockNumber?: number }   // blockNumber set on a pay-dem settlement (bft-final inclusion, §9.5.9)
 
   | { kind: "storage-program"; address: string; writeTxHash: string }
 
@@ -139,7 +139,7 @@ A versioned, anchored set of payment rails. Each rail entry describes one settle
 type RailDefinition = {
   railVersion: number
   railId: string                       // canonical id; lowercase ASCII; max 64 chars
-  railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402"
+  railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
   asset: AssetSpec                     // what is being transferred
   network: NetworkSpec                 // where it lives
   phaseHandler: PhaseType              // which pay-* phase handles it
@@ -199,6 +199,7 @@ The v0.1 registry contains rail entries for the most-used settlement paths in pr
 | solana-spl:mainnet:USDT | pay-solana-spl | Solana mainnet USDT |
 | cross-chain-htlc:USDC | pay-cross-chain-htlc | Atomic swap across EVM ↔ Solana for USDC |
 | cross-chain-liquidity-tank:USDC | pay-cross-chain-liquidity-tank | Substrate-coordinated atomic settlement; on Demos: Liquidity Tanks. v0.1 supported routes: ETH Sepolia → Polygon Amoy unidirectional only |
+| demos-native:DEM | pay-dem | Native-DEM transfer on the Demos substrate (§9.5.9); single payee. |
 | ap2:visa-direct | pay-ap2 | AP2 mandate to Visa Direct |
 | ap2:mastercard-send | pay-ap2 | AP2 mandate to Mastercard Send |
 | ap2:stripe-paymentintents | pay-ap2 | AP2 mandate to Stripe PaymentIntents |
@@ -561,6 +562,7 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
 - **(SB-1) Binding key.** A `SettlementEvidence` record's `paymentTxRefs` are a claim that the referenced transaction(s) settled **this** `(jobId, phaseIndex)`, where `phaseIndex` is the phase's `BundlePhaseEntry.index` — required because a repeated phase type (PIPE-5) settles the same `phase` more than once. `phaseIndex` is **not a new evidence field**: it is recovered from the §9.5.2 payment-evidence anchor address the record is published at (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so two consumers key a settlement identically. A consumer MUST key a settlement on the tuple `(settlement-tx-id, jobId, phaseIndex)`. `settlement-tx-id` is the rail's canonical **event/instruction-level** reference (not the envelope transaction), pinned as the exact string:
   - **evm / x402:** `evm:{chainId}:{txHash}:{logIndex}`
   - **solana:** `solana:{cluster}:{signature}:{instructionIndex}`
+  - **demos (pay-dem):** `demos:{txHash}` — a single native transfer is one settlement, so no event/instruction index is needed (§9.5.9)
 
   The key is the uniqueness defence, so it MUST be byte-identical across implementations. Canonicalisation: `chainId`, `logIndex`, and `instructionIndex` are decimal integers with no leading zeros; `txHash` is **lower-case hex with no `0x` prefix** (a `0x`-prefixed or upper-case re-spelling MUST collapse to the same key); `signature` is base58 that MUST decode to exactly 64 bytes. A reference that fails canonicalisation — wrong-length/odd hex, a signature that is not 64-byte base58, or missing `chainId`/`logIndex` — is malformed and MUST yield `error`; it MUST NOT be normalised into, or mint, a distinct key. Event/instruction-level identity is required for batched transfers and for ERC-4337, where the settling `Transfer(from=payerAccount,…)` is one event among several in a bundler transaction.
 - **(SB-2) Cross-session uniqueness.** A consumer that aggregates settlement evidence across sessions — including the DACS-5 reputation reconciliation (§10.5.1) — MUST NOT count one `settlement-tx-id` under more than one `(jobId, phaseIndex)`. A second binding of the same id is rejected for the later record (earlier `observedAt` wins; ties broken by lower evidence hash). The check is scoped to the consumer's own evidence set; a global cross-network uniqueness index is out of scope. This closes the double-count threat on every rail with no on-chain change.
@@ -578,6 +580,29 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
   Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. A rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match, and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements.
 
 > **Note (non-normative).** SB-2 is structurally the §B.8 SN-4 single-use marker with the scope inverted — a settlement-tx-id is single-use per session as a session nonce is.
+
+#### 9.5.9 pay-dem
+
+Native-DEM transfer on the Demos substrate: settle the agreed price in DEM directly, with no foreign chain, cross-chain primitive, or provider. A `pay-dem` settlement is to a **single payee**.
+
+**Procedure.**
+
+1. Resolve rail; verify `asset.kind == "native-dem"` and `network.kind == "demos"`.
+2. Verify `amount.currency == "DEM"`; convert to OS base units (`1 DEM = 10^9 OS`, integer arithmetic, no float).
+3. Construct a native transfer to `payee.payeeAddress` for the OS amount (the substrate's native `send`).
+4. Submit via the payer's wallet (or via SR-3 proxy attestation when the wallet runs server-side); wait for inclusion.
+5. On the transaction reaching the terminal **`included`** state (BFT finality, below), construct SettlementEvidence with `txRef` of kind `demos` (`txHash` + `blockNumber`) and `settlementFinality.model == "bft-final"`; anchor via SR-2; return success.
+
+**Finality.** Demos has **deterministic BFT finality**: a transaction reaching `included` in a forged block is final — there is no reorg or confirmation-depth wait. The evidence cites `{ txHash, blockNumber }` against the `bft-final` model (§9.7); `block-depth` / `commitment-level` do not apply (no meaningful depth or commitment tier exists). A transaction reaching the terminal `failed` state did not settle.
+
+**Failure modes.**
+
+- payer DEM balance insufficient → `permanent`
+- transaction reaches terminal `failed` on-chain → `permanent`
+- Demos node / RPC unreachable → `substrate` (ST-7 pause; `failed-substrate` if unrecovered)
+- payer-side wallet rejects / declines to sign → `counterparty`
+
+**Trust model.** Settlement is secured by **Demos consensus itself** — a rotating validator shard under 2/3 BFT — i.e. "the operator is the substrate," not an external bridge, facilitator, or provider. Unlike every other v0.2 rail, `pay-dem` introduces no foreign-chain or third-party trust.
 
 ### 9.6 Delivery phases
 
@@ -716,6 +741,7 @@ type SettlementFinalityRecord = {
        | "provider-receipt"     // Fiat (AP2); also x402 ONLY in the fallback case where the facilitator returns no settlement tx — normally x402 uses "block-depth" on its settlement chain (the settlementTxHash, #28)
        | "htlc-reveal"          // Cross-chain HTLC: the payee's source-side claim (htlc-claim) landed against the revealed preimage — the decisive success tx; the payer's destination claim revealed the preimage earlier. (Model token retained as "htlc-reveal" for back-compat.)
        | "liquidity-tank"       // Native bridge liquidity-tank: bridge status transitions to "completed"
+       | "bft-final"            // Native Demos (pay-dem, §9.5.9): the tx reached the terminal "included" state. Demos has deterministic BFT finality — inclusion is final, no block-depth or commitment tier applies.
 
   // For model == "block-depth": the number of blocks waited before declaring confirmation.
   // Sourced from rail.parameters.finalityBlocks; echoed here so the evidence record is self-describing.

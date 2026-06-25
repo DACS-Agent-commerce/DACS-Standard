@@ -17,9 +17,23 @@ The format used per release:
 
 Defect-triage and follow-on hardening on top of v0.1 (steward-merged via the issue triage of the cX3po review wave and the xm33 / DACS-X contributions).
 
-### Added — DACS-4 v0.2 (first per-stage minor bump)
+### Added — DACS-1 v0.2
+
+- **Verified-vs-controlled claim gate** (§6.3.2 step (6), Verified-presentedBy; #170) — closes a v0.1 defect: the verification-resolution gate keyed only on `decision == pass`, so a **validity-only** verification (a bare-registry `lei` GLEIF lookup) was indistinguishable from a control-establishing one, letting any key present a *public* LEI as a controlled identity. New resolution **step (6)**: a claim may serve as a **controlled** claim (`presentedBy` / reputation key) only if the presenter **proved control** — a DACS-1 property: the bundle presentation signature (`key:`), the anchored address-key linkage (`cci-xm:`), or a credential **holder-binding** proof (VC / vLEI). An existence-only `pass` is **valid-but-uncontrolled** (satisfies a required claim + supporting context, but never `presentedBy`/reputation). Control follows the **proof, not the storage** (CCI residency confers nothing). Confirmed real by three impls (pathos-dacs-ref, dacs-verify, DNO). Bumps **DACS-1 to v0.2**. *(The DACS-1/DACS-2 control-**boundary refactor** — physically re-homing the cross-method binding step — is parked as a follow-on; this fix lands the gate without it.)*
+
+### Added — DACS-2 v0.2
+
+- **Existence/validity, never control** (§7.3.2 area; #170) — a DACS-2 `VerifyResult` establishes that the identifier is real/valid at its authority and a `decision: "pass"` MUST NOT be read as proof the presenter *controls* it; control is determined in DACS-1 §6.3.2 step (6). A bare-registry method (`consensus-backed-proxy`) can only ever establish existence. No schema change. Bumps **DACS-2 to v0.2**.
+
+### Added — DACS-4 v0.2
 
 - **Session-bound settlement evidence — rules SB-1..SB-3** (§9.5.8; §9.5.7, §10.5.1, §14.4) — binds a single-chain / provider settlement tx to its session, the equivalent of HTLC-5's jobId-derived preimage for the rails that lacked one. **SB-1**: a `SettlementEvidence`'s `paymentTxRefs` bind to `(jobId, phaseIndex)`, keyed by consumers as `(settlement-tx-id, jobId, phaseIndex)`. **SB-2**: a consumer aggregating evidence across sessions (incl. the §10.5.1 reputation reconciliation) MUST NOT count one `settlement-tx-id` under more than one `(jobId, phaseIndex)` — closing cross-session double-count, rail-agnostic, no on-chain change. **SB-3**: a rail MAY bind `jobId` on-chain; for `pay-x402` the `jobId` MUST be in the EIP-3009/Permit2 authorization and match `evidence.jobId` — closing coincidental-citation (the authorization MAY be an ERC-1271 contract signature for ERC-4337 smart-account payers — absorbs #147). Bumps **DACS-4 to v0.2** (per-stage versioning). Design note #159; closes the "session-bound settlement evidence" roadmap item. Additive + behavioural — no artifact schema change.
+
+- **`pay-solana-spl` payer-funded ATA-rent** (§9.5.3, §14.4) — v0.1 left unspecified who funds the rent-exempt reserve when a payee's SPL associated token account (ATA) must be created, and whether the handler creates it. Now: a `createPayeeAtaIfMissing` rail parameter (default `false`) gates creation; the **rent-exempt reserve is funded by the payer** (included in the payer's required-balance preflight); and a payer who cannot cover the reserve fails `permanent`. Procedure clarification — no schema change (the param rides on the open `rail.parameters` map).
+
+### Added — DACS-5 v0.2
+
+- **Blame-weighted completion + per-currency transaction count** (§10.5.1, §10.5, §14.5) — two additive `ReputationDerivation.metrics` fields. **`counterpartyAdjustedCompletionRate`** is `completionRate` with counterparty-caused outcomes (`failed-counterparty`, `aborted-by-other`) *also* dropped from the denominator, so a party is not penalised for a counterparty's abort/failure — closing the griefing residual v0.1's `completionRate` leaves (a counterparty repeatedly opening-and-aborting could depress an honest party's rate). **`transactionCountByCurrency`** records the per-currency count of completed sessions composing `observedTransactionalVolume`, strengthening the §10.11 anti-collusion "few large vs many small" heuristic. Both additive — `completionRate` and `observedTransactionalVolume` unchanged, no schema migration. Bumps **DACS-5 to v0.2**. (Dropped as low-value: the FX-normalised volume aggregate and the ERC-8004 cross-claim hint. `cancelled` outcome (#92) and abandoned-session terminal transition (#148) remain roadmapped.)
 
 ### Editorial
 

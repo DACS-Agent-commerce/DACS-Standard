@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft (part of DACS v0.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.2** (on the common DACS v0.1 baseline; adds the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics, §10.5.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -311,10 +311,12 @@ type ReputationDerivation = {
   bundleCount: number
   metrics: {
     completionRate: number | null              // null when party_fault_denom == 0 (bundleCount == 0, or all reconciled bundles failed-substrate)
+    counterpartyAdjustedCompletionRate: number | null   // blame-weighted: completionRate with counterparty-caused outcomes (failed-counterparty, aborted-by-other) also dropped from the denominator; null when party_blame_denom == 0
     counterpartyFaultRate: number | null
     averageBuyerRating: number | null
     averageSellerRating: number | null
     observedTransactionalVolume: PriceTerm[]   // sum of agreement.terms.price, by currency
+    transactionCountByCurrency: { currency: string; count: number }[]   // per-currency count of the completed sessions composing observedTransactionalVolume; [] on the empty path
   }
   computedAt: number
   windowingBasis: "finalisedAt" | "sr2-anchor-timestamp"   // which clock the §10.5.1 window was applied against; re-derivation MUST use the same one (§10.5.3 determinism receipt)
@@ -337,7 +339,7 @@ derive(party, bundles, windowStart, windowEnd):
 
   if scoped is empty:
 
-    return ReputationDerivation with bundleCount=0, bundleRefs=[], observedTransactionalVolume=[], and the four scalar metrics (completionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) null
+    return ReputationDerivation with bundleCount=0, bundleRefs=[], observedTransactionalVolume=[], transactionCountByCurrency=[], and the scalar metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) null
 
   # Per-jobId reconciliation to the scored party's perspective.
   # Two-sided anchoring (§10.4.2) means one jobId may contribute up to two
@@ -394,6 +396,9 @@ derive(party, bundles, windowStart, windowEnd):
 
   completionRate := |completed| / party_fault_denom   when party_fault_denom > 0 else null
 
+  party_blame_denom := party_fault_denom − counterparty_fault_count   // also drop counterparty-caused outcomes (already counted above): a counterparty's abort/failure is not the scored party's fault
+  counterpartyAdjustedCompletionRate := |completed| / party_blame_denom   when party_blame_denom > 0 else null
+
   counterpartyFaultRate := counterparty_fault_count / party_fault_denom  same gate
 
   # Collect ratings by fetching each bundle's referenced rating records
@@ -447,6 +452,7 @@ derive(party, bundles, windowStart, windowEnd):
     volume_terms.append(agreement.terms.price)
 
   volume := groupSumByCurrency(volume_terms)
+  txCountByCurrency := countByCurrency(volume_terms)   // per-currency count over the same completed set as volume
 
   bundleCount := |reconciled|   // one per distinct jobId after two-sided reconciliation, not |scoped|
   // Note: `reconciled` MAY be empty even when `scoped` is not (every jobId's copies were dropped by guard (i)
@@ -476,7 +482,7 @@ Three normative guards apply during reconciliation:
 
 **failed-substrate denominator.** failed-substrate sessions are excluded from the party-fault denominator: party_fault_denom = |outcomes| − |failed_substrate|. This ensures substrate-induced failures do not damage either party’s reputation.
 
-**Null vs empty metrics.** The four **scalar** metrics (completionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) produce numeric values when their denominator > 0. With denominator == 0 (e.g., bundleCount=0, or all sessions failed-substrate) they produce null — distinct from zero, signalling "no signal" rather than "zero signal". The **array** metric `observedTransactionalVolume` (a non-nullable `PriceTerm[]`) and `bundleRefs` (a non-nullable `AttestationRef[]`) produce `[]` on the empty path: an empty list, never null. Every return path therefore yields a schema-total `ReputationDerivation`.
+**Null vs empty metrics.** The **scalar** metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) produce numeric values when their denominator > 0. With denominator == 0 (e.g., bundleCount=0, or all sessions failed-substrate; for `counterpartyAdjustedCompletionRate`, also when every reconciled bundle was counterparty-caused) they produce null — distinct from zero, signalling "no signal" rather than "zero signal". The **array** metrics `observedTransactionalVolume` and `transactionCountByCurrency` (non-nullable) and `bundleRefs` (a non-nullable `AttestationRef[]`) produce `[]` on the empty path: an empty list, never null. Every return path therefore yields a schema-total `ReputationDerivation`.
 
 **Rating metrics.** The averageBuyerRating / averageSellerRating metrics are computed by walking each reconciled bundle’s ratingRefs, fetching the referenced RatingRecord, and verifying its signature against the rater’s primary-claim key (the same key class as a BundleSignature, per §10.4.1). A RatingRecord MUST be discarded — not aggregated — unless it binds to the session being scored:
 
@@ -504,7 +510,7 @@ The windowing predicate above bounds against `b.finalisedAt`, which is a produce
 
 #### 10.5.2 Per-primary-claim keying
 
-The same wallet may hold multiple primary claims (key:…, did:…, lei:…). DACS-5 reputation is computed *per primary claim*. A great reputation against key:0xabc... does NOT inherit into a brand-new lei:984500ABCDEF… presentation, even though the same wallet may control both. Consumers querying reputation MUST query with the specific primary claim used in the current bundle’s presentedBy, not a wallet identifier or session pubkey. SR-1 (cross-substrate identity aggregation) is the substrate primitive that makes the wallet ↔ multi-primary-claim relationship explicit. It allows consumers to optionally surface "this party also has reputation under primary claim X" — informationally, NOT as inheritance.
+The same wallet may hold multiple primary claims (key:…, did:…, lei:…). DACS-5 reputation is computed *per primary claim*. A great reputation against key:0xabc... does NOT inherit into a brand-new lei:984500ABCDEF… presentation, even though the same wallet may control both. Consumers querying reputation MUST query with the specific primary claim used in the current bundle’s presentedBy, not a wallet identifier or session pubkey. The `presentedBy` claim MUST be **control-proven** (DACS-1 §6.3.2 step (6)) to key reputation — a claim resting only on a DACS-2 existence/validity check (e.g. a bare-registry `lei` lookup the presenter does not provably control) does not qualify as a reputation key; this prevents keying reputation onto a public identifier the presenter merely cited. SR-1 (cross-substrate identity aggregation) is the substrate primitive that makes the wallet ↔ multi-primary-claim relationship explicit. It allows consumers to optionally surface "this party also has reputation under primary claim X" — informationally, NOT as inheritance.
 
 #### 10.5.3 Computation surfaces
 

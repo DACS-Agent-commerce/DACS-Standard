@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; adds SB-1..SB-3 session-bound settlement evidence, §9.5.8). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, and `pay-solana-spl` payer-funded ATA-rent §9.5.3). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -389,7 +389,7 @@ SPL token transfer on Solana.
 **Procedure.**
 
 1. Resolve rail; verify `asset.kind == "spl"`.
-2. Construct an SPL Transfer instruction, or TransferChecked for decimal safety; the payee’s token account is the destination (must exist or be created).
+2. Construct an SPL Transfer instruction, or TransferChecked for decimal safety; the payee’s associated token account (ATA) is the destination. If the ATA does not exist, the handler MUST create it only when the rail parameter `createPayeeAtaIfMissing` is `true` (default `false`); the **rent-exempt reserve for ATA creation is funded by the payer** and MUST be included in the payer’s required-balance preflight.
 3. Submit via the payer’s wallet.
 4. Wait for confirmation per `rail.parameters.commitmentLevel` (default `"confirmed"`).
 5. Construct SettlementEvidence with `txRef` of kind `solana`; anchor via SR-2; return success.
@@ -397,7 +397,8 @@ SPL token transfer on Solana.
 **Failure modes.**
 
 - insufficient balance → `permanent`
-- token account does not exist and create-if-missing not allowed → `counterparty` (payee setup issue)
+- token account does not exist and `createPayeeAtaIfMissing` is `false` → `counterparty` (payee setup issue)
+- `createPayeeAtaIfMissing` is `true` but the payer cannot cover the ATA rent-exempt reserve → `permanent`
 - cluster congestion / timeout → `transient`
 
 #### 9.5.4 pay-cross-chain-htlc

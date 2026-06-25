@@ -1,0 +1,378 @@
+{
+  "set": "sb2-settlement-uniqueness-v0.1",
+  "spec": "DACS §9.5.8 (SB-2); SB-1 key",
+  "hash": "66f5525e14aa4b21b7d8658dc792e5e09c0ae3ec7208e0ba0e6875d31e32d07f",
+  "count": 20,
+  "vectors": [
+    {
+      "name": "first-claim-evm",
+      "decision": "pass",
+      "effect": "count",
+      "note": "a settlement-tx-id never seen → countable under (job-A, 3)",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "idempotent-not-recounted",
+      "decision": "pass",
+      "effect": "already-counted",
+      "note": "same tx-id re-presented under the SAME (jobId, phaseIndex) → already counted; pass but effect MUST be already-counted, never re-count",
+      "consumed": {
+        "evm:8453:abababababababababababababababababababababababababababababababab:0": {
+          "jobId": "job-A",
+          "phaseIndex": 3
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "cross-session-double-count",
+      "decision": "fail",
+      "effect": "reject",
+      "note": "same settlement-tx-id under a DIFFERENT jobId → cross-session double-count, reject",
+      "consumed": {
+        "evm:8453:abababababababababababababababababababababababababababababababab:0": {
+          "jobId": "job-A",
+          "phaseIndex": 3
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-B",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "cross-phase-double-count",
+      "decision": "fail",
+      "effect": "reject",
+      "note": "same tx-id, same job, DIFFERENT phaseIndex → second (jobId,phaseIndex) tuple → reject (SB-2)",
+      "consumed": {
+        "evm:8453:abababababababababababababababababababababababababababababababab:0": {
+          "jobId": "job-A",
+          "phaseIndex": 3
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": 4
+      }
+    },
+    {
+      "name": "distinct-tx-same-job",
+      "decision": "pass",
+      "effect": "count",
+      "note": "a DIFFERENT settlement-tx-id under the same job → distinct settlement, count",
+      "consumed": {
+        "evm:8453:abababababababababababababababababababababababababababababababab:0": {
+          "jobId": "job-A",
+          "phaseIndex": 3
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": 4
+      }
+    },
+    {
+      "name": "batched-tx-distinct-logindex",
+      "decision": "pass",
+      "effect": "count",
+      "note": "SAME txHash but logIndex 1 (second transfer batched in one tx) → event-level key → distinct settlement, count (SB-1 disambiguation)",
+      "consumed": {
+        "evm:8453:abababababababababababababababababababababababababababababababab:0": {
+          "jobId": "job-A",
+          "phaseIndex": 3
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 1
+        },
+        "jobId": "job-A",
+        "phaseIndex": 4
+      }
+    },
+    {
+      "name": "evm-0x-prefix-collapses",
+      "decision": "fail",
+      "effect": "reject",
+      "note": "same tx with a 0x prefix under a different jobId → 0x is stripped → key matches → double-count CAUGHT (no key-split)",
+      "consumed": {
+        "evm:8453:abababababababababababababababababababababababababababababababab:0": {
+          "jobId": "job-A",
+          "phaseIndex": 3
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "0xabababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-B",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "evm-uppercase-collapses",
+      "decision": "fail",
+      "effect": "reject",
+      "note": "same tx UPPERCASED under a different jobId → lowercased → key matches → double-count CAUGHT",
+      "consumed": {
+        "evm:8453:abababababababababababababababababababababababababababababababab:0": {
+          "jobId": "job-A",
+          "phaseIndex": 3
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+          "logIndex": 0
+        },
+        "jobId": "job-B",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "demos-0x-prefix-first-claim",
+      "decision": "pass",
+      "effect": "count",
+      "note": "demos-native with 0x prefix → normalised + accepted → first claim, count",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "demos-native",
+          "txHash": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef"
+        },
+        "jobId": "job-D",
+        "phaseIndex": 0
+      }
+    },
+    {
+      "name": "evm-wrong-length-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "31-byte EVM tx hash → not exactly 32 bytes → error (never a distinct durable key)",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "ababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "evm-odd-hex-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "odd/short hex → error",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abc",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "solana-cross-session-double-count",
+      "decision": "fail",
+      "effect": "reject",
+      "note": "rail-agnostic: same Solana (cluster, sig, instructionIndex) under a different jobId → double-count, reject",
+      "consumed": {
+        "solana:mainnet:6pc4LiB8KHAPvbUbkozrTcPL5zXspYBdATv5raNDyVbhiKjrKokLb9o111kxTD5KkPVd7UBSCcFcnWFkrJ82Hu6:2": {
+          "jobId": "job-A",
+          "phaseIndex": 1
+        }
+      },
+      "record": {
+        "settlementRef": {
+          "rail": "solana",
+          "cluster": "mainnet",
+          "signature": "6pc4LiB8KHAPvbUbkozrTcPL5zXspYBdATv5raNDyVbhiKjrKokLb9o111kxTD5KkPVd7UBSCcFcnWFkrJ82Hu6",
+          "instructionIndex": 2
+        },
+        "jobId": "job-C",
+        "phaseIndex": 1
+      }
+    },
+    {
+      "name": "solana-noncanonical-cluster-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "cluster 'mainnet-beta' not in the canonical {mainnet,devnet,testnet} set → error (alias must not mint a second key for the same sig)",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "solana",
+          "cluster": "mainnet-beta",
+          "signature": "6pc4LiB8KHAPvbUbkozrTcPL5zXspYBdATv5raNDyVbhiKjrKokLb9o111kxTD5KkPVd7UBSCcFcnWFkrJ82Hu6",
+          "instructionIndex": 2
+        },
+        "jobId": "job-A",
+        "phaseIndex": 1
+      }
+    },
+    {
+      "name": "solana-bad-signature-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "non-base58 signature → error",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "solana",
+          "cluster": "mainnet",
+          "signature": "not-base58-0OIl",
+          "instructionIndex": 2
+        },
+        "jobId": "job-A",
+        "phaseIndex": 1
+      }
+    },
+    {
+      "name": "solana-sig-decoded-too-long-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "base58-valid but decodes to 65 bytes (not the canonical 64) → error (non-canonical width must not mint a key)",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "solana",
+          "cluster": "mainnet",
+          "signature": "Sh7jjzjhHgLUBZApQNSMJTBZF2wHJpdtcmoJRpGgGMEAhPi8i1LHTjp314M1kgJ5kWHLPYy4EEbWwr88YaZzhauA",
+          "instructionIndex": 2
+        },
+        "jobId": "job-A",
+        "phaseIndex": 1
+      }
+    },
+    {
+      "name": "solana-sig-decoded-too-short-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "base58-valid but decodes to 63 bytes → error",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "solana",
+          "cluster": "mainnet",
+          "signature": "2KVLLRHLnNndTeGKJBCJ6aPjPRpKmJVEdajqgKtUrxRB8YtPxTuQvWBRUC3i7Pg3SEhvVesrD9SWrjRe86EpsW",
+          "instructionIndex": 2
+        },
+        "jobId": "job-A",
+        "phaseIndex": 1
+      }
+    },
+    {
+      "name": "ledger-unreadable-indeterminate",
+      "decision": "indeterminate",
+      "effect": "no-decision",
+      "note": "consumer reconciliation set unavailable → indeterminate (MUST NOT count, MUST NOT reject) — never collapse",
+      "consumed": null,
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "malformed-missing-ref-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "no settlementRef → verifier-side parse failure → error, not fail",
+      "consumed": {},
+      "record": {
+        "jobId": "job-A",
+        "phaseIndex": 3
+      }
+    },
+    {
+      "name": "malformed-phaseindex-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "phaseIndex not a safe integer ≥ 0 → error",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0
+        },
+        "jobId": "job-A",
+        "phaseIndex": -1
+      }
+    },
+    {
+      "name": "unknown-rail-error",
+      "decision": "error",
+      "effect": "verifier-error",
+      "note": "unknown rail → settlement-tx-id uncomputable → error",
+      "consumed": {},
+      "record": {
+        "settlementRef": {
+          "rail": "bitcoin",
+          "txHash": "abababababababababababababababababababababababababababababababab"
+        },
+        "jobId": "job-A",
+        "phaseIndex": 3
+      }
+    }
+  ]
+}

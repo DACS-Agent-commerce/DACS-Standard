@@ -540,7 +540,7 @@ Versioning rules:
 Readers MUST validate listings in the following order, **halting on the first failure**:
 
 1. schema conformance;
-2. `dacsVersion` supported;
+2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
 3. `validity.notBefore ≤ now ≤ validity.notAfter` (if set);
 4. canonical form well-formed and signature verifies;
 5. revocation marker absent;

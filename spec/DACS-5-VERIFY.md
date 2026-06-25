@@ -326,6 +326,8 @@ type ReputationDerivation = {
 
 #### 10.5.1 Derivation algorithm
 
+*Settlement uniqueness (SB-2, §9.5.8): across the bundles reconciled below, a `settlement-tx-id` bound to more than one `(jobId, phaseIndex)` is counted once (earliest `observedAt`), so a reused settlement transaction cannot inflate `observedTransactionalVolume` or completion across jobs.*
+
 ```
 derive(party, bundles, windowStart, windowEnd):
 

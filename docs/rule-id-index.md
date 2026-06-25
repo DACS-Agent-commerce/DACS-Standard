@@ -31,6 +31,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RD-* | Delivery phase required data | §9.4.3 | §14.4 |
 | RFQ-* | RFQ negotiation turns | §8.4.2 | §14.3 |
 | RT-* | Rating bounds and derivation handling | §10.6.1 | §14.5 |
+| SB-* | Session-bound settlement evidence (tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
 | SE-* | Sealed-envelope negotiation | §8.4.3 | §14.3 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |

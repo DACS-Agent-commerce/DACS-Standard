@@ -537,7 +537,7 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 **Procedure.**
 
 1. Resolve rail; verify `network.kind == "x402-resource"`.
-2. Construct an x402 payment payload (signed authorisation per x402 spec); submit the GET request to the resource with x402 headers.
+2. Construct an x402 payment payload (signed authorisation per x402 spec); the authorisation MUST include the session `jobId` (SB-3, §9.5.8) so the verifier can bind the settlement to this session. Submit the GET request to the resource with x402 headers.
 3. Receive the resource response and an x402 receipt; read the on-chain settlement transaction hash from the x402 `PAYMENT-RESPONSE` header (x402 settles a gasless USDC transfer on its settlement chain, e.g. Base).
 4. Construct SettlementEvidence with `txRef` of kind `x402` carrying httpResource, paymentReceiptHash (sha256 of the receipt), and the x402 `protocolVersion` (#27). The handler MUST populate `settlementTxHash` + `chainId` whenever the facilitator returns them — the normal case. A record carrying `settlementTxHash`/`chainId` is **chain-verifiable directly against the settlement chain, exactly like the `evm` rail**: the primary audit path, with the receipt hash supplementary.
 5. Anchor via SR-2; return success.
@@ -555,6 +555,31 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 - server-side x402 endpoint rejects (insufficient payment, unsupported scheme) → `counterparty`
 - HTTP error after payment submitted → `transient` (retry with idempotency key)
 - payment-receipt signature invalid → `permanent`
+
+#### 9.5.8 Session-bound settlement evidence (SB-1..SB-3)
+
+A cross-chain HTLC settlement is bound to its session by the jobId-derived preimage (HTLC-5), but the single-chain / provider rails (`pay-evm-erc20`, `pay-solana-spl`, `pay-ap2`, `pay-x402`) carry a `ChainTxRef` with no session binding — so a record could cite an unrelated transfer of the agreed amount to the payee (*coincidental-citation*), or reuse one settlement across sessions (*cross-session double-count*).
+
+- **(SB-1) Binding key.** A `SettlementEvidence` record's `paymentTxRefs` are a claim that the referenced transaction(s) settled **this** `(jobId, phaseIndex)`, where `phaseIndex` is the phase's `BundlePhaseEntry.index` — required because a repeated phase type (PIPE-5) settles the same `phase` more than once. `phaseIndex` is **not a new evidence field**: it is recovered from the §9.5.2 payment-evidence anchor address the record is published at (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so two consumers key a settlement identically. A consumer MUST key a settlement on the tuple `(settlement-tx-id, jobId, phaseIndex)`. `settlement-tx-id` is the rail's canonical **event/instruction-level** reference (not the envelope transaction), pinned as the exact string:
+  - **evm / x402:** `evm:{chainId}:{txHash}:{logIndex}`
+  - **solana:** `solana:{cluster}:{signature}:{instructionIndex}`
+
+  The key is the uniqueness defence, so it MUST be byte-identical across implementations. Canonicalisation: `chainId`, `logIndex`, and `instructionIndex` are decimal integers with no leading zeros; `txHash` is **lower-case hex with no `0x` prefix** (a `0x`-prefixed or upper-case re-spelling MUST collapse to the same key); `signature` is base58 that MUST decode to exactly 64 bytes. A reference that fails canonicalisation — wrong-length/odd hex, a signature that is not 64-byte base58, or missing `chainId`/`logIndex` — is malformed and MUST yield `error`; it MUST NOT be normalised into, or mint, a distinct key. Event/instruction-level identity is required for batched transfers and for ERC-4337, where the settling `Transfer(from=payerAccount,…)` is one event among several in a bundler transaction.
+- **(SB-2) Cross-session uniqueness.** A consumer that aggregates settlement evidence across sessions — including the DACS-5 reputation reconciliation (§10.5.1) — MUST NOT count one `settlement-tx-id` under more than one `(jobId, phaseIndex)`. A second binding of the same id is rejected for the later record (earlier `observedAt` wins; ties broken by lower evidence hash). The check is scoped to the consumer's own evidence set; a global cross-network uniqueness index is out of scope. This closes the double-count threat on every rail with no on-chain change.
+- **(SB-3) On-chain session binding (optional, per rail).** A rail MAY bind `jobId` into its on-chain settlement, closing coincidental-citation as well. v0.2 defines one for `pay-x402`, where the binding surface differs by authorization type:
+  - **Permit2** — the handler MUST place `jobId` in the signed `witness` field; the verifier MUST check it equals `evidence.jobId`.
+  - **EIP-3009** (`transferWithAuthorization`) — there is no arbitrary signed field, so the handler MUST derive the authorization `nonce` as `nonce = H(jobId ‖ phaseIndex ‖ …)` and the verifier MUST recompute and match it.
+
+  Either way the binding rides inside the payer-signed authorization (no new contract). For a smart-account (ERC-4337) payer the signature is an ERC-1271 contract signature (`isValidSignature`) rather than an EOA signature; a verifier MUST accept either, selecting by whether the payer address has on-chain code as of the settlement transaction's block.
+
+  When a rail declares a binding, the verifier resolves it in three branches:
+  - **present and matches** → the binding guarantee is satisfied;
+  - **present and mismatches** → reject the evidence;
+  - **absent or unverifiable** (the binding is missing, or the on-chain check cannot complete — RPC unavailable, pruned history, unresolvable `isValidSignature`) → the binding guarantee is **not established** for that record: fall back to the SB-1 + SB-2 + §9.5.1 amount/payee posture of an unbound rail. This is **never** an automatic accept and **never** a hard fail — mirroring the §7.5.1 unresolvable-signer → `indeterminate` rule and the ST-8 `settle-asymmetric` discipline, so a transient verification outage does not become a reputation event.
+
+  Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. A rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match, and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements.
+
+> **Note (non-normative).** SB-2 is structurally the §B.8 SN-4 single-use marker with the scope inverted — a settlement-tx-id is single-use per session as a session nonce is.
 
 ### 9.6 Delivery phases
 

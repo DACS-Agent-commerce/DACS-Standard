@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft (part of DACS v0.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.2** (on the common DACS v0.1 baseline; pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -316,6 +316,8 @@ type ParserSpec =
 
   | { format: "raw"; matcher: string; indeterminateOn?: IndeterminatePredicate[] }
 ```
+
+**Existence/validity, never control (normative).** A DACS-2 `VerifyResult` establishes that the identifier is **real and currently valid at its authority** — it does **not**, and a `decision: "pass"` MUST NOT be read to, establish that the presenter *controls* the identifier. Control is a **DACS-1** property (DACS-1 §6.3.2 step (6)): proven by the bundle presentation signature (`key:`), the anchored address-key linkage (`cci-xm:`), or a credential **holder-binding** proof (§7.3.2) for VC/vLEI claims. A bare-registry method (`consensus-backed-proxy`, e.g. `lei` at GLEIF) resolves a *public* identifier with no key-binding, so it can only ever establish existence — never control — whatever it resolves and wherever the result is stored.
 
 **ParserSpec semantics (normative).** Given the attested response body, a verifier applies the recipe’s ParserSpec to produce a decision and an optional extracted-data map:
 

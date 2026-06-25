@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft (part of DACS v0.1). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.2** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -209,7 +209,7 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 - If the listing's `BundleRequirement.primaryClaimSelector` is set, the presenter SHOULD select the highest-tier claim of the matching scheme. If no selector is set, the presenter SHOULD select the highest-tier claim available, per the **Claim tiers** table above.
 - Readers MUST accept any `presentedBy` value that resolves to a claim in `claims`. A reader MAY prefer a higher-tier alternative for display or reputation lookup but MUST NOT reject a bundle solely because `presentedBy` is not the highest-tier claim.
 
-**Verified-presentedBy for reputation.** Reputation MUST NOT be keyed against an unverified `presentedBy` claim, regardless of whether `primaryClaimSelector` is set. If the resolved `presentedBy` claim has a verifiable scheme but lacks a passing **and fresh** `verifiedBy` (stale per the §6.3.2 freshness gate counts as not-currently-verified), consumers MUST treat it as the lowest (plain signing-key) tier for reputation purposes, or reject.
+**Verified-presentedBy for reputation.** Reputation MUST NOT be keyed against an unverified `presentedBy` claim, regardless of whether `primaryClaimSelector` is set. If the resolved `presentedBy` claim has a verifiable scheme but lacks a passing **and fresh** `verifiedBy` (stale per the §6.3.2 freshness gate counts as not-currently-verified), **or the presenter has not proven control of it** (step (6) above — it rests only on a DACS-2 existence/validity check, e.g. a bare-registry `lei` lookup), consumers MUST treat it as the lowest (plain signing-key) tier for reputation purposes, or reject. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
 
 > **Note (non-normative).** This stops an unverified-or-stale high-tier identifier (e.g. an `lei:` the presenter does not control, or one whose verification has gone stale) from laundering reputation onto itself. The MA-3 verified-presentedBy check (§6.3.3) enforces this at match time when a selector is set; this rule extends the same protection to the no-selector case where reputation still keys on `presentedBy` (§6.6, §10.5.2).
 
@@ -220,6 +220,7 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 3. **Parse + recipe-check** — parse the canonicalised content as a DACS-2 VerifyResult and verify it matches the recipe at `recipeVersion`.
 4. **Identifier match** — `VerifyResult.identifier` matches the `BundleClaim.ref` identifier component canonically.
 5. **Decision** — `VerifyResult.decision == "pass"`.
+6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; or a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim. A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
 
 **Freshness window.** The claim's effective window is derived from the resolved VerifyResult, **not** the presenter-supplied wrapper:
 - **Issuance** = `VerifyResult.verifiedAt`.

@@ -17,6 +17,14 @@ The format used per release:
 
 Defect-triage and follow-on hardening on top of v0.1 (steward-merged via the issue triage of the cX3po review wave and the xm33 / DACS-X contributions).
 
+### Added — DACS-1 v0.2
+
+- **Verified-vs-controlled claim gate** (§6.3.2 step (6), Verified-presentedBy; #170) — closes a v0.1 defect: the verification-resolution gate keyed only on `decision == pass`, so a **validity-only** verification (a bare-registry `lei` GLEIF lookup) was indistinguishable from a control-establishing one, letting any key present a *public* LEI as a controlled identity. New resolution **step (6)**: a claim may serve as a **controlled** claim (`presentedBy` / reputation key) only if the presenter **proved control** — a DACS-1 property: the bundle presentation signature (`key:`), the anchored address-key linkage (`cci-xm:`), or a credential **holder-binding** proof (VC / vLEI). An existence-only `pass` is **valid-but-uncontrolled** (satisfies a required claim + supporting context, but never `presentedBy`/reputation). Control follows the **proof, not the storage** (CCI residency confers nothing). Confirmed real by three impls (pathos-dacs-ref, dacs-verify, DNO). Bumps **DACS-1 to v0.2**. *(The DACS-1/DACS-2 control-**boundary refactor** — physically re-homing the cross-method binding step — is parked as a follow-on; this fix lands the gate without it.)*
+
+### Added — DACS-2 v0.2
+
+- **Existence/validity, never control** (§7.3.2 area; #170) — a DACS-2 `VerifyResult` establishes that the identifier is real/valid at its authority and a `decision: "pass"` MUST NOT be read as proof the presenter *controls* it; control is determined in DACS-1 §6.3.2 step (6). A bare-registry method (`consensus-backed-proxy`) can only ever establish existence. No schema change. Bumps **DACS-2 to v0.2**.
+
 ### Added — DACS-4 v0.2
 
 - **`pay-solana-spl` payer-funded ATA-rent** (§9.5.3, §14.4) — v0.1 left unspecified who funds the rent-exempt reserve when a payee's SPL associated token account (ATA) must be created, and whether the handler creates it. Now: a `createPayeeAtaIfMissing` rail parameter (default `false`) gates creation; the **rent-exempt reserve is funded by the payer** (included in the payer's required-balance preflight); and a payer who cannot cover the reserve fails `permanent`. Procedure clarification — no schema change (the param rides on the open `rail.parameters` map).

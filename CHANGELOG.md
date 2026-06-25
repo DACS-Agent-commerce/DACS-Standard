@@ -24,6 +24,7 @@ Defect-triage and follow-on hardening on top of v0.1 (steward-merged via the iss
 ### Added — DACS-2 v0.2
 
 - **Existence/validity, never control** (§7.3.2 area; #170) — a DACS-2 `VerifyResult` establishes that the identifier is real/valid at its authority and a `decision: "pass"` MUST NOT be read as proof the presenter *controls* it; control is determined in DACS-1 §6.3.2 step (6). A bare-registry method (`consensus-backed-proxy`) can only ever establish existence. No schema change. Bumps **DACS-2 to v0.2**.
+- **`lei` registration-status → decision mapping** (§7.4.1 worked example; #146) — the v0.1 `lei` recipe decided on LEI **presence** only, so a LAPSED/RETIRED registration still returned `pass`. Now it decides on GLEIF **`registration.status`** (primary; `entity.status` is diagnostic and MUST NOT override): `ISSUED → pass`; `LAPSED`/`RETIRED`/`PENDING_TRANSFER`/`PENDING_ARCHIVAL → indeterminate` (real but not-current — do-not-collapse); `ANNULLED`/`DUPLICATE`/`MERGED`/`CANCELLED` or 404 `→ fail`; reachable-but-error `→ error`. Encoded via the `successJsonPath` ISSUED-filter + `indeterminateOn` predicates (PSP-2). `RETIRED → indeterminate` is a steward decision (#152). `resolvedEntity` = NFC `entity.legalName.name`. Source-grounded against LEI-CDF 3.1; live-proven by two independent impls (PATH-OS + DNO) converging on ISSUED/LAPSED/RETIRED. Closes the last Wave-1 item.
 
 ### Added — DACS-4 v0.2
 

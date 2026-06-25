@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, and the native-DEM `pay-dem` rail §9.5.9). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -110,7 +110,7 @@ type ChainTxRef =
 
   | { kind: "htlc-refund"; chainId: number; contractAddress: string; refundTxHash: string }
 
-  | { kind: "liquidity-tank"; bridgeId: string; sourceChainId: number; destChainId: number; lockTxHash: string; releaseTxHash?: string }
+  | { kind: "liquidity-tank"; bridgeId: string; sourceChainId: number; destChainId: number; lockTxHash: string; releaseTxHash?: string; recoveryDeadline?: number }   // recoveryDeadline (unix ms): on a locked-but-unreleased interim record (ST-8 tank case, §9.5.5), the substrate recovery-window bound; releaseTxHash is absent until/unless the release lands
 ```
 
 **Negotiable pricing band (`negotiable`).** `minPct` / `maxPct` are non-negative percentages with `0 ≤ minPct < 100`. The admissible band, its half-up rounding, and its inclusive bounds are defined by §8.5.2 (the listing-conformance check). A verifier MUST reject a listing whose computed lower bound is ≤ 0. The band is **asymmetric by design**: `minPct < 100` keeps the lower bound positive, but `maxPct` is **intentionally unbounded**. So the band gives **no upper price protection** — a buyer-side orchestrator SHOULD enforce its own acceptance ceiling rather than rely on the band to cap an overcharge.
@@ -497,7 +497,7 @@ Substrate-coordinated atomic settlement using pre-funded liquidity primitives. O
 **Failure modes.**
 
 - tank insufficiency on dest → `transient` (retry after re-balancing)
-- source-lock succeeds but substrate epoch interruption prevents dest-release → **`substrate`**. The dest-release is blocked by a substrate condition, not a counterparty fault; substrate-native recovery applies per the SR-5 implementation (on Demos, the 15-day emergency recovery is the backstop). It resolves via ST-7 pause/resume, mapping to reputation-neutral `failed-substrate` on pause-timeout — NEVER `failed-counterparty`, since neither party is at fault for a substrate-recoverable lock.
+- source-lock succeeds but the destination release has not landed and the substrate's native recovery path is still open → the orchestrator anchors the interim locked-unreleased record and routes to the non-terminal `settle-asymmetric` state bounded by `recoveryDeadline` (ST-8, §10.3.1; see Evidence scope below). Substrate-native recovery applies per the SR-5 implementation (on Demos, the 15-day emergency recovery is the backstop). The release landing within the window resolves to success; the window expiring resolves to reputation-neutral `failed-substrate` — NEVER `failed-counterparty`, since neither party is at fault for a substrate-recoverable lock. (A *transient* substrate unavailability with no committed lock is the ordinary `substrate` / ST-7 pause, not this asymmetric-open state.)
 - `BridgeOperation.status == "failed"` → `permanent` (deterministic rejection by tank shard)
 
 **No mechanism substitution (normative).** The pinned rail's mechanism is binding:
@@ -508,9 +508,7 @@ Substrate-coordinated atomic settlement using pre-funded liquidity primitives. O
 
 > **Note (non-normative).** Silent substitution would violate the §9.13 pinned-rail rule and break the one-to-one phase↔txRef-kind correspondence.
 
-**Evidence scope (v0.1).** Tank SettlementEvidence is **success-only**: both `lockTxHash` and `releaseTxHash` are present when the bridge reaches `completed`. A locked-but-not-yet-released state inside the recovery window is surfaced via the settlement-atomicity failure mode above and resolved by the substrate's native recovery path. v0.1 does **not** define a distinct *recovery-pending* evidence marker or state to machine-distinguish a recoverable lock from a terminal loss.
-
-> **Note (non-normative).** A recovery-pending marker — a `recoveryDeadline` field and/or a settle-recovery-pending state, analogous to HTLC-9's open-state handling — is a roadmap item.
+**Evidence scope.** A successful tank settlement carries both `lockTxHash` and `releaseTxHash` (bridge `completed`). A **locked-but-not-yet-released** lock whose substrate recovery path is still open is **recovery-pending**, machine-distinguishable from a terminal loss: the orchestrator anchors an interim `outcome: "failure"`, `reason: "tank-locked-unreleased"` SettlementEvidence whose `liquidity-tank` txRef carries `lockTxHash` (no `releaseTxHash`) and the `recoveryDeadline`, and routes the session to the non-terminal `settle-asymmetric` state (ST-8, §10.3.1). Resolution follows ST-8: the release landing within `recoveryDeadline` supersedes the interim record with a success record (both tx hashes); the deadline expiring transitions to `settle-failed` recorded as reputation-neutral `failed-substrate`. This reuses the same asymmetric-open machinery as the HTLC-9 `dest-revealed-source-unclaimed` case, differing only in the window bound (`recoveryDeadline` vs `expiry_source`) and the expired verdict (`failed-substrate` vs `failed-counterparty`).
 
 #### 9.5.6 pay-ap2
 

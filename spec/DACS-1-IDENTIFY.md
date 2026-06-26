@@ -459,7 +459,7 @@ type PhaseType =
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
-  | "pay-ap2" | "pay-x402"
+  | "pay-ap2" | "pay-x402" | "pay-dem"
   | "deliver-storage-program" | "deliver-entitlement" | "deliver-attested-payload"
   // DACS-5
   | "rate"

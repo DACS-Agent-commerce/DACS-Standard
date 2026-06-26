@@ -137,7 +137,7 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
     - *resolves and permits* → the marker is **established**; §10.5.1 treats the `aborted-by-self` as **reputation-neutral**.
     - *resolves and forbids* (policy `none`, or a `pre-commit` claim on a session that actually reached `commit-completed`) → the marker is **refuted**; the `aborted-by-self` stands as the party-fault it already is.
     - *cannot be resolved* (listing pruned, signature transiently unverifiable, substrate unreachable) → the claim is **neither established nor refuted**: the consumer MUST NOT grant neutrality — that would rebuild the self-declared "don't count this" the teeth exist to prevent, since any party could cite an unresolvable listing for a free pass — and MUST NOT book the cancellation as a *fresh* fault on the unproven claim. The session is **indeterminate for reputation**, excluded from the derivation denominators pending resolution, exactly as an unresolved §7.5.1 `indeterminate`.
-  - **Symmetry.** A policy-permitted cancellation is neutral for both parties — there is no `-by-self`/`-by-other` blame to split. The counterparty's copy, if any, records `aborted-by-other` per ST-3, and the same teeth check applied to it yields the same neutral result; mutual notice is what earns the mutual neutrality.
+  - **Symmetry.** A policy-permitted cancellation is neutral for both parties — there is no `-by-self`/`-by-other` blame to split. The counterparty's copy, if any, records `aborted-by-other` per ST-3, and the same teeth check applied to it yields the same neutral result; mutual notice is what earns the mutual neutrality. Because the neutrality is symmetric, a consumer MUST resolve the `cancellation` marker across **both** non-divergent copies of the session — a marker carried on *either* copy establishes the cancellation for *both* parties' scores. A one-sided marker is **not** a §10.4.3 canonical divergence (that definition is scoped to `outcome` / `phaseSummary`), so it MUST NOT be treated as an advisory one-sided field; otherwise the neutral (and the indeterminate) verdict would collapse for the party whose own copy omits the marker (§10.5.1 resolves it at jobId reconciliation).
   - **Precedence.** A cancellation is a deliberate party action and ranks **with** abort (ST-3), above the ST-9 timeout: a party electing to cancel within an open deadline does so as a party decision, not a timeout. `with-fee` cancellation — a cancellation owing a fee after `commit-completed` — is **not defined** here; only the `pre-commit` case is honoured, and a `with-fee` value confers no neutrality.
 
 **State → bundle `outcome` mapping (normative).** Every terminal state maps to exactly one AttestationBundle `outcome` (§10.4), partitioned by the terminal phase’s `errorClass` where applicable:
@@ -380,6 +380,7 @@ derive(party, bundles, windowStart, windowEnd):
   # evidence-only and are NOT used as a reputation perspective here.
   reconciled := []   // one authoritative bundle per jobId
   outcomes := []     // its outcome, perspective-adjusted to the scored party (index-aligned with reconciled)
+  cancelled_jobids := {}   // jobIds with an established §10.3.1 ST-10 policy-permitted cancellation (neutral for BOTH parties), resolved across both non-divergent copies
   for jobId, copies in (scoped grouped by b.jobId):
     # (1) §10.4.1 signature validation: a non-abort outcome (completed / failed-perm /
     #     failed-counterparty / failed-substrate) MUST carry all required signatures;
@@ -391,19 +392,24 @@ derive(party, bundles, windowStart, windowEnd):
     role_of_party := the role of the BundleParty p in copies[0].parties where p.primaryClaim == party
     self_copy := the b in copies where b.anchoredByRole == role_of_party        // scored party's own copy, if present
     cp        := the b in copies where b.anchoredByRole != role_of_party        // at most one (the buyer/seller counterparty copy)
-    # (ST-10) indeterminate cancellation: if the authoritative copy (self_copy if present, else cp)
-    # carries a `cancellation` marker the consumer CANNOT resolve to a verified signed-listing policy
-    # (listing pruned / signature transiently unverifiable / substrate unreachable), the cancellation
-    # claim is neither established nor refuted — EXCLUDE this jobId from ALL metrics (never neutral,
-    # never a fresh fault), exactly like the §10.4.3(d) dispute `continue` below.
-    cancel_copy := self_copy if self_copy exists else cp
-    if cancel_copy.cancellation exists AND the §10.3.1 ST-10 teeth check cannot be resolved: continue
     if self_copy exists:
       if cp exists AND cp canonically diverges from self_copy (contradictory outcome / phaseSummary):
         continue   // (§10.4.3(d)) genuine dispute — EXCLUDE this jobId from ALL metrics (numerator and denominator), do not silently trust self_copy
-      reconciled.append(self_copy); outcomes.append(self_copy.outcome)          // read literally — recorded from party's own perspective
+      authoritative := self_copy; outcome := self_copy.outcome                  // read literally — recorded from party's own perspective
     else:
-      reconciled.append(cp);        outcomes.append(perspective_flip(cp.outcome))   // only a counterparty copy exists (e.g. §10.11 suppression); re-interpret relative to the scored party
+      authoritative := cp;        outcome := perspective_flip(cp.outcome)       // only a counterparty copy exists (e.g. §10.11 suppression); re-interpret relative to the scored party
+    # (ST-10) policy-permitted cancellation — resolve the `cancellation` marker across BOTH
+    # non-divergent copies of this jobId (a marker on EITHER self_copy or cp counts). A one-sided
+    # marker is NOT a §10.4.3 canonical divergence (that guard is scoped to outcome / phaseSummary),
+    # so it MUST be resolved here, not treated as an advisory one-sided field — otherwise the
+    # neutral/indeterminate verdict would collapse for the party whose own copy lacks the marker.
+    marker := the `cancellation` marker carried on self_copy or cp, whichever has one (if any)
+    if marker exists:
+      run the §10.3.1 ST-10 teeth check on (listingRef, pre-commit phase facts):
+        cannot resolve   -> continue                    // indeterminate — EXCLUDE jobId from ALL metrics (never neutral, never a fresh fault), exactly like the §10.4.3(d) dispute case
+        resolves+permits -> cancelled_jobids.add(jobId)  // established: reputation-neutral for BOTH parties, whether the scored-party outcome is aborted-by-self OR aborted-by-other
+        resolves+forbids -> (no-op)                      // invalid marker — the abort stays its ordinary fault bucket below
+    reconciled.append(authoritative); outcomes.append(outcome)
   # perspective_flip (buyer<->seller counterparty perspective -> scored-party perspective):
   #   completed -> completed ; failed-substrate -> failed-substrate
   #   aborted-by-self <-> aborted-by-other
@@ -420,11 +426,11 @@ derive(party, bundles, windowStart, windowEnd):
 
   failed_substrate := [o for o in outcomes where o == "failed-substrate"]
 
-  aborted_by_self := [o for o in outcomes where o == "aborted-by-self"]   // party-initiated abort (§10.11): like failed_perm, depresses completionRate via the denominator; no separate metric in v0.1
+  cancelled_neutral := [b for b in reconciled where b.jobId in cancelled_jobids]   // established §10.3.1 ST-10 policy-permitted cancellations — reputation-neutral for BOTH parties, so collected by jobId (NOT by outcome string: the scored-party outcome may be aborted-by-self OR aborted-by-other). Excluded from every fault bucket and from both denominators below, yet still counted in |outcomes| (an observable, non-fault session — we attribute, we do not hide). A marker that resolved-and-forbade was never added to cancelled_jobids and stays its ordinary abort fault; a marker that could not be resolved was already dropped from `outcomes` (loop `continue` above).
 
-  cancelled_neutral := [o in aborted_by_self where o's reconciled bundle carries a `cancellation` marker the consumer RESOLVED to a verified policy-permitted pre-commit cancellation (§10.3.1 ST-10)]   // reputation-neutral: an advertised, signed cancellation right — dropped from the fault denominator like failed_substrate, NOT a fault. A marker that resolves-and-forbids is NOT collected here and stays an ordinary aborted-by-self fault; a marker that could not be resolved was already dropped from `outcomes` (loop above). The cancelled count stays observable for any consumer that wants a soft reliability signal — we attribute, we do not hide.
+  aborted_by_self := [o for (b, o) in zip(reconciled, outcomes) where o == "aborted-by-self" AND b.jobId not in cancelled_jobids]   // party-initiated abort (§10.11): like failed_perm, depresses completionRate via the denominator; no separate metric in v0.1. A policy-cancelled abort is excluded here (it is in cancelled_neutral instead).
 
-  aborted_by_other := [o for o in outcomes where o == "aborted-by-other"]
+  aborted_by_other := [o for (b, o) in zip(reconciled, outcomes) where o == "aborted-by-other" AND b.jobId not in cancelled_jobids]   // counterparty abort, with policy-cancelled ones excluded — so the non-cancelling party does NOT eat a counterparty fault on a validly-cancelled session (ST-10 symmetry)
 
   counterparty_fault_count := |aborted_by_other| + |failed_counterparty|
 
@@ -516,7 +522,7 @@ Three normative guards apply during reconciliation:
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
-**failed-substrate denominator.** failed-substrate sessions are excluded from the party-fault denominator: party_fault_denom = |outcomes| − |failed_substrate|. This ensures substrate-induced failures do not damage either party’s reputation.
+**Neutral exclusions from the fault denominator.** Two classes are excluded from the party-fault denominator — `party_fault_denom = |outcomes| − |failed_substrate| − |cancelled_neutral|`: **`failed-substrate`** sessions (substrate-induced, nobody's fault) and **established §10.3.1 ST-10 policy-permitted cancellations** (an advertised, signed cancellation right, neutral for *both* parties — resolved across both non-divergent copies, so the exclusion applies whether the scored-party outcome is `aborted-by-self` or `aborted-by-other`). Neither damages either party's reputation; both remain in `bundleCount` as observable, non-fault sessions.
 
 **Null vs empty metrics.** The **scalar** metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) produce numeric values when their denominator > 0. With denominator == 0 (e.g., bundleCount=0, or all sessions failed-substrate; for `counterpartyAdjustedCompletionRate`, also when every reconciled bundle was counterparty-caused) they produce null — distinct from zero, signalling "no signal" rather than "zero signal". The **array** metrics `observedTransactionalVolume` and `transactionCountByCurrency` (non-nullable) and `bundleRefs` (a non-nullable `AttestationRef[]`) produce `[]` on the empty path: an empty list, never null. Every return path therefore yields a schema-total `ReputationDerivation`.
 
@@ -538,7 +544,7 @@ agreementRef is an AttestationRef, not an inline AgreementDocument, so the volum
 
 **Rating de-duplication (normative).** Under two-sided anchoring (§10.4.2) both parties' bundles for one jobId may appear in the input before reconciliation, and `ratingRefs` is an array — so a naive walk would count the same rating more than once. The deriver MUST aggregate at most one rating per `(r.rater, r.jobId, r.targetRole)` tuple, last-writer-wins by `ratedAt` on a tie. A rating therefore contributes once per session-direction, not once per anchored bundle copy or per duplicate ref. (This is a counting rule; RT-1/RT-2 already bound each rating's value range.)
 
-**`completionRate` denominator scope.** `party_fault_denom` excludes only `failed-substrate`; it retains counterparty-fault and abort sessions. This is intentional: `completionRate` measures completed-vs-attempted, not blame. It leaves a residual griefing surface, however — a counterparty that repeatedly opens and aborts sessions depresses the target's `completionRate` through `aborted-by-other`. `counterpartyFaultRate` partially offsets this (it rises in step over the same denominator), and consumers SHOULD read the two metrics together rather than `completionRate` alone. A blame-weighted completion metric is a roadmap candidate.
+**`completionRate` denominator scope.** `party_fault_denom` excludes `failed-substrate` and established §10.3.1 ST-10 policy cancellations; it retains counterparty-fault and ordinary (non-cancelled) abort sessions. This is intentional: `completionRate` measures completed-vs-attempted, not blame. It leaves a residual griefing surface, however — a counterparty that repeatedly opens and aborts sessions depresses the target's `completionRate` through `aborted-by-other`. `counterpartyFaultRate` partially offsets this (it rises in step over the same denominator), and consumers SHOULD read the two metrics together rather than `completionRate` alone. A blame-weighted completion metric is a roadmap candidate.
 
 The windowing predicate above bounds against `b.finalisedAt`, which is a producer-set wall-clock value (§10.4) with no anchoring-time cross-check. Because the bundle is anchored via SR-2, a consensus-attested write time is also available. Consumers performing high-stakes derivation SHOULD bound the window against the bundle’s SR-2 anchor timestamp — the substrate’s consensus-attested write time — rather than, or in addition to, the self-asserted `finalisedAt`. They SHOULD flag a `finalisedAt` that diverges materially from the anchor time. `finalisedAt` is otherwise advisory; the anchor time is authoritative for windowing.
 

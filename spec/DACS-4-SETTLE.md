@@ -169,11 +169,13 @@ type AssetSpec =
   | { kind: "spl"; cluster: "mainnet" | "devnet" | "testnet"; mint: string; symbol: string; decimals: number }
   | { kind: "native-evm"; chainId: number; symbol: string; decimals: number }
   | { kind: "native-solana"; cluster: "mainnet" | "devnet" | "testnet"; symbol: "SOL"; decimals: 9 }
+  | { kind: "native-dem"; symbol: "DEM"; decimals: 9 }                  // native Demos token; 1 DEM = 10^9 OS base units (§9.5.9)
   | { kind: "fiat-via-ap2"; isoCurrency: string; provider: string }
   | { kind: "stablecoin-cross-chain"; canonicalSymbol: string; routes: CrossChainRoute[] }
 type NetworkSpec =
   | { kind: "evm"; chainId: number; rpcAttestation: "consensus-backed-proxy" | "evm-rpc" }
   | { kind: "solana"; cluster: "mainnet" | "devnet" | "testnet" }
+  | { kind: "demos" }                                                   // the Demos substrate itself (native-DEM rail, §9.5.9); BFT inclusion is final, operator is the substrate
   | { kind: "ap2-provider"; providerEndpoint: string }
   | { kind: "x402-resource"; resourceBaseUrl: string }
   | { kind: "cross-chain"; mechanism: "htlc" | "liquidity-tank" | "substrate-native" }
@@ -316,7 +318,7 @@ For the HTLC-9 asymmetric-open sub-case, the handler signals the open state and 
 
 | AssetSpec kind | `amount.currency` must equal |
 | --- | --- |
-| erc20 / spl / native-evm / native-solana | `rail.asset.symbol` |
+| erc20 / spl / native-evm / native-solana / native-dem | `rail.asset.symbol` |
 | fiat-via-ap2 | `rail.asset.isoCurrency` |
 | stablecoin-cross-chain | `rail.asset.canonicalSymbol` |
 
@@ -765,6 +767,8 @@ type PaymentPhaseType = "pay-evm-erc20" | "pay-solana-spl"
                       | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
 
                       | "pay-ap2" | "pay-x402"
+
+                      | "pay-dem"
 
 type DeliveryPhaseType = "deliver-storage-program" | "deliver-entitlement" | "deliver-attested-payload"
 

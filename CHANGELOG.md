@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.2] — 2026-06-26
+
 Defect-triage and follow-on hardening on top of v0.1 (steward-merged via the issue triage of the cX3po review wave and the xm33 / DACS-X contributions).
 
 ### Added — DACS-1 v0.2

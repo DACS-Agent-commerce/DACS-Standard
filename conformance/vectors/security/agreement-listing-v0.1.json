@@ -1,0 +1,1737 @@
+{
+  "set": "agreement-listing-v0.1",
+  "spec": "DACS §8.5.2",
+  "hash": "0df65ea03b3c2bc1c22512fd9f05f1a5560ad01647d5e5cd56d30a9b0fa5f4b7",
+  "count": 30,
+  "vectors": [
+    {
+      "name": "valid-in-band-rfq",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "0-listing-binding-mismatch",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "1-currency-mismatch",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "EUR",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "2-price-below-band",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "89.99"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "2-price-above-band",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "110.01"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "2-price-at-lower-bound",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "90.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "2-price-at-upper-bound",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "110.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "3-rail-missing-on-pay",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "3-rail-not-in-accepted",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-foo"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "3-zero-pay-no-rail",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": false,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "3-zero-pay-rail-present",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": false,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "4-deliverable-hash-mismatch",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "ccdd35168ab474fa5764a526cfb83621351e23682c5075b2e18d56bddf96aa30"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "4-schemaUrl-mismatch",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671",
+            "schemaUrl": "https://x/s.json"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "4-schemaUrl-match",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671",
+            "schemaUrl": "https://x/s.json"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671",
+            "schemaUrl": "https://x/s.json"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "5-deadline-too-late",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003610000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "6-listing-expired",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1779999999999
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "7-pattern-mismatch",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "sealed-envelope"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "fixed-pricing-equal",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "fixed-price"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "fixed",
+          "currency": "USDC",
+          "amount": "100.00"
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "fixed-price"
+      }
+    },
+    {
+      "name": "fixed-pricing-unequal",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "99.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "fixed-price"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "fixed",
+          "currency": "USDC",
+          "amount": "100.00"
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "fixed-price"
+      }
+    },
+    {
+      "name": "ps3-fixed-over-negotiable-equal",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "fixed-price"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "ps3-fixed-over-negotiable-inband-but-not-center",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "fixed-price"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "fractional-pct-in",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "101.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 2.5,
+          "maxPct": 2.5
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "fractional-pct-out",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "103.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 2.5,
+          "maxPct": 2.5
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "half-cent-at-rounded-lower",
+      "expected": "accept",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "90.05"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.05"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "half-cent-just-below-rounded-lower",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "90.04"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.05"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "lower-bound-le-zero",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "50.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 100,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "ps3-malformed-band-lower-le-zero",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "fixed-price"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 200,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "malformed-band-negative-pct",
+      "expected": "reject",
+      "committedAt": 1780000000000,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": -10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "indeterminate-no-committedAt",
+      "expected": "indeterminate",
+      "committedAt": null,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "USDC",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    },
+    {
+      "name": "fail-beats-indeterminate",
+      "expected": "reject",
+      "committedAt": null,
+      "agreement": {
+        "listingRef": {
+          "listingId": "L1",
+          "version": 1,
+          "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964"
+        },
+        "terms": {
+          "price": {
+            "currency": "EUR",
+            "amount": "95.00"
+          },
+          "rail": {
+            "railId": "pay-x402"
+          },
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          },
+          "deadline": 1780003600000
+        },
+        "derivedFromPattern": "rfq"
+      },
+      "listing": {
+        "listingId": "L1",
+        "version": 1,
+        "contentHash": "455a5d1609f8bc5ef62f6804cddf2c92b48ebe9db2908e4d56088804f6b66964",
+        "pricing": {
+          "kind": "negotiable",
+          "bandCenter": {
+            "currency": "USDC",
+            "amount": "100.00"
+          },
+          "minPct": 10,
+          "maxPct": 10
+        },
+        "offering": {
+          "deliverable": {
+            "deliverableType": "application/json",
+            "hash": "768cfd934d8c2de8db7c0070506e9dc79d9c5cd14b3e97cc6e1a0d11d9a8b671"
+          }
+        },
+        "acceptedRails": [
+          "pay-x402"
+        ],
+        "hasPayPhase": true,
+        "terms": {
+          "deadlineSecAfterCommit": 3600
+        },
+        "validity": {
+          "notAfter": 1780086400000
+        },
+        "pattern": "rfq"
+      }
+    }
+  ]
+}

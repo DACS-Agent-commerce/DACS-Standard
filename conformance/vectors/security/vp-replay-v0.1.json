@@ -1,0 +1,291 @@
+{
+  "set": "vp-replay-v0.1",
+  "spec": "DACS §7.3.2",
+  "hash": "1cebf46c4b1007d29989996eef23b1ac26de534ea052e43727e8e3aa89eb9c74",
+  "count": 13,
+  "vectors": [
+    {
+      "name": "valid-holder-binding",
+      "expected": "pass",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "a77a08a138eb19b8e499c7b1fb0a2bcca5eed3e1a24b8a33fc7e08a671c5879857a9aca86043f343ec33b2847271254514adab98700ec12dbc7201008ae51605"
+        }
+      }
+    },
+    {
+      "name": "issuer-genuine-but-no-holder-proof",
+      "expected": "fail",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        }
+      }
+    },
+    {
+      "name": "cross-session-nonce-replay",
+      "expected": "fail",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-OLD",
+            "audience": "verifier-1"
+          },
+          "signature": "91e00d7baf3b310c2acec7f193ede3e5972da50fb03c25036d19fb090ec3c0760e6998cd33930caa8fa7d705289e713f17200afaaf1b6afdcd3892fe4f81f800"
+        }
+      }
+    },
+    {
+      "name": "non-holder-presenter",
+      "expected": "fail",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "f414070ecb4c7d1fb3d1eca00e634c90dbbb3f8db46d8be355e18b33ac0fb8564dcfb95b34b1021de2b98a1bae0afbe216a77e11fc637f16e5aca181422c0905"
+        }
+      }
+    },
+    {
+      "name": "tampered-credential",
+      "expected": "fail",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "FORGED"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "a77a08a138eb19b8e499c7b1fb0a2bcca5eed3e1a24b8a33fc7e08a671c5879857a9aca86043f343ec33b2847271254514adab98700ec12dbc7201008ae51605"
+        }
+      }
+    },
+    {
+      "name": "malformed-presentation",
+      "expected": "error",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a"
+        }
+      }
+    },
+    {
+      "name": "issuer-unresolvable-indeterminate",
+      "expected": "indeterminate",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "a77a08a138eb19b8e499c7b1fb0a2bcca5eed3e1a24b8a33fc7e08a671c5879857a9aca86043f343ec33b2847271254514adab98700ec12dbc7201008ae51605"
+        }
+      }
+    },
+    {
+      "name": "empty-expected-nonce-indeterminate",
+      "expected": "indeterminate",
+      "sessionNonce": "",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "a77a08a138eb19b8e499c7b1fb0a2bcca5eed3e1a24b8a33fc7e08a671c5879857a9aca86043f343ec33b2847271254514adab98700ec12dbc7201008ae51605"
+        }
+      }
+    },
+    {
+      "name": "challenge-omits-session-nonce",
+      "expected": "fail",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "audience": "verifier-1"
+          },
+          "signature": "c94ba5d81122ad6d09f0a35e2f21cb6a6ca3c09c0419361a2c2b497550f498f9231f14464f01218d252d54bf19e919e7e91c4a79c23027d690e1f9df9afda104"
+        }
+      }
+    },
+    {
+      "name": "empty-challenge-nonce",
+      "expected": "fail",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "",
+            "audience": "verifier-1"
+          },
+          "signature": "d3d773a1ebbb28588fd948ec2176ad34968f07b5ac70ee2fa9395db80261db19d14bf0abbffa0f478f3f577245cd3f3e6f5c51d1c6b242cb06b27ac106b91101"
+        }
+      }
+    },
+    {
+      "name": "malformed-holderproof-sig",
+      "expected": "error",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "zz"
+        }
+      }
+    },
+    {
+      "name": "malformed-subject-key",
+      "expected": "error",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "zz",
+          "issuer": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+          "claims": {
+            "kind": "kyb",
+            "status": "verified"
+          },
+          "issuerSig": "37bf3bb87944d38bc30ac1a644101cc1c5d84b37065c7ba9abcac2d1a30b3b6156a26e2eb7220984ed75524d51cb1387160036af7f443971c3d5d0ad70aa1f0e"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "a77a08a138eb19b8e499c7b1fb0a2bcca5eed3e1a24b8a33fc7e08a671c5879857a9aca86043f343ec33b2847271254514adab98700ec12dbc7201008ae51605"
+        }
+      }
+    },
+    {
+      "name": "self-issued-with-holder-proof",
+      "expected": "pass",
+      "sessionNonce": "session-nonce-ABC",
+      "presentation": {
+        "credential": {
+          "subject": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "issuer": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+          "claims": {
+            "kind": "self",
+            "status": "asserted"
+          },
+          "issuerSig": "672402c9e5eac49163471c6f7b58c8fec153f815542600ba72e47aafc093637ba437749f111e0eac3b9a6ced77b049d7b58b3f3e31f4aead19ec0c3390a07c07"
+        },
+        "holderProof": {
+          "challenge": {
+            "sessionNonce": "session-nonce-ABC",
+            "audience": "verifier-1"
+          },
+          "signature": "a77a08a138eb19b8e499c7b1fb0a2bcca5eed3e1a24b8a33fc7e08a671c5879857a9aca86043f343ec33b2847271254514adab98700ec12dbc7201008ae51605"
+        }
+      }
+    }
+  ],
+  "keys": {
+    "subjectPub": "c050c5637a44fa8629fff3cccce2300cb362a63d99d95fc54145266f4332445a",
+    "issuerPub": "2012cb90ca60e8e5d8daf66e2272d2233e0486d557e8c66141ed8920177d7eb7",
+    "note": "seeds 0x51/0x52/0x53; raw ed25519"
+  }
+}

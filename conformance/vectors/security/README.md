@@ -2,7 +2,7 @@
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
 of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-and identity/vetting (§7.3.2). These complement the lifecycle vectors in the
+identity/vetting (§7.3.2), and VerifyResult acceptance (§7.12). These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -122,6 +122,30 @@ mismatch). Models the VC Data-Integrity `challenge` discipline, not a generic jt
 
 Plus a top-level `keys` map (public keys) so verification is self-contained.
 Run (reference): `npx tsx conformance/security-vectors/vp-replay/run.mts` → 13/13.
+
+### `verifyresult-acceptance-v0.1.json` — §7.12 (VerifyResult acceptance)
+
+13 vectors for the §7.12 consumer-side acceptance checks — three threat rows from the §12.4 matrix (#158) in one set:
+
+- **method substitution (#6):** `VerifyResult.method` MUST be in the recipe's `defaultMethod` ∪ `alternatives`; an unaccepted method is rejected.
+- **recipe poisoning (#7):** the recipe's steward signature MUST verify and `recipeVersion` MUST equal the version pinned for the session.
+- **VerifyResult replay (#17):** `identifier` MUST match the claim under verification per the CF-3 canonical identity; `bundleHash` binds the result to a bundle. **Cross-session reuse within `validUntil` is explicitly permitted** (and tested) — a conformant impl MUST NOT over-reject it.
+
+Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved → `indeterminate` (not `fail`); malformed input → `error`. The set deliberately includes the SAFE cases (permitted cross-session reuse; CF-3 `cci:0x`/case canonicalisation) so existence of the rule can't be satisfied by blanket rejection.
+
+#### Vector schema
+Each entry in `vectors[]`:
+
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `expected` | §7.5.1 verdict: `pass` \| `fail` \| `indeterminate` \| `error` (never collapsed) |
+| `note` | human-readable rationale |
+| `verifyResult` | the VerifyResult under test (`identifier`, `method`, `bundleHash?`, `validUntil?`) |
+| `recipe` | the cited recipe (`method`, `alternatives?`, `recipeVersion`, `stewardSig`) |
+| `ctx` | consumer context (`claimUnderVerification`, `pinnedRecipeVersion`, `expectedBundleHash?`, `stewardPub`, `now?`) |
+
+Run (reference): `npx tsx conformance/security-vectors/verifyresult-acceptance/run.mts` → 13/13.
 
 ## Status
 

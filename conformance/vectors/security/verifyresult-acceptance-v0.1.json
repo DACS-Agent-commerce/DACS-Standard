@@ -1,0 +1,420 @@
+{
+  "set": "verifyresult-acceptance-v0.1",
+  "spec": "DACS-2 \u00a77.12",
+  "gaps": [
+    "#6 method-substitution",
+    "#7 recipe-poisoning",
+    "#17 verifyresult-replay"
+  ],
+  "decisionModel": "\u00a77.5.1 4-value, never collapsed",
+  "hash": "6465302dcb6179f96bb4729313265ab5d3543e84a9fabe8cf7427e3ec495e0db",
+  "count": 13,
+  "vectors": [
+    {
+      "name": "valid-acceptance",
+      "expected": "pass",
+      "note": "genuine result, accepted method, pinned version, matching identifier+bundle, fresh",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "method-substitution",
+      "expected": "fail",
+      "note": "method not in recipe defaultMethod \u222a alternatives",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "evm-rpc",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "method-accepted-alternative",
+      "expected": "pass",
+      "note": "a declared equivalent alternative is accepted",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "tlsnotary",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "recipe-poisoned-bad-steward-sig",
+      "expected": "fail",
+      "note": "recipe signed by a non-steward key \u2014 MUST be rejected",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "7396b618fb4a258adf1445abba8f1eb632b6e5d6f9bc705fe3ad0233965c2ca372c0665f7094617bde8ec12dcddaff757a48bef9865dd78a95f3404477ede709"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "recipe-version-not-pinned",
+      "expected": "fail",
+      "note": "recipeVersion != the version pinned for this session",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 9,
+        "stewardSig": "9d5775f0657582b843b8bbf71c6f7828119f82f976d1e42258b82649b2d98c8b858ddb3ab6e1aaf5dd77b20b9b0c7912c2caba66486b052a757fae15c6bf7c04"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "steward-key-unresolvable",
+      "expected": "indeterminate",
+      "note": "cannot verify the recipe signature \u2192 undecidable (NOT fail, NOT pass)",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": null,
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "replay-identifier-mismatch",
+      "expected": "fail",
+      "note": "stale/relifted result for a DIFFERENT claim",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "replay-bundle-mismatch",
+      "expected": "fail",
+      "note": "result bound to a different bundle",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "72cb9f157914e773011a1c32d55763ef237b88888dcaf36b3bb21ceec2eecc6a",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "expired-past-validUntil",
+      "expected": "fail",
+      "note": "past validUntil \u2014 stale",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750007200
+      }
+    },
+    {
+      "name": "cross-session-reuse-within-validUntil",
+      "expected": "pass",
+      "note": "different session, same identifier, still within validUntil \u2014 EXPLICITLY PERMITTED (\u00a77.12)",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750001800
+      }
+    },
+    {
+      "name": "identifier-canonical-form-equivalent",
+      "expected": "pass",
+      "note": "same identifier in 0x/upper form \u2014 CF-3 canonicalisation MUST match, not split",
+      "verifyResult": {
+        "identifier": "cci:0xABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "malformed-verifyresult",
+      "expected": "error",
+      "note": "missing identifier \u2014 verifier-side parse error, never fail/pass",
+      "verifyResult": {
+        "method": "consensus-backed-proxy"
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    },
+    {
+      "name": "malformed-identifier-shape",
+      "expected": "error",
+      "note": "identifier object missing the identifier field \u2014 must be error, not a crash (Codex-HIGH)",
+      "verifyResult": {
+        "identifier": {
+          "scheme": "cci"
+        },
+        "method": "consensus-backed-proxy",
+        "bundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "validUntil": 1750003600
+      },
+      "recipe": {
+        "method": "consensus-backed-proxy",
+        "alternatives": [
+          "tlsnotary"
+        ],
+        "recipeVersion": 3,
+        "stewardSig": "c270458b40974dd63e176879d87bb3e197b94e3b2126f4e8805f24e0b1eefdc96e2832e394c5e8f401da795f6c95eed9a9ba41d82d8ab1ee1f8cac64c2cb8b03"
+      },
+      "ctx": {
+        "claimUnderVerification": {
+          "scheme": "cci",
+          "identifier": "abababababababababababababababababababababababababababababababab"
+        },
+        "pinnedRecipeVersion": 3,
+        "expectedBundleHash": "93db9dc111b649382b9b8914e26d78c6af16c78e0d0a588bd9198b7533e307a7",
+        "stewardPub": "e2fe2a39b7326642827d6d82d497622cd6c297fe78270eaa436b01f086b6f3cb",
+        "now": 1750000000
+      }
+    }
+  ]
+}

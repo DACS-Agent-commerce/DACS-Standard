@@ -2,7 +2,7 @@
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
 of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-identity/vetting (§7.3.2), and channel-message replay (§8.3.3 + CH-6). These complement the lifecycle vectors in the
+identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), rail-availability selection (§9.4.4), sealed-envelope bid admission (§8.4.3), and channel-message replay (§8.3.3 + CH-6). These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -159,6 +159,63 @@ Self-contained (sender keys are self-describing `cci:<hex>`; signatures are real
 ed25519 over the §8.3.3 signed scope). Run (reference):
 `npx tsx conformance/security-vectors/channel-message-replay/run.mts` → 20/20
 (15 persisted vectors + 5 non-serialisable robustness assertions).
+
+### `verifyresult-acceptance-v0.1.json` — §7.12 (VerifyResult acceptance)
+
+13 vectors for the §7.12 consumer-side acceptance checks — three threat rows from the §12.4 matrix (#158) in one set:
+
+- **method substitution (#6):** `VerifyResult.method` MUST be in the recipe's `defaultMethod` ∪ `alternatives`; an unaccepted method is rejected.
+- **recipe poisoning (#7):** the recipe's steward signature MUST verify and `recipeVersion` MUST equal the version pinned for the session.
+- **VerifyResult replay (#17):** `identifier` MUST match the claim under verification per the CF-3 canonical identity; `bundleHash` binds the result to a bundle. **Cross-session reuse within `validUntil` is explicitly permitted** (and tested) — a conformant impl MUST NOT over-reject it.
+
+Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved → `indeterminate` (not `fail`); malformed input → `error`. The set deliberately includes the SAFE cases (permitted cross-session reuse; CF-3 `cci:0x`/case canonicalisation) so existence of the rule can't be satisfied by blanket rejection.
+
+#### Vector schema
+Each entry in `vectors[]`:
+
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `expected` | §7.5.1 verdict: `pass` \| `fail` \| `indeterminate` \| `error` (never collapsed) |
+| `note` | human-readable rationale |
+| `verifyResult` | the VerifyResult under test (`identifier`, `method`, `bundleHash?`, `validUntil?`) |
+| `recipe` | the cited recipe (`method`, `alternatives?`, `recipeVersion`, `stewardSig`) |
+| `ctx` | consumer context (`claimUnderVerification`, `pinnedRecipeVersion`, `expectedBundleHash?`, `stewardPub`, `now?`) |
+
+Run (reference): `npx tsx conformance/security-vectors/verifyresult-acceptance/run.mts` → 13/13.
+
+### `rail-availability-selection-v0.1.json` — §9.4.4 (rail-availability selection + poisoning)
+
+15 vectors for the §9.4.4 rail-availability rules and the availability-field poisoning defence (#158 gap #13):
+
+- **RAV-R2** — an orchestrator MUST NOT select a rail whose `availability` is `disabled` or `failed`.
+- **RAV-R1** — a non-`live` availability (e.g. `mocked`) MUST NOT be treated as `live`.
+- **RAV-R3** — `operator_gated` / `closed_data` / `bilateral` are selectable ONLY when the operator-side preflight is satisfied (a runtime check).
+- **RAV-R5 (poisoning)** — `availability` MUST be read from the steward-signed **and pinned/anchored** `dacs-rail:v1:` definition. A valid signature alone is insufficient: an unsigned/counterparty copy, or a validly-signed-but-**stale/cached** copy that is not the pinned definition, MUST NOT steer selection.
+
+Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved, or no pinned reference to compare against, → `indeterminate` (not a silent pass); malformed def / unknown availability value → `error`.
+
+#### Vector schema
+Each entry in `vectors[]`: `name`, `expected` (§7.5.1 4-value), `note`, `rail` (`railId`, `availability`, `railVersion?`, `stewardSig`), `ctx` (`stewardPub`, `operatorPreflightOk`, `pinnedRailDigest`).
+
+Run (reference): `npx tsx conformance/security-vectors/rail-availability-selection/run.mts` → 15/15.
+
+### `sealed-envelope-deadline-v0.1.json` — §8.4.3 (sealed-envelope bid admission)
+
+15 vectors for whether a sealed bid is admitted to the auction candidate set (#158 gap #27):
+
+- **SE-2 deadline gate** — the authoritative time is the **SR-2 anchor timestamp**; the self-reported `commitTimestamp` MUST NOT gate. A commit anchored after `commitDeadline` is late → excluded, and an on-time self-report does not save it (both directions tested).
+- **SE-3 reveal window** — the reveal MUST be anchored within `[commitDeadline, commitDeadline + revealWindow]`; out-of-window (early or late) → excluded.
+- **SE-4** — a committed bidder MUST reveal; a missing reveal → excluded.
+- **CH-3** — the commit's `bidderClaim` MUST equal the authenticated sender → else excluded.
+- **Commitment binding** — the revealed `{bid, salt}` MUST reproduce `bidHash = sha256("dacs-sealed-bid:v1:" || sha256(JCS(bid)) || salt)` (exact lowercase hex); a different bid/salt, or a non-lowercase-hex committed hash, → excluded / error.
+
+§7.5.1 four-value, never collapsed: an unresolvable SR-2 anchor timestamp → `indeterminate`; malformed commit / non-hex salt / non-lowercase-hex bidHash → `error`. Boundary instants are deliberately not asserted.
+
+#### Vector schema
+A top-level `ctx` (`commitDeadline`, `revealWindowSec`, `authenticatedSender`); each entry in `vectors[]`: `name`, `expected`, `note`, `commit` (`bidHash`, `bidderClaim`, `commitTimestamp`, `anchorTimestamp`), `reveal` (`bid`, `salt`, `anchorTimestamp`) or `null`.
+
+Run (reference): `npx tsx conformance/security-vectors/sealed-envelope-deadline/run.mts` → 15/15.
 
 ## Status
 

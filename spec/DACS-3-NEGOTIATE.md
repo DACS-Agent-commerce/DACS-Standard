@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft (part of DACS v0.1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.2** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, and the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -313,6 +313,10 @@ type AgreementDocument = {
     // Does not replace or constrain terms.price — it is an informational audit record.
     priceAnchor?: PriceAnchor
 
+    // Optional signed disclosure of the fee structure (regulated-context cost transparency, §8.5.3).
+    // Both parties sign it with the agreement; it does NOT alter terms.price and does NOT gate Settle.
+    feeSchedule?: FeeSchedule
+
     additionalTerms?: Record<string, unknown>
 
   }
@@ -342,6 +346,8 @@ type AgreementParty = {
   primaryClaim: ClaimReference         // pulled from bundle.presentedBy
 
   vetRecordRef: AttestationRef         // DACS-2 composite verification record
+
+  encryptionKey?: string               // optional party encryption public key; binds which key an encrypt-to-buyer deliverable is sealed to (DACS-4 §9.6.1, DV-3). Distinct from the signing key.
 
 }
 
@@ -456,6 +462,42 @@ Checks 5 and 6 are the two `committedAt`-relative checks — see the ordering no
 A commitment whose anchored `committedAt` violates either check is invalid.
 
 > **Note (non-normative).** The two-phase discipline keeps `committedAt` the objective anti-backdating clock without a circular dependency on an as-yet-unanchored value. The §6.3.4 read-time check still governs discovery.
+
+#### 8.5.3 Fee disclosure (`feeSchedule`)
+
+An `AgreementDocument` MAY carry a `terms.feeSchedule` — an optional, signed pre-commit disclosure of the fee structure, for regulated-context cost transparency. It is **disclosure-only**: both parties sign it with the agreement, but it does **not** alter `terms.price` and a consumer **MUST NOT** gate settlement on it. It is the non-repudiable record that fees were disclosed before commit.
+
+```
+type FeeSchedule = {
+  priceBasis: "inclusive" | "exclusive"     // REQUIRED when feeSchedule present: is terms.price all-in, or are fees added on top?
+  items: FeeItem[]
+  oneOffTotal: PriceTerm                     // sum of the non-recurring items; currency MUST equal terms.price.currency
+  recurringTotal?: PriceTerm                 // sum of recurring items' per-period amounts; present iff any item carries recurrence
+  minimumTermSeconds?: number                // subscription minimum commitment (disclosure)
+  earlyTerminationFee?: FeeItem              // disclosure shape only; fee-bearing-cancellation semantics are governed by §10.3.1, not here
+  disclosureNote?: string                    // optional free-text / regulatory-basis citation
+}
+type FeeItem = {
+  kind: "network" | "platform" | "processing" | "spread" | "subscription" | "other"
+  collector: ClaimReference | "substrate"    // who collects this fee; "substrate" for a network (validator) fee
+  label?: string
+  fixed?: PriceTerm                           // exactly one of { fixed, rateBps }
+  rateBps?: number                            // basis points of terms.price.amount; resolved to an amount per DACS-4 §9.7.2
+  toleranceBps?: number                       // network-fee reconciliation tolerance (§9.7.2); meaningful only for kind == "network"; absent ⇒ reconcile exactly
+  recurrence?: {                              // present iff this is an ongoing/recurring fee — disclosure only, never a charge trigger
+    period: "daily" | "weekly" | "monthly" | "quarterly" | "annual" | { everySeconds: number }
+    count?: number                            // fixed number of charges; omit for open-ended
+    until?: number                            // unix ms end bound (alternative to count)
+  }
+}
+```
+
+Normative:
+- (FS-1) When `feeSchedule` is present, `priceBasis` is REQUIRED, and `oneOffTotal.currency` MUST equal `terms.price.currency`.
+- (FS-2) Each `FeeItem` MUST carry **exactly one** of `fixed` / `rateBps`.
+- (FS-3) `feeSchedule` is disclosure-only: it MUST NOT alter `terms.price`, and a consumer MUST NOT gate settlement on it. Whether the disclosed fees reconcile against actual settlement is an **informational** check defined in DACS-4 §9.7.2.
+- (FS-4) A `recurrence` block **discloses a committed ongoing cost** — it MUST NOT be read as a charge trigger and MUST NOT appear in any settlement-gating path. Recurring *settlement* is out of scope here (modelled as a sequence of correlated sessions; see the streaming/subscription roadmap item).
+- (FS-5) `earlyTerminationFee` is a disclosure shape only; the semantics of a fee-bearing cancellation are governed by the §10.3.1 cancellation rules, not by this field.
 
 ### 8.6 Commitment phase (commit-agreement)
 

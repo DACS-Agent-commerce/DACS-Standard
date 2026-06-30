@@ -2,7 +2,7 @@
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
 of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), and rail-availability selection (§9.4.4). These complement the lifecycle vectors in the
+identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), rail-availability selection (§9.4.4), and sealed-envelope bid admission (§8.4.3). These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -162,6 +162,23 @@ Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that 
 Each entry in `vectors[]`: `name`, `expected` (§7.5.1 4-value), `note`, `rail` (`railId`, `availability`, `railVersion?`, `stewardSig`), `ctx` (`stewardPub`, `operatorPreflightOk`, `pinnedRailDigest`).
 
 Run (reference): `npx tsx conformance/security-vectors/rail-availability-selection/run.mts` → 15/15.
+
+### `sealed-envelope-deadline-v0.1.json` — §8.4.3 (sealed-envelope bid admission)
+
+15 vectors for whether a sealed bid is admitted to the auction candidate set (#158 gap #27):
+
+- **SE-2 deadline gate** — the authoritative time is the **SR-2 anchor timestamp**; the self-reported `commitTimestamp` MUST NOT gate. A commit anchored after `commitDeadline` is late → excluded, and an on-time self-report does not save it (both directions tested).
+- **SE-3 reveal window** — the reveal MUST be anchored within `[commitDeadline, commitDeadline + revealWindow]`; out-of-window (early or late) → excluded.
+- **SE-4** — a committed bidder MUST reveal; a missing reveal → excluded.
+- **CH-3** — the commit's `bidderClaim` MUST equal the authenticated sender → else excluded.
+- **Commitment binding** — the revealed `{bid, salt}` MUST reproduce `bidHash = sha256("dacs-sealed-bid:v1:" || sha256(JCS(bid)) || salt)` (exact lowercase hex); a different bid/salt, or a non-lowercase-hex committed hash, → excluded / error.
+
+§7.5.1 four-value, never collapsed: an unresolvable SR-2 anchor timestamp → `indeterminate`; malformed commit / non-hex salt / non-lowercase-hex bidHash → `error`. Boundary instants are deliberately not asserted.
+
+#### Vector schema
+A top-level `ctx` (`commitDeadline`, `revealWindowSec`, `authenticatedSender`); each entry in `vectors[]`: `name`, `expected`, `note`, `commit` (`bidHash`, `bidderClaim`, `commitTimestamp`, `anchorTimestamp`), `reveal` (`bid`, `salt`, `anchorTimestamp`) or `null`.
+
+Run (reference): `npx tsx conformance/security-vectors/sealed-envelope-deadline/run.mts` → 15/15.
 
 ## Status
 

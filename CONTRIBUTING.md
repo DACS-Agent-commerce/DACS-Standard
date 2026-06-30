@@ -44,6 +44,14 @@ DACS v0.1 operates under progressive-anchoring phase **PA-2**: a single steward
 governance (PA-3) is named follow-on work in §11.2.6 of the specification. Until
 then, normative changes are merged by the steward after public discussion.
 
+## Which branch to target
+
+Open pull requests against the **`next`** branch, not `main`. `main` tracks the
+latest tagged release and only advances on a version cut (a `next` → `main`
+fast-forward + tag); `next` is the integration branch where spec, documentation,
+and conformance-vector changes accumulate between releases. Targeting `main`
+directly leaves it ahead of `next` and breaks the release fast-forward.
+
 ## Editing the specification
 
 The canonical specification lives in [`spec/`](./spec/). When proposing normative

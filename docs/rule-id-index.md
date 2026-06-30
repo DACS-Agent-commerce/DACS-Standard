@@ -14,6 +14,8 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CF-* | Canonical form and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
+| FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
+| FS-* | FeeSchedule disclosure on the AgreementDocument | §8.5.3 | §14.3 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |

@@ -692,7 +692,7 @@ type EntitlementRecord = {
   - **valid** — the signed `[startsAt, endsAt]` window at the highest `renewalSeq`. Read from the record, NOT from the ACL.
   - **readable** — the ACL read at access time.
   `SettlementEvidence` MUST NOT assert `valid` or `readable`: a credential being *delivered* is neither the entitlement being *valid* nor the credential being *currently readable*.
-- (DV-6) **Readability verdict (do-not-collapse).** A consumer checking whether the buyer can currently read the credential MUST distinguish: in `allowed` and not blacklisted → **readable**; entitlement window lapsed → **clean negative** (lifecycle); buyer dropped from `allowed` / blacklisted → **revoked**; ACL or storage unresolvable → **`indeterminate`** — a transient outage MUST NOT be read as a revocation.
+- (DV-6) **Readability verdict (do-not-collapse).** A consumer checking whether the buyer can currently read the credential MUST distinguish: in `allowed` and not blacklisted → **readable**; entitlement window lapsed → **clean negative** (lifecycle); buyer dropped from `allowed` / blacklisted → **ACL-dropped (channel-unreadable)**; ACL or storage unresolvable → **`indeterminate`** — a transient outage MUST NOT be read as channel-unreadable. An ACL-drop is **channel-provable** (the anchored ACL mutation, DV-4) and proves the credential is unreadable **via storage** — it is NOT by itself credential **invalidation**: a bearer credential the grantee already fetched keeps authenticating at the `serviceEndpoint` until rotated. Full revocation therefore requires **endpoint-side credential rotation** (endpoint-attested, off-DACS-scope) in addition to the ACL-drop; the anchored trail proves only the channel half.
 
 #### 9.6.3 deliver-attested-payload
 

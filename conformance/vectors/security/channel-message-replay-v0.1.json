@@ -1,0 +1,368 @@
+{
+  "set": "channel-message-replay-v0.1",
+  "spec": "DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse)",
+  "gaps": [
+    "#14 cross-session offer replay / channelId reuse"
+  ],
+  "decisionModel": "§7.5.1 4-value, never collapsed",
+  "hash": "3f0664c434a6727f7578434cba9ea47b804e0dff12249081c7abdd4fdc03803b",
+  "count": 15,
+  "vectors": [
+    {
+      "name": "valid-first-message",
+      "expected": "pass",
+      "note": "seq 1, correct channel, valid sig, no prior reuse → admit",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "23efcd16e7c72ba7596e9e7920cf54003379bdc044fbdfbd05a17b575da2ed39b149a7b99604cc41476ab14d881a782e0496ed6f64a98a8e229c80760cb14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "valid-next-message",
+      "expected": "pass",
+      "note": "strictly-increasing sequence → admit",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 2,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "142614b9b424b7ba3a4981f62aab93a8c08ed8b467b2c6828b56763d7befd8276572657cf96146c98e69ea679abab3d24f1c8d5330f6aba38af9318d2adc0401"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "valid-sequence-gap",
+      "expected": "pass",
+      "note": "monotonic allows a gap (5 > 2) — replay defence cares about duplicates/decreases, not gaps → admit",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 5,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "86f535758d79d885e740e8019871c8cc9778d517c942568353f469387ff77b3091ccde061ea2e473cdce97c693b239f3093f8890f8fa8d10b3e86f5c79ccea09"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "replay-duplicate-sequence",
+      "expected": "fail",
+      "note": "sequence == last-seen → duplicate/replay, excluded",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 3,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "c3c811ea1821ebc5e9ea12905381810abb45b2d87348377aa64d6fe67fcf868c3b9c61631d504c432490056c617c949a2ea051fa6008a0decffa9ec5ddd5830e"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 3,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "replay-decreasing-sequence",
+      "expected": "fail",
+      "note": "sequence < last-seen → out-of-order/replay, excluded",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 2,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "142614b9b424b7ba3a4981f62aab93a8c08ed8b467b2c6828b56763d7befd8276572657cf96146c98e69ea679abab3d24f1c8d5330f6aba38af9318d2adc0401"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 5,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "foreign-channel-message",
+      "expected": "fail",
+      "note": "a session-1 message presented in session-7: channelId ≠ session → excluded",
+      "message": {
+        "channelId": "chan-session-1",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "ecd5a03258f042f604eaa80b4ceb196451b15856d372c6ac9543ef871904c8ecf6d5b3da13f3f25056c700fde4f93009742ba89f76876b4aeb6974b141237a0c"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "rechannelled-message-sig-breaks",
+      "expected": "fail",
+      "note": "attacker rewrites channelId to the new session — signature (over the old channelId) no longer verifies → excluded",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "ecd5a03258f042f604eaa80b4ceb196451b15856d372c6ac9543ef871904c8ecf6d5b3da13f3f25056c700fde4f93009742ba89f76876b4aeb6974b141237a0c"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "ch6-channelId-reused",
+      "expected": "fail",
+      "note": "CH-6: this session reuses a prior session's channelId → session rejected",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "23efcd16e7c72ba7596e9e7920cf54003379bdc044fbdfbd05a17b575da2ed39b149a7b99604cc41476ab14d881a782e0496ed6f64a98a8e229c80760cb14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-1",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "tampered-signature",
+      "expected": "fail",
+      "note": "signature does not verify → excluded",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "tampered-body-after-signing",
+      "expected": "fail",
+      "note": "body changed after signing → envelope hash differs → signature invalid",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "999"
+        },
+        "signature": "23efcd16e7c72ba7596e9e7920cf54003379bdc044fbdfbd05a17b575da2ed39b149a7b99604cc41476ab14d881a782e0496ed6f64a98a8e229c80760cb14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "sender-not-cci",
+      "expected": "indeterminate",
+      "note": "sender claim not a resolvable cci key → cannot verify signature → undecidable",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "did:demos:placeholder",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "dbde1dd6bc3913a0e79f88aebb5e3ae3fbb8e163a05513908435f5859919f24cc94605a3cfa8df412b6cdf97e632c5ce5abddb30153be6378eb49b7e34554b0d"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "malformed-missing-channelId",
+      "expected": "error",
+      "note": "missing channelId → verifier-side parse error",
+      "message": {
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1,
+        "type": "offer",
+        "body": {},
+        "signature": "x"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "sequence-below-one",
+      "expected": "error",
+      "note": "sequence < 1 violates §8.3.3 (starts at 1) → error",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 0,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "a255aae7a0f58c5a8caf49cabdb2beca6c999cf686e0626eca80f69491f2b29d5916a59e2437f4fe0bb2843736f866256079e62fa35722c51b5116ebb5d2cc0c"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "ctx-fractional-lastSequence",
+      "expected": "error",
+      "note": "ctx.lastSequence non-integer → would make `seq <= 1.5` unreliable; rejected as malformed ctx (not silently admitted)",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 2,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "142614b9b424b7ba3a4981f62aab93a8c08ed8b467b2c6828b56763d7befd8276572657cf96146c98e69ea679abab3d24f1c8d5330f6aba38af9318d2adc0401"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 1.5,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "ctx-priorChannelIds-bad-element",
+      "expected": "error",
+      "note": "priorChannelIds contains a non-string → cannot evaluate CH-6 reliably → malformed ctx",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "23efcd16e7c72ba7596e9e7920cf54003379bdc044fbdfbd05a17b575da2ed39b149a7b99604cc41476ab14d881a782e0496ed6f64a98a8e229c80760cb14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          123
+        ]
+      }
+    }
+  ]
+}

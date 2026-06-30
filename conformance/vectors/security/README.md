@@ -2,7 +2,7 @@
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
 of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-and identity/vetting (§7.3.2). These complement the lifecycle vectors in the
+identity/vetting (§7.3.2), and channel-message replay (§8.3.3 + CH-6). These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -122,6 +122,43 @@ mismatch). Models the VC Data-Integrity `challenge` discipline, not a generic jt
 
 Plus a top-level `keys` map (public keys) so verification is self-contained.
 Run (reference): `npx tsx conformance/security-vectors/vp-replay/run.mts` → 13/13.
+
+### `channel-message-replay-v0.1.json` — §8.3.3 + CH-6 (channel-message replay / channelId reuse)
+
+15 vectors for the cross-session / in-channel offer-replay defence (threat-matrix
+row #14 — the DACS-normative replay analog of the SR-4/L2PS nonce-reuse case, which
+was correctly **declined** as a DACS vector because the crypto envelope is left to
+implementations). A `ChannelMessage` is admitted only if **all** hold, as the
+§7.5.1 4-value decision (never collapsed):
+
+- **CH-6** — the session's `channelId` MUST NOT be one reused from a prior session
+  (`priorChannelIds`); a reused session channel → `fail` (the whole session is rejected).
+- **channel binding** — `message.channelId == sessionChannelId`; a foreign-channel
+  message (a genuine message from another session presented here) → `fail`.
+- **signature** — over `"dacs-channelmsg:v1:" || sha256(JCS(envelope − signature))`
+  by the sender's self-describing `cci:<hex>` key. An unresolvable sender key →
+  `indeterminate` (NOT `fail`); an invalid signature → `fail`.
+- **monotonic sequence** — strictly greater than the highest already seen in the
+  channel (starts at 1, §8.3.3); a duplicate or decreasing `sequence` → `fail`.
+
+A cross-session replay fails **both** ways: keep the old `channelId` → channel-binding
+`fail`; rewrite it → the signature (computed over the original `channelId`) breaks.
+Malformed artifacts — a non-canonicalisable `body`, a non-integer/negative
+`ctx.lastSequence`, or a non-string `priorChannelIds` element — return `error`,
+never collapsing to `fail` (so bad context cannot bypass the replay gate).
+
+#### Vector schema
+| field      | meaning |
+|------------|---------|
+| `name`     | stable case id |
+| `expected` | §7.5.1 verdict (4-value, never collapsed) |
+| `message`  | the `ChannelMessage` under test (channelId, sequence, sender, signature, body…) |
+| `ctx`      | per-case `{ sessionChannelId, lastSequence, priorChannelIds }` |
+
+Self-contained (sender keys are self-describing `cci:<hex>`; signatures are real
+ed25519 over the §8.3.3 signed scope). Run (reference):
+`npx tsx conformance/security-vectors/channel-message-replay/run.mts` → 20/20
+(15 persisted vectors + 5 non-serialisable robustness assertions).
 
 ## Status
 

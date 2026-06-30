@@ -1,0 +1,360 @@
+{
+  "set": "sealed-envelope-deadline-v0.1",
+  "spec": "DACS-3 \u00a78.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding)",
+  "gaps": [
+    "#27 sealed-envelope post-deadline"
+  ],
+  "decisionModel": "\u00a77.5.1 4-value, never collapsed",
+  "ctx": {
+    "commitDeadline": 1750000000000,
+    "revealWindowSec": 300,
+    "authenticatedSender": "cci:abababababababababababababababababababababababababababababababab"
+  },
+  "hash": "fa8cedd951ffa3e59d0029fee179d73a0a6046246a19981f26135da6673d3b8e",
+  "count": 15,
+  "vectors": [
+    {
+      "name": "valid-admitted",
+      "expected": "pass",
+      "note": "commit before deadline (anchor), reveal in-window, binding matches, sender matches \u2192 admitted",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "late-commit-anchor",
+      "expected": "fail",
+      "note": "commit anchored AFTER commitDeadline \u2192 late, excluded",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1750000001000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "self-report-ontime-but-anchor-late",
+      "expected": "fail",
+      "note": "commitTimestamp says on-time but the SR-2 ANCHOR is late \u2192 excluded (self-report does NOT gate)",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1750000002000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "self-report-late-but-anchor-ontime",
+      "expected": "pass",
+      "note": "commitTimestamp says late but the authoritative ANCHOR is on-time \u2192 admitted (anchor wins)",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1750000009999,
+        "anchorTimestamp": 1749999999500
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "bidderClaim-not-sender",
+      "expected": "fail",
+      "note": "CH-3: commit bidderClaim \u2260 authenticated sender \u2192 excluded",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "reveal-after-window",
+      "expected": "fail",
+      "note": "reveal anchored after revealWindow expiry \u2192 excluded",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000301000
+      }
+    },
+    {
+      "name": "reveal-before-deadline",
+      "expected": "fail",
+      "note": "reveal anchored before commitDeadline (premature, out of window) \u2192 excluded",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1749999999000
+      }
+    },
+    {
+      "name": "no-reveal",
+      "expected": "fail",
+      "note": "SE-4: committed but never revealed \u2192 excluded",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": null
+    },
+    {
+      "name": "binding-wrong-bid",
+      "expected": "fail",
+      "note": "revealed a DIFFERENT bid than committed \u2192 bidHash mismatch, excluded",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "1.00",
+            "currency": "USDC"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "binding-wrong-salt",
+      "expected": "fail",
+      "note": "wrong salt \u2192 bidHash mismatch, excluded",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "beefbeefbeefbeefbeefbeefbeefbeef",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "commit-anchor-unresolvable",
+      "expected": "indeterminate",
+      "note": "commit SR-2 anchor timestamp unresolvable \u2192 cannot apply the deadline gate (NOT fail, NOT pass)",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": null
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "reveal-anchor-unresolvable",
+      "expected": "indeterminate",
+      "note": "reveal SR-2 anchor timestamp unresolvable \u2192 cannot apply the window gate",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": null
+      }
+    },
+    {
+      "name": "malformed-commit",
+      "expected": "error",
+      "note": "missing bidHash \u2192 verifier-side parse error",
+      "commit": {
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "salt-not-hex",
+      "expected": "error",
+      "note": "salt not hex \u2192 cannot open commitment \u2192 error",
+      "commit": {
+        "bidHash": "d30d68c33db5f80794d62b00094100ed98c28bb3eb4323a3e01764724d793fa4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "nothex!!",
+        "anchorTimestamp": 1750000060000
+      }
+    },
+    {
+      "name": "bidhash-not-lowercase-hex",
+      "expected": "error",
+      "note": "\u00a78.4.3: bidHash MUST be lowercase hex \u2014 an uppercase committed hash is non-conformant \u2192 error (not silently admitted, Codex-HIGH)",
+      "commit": {
+        "bidHash": "D30D68C33DB5F80794D62B00094100ED98C28BB3EB4323A3E01764724D793FA4",
+        "bidderClaim": "cci:abababababababababababababababababababababababababababababababab",
+        "commitTimestamp": 1749999995000,
+        "anchorTimestamp": 1749999999000
+      },
+      "reveal": {
+        "bid": {
+          "price": {
+            "amount": "100.00",
+            "currency": "USDC"
+          },
+          "deliverable": {
+            "ref": "svc-1"
+          }
+        },
+        "salt": "cafecafecafecafecafecafecafecafe",
+        "anchorTimestamp": 1750000060000
+      }
+    }
+  ]
+}

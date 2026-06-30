@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.2** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument, §8.5.3). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.2** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, and the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -346,6 +346,8 @@ type AgreementParty = {
   primaryClaim: ClaimReference         // pulled from bundle.presentedBy
 
   vetRecordRef: AttestationRef         // DACS-2 composite verification record
+
+  encryptionKey?: string               // optional party encryption public key; binds which key an encrypt-to-buyer deliverable is sealed to (DACS-4 §9.6.1, DV-3). Distinct from the signing key.
 
 }
 

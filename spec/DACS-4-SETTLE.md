@@ -66,7 +66,7 @@ type PriceTerm = {
 
 type DeliverableSpec =
 
-  | { kind: "storage-program"; schemaUrl?: string; expectedSizeBytes?: number }
+  | { kind: "storage-program"; schemaUrl?: string; expectedSizeBytes?: number; accessModel?: "public" | "buyer-only" | "encrypt-to-buyer" }   // default "public"; non-public ⇒ private delivery (§9.6.1)
 
   | { kind: "entitlement"; durationSec: number; renewable: boolean }
 
@@ -624,6 +624,17 @@ Seller writes a Storage Program (SR-2) containing the deliverable payload. Addre
 
 **Soft limit.** Storage Programs have a 128 KB cap. Larger payloads MUST use the extended-pointer pattern: the Storage Program at the canonical address contains a pointer record { externalUrl, externalContentHash, segmentRefs[]? }; the actual payload is hosted externally; the externalContentHash binds it. The buyer fetches the pointer, then fetches the payload, then verifies the hash.
 
+**Private delivery (`accessModel`).** A `storage-program` deliverable MAY be delivered privately when `deliverable.accessModel` (declared in the agreement, hash-bound per §8.5.2) is non-`public`:
+- `buyer-only` — the Storage Program is written with a `restricted` ACL listing the buyer's address in `allowed`; reads are node-enforced.
+- `encrypt-to-buyer` — the payload is sealed to the buyer's encryption key and the ciphertext anchored (which MAY itself be public, since only the holder can open it).
+
+- (DV-1) **Content-hash invariant.** `deliverableContentHash` MUST be the sha256 of the **cleartext** canonical payload — byte-identical across all `accessModel` values, never the ciphertext — so settlement evidence (§9.7) binds the same digest regardless of access mode.
+- (DV-2) **Access-mode fidelity.** The delivered access mode MUST match the agreement's declared `accessModel`. A consumer resolving a declared non-`public` deliverable as delivered `public` MUST emit `indeterminate` (a provenanced confidentiality-downgrade flag), never `pass`; over-provision (declared `public`, delivered private) is NOT a violation.
+- (DV-3) **Buyer binding.** Under `buyer-only`, the ACL `allowed` entry MUST be the buyer address resolved from the agreement-bound buyer `AgreementParty` (§8.5), not a separately-presented address. Under `encrypt-to-buyer`, the payload MUST be sealed to that party's `AgreementParty.encryptionKey`.
+- (DV-4) **ACL-mutation auditability.** Under `buyer-only` the owner CAN later mutate the ACL (add/remove readers). Each mutation SHOULD be recorded as an anchored, signed record so the buyer can detect a post-delivery reader addition — and MUST be recorded for a `credentialRef`-backed entitlement (§9.6.2).
+
+> **Note (non-normative — confidentiality tiers).** `buyer-only` is node-enforced: confidential against the public and other users, but the owner can re-open the ACL and node operators can see the bytes ("private until the owner changes the ACL"). `encrypt-to-buyer` is a cryptographic one-shot seal (operator-blind, non-revocable). The normative envelope is the native post-quantum `UnifiedCrypto` (`ml-kem-aes`); an external envelope (HPKE/age) MAY be used only as a cross-substrate profile and is classical-not-PQC.
+
 #### 9.6.2 deliver-entitlement
 
 Seller issues an EntitlementRecord granting the buyer time-bound access to a service.
@@ -657,6 +668,8 @@ type EntitlementRecord = {
 
   renewalSeq: number                   // 0 for the original grant; incremented per renewal (address discriminator)
 
+  credentialRef?: { ref: AttestationRef; accessModel: "buyer-only" | "encrypt-to-buyer" }   // optional access credential delivered via §9.6.1 private delivery; default buyer-only (the only revocable mode)
+
   signature: ComponentSignature
 
 }
@@ -668,9 +681,18 @@ type EntitlementRecord = {
 
 **Exercising the entitlement.** Buyer presents the EntitlementRecord (or its hash + anchor) at the record's `serviceEndpoint` to access the entitled service. The record is a self-contained receipt — it names the grantee, the scope, the validity window, and where to exercise it — so the buyer needs nothing beyond the record itself. The service endpoint verifies the signature and anchor, checks now is within [startsAt, endsAt], and serves accordingly.
 
-> **Note (non-normative).** `serviceEndpoint` carries *where* to access. How an access **credential / token** is delivered (vs. presenting the record itself as the bearer proof) is an out-of-band auth concern not specified in v0.1 — see roadmap.
+> **Note (non-normative).** `serviceEndpoint` carries *where* to access. *How* an access **credential / token** is delivered (vs. presenting the record itself as the bearer proof) is the optional `credentialRef` defined below — delivered via §9.6.1 private delivery (DV-5 / DV-6).
 
 **Renewal.** If renewable: true and the buyer re-pays before endsAt, the seller MAY issue a new EntitlementRecord with extended endsAt, the same jobId, and an **incremented renewalSeq**, anchored at dacs4:entitlement:{jobId}:{renewalSeq}. The renewalSeq discriminator gives each renewal a distinct SR-2 address so it does not collide with or overwrite the original grant (the address is otherwise fully determined by jobId on immutable content-addressed storage). A consumer resolves the current grant by reading the highest renewalSeq present for the jobId.
+
+**Access-credential handover (`credentialRef`).** An EntitlementRecord MAY carry a `credentialRef` — an access credential (e.g. an API key / token) delivered to the grantee via §9.6.1 private delivery, default `buyer-only` (the only mode that can be revoked when the entitlement ends). It is private content, so it follows DV-1..DV-4. Because the credential lives behind a mutable ACL while the entitlement's validity is its signed window, the two can diverge — so the verification questions MUST be kept separate:
+
+- (DV-5) **Three gates, never collapsed.** For a `credentialRef` entitlement:
+  - **delivered** — `SettlementEvidence` binds the `credentialRef` and the credential's cleartext digest (DV-1) at the settled `renewalSeq`. Settlement evidence asserts ONLY this.
+  - **valid** — the signed `[startsAt, endsAt]` window at the highest `renewalSeq`. Read from the record, NOT from the ACL.
+  - **readable** — the ACL read at access time.
+  `SettlementEvidence` MUST NOT assert `valid` or `readable`: a credential being *delivered* is neither the entitlement being *valid* nor the credential being *currently readable*.
+- (DV-6) **Readability verdict (do-not-collapse).** A consumer checking whether the buyer can currently read the credential MUST distinguish: in `allowed` and not blacklisted → **readable**; entitlement window lapsed → **clean negative** (lifecycle); buyer dropped from `allowed` / blacklisted → **revoked**; ACL or storage unresolvable → **`indeterminate`** — a transient outage MUST NOT be read as a revocation.
 
 #### 9.6.3 deliver-attested-payload
 

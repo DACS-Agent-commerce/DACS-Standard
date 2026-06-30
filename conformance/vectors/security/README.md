@@ -2,7 +2,7 @@
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
 of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-identity/vetting (§7.3.2), and VerifyResult acceptance (§7.12). These complement the lifecycle vectors in the
+identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), and rail-availability selection (§9.4.4). These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -146,6 +146,22 @@ Each entry in `vectors[]`:
 | `ctx` | consumer context (`claimUnderVerification`, `pinnedRecipeVersion`, `expectedBundleHash?`, `stewardPub`, `now?`) |
 
 Run (reference): `npx tsx conformance/security-vectors/verifyresult-acceptance/run.mts` → 13/13.
+
+### `rail-availability-selection-v0.1.json` — §9.4.4 (rail-availability selection + poisoning)
+
+15 vectors for the §9.4.4 rail-availability rules and the availability-field poisoning defence (#158 gap #13):
+
+- **RAV-R2** — an orchestrator MUST NOT select a rail whose `availability` is `disabled` or `failed`.
+- **RAV-R1** — a non-`live` availability (e.g. `mocked`) MUST NOT be treated as `live`.
+- **RAV-R3** — `operator_gated` / `closed_data` / `bilateral` are selectable ONLY when the operator-side preflight is satisfied (a runtime check).
+- **RAV-R5 (poisoning)** — `availability` MUST be read from the steward-signed **and pinned/anchored** `dacs-rail:v1:` definition. A valid signature alone is insufficient: an unsigned/counterparty copy, or a validly-signed-but-**stale/cached** copy that is not the pinned definition, MUST NOT steer selection.
+
+Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved, or no pinned reference to compare against, → `indeterminate` (not a silent pass); malformed def / unknown availability value → `error`.
+
+#### Vector schema
+Each entry in `vectors[]`: `name`, `expected` (§7.5.1 4-value), `note`, `rail` (`railId`, `availability`, `railVersion?`, `stewardSig`), `ctx` (`stewardPub`, `operatorPreflightOk`, `pinnedRailDigest`).
+
+Run (reference): `npx tsx conformance/security-vectors/rail-availability-selection/run.mts` → 15/15.
 
 ## Status
 

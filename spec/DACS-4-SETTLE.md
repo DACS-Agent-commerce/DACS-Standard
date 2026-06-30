@@ -822,6 +822,18 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
 
 *Not an amendment: ST-8 supersession.* The ST-8 cross-chain asymmetric resolution does NOT use an amendment at all. It is a same-phase supersession recorded via the success record's `supersedesEvidenceRef` (§10.3.1 ST-8); `supersedesEvidenceRef` is not an `amendsEvidenceRef` and is not subject to AMEND-1..4. A post-resolution refund MUST reference the `:resolved` success record — whose `outcome == "success"` — not the superseded interim `failure` record, which is AMEND-2-ineligible.
 
+#### 9.7.2 Disclosed-fee reconciliation (informational)
+
+A consumer MAY reconcile a DACS-3 `feeSchedule` disclosure (§8.5.3) against actual settlement. The reconciliation is **informational and non-gating**: it MUST NOT block, revert, or retry settlement, MUST NOT alter any `outcome`, and MUST NOT book a fault. It **observes** the disclosed-vs-actual gap; it does NOT reallocate funds — who effectively bears a gap is determined by `priceBasis` and the rail's fund flow, not by this rule.
+
+- (FR-1) **Scope.** Only a `kind == "network"` item is reconcilable — against `SettlementEvidence.paymentFee` (the chain/provider fee). `platform` / `processing` / `spread` / `subscription` items are off-chain and remain disclosure-only (the signed pre-commit record is the artifact).
+- (FR-2) **`rateBps → amount` (canonical).** A `rateBps` item resolves to `amount = price.amount × rateBps ÷ 10000`, computed as a canonical decimal (rule CD-1, CORE §B.2) **rounded half-up to the settlement asset's decimal precision** (the rail `AssetSpec.decimals`). Two implementations MUST derive an identical amount.
+- (FR-3) **Expected total via `priceBasis`.** The expected payer-total MUST be computed according to the disclosure's `priceBasis` (inclusive vs exclusive); two consumers MUST NOT disagree on whether a schedule reconciles because they assumed different bases.
+- (FR-4) **Verdict — do-not-collapse** (mirroring the §7.5.1 decision semantics):
+  - *reconciles* — the actual `network` fee is within the item's `toleranceBps` of the disclosed estimate (absent `toleranceBps` ⇒ exact), and any `fixed` / `rateBps`-derived amount matches **exactly** after FR-2 rounding (these are deterministic — no tolerance applies to them).
+  - *diverged* — resolves but beyond tolerance. The consumer records a **provenanced informational flag** carrying the **signed delta** (`paymentFee − disclosed`) and the breached tolerance, so under-disclosure (payer charged more than disclosed) is distinguishable from over-disclosure.
+  - *indeterminate* — the actual fee or the agreement cannot be resolved. This MUST NOT be reported as `diverged`: a transient resolution failure is not a divergence.
+
 ### 9.8 Cross-chain atomic settlement (SR-5)
 
 Atomic settlement across chains requires SR-5: either substrate-native cross-chain transactions, HTLC contracts on participating chains, or pre-funded liquidity primitives (Liquidity Tanks on Demos).

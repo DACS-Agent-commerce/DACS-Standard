@@ -15,7 +15,13 @@ The format used per release:
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added — DACS-3 v0.2
+
+- **`FeeSchedule` disclosure** (§8.5.3, §8.5; #186) — an optional, signed pre-commit `terms.feeSchedule` on the AgreementDocument for regulated-context cost transparency (EU MiCA / US MSB). New `FeeSchedule` / `FeeItem` types: itemised fees (`kind`, `collector`, `fixed` | `rateBps`), `priceBasis` (inclusive/exclusive), split `oneOffTotal` / `recurringTotal`, optional `recurrence` (subscription cadence) + `minimumTermSeconds` + `earlyTerminationFee`. **Disclosure-only / non-gating** — does not alter `terms.price` or gate Settle (FS-1..FS-5); `recurrence` discloses a committed ongoing cost, never a charge trigger (recurring *settlement* stays the streaming/subscription roadmap item); `earlyTerminationFee` is a disclosure shape only, with fee-bearing-cancellation semantics deferred to a dedicated §10.3.1 (ST-10 `with-fee`) pass. Bumps **DACS-3 to v0.2** (its first capability bump). Additive, minor-safe under §11.1.2 (optional field, SIG-5 preserve-unknown, never gates Settle). Design + sign-off: cX3po + xm33.
+
+### Added — DACS-4 v0.2
+
+- **Disclosed-fee reconciliation** (§9.7.2; #186) — an **informational, non-gating** verifier rule reconciling a DACS-3 `feeSchedule` against actual settlement. Scoped to the **`network`-kind item only** (against `SettlementEvidence.paymentFee`); off-chain fees (platform/processing/spread/subscription) stay disclosure-only (FR-1). Pins the canonical **`rateBps → amount`** computation — `price × rateBps ÷ 10000`, CD-1 canonical decimal, **half-up to the settlement asset's `decimals`** — so two impls derive identical amounts (FR-2); expected total computed via `priceBasis` (FR-3). Do-not-collapse verdict (FR-4): *reconciles* (network within self-declared `toleranceBps`, default exact; `fixed`/`rateBps` exact after rounding) / *diverged* (provenanced flag carrying the signed delta — under- vs over-disclosure) / *indeterminate* (actual fee or agreement unresolvable — never `diverged`). Observes, does not reallocate (incidence is set by `priceBasis` + rail fund flow). Conformance-vector shapes (recurrence-non-gating + network-fee reconciliation incl. the `indeterminate` arm) to follow (cX3po).
 
 ## [0.2] — 2026-06-26
 

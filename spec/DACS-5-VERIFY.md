@@ -234,7 +234,7 @@ type BundlePhaseEntry = {
 
   txRefs?: ChainTxRef[]
 
-  attestationRef?: AttestationRef
+  attestationRef?: AttestationRef             // OPTIONAL per-phase back-pointer to the artifact this phase produced (settle → its SettlementEvidence, vet → its VerifyResult). The authoritative attestation set is the top-level settlementEvidence[] / vetRecords[]; see §10.4.3.
 
 }
 
@@ -304,6 +304,8 @@ A bundle MUST be produced when the session reaches a terminal state. The bundle 
 - DACS-5 ratings (if the rate phase ran).
 
 The bundle MUST NOT include references to any record outside the session’s scope.
+
+**Per-phase `attestationRef` (optional).** A `phaseSummary[]` entry's `attestationRef` is **OPTIONAL** — the authoritative attestation set is the bundle's top-level `vetRecords[]` and `settlementEvidence[]` arrays (per the rules above), and a bundle that omits the per-phase pointer is well-formed. A validator MUST NOT reject a bundle solely because a `phaseSummary` entry omits `attestationRef`. A phase that produced a durable anchored attestation — a settle phase → its `SettlementEvidence`, a vet phase → its `VerifyResult` — **SHOULD** carry `attestationRef` linking to it, so the per-phase → evidence mapping is unambiguous in multi-phase pipelines where the flat top-level arrays alone cannot say which record belongs to which phase invocation.
 
 **For sessions terminating before commit-agreement** (aborted-by-self/other in Vet or Negotiate), the bundle MUST include the available vetRecords and a phaseSummary marking the failed phase; agreementRef is omitted.
 

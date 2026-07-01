@@ -1,0 +1,484 @@
+{
+  "set": "private-deliverables-v0.1",
+  "spec": "DACS-4 \u00a79.3 / \u00a79.6.1 / \u00a79.6.2 (DV-1..DV-6)",
+  "decisionModel": "DV-1..DV-5: \u00a77.5.1 4-value (pass|fail|indeterminate|error). DV-6: \u00a79.6.2 readability four-way (readable|clean-negative|ACL-dropped|indeterminate) \u2014 a distinct verdict axis, never collapsed into pass/fail.",
+  "hash": "da6c16c5c96b319316260894b50c309ba8e2d18f5e342287a200b95aa05f0373",
+  "count": 16,
+  "vectors": [
+    {
+      "name": "dv1-content-hash-invariant-across-modes",
+      "expected": "pass",
+      "rule": "DV-1",
+      "note": "deliverableContentHash = sha256 of the cleartext canonical payload, byte-identical across public / buyer-only / encrypt-to-buyer; settlement evidence binds the same digest regardless of access mode.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "deliveries": [
+        {
+          "accessModel": "public",
+          "deliverableContentHash": "68709da69084147e557e3c4cc785323bdb13dca3ad74971d6a14e434fa9b7145",
+          "hashedOver": "cleartext"
+        },
+        {
+          "accessModel": "buyer-only",
+          "deliverableContentHash": "68709da69084147e557e3c4cc785323bdb13dca3ad74971d6a14e434fa9b7145",
+          "hashedOver": "cleartext"
+        },
+        {
+          "accessModel": "encrypt-to-buyer",
+          "deliverableContentHash": "68709da69084147e557e3c4cc785323bdb13dca3ad74971d6a14e434fa9b7145",
+          "hashedOver": "cleartext"
+        }
+      ]
+    },
+    {
+      "name": "dv1-content-hash-over-ciphertext",
+      "expected": "fail",
+      "rule": "DV-1",
+      "note": "encrypt-to-buyer delivery whose deliverableContentHash was taken over the ciphertext, not the cleartext \u2014 MUST be the cleartext digest, so this fails.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "delivery": {
+        "accessModel": "encrypt-to-buyer",
+        "deliverableContentHash": "503ef83e07a3475b36a616839ac76a3d5aef5c890dcc81490127a9f6763fab85",
+        "hashedOver": "ciphertext",
+        "expectedCleartextDigest": "68709da69084147e557e3c4cc785323bdb13dca3ad74971d6a14e434fa9b7145"
+      }
+    },
+    {
+      "name": "dv2-declared-private-delivered-public",
+      "expected": "indeterminate",
+      "flag": "confidentiality-downgrade",
+      "rule": "DV-2",
+      "note": "declared non-public (buyer-only) but resolved as delivered public \u2014 MUST emit indeterminate (a provenanced confidentiality-downgrade flag), never pass.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "delivery": {
+        "declaredAccessModel": "buyer-only",
+        "deliveredAccessModel": "public"
+      }
+    },
+    {
+      "name": "dv2-over-provision-public-delivered-private",
+      "expected": "pass",
+      "rule": "DV-2",
+      "note": "declared public but delivered private (buyer-only) \u2014 over-provision is NOT a violation.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "delivery": {
+        "declaredAccessModel": "public",
+        "deliveredAccessModel": "buyer-only"
+      }
+    },
+    {
+      "name": "dv3-buyer-only-acl-bound-buyer",
+      "expected": "pass",
+      "rule": "DV-3",
+      "note": "buyer-only: ACL allowed entry is the agreement-bound buyer AgreementParty (\u00a78.5) address.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "delivery": {
+        "accessModel": "buyer-only",
+        "acl": {
+          "allowed": [
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          ],
+          "blacklist": []
+        }
+      }
+    },
+    {
+      "name": "dv3-buyer-only-acl-foreign-address",
+      "expected": "fail",
+      "rule": "DV-3",
+      "note": "buyer-only: ACL allowed entry is a separately-presented address, not the agreement-bound buyer \u2014 MUST fail.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "delivery": {
+        "accessModel": "buyer-only",
+        "acl": {
+          "allowed": [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "blacklist": []
+        }
+      }
+    },
+    {
+      "name": "dv3-encrypt-sealed-to-buyer-key",
+      "expected": "pass",
+      "rule": "DV-3",
+      "note": "encrypt-to-buyer: payload sealed to the buyer AgreementParty.encryptionKey.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "delivery": {
+        "accessModel": "encrypt-to-buyer",
+        "sealedTo": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      }
+    },
+    {
+      "name": "dv3-encrypt-sealed-to-wrong-key",
+      "expected": "fail",
+      "rule": "DV-3",
+      "note": "encrypt-to-buyer: payload sealed to a key that is NOT the agreement buyer's AgreementParty.encryptionKey \u2014 MUST fail.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "delivery": {
+        "accessModel": "encrypt-to-buyer",
+        "sealedTo": "cfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcfcf"
+      }
+    },
+    {
+      "name": "dv4-credentialref-acl-mutation-anchored",
+      "expected": "pass",
+      "rule": "DV-4",
+      "note": "credentialRef entitlement: a later ACL mutation is recorded as an anchored, signed record \u2014 the MUST is satisfied.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        }
+      },
+      "aclMutation": {
+        "op": "add-reader",
+        "anchored": true,
+        "signed": true,
+        "anchorRef": "dacs4:entitlement:job-E:0"
+      }
+    },
+    {
+      "name": "dv4-credentialref-acl-mutation-unanchored",
+      "expected": "fail",
+      "rule": "DV-4",
+      "note": "credentialRef entitlement: an ACL mutation NOT anchored/signed \u2014 for a credentialRef-backed entitlement the anchored+signed record is a MUST (not merely SHOULD), so this fails.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        }
+      },
+      "aclMutation": {
+        "op": "add-reader",
+        "anchored": false,
+        "signed": false,
+        "anchorRef": null
+      }
+    },
+    {
+      "name": "dv5-settlement-evidence-delivered-only",
+      "expected": "pass",
+      "assertedGates": [
+        "delivered"
+      ],
+      "rule": "DV-5",
+      "note": "credentialRef entitlement: SettlementEvidence binds the credentialRef + credential cleartext digest (DV-1) at the settled renewalSeq and asserts ONLY delivered \u2014 never valid or readable.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "startsAt": 1750000000000,
+        "endsAt": 1750003600000
+      },
+      "settlementEvidence": {
+        "deliverableContentHash": "02ec3847e105f94d67e7b6c702bdeb9b596cae37d7a170644520441dae027696",
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "settledRenewalSeq": 0,
+        "asserts": [
+          "delivered"
+        ]
+      }
+    },
+    {
+      "name": "dv5-settlement-evidence-overclaims-readable",
+      "expected": "fail",
+      "assertedGates": [
+        "delivered",
+        "readable"
+      ],
+      "rule": "DV-5",
+      "note": "SettlementEvidence over-asserts readable \u2014 collapsing the delivered / valid / readable gates. Evidence MUST NOT assert readable (or valid); this fails.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "startsAt": 1750000000000,
+        "endsAt": 1750003600000
+      },
+      "settlementEvidence": {
+        "deliverableContentHash": "02ec3847e105f94d67e7b6c702bdeb9b596cae37d7a170644520441dae027696",
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "settledRenewalSeq": 0,
+        "asserts": [
+          "delivered",
+          "readable"
+        ]
+      }
+    },
+    {
+      "name": "dv6-readable",
+      "expected": "readable",
+      "readability": "readable",
+      "rule": "DV-6",
+      "note": "buyer in allowed and not blacklisted, now within [startsAt, endsAt] -> readable.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "startsAt": 1750000000000,
+        "endsAt": 1750003600000
+      },
+      "acl": {
+        "allowed": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ],
+        "blacklist": []
+      },
+      "now": 1750001800000
+    },
+    {
+      "name": "dv6-window-lapsed-clean-negative",
+      "expected": "clean-negative",
+      "readability": "clean-negative",
+      "rule": "DV-6",
+      "note": "entitlement window lapsed (now > endsAt) though the ACL still allows the buyer -> clean negative (lifecycle), NOT an ACL-drop. A negative verdict, but distinct from channel-unreadable.",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "startsAt": 1750000000000,
+        "endsAt": 1750003600000
+      },
+      "acl": {
+        "allowed": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ],
+        "blacklist": []
+      },
+      "now": 1750007200000
+    },
+    {
+      "name": "dv6-acl-dropped-channel-unreadable",
+      "expected": "ACL-dropped",
+      "readability": "ACL-dropped",
+      "rule": "DV-6",
+      "note": "buyer blacklisted (channel-provable via the anchored ACL mutation, DV-4) while now is within the window -> ACL-dropped (channel-unreadable). Same top verdict as clean-negative but a DIFFERENT readability label \u2014 the gates MUST NOT be collapsed. Not by itself credential invalidation (endpoint rotation is off-DACS-scope).",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "startsAt": 1750000000000,
+        "endsAt": 1750003600000
+      },
+      "acl": {
+        "allowed": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ],
+        "blacklist": [
+          "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ]
+      },
+      "now": 1750001800000
+    },
+    {
+      "name": "dv6-acl-storage-unresolvable",
+      "expected": "indeterminate",
+      "readability": "indeterminate",
+      "rule": "DV-6",
+      "note": "ACL/storage unresolvable (transient outage) while now is within the window -> indeterminate. A transient outage MUST NOT be read as channel-unreadable (ACL-dropped).",
+      "agreementBuyer": {
+        "role": "buyer",
+        "primaryClaim": {
+          "scheme": "cci",
+          "identifier": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        },
+        "address": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "encryptionKey": "bebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebebe"
+      },
+      "entitlement": {
+        "jobId": "job-E",
+        "renewalSeq": 0,
+        "credentialRef": {
+          "ref": {
+            "scheme": "attref",
+            "id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          },
+          "accessModel": "buyer-only"
+        },
+        "startsAt": 1750000000000,
+        "endsAt": 1750003600000
+      },
+      "acl": null,
+      "now": 1750001800000
+    }
+  ]
+}

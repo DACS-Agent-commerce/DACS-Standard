@@ -2,7 +2,7 @@
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
 of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), rail-availability selection (§9.4.4), sealed-envelope bid admission (§8.4.3), and channel-message replay (§8.3.3 + CH-6). These complement the lifecycle vectors in the
+identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), rail-availability selection (§9.4.4), sealed-envelope bid admission (§8.4.3), channel-message replay (§8.3.3 + CH-6), and private-deliverable / entitlement-credential delivery (§9.6.1 / §9.6.2, DV-1..DV-6). These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -216,6 +216,74 @@ Run (reference): `npx tsx conformance/security-vectors/rail-availability-selecti
 A top-level `ctx` (`commitDeadline`, `revealWindowSec`, `authenticatedSender`); each entry in `vectors[]`: `name`, `expected`, `note`, `commit` (`bidHash`, `bidderClaim`, `commitTimestamp`, `anchorTimestamp`), `reveal` (`bid`, `salt`, `anchorTimestamp`) or `null`.
 
 Run (reference): `npx tsx conformance/security-vectors/sealed-envelope-deadline/run.mts` → 15/15.
+
+### `private-deliverables-v0.1.json` — §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6, private delivery + entitlement credentials)
+
+16 vectors for the private-delivery (`accessModel`) and `credentialRef`-entitlement
+rules — the six DV rows defined at §9.6.1 and §9.6.2. They assert that access mode,
+buyer binding, audit trail, and the delivered/valid/readable gates behave identically
+across implementations, and that the DV-6 readability verdict is **never collapsed**:
+
+- **DV-1 content-hash invariant (§9.6.1)** — `deliverableContentHash` MUST be the
+  sha256 of the **cleartext** canonical payload, byte-identical across `public` /
+  `buyer-only` / `encrypt-to-buyer`, never the ciphertext. A pass case shows the same
+  digest across all three modes; a fail case takes the hash over the ciphertext.
+- **DV-2 access-mode fidelity (§9.6.1)** — a declared non-`public` deliverable resolved
+  as delivered `public` ⇒ `indeterminate` (a provenanced `confidentiality-downgrade`
+  flag), never `pass`; over-provision (declared `public`, delivered private) is NOT a
+  violation (`pass`).
+- **DV-3 buyer binding (§9.6.1)** — under `buyer-only` the ACL `allowed` entry MUST be
+  the agreement-bound buyer `AgreementParty` (§8.5) address (a foreign, separately-
+  presented address ⇒ `fail`); under `encrypt-to-buyer` the payload MUST be sealed to
+  that party's `AgreementParty.encryptionKey` (a different key ⇒ `fail`).
+- **DV-4 ACL-mutation auditability (§9.6.1)** — a deliverable ACL mutation SHOULD be an
+  anchored+signed record, and MUST be for a `credentialRef` entitlement (§9.6.2); an
+  unanchored `credentialRef` ACL mutation ⇒ `fail`.
+- **DV-5 three gates never collapsed (§9.6.2)** — for a `credentialRef` entitlement,
+  `SettlementEvidence` asserts ONLY **delivered** (binds the `credentialRef` + credential
+  cleartext digest at the settled `renewalSeq`), never **valid** or **readable**; evidence
+  that over-asserts `readable` ⇒ `fail`.
+- **DV-6 readability verdict, do-not-collapse (§9.6.2)** — in `allowed` & not blacklisted
+  ⇒ **readable** (`pass`); entitlement window lapsed ⇒ **clean-negative** (`fail`,
+  lifecycle); buyer dropped from `allowed` / blacklisted ⇒ **ACL-dropped
+  (channel-unreadable)** (`fail`); ACL/storage unresolvable ⇒ **indeterminate** — a
+  transient outage MUST NOT be read as channel-unreadable. One vector per arm.
+
+Decision is the §7.5.1 four-value verdict, never collapsed. Because DV-6's four
+readability outcomes do not map one-to-one onto the four verdicts (both `clean-negative`
+and `ACL-dropped` are negatives), the four-way readability label is carried in a
+**companion `readability` field** alongside the top `expected` verdict (mirroring how
+`sb2-settlement-uniqueness` splits `decision`/`effect`). DV-2's downgrade case likewise
+carries a companion `flag`, and DV-5 an `assertedGates` list.
+
+#### Vector schema
+Each entry in `vectors[]`:
+
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `expected` | §7.5.1 verdict: `pass` \| `fail` \| `indeterminate` \| `error` (never collapsed) |
+| `rule` | the DV rule exercised (`DV-1`..`DV-6`) |
+| `note` | human-readable rationale |
+| `readability` | *(DV-6 only)* four-way readability label: `readable` \| `clean-negative` \| `ACL-dropped` \| `indeterminate` |
+| `flag` | *(DV-2 downgrade only)* `confidentiality-downgrade` |
+| `assertedGates` | *(DV-5 only)* the gates the `SettlementEvidence` asserts |
+| `agreementBuyer` | the agreement-bound buyer `AgreementParty` (§8.5): `role`, `primaryClaim`, resolved `address`, `encryptionKey` |
+| `delivery` / `deliveries` | the delivery under test (`accessModel`, `deliverableContentHash`, `hashedOver`, `acl`, `sealedTo`, declared/delivered mode…) |
+| `entitlement` | *(DV-4..6)* the EntitlementRecord binding (`jobId`, `renewalSeq`, `credentialRef`, `startsAt`, `endsAt`) |
+| `aclMutation` / `settlementEvidence` / `acl` / `now` | per-rule context for DV-4 (audit record), DV-5 (evidence gates), DV-6 (ACL + evaluation instant) |
+
+Fixtures are deterministic: addresses/keys are fixed hex; `deliverableContentHash` values
+are the real `sha256` of the canonical (JCS) cleartext payload (`hashedOver: "cleartext"`),
+and the DV-1 fail case's hash is `sha256` over a distinct ciphertext byte-string; timestamps
+are integer unix-ms. Entitlement window is `[1750000000000, 1750003600000]`.
+
+#### Running
+Language-neutral data: feed each vector's inputs to a §9.6 verifier and assert `expected`
+(plus `readability` for DV-6). The set-level `hash` is
+`sha256(JSON.stringify(vectors))` with sorted keys and ASCII-escaped output (the
+`verifyresult-acceptance` convention); `count` MUST equal `vectors.length` (16). This set
+awaits a reference `run.mts` and a second independent impl to cross-run against.
 
 ## Status
 

@@ -952,7 +952,7 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 
 **Liquidity Tank operator compromise.** *Threat:* the substrate validator shard operating Liquidity Tanks is compromised. *Mitigation:* the substrate’s security model (2/3 BFT multisig on Demos, 15-day emergency-recovery on Demos) is the floor. Listings handling high-stakes flows over Liquidity Tanks SHOULD evaluate the substrate’s validator-shard security; for the highest stakes, HTLC is recommended.
 
-**AP2 mandate replay.** *Threat:* an old AP2 mandate is replayed against the provider. *Mitigation:* AP2 mandates include a nonce and an expiry; the provider rejects replays. DACS-4 inherits AP2’s anti-replay properties.
+**AP2 mandate replay.** *Threat:* an old AP2 mandate is replayed against the provider. *Mitigation:* AP2 mandates carry a nonce and an expiry, which are **upstream AP2 evidence** — DACS-4 records the `ap2` txRef (mandateId, providerRef, protocolVersion) and anchors it via SR-2, rather than inheriting AP2’s anti-replay guarantee. The DACS-side binding of the cited mandate to *this* action (jobId / payer / payee / amount / phase — the SB-3 equivalent) lands with `pay-ap2` reference-backing (roadmap; see the §9.5.6 honest-disclosure note).
 
 **x402 payment-receipt forgery.** *Threat:* a server claims payment it did not receive. *Mitigation:* x402 settles on-chain, so the primary audit is verifying the anchored `settlementTxHash` against the settlement chain — like the `evm` rail, not server- or facilitator-forgeable (§9.5.7). Where no settlement tx is returned, verification falls back to the facilitator-signed receipt (processor-attested, not chain-verified). Buyer-side x402 wallets SHOULD keep a local record of submitted payments.
 

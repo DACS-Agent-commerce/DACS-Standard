@@ -2,7 +2,7 @@
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
 of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), rail-availability selection (§9.4.4), sealed-envelope bid admission (§8.4.3), channel-message replay (§8.3.3 + CH-6), and private-deliverable / entitlement-credential delivery (§9.6.1 / §9.6.2, DV-1..DV-6). These complement the lifecycle vectors in the
+identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), rail-availability selection (§9.4.4), sealed-envelope bid admission (§8.4.3), channel-message replay (§8.3.3 + CH-6), fee disclosure + disclosed-fee reconciliation (§8.5.3 FS-1..FS-5, §9.7.2 FR-1..FR-4), and private-deliverable / entitlement-credential delivery (§9.6.1 / §9.6.2, DV-1..DV-6). These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -285,6 +285,46 @@ Language-neutral data: feed each vector's inputs to a §9.6 verifier and assert 
 `verifyresult-acceptance` convention); `count` MUST equal `vectors.length` (16). This set
 awaits a reference `run.mts` and a second independent impl to cross-run against.
 
+### `feeschedule-reconciliation-v0.1.json` — §8.5.3 FS-1..FS-5 + §9.7.2 FR-1..FR-4 (fee disclosure + disclosed-fee reconciliation)
+
+17 vectors for the optional DACS-3 `feeSchedule` cost-disclosure (§8.5.3) and the informational DACS-4 disclosed-fee reconciliation (§9.7.2), requested by RB on #186. Two distinct operations are exercised, so each vector carries an `op` discriminator and its `expected` verdict is read in that op's vocabulary:
+
+- **`validate-feeschedule`** — is the `feeSchedule` shape conformant? `expected` ∈ the §7.5.1 4-value `pass` \| `fail` \| `indeterminate` \| `error`. Covers **FS-1** (priceBasis REQUIRED + `oneOffTotal.currency == terms.price.currency`), **FS-2** (each `FeeItem` exactly one of `fixed`\|`rateBps`), **FS-5** (`earlyTerminationFee` is a disclosure shape only, semantics per §10.3.1).
+- **`reconcile`** — does the disclosure reconcile against actual settlement? `expected` ∈ the **FR-4 trichotomy** `reconciles` \| `diverged` \| `indeterminate` (+`error` for malformed), *never collapsed* — a transient/absent resolution is `indeterminate`, never silently `diverged`. Covers **FR-1** (only `kind=="network"` reconciles vs `SettlementEvidence.paymentFee`; platform/processing/spread/subscription stay disclosure-only), **FR-2** (`rateBps → amount = price.amount × rateBps ÷ 10000`, canonical decimal, **half-up to the settlement asset's decimals**), **FR-3** (expected payer-total via `priceBasis` inclusive vs exclusive), **FR-4** (the reconciles/diverged/indeterminate trichotomy), and **FS-4** (a `recurrence` item is an ongoing disclosed cost, reconciled on the one-off only — never a charge trigger / never in a gating path).
+- **`settle-gate`** — proves **FS-3**: a disclosed fee that mismatches actual settlement MUST NOT gate settlement; the settlement verdict stays `pass`. A `reconcile` op on the same data would return `diverged`, but that is informational and never blocks/reverts/retries settlement.
+
+Fee math is exact-decimal (no float): the FR-2 boundary case `50 × 25 ÷ 10000 = 0.125` rounds **half-up** to `0.13` at 2-decimal precision (half-even would wrongly give `0.12`).
+
+#### Vector schema
+
+Each entry in `vectors[]`:
+
+| field                | meaning |
+|----------------------|---------|
+| `name`               | stable case id |
+| `rule`               | the normative rule exercised: `FS-1`..`FS-5` (§8.5.3) or `FR-1`..`FR-4` (§9.7.2) |
+| `op`                 | operation under test: `validate-feeschedule` \| `reconcile` \| `settle-gate` |
+| `expected`           | verdict in `op`'s vocabulary (see above) |
+| `note`               | human-readable rationale (with the arithmetic where it applies) |
+| `agreement`          | the `AgreementDocument` slice under test (`terms.price` + `terms.feeSchedule`) |
+| `settlement`         | `SettlementEvidence` slice (`paymentAmount`, `paymentFee?`, `outcome`…) — present for `reconcile`/`settle-gate`; absent for pure validation |
+| `rail`               | settlement `AssetSpec` (carries `decimals` for FR-2 rounding) — present where decimals matter |
+| `expectedPayerTotal` | expected payer-total for the FR-3 `priceBasis` cases (distinguishes inclusive vs exclusive) |
+| `reconciliation`     | provenanced divergence detail on the FR-4 `diverged` case (`signedDelta`, `breachedToleranceBps`, `direction`) |
+
+#### Hash / count convention
+
+`count` is the number of `vectors[]`. `hash` is `sha256(canonical_json(vectors))` where `canonical_json` is exactly `scripts/validate_conformance_vectors.py::canonical_json` (`json.dumps(..., sort_keys=True, separators=(",",":"), ensure_ascii=False)`) applied to the `vectors` array. Regenerate with the set's builder; the security subdirectory is excluded from the lifecycle shape-check glob (see the shape note above), so the §-references (validated by `scripts/validate_spec_refs.py`) are the CI-enforced surface here.
+
+#### Running
+
+Language-neutral data: feed each `agreement` (+ `settlement`/`rail` where present) to your §8.5.3 / §9.7.2 implementation and assert `expected` for the given `op`. Reference run (pending) lives in `pathos-dacs-ref`:
+
+```
+npx tsx conformance/security-vectors/feeschedule-reconciliation/run.mts
+# → 17/17 vectors pass
+```
+
 ## Status
 
 **Proposed / candidate** — independent reference-impl security vectors, derived
@@ -293,3 +333,5 @@ maintainer disposition of normative status and of whether they fold into the
 generated `conformance/MANIFEST.json` surface alongside `dacs-verify`'s. SB-2's
 EVM row is cross-run-converged with `dacs-verify` (#159); agreement-listing and
 vp-replay await a second independent impl to cross-run against.
+`feeschedule-reconciliation` was authored on RB's request (#186) covering §8.5.3
+FS-1..FS-5 + §9.7.2 FR-1..FR-4; awaiting a second independent impl to cross-run against.

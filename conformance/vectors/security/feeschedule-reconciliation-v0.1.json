@@ -1,0 +1,823 @@
+{
+  "set": "feeschedule-reconciliation-v0.1",
+  "spec": "DACS-3 \u00a78.5.3 (FS-1..FS-5); DACS-4 \u00a79.7.2 (FR-1..FR-4)",
+  "decisionModel": "validate-feeschedule op -> \u00a77.5.1 4-value {pass|fail|indeterminate|error}; reconcile op -> FR-4 trichotomy {reconciles|diverged|indeterminate} (+error for malformed); settle-gate op -> settlement verdict, proving FS-3 non-gating. Never collapsed.",
+  "hash": "4a6b6f45084d2d2b55d2ceb42105fdd7cf8bb5555b24cc18b48e5179f3cef3af",
+  "count": 17,
+  "vectors": [
+    {
+      "name": "fs1-pass-basis-present-currency-match",
+      "rule": "FS-1",
+      "op": "validate-feeschedule",
+      "expected": "pass",
+      "note": "feeSchedule present -> priceBasis REQUIRED and provided; oneOffTotal.currency == terms.price.currency (both USDC) -> \u00a77.5.1 pass",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "label": "chain-fee",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fs1-fail-missing-pricebasis",
+      "rule": "FS-1",
+      "op": "validate-feeschedule",
+      "expected": "fail",
+      "note": "feeSchedule present but priceBasis omitted -> FS-1 REQUIRES priceBasis when feeSchedule present -> fail (not error: shape parses, rule violated)",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fs1-fail-oneofftotal-currency-mismatch",
+      "rule": "FS-1",
+      "op": "validate-feeschedule",
+      "expected": "fail",
+      "note": "oneOffTotal.currency (EUR) != terms.price.currency (USDC) -> FS-1 currency-equality violated -> fail",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "EUR"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.50",
+              "currency": "EUR"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fs2-pass-exactly-one-per-item",
+      "rule": "FS-2",
+      "op": "validate-feeschedule",
+      "expected": "pass",
+      "note": "each FeeItem carries exactly one of fixed|rateBps (item0 fixed, item1 rateBps) -> FS-2 satisfied -> pass",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                }
+              },
+              {
+                "kind": "platform",
+                "collector": {
+                  "scheme": "cci",
+                  "identifier": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                },
+                "rateBps": 100
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "1.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fs2-fail-both-fixed-and-ratebps",
+      "rule": "FS-2",
+      "op": "validate-feeschedule",
+      "expected": "fail",
+      "note": "item carries BOTH fixed and rateBps -> FS-2 'exactly one' violated -> fail",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                },
+                "rateBps": 10
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fs2-fail-neither-fixed-nor-ratebps",
+      "rule": "FS-2",
+      "op": "validate-feeschedule",
+      "expected": "fail",
+      "note": "item carries NEITHER fixed nor rateBps -> FS-2 'exactly one' violated -> fail",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "label": "chain-fee"
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0",
+              "currency": "USDC"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fs3-mismatch-does-not-gate-settlement",
+      "rule": "FS-3",
+      "op": "settle-gate",
+      "expected": "pass",
+      "note": "disclosed network fee 0.50 but actual paymentFee 2.00 (a real mismatch) -> FS-3: feeSchedule is disclosure-only and MUST NOT gate settlement -> the SETTLEMENT verdict is pass (settles). A separate reconcile op on this data would return 'diverged', but that is informational and never blocks/reverts/reverts settlement.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-a",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "100",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "2.00",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fs4-recurrence-reconciles-oneoff-only",
+      "rule": "FS-4",
+      "op": "reconcile",
+      "expected": "reconciles",
+      "note": "a subscription item carries recurrence (monthly, an ongoing disclosed cost); the one-off network item is 0.30 and actual paymentFee is 0.30. FS-4: recurrence discloses ongoing cost, is never a charge trigger and never enters the settlement-gating/reconciliation path -> reconciliation runs on the one-off network item ONLY -> reconciles.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "20",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.30",
+                  "currency": "USDC"
+                }
+              },
+              {
+                "kind": "subscription",
+                "collector": {
+                  "scheme": "cci",
+                  "identifier": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                },
+                "fixed": {
+                  "amount": "10.00",
+                  "currency": "USDC"
+                },
+                "recurrence": {
+                  "period": "monthly"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.30",
+              "currency": "USDC"
+            },
+            "recurringTotal": {
+              "amount": "10.00",
+              "currency": "USDC"
+            },
+            "minimumTermSeconds": 2592000
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-b",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "20",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "0.30",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fs5-earlytermination-disclosure-shape-only",
+      "rule": "FS-5",
+      "op": "validate-feeschedule",
+      "expected": "pass",
+      "note": "earlyTerminationFee present as a well-formed FeeItem (fixed). FS-5: it is a disclosure shape only; fee-bearing-cancellation semantics are governed by \u00a710.3.1, NOT by this field. Its presence is not a charge trigger -> validation pass.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "20",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.30",
+                  "currency": "USDC"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.30",
+              "currency": "USDC"
+            },
+            "minimumTermSeconds": 7776000,
+            "earlyTerminationFee": {
+              "kind": "other",
+              "collector": {
+                "scheme": "cci",
+                "identifier": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              },
+              "label": "early-termination",
+              "fixed": {
+                "amount": "15.00",
+                "currency": "USDC"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "fr1-platform-item-not-reconciled",
+      "rule": "FR-1",
+      "op": "reconcile",
+      "expected": "reconciles",
+      "note": "schedule discloses a network fee (0.50, reconcilable) and a platform fee (5.00, off-chain). Actual SettlementEvidence.paymentFee is 0.50 (the chain fee only). FR-1: only kind=='network' reconciles against paymentFee; the platform item is disclosure-only and is NOT compared -> the network fee matches exactly -> reconciles.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                }
+              },
+              {
+                "kind": "platform",
+                "collector": {
+                  "scheme": "cci",
+                  "identifier": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                },
+                "fixed": {
+                  "amount": "5.00",
+                  "currency": "USDC"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "5.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-c",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "100",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "0.50",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fr2-ratebps-halfup-boundary-reconciles",
+      "rule": "FR-2",
+      "op": "reconcile",
+      "expected": "reconciles",
+      "note": "FR-2 rateBps derivation at the half-up boundary: 50 * 25 / 10000 = 0.125 exactly; the settlement asset (USDX) has 2 decimals, so 0.125 rounds HALF-UP to 0.13 (half-even would give 0.12 -> that would be wrong). Actual paymentFee is 0.13 -> derived == actual -> reconciles.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "50",
+            "currency": "USDX"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "label": "chain-fee-bps",
+                "rateBps": 25
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.13",
+              "currency": "USDX"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+        "symbol": "USDX",
+        "decimals": 2
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-d",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "50",
+          "currency": "USDX"
+        },
+        "paymentFee": {
+          "amount": "0.13",
+          "currency": "USDX"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fr2-ratebps-exact-no-tolerance-reconciles",
+      "rule": "FR-2",
+      "op": "reconcile",
+      "expected": "reconciles",
+      "note": "FR-2 exact derivation with no toleranceBps: 1000 * 30 / 10000 = 3 (USDC, 6 decimals, no rounding). Absent toleranceBps => the derived network amount MUST match actual paymentFee exactly; paymentFee is 3 -> reconciles.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "1000",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "rateBps": 30
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "3",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-e",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "1000",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "3",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fr3-pricebasis-inclusive-reconciles",
+      "rule": "FR-3",
+      "op": "reconcile",
+      "expected": "reconciles",
+      "note": "FR-3 priceBasis=='inclusive': terms.price (100) is all-in, so the expected payer-total == price.amount == 100 (the 0.50 network fee is carved from within the price, not added). Actual paymentFee 0.50 matches the disclosed network fee (no tolerance => exact) -> reconciles. expectedPayerTotal distinguishes this from the exclusive case.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "inclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "expectedPayerTotal": {
+        "amount": "100",
+        "currency": "USDC"
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-f",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "100",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "0.50",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fr3-pricebasis-exclusive-reconciles",
+      "rule": "FR-3",
+      "op": "reconcile",
+      "expected": "reconciles",
+      "note": "FR-3 priceBasis=='exclusive': fees are added on top, so the expected payer-total == price.amount + fees == 100 + 0.50 == 100.50. Actual paymentFee 0.50 matches the disclosed network fee -> reconciles. Same fee, DIFFERENT expectedPayerTotal than the inclusive case -> two consumers MUST NOT disagree on the basis.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "0.50",
+                  "currency": "USDC"
+                }
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "0.50",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "expectedPayerTotal": {
+        "amount": "100.50",
+        "currency": "USDC"
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-g",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "100",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "0.50",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fr4-network-within-tolerance-reconciles",
+      "rule": "FR-4",
+      "op": "reconcile",
+      "expected": "reconciles",
+      "note": "FR-4 reconciles arm: disclosed network estimate 1.00 with toleranceBps 100 (1% => +/-0.01). Actual paymentFee 1.005 -> |1.005 - 1.00| = 0.005 <= 0.01 -> within tolerance -> reconciles.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "1",
+                  "currency": "USDC"
+                },
+                "toleranceBps": 100
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "1",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-h",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "100",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "1.005",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    },
+    {
+      "name": "fr4-network-outside-tolerance-diverged",
+      "rule": "FR-4",
+      "op": "reconcile",
+      "expected": "diverged",
+      "note": "FR-4 diverged arm: disclosed network estimate 1.00 with toleranceBps 100 (+/-0.01). Actual paymentFee 1.50 -> |0.50| > 0.01 -> beyond tolerance -> diverged. A provenanced informational flag records the SIGNED delta (paymentFee - disclosed = +0.50, under-disclosure: payer charged more than disclosed) and the breached tolerance. This is informational only and does NOT gate settlement.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "1",
+                  "currency": "USDC"
+                },
+                "toleranceBps": 100
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "1",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-i",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "100",
+          "currency": "USDC"
+        },
+        "paymentFee": {
+          "amount": "1.50",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      },
+      "reconciliation": {
+        "signedDelta": "+0.50",
+        "currency": "USDC",
+        "breachedToleranceBps": 100,
+        "direction": "under-disclosure"
+      }
+    },
+    {
+      "name": "fr4-missing-paymentfee-indeterminate",
+      "rule": "FR-4",
+      "op": "reconcile",
+      "expected": "indeterminate",
+      "note": "FR-4 indeterminate arm: SettlementEvidence has NO paymentFee (the actual network fee cannot be resolved). The verdict MUST be indeterminate and MUST NOT be reported as diverged -- a transient/absent resolution is not a divergence. Never silently collapse to diverged.",
+      "agreement": {
+        "terms": {
+          "price": {
+            "amount": "100",
+            "currency": "USDC"
+          },
+          "feeSchedule": {
+            "priceBasis": "exclusive",
+            "items": [
+              {
+                "kind": "network",
+                "collector": "substrate",
+                "fixed": {
+                  "amount": "1",
+                  "currency": "USDC"
+                },
+                "toleranceBps": 100
+              }
+            ],
+            "oneOffTotal": {
+              "amount": "1",
+              "currency": "USDC"
+            }
+          }
+        }
+      },
+      "rail": {
+        "kind": "erc20",
+        "chainId": 8453,
+        "contract": "0xabababababababababababababababababababab",
+        "symbol": "USDC",
+        "decimals": 6
+      },
+      "settlement": {
+        "evidenceVersion": "1",
+        "jobId": "job-fee-j",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentAmount": {
+          "amount": "100",
+          "currency": "USDC"
+        },
+        "observedAt": 1780000000000
+      }
+    }
+  ]
+}

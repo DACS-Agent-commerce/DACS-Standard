@@ -28,6 +28,12 @@ jobs:
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
 
+      - name: Validate security vector sets (candidate tier)
+        run: python3 scripts/validate_security_vectors.py
+
+      - name: Verify security vector index is in sync
+        run: python3 scripts/generate_security_vector_index.py --check
+
       - name: Validate domain separators
         run: python3 scripts/validate_domain_separators.py
 

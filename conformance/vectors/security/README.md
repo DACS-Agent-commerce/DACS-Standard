@@ -1,8 +1,9 @@
 # DACS Security Conformance Vectors
 
 Language-neutral conformance vectors for the **security / anti-abuse requirements**
-of DACS — across settlement (SB-family, §9.5.8), negotiation/agreement (§8.5.2),
-identity/vetting (§7.3.2), VerifyResult acceptance (§7.12), rail-availability selection (§9.4.4), sealed-envelope bid admission (§8.4.3), channel-message replay (§8.3.3 + CH-6), fee disclosure + disclosed-fee reconciliation (§8.5.3 FS-1..FS-5, §9.7.2 FR-1..FR-4), and private-deliverable / entitlement-credential delivery (§9.6.1 / §9.6.2, DV-1..DV-6). These complement the lifecycle vectors in the
+of DACS. Each set targets one rule surface — the generated index below lists every
+set with its spec citation, so this paragraph never needs editing when a set is
+added. These complement the lifecycle vectors in the
 parent directory: where those assert that a well-formed five-stage session
 validates, these are intended to assert that the **anti-abuse rules** behave
 identically across independent implementations (SB-2's EVM row is cross-run-
@@ -15,6 +16,25 @@ converged; the others await a second impl). Derived from the §12.4 threat-to-te
 > The canonical `scripts/validate_conformance_vectors.py` run globs
 > `conformance/vectors/*.json` non-recursively, so files here (like `../examples/`)
 > are intentionally excluded from the lifecycle shape-check.
+
+<!-- BEGIN GENERATED: security-vector-index (scripts/generate_security_vector_index.py) -->
+
+| Set | Spec surface | Vectors | Verdicts used |
+| --- | --- | --- | --- |
+| [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
+| [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
+| [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
+| [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
+
+_This table is generated from the set files — do not edit by hand._
+_Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
+
+<!-- END GENERATED: security-vector-index -->
 
 ## Included sets
 

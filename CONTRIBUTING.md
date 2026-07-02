@@ -64,11 +64,19 @@ For documentation-only changes and conformance-vector edits, run the dependency-
 
 ```sh
 python3 scripts/validate_conformance_vectors.py
+python3 scripts/validate_security_vectors.py
 python3 scripts/validate_domain_separators.py
 python3 scripts/validate_rule_ids.py
 python3 scripts/validate_spec_tables.py
 python3 scripts/validate-docs.py
 python3 -m unittest discover tests -v
+```
+
+If you add or edit a security-vector set under `conformance/vectors/security/`,
+also regenerate the README's set-index table (it is generated, not hand-edited):
+
+```sh
+python3 scripts/generate_security_vector_index.py --write
 ```
 
 The vector validator checks machine-readable examples under

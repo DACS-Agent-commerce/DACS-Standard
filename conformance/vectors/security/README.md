@@ -15,7 +15,11 @@ converged; the others await a second impl). Derived from the §12.4 threat-to-te
 > lifecycle bundles, and **each carries its own schema** (described per-set below).
 > The canonical `scripts/validate_conformance_vectors.py` run globs
 > `conformance/vectors/*.json` non-recursively, so files here (like `../examples/`)
-> are intentionally excluded from the lifecycle shape-check.
+> are intentionally excluded from the lifecycle shape-check — the candidate-tier
+> checks (`scripts/validate_security_vectors.py`) cover them instead.
+
+Cross-running a set against another implementation — and the candidate → golden
+promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 
 <!-- BEGIN GENERATED: security-vector-index (scripts/generate_security_vector_index.py) -->
 

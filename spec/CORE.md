@@ -338,6 +338,20 @@ DACS composes with the following open standards. Each per-stage chapter cites th
 | ERC-20 / SPL | DACS-4 | pay-evm-erc20 / pay-solana-spl |
 | ACME / RFC 8555 | DACS-2 | domain-tls-control method |
 
+### C.1 Contributes-vs-must-bind (composition matrix)
+
+Each composed standard contributes a *kind of evidence*; DACS must still bind that evidence to a specific action itself. Citing an upstream standard is never an endorsement — DACS does not inherit a property the upstream does not itself claim.
+
+| Layer | Contributes (evidence) | DACS must still bind itself | Status in v0.1 |
+| --- | --- | --- | --- |
+| **AP2** | mandate / payer-intent evidence (SD-JWT + key-binding) | that the cited mandate maps to *this* action | specified (pay-ap2 not yet reference-backed) |
+| **x402** | payment authorization + settlement evidence (EIP-3009 / EIP-712 auth; `PAYMENT-RESPONSE`) | on-chain confirmation of the settlement reference (§9.5.8 SB-3) | live (reference-backed) |
+| **ERC-8004** | identity anchor / registry reference | reputation integrity, anti-Sybil, delegation scope, task outcome | live (identity anchor / optional publication) |
+| **A2A** | discovery surface / agent-card metadata (agent-card authenticity when `AgentCardSignature` present) | listing / message / session / settlement trust (remains DACS-side) | live (discovery) |
+| **DACS** | — | the verifier act that binds those references to one action | — |
+
+**Invariant.** External references travel, but DACS records its own verifier act. If a critical AP2, x402, ERC-8004, or A2A reference is unresolvable or ambiguous, the DACS result is `indeterminate` or `error`, never a borrowed `pass`.
+
 ## Document map
 
 DACS v0.1 is published as a Core document, one module per stage, and four companion references. Chapter and section numbers are retained across the split.

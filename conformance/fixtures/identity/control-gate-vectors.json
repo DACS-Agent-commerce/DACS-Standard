@@ -1,0 +1,314 @@
+{
+  "status": "golden — reference-verifier-accepted + byte-stable",
+  "source": "github.com/mj-deving/dacs-verify conformance/run.ts #170 vet-control vectors",
+  "now": 1780000000000,
+  "decisions": [
+    "pass",
+    "fail",
+    "indeterminate",
+    "error"
+  ],
+  "cases": [
+    {
+      "id": "vet-control-existence-only-lei-supporting-context",
+      "input": {
+        "bundle": {
+          "presentedBy": "lei:984500ABCDEF12345678",
+          "claims": [
+            {
+              "ref": "lei:984500ABCDEF12345678",
+              "verifiedBy": "stor-registry-pass"
+            }
+          ]
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "lei",
+              "verificationRequired": true
+            }
+          ]
+        },
+        "resolver": {
+          "stor-registry-pass": {
+            "decision": "pass",
+            "method": "gleif-registry",
+            "bindingClass": "existence"
+          }
+        },
+        "controlledUse": false
+      },
+      "expected": "pass"
+    },
+    {
+      "id": "vet-control-existence-only-lei-presentedby-reject",
+      "input": {
+        "bundle": {
+          "presentedBy": "lei:984500ABCDEF12345678",
+          "claims": [
+            {
+              "ref": "lei:984500ABCDEF12345678",
+              "verifiedBy": "stor-registry-pass"
+            }
+          ]
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "lei",
+              "verificationRequired": true
+            }
+          ],
+          "primaryClaimSelector": "lei"
+        },
+        "resolver": {
+          "stor-registry-pass": {
+            "decision": "pass",
+            "method": "gleif-registry",
+            "bindingClass": "existence"
+          }
+        },
+        "controlledUse": true
+      },
+      "expected": "fail"
+    },
+    {
+      "id": "vet-control-existence-only-lei-reputation-key-reject",
+      "input": {
+        "bundle": {
+          "presentedBy": "lei:984500ABCDEF12345678",
+          "claims": [
+            {
+              "ref": "lei:984500ABCDEF12345678",
+              "verifiedBy": "stor-registry-pass"
+            }
+          ]
+        },
+        "reputationKey": "presentedBy",
+        "resolver": {
+          "stor-registry-pass": {
+            "decision": "pass",
+            "method": "gleif-registry",
+            "bindingClass": "existence"
+          }
+        },
+        "controlledUse": true
+      },
+      "expected": "fail"
+    },
+    {
+      "id": "vet-control-existence-method-forged-holderbinding-reject",
+      "input": {
+        "bundle": {
+          "presentedBy": "lei:984500ABCDEF12345678",
+          "claims": [
+            {
+              "ref": "lei:984500ABCDEF12345678",
+              "verifiedBy": "stor-registry-fake-holderbinding"
+            }
+          ]
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "lei",
+              "verificationRequired": true
+            }
+          ],
+          "primaryClaimSelector": "lei"
+        },
+        "resolver": {
+          "stor-registry-fake-holderbinding": {
+            "decision": "pass",
+            "method": "gleif-registry",
+            "bindingClass": "existence",
+            "data": {
+              "holderBinding": {
+                "claim": "forged"
+              }
+            }
+          }
+        },
+        "controlledUse": true
+      },
+      "expected": "fail"
+    },
+    {
+      "id": "vet-control-key-presentation-accept",
+      "input": {
+        "bundle": {
+          "presentedBy": "key:v9Q4Lmu55UbYB7Sfo00KqcsSErY1h5Kx85OUFeizxu8",
+          "claims": [
+            {
+              "ref": "key:v9Q4Lmu55UbYB7Sfo00KqcsSErY1h5Kx85OUFeizxu8",
+              "issuedAt": 1779999999000
+            }
+          ],
+          "presentation": {
+            "kind": "per-claim",
+            "signatureOver": "bundle without presentation",
+            "signer": "key:v9Q4Lmu55UbYB7Sfo00KqcsSErY1h5Kx85OUFeizxu8",
+            "valid": true
+          }
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            }
+          ],
+          "primaryClaimSelector": "key"
+        },
+        "controlledUse": true
+      },
+      "expected": "pass"
+    },
+    {
+      "id": "vet-control-key-malformed-scope-reject-no-throw",
+      "input": {
+        "bundle": {
+          "presentedBy": "key:7wVvQCYBiAGboKxyWcJYg0gjZpM6YzoyFVfLiPezETg",
+          "presentedAt": 9007199254740992,
+          "claims": [
+            {
+              "ref": "key:7wVvQCYBiAGboKxyWcJYg0gjZpM6YzoyFVfLiPezETg",
+              "issuedAt": 1779999999000
+            }
+          ],
+          "presentation": {
+            "kind": "per-claim",
+            "signatureOver": "bundle without presentation",
+            "signer": "key:7wVvQCYBiAGboKxyWcJYg0gjZpM6YzoyFVfLiPezETg",
+            "valid": false
+          }
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            }
+          ],
+          "primaryClaimSelector": "key"
+        },
+        "controlledUse": true
+      },
+      "expected": {
+        "decision": "fail",
+        "throws": false
+      }
+    },
+    {
+      "id": "vet-control-key-unresolvable-binding-indeterminate",
+      "input": {
+        "bundle": {
+          "presentedBy": "key:unresolvable-control-key",
+          "claims": [
+            {
+              "ref": "key:unresolvable-control-key",
+              "verifiedBy": "stor-unresolvable-binding"
+            }
+          ]
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "key",
+              "verificationRequired": true
+            }
+          ],
+          "primaryClaimSelector": "key"
+        },
+        "resolver": {
+          "stor-unresolvable-binding": {
+            "decision": "indeterminate",
+            "method": "holder-binding",
+            "errorClass": "resolver-unavailable"
+          }
+        },
+        "controlledUse": true
+      },
+      "expected": "indeterminate"
+    },
+    {
+      "id": "vet-control-key-stale-reject",
+      "input": {
+        "bundle": {
+          "presentedBy": "key:13b5fdb6cdda4b3c9d367a4f720973fb07f480d9bf5227b2119596ca4b40c139",
+          "claims": [
+            {
+              "ref": "key:13b5fdb6cdda4b3c9d367a4f720973fb07f480d9bf5227b2119596ca4b40c139",
+              "issuedAt": 1779999998000,
+              "expiresAt": 1779999999000
+            },
+            {
+              "ref": "key:abababababababababababababababababababababababababababababababab",
+              "issuedAt": 1779999999000
+            }
+          ],
+          "presentation": {
+            "kind": "per-claim",
+            "signatureOver": "bundle without presentation",
+            "signer": "key:13b5fdb6cdda4b3c9d367a4f720973fb07f480d9bf5227b2119596ca4b40c139",
+            "valid": true
+          }
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            }
+          ],
+          "primaryClaimSelector": "key"
+        },
+        "controlledUse": true
+      },
+      "expected": "fail"
+    },
+    {
+      "id": "vet-control-key-verified-selector-laundering-reject",
+      "input": {
+        "bundle": {
+          "presentedBy": "key:e7569bc6491590ea3fd431e5df17af9faa0899d6d38d5395335bf94636307c58",
+          "claims": [
+            {
+              "ref": "key:e7569bc6491590ea3fd431e5df17af9faa0899d6d38d5395335bf94636307c58",
+              "issuedAt": 1779999999000
+            },
+            {
+              "ref": "key:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+              "issuedAt": 1779999999000,
+              "verifiedBy": "stor-pass"
+            }
+          ],
+          "presentation": {
+            "kind": "per-claim",
+            "signatureOver": "bundle without presentation",
+            "signer": "key:e7569bc6491590ea3fd431e5df17af9faa0899d6d38d5395335bf94636307c58",
+            "valid": true
+          }
+        },
+        "requirement": {
+          "required": [
+            {
+              "scheme": "key",
+              "verificationRequired": true
+            }
+          ],
+          "primaryClaimSelector": "key"
+        },
+        "resolver": {
+          "stor-pass": {
+            "decision": "pass",
+            "method": "key-registry",
+            "bindingClass": "control"
+          }
+        },
+        "controlledUse": true
+      },
+      "expected": "fail"
+    }
+  ]
+}

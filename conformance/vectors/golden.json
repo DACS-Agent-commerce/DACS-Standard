@@ -54,6 +54,59 @@
       }
     ]
   },
+  "dacs1": {
+    "status": "golden — reference-verifier-accepted + byte-stable",
+    "controlGate": {
+      "fixture": "conformance/fixtures/identity/control-gate-vectors.json",
+      "decisions": [
+        "pass",
+        "fail",
+        "indeterminate",
+        "error"
+      ],
+      "cases": [
+        {
+          "id": "vet-control-existence-only-lei-supporting-context",
+          "expected": "pass"
+        },
+        {
+          "id": "vet-control-existence-only-lei-presentedby-reject",
+          "expected": "fail"
+        },
+        {
+          "id": "vet-control-existence-only-lei-reputation-key-reject",
+          "expected": "fail"
+        },
+        {
+          "id": "vet-control-existence-method-forged-holderbinding-reject",
+          "expected": "fail"
+        },
+        {
+          "id": "vet-control-key-presentation-accept",
+          "expected": "pass"
+        },
+        {
+          "id": "vet-control-key-malformed-scope-reject-no-throw",
+          "expected": {
+            "decision": "fail",
+            "throws": false
+          }
+        },
+        {
+          "id": "vet-control-key-unresolvable-binding-indeterminate",
+          "expected": "indeterminate"
+        },
+        {
+          "id": "vet-control-key-stale-reject",
+          "expected": "fail"
+        },
+        {
+          "id": "vet-control-key-verified-selector-laundering-reject",
+          "expected": "fail"
+        }
+      ]
+    }
+  },
   "addressing": {
     "logical": "dacs1:lei%3A984500ABCDEF12345678:fx-rfq-eur-usd:v1",
     "native": "stor-f71ce54389db7a30c5b125af916edb87ee87e8404eb3204bcf07041e2111b0f2",

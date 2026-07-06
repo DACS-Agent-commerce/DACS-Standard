@@ -892,7 +892,7 @@
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
         "auctionMode": "procurement",
-        "selectionRule": "rule-ref:sha256-example:stor-rule",
+        "selectionRule": "rule-ref:145785111ca7c9076de0ecf8b34236a3f2c090d10a00b100814066293b50c7a5:stor-rule",
         "buyer": "listingPublisher",
         "seller": "winningBidder",
         "priceDirection": "buyer-to-seller"

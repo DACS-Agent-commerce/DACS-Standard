@@ -1809,7 +1809,9 @@
       "want": {
         "bundleCount": 5,
         "completionRate": 0.25,
+        "counterpartyAdjustedCompletionRate": 0.5,
         "counterpartyFaultRate": 0.5,
+        "transactionCountByCurrency": [],
         "bundleRefs": 5
       }
     },
@@ -1823,9 +1825,12 @@
       "want": {
         "bundleCount": 1,
         "completionRate": null,
+        "counterpartyAdjustedCompletionRate": null,
         "counterpartyFaultRate": null,
         "completionIsZero": false,
-        "faultIsZero": false
+        "counterpartyAdjustedIsZero": false,
+        "faultIsZero": false,
+        "transactionCountByCurrency": []
       }
     },
     {
@@ -1849,10 +1854,12 @@
         "sortedBundleRefs": true,
         "rerunMetrics": {
           "completionRate": 0.25,
+          "counterpartyAdjustedCompletionRate": 0.5,
           "counterpartyFaultRate": 0.5,
           "averageBuyerRating": null,
           "averageSellerRating": null,
-          "observedTransactionalVolume": []
+          "observedTransactionalVolume": [],
+          "transactionCountByCurrency": []
         },
         "rerunBundleCount": 5
       }
@@ -1867,7 +1874,8 @@
       "want": {
         "averageBuyerRating": null,
         "averageSellerRating": null,
-        "observedTransactionalVolume": []
+        "observedTransactionalVolume": [],
+        "transactionCountByCurrency": []
       }
     },
     {
@@ -1890,6 +1898,7 @@
         "bundleCount": 1,
         "bundleRefs": 1,
         "completionRate": 0,
+        "counterpartyAdjustedCompletionRate": null,
         "counterpartyFaultRate": 1
       }
     },
@@ -1997,15 +2006,23 @@
       "id": "verify-reputation-volume-grouped",
       "area": "verify",
       "spec": "§10.5.1",
-      "summary": "observedTransactionalVolume sums agreement.terms.price by currency over reconciled bundles whose agreementRef resolves (5 × 5 usdc = 25)",
+      "summary": "observedTransactionalVolume and transactionCountByCurrency aggregate completed sessions by currency",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
-      "want": [
-        {
-          "amount": "25",
-          "currency": "usdc"
-        }
-      ]
+      "want": {
+        "observedTransactionalVolume": [
+          {
+            "amount": "5",
+            "currency": "usdc"
+          }
+        ],
+        "transactionCountByCurrency": [
+          {
+            "currency": "usdc",
+            "count": 1
+          }
+        ]
+      }
     },
     {
       "id": "verify-reputation-relabel-attack-defeated",

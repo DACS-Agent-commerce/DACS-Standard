@@ -101,6 +101,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | HTLC free-option abandonment (payer declines reveal after market move; payee capital locked) | malicious counterparty | §9.5.4 HTLC-10 (prefer liquidity-tank or payer stake; DACS-5 records the pattern) | partial — known HTLC property, not standardised in v0.1 |
 | Sealed-envelope front-running | competing bidder | §8.12 (hash commitment + private channel) | mitigated |
 | Sealed-envelope post-deadline submission | malicious counterparty | §8.4.3 (chain-timestamp anchoring) | mitigated |
+| Sealed-envelope procurement role inversion | malicious orchestrator / implementation bug | §8.4.3 SE-8 + §8.5.2 (pinned-mode role-direction validation at commit-agreement) | mitigated |
 | Agreement-listing mismatch | malicious counterparty | §8.5.2 (validation in commit-agreement) | mitigated |
 | Re-entrancy on EVM rails | malicious counterparty | §9.13 (phase-handler ordering) | implementation-dependent |
 | MEV front-running on payments | public-mempool observer | §9.13 (private mempool option) | parameter-driven |
@@ -128,4 +129,3 @@ A DACS-5 bundle that validates against all per-chapter conformance rules and who
 > "Two or more parties identified by the named primary claims (with the trust profile each claim’s scheme implies) participated in a session against the named listing version, agreed to the named terms, exchanged the named settlements, and produced this audit record. The substrate operator did not collude with the parties to forge the record. The recipe registry was not compromised at the time of the verifications. The composed external standards (W3C VC, TLSNotary, ACME, etc.) behaved per their own security models."
 
 This is the composite security claim of DACS v0.1. Each clause has explicit mitigation in the per-chapter sections; each has explicit residual risk in this chapter’s adversary model.
-

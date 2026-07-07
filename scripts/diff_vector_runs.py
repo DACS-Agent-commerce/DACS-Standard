@@ -35,23 +35,50 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECURITY_DIR = os.path.join(ROOT, "conformance", "vectors", "security")
+# A set's expected verdicts may live as a security vector set (`vectors[{name}]`) or as a golden
+# identity fixture (`cases[{id}]`, e.g. control-gate-vectors) — resolve either without a hand-built mirror.
+FIXTURE_DIRS = (
+    SECURITY_DIR,
+    os.path.join(ROOT, "conformance", "fixtures", "identity"),
+)
 
 VERDICT_FIELDS = ("expected", "decision")
 
 
+def _verdict_of(entry: dict) -> str | None:
+    """A vector/case's expected verdict: a bare string, or an object carrying `.decision`
+    (the vet-control `{decision, throws}` shape — only the decision participates in agreement)."""
+    for field in VERDICT_FIELDS:
+        if field in entry:
+            value = entry[field]
+            return value.get("decision") if isinstance(value, dict) else value
+    return None
+
+
 def load_expected(set_name: str) -> dict[str, str]:
-    """Map vector name -> expected verdict for a set."""
-    path = os.path.join(SECURITY_DIR, set_name + ".json")
-    if not os.path.exists(path):
-        raise SystemExit(f"ERROR: unknown set '{set_name}' — no {path}")
+    """Map case name -> expected verdict for a set.
+
+    Resolves ``<set>.json`` from the security-vectors dir (``vectors[{name}]``) or the identity
+    fixtures dir (``cases[{id}]``). Case identity is ``name`` or ``id``; the verdict is a bare
+    string or an object with ``.decision``. Cross-impl agreement is over decisions only.
+    """
+    path = next(
+        (os.path.join(d, set_name + ".json")
+         for d in FIXTURE_DIRS
+         if os.path.exists(os.path.join(d, set_name + ".json"))),
+        None,
+    )
+    if path is None:
+        searched = " | ".join(os.path.join(d, set_name + ".json") for d in FIXTURE_DIRS)
+        raise SystemExit(f"ERROR: unknown set '{set_name}' — none of: {searched}")
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
     expected: dict[str, str] = {}
-    for vec in data["vectors"]:
-        for field in VERDICT_FIELDS:
-            if field in vec:
-                expected[vec["name"]] = vec[field]
-                break
+    for entry in data.get("vectors") or data.get("cases") or []:
+        name = entry.get("name") or entry.get("id")
+        verdict = _verdict_of(entry)
+        if name and verdict is not None:
+            expected[name] = verdict
     return expected
 
 
@@ -64,7 +91,7 @@ def load_run(path: str) -> tuple[str, str, dict[str, str]]:
             raise SystemExit(f"ERROR: {path}: run file missing '{field}'")
     verdicts: dict[str, str] = {}
     for i, res in enumerate(run["results"]):
-        name, verdict = res.get("name"), res.get("verdict")
+        name, verdict = res.get("name") or res.get("id"), res.get("verdict")
         if not name or verdict is None:
             raise SystemExit(f"ERROR: {path}: results[{i}] needs 'name' and 'verdict'")
         if name in verdicts:

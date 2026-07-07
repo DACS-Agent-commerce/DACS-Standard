@@ -34,6 +34,14 @@ any runner, only the output shape is fixed:
 python3 scripts/diff_vector_runs.py run-yourimpl.json [run-otherimpl.json ...]
 ```
 
+The `set` resolves to either a security set (`conformance/vectors/security/<set>.json`,
+`vectors[{name}]`) or a golden identity fixture (`conformance/fixtures/identity/<set>.json`,
+`cases[{id}]`) — so a control-gate cross-run diffs directly, no hand-built mirror. A run entry's
+case is keyed by `name` (a fixture `id` works too).
+
+```sh
+```
+
 Every run is checked against the set's expected verdicts, and any two runs
 over the same set are checked against each other, case by case. Full
 agreement prints `cross-run CONVERGED` — attach that output (or the run

@@ -877,6 +877,7 @@
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
         "phaseKind": "negotiate-sealed-envelope-procurement",
+        "derivedFromPattern": "sealed-envelope",
         "auctionMode": "procurement",
         "selectionRule": "lowest-price",
         "buyer": "listingPublisher",
@@ -893,6 +894,7 @@
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
         "phaseKind": "negotiate-sealed-envelope-procurement",
+        "derivedFromPattern": "sealed-envelope",
         "auctionMode": "procurement",
         "selectionRule": "rule-ref:145785111ca7c9076de0ecf8b34236a3f2c090d10a00b100814066293b50c7a5:stor-rule",
         "buyer": "listingPublisher",
@@ -911,6 +913,7 @@
         "ok": false,
         "failedAt": "sealed-envelope-role-direction",
         "phaseKind": "negotiate-sealed-envelope-procurement",
+        "derivedFromPattern": "sealed-envelope",
         "listingAuctionMode": "procurement",
         "agreementBuyer": "winningBidder",
         "agreementSeller": "listingPublisher"
@@ -927,6 +930,7 @@
         "ok": false,
         "failedAt": "required-signature",
         "phaseKind": "negotiate-sealed-envelope-procurement",
+        "derivedFromPattern": "sealed-envelope",
         "auctionMode": "procurement",
         "missingSigner": "listingPublisher",
         "providedSigners": [

@@ -14,3 +14,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 claudedocs/
+
+# Playwright MCP browser-automation artifacts
+.playwright-mcp/

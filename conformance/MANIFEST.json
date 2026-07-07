@@ -877,6 +877,7 @@
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
         "phaseKind": "negotiate-sealed-envelope-procurement",
+        "contextDeltaKey": "negotiate-sealed-envelope-procurement",
         "derivedFromPattern": "sealed-envelope",
         "auctionMode": "procurement",
         "selectionRule": "lowest-price",
@@ -894,6 +895,7 @@
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
         "phaseKind": "negotiate-sealed-envelope-procurement",
+        "contextDeltaKey": "negotiate-sealed-envelope-procurement",
         "derivedFromPattern": "sealed-envelope",
         "auctionMode": "procurement",
         "selectionRule": "rule-ref:145785111ca7c9076de0ecf8b34236a3f2c090d10a00b100814066293b50c7a5:stor-rule",

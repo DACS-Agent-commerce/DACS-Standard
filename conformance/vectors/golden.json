@@ -144,6 +144,7 @@
       "demandWinnerRole": "buyer",
       "procurementWinnerRole": "seller",
       "procurementPhaseKind": "negotiate-sealed-envelope-procurement",
+      "procurementContextDeltaKey": "negotiate-sealed-envelope-procurement",
       "procurementDerivedFromPattern": "sealed-envelope",
       "priceDirection": "agreement buyer pays agreement seller",
       "roleInvertedProcurementAgreement": {

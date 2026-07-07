@@ -213,7 +213,14 @@ type NegotiateSealedEnvelopeInput = {
 }
 type NegotiateSealedEnvelopeOutput = PhaseHandlerResult & {
   contextDelta?: {   // present only on ok:true; a failed phase (no winning bid) returns a bare PhaseHandlerResult
-    "negotiate-sealed-envelope": {
+    "negotiate-sealed-envelope"?: {
+      agreementHash: string
+      agreementRef: AttestationRef
+      winningBidderClaim: ClaimReference
+      revealedBidRefs: AttestationRef[]
+      losingBidderClaims: ClaimReference[]
+    }
+    "negotiate-sealed-envelope-procurement"?: {
       agreementHash: string
       agreementRef: AttestationRef
       winningBidderClaim: ClaimReference
@@ -223,6 +230,8 @@ type NegotiateSealedEnvelopeOutput = PhaseHandlerResult & {
   }
 }
 ```
+
+Exactly one contextDelta key is present on success, and it MUST equal the phase kind that ran. The two keys carry the same payload shape; the split keeps session-state consumers keyed by pipeline phase kind from reading a procurement result as a demand-phase result.
 
 **Procedure.** The orchestrator MUST:
 

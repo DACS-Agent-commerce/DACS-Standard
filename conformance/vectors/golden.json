@@ -143,12 +143,18 @@
       "defaultDemandWinnerRole": "buyer",
       "demandWinnerRole": "buyer",
       "procurementWinnerRole": "seller",
+      "procurementPhaseKind": "negotiate-sealed-envelope-procurement",
       "priceDirection": "agreement buyer pays agreement seller",
       "roleInvertedProcurementAgreement": {
         "ok": false,
         "failedAt": "sealed-envelope-role-direction"
       },
       "unresolvableAuctionMode": {
+        "ok": false,
+        "failedAt": "auctionMode",
+        "reason": "unresolvable-auctionMode"
+      },
+      "procurementModeOnDemandPhase": {
         "ok": false,
         "failedAt": "auctionMode",
         "reason": "unresolvable-auctionMode"

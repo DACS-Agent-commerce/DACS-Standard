@@ -198,7 +198,7 @@ type NegotiateSealedEnvelopeInput = {
   jobId: string
   listingHash: string
   listingRef: { listingId: string; version: number }
-  buyerBundles: IdentityBundle[]       // all bidders' bundles
+  buyerBundles: IdentityBundle[]       // all bidders' bundles; field name predates the demand/procurement mode split
   sellerBundle: IdentityBundle         // listing publisher
   buyerVetRefs: AttestationRef[]
   sellerVetRef: AttestationRef

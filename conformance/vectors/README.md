@@ -9,7 +9,7 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
 > v0.1 artifact shapes. They pass **both** `scripts/validate_conformance_vectors.py`
 > (wrapper) and `scripts/validate_artifact_shapes.py` (deep per-`type` shape check)
 > — they are no longer quarantined. For the broader verifier-emitted conformance
-> suite see [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (205 cases).
+> suite see [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (204 cases).
 
 ## Included vectors
 

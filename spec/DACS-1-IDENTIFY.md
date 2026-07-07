@@ -474,7 +474,7 @@ Per-kind parameter shapes are normative in the owning chapter:
 | vet-credentials | none | 7 |
 | negotiate-fixed-price | none | 8 |
 | negotiate-rfq | {maxTurns, timeoutSec, channelSubnet?, rfqInitiator?} | 8 |
-| negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode` is absent or `"demand"` and is defined in §8.4.3 | 8 |
+| negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode`, when present, MUST be `"demand"` | 8 |
 | negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
 | commit-agreement | none | 8 |
 | pay-* | {rail: string} (railId) | 9 |

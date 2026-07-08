@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.2** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: AP2-1..AP2-4 attested provider-receipt verification, provider-metadata session binding, and capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -98,7 +98,7 @@ type ChainTxRef =
 
   | { kind: "storage-program"; address: string; writeTxHash: string }
 
-  | { kind: "ap2"; mandateId: string; providerRef: string; protocolVersion: string }
+  | { kind: "ap2"; mandateId: string; providerRef: string; protocolVersion: string; receiptAttestation?: AttestationRef }   // receiptAttestation REQUIRED on a success-outcome record (AP2-2, §9.5.6): the SR-3 attestation of the provider payment-status response, contentHash = attested response hash; MAY be absent only on failure-outcome records
 
   | { kind: "x402"; httpResource: string; paymentReceiptHash: string; settlementTxHash?: string; chainId?: number; protocolVersion: string }
 
@@ -519,10 +519,16 @@ Payment via an AP2 mandate to a card network or banking provider.
 **Procedure.**
 
 1. Resolve rail; verify `asset.kind == "fiat-via-ap2"`.
-2. Construct an AP2 PaymentMandate conforming to the FIDO Alliance AP2 spec (April 2026 onwards).
+2. Construct an AP2 PaymentMandate conforming to the FIDO Alliance AP2 spec (April 2026 onwards), binding the session into the provider-side payment object per AP2-1.
 3. The payer’s AP2-compatible wallet authorises the mandate.
 4. Submit the mandate to `rail.network.providerEndpoint`; receive a payment receipt and provider-side reference (e.g. Visa Direct payment id, Stripe PaymentIntent id).
-5. Construct SettlementEvidence with `txRef` of kind `ap2` carrying mandateId, providerRef, and the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27). Anchor via SR-2; return success.
+5. Verify the receipt per AP2-2: an SR-3 attested fetch of the provider’s payment-status endpoint for `providerRef`, using an AP2-3-conformant credential.
+6. Construct SettlementEvidence with `txRef` of kind `ap2` carrying mandateId, providerRef, the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27) — and the AP2-2 `receiptAttestation`. Anchor via SR-2; return success.
+
+- (AP2-1) **Provider-metadata session binding.** The handler MUST bind the session into the provider-side payment object at creation: metadata key `dacs_job_id` set to the session `jobId`, and SHOULD additionally set `dacs_agreement_hash` to the agreement content hash (§8.5.2). The key names are pinned so two implementations produce and check the same binding. This is the §9.5.8 SB-3 binding for `pay-ap2`: it rides the provider’s own payment record, so the AP2-2 attested status response returns it and a single attestation binds payment → session (→ agreed terms when the agreement hash is present). A verifier resolves the binding per the SB-3 three branches (matches / mismatches-reject / absent-or-unverifiable-fallback).
+- (AP2-2) **Attested provider-receipt verification.** A success-outcome `pay-ap2` record MUST verify the provider receipt by an SR-3 attested fetch of the provider’s payment-status endpoint for `providerRef`, checking that: the provider-reported status is the provider’s settled/captured value; the amount and currency match the agreement; and the AP2-1 binding resolves (per its three-branch rule). The attestation MUST be recorded in `txRef.receiptAttestation` (an AttestationRef whose `contentHash` is the attested response hash). A bare provider reference with no attestation MUST NOT be presented as verified settlement evidence.
+- (AP2-3) **Least-privilege provider credential.** The provider credential disclosed for the AP2-2 attested fetch MUST be scoped read-only to payment status; a credential capable of moving funds (charge, refund, payout, transfer) MUST NOT be disclosed to the attestation layer. The credential necessarily transits the SR-3 relay — scope containment is the defence (§9.13).
+- (AP2-4) **Capture, not irreversibility.** A `pay-ap2` success record with `provider-receipt` finality (§9.7) asserts that funds were **captured at the provider** as of `finalityObservedAt`. It MUST NOT be read as asserting irreversibility: card-network rules permit post-capture reversal. Post-capture reversals are recorded through the settlement-amendment machinery (§9.7.1), not by re-opening the phase.
 
 **Failure modes.**
 
@@ -530,6 +536,8 @@ Payment via an AP2 mandate to a card network or banking provider.
 - provider declines the underlying payment (insufficient funds, fraud check, regulatory hold) → `permanent`
 - provider endpoint unavailable → `transient`
 - mandate revoked between authorisation and submission → `counterparty`
+- AP2-2 attested fetch unreachable (SR-3 or the provider status endpoint unavailable) → `transient`
+- AP2-2 attested status reports a terminal non-captured state, or an amount/currency mismatch against the agreement → `permanent`
 
 #### 9.5.7 pay-x402
 
@@ -568,7 +576,7 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
 
   The key is the uniqueness defence, so it MUST be byte-identical across implementations. Canonicalisation: `chainId`, `logIndex`, and `instructionIndex` are decimal integers with no leading zeros; `txHash` is **lower-case hex with no `0x` prefix** (a `0x`-prefixed or upper-case re-spelling MUST collapse to the same key); `signature` is base58 that MUST decode to exactly 64 bytes. A reference that fails canonicalisation — wrong-length/odd hex, a signature that is not 64-byte base58, or missing `chainId`/`logIndex` — is malformed and MUST yield `error`; it MUST NOT be normalised into, or mint, a distinct key. Event/instruction-level identity is required for batched transfers and for ERC-4337, where the settling `Transfer(from=payerAccount,…)` is one event among several in a bundler transaction.
 - **(SB-2) Cross-session uniqueness.** A consumer that aggregates settlement evidence across sessions — including the DACS-5 reputation reconciliation (§10.5.1) — MUST NOT count one `settlement-tx-id` under more than one `(jobId, phaseIndex)`. A second binding of the same id is rejected for the later record (earlier `observedAt` wins; ties broken by lower evidence hash). The check is scoped to the consumer's own evidence set; a global cross-network uniqueness index is out of scope. This closes the double-count threat on every rail with no on-chain change.
-- **(SB-3) On-chain session binding (optional, per rail).** A rail MAY bind `jobId` into its on-chain settlement, closing coincidental-citation as well. v0.2 defines one for `pay-x402`, where the binding surface differs by authorization type:
+- **(SB-3) On-chain session binding (optional, per rail).** A rail MAY bind `jobId` into its settlement-side record, closing coincidental-citation as well. v0.2 defines one for `pay-x402`; v0.3 adds the `pay-ap2` provider-metadata binding (AP2-1, §9.5.6: `dacs_job_id` in the provider-side payment metadata, checked in the AP2-2 attested status response). For `pay-x402` the binding surface differs by authorization type:
   - **Permit2** — the handler MUST place `jobId` in the signed `witness` field; the verifier MUST check it equals `evidence.jobId`.
   - **EIP-3009** (`transferWithAuthorization`) — there is no arbitrary signed field, so the handler MUST derive the authorization `nonce` as `nonce = H(jobId ‖ phaseIndex ‖ …)` and the verifier MUST recompute and match it.
 
@@ -952,7 +960,9 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 
 **Liquidity Tank operator compromise.** *Threat:* the substrate validator shard operating Liquidity Tanks is compromised. *Mitigation:* the substrate’s security model (2/3 BFT multisig on Demos, 15-day emergency-recovery on Demos) is the floor. Listings handling high-stakes flows over Liquidity Tanks SHOULD evaluate the substrate’s validator-shard security; for the highest stakes, HTLC is recommended.
 
-**AP2 mandate replay.** *Threat:* an old AP2 mandate is replayed against the provider. *Mitigation:* AP2 mandates carry a nonce and an expiry, which are **upstream AP2 evidence** — DACS-4 records the `ap2` txRef (mandateId, providerRef, protocolVersion) and anchors it via SR-2, rather than inheriting AP2’s anti-replay guarantee. The DACS-side binding of the cited mandate to *this* action (jobId / payer / payee / amount / phase — the SB-3 equivalent) lands with `pay-ap2` reference-backing (roadmap; see the §9.4.2 honest-disclosure note).
+**AP2 mandate replay.** *Threat:* an old AP2 mandate is replayed against the provider. *Mitigation:* AP2 mandates carry a nonce and an expiry, which are **upstream AP2 evidence** — DACS-4 records the `ap2` txRef (mandateId, providerRef, protocolVersion) and anchors it via SR-2, rather than inheriting AP2’s anti-replay guarantee. The DACS-side binding of the cited payment to *this* session is AP2-1 (`dacs_job_id` / `dacs_agreement_hash` in the provider-side metadata, checked in the AP2-2 attested status response), resolved per the SB-3 three branches; SB-1/SB-2 uniqueness keying applies on top.
+
+**Provider-credential disclosure to the attestation layer (AP2-2/AP2-3).** *Threat:* the AP2-2 attested status fetch necessarily carries a provider API credential through the SR-3 relay; a compromised relay or validator observes it. *Mitigation:* AP2-3 confines the disclosed credential to read-only payment-status scope, so observation yields the ability to read payment statuses on that account — never to charge, refund, or move funds. Operators SHOULD rotate the disclosed credential periodically and MAY scope it per-integration. The residual read exposure (payment metadata on the merchant account) is bounded by the same SR-3 trust floor as every consensus-backed-proxy fetch (§7.3.5).
 
 **x402 payment-receipt forgery.** *Threat:* a server claims payment it did not receive. *Mitigation:* x402 settles on-chain, so the primary audit is verifying the anchored `settlementTxHash` against the settlement chain — like the `evm` rail, not server- or facilitator-forgeable (§9.5.7). Where no settlement tx is returned, verification falls back to the facilitator-signed receipt (processor-attested, not chain-verified). Buyer-side x402 wallets SHOULD keep a local record of submitted payments.
 

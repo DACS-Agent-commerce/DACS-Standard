@@ -4,14 +4,14 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.2** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, and the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, and sealed-envelope procurement role binding / SE-8). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
 DACS-3 specifies how parties arrive at agreed terms and bind themselves cryptographically to the outcome. It defines:
 
 - A **negotiation channel model** — abstract requirements for a private coordination surface keyed to participant identities, with the public chain seeing only commitments. Realised in v0.1 by SR-4; substrates without SR-4 host only negotiate-fixed-price.
-- A **closed set of negotiation patterns** as phase types: negotiate-fixed-price (acceptance), negotiate-rfq (bounded offer/counter), negotiate-sealed-envelope (commit-then-reveal sealed bid) — each with a uniform input/output contract.
+- A **closed set of negotiation patterns** as phase types: negotiate-fixed-price (acceptance), negotiate-rfq (bounded offer/counter), negotiate-sealed-envelope demand / procurement (commit-then-reveal sealed bid) — each with a uniform input/output contract.
 - An **agreement document schema** — the canonical signed JSON output of any pattern, carrying final terms, deliverable reference, deadlines, and all-party signatures.
 - A **commit-agreement phase** — anchors the agreement hash on the public chain, producing the binding artifact every downstream stage references.
 
@@ -189,7 +189,7 @@ type NegotiateRfqOutput = PhaseHandlerResult & {
 
 **Substrate:** SR-2 + SR-4.
 
-#### 8.4.3 negotiate-sealed-envelope
+#### 8.4.3 negotiate-sealed-envelope / negotiate-sealed-envelope-procurement
 
 Sealed-bid procurement: all bidders submit hash-committed bids before a deadline; bids are revealed after the deadline; winner is selected per the listing’s selection criterion.
 
@@ -198,21 +198,38 @@ type NegotiateSealedEnvelopeInput = {
   jobId: string
   listingHash: string
   listingRef: { listingId: string; version: number }
-  buyerBundles: IdentityBundle[]       // all bidders' bundles
+  buyerBundles: IdentityBundle[]       // all bidders' bundles; field name predates the demand/procurement mode split
   sellerBundle: IdentityBundle         // listing publisher
   buyerVetRefs: AttestationRef[]
   sellerVetRef: AttestationRef
-  parameters: {
+  parameters: NegotiateSealedEnvelopeParameters
+  sessionContext: SessionContext
+}
+type NegotiateSealedEnvelopeParameters =
+  | {                                  // negotiate-sealed-envelope (demand/default)
     commitDeadline: number             // unix ms; MUST be > now
     revealWindow: number               // seconds after commitDeadline; MUST be >= 60
     selectionRule: "lowest-price" | "highest-price" | "first-acceptable" | "rule-ref:<contentHash>:<uri>"
+    auctionMode?: "demand"             // optional no-op marker; absent and "demand" have identical semantics (SE-8)
     channelSubnet?: string
   }
-  sessionContext: SessionContext
-}
+  | {                                  // negotiate-sealed-envelope-procurement
+    commitDeadline: number
+    revealWindow: number
+    selectionRule: "lowest-price" | "highest-price" | "first-acceptable" | "rule-ref:<contentHash>:<uri>"
+    auctionMode: "procurement"         // explicit procurement marker; valid only on the procurement phase kind (SE-8)
+    channelSubnet?: string
+  }
 type NegotiateSealedEnvelopeOutput = PhaseHandlerResult & {
   contextDelta?: {   // present only on ok:true; a failed phase (no winning bid) returns a bare PhaseHandlerResult
-    "negotiate-sealed-envelope": {
+    "negotiate-sealed-envelope"?: {
+      agreementHash: string
+      agreementRef: AttestationRef
+      winningBidderClaim: ClaimReference
+      revealedBidRefs: AttestationRef[]
+      losingBidderClaims: ClaimReference[]
+    }
+    "negotiate-sealed-envelope-procurement"?: {
       agreementHash: string
       agreementRef: AttestationRef
       winningBidderClaim: ClaimReference
@@ -222,6 +239,8 @@ type NegotiateSealedEnvelopeOutput = PhaseHandlerResult & {
   }
 }
 ```
+
+Exactly one contextDelta key is present on success, and it MUST equal the phase kind that ran. The two keys carry the same payload shape; the split keeps session-state consumers keyed by pipeline phase kind from reading a procurement result as a demand-phase result.
 
 **Procedure.** The orchestrator MUST:
 
@@ -241,7 +260,7 @@ type NegotiateSealedEnvelopeOutput = PhaseHandlerResult & {
    - **Reserve** — then, if the auction PricingSpec declares `reservePrice` (whose `currency` MUST equal the listing-declared currency — a mismatched-currency reserve is a non-conformant listing), exclude bids failing the reserve: for `highest-price` and for `first-acceptable`/`rule-ref` the reserve is a price **floor** (`amount < reservePrice` excluded); for `lowest-price` it is a **ceiling** (`amount > reservePrice` excluded). The comparison uses CD-1-canonical full-precision decimals and a bid whose `amount == reservePrice` is **admitted** (the bound is inclusive). If the candidate set is empty after these exclusions, the phase fails with no winning bid (bare PhaseHandlerResult → `negotiate-failed`, errorClass per step 6).
    - **Selection rule** — the orchestrator applies the phase-step `parameters.selectionRule`, which is content-hash-bound into the listing pipeline per §6.3.4 and is the authoritative selection rule; the auction PricingSpec's own `selectionRule` MUST equal it (a listing whose two values disagree is non-conformant).
    - **Tie-break ladder** — ties resolved by earliest SR-2 anchor timestamp of the bidder's commit (the same objective, substrate-determined timestamp SE-2 uses for the deadline gate — *not* the self-reported `commitTimestamp` field); any remaining ties (commits anchored in the same block / with equal anchor timestamps) resolved by ascending lexicographic order of the lowercase-hex `bidHash` string (per step 2).
-6. **No winning bid** — if the selection rule yields no winner (an empty candidate set — all bids excluded for currency/non-positive/reserve, or all bidders failed to reveal per SE-4 — or a `first-acceptable`/`rule-ref` rule that no bid satisfies), the phase fails with no winning bid (bare PhaseHandlerResult; errorClass `counterparty` when the emptiness is bidder-caused, `permanent` for a structural listing defect; → `negotiate-failed`). Otherwise construct the AgreementDocument from the winning bid with `derivedFromPattern: "sealed-envelope"`, then collect the seller's and the winning bidder's co-signatures — the §8.5.1 required signers (losing bidders are listed as bidder-non-winning parties and their signatures are not required).
+6. **No winning bid / agreement construction** — if the selection rule yields no winner (an empty candidate set — all bids excluded for currency/non-positive/reserve, or all bidders failed to reveal per SE-4 — or a `first-acceptable`/`rule-ref` rule that no bid satisfies), the phase fails with no winning bid (bare PhaseHandlerResult; errorClass `counterparty` when the emptiness is bidder-caused, `permanent` for a structural listing defect; → `negotiate-failed`). Otherwise construct the AgreementDocument from the winning bid with `derivedFromPattern: "sealed-envelope"` and roles assigned by the pinned sealed-envelope phase kind (SE-8): for demand (`negotiate-sealed-envelope`), the winning bidder is the agreement `buyer` and the listing publisher is the `seller`; for procurement (`negotiate-sealed-envelope-procurement` with `"procurement"` `auctionMode`), the listing publisher is the agreement `buyer` and the winning bidder is the `seller`. In both modes, `bid.price` is the amount payable by the agreement `buyer` to the agreement `seller`; the money direction is defined by the agreement roles, never by which party ran the auction. Then collect the agreement `buyer` and agreement `seller` co-signatures — equivalently, the listing publisher and winning bidder after SE-8 role assignment. Losing bidders are listed as bidder-non-winning parties and their signatures are not required.
 7. **Anchor** the agreement via SR-2 (each reveal record was already anchored by its own bidder in step 4).
 
 **Sealed bid body schema**
@@ -272,6 +291,7 @@ The `bid` over which `bidHash` is computed in step (2) is exactly this `SealedBi
 - (SE-5) The selection rule MUST be deterministic; ties MUST resolve consistently. The tie-break MUST use the objective SR-2 anchor timestamp of each bidder's commit (the same clock as SE-2), MUST NOT use the self-reported commitTimestamp field, and MUST resolve same-anchor-timestamp ties by ascending lexicographic order of the lowercase-hex bidHash string (step 2).
 - (SE-6) rule-ref selection rules MUST be content-hash-bound and the rule content MUST itself be deterministic given the bid set.
 - (SE-7) **Bid-commitment salt.** The `salt` used in the bidHash commitment MUST be generated from a cryptographically-secure random source with at least 256 bits (32 bytes) of entropy, MUST NOT be reused across bids or sessions, and MUST be carried on the wire as a base64url string so the bytes hashed are unambiguous to both committer and verifier; the commitment input is the raw decoded salt bytes. This closes the pre-reveal brute-force leak created by anchoring bidHash publicly (§8.12) for low-entropy structured bids, and aligns the sealed-envelope salt with the HTLC-1 salt discipline.
+- (SE-8) **Sealed-envelope role assignment.** The sealed-envelope mode is read from the pinned listing's phase kind. `negotiate-sealed-envelope` is the demand phase: absent `auctionMode` and present `"demand"` have identical demand semantics. `negotiate-sealed-envelope-procurement` is the procurement phase and MUST carry `auctionMode: "procurement"`. A present-but-unresolvable or malformed `auctionMode`, or a missing `auctionMode` on the procurement phase, MUST cause commit-agreement to reject the agreement with a recorded `unresolvable-auctionMode` reason; it MUST NOT be coerced to demand. For demand, the winning bidder MUST be the agreement `buyer` and the listing publisher MUST be the `seller`; for procurement, the listing publisher MUST be the agreement `buyer` and the winning bidder MUST be the `seller`. `bid.price` is always the amount payable by the agreement `buyer` to the agreement `seller`. This keeps procurement minor-safe under CORE §11.1.2: valid procurement listings use a new phase kind that older readers reject during listing validation; no valid procurement listing is encoded as an optional discriminator on the legacy demand phase.
 
 **Substrate:** SR-2 + SR-4.
 
@@ -429,7 +449,7 @@ signed_bytes := "dacs-agreement:v1:" || agreement_hash
 | --- | --- |
 | negotiate-fixed-price | buyer + seller (the seller signature may be an auto-accept instance signature per §8.4.1) |
 | negotiate-rfq | buyer + seller |
-| negotiate-sealed-envelope | seller + winning bidder (non-winning bidders’ signatures are not required) |
+| negotiate-sealed-envelope / negotiate-sealed-envelope-procurement | agreement buyer + agreement seller after SE-8 role assignment (equivalently, listing publisher + winning bidder; non-winning bidders’ signatures are not required) |
 
 **`priceAnchor` canonical-form note.** `priceAnchor` is optional and **non-normative for agreement validity** — informational only. When present:
 
@@ -450,13 +470,14 @@ A verifier MUST validate the agreement against its referenced listing — checke
 4. **Deliverable** — `terms.deliverable` MUST conform to the listing’s `offering.deliverable`: `terms.deliverable.deliverableType` MUST equal the listing `offering.deliverable` kind; `terms.deliverable.hash` MUST equal the canonical `DeliverableRef.hash` of the listing’s `offering.deliverable` (per §9.3); `terms.deliverable.schemaUrl` MUST equal the listing `offering.deliverable.schemaUrl` (both absent, or both present and equal).
 5. **Deadline** — `terms.deadline` MUST be ≤ `committedAt + listing.terms.deadlineSecAfterCommit`, where `committedAt` is the SR-2 anchor timestamp of the commitment record (§8.6) — the same objective, substrate-determined clock SE-2 uses — NOT the self-reported `generatedAt`, which a party could backdate to widen the settle window.
 6. **Not expired** — the listing's `validity.notAfter` (if set) MUST be ≥ `committedAt`; the listing MUST NOT have expired between read and commit-agreement (the §6.3.4 step-3 read-time check governs discovery; this re-check governs commit, closing the read-to-commit interval).
-7. **Pattern** — `derivedFromPattern` MUST match the listing’s pipeline-declared negotiation pattern.
+7. **Pattern** — `derivedFromPattern` MUST match the listing's pipeline-declared negotiation phase after mapping phase kind to agreement pattern: `negotiate-fixed-price` → `"fixed-price"`, `negotiate-rfq` → `"rfq"`, and both `negotiate-sealed-envelope` and `negotiate-sealed-envelope-procurement` → `"sealed-envelope"`.
+8. **Sealed-envelope role direction** — for `derivedFromPattern == "sealed-envelope"`, the agreement party roles and `terms.price` direction MUST match the pinned listing's sealed-envelope phase kind per SE-8. If `auctionMode` is required but missing, or present but unresolvable/malformed, validation MUST reject with a recorded `unresolvable-auctionMode` reason. If the roles are inverted relative to the pinned mode, validation MUST reject before Settle.
 
 Checks 5 and 6 are the two `committedAt`-relative checks — see the ordering note below. Agreements failing any check MUST be rejected by commit-agreement.
 
 **Ordering of the `committedAt`-relative checks.** Checks 5 and 6 reference `committedAt` — the commitment record's SR-2 anchor timestamp (§8.6) — which only exists *after* the commitment is anchored (§8.6 step 5). The checks therefore run in two phases:
 
-- **Pre-anchor (§8.6 step 3).** The value-independent checks — currency, price-band, rail, deliverable, pattern — gate here. The orchestrator also runs a *provisional* check of the deadline and `notAfter` against the current clock.
+- **Pre-anchor (§8.6 step 3).** The value-independent checks — currency, price-band, rail, deliverable, pattern, and sealed-envelope role direction — gate here. The orchestrator also runs a *provisional* check of the deadline and `notAfter` against the current clock.
 - **Post-anchor (authoritative).** Once the commitment is anchored, the orchestrator MUST re-evaluate checks 5 and 6 against the actual anchored `committedAt`. Any consumer/verifier reading the anchored commitment MUST likewise re-check them against `committedAt`.
 
 A commitment whose anchored `committedAt` violates either check is invalid.
@@ -581,7 +602,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 
 - (PS-1) A pipeline MUST contain exactly one negotiate-* phase.
 - (PS-2) A pipeline MUST contain exactly one commit-agreement phase, immediately following the negotiate-* phase.
-- (PS-3) The listing’s pricing model MUST be compatible with the chosen pattern: negotiate-fixed-price MUST be fixed or negotiable (in which case fixed-price uses the band’s centre); negotiate-rfq MUST be negotiable; negotiate-sealed-envelope MUST be auction.
+- (PS-3) The listing’s pricing model MUST be compatible with the chosen pattern: negotiate-fixed-price MUST be fixed or negotiable (in which case fixed-price uses the band’s centre); negotiate-rfq MUST be negotiable; negotiate-sealed-envelope and negotiate-sealed-envelope-procurement MUST be auction.
 
 **Fallback to fixed-price.** A listing offering negotiate-rfq MAY declare fixedPriceFallback: true in the pipeline step. When true, a buyer that does not wish to negotiate MAY signal acceptance of the listed centre-price via negotiate-fixed-price. The orchestrator selects which pattern runs based on buyer signal. The fallback path produces a normal AgreementDocument with derivedFromPattern: "fixed-price".
 
@@ -594,10 +615,10 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 | Channel implementation | CH-1 through CH-6; message envelope; failure detection |
 | negotiate-fixed-price | §8.4.1 procedure; signature collection; SR-2 anchoring |
 | negotiate-rfq | §8.4.2 procedure; RFQ-1 through RFQ-4; channel turn timeouts |
-| negotiate-sealed-envelope | §8.4.3 procedure; SE-1 through SE-7; deterministic selection; rule-ref content-hash binding |
+| negotiate-sealed-envelope / negotiate-sealed-envelope-procurement | §8.4.3 procedure; SE-1 through SE-8; deterministic selection; rule-ref content-hash binding; mode-bound role assignment |
 | commit-agreement | CA-1 through CA-4; signature and conformance validation |
 | Listing publisher | PS-1 through PS-3 |
-| Substrate without SR-4 | MUST support negotiate-fixed-price; MUST refuse negotiate-rfq and negotiate-sealed-envelope with a clear substrate-capability-missing error |
+| Substrate without SR-4 | MUST support negotiate-fixed-price; MUST refuse negotiate-rfq, negotiate-sealed-envelope, and negotiate-sealed-envelope-procurement with a clear substrate-capability-missing error |
 
 ### 8.10 Rationale
 
@@ -619,7 +640,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 
 **Institutional RFQ workflows.** A negotiate-rfq run maps to existing bilateral RFQ as a Bloomberg-chat RFQ maps to a Symphony RFQ: same semantic shape, different transport (the SR-4 channel). Existing desks wrap their negotiation logic as a DACS-3 phase without changing it.
 
-**Sealed-bid government procurement.** negotiate-sealed-envelope covers FAR Part 14's commit-then-reveal with cryptographic commitment (vs physical envelopes); the selection-rule abstraction (lowest-price / first-acceptable / rule-ref) covers FAR's "lowest responsive responsible bidder" and "best value". EU/UK equivalents map similarly.
+**Sealed-bid government procurement.** negotiate-sealed-envelope-procurement covers FAR Part 14's commit-then-reveal with cryptographic commitment (vs physical envelopes); the selection-rule abstraction (lowest-price / first-acceptable / rule-ref) covers FAR's "lowest responsive responsible bidder" and "best value". EU/UK equivalents map similarly.
 
 **Off-chain negotiation systems.** An existing RFQ system / procurement portal / B2B negotiation tool MAY serve as the SR-4 channel provided it satisfies CH-1..CH-6; the public-chain binding and agreement shape are the only DACS-3 additions.
 

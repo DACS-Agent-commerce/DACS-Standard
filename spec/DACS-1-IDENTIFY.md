@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.2** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — and honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6, and clarifies the listing-publisher / counterparty-role interpretation for sealed-envelope procurement listings). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -12,7 +12,7 @@ DACS-1 specifies how an agent is identified, what it offers, and how it is found
 
 - An **identity claim reference scheme** — a way to name an identity that already exists somewhere else (a domain, DID, company LEI, platform account, signing key), written as `type:value` (e.g. `lei:5493…`), optionally carrying proof it was checked against that source (a DACS-2 verification).
 - An **identity bundle schema** — an ordered set of independently-verifiable claims a party presents, plus a listing-side requirement schema declaring which bundles a listing accepts.
-- A **service listing schema** — a signed, anchored JSON document declaring the bundle requirement, offering, deliverable, pipeline, accepted rails, and terms. The listing is the seller's signed, pinned statement of terms — the single source of truth every deal with that seller is checked against.
+- A **service listing schema** — a signed, anchored JSON document declaring the bundle requirement, offering, deliverable, pipeline, accepted rails, and terms. The listing is the publisher's signed, pinned statement of terms — the single source of truth every deal with that publisher is checked against.
 - A **discovery extension** — a `.well-known/agent.json` listings-index URL plus an off-chain catalog API for indexed search.
 
 Identity is a bundle of independently-verified claims, not a single rooted identifier — so the same structure covers micropayments (a signing key) and regulated trades (LEI + KYB + FINRA + OFAC). The substrate MUST provide anchored storage (SR-2); single-signature bundle convenience (SR-1) is OPTIONAL and supplements, never replaces, per-claim verification.
@@ -380,11 +380,11 @@ type Listing = {
   // Versioning
   dacsVersion: "1"
   listingVersion: number               // monotonic per listingId, starts at 1
-  listingId: string                    // unique per seller; URL-safe ASCII; max 128 chars
+  listingId: string                    // unique per listing publisher; URL-safe ASCII; max 128 chars
   requiredCapabilities?: SubstrateRequirement[]
-  // Seller
+  // Listing publisher (named seller for wire compatibility; role interpretation below)
   seller: {
-    identity: IdentityBundle           // seller's own bundle
+    identity: IdentityBundle           // listing publisher's own bundle
     displayName: string                // max 200 chars
     publicEndpoint?: string            // optional HTTPS endpoint
   }
@@ -398,7 +398,7 @@ type Listing = {
     extendedDescriptionUrl?: string
     extendedDescriptionHash?: string
   }
-  // Buyer requirement
+  // Counterparty requirement (field name preserved for wire compatibility; role interpretation below)
   buyerRequirement: BundleRequirement
   // Pipeline of phases to execute, per DACS-3/4/5
   pipeline: PhaseStep[]                // non-empty, ordered
@@ -430,6 +430,8 @@ type ListingTerms = {
 }
 ```
 
+**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement`, DACS-3 §8.4.3 SE-8), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementDocument roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
+
 **`cancellationPolicy` semantics.** The field MAY be advertised. A signed listing advertising **`pre-commit`** grants a reputation-neutral cancellation right: a party that withdraws while the session is still pre-commit (a `vet-pending` / `negotiate-pending` state, before `commit-completed`) MAY mark the resulting `aborted-by-self` as a policy-permitted cancellation, which a verifier honours as reputation-neutral after resolving this **signed** listing and confirming the policy and the pre-commit timing (DACS-5 §10.3.1 ST-10). The neutrality derives from the *signed, advertised* policy — the mutual notice is what earns it; an unannounced withdrawal (no advertised policy, or a `none` policy) remains an ordinary `aborted-by-self` per §10.3.1 ST-3, and a withdrawal whose listing cannot be resolved is treated as indeterminate, never as a free neutral exit (ST-10 trichotomy).
 
 **`none`** permits no neutral cancellation. **`with-fee`** — a cancellation owing a fee after `commit-completed` — is **reserved and not defined**: it confers no neutrality, and a session ending after commit records its ordinary §10.3.1 outcome regardless of a `with-fee` advertisement.
@@ -455,7 +457,7 @@ type PhaseType =
   // DACS-2
   | "vet-credentials"
   // DACS-3
-  | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "commit-agreement"
+  | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement" | "commit-agreement"
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
@@ -472,7 +474,8 @@ Per-kind parameter shapes are normative in the owning chapter:
 | vet-credentials | none | 7 |
 | negotiate-fixed-price | none | 8 |
 | negotiate-rfq | {maxTurns, timeoutSec, channelSubnet?, rfqInitiator?} | 8 |
-| negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, channelSubnet?} | 8 |
+| negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode`, when present, MUST be `"demand"` | 8 |
+| negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
 | commit-agreement | none | 8 |
 | pay-* | {rail: string} (railId) | 9 |
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
@@ -547,7 +550,7 @@ Readers MUST validate listings in the following order, **halting on the first fa
 6. `seller.identity` bundle conformant per §6.3.2;
 7. pipeline references valid phase types per DACS-3/4/5;
 8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and non-empty and MUST reference resolvable payment rails per DACS-4; if pipeline contains no pay-* phase, `acceptedRails` MAY be absent (the intake-only listing pattern — RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band);
-9. signer resolves to a key controllable by the seller.
+9. signer resolves to a key controllable by the listing publisher (`seller.identity`).
 **Conformance — listing publishers and readers**
 A conforming publisher MUST: (LP-1) anchor each listingVersion via SR-2 before referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish revocation markers when withdrawing a listing.
 A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings failing any step in the validation order; (LR-3) refuse new sessions against revoked listings.

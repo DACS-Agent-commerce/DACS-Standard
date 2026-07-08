@@ -6,7 +6,7 @@ An independent, third-party set of conformance vectors for DACS v0.1, generated 
 
 Surface labels travel with each vector:
 
-- **GOLDEN (196)** — byte-stable and accepted by this reference verifier: 7 canonicalize, 5 decimal, 5 signing, 25 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 47 verify, 24 vet, 11 negotiate, and 12 governance checks.
+- **GOLDEN (204)** — byte-stable and accepted by this reference verifier: 7 canonicalize, 5 decimal, 5 signing, 25 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 47 verify, 24 vet, 19 negotiate, and 12 governance checks.
 - **CANDIDATE (0)** — no current candidate vectors.
 
 ## Why
@@ -34,7 +34,7 @@ Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`,
 - `settlement`: 37 golden vectors, §14.4 SettlementEvidence verification — PC-1..7 (anchor, attestationRef→evidence hash, outcome classification, currency-resolution, settlementFinality, anchor-pending cross-chain return), per-rail success (incl. `pay-x402` gasless-USDC-on-Base, §9.5.7), HTLC finality parameters, RD-5 railType↔asset/network coherence, §9.5.1/PIPE-5 amount==agreement.terms.price, CD-1/§9.3 amount canonicalisation, and the `dacs-4-evidence` signature.
 - `verify`: 47 golden vectors, §14.5 DACS-5 Verify — two-sided lookup `stor-{sha256(jobId+"-bundle-"+role)}` (§10.4.2) with jobId binding, §10.4.3(a-d) consumption (one-sided→aborted-by-self per §10.11, unified, divergent — "divergent" is a **consumer verdict, NOT an `outcome` enum value**), the ST-1..8 transition table + state→outcome mapping (§10.3.1, incl. the non-terminal `settle-asymmetric` HTLC-9 open state, ST-8), and reputation derivation (§10.5.1 — two-sided per-jobId reconciliation via `anchoredByRole` with `perspective_flip` of a counterparty-anchored copy per §10.11; `party_fault_denom` excludes `failed-substrate`; null≠zero; rating aggregation with `(rater,jobId,targetRole)` de-duplication; deterministic receipt `windowingBasis` + sorted `bundleRefs`; `observedTransactionalVolume` grouped by currency).
 - `vet`: 24 golden vectors, DACS-2 method contract, retry semantics, MA-1..3 resolution, freshness, oneOf/cross-accumulator precedence, and counterparty-malformed fault attribution.
-- `negotiate`: 11 golden vectors, §8.5.2 listing-conformance checks including CD-1 price validation and negotiable band math.
+- `negotiate`: 19 golden vectors, §8.4.3 / §8.5.1 / §8.5.2 listing-conformance checks including CD-1 price validation, negotiable band math, sealed-envelope role assignment, required signer coverage, and commit rejection for SE-8.
 - `governance`: 12 golden vectors, §14.7 GOV-1..3 steward disclosure and pin-time anchoring-phase checks.
 
 ## §8.7 arbitrator-disclosure (step 3)

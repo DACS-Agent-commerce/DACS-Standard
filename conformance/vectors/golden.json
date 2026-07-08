@@ -138,6 +138,29 @@
     "band": {
       "lower": "90",
       "upper": "120"
+    },
+    "sealedEnvelopeRoleAssignment": {
+      "defaultDemandWinnerRole": "buyer",
+      "demandWinnerRole": "buyer",
+      "procurementWinnerRole": "seller",
+      "procurementPhaseKind": "negotiate-sealed-envelope-procurement",
+      "procurementContextDeltaKey": "negotiate-sealed-envelope-procurement",
+      "procurementDerivedFromPattern": "sealed-envelope",
+      "priceDirection": "agreement buyer pays agreement seller",
+      "roleInvertedProcurementAgreement": {
+        "ok": false,
+        "failedAt": "sealed-envelope-role-direction"
+      },
+      "unresolvableAuctionMode": {
+        "ok": false,
+        "failedAt": "auctionMode",
+        "reason": "unresolvable-auctionMode"
+      },
+      "procurementPhaseMissingMode": {
+        "ok": false,
+        "failedAt": "auctionMode",
+        "reason": "unresolvable-auctionMode"
+      }
     }
   },
   "governance": {

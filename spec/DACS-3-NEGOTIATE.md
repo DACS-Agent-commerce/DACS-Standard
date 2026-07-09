@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, and sealed-envelope procurement role binding / SE-8). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, and sealed-envelope procurement role binding / SE-8, and the `terms.payoutBindings` payee-destination carriage — DACS-4 §9.5.1 PB-1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -337,6 +337,10 @@ type AgreementDocument = {
     // Both parties sign it with the agreement; it does NOT alter terms.price and does NOT gate Settle.
     feeSchedule?: FeeSchedule
 
+    // Payee-side settlement destinations, bound under both signatures and the agreement hash
+    // (DACS-4 §9.5.1 PB-1); one entry per pay phase, keyed by the §9.5.1 anchor tuple.
+    payoutBindings?: PayoutBinding[]
+
     additionalTerms?: Record<string, unknown>
 
   }
@@ -368,6 +372,16 @@ type AgreementParty = {
   vetRecordRef: AttestationRef         // DACS-2 composite verification record
 
   encryptionKey?: string               // optional party encryption public key; binds which key an encrypt-to-buyer deliverable is sealed to (DACS-4 §9.6.1, DV-3). Distinct from the signing key.
+
+}
+
+type PayoutBinding = {
+
+  railId: string                       // with phaseIndex, the §9.5.1/PC-2 phase-anchor key
+
+  phaseIndex: number                   // one entry per phase invocation, so PIPE-5 repeats carry distinct destinations deterministically
+
+  payeeAddress: string                 // the rail-specific destination the payee binds by co-signing
 
 }
 
@@ -435,6 +449,8 @@ type AgreementSignature = {
 
 }
 ```
+
+A `payoutBindings` entry's key `(railId, phaseIndex)` MUST be unique within the agreement. The field is first-class in `terms` so JCS canonicalisation places it under every party signature and the agreement hash — the same mechanics as `priceAnchor`.
 
 #### 8.5.1 Canonical serialisation and signature
 

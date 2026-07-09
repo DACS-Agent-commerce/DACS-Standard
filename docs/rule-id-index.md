@@ -24,6 +24,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | LR-* | Listing readers | §6.3 | §14.1 |
 | MA-* | Bundle-requirement matching | §6.3.3 | §14.1 |
 | PA-* | Progressive-anchoring phases | §7.4.4 | §14.7 |
+| PB-* | Payee-destination binding (agreement carriage + identity-binding ladder) | §9.5.1 | §14.4 |
 | PC-* | Payment phase common contract | §9.5 | §14.4 |
 | PIPE-* | Pipeline shape and phase ordering | §9.9 | §14.4 |
 | PS-* | Negotiation pattern selection | §8.8 | §14.3 |

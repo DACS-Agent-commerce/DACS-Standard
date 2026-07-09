@@ -458,7 +458,7 @@ v0.1 discloses a presented bundle's full `claims[]` set and its `presentedBy` pr
 
 ### 11.3 Closing
 
-Agent commerce is moving from prototype to production. DACS is a contribution toward keeping the lifecycle on public infrastructure: a stack that composes with the existing open standards where they work, fills the gaps where they don’t, and makes substrate dependencies explicit. A reference implementation runs the lifecycle end-to-end on the Demos substrate; an independent third-party reference implementation (PATH-OS Labs’ pathos-dacs-ref) implements the DACS-1 + DACS-2-GLEIF + DACS-5 verifier subset against the same spec.
+Agent commerce is moving from prototype to production. DACS is a contribution toward keeping the lifecycle on public infrastructure: a stack that composes with the existing open standards where they work, fills the gaps where they don’t, and makes substrate dependencies explicit. A reference implementation runs the lifecycle end-to-end on the Demos substrate; an independent third-party reference implementation implements the DACS-1 + DACS-2-GLEIF + DACS-5 verifier subset against the same spec.
 What this document is **not**: a finished standard ready for unsupervised production at every scale. The honest list of remaining work — beyond the per-stage follow-on topics in §11.2 — includes:
 
 - protocol-level wire specifications for SR-3 and SR-4 (currently trust-property specified only);

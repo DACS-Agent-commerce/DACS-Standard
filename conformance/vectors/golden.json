@@ -353,6 +353,8 @@
     },
     "jobIds": {
       "divergent": "DACS-VERIFY-0004",
+      "phaseIndexMismatch": "DACS-VERIFY-L3-PHASE-INDEX-MISMATCH",
+      "advisorySkew": "DACS-VERIFY-L3-ADVISORY-SKEW",
       "oneSided": "DACS-VERIFY-L3-ONE-SIDED",
       "reputation": [
         "DACS-VERIFY-L3-REP-COMPLETED",
@@ -368,13 +370,19 @@
       "divergentSeller": "pass",
       "oneSidedBuyer": "pass",
       "reputationAll": "pass",
-      "mixedRoleSellerBundle": "pass"
+      "mixedRoleSellerBundle": "pass",
+      "phaseIndexMismatchBuyer": "pass",
+      "phaseIndexMismatchSeller": "pass",
+      "advisorySkewBuyer": "pass",
+      "advisorySkewSeller": "pass"
     },
     "verdicts": {
       "absent": "absent",
       "unified": "unified",
       "oneSided": "one-sided",
-      "divergent": "divergent"
+      "divergent": "divergent",
+      "phaseIndexMismatch": "divergent",
+      "advisorySkew": "unified"
     },
     "reputation": {
       "windowStart": 1780050000000,

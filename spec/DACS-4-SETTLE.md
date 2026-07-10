@@ -373,12 +373,13 @@ type PaymentPhaseInput = {
   - **Tier 3 — agreement-signed destination assertion.** Legal only when no stronger tier is applicable (the pinned bundle establishes no intrinsic or controlled binding for the rail's chain). The payee's co-signature over `terms.payoutBindings` is the binding — an assertion, not a control proof; the residual (a payee asserting an address it does not control) is a payee-side risk, not a substitution surface. A tier-3 settlement SHOULD record the binding tier used in its evidence, so downstream consumers can see the destination was bound by assertion.
 - (PB-3) **No downgrade.** SB-3 (§9.5.8) grades what a past, recoverable record proves and resolves absent-or-unverifiable by falling back to the unbound posture. PB-2 gates an irreversible pre-pay decision, and the pinned `bundleHash` makes *absent* (tier 3 legal) and *applicable-but-unresolvable* (pause) distinct, replayable states. An implementation MUST NOT apply SB-3's fallback arm to the PB-2 decision.
 
-Where no tier is satisfiable for a phase — no `payoutBindings` entry to carry a tier-3 assertion (tier 3's binding is the payee's co-signature over that entry, so an absent entry leaves tier 3 unavailable) and no intrinsic or applicable controlled binding — the payer SHOULD refuse to pay. This holds whether the agreement predates `payoutBindings` or simply omits the entry for this phase: omission is not grandfathering, and an unbound destination is refused, not paid.
+Where no tier is satisfiable for a phase — no `payoutBindings` entry to carry a tier-3 assertion (tier 3's binding is the payee's co-signature over that entry, so an absent entry leaves tier 3 unavailable) and no intrinsic or applicable controlled binding — the payer MUST refuse to pay and MUST NOT submit payment. This holds whether the agreement predates `payoutBindings` or simply omits the entry for this phase: omission is not grandfathering, and an unbound destination is refused, not paid.
 
 **PB failure modes (all pay rails).**
 
 - PB-1 destination mismatch, or PB-2 tier-2 resolving to a different address → abort before submitting payment, `counterparty`
 - PB-2 applicable-but-unresolvable → `substrate` (ST-7 pause; the recorded VerifyResult reason distinguishes it)
+- no satisfiable PB tier → abort before submitting payment, `counterparty`
 
 #### 9.5.2 pay-evm-erc20
 

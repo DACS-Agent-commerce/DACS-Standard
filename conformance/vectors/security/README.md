@@ -28,6 +28,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-4 §9.5.1 (PB-1..PB-3); DACS-3 §8.5 terms.payoutBindings | 8 | `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
@@ -106,6 +107,53 @@ SB-2 verifier and assert `(decision, effect)`. The reference run lives in
 npx tsx conformance/security-vectors/sb2-settlement-uniqueness/run.mts
 # → 20/20 vectors pass
 ```
+
+### `payee-destination-binding-v0.1.json` — §9.5.1 PB-1..PB-3 (pre-pay destination binding)
+
+8 candidate vectors for the §9.5.1 payee-destination gate. They model the
+pre-submission decision an orchestrator makes before sending money: the
+destination is either bound by the agreement / applicable payout binding tier,
+the payment is refused before submit, or the session pauses as `indeterminate`
+when an applicable binding cannot be resolved.
+
+Coverage:
+
+- **PB-1 agreement binding** — agreement-carried `payeeAddress` matches the phase
+  destination, and a mismatch aborts before payment.
+- **PB-2 payout binding tiers** — a resolved tier-2 binding cannot be downgraded to
+  a different phase destination; an applicable-but-unresolvable tier-2 binding
+  pauses instead of falling through to tier 3.
+- **No satisfiable tier** — when no agreement field or applicable
+  `terms.payoutBindings` tier can bind the destination, the payer refuses before
+  submitting payment.
+- **PB-3 fallback separation** — SB-3 post-field fallback is not imported as a
+  payee-destination fallback.
+- **Repeated pay phases** — repeated phases are bound independently by
+  `(railId, phaseIndex)`.
+- **Post-field omission** — omitting a required settlement-field destination is a
+  refusal, not permission to infer one.
+
+#### Vector schema
+
+Each entry in `vectors[]`:
+
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `rule` | PB rule family under test |
+| `op` | operation surface, always the pre-pay destination decision |
+| `expected` | §7.5.1 verdict: `pass` \| `fail` \| `indeterminate` |
+| `note` | human-readable rationale |
+| `agreement` | agreement/payment terms relevant to destination binding |
+| `phaseInput` / `phaseInputs` | one payment phase or repeated payment phases under test |
+| `bindingContext` | resolved or unresolved binding evidence available to the payer |
+| `want` | expected submit/refuse/pause outcome and any bound destination |
+
+`pass` means the destination is bound and payment may be submitted. `fail` means
+the payer aborts before submission. `indeterminate` means ST-7-style pause before
+submission because an applicable binding cannot be resolved. This set is
+candidate data only; cross-run convergence and any golden promotion remain
+pending.
 
 ### `agreement-listing-v0.1.json` — §8.5.2 (agreement ↔ listing validation)
 

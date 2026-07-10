@@ -1,0 +1,340 @@
+{
+  "set": "payee-destination-binding-v0.1",
+  "spec": "DACS-4 §9.5.1 (PB-1..PB-3); DACS-3 §8.5 terms.payoutBindings",
+  "gaps": [
+    "#211 payeeAddress binding",
+    "#229 no-tier fail-closed wording",
+    "#231 PB conformance row and vectors"
+  ],
+  "decisionModel": "pre-pay gate over PaymentPhaseInput and pinned AgreementDocument; pass means payment may be submitted, fail means abort/refuse before submit, indeterminate means ST-7 substrate pause before submit",
+  "hash": "12b49fb4dce04f06bb5cedd27e8a49ded4a73c587e5702d6ddec572c07bedcee",
+  "count": 8,
+  "vectors": [
+    {
+      "name": "pb1-agreement-bound-destination-matches",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "pass",
+      "note": "terms.payoutBindings carries the phase tuple (railId, phaseIndex), and PaymentPhaseInput.payee.payeeAddress equals the co-signed entry, so PB-1 permits the handler to continue to PB-2.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-happy",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-001",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
+          "primaryClaim": "cci-lei:984500PBHAPPY000001",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 3,
+        "tier3AgreementAssertionPresent": true
+      },
+      "want": {
+        "maySubmitPayment": true,
+        "bindingTier": 3
+      }
+    },
+    {
+      "name": "pb1-destination-mismatch-aborts-before-pay",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "The phase tuple resolves to a co-signed payout binding for address A, but the runtime PaymentPhaseInput carries address B. The handler MUST NOT submit payment to B.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-mismatch",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-002",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
+          "primaryClaim": "cci-lei:984500PBMISMATCH1",
+          "payeeAddress": "0x2222222222222222222222222222222222222222"
+        }
+      },
+      "want": {
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "counterparty",
+        "failedAt": "payoutBinding.payeeAddress"
+      }
+    },
+    {
+      "name": "pb2-tier2-resolves-different-address",
+      "rule": "PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "The pinned payee bundle makes tier 2 applicable for the rail's chain, but the controlled linked claim resolves to a different destination than the phase payeeAddress. The handler aborts before payment.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-tier2-mismatch",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0x3333333333333333333333333333333333333333"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-003",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-controlled-evm",
+          "primaryClaim": "cci-lei:984500PBTIER20001",
+          "payeeAddress": "0x3333333333333333333333333333333333333333"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 2,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0x4444444444444444444444444444444444444444",
+        "verifyResult": {
+          "decision": "pass",
+          "reason": "controlled-linked-claim-resolved"
+        }
+      },
+      "want": {
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "counterparty",
+        "failedAt": "payee.primaryClaim.binding"
+      }
+    },
+    {
+      "name": "pb2-tier2-applicable-unresolvable-pauses-no-tier3",
+      "rule": "PB-2/PB-3",
+      "op": "pre-pay-destination-gate",
+      "expected": "indeterminate",
+      "note": "The pinned bundle makes tier 2 applicable, but the control proof cannot resolve. The payer pauses with the VerifyResult decision+reason and MUST NOT downgrade to the agreement-signed tier-3 assertion.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-unresolvable",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0x5555555555555555555555555555555555555555"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-004",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-controlled-evm",
+          "primaryClaim": "cci-lei:984500PBUNRES0001",
+          "payeeAddress": "0x5555555555555555555555555555555555555555"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 2,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0x5555555555555555555555555555555555555555",
+        "verifyResult": {
+          "decision": "indeterminate",
+          "reason": "linked-claim-anchor-unavailable"
+        }
+      },
+      "want": {
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "substrate",
+        "sessionTransition": "paused",
+        "mustRecordVerifyResult": true,
+        "mustNotUseTier3": true
+      }
+    },
+    {
+      "name": "pb2-no-payoutbinding-no-tier-refuses",
+      "rule": "PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "No payoutBindings entry exists for the phase tuple, and the rail has no intrinsic or controlled binding. Tier 3 is unavailable because there is no payee co-signature over a destination entry; omission is not grandfathering.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-no-entry",
+        "terms": {
+          "payoutBindings": []
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-005",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
+          "primaryClaim": "cci-lei:984500PBNOTIER001",
+          "payeeAddress": "0x6666666666666666666666666666666666666666"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": null,
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": false
+      },
+      "want": {
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "counterparty",
+        "failedAt": "payee-destination-binding"
+      }
+    },
+    {
+      "name": "pb3-sb3-absent-fallback-not-imported",
+      "rule": "PB-3",
+      "op": "pre-pay-destination-gate",
+      "expected": "indeterminate",
+      "note": "SB-3 would treat an absent/unverifiable settlement-side jobId binding as not established and fall back for evidence classification. PB-3 forbids importing that fallback into the irreversible pre-pay PB-2 gate.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-sb3-distinction",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "pay-x402:base:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0x7777777777777777777777777777777777777777"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-006",
+        "railId": "pay-x402:base:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-controlled-base",
+          "primaryClaim": "cci-lei:984500PBSB300001",
+          "payeeAddress": "0x7777777777777777777777777777777777777777"
+        }
+      },
+      "bindingContext": {
+        "tier2Applicable": true,
+        "tier2VerifyResult": {
+          "decision": "indeterminate",
+          "reason": "control-proof-unresolvable"
+        },
+        "sb3JobIdBinding": "absent-or-unverifiable"
+      },
+      "want": {
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "substrate",
+        "sessionTransition": "paused",
+        "mustNotApplySb3Fallback": true
+      }
+    },
+    {
+      "name": "pb1-repeated-pay-phases-distinct-bindings",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "pass",
+      "note": "Two repeated pay phases share the same railId but different phaseIndex values. PB-1 uses the same (railId, phaseIndex) anchor tuple as PC-2, so each phase resolves its own destination.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-repeated",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0x8888888888888888888888888888888888888888"
+            },
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 1,
+              "payeeAddress": "0x9999999999999999999999999999999999999999"
+            }
+          ]
+        }
+      },
+      "phaseInputs": [
+        {
+          "jobId": "pb-job-007",
+          "railId": "evm-erc20:8453:USDC",
+          "phaseIndex": 0,
+          "payee": {
+            "payeeAddress": "0x8888888888888888888888888888888888888888"
+          }
+        },
+        {
+          "jobId": "pb-job-007",
+          "railId": "evm-erc20:8453:USDC",
+          "phaseIndex": 1,
+          "payee": {
+            "payeeAddress": "0x9999999999999999999999999999999999999999"
+          }
+        }
+      ],
+      "want": {
+        "phase0MaySubmitPayment": true,
+        "phase1MaySubmitPayment": true,
+        "mustKeyBy": [
+          "railId",
+          "phaseIndex"
+        ]
+      }
+    },
+    {
+      "name": "pb2-post-field-omission-refuses",
+      "rule": "PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "A post-PB agreement omits payoutBindings entirely. With no intrinsic or controlled binding, the omission does not grandfather an unbound payeeAddress; the handler refuses before payment.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-field-omitted",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          }
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-008",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
+          "primaryClaim": "cci-lei:984500PBFIELD0001",
+          "payeeAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "bindingContext": {
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": false
+      },
+      "want": {
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "counterparty",
+        "failedAt": "payee-destination-binding"
+      }
+    }
+  ]
+}

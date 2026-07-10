@@ -375,7 +375,7 @@ recipe.parserRules = {
 | no `data` record (404) | `fail` | not found |
 | reachable-but-error (non-404 / 5xx / `errors[]` body) | `error` | undecidable; retryable per VP-R1 |
 
-A consumer requiring a *current* LEI applies its own risk policy to `indeterminate` (DACS-3 retry-vs-proceed-vs-block); the recipe MUST NOT pre-collapse it to `fail`. **`RETIRED → indeterminate` is a steward decision (#152):** a wound-down entity *was* validly registered, so it reads as "validly-issued, not-current" rather than a false claim — `fail` is the documented alternate under a strict "valid-today" reading. `resolvedEntity` is the NFC-normalized `entity.legalName.name` (the `dataMap.legalName` above). The mapping was source-grounded against **LEI-CDF 3.1** and live-proven by two independent implementations (PATH-OS `pathos-dacs-ref` + DNO) converging on the ISSUED / LAPSED / RETIRED rows (#146).
+A consumer requiring a *current* LEI applies its own risk policy to `indeterminate` (DACS-3 retry-vs-proceed-vs-block); the recipe MUST NOT pre-collapse it to `fail`. **`RETIRED → indeterminate` is a steward decision:** a wound-down entity *was* validly registered, so it reads as "validly-issued, not-current" rather than a false claim — `fail` is the documented alternate under a strict "valid-today" reading. `resolvedEntity` is the NFC-normalized `entity.legalName.name` (the `dataMap.legalName` above). The mapping was source-grounded against **LEI-CDF 3.1** and confirmed by independent implementations converging on the ISSUED / LAPSED / RETIRED rows.
 
 #### 7.4.2 v0.1 recipe registry contents
 

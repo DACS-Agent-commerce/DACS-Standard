@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, and sealed-envelope procurement role binding / SE-8, and the `terms.payoutBindings` payee-destination carriage — DACS-4 §9.5.1 PB-1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, and sealed-envelope procurement role binding / SE-8, the `terms.payoutBindings` payee-destination carriage — DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -324,6 +324,11 @@ type AgreementDocument = {
 
     price: PriceTerm                   // DACS-4 reference
 
+    // Present iff the pinned listing prices `metered` (DACS-4 PricingSpec). quantity is a
+    // non-negative integer count of `unit`s; terms.price recomputes from it (MTR-4). First-class
+    // in terms so JCS places it under every signature and the agreement hash.
+    meteredQuantity?: { quantity: string; unit: string }
+
     rail?: PaymentRailRef              // DACS-4 reference; present iff the pipeline has a pay-* phase (§8.5.2 rule 3). When present, MUST appear in listing.acceptedRails
 
     deadline: number                   // unix ms; settle-by deadline
@@ -477,11 +482,12 @@ signed_bytes := "dacs-agreement:v1:" || agreement_hash
 
 A verifier MUST validate the agreement against its referenced listing — checked in order:
 
-1. **Currency** — `terms.price.currency` MUST equal the listing pricing currency (negotiable pricing → `bandCenter.currency`; fixed pricing → the listed price currency). A band or equality comparison across differing currencies MUST be rejected **before any amount comparison**.
-2. **Price within band** — `terms.price` MUST lie within the listing’s pricing band:
+1. **Currency** — `terms.price.currency` MUST equal the listing pricing currency (negotiable pricing → `bandCenter.currency`; fixed pricing → the listed price currency; metered pricing → `unitPrice.currency`). A band or equality comparison across differing currencies MUST be rejected **before any amount comparison**.
+2. **Price within band** — first, if the pinned listing's `PricingSpec.kind` is not one this reader recognizes, commit-agreement MUST reject with a recorded `unrecognized-pricing-kind` reason (rule MTR-5) and MUST NOT accept an agreement whose price it validated against no recognized pricing model — the fail-closed instance for the pricing union, the same discipline as check 8's `unresolvable-auctionMode`. Otherwise `terms.price` MUST satisfy the recognized kind:
    - *Negotiable pricing* — within the band declared by the negotiable variant's `minPct` / `maxPct` (non-negative percentages) around `bandCenter`. The admissible band is the **inclusive** interval [`bandCenter.amount × (100 − minPct) / 100`, `bandCenter.amount × (100 + maxPct) / 100`]. Each computed bound MUST be **rounded half-up to the number of fractional digits of `bandCenter.amount` in its CD-1 canonical form** (CORE §B.2) — NOT to any "currency precision", which is undefined at listing time (settlement precision is tied to `rail.asset.decimals`, not the listing currency) — then canonicalised per CD-1. `terms.price.amount`, compared as a full-precision CD-1 decimal, MUST be ≥ the lower bound and ≤ the upper bound (boundaries inclusive). A verifier MUST reject the listing if the computed lower bound is ≤ 0.
    - *fixed-price over negotiable pricing* — if `derivedFromPattern == "fixed-price"`, `terms.price` MUST instead equal `bandCenter` exactly per CD-1, not merely lie within the band (see PS-3).
    - *Fixed pricing* — equal to the listed price.
+   - *Metered pricing* — `terms.meteredQuantity` MUST be present, `terms.meteredQuantity.unit` MUST equal the metered variant's `unit`, and `terms.price` MUST equal `max(minTotal ?? 0, unitPrice.amount × quantity)` in CD-1 canonical form, where `quantity = terms.meteredQuantity.quantity` (rules MTR-1..4). If `terms.meteredQuantity` is absent or its `unit` mismatches, commit-agreement MUST reject.
 3. **Rail** — `terms.rail` MUST be present if and only if the listing pipeline contains a `pay-*` phase (PIPE-1, §9.5). When present, it MUST appear in `listing.acceptedRails`. For a zero-pay (intake-only / settled-out-of-band) pipeline — one with no `pay-*` phase — `terms.rail` MUST be absent.
 4. **Deliverable** — `terms.deliverable` MUST conform to the listing’s `offering.deliverable`: `terms.deliverable.deliverableType` MUST equal the listing `offering.deliverable` kind; `terms.deliverable.hash` MUST equal the canonical `DeliverableRef.hash` of the listing’s `offering.deliverable` (per §9.3); `terms.deliverable.schemaUrl` MUST equal the listing `offering.deliverable.schemaUrl` (both absent, or both present and equal).
 5. **Deadline** — `terms.deadline` MUST be ≤ `committedAt + listing.terms.deadlineSecAfterCommit`, where `committedAt` is the SR-2 anchor timestamp of the commitment record (§8.6) — the same objective, substrate-determined clock SE-2 uses — NOT the self-reported `generatedAt`, which a party could backdate to widen the settle window.
@@ -490,6 +496,14 @@ A verifier MUST validate the agreement against its referenced listing — checke
 8. **Sealed-envelope role direction** — for `derivedFromPattern == "sealed-envelope"`, the agreement party roles and `terms.price` direction MUST match the pinned listing's sealed-envelope phase kind per SE-8. If `auctionMode` is required but missing, or present but unresolvable/malformed, validation MUST reject with a recorded `unresolvable-auctionMode` reason. If the roles are inverted relative to the pinned mode, validation MUST reject before Settle.
 
 Checks 5 and 6 are the two `committedAt`-relative checks — see the ordering note below. Agreements failing any check MUST be rejected by commit-agreement.
+
+**Metered pricing (MTR-1..5).** The `metered` `PricingSpec` variant (DACS-4) prices per unit of measured usage; its total is fixed only once the quantity is known, so it is computed into `terms.price` at commit and validated by check 2's metered arm.
+
+- **(MTR-1)** `unitPrice.currency` MUST equal the listing currency.
+- **(MTR-2)** if `minTotal` is present, `minTotal.currency` MUST equal the listing currency.
+- **(MTR-3)** `unit` MUST be a non-empty label.
+- **(MTR-4)** for a metered listing, `terms.price` MUST equal `max(minTotal ?? 0, unitPrice.amount × quantity)` in CD-1 canonical form, where `quantity = terms.meteredQuantity.quantity` is a **non-negative integer** count of whole `unit`s. Where the raw job measurement is not a whole number of units, `quantity` MUST be rounded **up** (ceil) to the next whole unit — unless the listing declares a per-unit rounding — so two implementations derive the same quantity from the same job. `unitPrice.amount × quantity` is exact (a CD-1 decimal times a non-negative integer; no rounding in the product). MTR-4 binds `terms.price` to the *declared* quantity; the binding of the declared quantity to the *actual* job is the buyer's computation co-signed by the seller — a co-signed assertion, dispute-visible via the deliverable, **not** a measurement-correctness proof.
+- **(MTR-5)** a transacting reader MUST reject an agreement at commit-agreement whose pinned listing carries an unrecognized `PricingSpec.kind`, with a recorded `unrecognized-pricing-kind` reason (check 2). This is the fail-closed rule that keeps every current and future `PricingSpec.kind` — `metered` included — additive/minor-safe under §11.1.2: an older reader structurally refuses a kind it cannot price rather than accepting a price it validated against nothing.
 
 **Ordering of the `committedAt`-relative checks.** Checks 5 and 6 reference `committedAt` — the commitment record's SR-2 anchor timestamp (§8.6) — which only exists *after* the commitment is anchored (§8.6 step 5). The checks therefore run in two phases:
 
@@ -618,7 +632,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 
 - (PS-1) A pipeline MUST contain exactly one negotiate-* phase.
 - (PS-2) A pipeline MUST contain exactly one commit-agreement phase, immediately following the negotiate-* phase.
-- (PS-3) The listing’s pricing model MUST be compatible with the chosen pattern: negotiate-fixed-price MUST be fixed or negotiable (in which case fixed-price uses the band’s centre); negotiate-rfq MUST be negotiable; negotiate-sealed-envelope and negotiate-sealed-envelope-procurement MUST be auction.
+- (PS-3) The listing’s pricing model MUST be compatible with the chosen pattern: negotiate-fixed-price MUST be fixed, negotiable (in which case fixed-price uses the band’s centre), or metered (the rate is fixed and units are measured, so the total is deterministic and acceptance is the negotiation); negotiate-rfq MUST be negotiable or metered; negotiate-sealed-envelope and negotiate-sealed-envelope-procurement MUST be auction. A metered listing MUST therefore use negotiate-fixed-price or negotiate-rfq.
 
 **Fallback to fixed-price.** A listing offering negotiate-rfq MAY declare fixedPriceFallback: true in the pipeline step. When true, a buyer that does not wish to negotiate MAY signal acceptance of the listed centre-price via negotiate-fixed-price. The orchestrator selects which pattern runs based on buyer signal. The fallback path produces a normal AgreementDocument with derivedFromPattern: "fixed-price".
 
@@ -679,6 +693,8 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 **Sealed-envelope post-deadline submission.** *Threat:* a bidder submits a commit after commitDeadline, claiming clock skew. *Mitigation:* SE-2 mandates the commit’s public-chain anchor timestamp (objective, substrate-determined) be ≤ commitDeadline. Clock skew at the bidder is irrelevant; the chain decides the timestamp.
 
 **Agreement-listing mismatch.** *Threat:* a signed agreement contains terms outside the listing’s pricing band or with an unaccepted rail. *Mitigation:* validation rules; commit-agreement must reject. Both sides also SHOULD validate before signing.
+
+**Unrecognized pricing kind vacuous-pass.** *Threat:* a listing carries a `PricingSpec.kind` a reader does not implement (a newer kind, or a malformed one); the reader skips the price check it has no arm for and accepts an agreement whose `terms.price` was validated against nothing, letting an arbitrary amount settle. *Mitigation:* MTR-5 — commit-agreement MUST reject an unrecognized pricing kind with a recorded `unrecognized-pricing-kind` reason before any settle, so an unknown kind fails closed rather than pricing-vacuous-passing. This is what makes every `PricingSpec.kind` additive/minor-safe (§11.1.2): the metered arithmetic threat (a total that does not match `unitPrice × quantity`) is caught by MTR-4's recompute; the unknown-kind threat is caught by MTR-5.
 
 **Multi-party signing race.** *Threat:* one party signs an agreement; before the other co-signs, the first party publicly commits and locks the other in. *Mitigation:* commit-agreement requires all required signatures present. A unilaterally-signed agreement fails CA. A future minor version MAY add pending-co-signature semantics for asynchronous flows; v0.1 requires synchronous signature collection.
 

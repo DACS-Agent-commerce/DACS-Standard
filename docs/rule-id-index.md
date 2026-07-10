@@ -7,6 +7,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | Rule family | Role / surface | Spec section | Test-plan hook |
 |-------------|----------------|--------------|----------------|
 | AMEND-* | Settlement amendment validation | §9.7.1 | §14.4 |
+| AP2-* | `pay-ap2` attested provider-receipt verification, session binding, credential scope, capture semantics | §9.5.6 | §14.4 |
 | BP-* | Bundle producers for IdentityBundle | §6.3.2 | §14.1 |
 | BR-* | Bundle readers for IdentityBundle | §6.3.2 | §14.1 |
 | CA-* | Commit-agreement phase validation | §8.6 | §14.3 |

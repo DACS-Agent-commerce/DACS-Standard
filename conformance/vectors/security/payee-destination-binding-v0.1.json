@@ -6,9 +6,9 @@
     "#229 no-tier fail-closed wording",
     "#231 PB conformance row and vectors"
   ],
-  "decisionModel": "pre-pay gate over PaymentPhaseInput and pinned AgreementDocument; pass means payment may be submitted, fail means abort/refuse before submit, indeterminate means ST-7 substrate pause before submit",
-  "hash": "12b49fb4dce04f06bb5cedd27e8a49ded4a73c587e5702d6ddec572c07bedcee",
-  "count": 8,
+  "decisionModel": "pre-pay gate over PaymentPhaseInput and pinned AgreementDocument; pass means payment may be submitted, fail means abort/refuse before submit, indeterminate means ST-7 substrate pause before submit, error means resolver/input error with no downgrade or payment",
+  "hash": "9259547f9bdd6af016e1e0ceb9b6a868affc0781a07844836aa9b2f049f83e65",
+  "count": 11,
   "vectors": [
     {
       "name": "pb1-agreement-bound-destination-matches",
@@ -34,7 +34,7 @@
         "phaseIndex": 0,
         "payee": {
           "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBHAPPY000001",
+          "primaryClaim": "cci-lei:984500PBHAPPY0000000",
           "payeeAddress": "0x1111111111111111111111111111111111111111"
         }
       },
@@ -71,7 +71,7 @@
         "phaseIndex": 0,
         "payee": {
           "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBMISMATCH1",
+          "primaryClaim": "cci-lei:984500PBMISMATCH1000",
           "payeeAddress": "0x2222222222222222222222222222222222222222"
         }
       },
@@ -106,7 +106,7 @@
         "phaseIndex": 0,
         "payee": {
           "bundleHash": "sha256:payee-bundle-controlled-evm",
-          "primaryClaim": "cci-lei:984500PBTIER20001",
+          "primaryClaim": "cci-lei:984500PBTIER20000000",
           "payeeAddress": "0x3333333333333333333333333333333333333333"
         }
       },
@@ -123,6 +123,90 @@
         "ok": false,
         "errorClass": "counterparty",
         "failedAt": "payee.primaryClaim.binding"
+      }
+    },
+    {
+      "name": "pb2-tier2-controlled-claim-matches",
+      "rule": "PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "pass",
+      "note": "The pinned payee bundle makes tier 2 applicable for the rail's chain, and the controlled linked cci-xm claim resolves to the same destination carried by the agreement and phase input. The payer may submit using binding tier 2.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-tier2-match",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-003a",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-controlled-evm-pass",
+          "primaryClaim": "cci-lei:984500PBT2PASS000000",
+          "payeeAddress": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 2,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "verifyResult": {
+          "decision": "pass",
+          "reason": "controlled-linked-claim-resolved"
+        }
+      },
+      "want": {
+        "maySubmitPayment": true,
+        "bindingTier": 2,
+        "boundDestination": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "recordedVerifyResultEquals": {
+          "decision": "pass",
+          "reason": "controlled-linked-claim-resolved"
+        }
+      }
+    },
+    {
+      "name": "pb2-tier1-pay-dem-intrinsic-matches",
+      "rule": "PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "pass",
+      "note": "For pay-dem, the rail destination is definitionally the primary claim's Demos address. The intrinsic tier-1 binding is strongest and lets the payer submit without relying on tier 2 or tier 3.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-tier1-pay-dem",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "demos-native:DEM",
+              "phaseIndex": 0,
+              "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-003b",
+        "railId": "demos-native:DEM",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-demos-intrinsic",
+          "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+          "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 1,
+        "tier1Intrinsic": true
+      },
+      "want": {
+        "maySubmitPayment": true,
+        "bindingTier": 1,
+        "boundDestination": "0x1111111111111111111111111111111111111111111111111111111111111111"
       }
     },
     {
@@ -149,7 +233,7 @@
         "phaseIndex": 0,
         "payee": {
           "bundleHash": "sha256:payee-bundle-controlled-evm",
-          "primaryClaim": "cci-lei:984500PBUNRES0001",
+          "primaryClaim": "cci-lei:984500PBUNRES0000000",
           "payeeAddress": "0x5555555555555555555555555555555555555555"
         }
       },
@@ -166,7 +250,57 @@
         "ok": false,
         "errorClass": "substrate",
         "sessionTransition": "paused",
-        "mustRecordVerifyResult": true,
+        "recordedVerifyResultEquals": {
+          "decision": "indeterminate",
+          "reason": "linked-claim-anchor-unavailable"
+        },
+        "mustNotUseTier3": true
+      }
+    },
+    {
+      "name": "pb2-tier2-resolver-error-no-downgrade",
+      "rule": "PB-2/PB-3",
+      "op": "pre-pay-destination-gate",
+      "expected": "error",
+      "note": "The pinned bundle makes tier 2 applicable, but the resolver returns error rather than a 4-value indeterminate. The error is surfaced as error, with no tier-3 downgrade and no payment submission.",
+      "agreement": {
+        "agreementHash": "sha256:agreement-pb-resolver-error",
+        "terms": {
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 0,
+              "payeeAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            }
+          ]
+        }
+      },
+      "phaseInput": {
+        "jobId": "pb-job-004a",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 0,
+        "payee": {
+          "bundleHash": "sha256:payee-bundle-controlled-evm-error",
+          "primaryClaim": "cci-lei:984500PBT2ERROR00000",
+          "payeeAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      },
+      "bindingContext": {
+        "strongestApplicableTier": 2,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "verifyResult": {
+          "decision": "error",
+          "reason": "linked-claim-resolver-malformed-response"
+        }
+      },
+      "want": {
+        "maySubmitPayment": false,
+        "ok": false,
+        "errorClass": "permanent",
+        "recordedVerifyResultEquals": {
+          "decision": "error",
+          "reason": "linked-claim-resolver-malformed-response"
+        },
         "mustNotUseTier3": true
       }
     },
@@ -188,7 +322,7 @@
         "phaseIndex": 0,
         "payee": {
           "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBNOTIER001",
+          "primaryClaim": "cci-lei:984500PBNOTIER000000",
           "payeeAddress": "0x6666666666666666666666666666666666666666"
         }
       },
@@ -229,13 +363,13 @@
         "phaseIndex": 0,
         "payee": {
           "bundleHash": "sha256:payee-bundle-controlled-base",
-          "primaryClaim": "cci-lei:984500PBSB300001",
+          "primaryClaim": "cci-lei:984500PBSB3000000000",
           "payeeAddress": "0x7777777777777777777777777777777777777777"
         }
       },
       "bindingContext": {
         "tier2Applicable": true,
-        "tier2VerifyResult": {
+        "verifyResult": {
           "decision": "indeterminate",
           "reason": "control-proof-unresolvable"
         },
@@ -320,7 +454,7 @@
         "phaseIndex": 0,
         "payee": {
           "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBFIELD0001",
+          "primaryClaim": "cci-lei:984500PBFIELD0000000",
           "payeeAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         }
       },

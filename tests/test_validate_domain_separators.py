@@ -25,7 +25,7 @@ class DomainSeparatorValidationTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             spec_path = Path(tmp) / "SPECIFICATION.md"
             spec_path.write_text(
-                "The v0.1 registry of domain separators is closed:\n"
+                "The v0.x registry of domain separators at this revision is closed:\n"
                 "| Artifact | Domain separator | Defined in |\n"
                 "| --- | --- | --- |\n"
                 "| Known | \"dacs-known:v1:\" | §1 |\n\n"

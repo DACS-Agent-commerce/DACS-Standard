@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on the AgreementDocument §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, and sealed-envelope procurement role binding / SE-8, and the `terms.payoutBindings` payee-destination carriage — DACS-4 §9.5.1 PB-1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8, and the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -12,8 +12,8 @@ DACS-3 specifies how parties arrive at agreed terms and bind themselves cryptogr
 
 - A **negotiation channel model** — abstract requirements for a private coordination surface keyed to participant identities, with the public chain seeing only commitments. Realised in v0.1 by SR-4; substrates without SR-4 host only negotiate-fixed-price.
 - A **closed set of negotiation patterns** as phase types: negotiate-fixed-price (acceptance), negotiate-rfq (bounded offer/counter), negotiate-sealed-envelope demand / procurement (commit-then-reveal sealed bid) — each with a uniform input/output contract.
-- An **agreement document schema** — the canonical signed JSON output of any pattern, carrying final terms, deliverable reference, deadlines, and all-party signatures.
-- A **commit-agreement phase** — anchors the agreement hash on the public chain, producing the binding artifact every downstream stage references.
+- Two **agreement artifact schemas** — the legacy AgreementDocument and the structurally distinct PayeeBoundAgreementDocument, each carrying final terms, deliverable reference, deadlines, and all-party signatures.
+- Two corresponding **agreement commitment phases** — anchor the agreement hash on the public chain, producing the binding artifact every downstream stage references.
 
 Negotiation contents stay between participants; the chain receives only what binds them to the outcome.
 
@@ -42,7 +42,7 @@ A negotiation channel is a coordination surface with the following properties.
 
 (CH-4) **Liveness.** The channel MUST deliver messages to all members within a bounded delay. Members MUST be able to detect channel-level failure (partition, censorship by the channel operator) and abort.
 
-(CH-5) **Termination.** The channel MUST produce a terminal state. Terminal states are: (a) a signed AgreementDocument; (b) an abort signed by any party; (c) timeout. The terminal state is referenced by commit-agreement (if agreement) or recorded as a failed Negotiate stage (otherwise).
+(CH-5) **Termination.** The channel MUST produce a terminal state. Terminal states are: (a) a signed AgreementArtifact; (b) an abort signed by any party; (c) timeout. The terminal state is referenced by the listing's agreement commitment phase (if agreement) or recorded as a failed Negotiate stage (otherwise).
 
 (CH-6) **Per-session channelId uniqueness.** The substrate MUST derive a per-session-unique `channelId`, and an orchestrator MUST reject a session that reuses a `channelId` from a prior session. Without this the cross-session offer-replay defence (§8.3.3 envelope `channelId` + monotonic `sequence`) is vacuous — a reused `channelId` would let a session-A offer verify in session B. The threat and replay analysis are detailed in §8.12.
 
@@ -50,7 +50,7 @@ A negotiation channel is a coordination surface with the following properties.
 
 On Demos, L2PS (Layer-2 Privacy Subnets) is the SR-4 implementation. Channel sessions are subnets; messages stay between subnet members; the public chain stores only commitment hashes and the final agreement hash (as Storage Programs).
 
-For v0.1, subnet membership MUST be bindable to the participants’ CCI primary claims, so that channel-message signatures verify against the same key that holds value on-chain and the commit-agreement anchor’s parties match the channel members. Until CCI-keyed membership ships, implementations MAY use a binding-proof step: each participant signs an "L2PS subnet X membership = CCI Y" attestation with their CCI primary key, anchored as a Storage Program before negotiation begins.
+For v0.1, subnet membership MUST be bindable to the participants’ CCI primary claims, so that channel-message signatures verify against the same key that holds value on-chain and the agreement commitment anchor’s parties match the channel members. Until CCI-keyed membership ships, implementations MAY use a binding-proof step: each participant signs an "L2PS subnet X membership = CCI Y" attestation with their CCI primary key, anchored as a Storage Program before negotiation begins.
 
 Other substrates MAY implement SR-4 via TEE-based confidential channels, zk-based privacy circuits, or permissioned-overlay networks bound to public-chain identity, provided they satisfy CH-1 through CH-6. DACS-3 does not standardise the wire protocol or the cryptographic envelope — those are SR-4 implementation choices — but does standardise the messages’ semantic shape.
 
@@ -65,7 +65,7 @@ type ChannelMessage = {
   type: "offer" | "counter" | "accept" | "reject"
        | "sealed-envelope-commit" | "sealed-envelope-reveal"
        | "abort"
-  body: unknown                        // type-specific. Sealed-envelope commit/reveal bodies are defined in §8.4.3; RFQ offer/counter/accept/reject bodies are implementation-defined (the authoritative agreed terms live only in the signed AgreementDocument, not the channel body)
+  body: unknown                        // type-specific. Sealed-envelope commit/reveal bodies are defined in §8.4.3; RFQ offer/counter/accept/reject bodies are implementation-defined (the authoritative agreed terms live only in the signed AgreementArtifact, not the channel body)
   refs?: { repliesTo?: number }
   signature: ChannelMessageSignature   // see below
 }
@@ -87,7 +87,7 @@ On detected failure, the member MAY send an abort message (best-effort), abandon
 
 ### 8.4 Negotiation patterns
 
-The v0.1 closed set. Each is a DACS-3 phase type with a phase-handler contract.
+The closed v0.x set at this revision. Each is a DACS-3 phase type with a phase-handler contract.
 
 #### 8.4.1 negotiate-fixed-price
 
@@ -116,10 +116,10 @@ type NegotiateFixedPriceOutput = PhaseHandlerResult & {
 
 **Procedure.** The orchestrator (or buyer agent, depending on actor) MUST:
 
-1. construct an AgreementDocument with derivedFromPattern: "fixed-price", copying terms directly from the listing’s pricing, acceptedRails (using the buyer’s selected rail; `terms.rail` is omitted for a zero-pay pipeline per §8.5.2 rule 3), deliverable, and deadline (computed as now + listing.terms.deadlineSecAfterCommit);
+1. construct the AgreementArtifact selected by the listing's commitment phase with derivedFromPattern: "fixed-price", copying terms directly from the listing’s pricing, acceptedRails (using the buyer’s selected rail; `terms.rail` is omitted for a zero-pay pipeline per §8.5.2 rule 3), deliverable, and deadline (computed as now + listing.terms.deadlineSecAfterCommit), and including the required payout bindings when the selected artifact is payee-bound;
 2. collect buyer signature;
 3. collect seller co-signature;
-4. anchor the agreement document via SR-2;
+4. anchor the agreement artifact via SR-2;
 5. return agreementHash and agreementRef.
 
 **Seller-side auto-accept (optional)**
@@ -127,9 +127,9 @@ type NegotiateFixedPriceOutput = PhaseHandlerResult & {
 A listing MAY declare terms.acceptanceModel: "auto-accept", in which case the seller pre-issues a **template acceptance commitment** alongside the listing rather than a per-session signature. The mechanism:
 
 - The seller publishes, at listing-anchor time, a separate AutoAcceptCommitment record: { listingRef, listingContentHash, acceptanceModel: "auto-accept", validUntil, sellerSignature } where sellerSignature is the seller’s signature over the domain-separated payload "dacs-auto-accept-commitment:v1:" || sha256(canonical(commitment)). This commits the seller to auto-accepting any buyer signature against the listed terms within validUntil.
-- At orchestrator time, the orchestrator: (1) **verifies** the AutoAcceptCommitment is anchored, unrevoked, and still valid (see *Two-phase validity* below); (2) **constructs** the per-session AgreementDocument with `derivedFromPattern: "fixed-price"`; (3) **computes** the agreement hash; (4) **constructs an auto-accept seller signature** — an Ed25519 signature by the seller’s primary key over `"dacs-auto-accept-instance:v1:" || agreementHash || autoAcceptCommitmentHash`.
+- At orchestrator time, the orchestrator: (1) **verifies** the AutoAcceptCommitment is anchored, unrevoked, and still valid (see *Two-phase validity* below); (2) **constructs** the per-session AgreementArtifact selected by the listing's commitment phase with `derivedFromPattern: "fixed-price"`; (3) **computes** the agreement hash; (4) **constructs an auto-accept seller signature** — an Ed25519 signature by the seller’s primary key over `"dacs-auto-accept-instance:v1:" || agreementHash || autoAcceptCommitmentHash`.
 
-  *Two-phase validity (step 1).* `validUntil` is checked twice because the per-session `committedAt` does not exist until the commitment is anchored, so it cannot gate the signature pre-anchor: **provisionally** against the current clock at signing time (an already-expired commitment MUST NOT produce an instance signature), then **authoritatively** re-checking `committedAt ≤ validUntil` against the anchored commitment timestamp (`committedAt`, defined in the §8.6 CommitmentRecord) at commit-agreement, per the §8.5.2 ordering note.
+  *Two-phase validity (step 1).* `validUntil` is checked twice because the per-session `committedAt` does not exist until the commitment is anchored, so it cannot gate the signature pre-anchor: **provisionally** against the current clock at signing time (an already-expired commitment MUST NOT produce an instance signature), then **authoritatively** re-checking `committedAt ≤ validUntil` against the anchored commitment timestamp (`committedAt`, defined in the §8.6 CommitmentRecord) at the agreement commitment phase, per the §8.5.2 ordering note.
 
   *Instance signature (step 4).* This signature is **NOT pre-issued** — it MUST be produced live by the seller’s keyholder or by an authorised auto-signer the seller has explicitly delegated to. The pre-issued AutoAcceptCommitment authorises the auto-signer to produce instance signatures within its scope.
 
@@ -175,7 +175,7 @@ type NegotiateRfqOutput = PhaseHandlerResult & {
 1. establish an SR-4 channel between buyerBundle.presentedBy and sellerBundle.presentedBy;
 2. send an initial offer — buyer (or seller, per the negotiate-rfq `rfqInitiator` phase parameter; default `buyer`) sends a turn of type offer with proposed terms;
 3. iterate — each side MAY respond with counter, accept, or reject; iteration continues until accept is received (proceed), reject is received (terminate; counterparty class), maxTurns is reached without accept (terminate; counterparty class), or timeoutSec elapses without a response (terminate; counterparty or substrate class);
-4. construct the AgreementDocument with `derivedFromPattern: "rfq"` and the agreed terms, sign and send as a final message;
+4. construct the AgreementArtifact selected by the listing's commitment phase with `derivedFromPattern: "rfq"` and the agreed terms, including the required payout bindings when payee-bound, then sign and send it as a final message;
 5. collect co-signatures from all parties;
 6. anchor the agreement via SR-2;
 7. optionally, if all parties consent, anchor the encrypted transcript via SR-2 with a channelTranscriptRef. Consent MUST be explicit; default is no transcript anchoring.
@@ -184,7 +184,7 @@ type NegotiateRfqOutput = PhaseHandlerResult & {
 
 - (RFQ-1) maxTurns MUST be ≥ 2.
 - (RFQ-2) Each turn MUST conform to the channel message envelope.
-- (RFQ-3) Final terms MUST conform to the listing’s pricing band — counters proposing terms outside the band MUST be rejected client-side; signed agreements with out-of-band terms MUST be rejected by commit-agreement.
+- (RFQ-3) Final terms MUST conform to the listing’s pricing band — counters proposing terms outside the band MUST be rejected client-side; signed agreements with out-of-band terms MUST be rejected by the declared agreement commitment phase.
 - (RFQ-4) Implementations MUST enforce the turn timeout; missed-timeout abandonment MUST be treated as channel failure.
 
 **Substrate:** SR-2 + SR-4.
@@ -260,7 +260,7 @@ Exactly one contextDelta key is present on success, and it MUST equal the phase 
    - **Reserve** — then, if the auction PricingSpec declares `reservePrice` (whose `currency` MUST equal the listing-declared currency — a mismatched-currency reserve is a non-conformant listing), exclude bids failing the reserve: for `highest-price` and for `first-acceptable`/`rule-ref` the reserve is a price **floor** (`amount < reservePrice` excluded); for `lowest-price` it is a **ceiling** (`amount > reservePrice` excluded). The comparison uses CD-1-canonical full-precision decimals and a bid whose `amount == reservePrice` is **admitted** (the bound is inclusive). If the candidate set is empty after these exclusions, the phase fails with no winning bid (bare PhaseHandlerResult → `negotiate-failed`, errorClass per step 6).
    - **Selection rule** — the orchestrator applies the phase-step `parameters.selectionRule`, which is content-hash-bound into the listing pipeline per §6.3.4 and is the authoritative selection rule; the auction PricingSpec's own `selectionRule` MUST equal it (a listing whose two values disagree is non-conformant).
    - **Tie-break ladder** — ties resolved by earliest SR-2 anchor timestamp of the bidder's commit (the same objective, substrate-determined timestamp SE-2 uses for the deadline gate — *not* the self-reported `commitTimestamp` field); any remaining ties (commits anchored in the same block / with equal anchor timestamps) resolved by ascending lexicographic order of the lowercase-hex `bidHash` string (per step 2).
-6. **No winning bid / agreement construction** — if the selection rule yields no winner (an empty candidate set — all bids excluded for currency/non-positive/reserve, or all bidders failed to reveal per SE-4 — or a `first-acceptable`/`rule-ref` rule that no bid satisfies), the phase fails with no winning bid (bare PhaseHandlerResult; errorClass `counterparty` when the emptiness is bidder-caused, `permanent` for a structural listing defect; → `negotiate-failed`). Otherwise construct the AgreementDocument from the winning bid with `derivedFromPattern: "sealed-envelope"` and roles assigned by the pinned sealed-envelope phase kind (SE-8): for demand (`negotiate-sealed-envelope`), the winning bidder is the agreement `buyer` and the listing publisher is the `seller`; for procurement (`negotiate-sealed-envelope-procurement` with `"procurement"` `auctionMode`), the listing publisher is the agreement `buyer` and the winning bidder is the `seller`. In both modes, `bid.price` is the amount payable by the agreement `buyer` to the agreement `seller`; the money direction is defined by the agreement roles, never by which party ran the auction. Then collect the agreement `buyer` and agreement `seller` co-signatures — equivalently, the listing publisher and winning bidder after SE-8 role assignment. Losing bidders are listed as bidder-non-winning parties and their signatures are not required.
+6. **No winning bid / agreement construction** — if the selection rule yields no winner (an empty candidate set — all bids excluded for currency/non-positive/reserve, or all bidders failed to reveal per SE-4 — or a `first-acceptable`/`rule-ref` rule that no bid satisfies), the phase fails with no winning bid (bare PhaseHandlerResult; errorClass `counterparty` when the emptiness is bidder-caused, `permanent` for a structural listing defect; → `negotiate-failed`). Otherwise construct the AgreementArtifact selected by the listing's commitment phase from the winning bid, including the required payout bindings when payee-bound, with `derivedFromPattern: "sealed-envelope"` and roles assigned by the pinned sealed-envelope phase kind (SE-8): for demand (`negotiate-sealed-envelope`), the winning bidder is the agreement `buyer` and the listing publisher is the `seller`; for procurement (`negotiate-sealed-envelope-procurement` with `"procurement"` `auctionMode`), the listing publisher is the agreement `buyer` and the winning bidder is the `seller`. In both modes, `bid.price` is the amount payable by the agreement `buyer` to the agreement `seller`; the money direction is defined by the agreement roles, never by which party ran the auction. Then collect the agreement `buyer` and agreement `seller` co-signatures — equivalently, the listing publisher and winning bidder after SE-8 role assignment. Losing bidders are listed as bidder-non-winning parties and their signatures are not required.
 7. **Anchor** the agreement via SR-2 (each reveal record was already anchored by its own bidder in step 4).
 
 **Sealed bid body schema**
@@ -291,75 +291,75 @@ The `bid` over which `bidHash` is computed in step (2) is exactly this `SealedBi
 - (SE-5) The selection rule MUST be deterministic; ties MUST resolve consistently. The tie-break MUST use the objective SR-2 anchor timestamp of each bidder's commit (the same clock as SE-2), MUST NOT use the self-reported commitTimestamp field, and MUST resolve same-anchor-timestamp ties by ascending lexicographic order of the lowercase-hex bidHash string (step 2).
 - (SE-6) rule-ref selection rules MUST be content-hash-bound and the rule content MUST itself be deterministic given the bid set.
 - (SE-7) **Bid-commitment salt.** The `salt` used in the bidHash commitment MUST be generated from a cryptographically-secure random source with at least 256 bits (32 bytes) of entropy, MUST NOT be reused across bids or sessions, and MUST be carried on the wire as a base64url string so the bytes hashed are unambiguous to both committer and verifier; the commitment input is the raw decoded salt bytes. This closes the pre-reveal brute-force leak created by anchoring bidHash publicly (§8.12) for low-entropy structured bids, and aligns the sealed-envelope salt with the HTLC-1 salt discipline.
-- (SE-8) **Sealed-envelope role assignment.** The sealed-envelope mode is read from the pinned listing's phase kind. `negotiate-sealed-envelope` is the demand phase: absent `auctionMode` and present `"demand"` have identical demand semantics. `negotiate-sealed-envelope-procurement` is the procurement phase and MUST carry `auctionMode: "procurement"`. A present-but-unresolvable or malformed `auctionMode`, or a missing `auctionMode` on the procurement phase, MUST cause commit-agreement to reject the agreement with a recorded `unresolvable-auctionMode` reason; it MUST NOT be coerced to demand. For demand, the winning bidder MUST be the agreement `buyer` and the listing publisher MUST be the `seller`; for procurement, the listing publisher MUST be the agreement `buyer` and the winning bidder MUST be the `seller`. `bid.price` is always the amount payable by the agreement `buyer` to the agreement `seller`. This keeps procurement minor-safe under CORE §11.1.2: valid procurement listings use a new phase kind that older readers reject during listing validation; no valid procurement listing is encoded as an optional discriminator on the legacy demand phase.
+- (SE-8) **Sealed-envelope role assignment.** The sealed-envelope mode is read from the pinned listing's phase kind. `negotiate-sealed-envelope` is the demand phase: absent `auctionMode` and present `"demand"` have identical demand semantics. `negotiate-sealed-envelope-procurement` is the procurement phase and MUST carry `auctionMode: "procurement"`. A present-but-unresolvable or malformed `auctionMode`, or a missing `auctionMode` on the procurement phase, MUST cause the declared agreement commitment phase to reject the agreement with a recorded `unresolvable-auctionMode` reason; it MUST NOT be coerced to demand. For demand, the winning bidder MUST be the agreement `buyer` and the listing publisher MUST be the `seller`; for procurement, the listing publisher MUST be the agreement `buyer` and the winning bidder MUST be the `seller`. `bid.price` is always the amount payable by the agreement `buyer` to the agreement `seller`. This keeps procurement minor-safe under CORE §11.1.2: valid procurement listings use a new phase kind that older readers reject during listing validation; no valid procurement listing is encoded as an optional discriminator on the legacy demand phase.
 
 **Substrate:** SR-2 + SR-4.
 
-### 8.5 Agreement document
+### 8.5 Agreement artifacts
 
-The canonical output of any negotiation pattern.
+The canonical output of any negotiation pattern is an `AgreementArtifact`. The listing's commitment phase selects its artifact type: `commit-agreement` produces the legacy `AgreementDocument`; `commit-payee-bound-agreement` produces a `PayeeBoundAgreementDocument`. A pipeline that requires DACS-4 payee-destination binding MUST use the latter. The two artifacts deliberately have different required version discriminators and signing domains, so a reader that implements only the legacy type rejects the new type before settlement rather than silently ignoring its action-bearing payout terms.
 
 ```
-type AgreementDocument = {
-
-  agreementVersion: "1"
-
-  jobId: string
-
-  listingRef: {
-
-    listingId: string
-
-    version: number
-
-    contentHash: string                // pinned listing content hash
-
-  }
-
-  parties: AgreementParty[]
-
-  terms: {
-
-    deliverable: DeliverableRef        // DACS-4 reference
-
-    price: PriceTerm                   // DACS-4 reference
-
-    rail?: PaymentRailRef              // DACS-4 reference; present iff the pipeline has a pay-* phase (§8.5.2 rule 3). When present, MUST appear in listing.acceptedRails
-
-    deadline: number                   // unix ms; settle-by deadline
-
-    // Optional SR-3-attested reference price snapshot both parties sign against.
-    // When present, both parties attest that price was determined relative to this anchor.
-    // Does not replace or constrain terms.price — it is an informational audit record.
-    priceAnchor?: PriceAnchor
-
-    // Optional signed disclosure of the fee structure (regulated-context cost transparency, §8.5.3).
-    // Both parties sign it with the agreement; it does NOT alter terms.price and does NOT gate Settle.
-    feeSchedule?: FeeSchedule
-
-    // Payee-side settlement destinations, bound under both signatures and the agreement hash
-    // (DACS-4 §9.5.1 PB-1); one entry per pay phase, keyed by the §9.5.1 anchor tuple.
-    payoutBindings?: PayoutBinding[]
-
-    additionalTerms?: Record<string, unknown>
-
-  }
-
-  derivedFromPattern: "fixed-price" | "rfq" | "sealed-envelope"
-
-  derivedFromChannel?: {
-
-    subnet: string
-
-    lastMessageHash: string
-
-  }
-
-  generatedAt: number
-
-  signatures: AgreementSignature[]
-
+type AgreementTerms = {
+  deliverable: DeliverableRef        // DACS-4 reference
+  price: PriceTerm                   // DACS-4 reference
+  rail?: PaymentRailRef              // present iff the pipeline has a pay-* phase (§8.5.2 rule 3); when present, MUST appear in listing.acceptedRails
+  deadline: number                   // unix ms; settle-by deadline
+  priceAnchor?: PriceAnchor          // optional informational audit record
+  feeSchedule?: FeeSchedule          // optional disclosure-only fee structure (§8.5.3)
+  additionalTerms?: Record<string, unknown>
 }
+
+type PayeeBoundAgreementTerms = {
+  deliverable: DeliverableRef
+  price: PriceTerm
+  rail?: PaymentRailRef
+  deadline: number
+  priceAnchor?: PriceAnchor
+  feeSchedule?: FeeSchedule
+  payoutBindings: PayoutBinding[]    // REQUIRED; exactly one entry for every pay-* phase
+  additionalTerms?: Record<string, unknown>
+}
+
+type AgreementDocument = {
+  agreementVersion: "1"
+  jobId: string
+  listingRef: {
+    listingId: string
+    version: number
+    contentHash: string              // pinned listing content hash
+  }
+  parties: AgreementParty[]
+  terms: AgreementTerms
+  derivedFromPattern: "fixed-price" | "rfq" | "sealed-envelope"
+  derivedFromChannel?: {
+    subnet: string
+    lastMessageHash: string
+  }
+  generatedAt: number
+  signatures: AgreementSignature[]
+}
+
+type PayeeBoundAgreementDocument = {
+  payeeBoundAgreementVersion: "1"
+  jobId: string
+  listingRef: {
+    listingId: string
+    version: number
+    contentHash: string              // pinned listing content hash
+  }
+  parties: AgreementParty[]
+  terms: PayeeBoundAgreementTerms
+  derivedFromPattern: "fixed-price" | "rfq" | "sealed-envelope"
+  derivedFromChannel?: {
+    subnet: string
+    lastMessageHash: string
+  }
+  generatedAt: number
+  signatures: AgreementSignature[]
+}
+
+type AgreementArtifact = AgreementDocument | PayeeBoundAgreementDocument
 
 type AgreementParty = {
 
@@ -403,10 +403,10 @@ type CompetitiveContext = {
 
 }
 
-// AgreementDocument.terms.additionalTerms MAY include "competitiveContext: CompetitiveContext".
+// AgreementArtifact.terms.additionalTerms MAY include "competitiveContext: CompetitiveContext".
 
 // Optional: SR-3-attested reference price snapshot included in the agreement for audit purposes.
-// Both parties sign the AgreementDocument (including priceAnchor when present), so the snapshot
+// Both parties sign the AgreementArtifact (including priceAnchor when present), so the snapshot
 // becomes part of the agreement's content hash and cannot be altered after commitment.
 //
 // priceAnchor does NOT constrain terms.price — the agreed price may differ from the snapshot
@@ -445,17 +445,23 @@ type AgreementSignature = {
 
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
 
-  value: string                        // signature over agreement hash
+  value: string                        // signature over the artifact's domain-separated agreement hash
 
 }
 ```
 
-A `payoutBindings` entry's key `(railId, phaseIndex)` MUST be unique within the agreement. The field is first-class in `terms` so JCS canonicalisation places it under every party signature and the agreement hash — the same mechanics as `priceAnchor`.
+An artifact MUST carry exactly one of `agreementVersion` and `payeeBoundAgreementVersion`; carrying both or neither is invalid. `AgreementDocument` MUST NOT carry `terms.payoutBindings`. `PayeeBoundAgreementDocument.terms.payoutBindings` is REQUIRED and MUST contain exactly one entry for every `pay-*` invocation in the pinned listing pipeline, and no entry for any other invocation. Each entry's `railId` MUST equal that phase's `parameters.rail`; `phaseIndex` is its bare-integer pipeline index (`BundlePhaseEntry.index`, §9.5.1 PC-2). The `(railId, phaseIndex)` key MUST be unique. These rules place every payment destination under every party signature and the agreement hash, while keeping the legacy artifact's meaning unchanged.
 
 #### 8.5.1 Canonical serialisation and signature
 
-The agreement follows the §B.2 canonical-form template, omitting the `signatures` field; each `AgreementSignature.value` is computed over:
-signed_bytes := "dacs-agreement:v1:" || agreement_hash
+Each artifact follows the §B.2 canonical-form template, omitting the `signatures` field. Each `AgreementSignature.value` is computed over the payload selected by the required version discriminator:
+
+| Artifact | Signed bytes |
+| --- | --- |
+| `AgreementDocument` | `"dacs-agreement:v1:" || agreement_hash` |
+| `PayeeBoundAgreementDocument` | `"dacs-payee-bound-agreement:v1:" || agreement_hash` |
+
+A verifier MUST select the artifact schema and signing domain before interpreting `terms`. It MUST reject an artifact carrying both version discriminators or neither, and MUST NOT strip an unknown discriminator and retry verification as the other artifact type.
 
 **Decimal amounts (CD-1).** Every `PriceTerm.amount` is in minimal-digit canonical decimal form per **rule CD-1 (CORE §B.2)** — producers canonicalise before the agreement hash, verifiers before the §8.5.2 price-band and price-equality comparisons.
 
@@ -485,15 +491,16 @@ A verifier MUST validate the agreement against its referenced listing — checke
 3. **Rail** — `terms.rail` MUST be present if and only if the listing pipeline contains a `pay-*` phase (PIPE-1, §9.5). When present, it MUST appear in `listing.acceptedRails`. For a zero-pay (intake-only / settled-out-of-band) pipeline — one with no `pay-*` phase — `terms.rail` MUST be absent.
 4. **Deliverable** — `terms.deliverable` MUST conform to the listing’s `offering.deliverable`: `terms.deliverable.deliverableType` MUST equal the listing `offering.deliverable` kind; `terms.deliverable.hash` MUST equal the canonical `DeliverableRef.hash` of the listing’s `offering.deliverable` (per §9.3); `terms.deliverable.schemaUrl` MUST equal the listing `offering.deliverable.schemaUrl` (both absent, or both present and equal).
 5. **Deadline** — `terms.deadline` MUST be ≤ `committedAt + listing.terms.deadlineSecAfterCommit`, where `committedAt` is the SR-2 anchor timestamp of the commitment record (§8.6) — the same objective, substrate-determined clock SE-2 uses — NOT the self-reported `generatedAt`, which a party could backdate to widen the settle window.
-6. **Not expired** — the listing's `validity.notAfter` (if set) MUST be ≥ `committedAt`; the listing MUST NOT have expired between read and commit-agreement (the §6.3.4 step-3 read-time check governs discovery; this re-check governs commit, closing the read-to-commit interval).
+6. **Not expired** — the listing's `validity.notAfter` (if set) MUST be ≥ `committedAt`; the listing MUST NOT have expired between read and its agreement commitment phase (the §6.3.4 step-3 read-time check governs discovery; this re-check governs commit, closing the read-to-commit interval).
 7. **Pattern** — `derivedFromPattern` MUST match the listing's pipeline-declared negotiation phase after mapping phase kind to agreement pattern: `negotiate-fixed-price` → `"fixed-price"`, `negotiate-rfq` → `"rfq"`, and both `negotiate-sealed-envelope` and `negotiate-sealed-envelope-procurement` → `"sealed-envelope"`.
 8. **Sealed-envelope role direction** — for `derivedFromPattern == "sealed-envelope"`, the agreement party roles and `terms.price` direction MUST match the pinned listing's sealed-envelope phase kind per SE-8. If `auctionMode` is required but missing, or present but unresolvable/malformed, validation MUST reject with a recorded `unresolvable-auctionMode` reason. If the roles are inverted relative to the pinned mode, validation MUST reject before Settle.
+9. **Artifact/commit-phase match** — `commit-agreement` MUST reference an `AgreementDocument`; `commit-payee-bound-agreement` MUST reference a `PayeeBoundAgreementDocument` whose payout bindings satisfy the exact pipeline coverage rules in §8.5. Any mismatch, missing entry, duplicate key, wrong railId, or extra entry MUST be rejected before Settle.
 
-Checks 5 and 6 are the two `committedAt`-relative checks — see the ordering note below. Agreements failing any check MUST be rejected by commit-agreement.
+Checks 5 and 6 are the two `committedAt`-relative checks — see the ordering note below. Agreements failing any check MUST be rejected by the declared agreement commitment phase.
 
 **Ordering of the `committedAt`-relative checks.** Checks 5 and 6 reference `committedAt` — the commitment record's SR-2 anchor timestamp (§8.6) — which only exists *after* the commitment is anchored (§8.6 step 5). The checks therefore run in two phases:
 
-- **Pre-anchor (§8.6 step 3).** The value-independent checks — currency, price-band, rail, deliverable, pattern, and sealed-envelope role direction — gate here. The orchestrator also runs a *provisional* check of the deadline and `notAfter` against the current clock.
+- **Pre-anchor (§8.6 step 3).** The value-independent checks — currency, price-band, rail, deliverable, pattern, sealed-envelope role direction, and artifact/commit-phase match — gate here. The orchestrator also runs a *provisional* check of the deadline and `notAfter` against the current clock.
 - **Post-anchor (authoritative).** Once the commitment is anchored, the orchestrator MUST re-evaluate checks 5 and 6 against the actual anchored `committedAt`. Any consumer/verifier reading the anchored commitment MUST likewise re-check them against `committedAt`.
 
 A commitment whose anchored `committedAt` violates either check is invalid.
@@ -502,7 +509,7 @@ A commitment whose anchored `committedAt` violates either check is invalid.
 
 #### 8.5.3 Fee disclosure (`feeSchedule`)
 
-An `AgreementDocument` MAY carry a `terms.feeSchedule` — an optional, signed pre-commit disclosure of the fee structure, for regulated-context cost transparency. It is **disclosure-only**: both parties sign it with the agreement, but it does **not** alter `terms.price` and a consumer **MUST NOT** gate settlement on it. It is the non-repudiable record that fees were disclosed before commit.
+An `AgreementArtifact` MAY carry a `terms.feeSchedule` — an optional, signed pre-commit disclosure of the fee structure, for regulated-context cost transparency. It is **disclosure-only**: both parties sign it with the agreement, but it does **not** alter `terms.price` and a consumer **MUST NOT** gate settlement on it. It is the non-repudiable record that fees were disclosed before commit.
 
 ```
 type FeeSchedule = {
@@ -536,9 +543,9 @@ Normative:
 - (FS-4) A `recurrence` block **discloses a committed ongoing cost** — it MUST NOT be read as a charge trigger and MUST NOT appear in any settlement-gating path. Recurring *settlement* is out of scope here (modelled as a sequence of correlated sessions; see the streaming/subscription roadmap item).
 - (FS-5) `earlyTerminationFee` is a disclosure shape only; the semantics of a fee-bearing cancellation are governed by the §10.3.1 cancellation rules, not by this field.
 
-### 8.6 Commitment phase (commit-agreement)
+### 8.6 Agreement commitment phases
 
-The DACS-3 phase that anchors the agreement hash on the public chain.
+The DACS-3 phases that anchor an agreement hash on the public chain are `commit-agreement` for the legacy artifact and `commit-payee-bound-agreement` for the payee-bound artifact. They share the procedure and commitment-record shape below, but their input schemas and context-delta keys are distinct.
 
 ```
 type CommitAgreementInput = {
@@ -556,11 +563,27 @@ type CommitAgreementOutput = PhaseHandlerResult & {
     }
   }
 }
+
+type CommitPayeeBoundAgreementInput = {
+  jobId: string
+  agreement: PayeeBoundAgreementDocument
+  listingRef: { listingId: string; version: number; contentHash: string }
+  sessionContext: SessionContext
+}
+type CommitPayeeBoundAgreementOutput = PhaseHandlerResult & {
+  contextDelta: {
+    "commit-payee-bound-agreement": {
+      agreementHash: string
+      anchorTxRef: TxRef
+      committedAt: number
+    }
+  }
+}
 ```
 
-**Procedure.** The orchestrator MUST:
+**Procedure.** The applicable commitment handler MUST:
 
-1. compute `agreementHash = sha256(canonical_JCS(agreement))` with signatures omitted;
+1. require the artifact selected by the phase kind (`AgreementDocument` for `commit-agreement`; `PayeeBoundAgreementDocument` for `commit-payee-bound-agreement`), then compute `agreementHash = sha256(canonical_JCS(agreement))` with signatures omitted;
 2. verify all required signatures are present and valid;
 3. validate the agreement against the listing per §8.5.2. The **value checks** (currency / band / rail / deliverable / pattern) gate **here**; the two **`committedAt`-relative checks** (deadline, `notAfter`) are re-evaluated against the anchored `committedAt` after step 5, per the §8.5.2 ordering note. Any validation failure MUST cause the phase to fail with class `permanent`;
 4. construct the on-chain commitment record:
@@ -578,14 +601,15 @@ type CommitmentRecord = {
 ```
 
 5. anchor the commitment record via SR-2 at address `dacs3:commit:{jobId}` (or substrate-equivalent), with the orchestrator signature over the domain-separated payload `"dacs-commitment:v1:" || sha256(canonical_JCS(commitmentRecord_without_signature))`;
-6. return agreementHash and anchorTxRef.
+6. return agreementHash and anchorTxRef under the executing phase's context-delta key.
 
 **Conformance.**
 
-- (CA-1) The orchestrator MUST NOT advance to DACS-4 (Settle) until commit-agreement returns ok: true.
+- (CA-1) The orchestrator MUST NOT advance to DACS-4 (Settle) until the listing's declared agreement commitment phase returns ok: true.
 - (CA-2) Commitment records MUST be anchored on the public chain (not in a private channel).
 - (CA-3) Once anchored, the commitment is immutable. Re-commitments for the same jobId MUST be rejected.
-- (CA-4) The agreement document itself MAY be anchored separately (publicly or privately). For institutional flows, the agreement document is typically NOT anchored on the public chain — only its hash is. Parties retain the agreement document off-chain (or encrypted-anchored).
+- (CA-4) The agreement artifact itself MAY be anchored separately (publicly or privately). For institutional flows, the agreement artifact is typically NOT anchored on the public chain — only its hash is. Parties retain the agreement artifact off-chain (or encrypted-anchored).
+- (CA-5) A commitment handler MUST reject the other phase's artifact type before signature or listing-term interpretation. It MUST NOT coerce a `PayeeBoundAgreementDocument` into an `AgreementDocument`, or vice versa, by dropping an unknown version discriminator or `terms.payoutBindings`.
 
 ### 8.7 Channel transcript and disclosure
 
@@ -602,13 +626,13 @@ type ChannelTranscript = {
 }
 ```
 
-**Default disclosure: none.** By default, the transcript is not anchored on the public chain. Only the agreement hash (via commit-agreement) is public. The DACS-1 listing’s terms.transcriptDisclosurePolicy controls this per-listing:
+**Default disclosure: none.** By default, the transcript is not anchored on the public chain. Only the agreement hash (via the applicable agreement commitment phase) is public. The DACS-1 listing’s terms.transcriptDisclosurePolicy controls this per-listing:
 
 - "none" (default) — transcripts stay in the channel; no anchoring required.
 - "encrypted-anchored-recommended" — orchestrators SHOULD anchor transcripts encrypted to channel members; not required.
 - "encrypted-anchored-required" — orchestrators MUST anchor encrypted transcripts; absence of transcript anchor MUST fail the phase. Recommended for sessions whose counterparty is a regulated entity that may be subject to subpoena.
 
-If all channel members consent, the transcript MAY be encrypted to the member set and anchored via SR-2. The AgreementDocument.derivedFromChannel.lastMessageHash provides a verifiable hook from the public agreement to the (private) transcript. A future DACS standard (proposed DACS-X dispute) MAY require selective transcript disclosure under signed party agreement or arbitrator order. v0.1 does not specify dispute resolution; parties intending to support dispute SHOULD anchor encrypted transcripts at agreement time so disclosure is technically possible later.
+If all channel members consent, the transcript MAY be encrypted to the member set and anchored via SR-2. The AgreementArtifact.derivedFromChannel.lastMessageHash provides a verifiable hook from the public agreement to the (private) transcript. A future DACS standard (proposed DACS-X dispute) MAY require selective transcript disclosure under signed party agreement or arbitrator order. v0.1 does not specify dispute resolution; parties intending to support dispute SHOULD anchor encrypted transcripts at agreement time so disclosure is technically possible later.
 
 ### 8.8 Pattern selection by listing
 
@@ -617,10 +641,10 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 **Validation.**
 
 - (PS-1) A pipeline MUST contain exactly one negotiate-* phase.
-- (PS-2) A pipeline MUST contain exactly one commit-agreement phase, immediately following the negotiate-* phase.
+- (PS-2) A pipeline MUST contain exactly one agreement commitment phase — `commit-agreement` or `commit-payee-bound-agreement` — immediately following the negotiate-* phase.
 - (PS-3) The listing’s pricing model MUST be compatible with the chosen pattern: negotiate-fixed-price MUST be fixed or negotiable (in which case fixed-price uses the band’s centre); negotiate-rfq MUST be negotiable; negotiate-sealed-envelope and negotiate-sealed-envelope-procurement MUST be auction.
 
-**Fallback to fixed-price.** A listing offering negotiate-rfq MAY declare fixedPriceFallback: true in the pipeline step. When true, a buyer that does not wish to negotiate MAY signal acceptance of the listed centre-price via negotiate-fixed-price. The orchestrator selects which pattern runs based on buyer signal. The fallback path produces a normal AgreementDocument with derivedFromPattern: "fixed-price".
+**Fallback to fixed-price.** A listing offering negotiate-rfq MAY declare fixedPriceFallback: true in the pipeline step. When true, a buyer that does not wish to negotiate MAY signal acceptance of the listed centre-price via negotiate-fixed-price. The orchestrator selects which pattern runs based on buyer signal. The fallback path produces the artifact selected by the listing's agreement commitment phase with derivedFromPattern: "fixed-price".
 
 **Multi-quote RFQ (deferred to v0.2).** The v0.1 negotiate-rfq phase is bilateral (one buyer, one seller). Real institutional RFQ is often one-to-many — a buyer queries N liquidity providers, collects quotes, picks one. v0.1 does not support multi-quote RFQ directly; the closest pattern is negotiate-sealed-envelope with selectionRule: first-acceptable or lowest-price. A first-class negotiate-multi-quote phase is anticipated for v0.2.
 
@@ -632,7 +656,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 | negotiate-fixed-price | §8.4.1 procedure; signature collection; SR-2 anchoring |
 | negotiate-rfq | §8.4.2 procedure; RFQ-1 through RFQ-4; channel turn timeouts |
 | negotiate-sealed-envelope / negotiate-sealed-envelope-procurement | §8.4.3 procedure; SE-1 through SE-8; deterministic selection; rule-ref content-hash binding; mode-bound role assignment |
-| commit-agreement | CA-1 through CA-4; signature and conformance validation |
+| commit-agreement / commit-payee-bound-agreement | CA-1 through CA-5; artifact-specific signature and conformance validation |
 | Listing publisher | PS-1 through PS-3 |
 | Substrate without SR-4 | MUST support negotiate-fixed-price; MUST refuse negotiate-rfq, negotiate-sealed-envelope, and negotiate-sealed-envelope-procurement with a clear substrate-capability-missing error |
 
@@ -642,11 +666,11 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 
 **Closed pattern set vs open.** A closed set lets every conforming orchestrator handle every conforming listing; an open set lets listings declare unsupported patterns — fragmentation by design.
 
-**Single AgreementDocument shape across patterns.** Settle and Verify consume agreements regardless of how negotiated, so a uniform shape keeps them pattern-agnostic; pattern-specific data lives in `additionalTerms` / optional fields.
+**Common agreement terms across patterns.** Settle and Verify consume agreements regardless of how negotiated, so both agreement artifact types share the same pattern-agnostic terms; pattern-specific data lives in `additionalTerms` / optional fields. The separate payee-bound artifact exists only to make the action-bearing destination contract structurally rejectable by legacy readers.
 
 **Transcript private by default vs anchored-encrypted.** Default-anchoring transcripts is expensive and adoption-hostile (operators won't anchor negotiation history, even encrypted). Default-private with opt-in anchoring matches institutional practice; regulated flows opt in.
 
-**commit-agreement as a separate phase.** A separate phase makes the on-chain commitment visible in the pipeline, lets the orchestrator validate signature/conformance before binding, and gives Settle/Verify a clear hook; implicit commitment hides the binding moment and complicates recovery.
+**Agreement commitment as a separate phase.** A separate phase makes the on-chain commitment visible in the pipeline, lets the orchestrator validate signature/conformance before binding, and gives Settle/Verify a clear hook; implicit commitment hides the binding moment and complicates recovery. Distinct legacy and payee-bound phase kinds also give older listing readers a structural refusal point.
 
 **SR-4 abstract, not a fixed realisation.** Substrates may realise it via private subnets (Demos), TEEs, permissioned channels, or zk-confidential channels; DACS-3 specifies the abstract capability and per-pattern requirements, not a winner.
 
@@ -672,19 +696,19 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 
 **Replay of offers across sessions.** *Threat:* an attacker captures a signed offer from session A and replays it in session B. *Mitigation:* the channel message envelope includes channelId and sequence (per-channel monotonic). This defence holds only if channelId is unique per session: **(CH-6) channelId MUST be unique per session** — the substrate MUST derive a per-session-unique channelId, and an orchestrator MUST reject a session that reuses a channelId from a prior session. (Without CH-6 the replay defence is vacuous: a reused channelId would let a session-A offer verify in session B.) Given CH-6, an offer replayed into a different channel fails signature verification because the channelId differs; replayed in the same channel it duplicates a sequence number and is rejected.
 
-**Signature stripping or rebinding between channel and agreement.** *Threat:* an attacker takes a signature produced inside the channel and reuses it on a different agreement document. *Mitigation:* channel-message signatures are over the message envelope (including channelId); agreement-document signatures are over the agreement hash (which includes jobId, listingRef, and all terms). The two scopes are non-overlapping; a channel signature does not validate as an agreement signature.
+**Signature stripping or rebinding between channel and agreement.** *Threat:* an attacker takes a signature produced inside the channel and reuses it on a different agreement artifact. *Mitigation:* channel-message signatures are over the message envelope (including channelId); agreement-artifact signatures are over the artifact-specific domain and agreement hash (which includes jobId, listingRef, and all terms). The scopes are non-overlapping; neither a channel signature nor one agreement type's signature validates as the other agreement type.
 
 **Sealed-envelope front-running.** *Threat:* a bidder learns competitors’ bids before reveal. *Mitigation:* *before reveal*, bids stay encrypted in the channel and only the bid hash is public; *at reveal*, openable `{bid, salt}` records are anchored publicly (§8.4.3 step 4 — intentional, so relay-suppression resistance and SE-3 timestamping work). The channel’s confidentiality ensures non-members cannot read pre-reveal bids; the cryptographic commitment ensures the bidder cannot change their bid after observing competitors at reveal time (the only residual move — delaying one's own reveal to read earlier ones — yields nothing actionable, since the delayer's bid is already committed). Operators SHOULD use SR-4 implementations with member-exclusive encryption.
 
 **Sealed-envelope post-deadline submission.** *Threat:* a bidder submits a commit after commitDeadline, claiming clock skew. *Mitigation:* SE-2 mandates the commit’s public-chain anchor timestamp (objective, substrate-determined) be ≤ commitDeadline. Clock skew at the bidder is irrelevant; the chain decides the timestamp.
 
-**Agreement-listing mismatch.** *Threat:* a signed agreement contains terms outside the listing’s pricing band or with an unaccepted rail. *Mitigation:* validation rules; commit-agreement must reject. Both sides also SHOULD validate before signing.
+**Agreement-listing mismatch.** *Threat:* a signed agreement contains terms outside the listing’s pricing band or with an unaccepted rail. *Mitigation:* validation rules; the declared agreement commitment phase must reject. Both sides also SHOULD validate before signing.
 
-**Multi-party signing race.** *Threat:* one party signs an agreement; before the other co-signs, the first party publicly commits and locks the other in. *Mitigation:* commit-agreement requires all required signatures present. A unilaterally-signed agreement fails CA. A future minor version MAY add pending-co-signature semantics for asynchronous flows; v0.1 requires synchronous signature collection.
+**Multi-party signing race.** *Threat:* one party signs an agreement; before the other co-signs, the first party publicly commits and locks the other in. *Mitigation:* both agreement commitment phases require all required signatures present. A unilaterally-signed agreement fails CA. A future minor version MAY add pending-co-signature semantics for asynchronous flows; v0.1 requires synchronous signature collection.
 
 **Public-chain timing analysis.** *Threat:* the pattern of commitment timestamps on the public chain reveals negotiation patterns. *Mitigation:* this is a fundamental property of any commit-on-chain protocol. Parties concerned with timing leak SHOULD use SR-4 channels with timing-padded delivery, anchor commitments at random intervals within a window, or settle through privacy-preserving rails. DACS-3 does not standardise timing obfuscation.
 
-**Identity substitution between Vet and agreement signature.** *Threat:* a party’s bundle is verified in DACS-2 but they sign the agreement with a different key. *Mitigation:* AgreementSignature.party references the primary claim from the bundle. The signature key MUST be the one bound to that claim. Mismatches cause commit-agreement to fail.
+**Identity substitution between Vet and agreement signature.** *Threat:* a party’s bundle is verified in DACS-2 but they sign the agreement with a different key. *Mitigation:* AgreementSignature.party references the primary claim from the bundle. The signature key MUST be the one bound to that claim. Mismatches cause the agreement commitment phase to fail.
 
 **Channel-membership exfiltration.** *Threat:* the channel operator (or a compromised member) leaks the negotiation transcript publicly. *Mitigation:* DACS-3 cannot prevent this technically — once a member sees the transcript, they can leak it. Listings handling sensitive flows SHOULD restrict membership to known counterparties; the leak risk reduces to counterparty-trust risk, which DACS-2 verification helps quantify.
 

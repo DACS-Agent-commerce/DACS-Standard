@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6, and clarifies the listing-publisher / counterparty-role interpretation for sealed-envelope procurement listings). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6, clarifies the listing-publisher / counterparty-role interpretation for sealed-envelope procurement listings, and registers the minor-safe `commit-payee-bound-agreement` phase). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -430,7 +430,7 @@ type ListingTerms = {
 }
 ```
 
-**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement`, DACS-3 §8.4.3 SE-8), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementDocument roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
+**Listing publisher and counterparty roles.** The `seller` field is the **listing publisher and listing signer** for all listing kinds; the field name is retained for wire compatibility with v0.1 listings. For ordinary listings — fixed-price, RFQ, and sealed-envelope demand (`negotiate-sealed-envelope`, absent or `"demand"` `auctionMode`) — the listing publisher is also the agreement `seller`, and `buyerRequirement` gates the buyer / bidders. For sealed-envelope procurement (`negotiate-sealed-envelope-procurement`, DACS-3 §8.4.3 SE-8), the listing publisher is the prospective agreement `buyer`, the winning bidder is the agreement `seller`, and `buyerRequirement` gates the bidders / suppliers eligible to submit bids. Implementations MUST NOT infer final AgreementArtifact roles from the DACS-1 field names alone; DACS-3 assigns agreement roles from the negotiation pattern and pinned mode. Logical-address variables named `sellerPrimaryClaim` and revocation markers continue to use the listing publisher's primary claim.
 
 **`cancellationPolicy` semantics.** The field MAY be advertised. A signed listing advertising **`pre-commit`** grants a reputation-neutral cancellation right: a party that withdraws while the session is still pre-commit (a `vet-pending` / `negotiate-pending` state, before `commit-completed`) MAY mark the resulting `aborted-by-self` as a policy-permitted cancellation, which a verifier honours as reputation-neutral after resolving this **signed** listing and confirming the policy and the pre-commit timing (DACS-5 §10.3.1 ST-10). The neutrality derives from the *signed, advertised* policy — the mutual notice is what earns it; an unannounced withdrawal (no advertised policy, or a `none` policy) remains an ordinary `aborted-by-self` per §10.3.1 ST-3, and a withdrawal whose listing cannot be resolved is treated as indeterminate, never as a free neutral exit (ST-10 trichotomy).
 
@@ -450,14 +450,15 @@ DeliverableSpec, PricingSpec, and PaymentRailRef are normatively defined in chap
 
 ```
 type PhaseStep = {
-  kind: PhaseType                           // closed v0.1 set below
+  kind: PhaseType                           // closed v0.x set at this revision, below
   parameters?: Record<string, unknown>      // per-`kind` shape defined in the owning spec
 }
 type PhaseType =
   // DACS-2
   | "vet-credentials"
   // DACS-3
-  | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement" | "commit-agreement"
+  | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement"
+  | "commit-agreement" | "commit-payee-bound-agreement"
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
@@ -477,6 +478,7 @@ Per-kind parameter shapes are normative in the owning chapter:
 | negotiate-sealed-envelope | {commitDeadline, revealWindow, selectionRule, auctionMode?, channelSubnet?}; `auctionMode`, when present, MUST be `"demand"` | 8 |
 | negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
 | commit-agreement | none | 8 |
+| commit-payee-bound-agreement | none | 8 |
 | pay-* | {rail: string} (railId) | 9 |
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
 | rate | optional {required?: boolean} | 10 |
@@ -527,7 +529,7 @@ Substrates MAY use equivalent addressing schemes; the requirement is that any pa
 Versioning rules:
 
 - Each listingVersion is independently anchored. Prior versions MUST remain readable.
-- A new version supersedes prior versions for new sessions; sessions already past commit-agreement (DACS-3) MUST continue against their pinned version.
+- A new version supersedes prior versions for new sessions; sessions already past their DACS-3 agreement commitment phase MUST continue against their pinned version.
 - listingVersion MUST be monotonically increasing per listingId. Versions MUST NOT be skipped.
 
 **Revocation.** A seller MAY revoke a listing version by anchoring a revocation marker at the address dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion} with value {listingId, listingVersion, listingContentHash, revokedAt, reason?, signature} signed by the same key that signed the listing. The rules:
@@ -535,7 +537,7 @@ Versioning rules:
 - The `signature` is over the domain-separated payload `signed_bytes := "dacs-revocation:v1:" || sha256(canonical({listingId, listingVersion, listingContentHash, revokedAt, reason?}))` (per §B.7).
 - The marker MUST carry `listingId`, `listingVersion`, and `listingContentHash` (the `contentHash` of the revoked listing version). A reader MUST confirm all three match the listing it is checking before honouring the revocation.
 - Readers MUST check for the revocation marker before initiating a new session.
-- Sessions already past commit-agreement MUST NOT be invalidated by revocation.
+- Sessions already past their agreement commitment phase MUST NOT be invalidated by revocation.
 
 > **Note (non-normative).** The three-field match means a captured marker cannot be replayed to revoke a different listing; the anchor address alone is not a sufficient binding, since on Demos it is a write-input-derived native address (§6.3.4).
 
@@ -763,7 +765,7 @@ Read endpoints MUST NOT require authentication. Write/registration semantics are
 
 **Identity-claim substitution between bundle presentation and Vet.** *Threat:* a counterparty presents bundle A in negotiation and bundle B at Vet time. *Mitigation:* the bundle hash is pinned into the session record at presentation time; DACS-2’s Vet stage operates on the pinned bundle. Substitution is detected by hash mismatch.
 
-**Reading a listing after revocation.** *Threat:* a reader has cached a listing and engages without checking for revocation. *Mitigation:* readers MUST check the revocation marker before initiating a new session. Sessions already past commit-agreement are not invalidated by revocation, preserving in-flight obligations.
+**Reading a listing after revocation.** *Threat:* a reader has cached a listing and engages without checking for revocation. *Mitigation:* readers MUST check the revocation marker before initiating a new session. Sessions already past their agreement commitment phase are not invalidated by revocation, preserving in-flight obligations.
 
 **Stale bundles in active sessions.** *Threat:* a session runs long enough that a verifiedBy reference becomes stale. *Mitigation:* DACS-2 specifies refresh semantics for required claims. For long-running entitlement sessions, listings SHOULD declare a refresh interval; v0.1 does not standardise this, deferring to DACS-2’s per-recipe defaults.
 
@@ -776,4 +778,4 @@ Read endpoints MUST NOT require authentication. Write/registration semantics are
 - hold primary keys in a key-management system that does not retain plaintext at rest (HSM, TEE-backed enclave, or equivalent);
 - support rotation — the relationship between a ClaimReference and its current key may change over time; the DACS-2 recipe for a scheme defines how key-current-ness is resolved;
 - propagate revocation — publish a revocation marker for any listings the key signed, and update bundle presentations to use a new key going forward;
-- treat signatures produced by a key after its revocation timestamp as invalid for new sessions; sessions already past commit-agreement using the prior key remain bound (the obligation already exists).
+- treat signatures produced by a key after its revocation timestamp as invalid for new sessions; sessions already past their agreement commitment phase using the prior key remain bound (the obligation already exists).

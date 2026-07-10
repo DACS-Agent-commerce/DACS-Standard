@@ -50,7 +50,7 @@ def validate_domain_registry(path: Path, root: Path, text: str | None = None) ->
         text = path.read_text(encoding="utf-8")
     section = section_between(
         text,
-        "The v0.1 registry of domain separators is closed:",
+        "The v0.x registry of domain separators at this revision is closed:",
         "**Payload shape — single-hash vs composite.**",
     )
     rows = markdown_table_rows(section)

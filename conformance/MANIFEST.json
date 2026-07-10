@@ -1775,6 +1775,12 @@
         "sellerPhaseIndexes": [
           1
         ],
+        "buyerPhaseKinds": [
+          "rate"
+        ],
+        "sellerPhaseKinds": [
+          "rate"
+        ],
         "distinctHashes": true
       }
     },
@@ -1791,7 +1797,13 @@
         "sellerDecision": "pass",
         "distinctHashes": true,
         "buyerRatingRefs": 0,
-        "sellerRatingRefs": 1
+        "sellerRatingRefs": 1,
+        "buyerPhaseKinds": [
+          "rate"
+        ],
+        "sellerPhaseKinds": [
+          "rate"
+        ]
       }
     },
     {

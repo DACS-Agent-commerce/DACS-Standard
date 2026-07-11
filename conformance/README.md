@@ -6,7 +6,7 @@ An independent, third-party set of conformance vectors for DACS v0.1, generated 
 
 Surface labels travel with each vector:
 
-- **GOLDEN (204)** — byte-stable and accepted by this reference verifier: 7 canonicalize, 5 decimal, 5 signing, 25 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 47 verify, 24 vet, 19 negotiate, and 12 governance checks.
+- **GOLDEN (203)** — byte-stable and accepted by this reference verifier: 7 canonicalize, 5 decimal, 5 signing, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 47 verify, 24 vet, 19 negotiate, and 12 governance checks.
 - **CANDIDATE (0)** — no current candidate vectors.
 
 ## Why
@@ -26,7 +26,7 @@ Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`,
 - `canonicalize`: 7 golden vectors, §7.1 JCS canonicalization and §7.2 signed scope.
 - `decimal`: 5 golden vectors, §14.4 CD-1 canonical decimals and §9.3 positivity.
 - `signing`: 5 golden vectors, §7.7 domain-separated Ed25519 (SIG-2 / SIG-4).
-- `dacs1`: 25 golden vectors, §6.3 identity bundles, SIWD Resource binding, freshness, identityTier derivation, requirement matching, listing validation, forged/unresolved `verifiedBy` fail-closed tiering, and #170 existence-only versus controlled-use gates.
+- `dacs1`: 24 golden vectors, §6.3 identity bundles, SIWD Resource binding, freshness, identityTier derivation, requirement matching, listing validation, forged/unresolved `verifiedBy` fail-closed tiering, and #170 existence-only versus controlled-use gates.
 - `addressing`: 2 golden vectors, CF-4 reserved-delimiter encoding for DACS logical address segments.
 - `bundle`: 4 golden vectors, §10.4 / §10.4.1 AttestationBundle verification.
 - `dispute`: 8 golden vectors, §11.2.1 DACS-X dispute flow with the 4-value decision (`pass`/`fail`/`indeterminate`/`error`). (The former HTLC-9 `correction`-amendment vector was retired — Round-4 R4-A removed the correction amendment and resolves an HTLC-9 asymmetric settlement through the ST-8 `settle-asymmetric` state at the settlement layer; see the §14.5 verify-st-asymmetric-* vectors.)
@@ -52,7 +52,7 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable deliver-storage-program success SettlementEvidence (deliverable content hash + anchor, no settlementFinality).
 - `fixtures/session-bundle-one-sided.json` — a one-signature `aborted-by-other` bundle for the §10.4.3(b)/§10.11 one-sided case.
 - `fixtures/session-bundles-reputation.json` — a mixed-outcome bundle set (completed / failed-counterparty / failed-substrate / aborted-by-self / aborted-by-other) for §10.5.1 reputation derivation.
-- `vectors/golden.json` — pinned outputs: deterministic signature, native-address derivation, bundle refs/hashes, dispute/disclosure decision maps + seeds, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps.
+- `vectors/golden.json` — pinned outputs: deterministic signature, logical-address encoding, bundle refs/hashes, dispute/disclosure decision maps + seeds, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps.
 - `vectors/golden.json` provenance strings name the verifier-side runner used to construct complex inputs.
 
 ## Implementation observations (non-normative)
@@ -61,7 +61,6 @@ Vectors that double as executable evidence of implementation friction. Stated as
 
 - **DACS-VERIFY-0001** — a `cci-lei:` claim does **not** satisfy a bare `lei` requirement (§6.3.1 registers `cci-lei`; §6.3.3/§7.4.2 use bare `lei`; `find_claim` does exact-scheme equality). Adjacent to issue **#42**'s broader `ClaimReference` canonical-equality discussion.
 - **DACS-VERIFY-0002** — separators used normatively in the spec body (e.g. `dacs-session-binding:v1:`, `dacs-sealed-bid:v1:`) are absent from the §7.7 closed registry and are not `x-`-prefixed (SIG-4).
-- **DACS-VERIFY-0003** — the §6.3.4 native-address rule yields `stor-<64hex>`, whereas Demos addresses `stor-<40hex>` keyed differently. A listing anchored per the spec rule would not resolve on the substrate. *Verify on substrate before relying.*
 - **DACS-VERIFY-0004** — `conformance/fixtures/attestation-bundle-0004.json` is a full completed §10.4 `AttestationBundle`, signed by buyer + seller with deterministic issuer-kit keys. `conformance/fixtures/attestation-bundle-0004-seller.json` is a same-`jobId` divergent seller-side bundle with outcome `failed-counterparty`; it also verifies and has a distinct bundle hash. Divergent-bundle dispute/disclosure vectors pin both refs. The bundle verifier accepts valid bundles, rejects a completed bundle missing a required signer, and surfaces malformed resolved keys as `error`.
 
-The published golden vectors (`dacs1-cci-lei-defect`, `dacs1-native-address`, etc.) assert the observed behaviour, so the evidence is runnable.
+The published golden vectors assert the remaining observed behaviour, so the evidence is runnable.

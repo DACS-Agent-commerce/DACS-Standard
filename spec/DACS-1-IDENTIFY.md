@@ -709,6 +709,8 @@ type ReputationHint = {
 ```
 
 Catalogs MAY return cached ListingSummary records. Clients MUST dereference the anchor to obtain the canonical Listing before engaging. The catalog provides discovery; the chain provides binding. Catalogs SHOULD verify each indexed listing’s anchor at least every 24 hours; the catalogObservedAt timestamp surfaces the catalog’s confidence.
+
+A **catalog or rendering** consumer MAY skip or partially render a listing whose `PricingSpec.kind` (DACS-4) it does not recognize, rather than reject it — a directory should not hide a listing merely because it cannot price-render it. This tolerance is scoped to rendering only; a **transacting** reader MUST still reject an unrecognized pricing kind at commit-agreement (DACS-3 MTR-5). One value, two consumer classes, opposite verdicts: the directory shows what it cannot price, the settler refuses to pay what it cannot price.
 Read endpoints MUST NOT require authentication. Write/registration semantics are out of scope for v0.1; the canonical source of truth is always the substrate-anchored listing, not the catalog entry. For every ListingSummary returned, a DACS-aware client MUST resolve the anchor to the on-chain content and validate the contentHash. The catalog’s role is to surface candidates; binding decisions MUST follow the substrate.
 
 #### 6.3.7 Conformance summary

@@ -24,6 +24,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
 | MA-* | Bundle-requirement matching | §6.3.3 | §14.1 |
+| MTR-* | Metered pricing (per-unit total recompute + unrecognized-kind fail-closed) | §8.5.2 | §14.3 |
 | PA-* | Progressive-anchoring phases | §7.4.4 | §14.7 |
 | PB-* | Payee-destination binding (agreement carriage + identity-binding ladder) | §9.5.1 | §14.4 |
 | PC-* | Payment phase common contract | §9.5 | §14.4 |

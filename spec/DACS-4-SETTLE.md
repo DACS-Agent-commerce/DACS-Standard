@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, and AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -53,6 +53,8 @@ type PricingSpec =
   | { kind: "negotiable"; bandCenter: PriceTerm; minPct: number; maxPct: number }   // price band around bandCenter; minPct/maxPct non-negative %, 0 ≤ minPct < 100; band + half-up rounding + inclusive bounds per §8.5.2. See the "Negotiable pricing band" note below.
 
   | { kind: "auction"; reservePrice?: PriceTerm; selectionRule: "lowest-price" | "highest-price" | "first-acceptable" | "rule-ref:<contentHash>:<uri>" }   // selectionRule MUST be drawn from the SAME enum as the phase-step parameter (§8.4.3) so the §8.4.3 step-5 "MUST equal" rule is type-expressible; reservePrice.currency MUST equal the listing currency; enforced as a floor (highest-price / first-acceptable / rule-ref) or ceiling (lowest-price), inclusive, per §8.4.3 step 5
+
+  | { kind: "metered"; unitPrice: PriceTerm; unit: string; minTotal?: PriceTerm }   // usage-based: authoritative terms.price = max(minTotal ?? 0, unitPrice.amount × quantity), computed at commit from terms.meteredQuantity (rules MTR-1..4, §8.5.2). Pairs with negotiate-fixed-price (deterministic total) or negotiate-rfq per PS-3.
 
 type PriceTerm = {
 

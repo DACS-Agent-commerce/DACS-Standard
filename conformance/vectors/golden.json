@@ -112,7 +112,7 @@
     "cf4": {
       "input": "cci-xm:evm:mainnet:0x1234?x=1&y=100%",
       "encoded": "cci-xm%3Aevm%3Amainnet%3A0x1234%3Fx%3D1%26y%3D100%25",
-      "colonListing": "dacs1:cci-xm%3Aevm%3Amainnet%3A0x1234:rfq%3Alot%3Fx%3D1:v3"
+      "colonListing": "dacs1:cci-xm%3Aevm%3Amainnet%3A0x1234:rfq-lot-x1:v3"
     }
   },
   "vet": {

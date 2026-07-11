@@ -442,10 +442,10 @@
       "id": "cf4-dacs1-listing-address",
       "area": "addressing",
       "spec": "§6.3.4 CF-4",
-      "summary": "listing logical address encodes sellerPrimaryClaim + listingId variable segments before assembly",
+      "summary": "listing logical address encodes the sellerPrimaryClaim variable segment before assembly; listingId is URL-safe ASCII and stays unencoded (CF-4 fixed segment)",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
-      "want": "dacs1:cci-xm%3Aevm%3Amainnet%3A0x1234:rfq%3Alot%3Fx%3D1:v3"
+      "want": "dacs1:cci-xm%3Aevm%3Amainnet%3A0x1234:rfq-lot-x1:v3"
     },
     {
       "id": "vet-cm4-classify",

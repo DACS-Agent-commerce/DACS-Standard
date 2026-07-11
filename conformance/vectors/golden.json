@@ -109,7 +109,6 @@
   },
   "addressing": {
     "logical": "dacs1:lei%3A984500ABCDEF12345678:fx-rfq-eur-usd:v1",
-    "native": "stor-f71ce54389db7a30c5b125af916edb87ee87e8404eb3204bcf07041e2111b0f2",
     "cf4": {
       "input": "cci-xm:evm:mainnet:0x1234?x=1&y=100%",
       "encoded": "cci-xm%3Aevm%3Amainnet%3A0x1234%3Fx%3D1%26y%3D100%25",

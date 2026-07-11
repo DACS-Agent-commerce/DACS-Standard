@@ -415,18 +415,6 @@
       }
     },
     {
-      "id": "dacs1-native-address",
-      "area": "dacs1",
-      "spec": "§6.3.4",
-      "summary": "OBSERVATION DACS-VERIFY-0003: spec rule yields stor-<64hex> (Demos uses stor-<40hex>; verify on substrate before relying)",
-      "status": "golden",
-      "reason": "reference-verifier-accepted + byte-stable",
-      "want": {
-        "shape64": true,
-        "notLen40": true
-      }
-    },
-    {
       "id": "cf4-encode-delimiters",
       "area": "addressing",
       "spec": "§6.3.4 CF-4",

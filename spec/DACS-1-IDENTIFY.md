@@ -503,13 +503,15 @@ A listing MUST be anchored using SR-2.
 
 ```
 logical_address    := "dacs1:" + sellerPrimaryClaim + ":" + listingId + ":v" + listingVersion   // CF-4-encoded segments
-storageProgramName := colon-free encoding of logical_address   // Demos rejects ":" in names
+storageProgramName := implementation-defined colon-free StorageProgram name   // opaque write input; Demos rejects ":" in names
 
 // Actual StorageProgram address derivation (SDK: storage/StorageProgram.ts):
 native_address     := "stor-" + first40hex( sha256( deployerAddress + ":" + storageProgramName + ":" + nonce + ":" + salt ) )
 ```
 
-Because the derivation folds in the **deployer address** and the **per-write transaction nonce** (and truncates to 40 hex / 160 bits), the native address is **not** recomputable from the logical address alone — this is the write-input-mapping case of the front-matter universal rule. Implementations on Demos MUST therefore:
+`storageProgramName` is implementation-defined: DACS does not define a reversible `logical_address → storageProgramName` encoding. A producer MUST choose a colon-free name accepted by Demos and MUST treat that name as an opaque write input, not as a canonical identifier or a consumer resolution key. Different conforming producers MAY choose different names for the same logical address; interoperability is provided by the published logical→native binding below.
+
+Because the native derivation folds in that implementation-defined name, the **deployer address**, and the **per-write transaction nonce** (and truncates to 40 hex / 160 bits), the native address is **not** recomputable from the logical address alone — this is the write-input-mapping case of the front-matter universal rule. Implementations on Demos MUST therefore:
 
 - (a) anchor at native_address;
 - (b) carry logical_address (in CF-4-encoded form) as descriptive metadata on the anchored record;

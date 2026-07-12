@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-1 addressing
+
+- **Demos listing address mapping and CF-4 conformance cleanup** (§6.3.4, CORE §B.1; #237) — makes `storageProgramName` explicitly implementation-defined and opaque: DACS requires a Demos-valid colon-free name but does not define a reversible logical-address encoding, because the native `stor-` handle already depends on write inputs and consumers resolve through the required published logical→native binding. Removes the unreproducible 64-hex `addressing.native` output and stale DACS-VERIFY-0003 observation from the golden set; the current substrate rule is `first40hex` and the removed vector omitted the deployer/name/nonce/salt inputs needed to reproduce it. Corrects the CF-4 listing vector to use an unencoded URL-safe `listingId`, matching the schema and fixed-segment table. Golden count: 204 → 203.
+
 ### Fixed — DACS-5
 
 - **`phaseSummary` entry-presence divergence pinned** (§10.4.3 / §10.5.1 guard (ii); #219) — the "canonically diverge" definition covered a shared entry's `outcome`/`errorClass` but was silent on entry **presence**, and the two readings both existed live (dacs-sdk's deriver treated a length mismatch as divergence; its consistency classifier skipped one-sided entries — same jobId, opposite verdicts). **Ruling: an entry present in one copy and absent in the other IS a divergence** — the entry set is a normative input, a copy asserting a phase the other denies is a contradiction about which phases ran, and omission-tolerance would let a fabricated appended phase entry escape entry-wise comparison. Absolute rule — the draft terminal-phase carve-out was dropped on review (a terminal asymmetry is still a contradiction in the normative record). Golden vector pair (presence-mismatch → divergent; advisory-skew → unified) to follow via dacs-verify. Both reviewer passes; the agreement-artifact consumer capability below subsequently advances the current DACS-5 draft to v0.3.

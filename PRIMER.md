@@ -67,7 +67,7 @@ Under the five stages, DACS is really **one signed artifact per stage, chained b
   Listing         ──(DACS-1)     the seller's signed offer = the binding contract
         │
         ▼
-  AgreementDocument ──(DACS-3)   the final terms, signed by both parties
+  AgreementArtifact ──(DACS-3)   the final terms, signed by both parties (legacy or payee-bound)
         │
         ▼
   SettlementEvidence ──(DACS-4)  proof a payment / delivery happened (chain tx refs)
@@ -99,9 +99,9 @@ Each standard cites a subset of five capabilities. A substrate shipping all five
 
 A buyer agent **B** wants an attested price-feed snapshot from seller agent **S**. Mid-stakes: a signing key plus a verified domain is enough; fixed price; paid in USDC on Base; delivered as a DACS-2-attested payload.
 
-1. **Identify.** S has published a **Listing** (signed, anchored) declaring: required bundle = `{ key, domain }`; offering = "attested price snapshot"; pipeline = `[pay-evm-erc20, deliver-attested-payload]`; rail = `evm-erc20:8453:USDC`; price = 5 USDC. B discovers it via S's `.well-known/agent.json` listings index. B assembles its own **IdentityBundle** (`key:0xB…` + a `domain:b-agent.example` claim with a `verifiedBy` reference).
+1. **Identify.** S has published a **Listing** (signed, anchored) declaring: required bundle = `{ key, domain }`; offering = "attested price snapshot"; pipeline = `[negotiate-fixed-price, commit-payee-bound-agreement, pay-evm-erc20, deliver-attested-payload]`; rail = `evm-erc20:8453:USDC`; price = 5 USDC. B discovers it via S's `.well-known/agent.json` listings index. B assembles its own **IdentityBundle** (`key:0xB…` + a `domain:b-agent.example` claim with a `verifiedBy` reference).
 2. **Vet.** Each side runs `vet-credentials` over the other's bundle against the listing's requirement. S's `domain` claim is checked via the `domain-tls-control` recipe; B's via its own. Each produces a **CompositeVerificationRecord** (anchored). Both pass → proceed.
-3. **Negotiate.** The price is fixed, so "acceptance is the negotiation": `negotiate-fixed-price` → both parties sign an **AgreementDocument** binding the listing, the 5-USDC term, the deliverable spec, and a deadline. `commit-agreement` anchors its hash — the binding moment.
+3. **Negotiate.** The price is fixed, so "acceptance is the negotiation": `negotiate-fixed-price` → both parties sign a **PayeeBoundAgreementDocument** binding the listing, the 5-USDC term, the payment destination, the deliverable spec, and a deadline. `commit-payee-bound-agreement` anchors its hash — the binding moment.
 4. **Settle.** `pay-evm-erc20` moves 5 USDC on Base; the handler waits for finality and anchors **SettlementEvidence** (a `evm` tx ref + `settlementFinality`). Then `deliver-attested-payload`: S fetches the price, produces a DACS-2 attestation over it, writes the payload to a Storage Program, and anchors a second **SettlementEvidence** (deliverable hash + attestation ref). Pipeline order (PIPE) gates delivery on payment success.
 5. **Verify.** Both parties anchor a co-signed **AttestationBundle** — the session's frozen audit record (identity → vet → agreement → both settlements). Optionally each rates the other (**RatingRecord**). Later, a consumer runs **ReputationDerivation** over S's bundles, keyed to S's primary claim, yielding S's completion rate / rating / volume.
 

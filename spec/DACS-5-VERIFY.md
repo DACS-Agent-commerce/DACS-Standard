@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.2** (on the common DACS v0.1 baseline; adds the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1; v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -85,7 +85,7 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
 | `vet-completed` | `negotiate-pending` | next phase scheduled |
 | `negotiate-pending` | `negotiate-completed` \| `negotiate-failed` \| `substrate-failure-paused` \| `aborted-by-self` \| `aborted-by-other` | Negotiate phase result |
 | `negotiate-completed` | `commit-pending` | next phase scheduled |
-| `commit-pending` | `commit-completed` \| `commit-failed` \| `substrate-failure-paused` \| `aborted-by-self` \| `aborted-by-other` | commit-agreement result |
+| `commit-pending` | `commit-completed` \| `commit-failed` \| `substrate-failure-paused` \| `aborted-by-self` \| `aborted-by-other` | agreement commitment phase result |
 | `commit-completed` | `settle-pending` | next phase scheduled |
 | `settle-pending` | `settle-completed` \| `settle-asymmetric` \| `settle-failed` \| `substrate-failure-paused` \| `aborted-by-self` \| `aborted-by-other` | Settle phase result |
 | `settle-asymmetric` | `settle-completed` \| `settle-failed` \| `substrate-failure-paused` | ST-8 (cross-chain asymmetric open state; substrate pause per ST-7) |
@@ -97,7 +97,7 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
 **Rules:**
 
 - (ST-1) **Forward-only.** Except for ST-7 resume, a transition MUST move toward a terminal state per the table. The orchestrator MUST NOT re-enter an earlier `*-pending` state (e.g. negotiate after commit).
-- (ST-2) **Phase failure.** A phase returning `ok: false` MUST transition to that phase’s `*-failed` state, classified by the phase’s `errorClass`. A commit-agreement rejection (a CA-3 re-commitment for an already-anchored jobId, or an agreement failing the §8.5.2 listing-conformance checks) is a `commit-pending → commit-failed` transition (forward-only; it MUST NOT be folded back into `negotiate-failed`).
+- (ST-2) **Phase failure.** A phase returning `ok: false` MUST transition to that phase’s `*-failed` state, classified by the phase’s `errorClass`. An agreement commitment rejection (a CA-3 re-commitment for an already-anchored jobId, an artifact/phase mismatch, or an agreement failing the §8.5.2 listing-conformance checks) is a `commit-pending → commit-failed` transition (forward-only; it MUST NOT be folded back into `negotiate-failed`).
 - (ST-3) **Abort.** At any `*-pending` state a party MAY withdraw, or decline to co-sign, before the phase reaches a `*-completed`/`*-failed` result; doing so terminates the session in an abort state. Withdrawing before being bound is a legitimate exercise of a party’s right to decline — it is NOT a protocol violation, and an abort outcome is therefore distinct from a `*-failed` performance failure. The abort state is recorded from the perspective of the party anchoring the bundle (per §10.4.3 / §10.11): the withdrawing party’s own bundle records `aborted-by-self`; the non-withdrawing party’s bundle records `aborted-by-other`. (A withdrawing party need not anchor a bundle at all; the §10.11 bundle-suppression rule lets the non-withdrawing party’s single-signed `aborted-by-other` bundle stand.) How an abort bears on reputation is governed by §10.5 / §10.11, not by this transition rule. Abort states are terminal.
 - (ST-4) **Rate branch.** `settle-completed` transitions to `rate-pending` iff the listing pipeline contains a rate phase; otherwise directly to `finalised`.
 - (ST-5) **Rate is non-fatal.** A rate phase that fails or is declined does NOT fail the session: `rate-pending` transitions to `finalised` regardless of rate outcome (per §10.6, absence of a rating does not block bundle production). There is deliberately no `rate-failed` state. A rate step parameter `{required: true}` is advisory for the rater’s own policy; it MUST NOT change this transition.
@@ -180,7 +180,7 @@ type AttestationBundle = {
 
   listingRef: { listingId: string; version: number; contentHash: string }
 
-  agreementRef?: AttestationRef               // present iff the session reached commit-completed or later; omitted only when terminated before commit-agreement (see §10.4.3)
+  agreementRef?: AttestationRef               // present iff the session reached commit-completed or later; omitted only when terminated before the agreement commitment phase (see §10.4.3)
 
   cancellation?: CancellationMarker           // present only on an aborted-by-self/other claimed as a policy-permitted pre-commit cancellation (§10.3.1 ST-10); verified at reputation-derivation time against the signed listing, never trusted as asserted
 
@@ -307,7 +307,7 @@ The bundle MUST NOT include references to any record outside the session’s sco
 
 **Per-phase `attestationRef` (optional).** A `phaseSummary[]` entry's `attestationRef` is **OPTIONAL** — the authoritative attestation set is the bundle's top-level `vetRecords[]` and `settlementEvidence[]` arrays (per the rules above), and a bundle that omits the per-phase pointer is well-formed. A validator MUST NOT reject a bundle solely because a `phaseSummary` entry omits `attestationRef`. A phase that produced a durable anchored attestation — a settle phase → its `SettlementEvidence`, a vet phase → its `VerifyResult` — **SHOULD** carry `attestationRef` linking to it, so the per-phase → evidence mapping is unambiguous in multi-phase pipelines where the flat top-level arrays alone cannot say which record belongs to which phase invocation.
 
-**For sessions terminating before commit-agreement** (aborted-by-self/other in Vet or Negotiate), the bundle MUST include the available vetRecords and a phaseSummary marking the failed phase; agreementRef is omitted.
+**For sessions terminating before the agreement commitment phase** (aborted-by-self/other in Vet or Negotiate), the bundle MUST include the available vetRecords and a phaseSummary marking the failed phase; agreementRef is omitted.
 
 **For sessions terminating with failed-substrate**, the bundle’s outcome captures the substrate failure; the failure does not count as either party’s fault in DACS-5 reputation derivation.
 
@@ -491,7 +491,7 @@ derive(party, bundles, windowStart, windowEnd):
 
   for b in reconciled where b.outcome == "completed" AND agreementRef present:
 
-    agreement := fetch_and_verify_agreement(b.agreementRef)   // DACS-3 AgreementDocument
+    agreement := fetch_and_verify_agreement(b.agreementRef)   // DACS-3 AgreementArtifact
 
     volume_terms.append(agreement.terms.price)
 
@@ -536,13 +536,13 @@ Three normative guards apply during reconciliation:
 
 Only the remaining records’ values, whose target matches the scored party, are aggregated; the metric is null when no qualifying ratings exist.
 
-**Volume metric.** The observedTransactionalVolume metric is computed analogously. For each reconciled bundle whose `outcome` is `completed` and whose agreementRef is present, the deriver MUST resolve the AttestationRef to its AgreementDocument via fetch_and_verify_agreement(agreementRef), then sum agreement.terms.price grouped by currency. Non-completed bundles (failed, aborted) contribute no volume: the metric reports value transacted, not value agreed. Resolution follows the §7.5.2 attestation resolution algorithm:
+**Volume metric.** The observedTransactionalVolume metric is computed analogously. For each reconciled bundle whose `outcome` is `completed` and whose agreementRef is present, the deriver MUST resolve the AttestationRef to its AgreementArtifact via fetch_and_verify_agreement(agreementRef), then sum agreement.terms.price grouped by currency. Non-completed bundles (failed, aborted) contribute no volume: the metric reports value transacted, not value agreed. Resolution follows the §7.5.2 attestation resolution algorithm:
 
 - fetch the anchor at agreementRef.anchor.locator;
 - compare the hashed bytes to agreementRef.contentHash — a mismatch MUST cause that bundle to be excluded;
-- parse the result as a DACS-3 AgreementDocument.
+- parse the result as a DACS-3 AgreementArtifact, selecting its schema and signing domain from the required version discriminator.
 
-agreementRef is an AttestationRef, not an inline AgreementDocument, so the volume step MUST dereference it before reading terms.price.
+agreementRef is an AttestationRef, not an inline AgreementArtifact, so the volume step MUST dereference it before reading terms.price.
 
 **Rating de-duplication (normative).** Under two-sided anchoring (§10.4.2) both parties' bundles for one jobId may appear in the input before reconciliation, and `ratingRefs` is an array — so a naive walk would count the same rating more than once. The deriver MUST aggregate at most one rating per `(r.rater, r.jobId, r.targetRole)` tuple, last-writer-wins by `ratedAt` on a tie. A rating therefore contributes once per session-direction, not once per anchored bundle copy or per duplicate ref. (This is a counting rule; RT-1/RT-2 already bound each rating's value range.)
 
@@ -578,7 +578,7 @@ Because §10.5.1 lets high-stakes consumers window against the SR-2 anchor times
 
 The §10.5.1 derivation algorithm is unscoped: it aggregates all bundles for a party within a time window regardless of the service category involved. This is useful for overall reputation but obscures domain-specific track records — a party with excellent DeFi data delivery and a poor regulatory-data track record looks identical to one that is mediocre across the board.
 
-**Category-scoped derivation** restricts the bundle set to sessions whose service category — the `offering.category` of the **listing** the agreement was formed against (the `AgreementDocument` itself carries only `listingRef`, not the category) — matches a given category prefix before applying the §10.5.1 algorithm:
+**Category-scoped derivation** restricts the bundle set to sessions whose service category — the `offering.category` of the **listing** the agreement was formed against (the `AgreementArtifact` itself carries only `listingRef`, not the category) — matches a given category prefix before applying the §10.5.1 algorithm:
 
 ```
 derive_category_scoped(party, bundles, windowStart, windowEnd, categoryScope):
@@ -594,7 +594,7 @@ derive_category_scoped(party, bundles, windowStart, windowEnd, categoryScope):
 
 `fetch_category` performs the full two-step resolution:
 
-- (1) resolve the bundle's `agreementRef` to its `AgreementDocument`, per the §7.5.2 attestation resolution algorithm;
+- (1) resolve the bundle's `agreementRef` to its `AgreementArtifact`, per the §7.5.2 attestation resolution algorithm;
 - (2) resolve that document's `listingRef` to the Listing, verifying the fetched bytes against `listingRef.contentHash`, and return the Listing's `offering.category`.
 
 Bundles whose `agreementRef` **or** `listingRef` cannot be resolved, or whose listing content-hash does not match, MUST be excluded from the category-scoped set — not treated as matching any category.

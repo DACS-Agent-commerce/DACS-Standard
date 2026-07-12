@@ -252,9 +252,9 @@ artifact_hash    := the sha256 hex of the RFC 8785 canonical form of the
                     signed document, with the signature field(s) omitted
 ```
 
-**`version_tag` binding.** `version_tag` is the **major** version of the per-stage standard that defines the artifact kind. All minor versions within a major (v0.1, v0.2, …) share the same `version_tag`; only a major break (v1 → v2) bumps it. The v0.1 registry below therefore uses `:v1:` for every kind and stays frozen across the independent per-stage minor versioning of §11.1.2 — a DACS-2 v0.2 VerifyResult still signs under `dacs-verifyresult:v1:`. (Forward-readability of signed artifacts across a minor bump is what SIG-5 below guarantees.)
+**`version_tag` binding.** `version_tag` is the **major** version of the per-stage standard that defines the artifact kind. All minor versions within a major (v0.1, v0.2, …) share the same `version_tag`; only a major break (v1 → v2) bumps it. The v0.x registry below therefore uses `:v1:` for every kind. An existing artifact kind's separator stays frozen across independent per-stage minor versions — a DACS-2 v0.2 VerifyResult still signs under `dacs-verifyresult:v1:` — while a new artifact type added in a minor appends its own `:v1:` entry. (Forward-readability of signed artifacts across a minor bump is what SIG-5 below guarantees.)
 
-The v0.1 registry of domain separators is closed:
+The v0.x registry of domain separators at this revision is closed:
 
 | Artifact | Domain separator | Defined in |
 | --- | --- | --- |
@@ -266,6 +266,7 @@ The v0.1 registry of domain separators is closed:
 | DACS-2 recipe | "dacs-recipe:v1:" | §7.4 |
 | DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |
+| DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
@@ -290,10 +291,10 @@ For composite-payload separators each appended value MUST be a fixed-length hex 
 
 **Conformance.**
 
-- (SIG-1) Every signature in DACS v0.1 MUST be computed over the appropriate domain-separated payload from the table above (single-hash or composite per the note above).
+- (SIG-1) Every signature in the DACS v0.x line MUST be computed over the appropriate domain-separated payload from the table above (single-hash or composite per the note above).
 - (SIG-2) Verifiers MUST reconstruct the domain separator and artifact hash(es) independently and MUST NOT trust either supplied as-is by a counterparty.
 - (SIG-3) Signatures whose payload computation cannot be reproduced exactly MUST be rejected.
-- (SIG-4) An artifact kind not in the v0.1 table MUST use a domain separator of the form "dacs-x-" || kind || ":v" || version || ":" until accepted into a future version of the registry.
+- (SIG-4) An artifact kind not in the current v0.x table MUST use a domain separator of the form "dacs-x-" || kind || ":v" || version || ":" until accepted into a future version of the registry.
 - (SIG-5) **Preserve-unknown.** A verifier MUST reconstruct the signed payload (canonical form and artifact hash) over the document **as received**, including any fields it does not recognise. It MUST NOT strip, drop, or otherwise omit unrecognised fields before recomputing the canonical form — doing so changes the hash and would reject a validly-signed document produced under a later minor version. A verifier MAY ignore the *meaning* of unknown fields but MUST include their bytes in the hash.
 
 > **Note (non-normative).** SIG-5 is what makes the "forward-readable shapes" guarantee of §11.1.2 hold for signed artifacts: an older verifier can still verify a newer minor version's signature, interpreting only the fields it knows.
@@ -396,6 +397,8 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 
 **Additivity contract (normative).** A minor version MUST be **additive and forward-readable**: it adds only *optional* fields, new registry entries, and new artifact/phase *types*, leaving every field an existing reader already reads unchanged in meaning. Anything an older reader must **act on** to remain correct — a new *required* field, a new value of an existing enum the reader branches on, or a change to the semantics of an existing field — is a **breaking change and MUST be a major bump**, never a minor. This contract is load-bearing for cross-minor compatibility (§11.2.5): because a minor never introduces something an older reader is obligated to act on, an older reader safely consumes a newer-minor artifact by preserving unknown fields (SIG-5) and interpreting only what it knows — and a major-version gate alone (no per-artifact minor field) suffices to catch the only skew that can break a reader.
 
+**New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
+
 **Registry freezing and growth.** v0.1 freezes the registries (claim schemes in DACS-1, methods/recipes in DACS-2, patterns in DACS-3, rails in DACS-4) as an immutable baseline. Later additions happen via minor-version registry updates released by the current steward, **appended to the same registry-index document** (`dacs2:registry:v0.1` / `dacs4:registry:v0.1`). That index address is the registry's **major-version line**: the `:v0.1` suffix denotes the v0.x line, not a content snapshot. The index document grows additively across minor versions and is re-addressed only on a major (v1 → v2) bump. A consumer therefore always resolves the same address and sees every v0.x entry; "frozen at v0.1" means the original baseline entries are immutable (never mutated in place), not that the index stops growing. Each entry carries its own `recipeVersion` / `railVersion` for per-session pinning (§7.4.3 / §9.4.3).
 
 #### 11.1.3 Conformance philosophy
@@ -439,14 +442,15 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a `*Version` literal (`dacsVersion`, `bundleVersion`, `agreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version only; in v0.1 these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 The **§11.1.2 additivity contract** makes the major-only signal sufficient for *minor* skew, in both directions, with **no per-artifact minor-version field**:
 
-- **later-reads-earlier** — a later-minor reader knows a superset of the shapes and reads any earlier-minor artifact directly; no signal needed.
-- **older-reads-newer** — a newer minor adds only optional, forward-readable fields, which an older reader preserves via SIG-5 and is **never obligated to act on** (anything act-requiring is, by the additivity contract, a major bump). So the older reader consumes the newer-minor artifact correctly.
+- **later-reads-earlier** — a later-minor reader knows a superset of the shapes and reads any earlier-minor artifact of a type it supports directly; no signal needed.
+- **older-reads-newer, same type** — a newer minor adds only optional, forward-readable fields to an existing artifact type. An older reader preserves them via SIG-5 and is **never obligated to act on them** (anything act-requiring is, by the additivity contract, a major bump), so it consumes that artifact correctly.
+- **older-reads-newer, new type** — an older reader rejects a newly registered artifact or phase type at its structural type gate, before type-specific action. A newer minor MAY require behaviour for that new type precisely because an older implementation cannot mistake it for a type it already acts on.
 
-The only version difference that can break a reader is a **major** break, which the step-2 gate rejects. A per-artifact **producing-minor-version field is therefore unnecessary**, not merely deferred. What remains genuinely deferred is **cross-major** compatibility — a different-major standard pipelined against an earlier one — per the paragraph above.
+The only version difference that can require a reader to reinterpret a type it already supports is a **major** break, which the type's major-version gate rejects. A new minor-version type is instead safely unsupported and rejected at its structural gate. A per-artifact **producing-minor-version field is therefore unnecessary**, not merely deferred. What remains genuinely deferred is **cross-major** compatibility — a different-major standard pipelined against an earlier one — per the paragraph above.
 
 #### 11.2.6 Multi-party governance and registry stewardship
 

@@ -27,7 +27,7 @@ class SpecTableValidationTests(unittest.TestCase):
             spec = root / "spec"
             spec.mkdir()
             (spec / "CORE.md").write_text(
-                "The v0.1 registry of domain separators is closed:\n"
+                "The v0.x registry of domain separators at this revision is closed:\n"
                 "| Artifact | Domain separator | Defined in |\n"
                 "| --- | --- | --- |\n"
                 "| One | \"dacs-one:v1:\" | §1 |\n"
@@ -45,7 +45,7 @@ class SpecTableValidationTests(unittest.TestCase):
             spec = root / "spec"
             spec.mkdir()
             (spec / "CORE.md").write_text(
-                "The v0.1 registry of domain separators is closed:\n"
+                "The v0.x registry of domain separators at this revision is closed:\n"
                 "| Artifact | Domain separator | Defined in |\n"
                 "| --- | --- | --- |\n"
                 "| Bad | missing quote | §1 |\n\n"

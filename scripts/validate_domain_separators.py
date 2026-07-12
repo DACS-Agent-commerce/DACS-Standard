@@ -38,7 +38,7 @@ def section_between(text: str, start_marker: str, end_marker: str) -> str:
 def registered_domains(spec_text: str) -> set[str]:
     registry = section_between(
         spec_text,
-        "The v0.1 registry of domain separators is closed:",
+        "The v0.x registry of domain separators at this revision is closed:",
         "**Payload shape — single-hash vs composite.**",
     )
     domains = extract_domains(registry)

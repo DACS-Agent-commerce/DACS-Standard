@@ -10,7 +10,8 @@ A single alphabetical glossary across all five per-stage standards and the front
 
 A single alphabetical glossary across all five per-stage standards, the front matter, and the back matter. Terms defined in multiple chapters are cross-referenced. This glossary is informative; per-chapter definitions are normative.
 
-- **AgreementDocument.** The canonical signed JSON document produced by a DACS-3 negotiation pattern, carrying the final agreed terms. Defined in §8.5.
+- **AgreementArtifact.** Either DACS-3 signed agreement type: the legacy AgreementDocument or the PayeeBoundAgreementDocument. Defined in §8.5.
+- **AgreementDocument.** The legacy DACS-3 signed agreement artifact. It preserves pre-payee-binding semantics and does not carry payout bindings. Defined in §8.5.
 - **Anchor / Anchored.** Stored on the substrate such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve canonical content and verify integrity. Realised by SR-2.
 - **AttestationBundle.** The frozen end-of-session artifact, signed by all parties, anchored via SR-2. The DACS-5 audit unit. Defined in §10.4.
 - **AttestationRef.** A reference to an anchored attestation: anchor locator + content hash + (optional) signer. Defined in §7.5.
@@ -24,8 +25,9 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Claim.** A fact a party asserts about itself.
 - **Claim reference / ClaimReference.** A typed identifier referring to the external system that holds a claim. Grammar in §6.3.1; type definition in §7.1.
 - **ClaimRequirement.** A listing-side declaration of which claims a buyer or seller bundle must include. Defined in §6.3.3.
-- **Commit-agreement.** The DACS-3 phase that anchors the agreement hash on the public chain. Defined in §8.6.
-- **CommitmentRecord.** The on-chain record produced by commit-agreement. Defined in §8.6.
+- **Commit-agreement.** The DACS-3 phase that anchors a legacy AgreementDocument hash on the public chain. Defined in §8.6.
+- **Commit-payee-bound-agreement.** The DACS-3 phase that anchors a PayeeBoundAgreementDocument hash on the public chain. Defined in §8.6.
+- **CommitmentRecord.** The on-chain record produced by either DACS-3 agreement commitment phase. Defined in §8.6.
 - **CompositeVerificationRecord.** The document the DACS-2 vet-credentials phase produces, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in §7.7.
 - **Content hash.** sha256 hex of the canonical form of a document.
 - **DACS-1..5.** The five per-stage standards: Identify, Vet, Negotiate, Settle, Verify.
@@ -50,6 +52,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Listing.** A signed, anchored JSON document declaring an agent’s offering. The canonical contract for a transaction. Defined in §6.3.4.
 - **ListingIndex / ListingSummary.** Discovery data structures; not the source of truth. Defined in §6.3.5–6.3.6.
 - **negotiate-fixed-price / negotiate-rfq / negotiate-sealed-envelope.** The three DACS-3 negotiation patterns. §8.4.
+- **PayeeBoundAgreementDocument.** The DACS-3 agreement artifact whose required payout bindings are signed under a distinct domain and enforced by DACS-4 PB-1 through PB-3. Defined in §8.5.
 - **PaymentRailRef / RailDefinition.** Reference to and full definition of a DACS-4 payment rail. §9.3, §9.4.
 - **Per-claim keying.** DACS-5 rule that reputation is keyed against the bundle’s primary identity claim, not a wallet or signing key. §10.5.2.
 - **perspective_flip.** The DACS-5 reconciliation mapping that re-interprets a counterparty-anchored bundle's `outcome` relative to the scored party (aborted-by-self ↔ aborted-by-other; failed-perm ↔ failed-counterparty). Buyer↔seller only. §10.5.1.
@@ -85,4 +88,3 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **VerifyResult / VerifyResultRef.** The uniform record every DACS-2 method produces; reference to an anchored VerifyResult. §7.5.
 - **Vet-credentials phase.** The DACS-2 phase that runs verification across the counterparty’s bundle. §7.8.
 - **Well-known/agent.json.** The A2A capability-discovery surface that DACS extends with a dacs block. §6.3.5.
-

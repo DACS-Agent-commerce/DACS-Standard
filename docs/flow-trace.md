@@ -295,7 +295,7 @@ Notes:
 
 ## 5. Stage 3 — Negotiate (RFQ on L2PS)
 
-The buyer and seller exchange offers and counters through an L2PS subnet. Each channel message is signed under the channel-msg domain separator. The final terms become a signed AgreementDocument; the AgreementHash is what's anchored on-chain via a CommitmentRecord.
+The buyer and seller exchange offers and counters through an L2PS subnet. Each channel message is signed under the channel-msg domain separator. The final terms become a signed AgreementArtifact (legacy or payee-bound as selected by the listing); the AgreementHash is what's anchored on-chain via a CommitmentRecord.
 
 ```typescript
 async function negotiateRFQ(

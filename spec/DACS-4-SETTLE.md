@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding §9.5.1, and AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -53,6 +53,8 @@ type PricingSpec =
   | { kind: "negotiable"; bandCenter: PriceTerm; minPct: number; maxPct: number }   // price band around bandCenter; minPct/maxPct non-negative %, 0 ≤ minPct < 100; band + half-up rounding + inclusive bounds per §8.5.2. See the "Negotiable pricing band" note below.
 
   | { kind: "auction"; reservePrice?: PriceTerm; selectionRule: "lowest-price" | "highest-price" | "first-acceptable" | "rule-ref:<contentHash>:<uri>" }   // selectionRule MUST be drawn from the SAME enum as the phase-step parameter (§8.4.3) so the §8.4.3 step-5 "MUST equal" rule is type-expressible; reservePrice.currency MUST equal the listing currency; enforced as a floor (highest-price / first-acceptable / rule-ref) or ceiling (lowest-price), inclusive, per §8.4.3 step 5
+
+  | { kind: "metered"; unitPrice: PriceTerm; unit: string; minTotal?: PriceTerm }   // usage-based: authoritative terms.price = max(minTotal ?? 0, unitPrice.amount × quantity), computed at commit from terms.meteredQuantity (rules MTR-1..4, §8.5.2). Pairs with negotiate-fixed-price (deterministic total) or negotiate-rfq per PS-3.
 
 type PriceTerm = {
 
@@ -278,7 +280,7 @@ Every RailDefinition MUST declare an availability value, with the same value set
 
 ### 9.5 Payment phases
 
-The v0.1 closed set. Each is a PhaseType from chapter 6’s closed enumeration, with a phase-handler contract conforming to §B.5’s SessionContext / PhaseHandlerResult.
+The closed v0.x set at this revision. Each is a PhaseType from chapter 6’s closed enumeration, with a phase-handler contract conforming to §B.5’s SessionContext / PhaseHandlerResult.
 
 #### 9.5.1 Common contract
 
@@ -347,7 +349,7 @@ Two guards:
 ```
 type PaymentPhaseInput = {
   jobId: string
-  agreement: AgreementDocument         // pinned at commit-agreement
+  agreement: AgreementArtifact         // pinned by the listing's agreement commitment phase
   rail: RailDefinition                 // pinned at session start
   payer: {
     bundleHash: string
@@ -364,19 +366,24 @@ type PaymentPhaseInput = {
 }
 ```
 
-**Payee-destination binding (PB-1..PB-3).** `payingKey` already binds the payer side to the bundle (`MUST appear in payer's bundle.claims`); the rules below restore the missing symmetry on the destination.
+**Artifact gate and legacy behaviour.** Before interpreting agreement terms, a payer MUST select the DACS-3 artifact schema from its required version discriminator (§8.5). A payer that does not implement `PayeeBoundAgreementDocument` MUST reject that artifact as unsupported before invoking any pay handler; it MUST NOT discard `payeeBoundAgreementVersion` or `terms.payoutBindings` and retry it as an `AgreementDocument`. In particular, a DACS-4 v0.2 payer expects the required `agreementVersion` field, so the new artifact fails its legacy schema gate and no payment is submitted.
 
-- (PB-1) **Agreement carriage.** When the pinned agreement's `terms.payoutBindings` (§8.5) carries an entry for this phase's `(railId, phaseIndex)`, `PaymentPhaseInput.payee.payeeAddress` MUST equal that entry's `payeeAddress`, and the handler MUST NOT submit payment to any other destination. The lookup key is the same anchor tuple PC-2 already derives (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so the equality check is a direct anchor-tuple lookup.
+The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 through PB-3 do not apply, and the pay handler uses `PaymentPhaseInput.payee.payeeAddress` after the other §9.5.1 checks. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
+
+**Payee-destination binding (PB-1..PB-3).** The rules below apply only when `agreement` is a `PayeeBoundAgreementDocument`. `payingKey` already binds the payer side to the bundle (`MUST appear in payer's bundle.claims`); PB restores the missing symmetry on the destination.
+
+- (PB-1) **Agreement carriage.** The pinned agreement MUST carry exactly one `terms.payoutBindings` entry (§8.5) for this phase's `(railId, phaseIndex)`. `PaymentPhaseInput.payee.payeeAddress` MUST equal that entry's `payeeAddress`, and the handler MUST NOT submit payment to any other destination. A missing entry, duplicate key, wrong railId, or extra entry makes the payee-bound artifact invalid and MUST fail before payment. The lookup key is the same anchor tuple PC-2 already derives (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so the equality check is a direct anchor-tuple lookup.
 - (PB-2) **Destination-identity binding.** Before submitting, the payer MUST verify the destination is bound to `payee.primaryClaim` by the strongest **applicable** tier. Tier *applicability* is decided by the pinned payee bundle (`payee.bundleHash`), not by pay-time resolution:
   - **Tier 1 — intrinsic.** The rail's destination is definitionally the primary claim's address (e.g. `pay-dem`, §9.5.9): the binding holds by construction.
   - **Tier 2 — controlled linked claim.** Applicable iff the pinned bundle carries a `cci-xm:<chain>:…` claim whose SR-1 anchored linkage resolves control-proven per §6.3.2 step (6) for the pay rail's chain — the same gate, applied settle-side. Applicable and resolving to the phase's `payeeAddress` → bound. Applicable but unresolvable → `substrate` (ST-7 pause); the payer MUST NOT fall through to tier 3 and MUST NOT pay. The pause record MUST carry (or reference) the gate's VerifyResult `decision` and `reason`, so a consumer can distinguish a could-not-verify-the-stronger-binding pause from any other substrate pause; a resolver `error` stays `error` (§7.3.2), never a silent downgrade.
   - **Tier 3 — agreement-signed destination assertion.** Legal only when no stronger tier is applicable (the pinned bundle establishes no intrinsic or controlled binding for the rail's chain). The payee's co-signature over `terms.payoutBindings` is the binding — an assertion, not a control proof; the residual (a payee asserting an address it does not control) is a payee-side risk, not a substitution surface. A tier-3 settlement SHOULD record the binding tier used in its evidence, so downstream consumers can see the destination was bound by assertion.
 - (PB-3) **No downgrade.** SB-3 (§9.5.8) grades what a past, recoverable record proves and resolves absent-or-unverifiable by falling back to the unbound posture. PB-2 gates an irreversible pre-pay decision, and the pinned `bundleHash` makes *absent* (tier 3 legal) and *applicable-but-unresolvable* (pause) distinct, replayable states. An implementation MUST NOT apply SB-3's fallback arm to the PB-2 decision.
 
-Where no tier is satisfiable for a phase — no `payoutBindings` entry to carry a tier-3 assertion (tier 3's binding is the payee's co-signature over that entry, so an absent entry leaves tier 3 unavailable) and no intrinsic or applicable controlled binding — the payer SHOULD refuse to pay. This holds whether the agreement predates `payoutBindings` or simply omits the entry for this phase: omission is not grandfathering, and an unbound destination is refused, not paid.
+Where no tier is satisfiable for a payee-bound phase, the payer MUST refuse to pay. A missing `payoutBindings` entry is an invalid `PayeeBoundAgreementDocument`, not a legacy agreement and not permission to infer a destination.
 
 **PB failure modes (all pay rails).**
 
+- PB-1 malformed or incomplete payee-bound artifact → abort before submitting payment, `permanent`
 - PB-1 destination mismatch, or PB-2 tier-2 resolving to a different address → abort before submitting payment, `counterparty`
 - PB-2 applicable-but-unresolvable → `substrate` (ST-7 pause; the recorded VerifyResult reason distinguishes it)
 
@@ -572,7 +579,7 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 > **Note (non-normative) — what pay-x402 adds beyond bare x402.** A direct x402 transaction produces a receipt the client and server hold off-chain; there is no anchored audit trail and the transaction is not bound to a DACS session. pay-x402 binds the x402 transaction into a DACS session by:
 >
 > - (a) producing a SettlementEvidence record carrying the on-chain `settlementTxHash` (chain-verifiable against the settlement chain, like the `evm` rail) plus the x402 receipt hash, anchored via SR-2 — the receipt itself remains off-chain, but its hash, the settlement tx, and the protocol version become part of the on-chain bundle;
-> - (b) tying the x402 transaction to a specific DACS-3 AgreementDocument via the session’s jobId;
+> - (b) tying the x402 transaction to a specific DACS-3 AgreementArtifact via the session’s jobId;
 > - (c) making the x402 transaction available to DACS-5 reputation derivation and ERC-8004 publication.
 >
 > For pure HTTP-402 use cases that do not need a session bundle, bare x402 is appropriate; pay-x402 is the right wrapper when the x402 transaction participates in a multi-stage agent commerce lifecycle.
@@ -605,7 +612,7 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
   - **present and mismatches** → reject the evidence;
   - **absent or unverifiable** (the binding is missing, or the on-chain check cannot complete — RPC unavailable, pruned history, unresolvable `isValidSignature`) → the binding guarantee is **not established** for that record: fall back to the SB-1 + SB-2 + §9.5.1 amount/payee posture of an unbound rail. This is **never** an automatic accept and **never** a hard fail — mirroring the §7.5.1 unresolvable-signer → `indeterminate` rule and the ST-8 `settle-asymmetric` discipline, so a transient verification outage does not become a reputation event.
 
-  Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. A rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match — where the payee side of that match is the PB-1 agreement-bound destination, not a free-standing evidence field — and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements.
+  Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. For a `PayeeBoundAgreementDocument`, a rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match — where the payee side of that match is the PB-1 agreement-bound destination, not a free-standing evidence field — and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements. A legacy `AgreementDocument` provides no PB-1 destination guarantee.
 
 > **Note (non-normative).** SB-2 is structurally the §B.8 SN-4 single-use marker with the scope inverted — a settlement-tx-id is single-use per session as a session nonce is.
 
@@ -931,7 +938,7 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 | --- | --- |
 | Rail author | RD-1 through RD-5 |
 | Orchestrator (rail selection) | RAV-R1 through RAV-R5 |
-| Payment phase handler | PC-1 through PC-7; phase-specific procedure |
+| Payment phase handler | PC-1 through PC-7; PB-1 through PB-3 for payee-bound agreements; phase-specific procedure |
 | Delivery phase handler | §9.6 per-kind procedure; SettlementEvidence emission |
 | Pipeline executor | PIPE-1 through PIPE-5 |
 | SettlementEvidence consumer | Canonical hash recomputation; signature validation; AMEND-1 through AMEND-4 (amendment chain following) |
@@ -953,6 +960,8 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 **Native bridge / Liquidity Tank trust model disclosure.** Honest disclosure of "operated by a rotating Demos validator shard under 2/3 BFT multisig with 15-day emergency recovery" is the right default. Users picking this rail are choosing speed + cost over trust-minimisation, and the recipe makes that trade-off explicit. Substrates with different SR-5 realisations inherit their own trust models and MUST disclose them similarly.
 
 ### 9.12 Backwards compatibility
+
+**Agreement artifacts across minor versions.** A legacy DACS-4 v0.2 payer continues to accept `AgreementDocument` and use the runtime `payeeAddress` under its existing semantics. It rejects `PayeeBoundAgreementDocument` at the required `agreementVersion` schema gate and therefore cannot ignore PB and pay anyway. A DACS-4 v0.3 payer recognises both artifacts, applies PB-1 through PB-3 only to the payee-bound type, and does not attribute a PB guarantee to the legacy type. This is additive new-type refusal under CORE §11.1.2, not a semantic change to the legacy artifact.
 
 **ERC-20.** pay-evm-erc20 uses the standard ERC-20 transfer interface; any compliant ERC-20 token works. The rail registry pins specific tokens (e.g. USDC) per chain to avoid scam-token substitution.
 
@@ -982,7 +991,7 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 
 **Provider-credential disclosure to the attestation layer (AP2-2/AP2-3).** *Threat:* the AP2-2 attested status fetch necessarily carries a provider API credential through the SR-3 relay; a compromised relay or validator observes it. *Mitigation:* AP2-3 confines the disclosed credential to read-only payment-status scope, so observation yields the ability to read payment statuses on that account — never to charge, refund, or move funds. Operators SHOULD rotate the disclosed credential periodically and MAY scope it per-integration. The residual read exposure (payment metadata on the merchant account) is bounded by the same SR-3 trust floor as every consensus-backed-proxy fetch (§7.3.5) — and includes, specifically, the session↔fiat-payment linkage this rail's own AP2-1 binding creates: a compromised read credential exposes the `dacs_job_id` correlation for every DACS deal on that account until rotation. AP2-3 is an operational MUST that no conformance vector can exercise (it constrains the credential an operator discloses, not an artifact); this threat row is its enforcement surface. *Second residual (disclosure-completeness, not a defence gap):* the AP2-2 status body carries the settlement **amount and currency**, which the SR-3 relay and validators observe; where the agreement is otherwise confidential (an encrypted-anchored mode, roadmap), this discloses amount/currency in cleartext at the same SR-3 floor (§7.3.5), which an operator pricing a private deal should weigh.
 
-**Payee-destination substitution.** *Threat:* a tampered listing, compromised negotiation channel, or malicious orchestrator substitutes `payeeAddress` so funds go to an attacker while every identity check passes. *Mitigation:* PB-1 carries the destination inside the co-signed agreement (a substituted address breaks the agreement hash; an honest payee never co-signs an attacker's address), and PB-2 binds it to the vetted identity by the strongest applicable tier — intrinsic, control-proven `cci-xm:` linkage (§6.3.2 step (6)), or the payee's own agreement signature; applicable-but-unresolvable pauses rather than paying (§9.5.1). *Residual:* a payee asserting a tier-3 address it does not control — payee-side risk, visible via the recorded binding tier.
+**Payee-destination substitution.** *Threat:* a tampered listing, compromised negotiation channel, or malicious orchestrator substitutes `payeeAddress` so funds go to an attacker while every identity check passes. *Mitigation:* for `PayeeBoundAgreementDocument`, PB-1 carries the destination inside the co-signed artifact (a substituted address breaks the agreement hash; an honest payee never co-signs an attacker's address), and PB-2 binds it to the vetted identity by the strongest applicable tier — intrinsic, control-proven `cci-xm:` linkage (§6.3.2 step (6)), or the payee's own agreement signature; applicable-but-unresolvable pauses rather than paying (§9.5.1). The distinct artifact and phase make older readers reject before settlement rather than ignore PB. *Residual:* a legacy `AgreementDocument` has no PB guarantee; a payee asserting a tier-3 address it does not control bears the payee-side risk, visible via the recorded binding tier.
 
 **x402 payment-receipt forgery.** *Threat:* a server claims payment it did not receive. *Mitigation:* x402 settles on-chain, so the primary audit is verifying the anchored `settlementTxHash` against the settlement chain — like the `evm` rail, not server- or facilitator-forgeable (§9.5.7). Where no settlement tx is returned, verification falls back to the facilitator-signed receipt (processor-attested, not chain-verified). Buyer-side x402 wallets SHOULD keep a local record of submitted payments.
 

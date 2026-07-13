@@ -47,7 +47,7 @@ DOMAIN_RE = re.compile(r'"(dacs[-a-z0-9]*:v1:)"')
 
 def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
     spec_text = specsource.spec_text(root)
-    start_marker = "The v0.1 registry of domain separators is closed:"
+    start_marker = "The v0.x registry of domain separators at this revision is closed:"
     end_marker = "**Payload shape — single-hash vs composite.**"
     start = spec_text.find(start_marker)
     end = spec_text.find(end_marker, start)

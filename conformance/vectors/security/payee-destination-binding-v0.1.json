@@ -1,13 +1,13 @@
 {
   "set": "payee-destination-binding-v0.1",
-  "spec": "DACS-4 §9.5.1 (PB-1..PB-3); DACS-3 §8.5 terms.payoutBindings",
+  "spec": "DACS-4 §9.5.1 (PB-1..PB-3); DACS-3 §8.5 PayeeBoundAgreementDocument.terms.payoutBindings",
   "gaps": [
     "#211 payeeAddress binding",
     "#229 no-tier fail-closed wording",
     "#231 PB conformance row and vectors"
   ],
-  "decisionModel": "pre-pay gate over PaymentPhaseInput and pinned AgreementDocument; pass means payment may be submitted, fail means abort/refuse before submit, indeterminate means ST-7 substrate pause before submit, error means resolver/input error with no downgrade or payment",
-  "hash": "9259547f9bdd6af016e1e0ceb9b6a868affc0781a07844836aa9b2f049f83e65",
+  "decisionModel": "pre-pay gate over PaymentPhaseInput and a pinned PayeeBoundAgreementDocument; pass means payment may be submitted, fail means abort/refuse before submit, indeterminate means ST-7 substrate pause before submit, error means resolver/input error with no downgrade or payment. Legacy AgreementDocument carries no PB claim and is outside this vector set.",
+  "hash": "91b18dd4096e5320fd204deda57191b619063b27c95cc696eef886ffcbba34f5",
   "count": 11,
   "vectors": [
     {
@@ -17,6 +17,7 @@
       "expected": "pass",
       "note": "terms.payoutBindings carries the phase tuple (railId, phaseIndex), and PaymentPhaseInput.payee.payeeAddress equals the co-signed entry, so PB-1 permits the handler to continue to PB-2.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-happy",
         "terms": {
           "payoutBindings": [
@@ -54,6 +55,7 @@
       "expected": "fail",
       "note": "The phase tuple resolves to a co-signed payout binding for address A, but the runtime PaymentPhaseInput carries address B. The handler MUST NOT submit payment to B.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-mismatch",
         "terms": {
           "payoutBindings": [
@@ -89,6 +91,7 @@
       "expected": "fail",
       "note": "The pinned payee bundle makes tier 2 applicable for the rail's chain, but the controlled linked claim resolves to a different destination than the phase payeeAddress. The handler aborts before payment.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-tier2-mismatch",
         "terms": {
           "payoutBindings": [
@@ -132,6 +135,7 @@
       "expected": "pass",
       "note": "The pinned payee bundle makes tier 2 applicable for the rail's chain, and the controlled linked cci-xm claim resolves to the same destination carried by the agreement and phase input. The payer may submit using binding tier 2.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-tier2-match",
         "terms": {
           "payoutBindings": [
@@ -178,6 +182,7 @@
       "expected": "pass",
       "note": "For pay-dem, the rail destination is definitionally the primary claim's Demos address. The intrinsic tier-1 binding is strongest and lets the payer submit without relying on tier 2 or tier 3.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-tier1-pay-dem",
         "terms": {
           "payoutBindings": [
@@ -216,6 +221,7 @@
       "expected": "indeterminate",
       "note": "The pinned bundle makes tier 2 applicable, but the control proof cannot resolve. The payer pauses with the VerifyResult decision+reason and MUST NOT downgrade to the agreement-signed tier-3 assertion.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-unresolvable",
         "terms": {
           "payoutBindings": [
@@ -264,6 +270,7 @@
       "expected": "error",
       "note": "The pinned bundle makes tier 2 applicable, but the resolver returns error rather than a 4-value indeterminate. The error is surfaced as error, with no tier-3 downgrade and no payment submission.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-resolver-error",
         "terms": {
           "payoutBindings": [
@@ -306,11 +313,12 @@
     },
     {
       "name": "pb2-no-payoutbinding-no-tier-refuses",
-      "rule": "PB-2",
+      "rule": "PB-1/PB-2",
       "op": "pre-pay-destination-gate",
       "expected": "fail",
-      "note": "No payoutBindings entry exists for the phase tuple, and the rail has no intrinsic or controlled binding. Tier 3 is unavailable because there is no payee co-signature over a destination entry; omission is not grandfathering.",
+      "note": "A PayeeBoundAgreementDocument exists but has no payoutBindings entry for this phase tuple. PB-1 makes the artifact invalid before payment; with no intrinsic or controlled binding, there is also no satisfiable PB tier to record.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-no-entry",
         "terms": {
           "payoutBindings": []
@@ -346,6 +354,7 @@
       "expected": "indeterminate",
       "note": "SB-3 would treat an absent/unverifiable settlement-side jobId binding as not established and fall back for evidence classification. PB-3 forbids importing that fallback into the irreversible pre-pay PB-2 gate.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-sb3-distinction",
         "terms": {
           "payoutBindings": [
@@ -390,6 +399,7 @@
       "expected": "pass",
       "note": "Two repeated pay phases share the same railId but different phaseIndex values. PB-1 uses the same (railId, phaseIndex) anchor tuple as PC-2, so each phase resolves its own destination.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-repeated",
         "terms": {
           "payoutBindings": [
@@ -435,11 +445,12 @@
     },
     {
       "name": "pb2-post-field-omission-refuses",
-      "rule": "PB-2",
+      "rule": "PB-1/PB-2",
       "op": "pre-pay-destination-gate",
       "expected": "fail",
-      "note": "A post-PB agreement omits payoutBindings entirely. With no intrinsic or controlled binding, the omission does not grandfather an unbound payeeAddress; the handler refuses before payment.",
+      "note": "A PayeeBoundAgreementDocument omits payoutBindings entirely. This is an invalid payee-bound artifact, not a legacy AgreementDocument and not permission to infer an unbound payeeAddress.",
       "agreement": {
+        "payeeBoundAgreementVersion": "1",
         "agreementHash": "sha256:agreement-pb-field-omitted",
         "terms": {
           "price": {

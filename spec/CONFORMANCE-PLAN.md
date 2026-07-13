@@ -43,12 +43,13 @@ Exercise each rule at its normative home; full text is not restated (define-once
 | --- | --- | --- | --- |
 | Channel envelope + failure | §8.3.3, §8.12 | channelmsg domain-sep sig; sequence monotonicity; signature scope; liveness-exceeded → channel-failed; abort round-trip | `conformance/` |
 | negotiate-fixed-price | §8.4.1 | live signature path; auto-accept commitment + instance-signature path; reject pre-issued per-instance signatures | `conformance/` |
-| RFQ-1..RFQ-4 | §8.4.2 | maxTurns; turn-timeout; out-of-band-terms rejection at commit-agreement | `conformance/` |
+| RFQ-1..RFQ-4 | §8.4.2 | maxTurns; turn-timeout; out-of-band-terms rejection at the agreement commitment phase | `conformance/` |
 | SE-1..SE-8 | §8.4.3 | commitDeadline (chain-timestamped); reveal-window vs SR-2 anchor (SE-3); mismatch exclusion; anchored-reveal-set selection (relay-suppression); exclusion ordering (currency/non-positive before reserve); reserve floor/ceiling inclusive; tie-break (SE-5); empty-set → negotiate-failed; rule-ref content-hash binding (SE-6); bidHash domain-sep + salt floor (SE-7); sealed-envelope role assignment and commit rejection for role inversion / missing or unresolvable procurement `auctionMode` (SE-8) | `conformance/` |
 | MTR-1..MTR-5 | §8.5.2 | metered currency/unit validation; canonical unsigned-integer quantity; ceil for fractional raw units; exact `unitPrice × quantity` / floor recompute; unrecognized pricing kind rejected before commit | `conformance/` (metered vectors pending) |
-| PS-1..PS-3 | §8.8 | exactly-one negotiate phase; commit immediately follows; pattern ↔ pricing-model compatibility | `conformance/` |
-| Agreement validation | §8.5.2 | price-band / rail-acceptance / deliverable / deadline / pattern checks; `priceAnchor` valid-when-present, optional | `conformance/` |
-| CA-1..CA-4 | §8.6 | refuse-advance-until-ok; double-commit reject; immutability after anchor; domain-sep commitment signature | `conformance/` |
+| PS-1..PS-3 | §8.8 | exactly-one negotiate phase; exactly one of the two agreement commitment phases immediately follows; pattern ↔ pricing-model compatibility | `conformance/` |
+| Agreement validation | §8.5.2 | price-band / rail-acceptance / deliverable / deadline / pattern checks; artifact ↔ commitment-phase match; exact pay-phase payout-binding coverage; `priceAnchor` valid-when-present, optional | `conformance/` |
+| Agreement-artifact minor compatibility | §8.5, CORE §11.1.2 / §11.2.5 | legacy reader accepts AgreementDocument and structurally rejects PayeeBoundAgreementDocument before action; current reader accepts both; reject both/neither discriminators and cross-domain signatures | `conformance/` |
+| CA-1..CA-5 | §8.6 | refuse-advance-until-ok; double-commit reject; immutability after anchor; domain-sep commitment signature; reject artifact/phase coercion | `conformance/` |
 
 ### 14.4 DACS-4 — Settle
 
@@ -58,7 +59,7 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | --- | --- | --- | --- |
 | RD-1..RD-5 | §9.4.3 | steward-sig + domain separator; anchor; version monotonicity; railType↔asset/network consistency | `conformance/fixtures/settlement/` |
 | PC-1..PC-7 | §9.5.1 | input-shape; anchored evidence; correct `attestationRef` (deferrable under PC-7); all `errorClass` values; PC-5 currency-resolution; PC-6 `settlementFinality` present-on-success/absent-on-delivery; PC-7 cross-chain anchor decoupling | `conformance/fixtures/settlement/` |
-| PB-1..PB-3 | §9.5.1 | agreement-carried destination matches the phase tuple (PB-1); mismatched destination aborts before payment; strongest applicable identity-binding tier decides, including tier-1 intrinsic and tier-2 controlled-claim positive cases; applicable-but-unresolvable tier 2 pauses with the exact recorded cause; resolver `error` stays `error`; no satisfiable tier refuses; SB-3 fallback is not imported into the pre-pay gate; repeated pay phases use distinct `(railId, phaseIndex)` bindings | `conformance/vectors/security/payee-destination-binding-v0.1.json` |
+| PB-1..PB-3 | §9.5.1 | payee-bound destination match/mismatch; exact `(railId, phaseIndex)` coverage; tier-1/2/3 selection including tier-1 intrinsic and tier-2 controlled-claim positive cases; applicable-unresolvable pause with exact recorded cause; resolver `error` stays `error`; no downgrade; no satisfiable tier refuses; SB-3 fallback is not imported into the pre-pay gate; legacy agreement follows legacy behaviour and carries no PB claim | `conformance/vectors/security/payee-destination-binding-v0.1.json` |
 | SB-1..SB-3 | §9.5.8 | settlement bound to `(jobId, phaseIndex)` (SB-1); a `settlement-tx-id` reused under a second `(jobId, phaseIndex)` is counted once across a consumer's set (SB-2); optional on-chain `jobId` binding — for `pay-x402`, authorization `jobId` MUST match `evidence.jobId` (SB-3) | `conformance/fixtures/settlement/` |
 | HTLC-1..HTLC-10 | §9.5.4 | buyerSalt entropy/confidentiality/non-reuse; HKDF derivation + input-uniqueness; canonical claim order; per-chain hashlocks; timelock asymmetry on absolute expiry (pinned params, source-finality margin); HTLC-9/ST-8 asymmetric resolution; HTLC-10 free-option | `conformance/fixtures/settlement/htlc9-asymmetric.json` |
 | CD-1 | §B.2 | economically-equal decimals (`"1.50"`=`"1.5"`) → identical hashes/signatures | `conformance/vectors/` (CD-1) |
@@ -122,5 +123,5 @@ The following are not part of v0.1 conformance and SHOULD NOT be tested as such:
 - Cross-substrate interoperability for SR-3- or SR-4-dependent phases (deferred to v2).
 - Multi-party transactions beyond bilateral plus sealed-envelope (deferred).
 - Streaming / continuous-flow rails (deferred).
-- Cross-DACS-version pipelines (deferred).
+- Cross-major DACS pipelines (deferred). Same-major cross-minor handling of existing and newly registered artifact/phase types is required by CORE §11.1.2 / §11.2.5 and is in scope above.
 - Dispute *resolution* flows (DACS-X, anticipated). Divergence *detection* — the two-sided lookup plus canonical-divergence classification and per-party policy of §10.4.3(d) — **is** in scope for v0.1 conformance; only the resolution layer is deferred.

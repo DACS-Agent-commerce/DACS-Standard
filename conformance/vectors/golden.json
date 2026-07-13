@@ -348,6 +348,7 @@
       "divergentBuyer": "conformance/fixtures/attestation-bundle-0004.json",
       "divergentSeller": "conformance/fixtures/attestation-bundle-0004-seller.json",
       "oneSided": "conformance/fixtures/session-bundle-one-sided.json",
+      "presenceSet": "conformance/fixtures/session-bundles-presence.json",
       "reputationSet": "conformance/fixtures/session-bundles-reputation.json"
     },
     "jobIds": {

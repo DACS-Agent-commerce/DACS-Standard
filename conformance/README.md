@@ -51,6 +51,7 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
 - `fixtures/settlement-evidence-payment-success.json` — a byte-stable pay-evm-erc20 success SettlementEvidence (§9.7) with its PaymentPhaseInput + PhaseHandlerResult, signed by a deterministic orchestrator key.
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable deliver-storage-program success SettlementEvidence (deliverable content hash + anchor, no settlementFinality).
 - `fixtures/session-bundle-one-sided.json` — a one-signature `aborted-by-other` bundle for the §10.4.3(b)/§10.11 one-sided case.
+- `fixtures/session-bundles-presence.json` — byte-stable buyer/seller bundle pairs for §10.4.3 phaseSummary entry-set mismatch and advisory-only skew.
 - `fixtures/session-bundles-reputation.json` — a mixed-outcome bundle set (completed / failed-counterparty / failed-substrate / aborted-by-self / aborted-by-other) for §10.5.1 reputation derivation.
 - `vectors/golden.json` — pinned outputs: deterministic signature, logical-address encoding, bundle refs/hashes, dispute/disclosure decision maps + seeds, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps.
 - `vectors/golden.json` provenance strings name the verifier-side runner used to construct complex inputs.

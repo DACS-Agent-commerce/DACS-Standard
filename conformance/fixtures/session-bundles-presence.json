@@ -1,5 +1,5 @@
 {
-  "note": "Static DACS-5 presence/advisory fixture pack generated from github.com/mj-deving/dacs-verify examples/session-bundles.ts at mj-dacs5-presence-vectors 7d740c1.",
+  "note": "Static DACS-5 presence/advisory fixture pack generated from github.com/mj-deving/dacs-verify examples/session-bundles.ts.",
   "phaseIndexMismatch": {
     "jobId": "DACS-VERIFY-L3-PHASE-INDEX-MISMATCH",
     "buyer": {
@@ -32,13 +32,8 @@
       "phaseSummary": [
         {
           "index": 0,
-          "kind": "rate",
-          "outcome": "ok",
-          "attestationRef": {
-            "kind": "dacs-4-evidence",
-            "id": "evidence-DACS-VERIFY-L3-PHASE-INDEX-MISMATCH",
-            "contentHash": "adfbcf73c56ea154b43abd8f35d2e6a44e101457fc9f600e33d5896465bba3cb"
-          }
+          "kind": "deliver-storage-program",
+          "outcome": "ok"
         }
       ],
       "vetRecords": [],
@@ -56,12 +51,12 @@
         {
           "party": "did:demos:buyer",
           "algorithm": "ed25519",
-          "value": "9RxKilb_9E7D9nXWEsnB10ORzgWSKJZmVQ4nTiqPbEeZ6DXAEJM7EAYVHzxKWYS0SqYa9uFa3seN3Ebw0ckoBA"
+          "value": "Hg0uKx9C11R4lM0ykNIhCjX7xNkJhHwwaUpIc4nJkqo_6XnOEaMSDDPPRXusfjjKN-cb3SH1l_AJiO7E-Ly-AA"
         },
         {
           "party": "did:demos:seller",
           "algorithm": "ed25519",
-          "value": "Q10RLIQARSk5DdW1SUkR6GRw-_YnVW1-CwFHt_lHW8f59fLBZAT6V5kimcOQgTgSy5auxYrOHoAsXO1kIebiCw"
+          "value": "2BfG98tD_eE1H8Zn6EGT8Gw25UbmXsRUt9IZz82DUQve2b0fvC4lekQWPt1LO9kjJ08AN3VxTVh_hiH4i9gNBQ"
         }
       ]
     },
@@ -95,13 +90,8 @@
       "phaseSummary": [
         {
           "index": 1,
-          "kind": "rate",
-          "outcome": "ok",
-          "attestationRef": {
-            "kind": "dacs-4-evidence",
-            "id": "evidence-DACS-VERIFY-L3-PHASE-INDEX-MISMATCH",
-            "contentHash": "1e8a55cec9f1ee201ea29a6c7c911552379994db97817257784ec81e1719c0b0"
-          }
+          "kind": "deliver-storage-program",
+          "outcome": "ok"
         }
       ],
       "vetRecords": [],
@@ -109,7 +99,7 @@
         {
           "kind": "dacs-4-evidence",
           "id": "evidence-DACS-VERIFY-L3-PHASE-INDEX-MISMATCH",
-          "contentHash": "1e8a55cec9f1ee201ea29a6c7c911552379994db97817257784ec81e1719c0b0"
+          "contentHash": "adfbcf73c56ea154b43abd8f35d2e6a44e101457fc9f600e33d5896465bba3cb"
         }
       ],
       "recipeRegistryVersion": 1,
@@ -119,12 +109,12 @@
         {
           "party": "did:demos:buyer",
           "algorithm": "ed25519",
-          "value": "BZGEuS88bXbRyDFVGI4J7l862xM0hdZ_zKARcKwMqzcBaPFoh1jJ2_hV2-Z_9B0YHNDUbOfoNZAQdZj23ASaBQ"
+          "value": "cXj-LWRpCmfIBK3fezeLmAxHONCwYJJxLaKbjVypOkpS0omuPvef0K7j9s53A81Ua4cHhlDMBLgXkJ91YsUICA"
         },
         {
           "party": "did:demos:seller",
           "algorithm": "ed25519",
-          "value": "ITf56UZTXMiWn-Cv22R1jrcW9U1tSbAYkd_cX-LPIa8C-68reWNfwN25YrYB_SARouZTrgz1L7OZ9fqqXMAJDw"
+          "value": "hnLCf-TFYWveSZk2UjBC0ktWk2o5uqu3xXmAW9BnWO3zktjab_9qrWMz4MbBh6HEn4XW3zITVHHlulyoRBhSAA"
         }
       ]
     }
@@ -161,7 +151,7 @@
       "phaseSummary": [
         {
           "index": 0,
-          "kind": "rate",
+          "kind": "deliver-storage-program",
           "outcome": "ok",
           "attestationRef": {
             "kind": "dacs-4-evidence",
@@ -185,12 +175,12 @@
         {
           "party": "did:demos:buyer",
           "algorithm": "ed25519",
-          "value": "Mn8qlw0mmyyKmsvoLlfkPTlY7ajbHpZW_TPiuh773ldGbJ6KwbeZsaL6ImuRFxiAPNuz4t7ek-TT_dGP-cItCQ"
+          "value": "AGCpRvweyeUwcyRnTfyoVVKkORxOdKuE88UvFKLOOuxHOGmi456qftuzpZrOUYyUsTwzt5z_-jupgFB0myx4CA"
         },
         {
           "party": "did:demos:seller",
           "algorithm": "ed25519",
-          "value": "X2w2UGY09Pnbcip_6flnraY9kZvBPxY380gWgeov1ACd5lIqv2SjwgWYFQeCAUE2A7lr4OQVpzi8JZRSeZEsAQ"
+          "value": "RoPGGM0sLYKNg-g0aekNcT3ySINVM2QeztLF9sQxN0_P-FhXD7tTg-b2JITiVPslOjkfHYsh_6yYH64AbjQzDA"
         }
       ]
     },
@@ -231,7 +221,7 @@
       "phaseSummary": [
         {
           "index": 0,
-          "kind": "rate",
+          "kind": "deliver-storage-program",
           "outcome": "ok",
           "attestationRef": {
             "kind": "dacs-4-evidence",
@@ -255,14 +245,22 @@
         {
           "party": "did:demos:buyer",
           "algorithm": "ed25519",
-          "value": "8DsYf11phoki1EQxNw-3wZ84HucRdM59usw6xXURriaFOyoJuVlKpjmfb5r_9fdMznaBpuJOBp9rK_vpENOwBg"
+          "value": "E56AesDucQGlMT2TzGlWgdO9YKI_qLqE4sHRpi1XV4EzPFNBvKwrd5ax3s9Jif_B3k4aDikKE59rKl4bo08RBQ"
         },
         {
           "party": "did:demos:seller",
           "algorithm": "ed25519",
-          "value": "TIVu0k1NYxZfBbsKdI_JBTdjmD5dxIZ0YtrJrNKAk5wQXGRSIrO8LuO2WXjXx8J0ERX-HRpy9ftsIKTH0pw7Bw"
+          "value": "zH6jp9cutFznATn20YCgXa2VEx4wD8Dzo7wbUkJf8ZMiPme0j8owYv73GtSPuMQfA4993lql3VtT1WknS5ScBQ"
         }
       ]
     }
+  },
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8"
+  },
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
   }
 }

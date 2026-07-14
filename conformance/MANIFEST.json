@@ -1764,10 +1764,10 @@
           1
         ],
         "buyerPhaseKinds": [
-          "rate"
+          "deliver-storage-program"
         ],
         "sellerPhaseKinds": [
-          "rate"
+          "deliver-storage-program"
         ],
         "distinctHashes": true
       }
@@ -1787,10 +1787,10 @@
         "buyerRatingRefs": 0,
         "sellerRatingRefs": 1,
         "buyerPhaseKinds": [
-          "rate"
+          "deliver-storage-program"
         ],
         "sellerPhaseKinds": [
-          "rate"
+          "deliver-storage-program"
         ]
       }
     },

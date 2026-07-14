@@ -386,7 +386,6 @@ Where no tier is satisfiable for a payee-bound phase, the payer MUST refuse to p
 - PB-1 malformed or incomplete payee-bound artifact → abort before submitting payment, `permanent`
 - PB-1 destination mismatch, or PB-2 tier-2 resolving to a different address → abort before submitting payment, `counterparty`
 - PB-2 applicable-but-unresolvable → `substrate` (ST-7 pause; the recorded VerifyResult reason distinguishes it)
-- no satisfiable PB tier → abort before submitting payment, `counterparty`
 
 #### 9.5.2 pay-evm-erc20
 

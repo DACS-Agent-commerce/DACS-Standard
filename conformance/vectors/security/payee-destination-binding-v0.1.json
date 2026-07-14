@@ -1,51 +1,1643 @@
 {
   "set": "payee-destination-binding-v0.1",
-  "spec": "DACS-4 §9.5.1 (PB-1..PB-3); DACS-3 §8.5 PayeeBoundAgreementDocument.terms.payoutBindings",
+  "spec": "DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3",
+  "provenance": {
+    "generator": "github.com/mj-deving/dacs-verify",
+    "command": "bun scripts/emit-payee-binding-vectors.ts",
+    "commit": "f32684fb19dca07df87f9346a7fde292cadf7893"
+  },
   "gaps": [
-    "#211 payeeAddress binding",
-    "#229 no-tier fail-closed wording",
-    "#231 PB conformance row and vectors"
+    "#231 PB conformance row and vectors",
+    "#236 PayeeBoundAgreementDocument redesign compatibility matrix"
   ],
-  "decisionModel": "pre-pay gate over PaymentPhaseInput and a pinned PayeeBoundAgreementDocument; pass means payment may be submitted, fail means abort/refuse before submit, indeterminate means ST-7 substrate pause before submit, error means resolver/input error with no downgrade or payment. Legacy AgreementDocument carries no PB claim and is outside this vector set.",
-  "hash": "91b18dd4096e5320fd204deda57191b619063b27c95cc696eef886ffcbba34f5",
-  "count": 11,
+  "decisionModel": "artifact gate plus pre-pay destination gate. Agreement artifact gate order is discriminator, reader support, legacy payoutBindings ban, commit phase, signatures, then payee-bound payout coverage. Artifact failures are permanent pre-Settle failures; payout coverage precedence is omitted field, duplicate key, wrong pay-phase rail, non-pay tuple, then missing expected tuple; PB destination mismatch is counterparty; applicable-but-unresolvable tier 2 pauses as substrate with mustNotUseTier3; resolver errors remain error; valid legacy AgreementDocument carries no PB claim.",
+  "publicKeys": {
+    "cci-lei:984500PBBUYER0000010": "Ngsms4AKMIpGv3Ssc54Msf_RF7kDyNRbE5A4kGl0Wvs",
+    "cci-lei:984500PBSELLER000010": "BuwkmF-v_71CiQrUMIDkQHwQlKiJPWch4F_Q_DmHhNY",
+    "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111": "yra4qKH2-KfQGZVE9e1w-c7fVuKT50z9cHUTdYQWaEE"
+  },
+  "hash": "9e76b0fee21d34a1108d4f2d97bd8affa8ffea116900c84e8cf54751497daf94",
+  "count": 28,
   "vectors": [
     {
-      "name": "pb1-agreement-bound-destination-matches",
-      "rule": "PB-1",
-      "op": "pre-pay-destination-gate",
+      "name": "agreement-legacy-reader-accepts-legacy",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
       "expected": "pass",
-      "note": "terms.payoutBindings carries the phase tuple (railId, phaseIndex), and PaymentPhaseInput.payee.payeeAddress equals the co-signed entry, so PB-1 permits the handler to continue to PB-2.",
+      "note": "A legacy reader accepts a valid AgreementDocument and applies no PB claim.",
+      "readerMode": "legacy",
+      "commitPhase": "commit-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+        "version": 1,
+        "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "agreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+          "version": 1,
+          "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "JuzhWqJ10H/F/aCaOmW0wKUhZmgjyU86t1ukX1j+8TgwCI1l3TItHEhkhh8quHrQv/Tvx1F55MgG67yMuP2pDw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA=="
+          }
+        ]
+      },
+      "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+      "signatureDomain": "dacs-agreement:v1:",
+      "want": {
+        "expected": "pass",
+        "ok": true,
+        "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+        "signatureDomain": "dacs-agreement:v1:",
+        "reason": "legacy AgreementDocument schema and signatures verified; PB payout coverage is not applicable"
+      }
+    },
+    {
+      "name": "agreement-legacy-reader-refuses-payee-bound",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "A legacy reader structurally refuses PayeeBoundAgreementDocument before invoking any pay handler.",
+      "readerMode": "legacy",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-happy",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
           "payoutBindings": [
             {
               "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 0,
+              "phaseIndex": 2,
               "payeeAddress": "0x1111111111111111111111111111111111111111"
             }
           ]
-        }
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
+      },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "versionDiscriminator",
+        "errorClass": "permanent",
+        "reason": "legacy reader refuses PayeeBoundAgreementDocument before action"
+      }
+    },
+    {
+      "name": "agreement-current-reader-accepts-legacy-no-pb",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "pass",
+      "note": "A current reader still accepts a legacy AgreementDocument, but PB-1..PB-3 do not apply.",
+      "readerMode": "current",
+      "commitPhase": "commit-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+        "version": 1,
+        "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "agreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+          "version": 1,
+          "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "JuzhWqJ10H/F/aCaOmW0wKUhZmgjyU86t1ukX1j+8TgwCI1l3TItHEhkhh8quHrQv/Tvx1F55MgG67yMuP2pDw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA=="
+          }
+        ]
+      },
+      "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+      "signatureDomain": "dacs-agreement:v1:",
+      "want": {
+        "expected": "pass",
+        "ok": true,
+        "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+        "signatureDomain": "dacs-agreement:v1:",
+        "reason": "legacy AgreementDocument schema and signatures verified; PB payout coverage is not applicable"
+      }
+    },
+    {
+      "name": "agreement-current-reader-accepts-payee-bound",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "pass",
+      "note": "A current reader accepts PayeeBoundAgreementDocument when the artifact, phase, signatures, and payout coverage are coherent.",
+      "readerMode": "current",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
+      },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "pass",
+        "ok": true,
+        "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+        "signatureDomain": "dacs-payee-bound-agreement:v1:",
+        "reason": "artifact schema, commit phase, signatures, and payout coverage verified"
+      }
+    },
+    {
+      "name": "agreement-legacy-payoutbindings-reject",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "A legacy AgreementDocument MUST NOT carry terms.payoutBindings.",
+      "readerMode": "current",
+      "commitPhase": "commit-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+        "version": 1,
+        "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "agreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+          "version": 1,
+          "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "cWwd90iQZG65H7eXzJYXSrw4eyl22wM5O3AxRrVNQWNBrgg3u4ArQW/zXHfUwEisbBjdGye05WrvPZUQby19DA=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "ESRIC9CL6jwwJ1olBIGhuN+9J8jG98T7a8vC4OgdxrYbokYYHZR9hLtTZA12Wfyx90tW/tGuXB3zb0+tDkvyCw=="
+          }
+        ]
+      },
+      "artifactHash": "8546623440f37a6ea4d6ec65ac7f1783fa9655141142a757ca7d7e9ff4d7205b",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "terms.payoutBindings",
+        "errorClass": "permanent",
+        "reason": "legacy AgreementDocument MUST NOT carry payoutBindings"
+      }
+    },
+    {
+      "name": "agreement-both-discriminators-reject",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "An artifact carrying both agreementVersion and payeeBoundAgreementVersion rejects at the discriminator gate.",
+      "readerMode": "current",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "agreementVersion": "1",
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "NhVIDkci6o+lHm58jkfv0ZA96H24J8KnKVe9vpNkVz/dnzaL3H4GQMNA+Bi4Mb4I3BNberPYU9YRIjRarzMPCw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "YdXuLtvPCBPjnlBij7Gsc1XAcvJMzhRJKzFqOvBlx7qjM6YsaG9eAQtYVS41p6jt+8mDI+ouTQ69uqiCSWsmBA=="
+          }
+        ]
+      },
+      "artifactHash": "c1769be99d7a5fda40077c2b67021e3992616dd9ab355a802fe81cb2cad33aaa",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "versionDiscriminator",
+        "errorClass": "permanent",
+        "reason": "artifact carries both version discriminators"
+      }
+    },
+    {
+      "name": "agreement-legacy-reader-refuses-both-discriminators",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "A legacy reader also refuses an artifact carrying both version discriminators before action.",
+      "readerMode": "legacy",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "agreementVersion": "1",
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "NhVIDkci6o+lHm58jkfv0ZA96H24J8KnKVe9vpNkVz/dnzaL3H4GQMNA+Bi4Mb4I3BNberPYU9YRIjRarzMPCw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "YdXuLtvPCBPjnlBij7Gsc1XAcvJMzhRJKzFqOvBlx7qjM6YsaG9eAQtYVS41p6jt+8mDI+ouTQ69uqiCSWsmBA=="
+          }
+        ]
+      },
+      "artifactHash": "c1769be99d7a5fda40077c2b67021e3992616dd9ab355a802fe81cb2cad33aaa",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "versionDiscriminator",
+        "errorClass": "permanent",
+        "reason": "artifact carries both version discriminators"
+      }
+    },
+    {
+      "name": "agreement-neither-discriminator-reject",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "An artifact carrying neither version discriminator rejects at the discriminator gate.",
+      "readerMode": "current",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "6xdPlO3WbaMzyk9erQJP/qv23obcnWgcyCmEq9Slr+NyjCOc4g8NSpCP9nK6Jsik8IUtMZcNN+4RbrGa06yfAg=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "Y3vliIoB5y+tdnEJvMFwheEo34KWFEZYfS4UuyzbUxZSEgGxg8zG7pCCDfRwKqEtAzDJfd/dVc/wFh+2P2UDCQ=="
+          }
+        ]
+      },
+      "artifactHash": "e0933ae29df266d1132daf4cd7e41b1211adb1d0039363136ba473d95472e7db",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "versionDiscriminator",
+        "errorClass": "permanent",
+        "reason": "artifact carries neither version discriminator"
+      }
+    },
+    {
+      "name": "agreement-legacy-reader-refuses-neither-discriminator",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "A legacy reader refuses an artifact carrying neither version discriminator before action.",
+      "readerMode": "legacy",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "6xdPlO3WbaMzyk9erQJP/qv23obcnWgcyCmEq9Slr+NyjCOc4g8NSpCP9nK6Jsik8IUtMZcNN+4RbrGa06yfAg=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "Y3vliIoB5y+tdnEJvMFwheEo34KWFEZYfS4UuyzbUxZSEgGxg8zG7pCCDfRwKqEtAzDJfd/dVc/wFh+2P2UDCQ=="
+          }
+        ]
+      },
+      "artifactHash": "e0933ae29df266d1132daf4cd7e41b1211adb1d0039363136ba473d95472e7db",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "versionDiscriminator",
+        "errorClass": "permanent",
+        "reason": "artifact carries neither version discriminator"
+      }
+    },
+    {
+      "name": "agreement-payee-bound-omitted-payoutbindings-reject",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "A PayeeBoundAgreementDocument omitting the required terms.payoutBindings field rejects before any pay handler.",
+      "readerMode": "current",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "AQLnPCPl/XRCetAH0mp9pb4HQoEC3dJlcxdJGbSvsU17YtJ3eSTu38ylwqZ1cOYXXlSrQBh2TpSkIFOmMh7kBw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "0JwuBQj76jiNyn9pWYqru+dnHgb+G+Xt1Ektl2zU6RAlBGLsMUSMTh85W4Tz/+MBWMVdOfi1m+a8EamvcsRWAA=="
+          }
+        ]
+      },
+      "artifactHash": "189c150a9cdf84289cbd07d4166e316d8e874c96eb8d65bb1d9b6b992431a52d",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "terms.payoutBindings",
+        "errorClass": "permanent",
+        "reason": "PayeeBoundAgreementDocument missing payoutBindings",
+        "artifactHash": "189c150a9cdf84289cbd07d4166e316d8e874c96eb8d65bb1d9b6b992431a52d",
+        "signatureDomain": "dacs-payee-bound-agreement:v1:"
+      }
+    },
+    {
+      "name": "agreement-commit-agreement-with-payee-bound-rejects",
+      "rule": "CA-5",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "commit-agreement MUST NOT coerce a PayeeBoundAgreementDocument into the legacy type.",
+      "readerMode": "current",
+      "commitPhase": "commit-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+        "version": 1,
+        "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+          "version": 1,
+          "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "NEd6okkYC9ORm+QLeBivVC7Oz7URAEFU7tY0dr5nSTexkYTBflt/CjPA5mZSlfCXekVxOzt2rj2slwg7ei1MBw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "GabxyqFNhbM1C5CzrlhhmiVyVvGq9s6KCGVxPK+F7AFv0Yx54/1rjj9YudkF9FED2scb2s9IJ6UayJqvHC9ACw=="
+          }
+        ]
+      },
+      "artifactHash": "85a7708cc7b18402e542c976a465056bd226908d0d70f5c1556c5b07e003eefe",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "commitPhase",
+        "errorClass": "permanent",
+        "reason": "commit-agreement requires AgreementDocument"
+      }
+    },
+    {
+      "name": "agreement-commit-payee-bound-with-legacy-rejects",
+      "rule": "CA-5",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "commit-payee-bound-agreement MUST NOT coerce a legacy AgreementDocument into the payee-bound type.",
+      "readerMode": "current",
+      "commitPhase": "commit-payee-bound-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "agreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "hQvistr6TcjQmMZKv47t5lHCWE58zgnAsXCiCMaTgDVvI5AtV0raxG+F4ttrFRSiPMSsB/HR2X/8iFjbVsX4Aw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "u85Ke+yb8pbuXtJ1jrwJ6QC3OQujFH57UKYYbyi8vyMmBoSCJNy/4ZhNvzelYRn1Ko+l/BX69LWPYkna4y7UAA=="
+          }
+        ]
+      },
+      "artifactHash": "e4d48571f751cb56639e4cf25bee4ed8e2b9934383d4dfeb0062a24bb9e99b93",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "commitPhase",
+        "errorClass": "permanent",
+        "reason": "commit-payee-bound-agreement requires PayeeBoundAgreementDocument"
+      }
+    },
+    {
+      "name": "agreement-legacy-signature-domain-rejects-payee-bound",
+      "rule": "SIG-2",
+      "op": "agreement-signature-domain",
+      "expected": "fail",
+      "note": "A PayeeBoundAgreementDocument signature does not verify under dacs-agreement:v1:.",
+      "signatureDomain": "dacs-agreement:v1:",
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
+      },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "signatures",
+        "errorClass": "permanent",
+        "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+        "signatureDomain": "dacs-agreement:v1:",
+        "reason": "Ed25519 signature did not verify against signed bytes"
+      }
+    },
+    {
+      "name": "agreement-payee-bound-signature-domain-rejects-legacy",
+      "rule": "SIG-2",
+      "op": "agreement-signature-domain",
+      "expected": "fail",
+      "note": "A legacy AgreementDocument signature does not verify under dacs-payee-bound-agreement:v1:.",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "agreement": {
+        "agreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+          "version": 1,
+          "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "JuzhWqJ10H/F/aCaOmW0wKUhZmgjyU86t1ukX1j+8TgwCI1l3TItHEhkhh8quHrQv/Tvx1F55MgG67yMuP2pDw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA=="
+          }
+        ]
+      },
+      "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "signatures",
+        "errorClass": "permanent",
+        "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+        "signatureDomain": "dacs-payee-bound-agreement:v1:",
+        "reason": "Ed25519 signature did not verify against signed bytes"
+      }
+    },
+    {
+      "name": "agreement-stripped-payee-bound-cannot-downgrade",
+      "rule": "§8.5 compatibility",
+      "op": "agreement-artifact-gate",
+      "expected": "fail",
+      "note": "Stripping payeeBoundAgreementVersion/payoutBindings from the original payee-bound artifact and retrying through the legacy commit path changes the signed scope and fails signature verification.",
+      "readerMode": "current",
+      "commitPhase": "commit-agreement",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000
+        },
+        "generatedAt": 1720968000000,
+        "agreementVersion": "1",
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
+      },
+      "artifactHash": "e4d48571f751cb56639e4cf25bee4ed8e2b9934383d4dfeb0062a24bb9e99b93",
+      "signatureDomain": "dacs-agreement:v1:",
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "failedAt": "signatures",
+        "errorClass": "permanent",
+        "artifactHash": "e4d48571f751cb56639e4cf25bee4ed8e2b9934383d4dfeb0062a24bb9e99b93",
+        "signatureDomain": "dacs-agreement:v1:",
+        "reason": "Ed25519 signature did not verify against signed bytes"
+      }
+    },
+    {
+      "name": "pb1-agreement-bound-destination-matches",
+      "rule": "PB-1/PB-2",
+      "op": "pre-pay-destination-gate",
+      "expected": "pass",
+      "note": "The phase tuple resolves to a signed payout binding and tier 3 is applicable, so the payer may submit.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-001",
+        "jobId": "pb-job-2026-07-14",
         "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBHAPPY0000000",
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
           "payeeAddress": "0x1111111111111111111111111111111111111111"
         }
       },
       "bindingContext": {
         "strongestApplicableTier": 3,
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "pass",
         "maySubmitPayment": true,
-        "bindingTier": 3
+        "ok": true,
+        "bindingTier": 3,
+        "boundDestination": "0x1111111111111111111111111111111111111111",
+        "reason": "tier-3 payee co-signature assertion is applicable"
       }
     },
     {
@@ -53,35 +1645,767 @@
       "rule": "PB-1",
       "op": "pre-pay-destination-gate",
       "expected": "fail",
-      "note": "The phase tuple resolves to a co-signed payout binding for address A, but the runtime PaymentPhaseInput carries address B. The handler MUST NOT submit payment to B.",
+      "note": "The phase payeeAddress differs from the signed payout binding; the handler aborts before payment.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-mismatch",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
           "payoutBindings": [
             {
               "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 0,
+              "phaseIndex": 2,
               "payeeAddress": "0x1111111111111111111111111111111111111111"
             }
           ]
-        }
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-002",
+        "jobId": "pb-job-2026-07-14",
         "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBMISMATCH1000",
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
           "payeeAddress": "0x2222222222222222222222222222222222222222"
         }
       },
+      "bindingContext": {
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": true
+      },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "fail",
         "maySubmitPayment": false,
         "ok": false,
         "errorClass": "counterparty",
-        "failedAt": "payoutBinding.payeeAddress"
+        "failedAt": "payoutBinding.payeeAddress",
+        "reason": "phase payeeAddress differs from signed payout binding"
+      }
+    },
+    {
+      "name": "pb1-missing-payoutbinding-permanent",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "A PayeeBoundAgreementDocument missing the phase tuple is an incomplete artifact and fails permanently before Settle.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": []
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "wM6ADFaU/cBlLyUQCVN/DwA7XjHJzqhCOKzzUIrB0lbe23PrW3zaojfN7sZkafNz/TE/e9MrWVbnmLCHHzsLAw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "oqRSQizzzZ63UDoM5gZS8hl8QHh+zCUtWhiEGdOvt5uHf/+Tr9F0yd3BnGX9FBzo+quGlksGdHYT1pib7Jk+Cw=="
+          }
+        ]
+      },
+      "phaseInput": {
+        "jobId": "pb-job-2026-07-14",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 2,
+        "payee": {
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": true
+      },
+      "artifactHash": "fe2dbada91630e4bd66583a38c3e425b33eb4a1fcd3fd910854c2105134132e0",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "fail",
+        "maySubmitPayment": false,
+        "ok": false,
+        "reason": "missing payout binding for pay phase",
+        "errorClass": "permanent",
+        "failedAt": "terms.payoutBindings"
+      }
+    },
+    {
+      "name": "pb1-duplicate-payoutbinding-permanent",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "Duplicate (railId, phaseIndex) payout bindings make the payee-bound artifact invalid.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            },
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "wvzHcCjLc0uRbRWQDVVOCNFZdDdMIXZ6otgWP76dEsP2ppdu+muSHYJEChynle9dXEVTHUJdruD5XtFRjq5HDg=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "gMVFD83llkkMvNSZguObklLMWpAraaca1SS1elalnhPRtwRwiUCUvR4Se0CU/xhqIOL5oh0ZW3oy57DUcsLaCw=="
+          }
+        ]
+      },
+      "phaseInput": {
+        "jobId": "pb-job-2026-07-14",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 2,
+        "payee": {
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": true
+      },
+      "artifactHash": "91e170fc9e06443d0ea31528a343f4cf0b5b867616481d95e78e31b05d4ac50f",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "fail",
+        "maySubmitPayment": false,
+        "ok": false,
+        "reason": "duplicate payout binding key",
+        "errorClass": "permanent",
+        "failedAt": "terms.payoutBindings"
+      }
+    },
+    {
+      "name": "pb1-wrong-rail-payoutbinding-permanent",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "A payout binding for the wrong railId does not cover the pinned pay phase and fails as malformed coverage.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:1:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "Q0NtJQ3mjju4y5MoFycjRo/cYdmYGZ+DMbyQxaN5Ksjr4x/JLjyZ5eUOYGx31+Xf617T60WClQxj+mRikfiRBg=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "BddRPOu4NaO3idwvXGwVIecSrXW78Syc6N7dE4F7JLKjv/QJbhwXsL3v+y78Ud4E2yphYoGaK0gRa/u3Oe/2BQ=="
+          }
+        ]
+      },
+      "phaseInput": {
+        "jobId": "pb-job-2026-07-14",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 2,
+        "payee": {
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": true
+      },
+      "artifactHash": "8be7ce43ee8c6cf096c5a29632e16997f78e22f571a0f45df78870d1c774618b",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "fail",
+        "maySubmitPayment": false,
+        "ok": false,
+        "reason": "payout binding railId does not match the pay phase",
+        "errorClass": "permanent",
+        "failedAt": "terms.payoutBindings"
+      }
+    },
+    {
+      "name": "pb1-extra-payoutbinding-permanent",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "fail",
+      "note": "An extra payout binding for a non-pay tuple makes the payee-bound artifact invalid before payment.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            },
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 99,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "gnWVGyU/+rfkItPVluBO/0rI20S6hq/qWVVSwKz3xeWwMUxTwI9FR8Oi5/o5g56Cpmk9PcVmFwkaXEntdDNGCQ=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "j2knMceDBZrI5VldifWiMln1qsbWK0rC3i0NWWpgZosznMGQC37SD80hn0o9IBEAVSI51sjp4jGUUwqjTxlHCg=="
+          }
+        ]
+      },
+      "phaseInput": {
+        "jobId": "pb-job-2026-07-14",
+        "railId": "evm-erc20:8453:USDC",
+        "phaseIndex": 2,
+        "payee": {
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
+        }
+      },
+      "bindingContext": {
+        "tier1Intrinsic": false,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": true
+      },
+      "artifactHash": "075e8250708a05a4c63c7dfc95e9e8576c9064fe1e255b65ac67cb41064dbaf8",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "expected": "fail",
+        "maySubmitPayment": false,
+        "ok": false,
+        "reason": "payout binding targets a non-pay phase",
+        "errorClass": "permanent",
+        "failedAt": "terms.payoutBindings"
+      }
+    },
+    {
+      "name": "pb1-repeated-pay-phases-distinct-bindings",
+      "rule": "PB-1",
+      "op": "pre-pay-destination-gate",
+      "expected": "pass",
+      "note": "Two repeated pay phases share a railId but different phaseIndex values; each resolves the independently signed destination for its tuple.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-repeated/1",
+        "version": 1,
+        "contentHash": "3922b6f2fae7f6300ed8f24bf000f59d992826bd092da2ed222c7ea563230561",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-repeated/1",
+          "version": 1,
+          "contentHash": "3922b6f2fae7f6300ed8f24bf000f59d992826bd092da2ed222c7ea563230561"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
+        "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            },
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "phaseIndex": 3,
+              "payeeAddress": "0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "uLgUtztf48+ig+lNG+a/TIwicpgJfT/Yw4Y2I/sLDSqTe0n3pNjlbg5dcwhY5ITLjsqR+CzyVQ7H8LUTmy9VBg=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "oE4HD6SOdd1KsQumP8HW+D82kChEhlElj85DFjQRz/KUDHpx5R6X3Fhz5xcfSFbQF4Ze2Vd+vQQ1vAnqH6w1Bg=="
+          }
+        ]
+      },
+      "phaseInputs": [
+        {
+          "jobId": "pb-job-2026-07-14",
+          "railId": "evm-erc20:8453:USDC",
+          "phaseIndex": 2,
+          "payee": {
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "payeeAddress": "0x1111111111111111111111111111111111111111"
+          }
+        },
+        {
+          "jobId": "pb-job-2026-07-14",
+          "railId": "evm-erc20:8453:USDC",
+          "phaseIndex": 3,
+          "payee": {
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "payeeAddress": "0x2222222222222222222222222222222222222222"
+          }
+        }
+      ],
+      "bindingContexts": [
+        {
+          "strongestApplicableTier": 3,
+          "tier1Intrinsic": false,
+          "tier2Applicable": false,
+          "tier3AgreementAssertionPresent": true
+        },
+        {
+          "strongestApplicableTier": 3,
+          "tier1Intrinsic": false,
+          "tier2Applicable": false,
+          "tier3AgreementAssertionPresent": true
+        }
+      ],
+      "artifactHash": "c135ecd531c058e4bd47e8ad5351aba9f033741d68eb81f6dbd7003c8a8c0091",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
+      "want": {
+        "results": [
+          {
+            "expected": "pass",
+            "maySubmitPayment": true,
+            "ok": true,
+            "bindingTier": 3,
+            "boundDestination": "0x1111111111111111111111111111111111111111",
+            "reason": "tier-3 payee co-signature assertion is applicable"
+          },
+          {
+            "expected": "pass",
+            "maySubmitPayment": true,
+            "ok": true,
+            "bindingTier": 3,
+            "boundDestination": "0x2222222222222222222222222222222222222222",
+            "reason": "tier-3 payee co-signature assertion is applicable"
+          }
+        ]
       }
     },
     {
@@ -89,43 +2413,125 @@
       "rule": "PB-2",
       "op": "pre-pay-destination-gate",
       "expected": "fail",
-      "note": "The pinned payee bundle makes tier 2 applicable for the rail's chain, but the controlled linked claim resolves to a different destination than the phase payeeAddress. The handler aborts before payment.",
+      "note": "Tier 2 is applicable, but the controlled linked claim resolves to a different address than the signed destination.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-tier2-mismatch",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
           "payoutBindings": [
             {
               "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 0,
-              "payeeAddress": "0x3333333333333333333333333333333333333333"
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
             }
           ]
-        }
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-003",
+        "jobId": "pb-job-2026-07-14",
         "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-controlled-evm",
-          "primaryClaim": "cci-lei:984500PBTIER20000000",
-          "payeeAddress": "0x3333333333333333333333333333333333333333"
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
         }
       },
       "bindingContext": {
         "strongestApplicableTier": 2,
-        "controlledLinkedClaim": "cci-xm:evm:8453:0x4444444444444444444444444444444444444444",
+        "tier1Intrinsic": false,
+        "tier2Applicable": true,
+        "tier3AgreementAssertionPresent": true,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0x2222222222222222222222222222222222222222",
         "verifyResult": {
           "decision": "pass",
           "reason": "controlled-linked-claim-resolved"
         }
       },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "fail",
         "maySubmitPayment": false,
         "ok": false,
         "errorClass": "counterparty",
-        "failedAt": "payee.primaryClaim.binding"
+        "failedAt": "payee.primaryClaim.binding",
+        "reason": "tier-2 controlled linked claim resolves to a different destination"
       }
     },
     {
@@ -133,42 +2539,125 @@
       "rule": "PB-2",
       "op": "pre-pay-destination-gate",
       "expected": "pass",
-      "note": "The pinned payee bundle makes tier 2 applicable for the rail's chain, and the controlled linked cci-xm claim resolves to the same destination carried by the agreement and phase input. The payer may submit using binding tier 2.",
+      "note": "Tier 2 is applicable and the controlled linked claim resolves to the signed destination.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-tier2-match",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
           "payoutBindings": [
             {
               "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 0,
-              "payeeAddress": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
             }
           ]
-        }
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-003a",
+        "jobId": "pb-job-2026-07-14",
         "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-controlled-evm-pass",
-          "primaryClaim": "cci-lei:984500PBT2PASS000000",
-          "payeeAddress": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
         }
       },
       "bindingContext": {
         "strongestApplicableTier": 2,
-        "controlledLinkedClaim": "cci-xm:evm:8453:0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "tier1Intrinsic": false,
+        "tier2Applicable": true,
+        "tier3AgreementAssertionPresent": true,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
         "verifyResult": {
           "decision": "pass",
           "reason": "controlled-linked-claim-resolved"
         }
       },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "pass",
         "maySubmitPayment": true,
+        "ok": true,
         "bindingTier": 2,
-        "boundDestination": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "boundDestination": "0x1111111111111111111111111111111111111111",
+        "reason": "tier-2 controlled linked claim resolves to signed destination",
         "recordedVerifyResultEquals": {
           "decision": "pass",
           "reason": "controlled-linked-claim-resolved"
@@ -180,38 +2669,117 @@
       "rule": "PB-2",
       "op": "pre-pay-destination-gate",
       "expected": "pass",
-      "note": "For pay-dem, the rail destination is definitionally the primary claim's Demos address. The intrinsic tier-1 binding is strongest and lets the payer submit without relying on tier 2 or tier 3.",
+      "note": "For pay-dem, the destination is definitionally the primary claim's Demos address and binds at tier 1.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-dem/1",
+        "version": 1,
+        "contentHash": "a958a0289a8fc2fdddcf6f0ddbdc6ba614e4d8252f7f624aeb3eadea98da4924",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-dem",
+            "parameters": {
+              "rail": "demos-native:DEM"
+            }
+          }
+        ]
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-tier1-pay-dem",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-dem/1",
+          "version": 1,
+          "contentHash": "a958a0289a8fc2fdddcf6f0ddbdc6ba614e4d8252f7f624aeb3eadea98da4924"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+            "bundleHash": "sha256:92268255a207f79d786d645be912f5139d3a805479dceec7f1527c500a091822",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller-demos",
+              "contentHash": "08b921806ccc6214618b6a515eeac1593febd4491ca92fe883332de236be0a29"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "DEM"
+          },
+          "rail": {
+            "railId": "demos-native:DEM"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
           "payoutBindings": [
             {
               "railId": "demos-native:DEM",
-              "phaseIndex": 0,
+              "phaseIndex": 2,
               "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
             }
           ]
-        }
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "18XL0/ayJnfGFyXkYwMnxa2jSF2mlJd2PhBx+hHjts62obs3YBc+/9raV6OkThNbIxOWyEe70/J7aCc0PyfdBQ=="
+          },
+          {
+            "party": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
+            "algorithm": "ed25519",
+            "value": "JklfbMs5fIikfMIJtmTc+ttJtCkdXlAFTb73OJsAsaytjspTEXDu9SldEMZ9auRknEPgf6CHFF0aPS6x2wjtAw=="
+          }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-003b",
+        "jobId": "pb-job-2026-07-14",
         "railId": "demos-native:DEM",
-        "phaseIndex": 0,
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-demos-intrinsic",
+          "bundleHash": "sha256:92268255a207f79d786d645be912f5139d3a805479dceec7f1527c500a091822",
           "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
           "payeeAddress": "0x1111111111111111111111111111111111111111111111111111111111111111"
         }
       },
       "bindingContext": {
         "strongestApplicableTier": 1,
-        "tier1Intrinsic": true
+        "tier1Intrinsic": true,
+        "tier2Applicable": false,
+        "tier3AgreementAssertionPresent": true
       },
+      "artifactHash": "fc8688cea8beef34fdc46d1d5589347333f2d9c635d22727543431989379a00f",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "pass",
         "maySubmitPayment": true,
+        "ok": true,
         "bindingTier": 1,
-        "boundDestination": "0x1111111111111111111111111111111111111111111111111111111111111111"
+        "boundDestination": "0x1111111111111111111111111111111111111111111111111111111111111111",
+        "reason": "tier-1 intrinsic destination binding holds"
       }
     },
     {
@@ -219,43 +2787,126 @@
       "rule": "PB-2/PB-3",
       "op": "pre-pay-destination-gate",
       "expected": "indeterminate",
-      "note": "The pinned bundle makes tier 2 applicable, but the control proof cannot resolve. The payer pauses with the VerifyResult decision+reason and MUST NOT downgrade to the agreement-signed tier-3 assertion.",
+      "note": "Tier 2 is applicable but cannot resolve; the payer pauses with the VerifyResult and does not downgrade to tier 3.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-unresolvable",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
           "payoutBindings": [
             {
               "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 0,
-              "payeeAddress": "0x5555555555555555555555555555555555555555"
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
             }
           ]
-        }
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-004",
+        "jobId": "pb-job-2026-07-14",
         "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-controlled-evm",
-          "primaryClaim": "cci-lei:984500PBUNRES0000000",
-          "payeeAddress": "0x5555555555555555555555555555555555555555"
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
         }
       },
       "bindingContext": {
         "strongestApplicableTier": 2,
-        "controlledLinkedClaim": "cci-xm:evm:8453:0x5555555555555555555555555555555555555555",
+        "tier1Intrinsic": false,
+        "tier2Applicable": true,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
         "verifyResult": {
           "decision": "indeterminate",
           "reason": "linked-claim-anchor-unavailable"
-        }
+        },
+        "tier3AgreementAssertionPresent": true
       },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "indeterminate",
         "maySubmitPayment": false,
         "ok": false,
         "errorClass": "substrate",
         "sessionTransition": "paused",
+        "failedAt": "payee.primaryClaim.binding",
+        "reason": "linked-claim-anchor-unavailable",
         "recordedVerifyResultEquals": {
           "decision": "indeterminate",
           "reason": "linked-claim-anchor-unavailable"
@@ -268,42 +2919,125 @@
       "rule": "PB-2/PB-3",
       "op": "pre-pay-destination-gate",
       "expected": "error",
-      "note": "The pinned bundle makes tier 2 applicable, but the resolver returns error rather than a 4-value indeterminate. The error is surfaced as error, with no tier-3 downgrade and no payment submission.",
+      "note": "A tier-2 resolver error stays error, with no tier-3 downgrade and no payment.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+        "version": 1,
+        "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ]
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-resolver-error",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding/1",
+          "version": 1,
+          "contentHash": "e4d599c390a316048292717a8e128312236af6827adbc28636ac5d2f591f22b1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
+          "price": {
+            "amount": "10",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "evm-erc20:8453:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
           "payoutBindings": [
             {
               "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 0,
-              "payeeAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
             }
           ]
-        }
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "ihNnVkoarpKXv/JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr/Re0/asPdyqnljq5a7Xj9L3IoS8Zc5Bw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ=="
+          }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-004a",
+        "jobId": "pb-job-2026-07-14",
         "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-controlled-evm-error",
-          "primaryClaim": "cci-lei:984500PBT2ERROR00000",
-          "payeeAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
         }
       },
       "bindingContext": {
         "strongestApplicableTier": 2,
-        "controlledLinkedClaim": "cci-xm:evm:8453:0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "tier1Intrinsic": false,
+        "tier2Applicable": true,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
         "verifyResult": {
           "decision": "error",
           "reason": "linked-claim-resolver-malformed-response"
-        }
+        },
+        "tier3AgreementAssertionPresent": true
       },
+      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "error",
         "maySubmitPayment": false,
         "ok": false,
         "errorClass": "permanent",
+        "failedAt": "payee.primaryClaim.binding",
+        "reason": "linked-claim-resolver-malformed-response",
         "recordedVerifyResultEquals": {
           "decision": "error",
           "reason": "linked-claim-resolver-malformed-response"
@@ -312,173 +3046,135 @@
       }
     },
     {
-      "name": "pb2-no-payoutbinding-no-tier-refuses",
-      "rule": "PB-1/PB-2",
-      "op": "pre-pay-destination-gate",
-      "expected": "fail",
-      "note": "A PayeeBoundAgreementDocument exists but has no payoutBindings entry for this phase tuple. PB-1 makes the artifact invalid before payment; with no intrinsic or controlled binding, there is also no satisfiable PB tier to record.",
-      "agreement": {
-        "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-no-entry",
-        "terms": {
-          "payoutBindings": []
-        }
-      },
-      "phaseInput": {
-        "jobId": "pb-job-005",
-        "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
-        "payee": {
-          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBNOTIER000000",
-          "payeeAddress": "0x6666666666666666666666666666666666666666"
-        }
-      },
-      "bindingContext": {
-        "strongestApplicableTier": null,
-        "tier1Intrinsic": false,
-        "tier2Applicable": false,
-        "tier3AgreementAssertionPresent": false
-      },
-      "want": {
-        "maySubmitPayment": false,
-        "ok": false,
-        "errorClass": "counterparty",
-        "failedAt": "payee-destination-binding"
-      }
-    },
-    {
       "name": "pb3-sb3-absent-fallback-not-imported",
       "rule": "PB-3",
       "op": "pre-pay-destination-gate",
       "expected": "indeterminate",
-      "note": "SB-3 would treat an absent/unverifiable settlement-side jobId binding as not established and fall back for evidence classification. PB-3 forbids importing that fallback into the irreversible pre-pay PB-2 gate.",
-      "agreement": {
-        "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-sb3-distinction",
-        "terms": {
-          "payoutBindings": [
-            {
-              "railId": "pay-x402:base:USDC",
-              "phaseIndex": 0,
-              "payeeAddress": "0x7777777777777777777777777777777777777777"
+      "note": "SB-3 fallback semantics are settlement-evidence semantics and cannot downgrade an applicable-but-unresolvable tier-2 pre-pay gate.",
+      "listing": {
+        "listingId": "did:demos:agent:pb-fixture/payee-binding-x402/1",
+        "version": 1,
+        "contentHash": "f54555928dcdc285365c4d1fc5f3dfa8ca017333f3a764d15b6f9210d68053ea",
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-payee-bound-agreement"
+          },
+          {
+            "kind": "pay-x402",
+            "parameters": {
+              "rail": "pay-x402:base:USDC"
             }
-          ]
-        }
-      },
-      "phaseInput": {
-        "jobId": "pb-job-006",
-        "railId": "pay-x402:base:USDC",
-        "phaseIndex": 0,
-        "payee": {
-          "bundleHash": "sha256:payee-bundle-controlled-base",
-          "primaryClaim": "cci-lei:984500PBSB3000000000",
-          "payeeAddress": "0x7777777777777777777777777777777777777777"
-        }
-      },
-      "bindingContext": {
-        "tier2Applicable": true,
-        "verifyResult": {
-          "decision": "indeterminate",
-          "reason": "control-proof-unresolvable"
-        },
-        "sb3JobIdBinding": "absent-or-unverifiable"
-      },
-      "want": {
-        "maySubmitPayment": false,
-        "ok": false,
-        "errorClass": "substrate",
-        "sessionTransition": "paused",
-        "mustNotApplySb3Fallback": true
-      }
-    },
-    {
-      "name": "pb1-repeated-pay-phases-distinct-bindings",
-      "rule": "PB-1",
-      "op": "pre-pay-destination-gate",
-      "expected": "pass",
-      "note": "Two repeated pay phases share the same railId but different phaseIndex values. PB-1 uses the same (railId, phaseIndex) anchor tuple as PC-2, so each phase resolves its own destination.",
-      "agreement": {
-        "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-repeated",
-        "terms": {
-          "payoutBindings": [
-            {
-              "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 0,
-              "payeeAddress": "0x8888888888888888888888888888888888888888"
-            },
-            {
-              "railId": "evm-erc20:8453:USDC",
-              "phaseIndex": 1,
-              "payeeAddress": "0x9999999999999999999999999999999999999999"
-            }
-          ]
-        }
-      },
-      "phaseInputs": [
-        {
-          "jobId": "pb-job-007",
-          "railId": "evm-erc20:8453:USDC",
-          "phaseIndex": 0,
-          "payee": {
-            "payeeAddress": "0x8888888888888888888888888888888888888888"
           }
-        },
-        {
-          "jobId": "pb-job-007",
-          "railId": "evm-erc20:8453:USDC",
-          "phaseIndex": 1,
-          "payee": {
-            "payeeAddress": "0x9999999999999999999999999999999999999999"
-          }
-        }
-      ],
-      "want": {
-        "phase0MaySubmitPayment": true,
-        "phase1MaySubmitPayment": true,
-        "mustKeyBy": [
-          "railId",
-          "phaseIndex"
         ]
-      }
-    },
-    {
-      "name": "pb2-post-field-omission-refuses",
-      "rule": "PB-1/PB-2",
-      "op": "pre-pay-destination-gate",
-      "expected": "fail",
-      "note": "A PayeeBoundAgreementDocument omits payoutBindings entirely. This is an invalid payee-bound artifact, not a legacy AgreementDocument and not permission to infer an unbound payeeAddress.",
+      },
       "agreement": {
         "payeeBoundAgreementVersion": "1",
-        "agreementHash": "sha256:agreement-pb-field-omitted",
+        "jobId": "pb-job-2026-07-14",
+        "listingRef": {
+          "listingId": "did:demos:agent:pb-fixture/payee-binding-x402/1",
+          "version": 1,
+          "contentHash": "f54555928dcdc285365c4d1fc5f3dfa8ca017333f3a764d15b6f9210d68053ea"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "primaryClaim": "cci-lei:984500PBBUYER0000010",
+            "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-buyer",
+              "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
+            }
+          },
+          {
+            "role": "seller",
+            "primaryClaim": "cci-lei:984500PBSELLER000010",
+            "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "vetRecordRef": {
+              "kind": "dacs-2-composite",
+              "id": "vet-seller",
+              "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
+            }
+          }
+        ],
+        "derivedFromPattern": "fixed-price",
         "terms": {
           "price": {
             "amount": "10",
             "currency": "USDC"
+          },
+          "rail": {
+            "railId": "pay-x402:base:USDC"
+          },
+          "deliverable": {
+            "deliverableType": "storage-program",
+            "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"
+          },
+          "deadline": 1720971600000,
+          "payoutBindings": [
+            {
+              "railId": "pay-x402:base:USDC",
+              "phaseIndex": 2,
+              "payeeAddress": "0x1111111111111111111111111111111111111111"
+            }
+          ]
+        },
+        "generatedAt": 1720968000000,
+        "signatures": [
+          {
+            "party": "cci-lei:984500PBBUYER0000010",
+            "algorithm": "ed25519",
+            "value": "fiSJAgKms8rifLictUoH6rwO5c7t3FX3w8MgngFW71TPo9D+QzLmS90sIh5BMdwzIxczQopsN2TtasbtdyUoAw=="
+          },
+          {
+            "party": "cci-lei:984500PBSELLER000010",
+            "algorithm": "ed25519",
+            "value": "gp101MYmPDTGT96r/hVD+LTp66vWm7HdSLFOCJ7bbn6OUuinzPwQMmb5oND0KF5vI9iGeME6X8kG10bN9c0DBA=="
           }
-        }
+        ]
       },
       "phaseInput": {
-        "jobId": "pb-job-008",
-        "railId": "evm-erc20:8453:USDC",
-        "phaseIndex": 0,
+        "jobId": "pb-job-2026-07-14",
+        "railId": "pay-x402:base:USDC",
+        "phaseIndex": 2,
         "payee": {
-          "bundleHash": "sha256:payee-bundle-no-stronger-tier",
-          "primaryClaim": "cci-lei:984500PBFIELD0000000",
-          "payeeAddress": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+          "primaryClaim": "cci-lei:984500PBSELLER000010",
+          "payeeAddress": "0x1111111111111111111111111111111111111111"
         }
       },
       "bindingContext": {
+        "strongestApplicableTier": 2,
         "tier1Intrinsic": false,
-        "tier2Applicable": false,
-        "tier3AgreementAssertionPresent": false
+        "tier2Applicable": true,
+        "controlledLinkedClaim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+        "verifyResult": {
+          "decision": "indeterminate",
+          "reason": "linked-claim-anchor-unavailable"
+        },
+        "tier3AgreementAssertionPresent": true,
+        "sb3FallbackAvailable": true,
+        "sb3JobIdBinding": "absent-or-unverifiable"
       },
+      "artifactHash": "b29839db9aa60585296ae15688249456296fb376770127f3cc4d2851422decb4",
+      "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
+        "expected": "indeterminate",
         "maySubmitPayment": false,
         "ok": false,
-        "errorClass": "counterparty",
-        "failedAt": "payee-destination-binding"
+        "errorClass": "substrate",
+        "sessionTransition": "paused",
+        "failedAt": "payee.primaryClaim.binding",
+        "reason": "linked-claim-anchor-unavailable",
+        "recordedVerifyResultEquals": {
+          "decision": "indeterminate",
+          "reason": "linked-claim-anchor-unavailable"
+        },
+        "mustNotUseTier3": true,
+        "mustNotApplySb3Fallback": true
       }
     }
   ]

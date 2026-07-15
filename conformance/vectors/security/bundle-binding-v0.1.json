@@ -1,0 +1,1443 @@
+{
+  "set": "bundle-binding-v0.1",
+  "spec": "DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty",
+  "provenance": {
+    "generator": "manual (scripts-external); reuses the repo buyer/seller test seeds",
+    "canonicalisation": "RFC 8785 JCS over the artifact minus its hash-excluded fields (bundle: signatures+anchoredByRole; binding: signature); attestation_bundle_hash = sha256 hex; signatures ed25519 over the CORE §B.7 domain-separated payload (dacs-bundle:v1: / dacs-bundle-binding:v1: || hash), base64url-unpadded. Verified reproducible against conformance/fixtures/session-bundles-presence.json.",
+    "note": "candidate tier — awaiting a second-impl cross-run per CROSS-RUN.md"
+  },
+  "gaps": [
+    "#242 DACS-5 bundle logical->native resolution (PR #248)",
+    "cross-role-rebinding adversarial coverage requested in the round-2 review"
+  ],
+  "decisionModel": "Resolve a side's native bundle address through published BundleBindings. Order: BB-4 signature verify; BB-5 reject-on-any over the signed tuple (bindingVersion, jobId/role == requested, logicalAddress == derive(signed jobId, role), fetched jobId == binding.jobId, byte-exact §10.4.1 attestation_bundle_hash, signer holds role, §10.4.1 faultedParty consistent with (outcome, anchoredByRole)); BB-6 multiplicity (canonically-equal collapse, full-signature precedence, equal-standing void, N=8 fetch bound); BB-7 fail-closed. A present-but-invalid binding is fail; total absence is indeterminate; exceeding the fetch bound is error.",
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8"
+  },
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+  },
+  "hash": "e1174e4cc8d1abb5f6219242b2b374785df626f07cbd67f0fa3925c8f72f608a",
+  "count": 9,
+  "vectors": [
+    {
+      "name": "bb-valid-resolution",
+      "rule": "BB-5",
+      "op": "bundle-binding-resolution",
+      "expected": "pass",
+      "note": "Well-formed seller BundleBinding resolves to a matching bundleVersion \"2\" completed bundle: BB-4 verifies, tuple/logicalAddress/jobId/contentHash all match, signer holds role.",
+      "request": {
+        "jobId": "BB-VALID-0001",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-VALID-0001",
+          "role": "seller",
+          "logicalAddress": "stor-f358b0079f4340afceb4ce748dfb632d7ba4094e17e56397f6e0b97126dbe9df",
+          "nativeAddress": "stor-1fc0e2d23470eed53e0c361208786794dd7cef8e",
+          "bundleContentHash": "de946aa53af69310b97ed87b699fba6a76db0f0f226d72fd06d1d10fc77b11c0",
+          "anchorTx": "demos-testnet:tx-1fc0e2d23470eed5",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "HtNMcRcw1C1HFzBna333UjPGnH96YsYAAGX8NsBZve8uslJX_VtZbNuGXcOfFKziXsNN-H0ZeXCQyXc64ZS1CA"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-1fc0e2d23470eed53e0c361208786794dd7cef8e": {
+          "bundleVersion": "2",
+          "jobId": "BB-VALID-0001",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-VALID-0001",
+            "version": 1,
+            "contentHash": "832380ee1b73ca1179a5d3f8d0d5187851d745f45df3554b52f69ac1cb66d60a"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "a8cb2ff32ea7690fa0de86b2c19d73d959f37dee0fd26e6b7247394966c3d1a2",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "05acb018b2182c1e0348f92a3dafe4a6a12edd7a690c287ca22a80df5a2af429",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-VALID-0001",
+            "contentHash": "12928bb62e205c2c9640ca1bcb520f5298a8bc0d8ff189f2d7c4d0cd354901b2"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "-_G7dO4T6qNOXJztSiGNNRLEaFylPFdymfrIszZKX1u7NWyPIBxv-Rg37Eto4cu1nA_j-j_SiZgAbOfUciaXBA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "gNVjT0DOH3i4nzBZjXi_1C0xG_VLhy6D7p40p2F4ljx0wOD2hKRmaxgcSnp_D_mAygismvinqsEvf5C8THzyDA"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "ok": true,
+        "resolvedNativeAddress": "stor-1fc0e2d23470eed53e0c361208786794dd7cef8e",
+        "faultedParty": "none",
+        "reason": "binding verifies (BB-4) and all BB-5 post-fetch checks pass; native address resolved"
+      }
+    },
+    {
+      "name": "bb-invalid-binding-sig",
+      "rule": "BB-4",
+      "op": "bundle-binding-resolution",
+      "expected": "fail",
+      "note": "The only published binding fails BB-4 (signature does not verify against signer's key) and is discarded; a present-but-invalid binding is a verified rejection.",
+      "request": {
+        "jobId": "BB-BADSIG-0002",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-BADSIG-0002",
+          "role": "seller",
+          "logicalAddress": "stor-d64068d82837b0033892531add321d423e52733dd765a14c90f212fa7a7912e9",
+          "nativeAddress": "stor-4c98be8c62257077bae257b7acf2b25f64332e43",
+          "bundleContentHash": "885f0bf68e68d520ff84ab0efeba9d76bd3d9d7417d07c3650ec35be386200a9",
+          "anchorTx": "demos-testnet:tx-4c98be8c62257077",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "7gujtss3TtDdG2prRBnKSiICTsmpiRYMZpsidoJBbrO53E77xvyraloQE3H6F2lEKXibe59dllIORek4CCNrBg"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-4c98be8c62257077bae257b7acf2b25f64332e43": {
+          "bundleVersion": "2",
+          "jobId": "BB-BADSIG-0002",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-BADSIG-0002",
+            "version": 1,
+            "contentHash": "a360cc6b2c3f538d7956596dfb861f29b27a492a0de0b3e29fa0e99e042cbf0f"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "82268e3feeb43f1b848abb34c23ee1e0bf6f7d07db534752af2db7b11a8d4310",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "ec3ef8a018acf669e5c8e5296b3a705dbd093928c0492f2bb32907128390e543",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-BADSIG-0002",
+            "contentHash": "00bb0d7de165ff9af1c28d3291db8deea4cf50e53c559eb3889f1501e265f5f2"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "eOAgT-tcOp9_5VgncJfyaUPVVTnOgtlsGgf0CmCyFRHMEY0kmeifB8BFpd0xzIbfdzn8JiQTtQTErTtSwPxtBA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "sxRhMfnBqHZaN65M0fk6bkar54-Su3X_RrZ72CvG-kPhHzbfNHY6Xg6fptUeixlmBp_HXEY6MFwCz7I5kFf2Aw"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "reason": "BB-4 signature verification fails; binding discarded, no valid resolution"
+      }
+    },
+    {
+      "name": "bb-tuple-mismatch",
+      "rule": "BB-5",
+      "op": "bundle-binding-resolution",
+      "expected": "fail",
+      "note": "A validly-signed binding whose logicalAddress matches (j, seller) but whose signed role is \"buyer\" contradicts the requested tuple (BB-5.4) and mis-derives its logicalAddress (BB-5.5).",
+      "request": {
+        "jobId": "BB-TUPLE-0003",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-TUPLE-0003",
+          "role": "buyer",
+          "logicalAddress": "stor-c79be129933a82f8df23c1d97b53b6a94c9a0b2902b06ae11f28e1b54cbbc089",
+          "nativeAddress": "stor-3f046f331fbd9e3495cc83aa181428991b56577b",
+          "bundleContentHash": "5595688053ce2308dbec875baa4b2fd76045ea564e2f45155dc93a59fd7dcf0e",
+          "anchorTx": "demos-testnet:tx-3f046f331fbd9e34",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "HCDoRvFo0VELep64eDjrpN6Wq-rucVmZbnA3bTYGT6MYCKrRaeCvPnK7o0aCp7eRYBcuheKoSJc1BJmA0uXaAA"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-3f046f331fbd9e3495cc83aa181428991b56577b": {
+          "bundleVersion": "2",
+          "jobId": "BB-TUPLE-0003",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-TUPLE-0003",
+            "version": 1,
+            "contentHash": "0c361c16a5a56adce6fc65e15af406066c630774e23a27aaf8f27c3d70822949"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "788f8058732f4cc2b6d5dd2a95029af2931fac772f5411046167f977c03c80b6",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "6a89ce866d0fce5f929a93cb09b972e799776a42454b36bd65fdd22ad1f38007",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-TUPLE-0003",
+            "contentHash": "bd6057b20df7dfb45c40318d05798c6fcd108fb31e790c7848b886cb75ef6a23"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "9aPVi2NCl72b3vxB9f96Ymlv9glL5TgybrVd7zU6IIcm58EeBdmwKaWrIdbp9j2x8auGJvNwvVZomjyiRnDZCw"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Q4y7IbZCiNa1WwYyRv85v1jU7BkediB4KvxCX4m8YF95hGtj_IfcvgtcGgEdS_S6M-K7EWp-HhYRcXTa54nHBA"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "reason": "binding.role != requested role (BB-5.4); logicalAddress != derive(signed jobId, role) (BB-5.5)"
+      }
+    },
+    {
+      "name": "bb-content-hash-mismatch",
+      "rule": "BB-5",
+      "op": "bundle-binding-resolution",
+      "expected": "fail",
+      "note": "Binding verifies and resolves, but the fetched bundle's §10.4.1 attestation_bundle_hash != binding.bundleContentHash (BB-5.8), so the fetched bundle is rejected.",
+      "request": {
+        "jobId": "BB-HASH-0004",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-HASH-0004",
+          "role": "seller",
+          "logicalAddress": "stor-e01d5cfc0d63c397b789f879789561bb030b26874f3dc59a15bad9dca7a2591c",
+          "nativeAddress": "stor-87ccdf82c49b4041d8cbed744bb7230f3d99f3a2",
+          "bundleContentHash": "5e0a572018a8cfade7a13fad8cc55daa3da2b6c5d247366bf34a614bed65ffeb",
+          "anchorTx": "demos-testnet:tx-87ccdf82c49b4041",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "v_Hbds8ZjxGZWKoXlHQu91UHgQmhOe5Wrd4ghapvYENzCOosr3blv0HNIOnvOI-9AqovUe1j3_fYVLIZIUovCQ"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-87ccdf82c49b4041d8cbed744bb7230f3d99f3a2": {
+          "bundleVersion": "2",
+          "jobId": "BB-HASH-0004",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-HASH-0004",
+            "version": 1,
+            "contentHash": "d4a8dc475ead21b79bd6e45f749e26cc9c15dd475f54c2b09abbebbc2ed9f58f"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "85f9e7a564004cb7cffa5ab03baae982796338228fd4607e2c8b95c2b725fa66",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "23f134da7fd9a283b2839c98f574ad6c728faffe0de265fc9b93aac0832b78bb",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-HASH-0004",
+            "contentHash": "9289b92d83629a62c52162b6b1948aedbde4af5b5c3bc2680f4996f0482a0be3"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "NXSwXLRh6K5oW9Yb38sN-qawhBXdYePW9XphDiGRwOtNeCmPrpdEcz8JRtNxiUatokKp8cUeuiyvWA_9MqzNBw"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "JJGh5DVWQQjNk-vCCbRd-Y3Z1L_6BitboJ_ojm5KVKdGRVeNj0EmW4VoT3En7MAKXXvDFK1pP-hqRD1OKE6xCQ"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "actualBundleContentHash": "180be28981b9c499664018ade73d015180f94b1c0daac526e3201f1f3426ca4e",
+        "bindingBundleContentHash": "5e0a572018a8cfade7a13fad8cc55daa3da2b6c5d247366bf34a614bed65ffeb",
+        "reason": "fetched attestation_bundle_hash != binding.bundleContentHash byte-for-byte (BB-5.8)"
+      }
+    },
+    {
+      "name": "bb-cross-role-rebinding",
+      "rule": "§10.4.1 faultedParty",
+      "op": "bundle-binding-resolution",
+      "expected": "fail",
+      "note": "Cross-role rebind of a single-signed abort: seller re-anchors under seller role keeping the hashed faultedParty=seller, so (outcome=aborted-by-other, anchoredByRole=seller) contradicts the §10.4.1 mapping (expected faultedParty=buyer). The copy is rejected; blame stays with the true aborter (seller).",
+      "request": {
+        "jobId": "BB-REBIND-0005",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-REBIND-0005",
+          "role": "seller",
+          "logicalAddress": "stor-cc9a6b992a52bdcdee1445142a3209b9acfd63c90e5d98b2c84f816bf66320d2",
+          "nativeAddress": "stor-52c05c787c254a870f0760d6d6525ff352c9239b",
+          "bundleContentHash": "3ae7d70e744a198e636007152579c181ebfd0eb1516063c1d35812fa8ec97858",
+          "anchorTx": "demos-testnet:tx-52c05c787c254a87",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "w0TY-pYDX-o3_kFon6swnaImluVhFkFKHP3BjCHY0Ingkwa2o4iIUlthRsgDH6rdscuVPVHxGIfR3aRGnDkDAQ"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-52c05c787c254a870f0760d6d6525ff352c9239b": {
+          "bundleVersion": "2",
+          "jobId": "BB-REBIND-0005",
+          "outcome": "aborted-by-other",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-REBIND-0005",
+            "version": 1,
+            "contentHash": "658169c64a56e6f8462219572dda1aba81b6e589c67200b9ab1075150db47991"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "8cfc536e1affaa731779a9a5481df169c114f5d92b89e420b322c51a5bc1d6cc",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "024481b160820ebb9c4621d50959f7735465ff9f170d49cc0038620994b3b1e2",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-REBIND-0005",
+            "contentHash": "df2914e8f460d042dcbe37ab11b1e7c333a8a36b2a3b25dba2167bb4a688b6bc"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "FJtfmrmiYGG-EuA_u3YufcyT6vjSmdPNEXQR40UqZbasmoM4YUFBxI_rE9fEI1-Hh06bIMYaWUV6Vt1EDd5qDA"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "faultedPartyDeclared": "seller",
+        "faultedPartyExpected": "buyer",
+        "reason": "hashed faultedParty contradicts (outcome, anchoredByRole) per §10.4.1; cross-role rebind rejected, fault remains seller"
+      }
+    },
+    {
+      "name": "bb-missing-binding",
+      "rule": "BB-7",
+      "op": "bundle-binding-resolution",
+      "expected": "indeterminate",
+      "note": "No BB-4-valid binding resolves for the requested (jobId, role) — the only published binding is for a different logicalAddress. The side is not retrieved (BB-7); with nothing to verify the outcome is indeterminate, not a verified failure.",
+      "request": {
+        "jobId": "BB-MISSING-0006",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-OTHER-JOB",
+          "role": "seller",
+          "logicalAddress": "stor-9a8774b823f75a3a0ae01ca7e30f7b51e055a6f337fc86c77b0b2d448c7ee66f",
+          "nativeAddress": "stor-d509ce16026d2995ce75d43520fe94fd93fe8ae3",
+          "bundleContentHash": "367ac5f4ed9dd838cc30eb7b2eb2ea5a7d372fb75b2593ce671d512416b8253b",
+          "anchorTx": "demos-testnet:tx-d509ce16026d2995",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "wys_H-dqGAUWUMZHTRlOzlG7ak4MX9Bc2fn227WPLVQo1a4fAQm1VBZJh-sHzNIGwzWla9U75fhFC82TQpX3AQ"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-d509ce16026d2995ce75d43520fe94fd93fe8ae3": {
+          "bundleVersion": "2",
+          "jobId": "BB-MISSING-0006",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-MISSING-0006",
+            "version": 1,
+            "contentHash": "904c81d92c163a5010233d9f47781d4074b357f53d9a1e8635a9d8bc0cec89b1"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "5bc0cff6f6af0fe3e4cf406ebad77e6f5af39c857a5b335b2e81fd23f575374a",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "9e79cfa5be9d9801a3f3a6422925d12b2bda36305a4a51b5bbba487bae56c971",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-MISSING-0006",
+            "contentHash": "17ca17c0f2b6ff090c818bf459d9fb2689adc84afa2c23fc5f5a30488d0a4fc1"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "Msm4nOcp4Np-KjiOocmkHOXUo5wxdxzycASxhWq2rsvxhBaS3ENcMy08DWwLNvFdQD3_cNtjLAsFOtb4AtoFBw"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "NUFfG5FqjJRA1rNTOT538Ulz_fJyV9i35ZK4cKTD30gQYcrDGgLq921fExIN2f5kcM4tyZyT0kZJSo0cRKlQDQ"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "indeterminate",
+        "ok": false,
+        "reason": "no binding resolves for the requested logicalAddress; side not retrieved (BB-7), classification indeterminate"
+      }
+    },
+    {
+      "name": "bb-full-sig-precedence",
+      "rule": "BB-6",
+      "op": "bundle-binding-resolution",
+      "expected": "pass",
+      "note": "Two canonically-unequal copies resolve for one (jobId, role): a co-signed completed copy and a later single-signed divergent abort. BB-6 full-signature precedence retains the co-signed copy and discards the lesser-signed divergent.",
+      "request": {
+        "jobId": "BB-PRECEDENCE-0007",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-PRECEDENCE-0007",
+          "role": "seller",
+          "logicalAddress": "stor-5d7169aa3f5f1cbfa3c88409ea4705cca8ae9f5ff88f8132f1af7798e23f41c1",
+          "nativeAddress": "stor-c54a90812dbea9b7d6149408deec32ad38b6445a",
+          "bundleContentHash": "07f333f7bde12bcb45cd5334df3e52cd938376a893bb03acbe155e5f91acdd11",
+          "anchorTx": "demos-testnet:tx-c54a90812dbea9b7",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "IjS881Zyyhur0zJ_jbG8DpExkABE-Ae9EPKc1fgD5o8gQMu3LxrxgaiaKC1Pk87vXVmzkXCWZpa1Lg7E_pTnAQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-PRECEDENCE-0007",
+          "role": "seller",
+          "logicalAddress": "stor-5d7169aa3f5f1cbfa3c88409ea4705cca8ae9f5ff88f8132f1af7798e23f41c1",
+          "nativeAddress": "stor-4d58d8f92b074bc3f3e14d47603f584e12f620aa",
+          "bundleContentHash": "79e050c044641d8b8e2cc71a3cf7e373e0638a41c3866d3d2f0f24c1490d0f33",
+          "anchorTx": "demos-testnet:tx-4d58d8f92b074bc3",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "R5X7PlCEUmW0mJEy1fTzkepG-keqHruiK20amXOHEo3jbYBPjKi3_ylXbd5rPtI9cuKmOx_rUayutB-QEBX8Ag"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-c54a90812dbea9b7d6149408deec32ad38b6445a": {
+          "bundleVersion": "2",
+          "jobId": "BB-PRECEDENCE-0007",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-PRECEDENCE-0007",
+            "version": 1,
+            "contentHash": "23ad132eda3c89480968d29aa5a3e6f9aed214c61381e07cfcab481a10846a57"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "dcf5cb3fb4294d934362ebf0bf20a76fad0bd51b53b134258539ffcbdb382743",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "080e214c3a2b3254709d999af4927320b657194073ae75e79532a9df0f783ad2",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-PRECEDENCE-0007-full",
+            "contentHash": "fa1af47dfe3f0a5bd2fe4bd233253a5b147f1888db9a0c623af9e36e0606c51f"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "FIHalTBuxOMFgqt5xKTsYk6Xurwv85YkL965FtyeQcdtESRN1dZYJGhD6LQZMnlunytmzdlpTLpprIF25l6hDw"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "hixkWuum9LfKezfs7YBHPrcSxJ63woN-j6mxgYeDKASHvFd2DviOOxvRPuE0BFCU1sCInDfTZBLvxjBWpDraDg"
+            }
+          ]
+        },
+        "stor-4d58d8f92b074bc3f3e14d47603f584e12f620aa": {
+          "bundleVersion": "2",
+          "jobId": "BB-PRECEDENCE-0007",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-PRECEDENCE-0007",
+            "version": 1,
+            "contentHash": "23ad132eda3c89480968d29aa5a3e6f9aed214c61381e07cfcab481a10846a57"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "dcf5cb3fb4294d934362ebf0bf20a76fad0bd51b53b134258539ffcbdb382743",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "080e214c3a2b3254709d999af4927320b657194073ae75e79532a9df0f783ad2",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-PRECEDENCE-0007-single",
+            "contentHash": "488d10dd4a1340418cd537b74824a8706617aab629f4fb545df88ee15e0a9ffe"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "DmRs_SVrRLk3Qis9cuduMD5rWi2YvTxswgui7kjorEjdFKDWih-3qwmr65-Q0LQVuo2ZrKtcdsLxqzXM9ry7BA"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "ok": true,
+        "resolvedNativeAddress": "stor-c54a90812dbea9b7d6149408deec32ad38b6445a",
+        "faultedParty": "none",
+        "reason": "BB-6 full-signature precedence: co-signed copy retained over the single-signed divergent"
+      }
+    },
+    {
+      "name": "bb-equal-standing-void",
+      "rule": "BB-6",
+      "op": "bundle-binding-resolution",
+      "expected": "fail",
+      "note": "The seller publishes two equal-standing single-signed aborts that diverge on the absolute faultedParty (seller vs buyer). BB-6 voids the side (equal signature standing, never silent selection); the side is not retrieved (BB-7).",
+      "request": {
+        "jobId": "BB-VOID-0008",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-VOID-0008",
+          "role": "seller",
+          "logicalAddress": "stor-5300aa5671422451020eb2b0cd1c53bab4ce7be924e70b9ec3f323bc9581df91",
+          "nativeAddress": "stor-b1a17d626dbda551f8fb2d7a96632d7752d84995",
+          "bundleContentHash": "4a439c69282d2d3926f92492cab915cfa15b2abb2e92e71e1b95cdfade545383",
+          "anchorTx": "demos-testnet:tx-b1a17d626dbda551",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "TL0Eckn6AYIcGmMY_uZQwvX5zXqs1z3INRAW1Mj9cyRH8E-brD4Xr7DS08cywhNhhxOL0bZP3gyZqRnksEy-Bw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-VOID-0008",
+          "role": "seller",
+          "logicalAddress": "stor-5300aa5671422451020eb2b0cd1c53bab4ce7be924e70b9ec3f323bc9581df91",
+          "nativeAddress": "stor-7adbc1f48b888c147f817920a1f029030ec6c1d0",
+          "bundleContentHash": "17456a8b7f5b7b6a1030a2dab8ad219b5008ac1654eece8bb052de49671fc25f",
+          "anchorTx": "demos-testnet:tx-7adbc1f48b888c14",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "VPpVhsD6IOhr9Z3h1OlWIpXG2PVWz_fMFikw2nFAME-lJibD23RXpIeU1iW1HXBko1931guKPydkK7EpquAPAQ"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-b1a17d626dbda551f8fb2d7a96632d7752d84995": {
+          "bundleVersion": "2",
+          "jobId": "BB-VOID-0008",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-VOID-0008",
+            "version": 1,
+            "contentHash": "ca3bd2041611825a0a13b8aa28faf8c0ebe5017cb7b42821af1a76956b7d4195"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "f1abe4df35cb4a12aa956ed1e88bbb14a69ba2273218c1781739cdf518599a4b",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "2415b37faf090ffb18b40522d16645dd5fd83902ff36ba884e7dcaacbe812fa4",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-VOID-0008-a",
+            "contentHash": "b360c6c67b5c584b3b96fb1b127eb4bdeb932f7f600be67be789e6168ea5f750"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "sEr58aTe3BKf5UHD_JCwjxzd0aFmojgGAX-o0qcivrQqvGO4Vw133sBs3Nckzw6UKnJ7q9xrF1o70I-DQtETCg"
+            }
+          ]
+        },
+        "stor-7adbc1f48b888c147f817920a1f029030ec6c1d0": {
+          "bundleVersion": "2",
+          "jobId": "BB-VOID-0008",
+          "outcome": "aborted-by-other",
+          "faultedParty": "buyer",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-VOID-0008",
+            "version": 1,
+            "contentHash": "ca3bd2041611825a0a13b8aa28faf8c0ebe5017cb7b42821af1a76956b7d4195"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "f1abe4df35cb4a12aa956ed1e88bbb14a69ba2273218c1781739cdf518599a4b",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "2415b37faf090ffb18b40522d16645dd5fd83902ff36ba884e7dcaacbe812fa4",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-VOID-0008-b",
+            "contentHash": "785fa099eba40bee18b5b4e121c05c250b26f19ac4491206fca4e830c9ddfed7"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "WCUQtj_pp19DjuHJcMxYx2dRaL817ozOWiGo8GoFhkLCg5fr0dx0FhnOdvac3xEnfkrI8XwV8WMyUooerkoDBg"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "ok": false,
+        "reason": "BB-6 equal-standing divergence voids the side (never select among equivocating copies); fail-closed"
+      }
+    },
+    {
+      "name": "bb-multiplicity-limit",
+      "rule": "BB-6",
+      "op": "bundle-binding-resolution",
+      "expected": "error",
+      "note": "Nine distinct BB-4-valid bindings resolve for one (jobId, role), exceeding the N=8 fetch bound. BB-6 caps the fetch and the side is treated as not retrieved (BB-7) fail-closed — an operational error, the verifier does not proceed.",
+      "request": {
+        "jobId": "BB-LIMIT-0009",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-5177bf9b959ac37d60cc8f84e892ad994e412262",
+          "bundleContentHash": "305cbf79eb7d51678ad8ce73af2056b0a2f3c2b03a8ee1ee7a639e64f8552938",
+          "anchorTx": "demos-testnet:tx-5177bf9b959ac37d",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "kdKeyrAUAVdsECUz0korEg4iCOIRg0-QGYD5zIWVDIhSZOauhYAJgBCm9uvycDYPTxk7FSGKjogcg834hpGtAg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-73bad539d5c4b326a4466780c9dc062b35cbf19c",
+          "bundleContentHash": "6710200491e918a3ed1cb2c138b232370ce969cb1322f52f7baf9f7762686855",
+          "anchorTx": "demos-testnet:tx-73bad539d5c4b326",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "r-I6qPcSmV_i9t63KA_fC0LefKEx9npjgOjMpzddhjAfGKOCxZYD0iyN7Nz9kGxD8n4QxmM5yGKasADZJUziBA"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-9ac0c5e3f7127fd96475f51ef1b610dd44261914",
+          "bundleContentHash": "79d5897d4e4d6859c99a7e675c605671fd02c54f932d0dbd244731da1ca32d89",
+          "anchorTx": "demos-testnet:tx-9ac0c5e3f7127fd9",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "SCYOgjrwH6lweddZdCURF4nRZXbSSIlItmPFe1zbLvWsWWz0wyU00EtD3CtKl_pHtwR42CN4IJhdMXTImcpmBQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-084dfd95b40f1fccd236e3cfed1ff08c4fb09b27",
+          "bundleContentHash": "3db5ee5d30f23eeec541e6df592792f6f33f3a95f991e669b593c9c3708dd325",
+          "anchorTx": "demos-testnet:tx-084dfd95b40f1fcc",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "sjh1IEtTqOr8S5d6hjyGOPQdMFWab1ZuGO8ZUsz_IP3Zkm0eRIk7Aqd0KoEFfjotqwQFCilmKV7pBhk8FWQiAQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-678a13d9cdbb0b13e40946347e14791590a9b63c",
+          "bundleContentHash": "a794f563669a5cdba3056b744c4d9321f10fa9c6feb69382b88af8f57eefe299",
+          "anchorTx": "demos-testnet:tx-678a13d9cdbb0b13",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "D3FMOoRg7PepZpdXUOgKlc-Ub4YeGI-fYVMi2g8w62D8Jd1E25k5kJ7GnHTv0wXc8gN5_7Gv_dLH37H9RzWEDw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-ccc4a9ec041bd36834095893be189d482d6c4dda",
+          "bundleContentHash": "cdfeff83915bb22ac37c748aa26c078a39fc428a11a1fcbf84da697b4e546d7b",
+          "anchorTx": "demos-testnet:tx-ccc4a9ec041bd368",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "TjJIVKRO33d7Yn7tmFcmnXiZndrW6F8PBn0gie57IRn0qdLlctwPBVTpGhmP0mJAYVhGtDfEg1u6kHIA1y7SAg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-28bd81f57f9739cea2167203d7eb64e560ba40d8",
+          "bundleContentHash": "82d150508ba50d8758b31e8741ebed333a51fa4818531b2f4a4992ec5f939f4b",
+          "anchorTx": "demos-testnet:tx-28bd81f57f9739ce",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "SuI-QMoCzZQSnTWgD_Q7Z9Q3qfM5JalyTFYTzCAn6lYFd88g7njZG9u33dRkbIkOFl-BHtjo8HHPgA8VlNMzAw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-2eaafdb63c7574f08c11a3f5fc834c25357fd2f2",
+          "bundleContentHash": "9487f3da1fec16a147b276d194b20b1134034d2d40018a690da2a00a6264696d",
+          "anchorTx": "demos-testnet:tx-2eaafdb63c7574f0",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "FDrUKyMkJ0EinhV62PVi1IU6LX3u6awGjlAnwZeMPeeh5lqw7BOOQs0KfUPULrnvf5MmAK2Ap7M2wdx0zVmbCg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "BB-LIMIT-0009",
+          "role": "seller",
+          "logicalAddress": "stor-c06b0fc3d11cf9bc7fe919ba7d166c10400fac0855047012279d14ebc4bef79c",
+          "nativeAddress": "stor-fb870c334320e4c378eea2fd9f2ee641b3ed13cd",
+          "bundleContentHash": "cf796673e9dcc82209201ff7aa63c77cecc074994a27f379d912092e1029299c",
+          "anchorTx": "demos-testnet:tx-fb870c334320e4c3",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "yshCcdz-9bf4h0RNPcbTK58JdkNq2dkVQt3pF1cPJqGzEc_38Llm9P6EhukRWqxdGBIxkFjQ8G624FpIwdDsAA"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-5177bf9b959ac37d60cc8f84e892ad994e412262": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-0",
+            "contentHash": "0f45d21be135da54c23f12e5ad3010a2db294f41e292b9a2f63890fc409a9650"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "oNucERmJ3Ftf9HJRqn6xNcbMbnfLC_-TGdzONBQtw3XJYEiYLcWAAqE_4YX7RDrDFaBZq6pqBqtAmrJOasCsCg"
+            }
+          ]
+        },
+        "stor-73bad539d5c4b326a4466780c9dc062b35cbf19c": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000001,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-1",
+            "contentHash": "cecb4677b49ceca8fdc6bf7555b0a453b8ed12017c223f927c6769a0d492ea4a"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "4Q0oFj1XMTkmG0PyNBRbabuC8_iuPQDkuLlBJX17dYP_PDG6rKU5ZHZeioif-4ZDyUsMyS1OWtRlcrtYKbsuAg"
+            }
+          ]
+        },
+        "stor-9ac0c5e3f7127fd96475f51ef1b610dd44261914": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000002,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-2",
+            "contentHash": "6d7dda691d3745f8241d8b120a82c5aafc0701aa814ddd61b64b93a8592a0371"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "QRzSiE_gwqcXX8445PAoOFXDTEvnzQxsQtvs8TspXK4brNyoBcACyrN1p6TiO2CGMS600qPu-KnBTHgJlaVwAw"
+            }
+          ]
+        },
+        "stor-084dfd95b40f1fccd236e3cfed1ff08c4fb09b27": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000003,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-3",
+            "contentHash": "4dd9bb290f0794270a22ed7aadcfc7985dfbe1fd345800f64384fa9de3ba4bba"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "_cTHzUnMcZazXdlaURVg2YTM-O6J3Li41FI5Pg-ADAKWOYhFBOapo9BZyKF9Jzuss6pB_b2Jfst5JxBLds2ICg"
+            }
+          ]
+        },
+        "stor-678a13d9cdbb0b13e40946347e14791590a9b63c": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000004,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-4",
+            "contentHash": "8f69fe95ce9cfa35c8438e7e97d40d72c74ea6b0a317fb1c4121eeab2de01bdb"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Q3afAJt-d9tGH6O7ktcmA0o5T26dfd44MzXgnaIugw7yHLtuqHR3PKFisUav4yAoKZmuIvf5YThLv-SHK6qwDg"
+            }
+          ]
+        },
+        "stor-ccc4a9ec041bd36834095893be189d482d6c4dda": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000005,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-5",
+            "contentHash": "dac260fb29905ddfd1bce940d8bccaae2ba438c5cea3701b36d3c7bb54f1ea45"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ICU9EP2e5DB6T9IMeNbzwsW1gRP4wowvsa_4PTCex-O7Orh0Sr7eq8zmsbIX3Z01jfggyjtquR-aSYroSIEMBA"
+            }
+          ]
+        },
+        "stor-28bd81f57f9739cea2167203d7eb64e560ba40d8": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000006,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-6",
+            "contentHash": "9c594daa274fa2fc3a31d1fde4615a94aec907096bef3105f5180d9ec319ce16"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "gBVbL_KhAhM5pWV4JRhQwu4TyL7HwB_NNUdWHPq66jMmFNiN4T1zRd1uAnOBjf98w1r5iBm1VHBcPemgKujVCw"
+            }
+          ]
+        },
+        "stor-2eaafdb63c7574f08c11a3f5fc834c25357fd2f2": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000007,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-7",
+            "contentHash": "81869498856edd0a1fbec303c5ac47ac3ba0fd43ca6cd044a082bf68dccc131c"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "vNU_c3HKyAGFIs-go7hNvJnvpNGnebMAMY_9A1DflAHKbZSUmKxNsE8smKkrsdK8GFPI74vk9DmqkFCNWqwgBA"
+            }
+          ]
+        },
+        "stor-fb870c334320e4c378eea2fd9f2ee641b3ed13cd": {
+          "bundleVersion": "2",
+          "jobId": "BB-LIMIT-0009",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-BB-LIMIT-0009",
+            "version": 1,
+            "contentHash": "f9a95eb0fb239c6e8b7e5cbd585cbc5be0d9da115b2a86072dabd0b42b5fae38"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "fc7aff271d5c7c5aa3ca34fb99f420ccdb934b905c4038ff639c08854f3cabcf",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "1e76f74e2c1f0ec589296b3c50b61c83bc85315684deca60d8b854951c95f1ec",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000008,
+          "agreementRef": {
+            "kind": "dacs-3-agreement",
+            "id": "agreement-BB-LIMIT-0009-8",
+            "contentHash": "04de96238baaeebb6ac5d2bfa204e07ca9ea9c5d8a61fb6016b6e7d1685239f2"
+          },
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "LcArVJ7cdr4cBEcWhDIY21QpUFgiCsgkwemLJNyFCMnCZVVtx2-Z5QP21ZMOaT_JUeLdF2FeM00Zx8F0mHw1Dw"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "error",
+        "ok": false,
+        "distinctBindings": 9,
+        "bound": 8,
+        "reason": "distinct bindings (9) exceed the BB-6 bound N=8; fail-closed not-retrieved (BB-7)"
+      }
+    }
+  ]
+}

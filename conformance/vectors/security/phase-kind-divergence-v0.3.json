@@ -1,0 +1,51 @@
+{
+  "set": "phase-kind-divergence-v0.3",
+  "spec": "DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence",
+  "decisionModel": "Copies with equal entry-index sets still diverge when a shared index names different phase kinds. The consumer verdict is divergent and a DACS-5 reputation derivation excludes the jobId from every metric rather than selecting either copy.",
+  "hash": "33dbfa47bb109c1a3bf49966e0de9fee503926b08b9544c75789ac0daeb1ecf2",
+  "count": 1,
+  "vectors": [
+    {
+      "name": "shared-index-kind-mismatch-is-divergent",
+      "rule": "§10.4.3 / §10.5.1 guard (ii)",
+      "expected": "reject",
+      "copies": {
+        "buyer": {
+          "jobId": "DACS-VERIFY-PHASE-KIND-MISMATCH",
+          "outcome": "completed",
+          "phaseSummary": [
+            {
+              "index": 2,
+              "kind": "commit-agreement",
+              "outcome": "ok"
+            }
+          ]
+        },
+        "seller": {
+          "jobId": "DACS-VERIFY-PHASE-KIND-MISMATCH",
+          "outcome": "completed",
+          "phaseSummary": [
+            {
+              "index": 2,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ]
+        }
+      },
+      "comparison": {
+        "bundleOutcomeEqual": true,
+        "entryIndexSetsEqual": true,
+        "entryOutcomeEqual": true,
+        "entryErrorClassEqual": true,
+        "entryKindEqual": false
+      },
+      "want": {
+        "consumerVerdict": "divergent",
+        "derivationDisposition": "exclude-jobId-from-all-metrics",
+        "selectPartyCopy": false
+      },
+      "note": "The copies agree that shared index 2 succeeded but contradict about whether that invocation committed the agreement or delivered content. The pair is not advisory skew and MUST NOT be unified."
+    }
+  ]
+}

@@ -4,16 +4,17 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6, clarifies the listing-publisher / counterparty-role interpretation for sealed-envelope procurement listings, and registers the minor-safe `commit-payee-bound-agreement` phase). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6, clarifies the listing-publisher / counterparty-role interpretation for sealed-envelope procurement listings, registers the minor-safe `commit-payee-bound-agreement` phase, and makes listing-revocation markers independently resolvable through `RevocationBinding`). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
-DACS-1 specifies how an agent is identified, what it offers, and how it is found. It defines three artifacts plus a discovery extension:
+DACS-1 specifies how an agent is identified, what it offers, and how it is found. It defines three primary artifacts, a revocation record, and a discovery extension:
 
 - An **identity claim reference scheme** — a way to name an identity that already exists somewhere else (a domain, DID, company LEI, platform account, signing key), written as `type:value` (e.g. `lei:5493…`), optionally carrying proof it was checked against that source (a DACS-2 verification).
 - An **identity bundle schema** — an ordered set of independently-verifiable claims a party presents, plus a listing-side requirement schema declaring which bundles a listing accepts.
 - A **service listing schema** — a signed, anchored JSON document declaring the bundle requirement, offering, deliverable, pipeline, accepted rails, and terms. The listing is the publisher's signed, pinned statement of terms — the single source of truth every deal with that publisher is checked against.
-- A **discovery extension** — a `.well-known/agent.json` listings-index URL plus an off-chain catalog API for indexed search.
+- A **revocation marker and binding** — a signed withdrawal record plus the discovery metadata needed to resolve its native anchor.
+- A **discovery extension** — a `.well-known/agent.json` listings-index URL plus an off-chain catalog API for indexed search and revocation resolution.
 
 Identity is a bundle of independently-verified claims, not a single rooted identifier — so the same structure covers micropayments (a signing key) and regulated trades (LEI + KYB + FINRA + OFAC). The substrate MUST provide anchored storage (SR-2); single-signature bundle convenience (SR-1) is OPTIONAL and supplements, never replaces, per-claim verification.
 
@@ -534,14 +535,63 @@ Versioning rules:
 - A new version supersedes prior versions for new sessions; sessions already past their DACS-3 agreement commitment phase MUST continue against their pinned version.
 - listingVersion MUST be monotonically increasing per listingId. Versions MUST NOT be skipped.
 
-**Revocation.** A seller MAY revoke a listing version by anchoring a revocation marker at the address dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion} with value {listingId, listingVersion, listingContentHash, revokedAt, reason?, signature} signed by the same key that signed the listing. The rules:
+**Revocation marker and binding.** A `RevocationMarker` is the seller's signed withdrawal of one listing version. A `RevocationBinding` locates that marker without relying on its StorageProgram name.
 
-- The `signature` is over the domain-separated payload `signed_bytes := "dacs-revocation:v1:" || sha256(canonical({listingId, listingVersion, listingContentHash, revokedAt, reason?}))` (per §B.7).
-- The marker MUST carry `listingId`, `listingVersion`, and `listingContentHash` (the `contentHash` of the revoked listing version). A reader MUST confirm all three match the listing it is checking before honouring the revocation.
-- Readers MUST check for the revocation marker before initiating a new session.
+```
+type RevocationSignature = {
+  algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
+  signer: ClaimReference
+  value: string
+}
+
+type RevocationMarker = {
+  listingId: string
+  listingVersion: number
+  listingContentHash: string
+  revokedAt: number
+  reason?: string
+  signature: RevocationSignature
+}
+
+type RevocationBinding = {
+  sellerPrimaryClaim: ClaimReference
+  listingId: string
+  listingVersion: number
+  listingContentHash: string
+  logicalAddress: string
+  markerAnchor: { kind: string; locator: string }
+  markerContentHash: string
+}
+
+type RevocationCheck = "absent" | "revoked" | "indeterminate"
+```
+
+A seller MAY revoke one listing version by completing RB-1..RB-3.
+
+- (RB-1) A seller revoking a listing version MUST anchor one `RevocationMarker` via SR-2. Its logical address is `dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion}`, encoded per CF-4.
+- The anchored record MUST carry the RB-1 logical address as descriptive metadata. Its native address follows the applicable substrate's §A.2 mapping.
+- The marker's `signature` MUST cover `"dacs-revocation:v1:" || markerContentHash` per §B.7. `markerContentHash` is `sha256` of the §B.2 canonical marker with `signature` omitted.
+- The marker's signer MUST equal the signer of the listing version. Its three listing fields MUST equal the listing's `(listingId, listingVersion, contentHash)` tuple.
+- (RB-2) The seller MUST publish a `RevocationBinding` through every discovery surface on which it publishes that listing version.
+- The binding's seller and listing fields MUST equal the revoked listing's publisher and tuple. Its `logicalAddress` MUST equal the RB-1 derivation.
+- The binding's `markerContentHash` MUST equal the marker hash signed under RB-1. Its `markerAnchor` MUST locate the anchored marker's native content.
+- (RB-3) A discovery record for a revoked listing version MUST be retained with `status: "revoked"` and its `RevocationBinding`. An active record MUST NOT carry a `RevocationBinding`.
+- (RB-4) A reader checking revocation MUST validate each discovered binding before returning `revoked`:
+  1. match the binding's publisher and listing tuple to the listing under evaluation;
+  2. derive the CF-4 logical address and match `logicalAddress`;
+  3. fetch `markerAnchor` and recompute `markerContentHash`;
+  4. verify the marker signature and signer under RB-1; and
+  5. match the marker's three listing fields to the listing under evaluation.
+- A binding supplies discovery only. A reader MUST NOT honour revocation from the binding without completing every RB-4 post-fetch check.
+- (RB-5) A missing required binding or an incomplete RB-4 check MUST produce `indeterminate`. A reader MUST refuse a new session when the result is `revoked` or `indeterminate`.
+- (RB-6) Across the discovery records consulted for one check, result precedence is `revoked`, then `indeterminate`, then `absent`. A reader MAY return `absent` only when every successfully consulted record is integrity-consistent, active, and has no binding.
+- A well-known read is integrity-consistent only when `listings.json` matches `indexHash`. A catalog-only record whose `catalogObservedAt` is older than 24 hours MUST NOT establish `absent`.
+- A transport failure, stale record, or integrity mismatch is `indeterminate`, not `absent`.
 - Sessions already past their agreement commitment phase MUST NOT be invalidated by revocation.
 
-> **Note (non-normative).** The three-field match means a captured marker cannot be replayed to revoke a different listing; the anchor address alone is not a sufficient binding, since on Demos it is a write-input-derived native address (§6.3.4).
+> **Note (non-normative).** The binding is not a new trust root. A false pointer, tuple, or hash fails RB-4; only the listing key's existing marker signature establishes revocation.
+
+> **Note (non-normative).** RB-6 distinguishes a completed discovery read from a resolution failure. It does not claim that one transport's successful “not found” response proves global absence across censored views.
 
 **Validation order for readers**
 Readers MUST validate listings in the following order, **halting on the first failure**:
@@ -550,14 +600,14 @@ Readers MUST validate listings in the following order, **halting on the first fa
 2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
 3. `validity.notBefore ≤ now ≤ validity.notAfter` (if set);
 4. canonical form well-formed and signature verifies;
-5. revocation marker absent;
+5. revocation check per RB-4..RB-6 returns `absent`;
 6. `seller.identity` bundle conformant per §6.3.2;
 7. pipeline references valid phase types per DACS-3/4/5;
 8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and non-empty and MUST reference resolvable payment rails per DACS-4; if pipeline contains no pay-* phase, `acceptedRails` MAY be absent (the intake-only listing pattern — RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band);
 9. signer resolves to a key controllable by the listing publisher (`seller.identity`).
 **Conformance — listing publishers and readers**
-A conforming publisher MUST: (LP-1) anchor each listingVersion via SR-2 before referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish revocation markers when withdrawing a listing.
-A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings failing any step in the validation order; (LR-3) refuse new sessions against revoked listings.
+A conforming publisher MUST: (LP-1) anchor each listingVersion via SR-2 before referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3.
+A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings failing any step in the validation order; (LR-3) refuse new sessions when the RB-4..RB-6 revocation check returns `revoked` or `indeterminate`.
 
 #### 6.3.5 Discovery — .well-known/agent.json extension
 
@@ -606,13 +656,14 @@ type ListingIndexEntry = {
     priceHint?: string
   }
   status: "active" | "revoked"
+  revocation?: RevocationBinding       // REQUIRED iff status == "revoked"; forbidden when active (RB-3)
 }
 ```
 
 The index MAY itself be anchored via SR-2; if so, the well-known block’s anchor field MUST point to it. The indexHash field in the well-known block enables clients to detect stale caches. Clients MUST cross-check each ListingIndexEntry.anchor independently before engaging with a listing; the index is for discovery convenience, not a source of truth.
 
 **Interoperability with A2A; update and revocation**
-The dacs block is additive. A2A-only clients ignore the dacs field. DACS-aware clients use the dacs field for listing discovery; absence of the field MUST be interpreted as "this agent does not publish DACS listings via well-known" (the agent MAY still have listings discoverable via a catalog API). Sellers update by re-publishing listings.json with new entries and updated generatedAt; the well-known indexHash MUST be updated to match. Revocation removes the entry from the index AND publishes the on-chain revocation marker.
+The dacs block is additive. A2A-only clients ignore the dacs field. DACS-aware clients use the dacs field for listing discovery; absence of the field MUST be interpreted as "this agent does not publish DACS listings via well-known" (the agent MAY still have listings discoverable via a catalog API). Sellers update by re-publishing listings.json with new entries and updated generatedAt; the well-known indexHash MUST be updated to match. Revocation retains the listing entry, changes its status to `revoked`, and adds the required `RevocationBinding` per RB-3.
 
 #### 6.3.6 Discovery — catalog API
 
@@ -668,6 +719,8 @@ type ListingSummary = {
 
   status: "active" | "revoked"
 
+  revocation?: RevocationBinding       // REQUIRED iff status == "revoked"; forbidden when active (RB-3)
+
   catalogObservedAt: number
 
   // Optional: catalog-computed reputation snapshot for this seller in the listing's category.
@@ -719,8 +772,10 @@ Read endpoints MUST NOT require authentication. Write/registration semantics are
 
 | Role | Requirements |
 | --- | --- |
-| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish revocation markers |
-| Listing reader | LR-1 pin tuple; LR-2 validate per validation order; LR-3 refuse revoked |
+| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings |
+| Listing reader | LR-1 pin tuple; LR-2 validate per validation order; LR-3 refuse revoked or indeterminate |
+| Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone |
+| Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 distinguish successful absence from resolution failure |
 | Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 valid presentedBy; BP-4 valid presentation signature |
 | Bundle reader | BR-1 recompute hash; BR-2 reject invalid signature; BR-3 reject missing required verifiedBy; BR-4 treat unknown schemes as unverified; BR-5 reject unverified presentedBy when primaryClaimSelector set |
 | Well-known publisher | Publish dacs block; keep indexHash current |
@@ -769,7 +824,7 @@ Read endpoints MUST NOT require authentication. Write/registration semantics are
 
 **Identity-claim substitution between bundle presentation and Vet.** *Threat:* a counterparty presents bundle A in negotiation and bundle B at Vet time. *Mitigation:* the bundle hash is pinned into the session record at presentation time; DACS-2’s Vet stage operates on the pinned bundle. Substitution is detected by hash mismatch.
 
-**Reading a listing after revocation.** *Threat:* a reader has cached a listing and engages without checking for revocation. *Mitigation:* readers MUST check the revocation marker before initiating a new session. Sessions already past their agreement commitment phase are not invalidated by revocation, preserving in-flight obligations.
+**Reading a listing after revocation.** *Threat:* a reader has cached a listing and cannot locate its write-input-addressed revocation marker. *Mitigation:* RB-1..RB-6 retain a discoverable binding, verify the fetched marker, and fail closed when resolution is indeterminate. Sessions already past their agreement commitment phase are not invalidated by revocation, preserving in-flight obligations.
 
 **Stale bundles in active sessions.** *Threat:* a session runs long enough that a verifiedBy reference becomes stale. *Mitigation:* DACS-2 specifies refresh semantics for required claims. For long-running entitlement sessions, listings SHOULD declare a refresh interval; v0.1 does not standardise this, deferring to DACS-2’s per-recipe defaults.
 

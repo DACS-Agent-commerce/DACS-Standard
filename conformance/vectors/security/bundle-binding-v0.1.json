@@ -4,7 +4,8 @@
   "provenance": {
     "generator": "manual (scripts-external); reuses the repo buyer/seller test seeds",
     "canonicalisation": "RFC 8785 JCS over the artifact minus its hash-excluded fields (bundle: signatures+anchoredByRole; binding: signature); attestation_bundle_hash = sha256 hex; signatures ed25519 over the CORE §B.7 domain-separated payload (dacs-bundle:v1: / dacs-bundle-binding:v1: || hash), base64url-unpadded. Verified reproducible against conformance/fixtures/session-bundles-presence.json.",
-    "note": "candidate tier — awaiting a second-impl cross-run per CROSS-RUN.md"
+    "note": "candidate tier — awaiting a second-impl cross-run per CROSS-RUN.md",
+    "listingRef": "Each vector's listingRef.contentHash is synthetic (sha256(\"listing-\" + jobId)), not pinned to a real listing — the listing is not the subject of these resolution vectors."
   },
   "gaps": [
     "#242 DACS-5 bundle logical->native resolution (PR #248)",

@@ -176,7 +176,7 @@ type AttestationBundle = {
 
   outcome: "completed" | "failed-perm" | "failed-counterparty" | "failed-substrate" | "aborted-by-self" | "aborted-by-other"
 
-  anchoredByRole: "buyer" | "seller" | "orchestrator"   // the role of the party that anchored THIS copy; `outcome` is recorded from this party's perspective (matches the §10.4.2 role-derived anchor address)
+  anchoredByRole: "buyer" | "seller" | "orchestrator"   // the role of the party that anchored THIS copy; `outcome` is recorded from this party's perspective (matches the role of the §10.4.2 logical address the copy is bound to)
 
   listingRef: { listingId: string; version: number; contentHash: string }
 
@@ -274,11 +274,65 @@ Verification and signer rules:
 
 The bundle MUST be anchored via SR-2. **Two-sided anchoring scheme:**
 
-- Each signing party (buyer, seller, and orchestrator if distinct) anchors its own bundle at a party-specific **logical** address: `stor-{sha256(jobId + "-bundle-" + role)}` where role is "buyer", "seller", or "orchestrator". This is the substrate-independent *logical* address; how it maps to the substrate's native address is governed by the universal "Logical vs native addresses" rule (DEMOS-MAPPING §A.2) and, for Demos, the DACS-1 §6.3.4 Demos-binding block. On a write-input-mapping substrate the native address is **not** recomputed from this logical form — it is resolved through the published binding.
-- **Each anchored copy MUST set `anchoredByRole` to the role of the anchoring party, and that value MUST equal the `role` segment of the address it is anchored at.**
-- **A consumer MUST reject a copy whose `anchoredByRole` does not match the address it was fetched from.** Since `anchoredByRole` is excluded from the hash per §10.4.1, this address cross-check — not the signature — is what protects it from being forged.
+- Each signing party (buyer, seller, and orchestrator if distinct) anchors its own bundle at a party-specific **logical** address: `stor-{sha256(jobId + "-bundle-" + role)}` where role is "buyer", "seller", or "orchestrator". How this logical address maps to the substrate's native address is governed by the "Logical vs native bundle addresses" rules below (BB-1..BB-8). On a write-input-mapping substrate the native address is **not** recomputed from this logical form — it is resolved through the published `BundleBinding`.
+- **Each anchored copy MUST set `anchoredByRole` to the role of the anchoring party, and that value MUST equal the `role` segment of the logical address the copy is bound to (§10.4.2).**
+- **A consumer MUST reject a copy whose `anchoredByRole` does not match the role under which it was resolved:** on a pure-mapping substrate, the `role` segment of the address it was fetched from; on a write-input-mapping substrate, the verified `role` of the `BundleBinding` it was resolved through (BB-4/BB-5). Since `anchoredByRole` is excluded from the hash per §10.4.1, this cross-check is what protects it from forgery. On a pure-mapping substrate the address itself carries the role; on a write-input substrate the role is carried by the binding, established jointly by the BB-4 signature verification and the BB-5 post-fetch check that `signer` is the bundle party holding `role`.
 
 In the happy case both sides’ bundles are canonically equal (they differ only in the unhashed `anchoredByRole`) and consumers can read either; in the divergence case both sides are independently retrievable for dispute purposes (see §10.4.3).
+
+**Logical vs native bundle addresses.** The role-specific `stor-{sha256(jobId + "-bundle-" + role)}` value is the bundle's *logical* address: substrate-independent, and derivable by any party from `(jobId, role)` alone. It is an address kind in its own right (CORE §B.1 CF-4 table); it is not a `dacsN:`-form address. The universal mapping rule (DEMOS-MAPPING §A.2) applies to it identically: on a pure-mapping substrate the native address is computed directly from the logical form; on a write-input-mapping substrate it MUST be resolved through a published `BundleBinding` and is not recomputable from the logical form.
+
+**Demos binding (bundle).** On Demos, StorageProgram addressing folds write inputs into the native address, exactly as for listings (DACS-1 §6.3.4):
+
+```
+logical_bundle_address := "stor-" + sha256(jobId + "-bundle-" + role)             // 64 hex; derivable offline
+storageProgramName     := implementation-defined colon-free StorageProgram name   // opaque write input
+native_address         := "stor-" + first40hex( sha256( deployerAddress + ":" + storageProgramName + ":" + nonce + ":" + salt ) )
+```
+
+Both forms carry the `stor-` prefix and are distinguished by digest length: the logical form carries 64 hex characters, the native form 40. `storageProgramName` is an opaque write input: DACS defines no reversible logical→name encoding, and different conforming producers MAY choose different names for the same logical address. A consumer MUST NOT treat the name as a resolution key.
+
+**BundleBinding (normative object).**
+
+```
+type BundleBinding = {
+  bindingVersion: "1"
+  jobId: string
+  role: "buyer" | "seller" | "orchestrator"
+  logicalAddress: string          // the derived logical bundle address, carried explicitly
+  nativeAddress: string           // the write-input-derived native address the copy is anchored at
+  bundleContentHash: string       // sha256 of the anchored bundle's canonical bytes
+  anchorTx?: string               // the SR-2 anchor transaction — the canonical pointer, when known
+  signer: ClaimReference          // primary claim of the anchoring party; MUST be a party to the bundle
+  signature: ComponentSignature   // over "dacs-bundle-binding:v1:" || sha256(canonical form), per §B.7; canonical form per the §B.2 template, omitting `signature`
+}
+```
+
+Rules:
+
+- (BB-1) On a write-input-mapping substrate, each anchoring party MUST publish a signed `BundleBinding` for its own anchored copy.
+- (BB-2) Each anchoring party MUST make its signed binding available on its own §6.3.5 well-known index or on a §6.3.6 catalog. Where neither surface is available to the party, delivery of the signed binding to the counterparty for carriage satisfies this rule.
+- (BB-3) A `BundleBinding` is self-authenticating; any discovery surface MAY serve any signed binding verbatim.
+- (BB-4) A consumer MUST verify a `BundleBinding` before use: `signature.signer` MUST equal the top-level `signer`, and `signature` MUST verify over the domain-separated payload against `signer`'s primary-claim key. A binding failing either check MUST be discarded.
+- (BB-5) A consumer resolves a side's native address from `(jobId, role)` by first deriving the logical address (§10.4.2). On a pure-mapping substrate the native address is then computed directly from the logical form, and no `BundleBinding` is involved. On a write-input-mapping substrate the consumer MUST resolve through published bindings, in order:
+  1. resolve `BundleBinding`s whose `logicalAddress` matches, from the discovery surfaces it consults;
+  2. discard bindings failing BB-4;
+  3. fetch each remaining `nativeAddress`;
+  4. post-fetch, confirm the fetched content hash equals `bundleContentHash`; confirm `signer` is the fetched bundle's party holding `role`; apply the §10.4.2 `anchoredByRole` cross-check and the §10.4.1 signature rules.
+  The lookup takes no `storageProgramName` input.
+- (BB-6) Multiplicity. When more than one BB-4-valid binding resolves for one `(jobId, role)`, the consumer MUST fetch every distinct `nativeAddress`. Copies that are canonically equal (§10.4.1) collapse to one retrieved copy. Among canonically-divergent copies, a copy carrying all §10.4.1 required signatures takes precedence: the consumer MUST retain it and MUST discard the divergent copies of lesser signature standing. Only when the divergent copies are of equal signature standing is the side equivocating without a governing record: the consumer MUST treat that side as **not retrieved** (BB-7) and MUST NOT select among the copies. §10.4.3 classification then proceeds on the sides actually retrieved.
+- (BB-7) Fail closed. A side for which no BB-4-valid binding resolves, or whose every fetched copy fails a BB-5 post-fetch check, is **not retrieved**; §10.4.3 classification applies to the sides actually retrieved. A consumer MUST NOT recompute a native address from the logical form on a write-input substrate and MUST NOT query the logical form as though it were a native address.
+- (BB-8) Suppression diligence. On a write-input substrate, a consumer MUST attempt resolution of the missing side's binding on every discovery surface it consults for the session before applying the §10.4.3(b) one-sided classification.
+
+> **Note (non-normative).** Only the anchorer holds the write inputs (deployer address, storage-program name, nonce, salt), so no other party can produce its mapping — hence BB-1's per-party publication. Carrying a binding confers no authorship: the signature, not the carrier, binds it to the anchoring role. Delivery to the counterparty alone leaves retrievability at the counterparty's discretion, so publication to a catalog is the recommended floor for a party with no surface of its own.
+
+> **Note (non-normative).** BB-6's protections come from two properties. First, only the role holder can author same-role bindings (BB-4/BB-5 require `signer` to be the bundle party holding `role`), so a void is always self-inflicted — no third party can force one. Second, full-signature precedence means a co-signed record can never be overridden by a later single-signed afterthought, so an honest counterparty's co-signed outcome survives any equivocation attempt. A void is reachable only on equal-standing divergence, in two shapes: single-signed self-equivocation, whose effect — the side contributing nothing — is exactly the already-disclosed §10.11 suppression residual, with the counterparty's own anchored copy (which the equivocator cannot void) still pinning the fault; and bilateral fully-signed equivocation, which requires both parties to co-sign contradictory records and so involves no honest party to protect.
+
+> **Note (non-normative).** The load-bearing integrity checks are post-fetch — the content hash, the `anchoredByRole` cross-check, and the §10.4.1 signatures — so a wrong or poisoned binding yields at worst a fetch that fails verification, the same posture as §6.3.6 catalog poisoning. Retrievability is weaker: a binding suppressed from every surface a consumer reaches is indistinguishable from a never-anchored copy, and the §10.4.3(b) one-sided classification then proceeds on the present copy alone.
+
+> **Note (non-normative).** This is the completeness residual §10.5.3 already discloses (no authoritative "which bundles exist" oracle). BB-2 and BB-8 narrow it but do not close it; because BB-8 is scoped to the surfaces a given consumer consults, two consumers with different surface sets can legitimately reach different one-sided-vs-two-sided classifications for the same session. A party's remediation is publication to a surface its counterparties' consumers reach — BB-2 makes the own-surface or catalog route primary for exactly this reason. Adjudication of a fabricated one-sided abort is a DACS-X dispute concern.
+
+> **Note (non-normative).** *Forward note.* A future SDK capability to anchor a StorageProgram at a caller-chosen address — or a Demos-native deterministic derivation hashing only the logical address — would restore the pure-mapping case and let consumers resolve without the published binding, exactly as anticipated for listings in §6.3.4. Until then BB-1..BB-8 govern.
 
 Bundles MUST fit within the substrate’s storage-cap soft limit (128 KB on Demos Storage Programs).
 
@@ -315,13 +369,13 @@ The bundle MUST NOT include references to any record outside the session’s sco
 
 **For sessions terminating with failed-substrate**, the bundle’s outcome captures the substrate failure; the failure does not count as either party’s fault in DACS-5 reputation derivation.
 
-Two parties producing independent bundles for the same session MUST converge on identical bundle content (by canonical-form equality — which excludes the per-copy `anchoredByRole` and `signatures` fields per §10.4.1, so the happy-path copies are equal despite carrying different `anchoredByRole` values) or MUST surface the divergence as a dispute. Each side anchors its own bundle at its own derived address. The two `stor-{sha256(jobId + "-bundle-{role}")}` values are the **logical** bundle addresses (§10.4.2). A consumer looking up "the bundle(s) for session X" resolves each side's native address from its logical address per the universal "Logical vs native addresses" rule (DEMOS-MAPPING §A.2): on a pure-mapping substrate it computes the native address directly; on a write-input-mapping substrate such as Demos it MUST resolve the native address through the published binding (DACS-1 §6.3.4) rather than recomputing it — the native StorageProgram address folds in the deployer address and per-write nonce and is not recoverable from the logical address alone. The consumer then queries both sides' resolved native addresses.
+Two parties producing independent bundles for the same session MUST converge on identical bundle content (by canonical-form equality — which excludes the per-copy `anchoredByRole` and `signatures` fields per §10.4.1, so the happy-path copies are equal despite carrying different `anchoredByRole` values) or MUST surface the divergence as a dispute. Each side anchors its own bundle at its own derived address. The two `stor-{sha256(jobId + "-bundle-{role}")}` values are the **logical** bundle addresses (§10.4.2). A consumer looking up "the bundle(s) for session X" resolves each side's native address per the §10.4.2 binding rules (BB-5): on a pure-mapping substrate by direct computation; on a write-input-mapping substrate such as Demos through that side's published `BundleBinding`s, never by recomputation (BB-6/BB-7). The consumer then queries both sides' resolved native addresses.
 
 **Definition — "canonically diverge" (normative, defined once).** The two copies' canonical forms differ in `outcome`, or in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass` — i.e. a *contradiction* about what happened. A `phaseSummary` entry present in one copy and absent in the other **is** a divergence: the entry set is a normative input, and a copy asserting a phase the other's record denies is a contradiction about which phases ran, not advisory skew (it is also the guard against appending a fabricated phase entry that would otherwise escape entry-wise comparison). A difference confined to advisory fields (e.g. `finalisedAt` skew, one-sided `ratingRefs`, amendment ordering) is NOT a divergence. (This is the same definition the §10.5.1 deriver applies — guard (ii) — so a consumer and a deriver never reach opposite verdicts, and a party cannot force a spurious "disputed" classification by perturbing an advisory field.)
 
 Consumers MUST:
 
-- (a) fetch both addresses and retain the CORE SR-2 read disposition for each. A consumer MAY enter rule (b) only when exactly one valid bundle is `present` and the other expected address is authoritatively `absent`. If fewer than two valid copies are present and any missing address is `indeterminate`, the overall lookup is `indeterminate`. If neither copy is present, the lookup is `absent` only when both expected addresses are authoritatively `absent`; otherwise it is `indeterminate`. Returned content that fails §10.4.1 or §10.4.2 validation is not absence and MUST be rejected under those rules;
+- (a) resolve each side's native address per the §10.4.2 binding rules (BB-5) — on a write-input substrate through that side's published `BundleBinding`, never by recomputation — then fetch both addresses and retain the CORE SR-2 read disposition for each. An address whose `BundleBinding` cannot be resolved and verified per §10.4.2 has the read disposition `indeterminate`. A consumer MAY enter rule (b) only when exactly one valid bundle is `present` and the other expected address is authoritatively `absent`. If fewer than two valid copies are present and any missing address is `indeterminate`, the overall lookup is `indeterminate`. If neither copy is present, the lookup is `absent` only when both expected addresses are authoritatively `absent`; otherwise it is `indeterminate`. Returned content that fails §10.4.1 or §10.4.2 validation is not absence and MUST be rejected under those rules;
 - (b) if exactly one valid bundle is present and the other expected address is authoritatively absent, classify by the present copy's signature set:
   - a copy carrying all §10.4.1 required signatures is the unified session bundle; the missing copy is an anchoring omission, not an abort, and no abort outcome is attributed to either party;
   - a single-signed copy with an abort outcome is classified per the §10.11 bundle-suppression rule: `aborted-by-self` for the non-signer, `aborted-by-other` for the signer;
@@ -361,6 +415,8 @@ type ReputationDerivation = {
 
 #### 10.5.1 Derivation algorithm
 
+*Input precondition: each input copy is resolution-context-tagged — the role under which it was resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate) accompanies the copy, since an `AttestationBundle` does not itself carry its resolving context.*
+
 *Settlement uniqueness (SB-2, §9.5.8): across the bundles reconciled below, a `settlement-tx-id` bound to more than one `(jobId, phaseIndex)` is counted once (earliest `observedAt`), so a reused settlement transaction cannot inflate `observedTransactionalVolume` or completion across jobs.*
 
 ```
@@ -393,9 +449,22 @@ derive(party, bundles, windowStart, windowEnd):
     # (1) §10.4.1 signature validation: a non-abort outcome (completed / failed-perm /
     #     failed-counterparty / failed-substrate) MUST carry all required signatures;
     #     only aborts MAY be single-signed. Drop copies that fail this.
-    # (2) §10.4.2 integrity: drop any copy whose anchoredByRole != its anchor-address role.
-    copies := [b for b in copies where valid_signatures_per_§10.4.1(b) AND anchoredByRole_matches_address(b)]
+    # (2) §10.4.2 integrity: drop any copy failing the §10.4.2 anchoredByRole cross-check —
+    #     against the anchor-address role segment on a pure-mapping substrate, or against the
+    #     verified BundleBinding's role (BB-4/BB-5) on a write-input substrate.
+    copies := [b for b in copies where valid_signatures_per_§10.4.1(b) AND anchoredByRole_matches_resolution_context(b)]
     copies := [b for b in copies where b.anchoredByRole in {"buyer", "seller"}]   // orchestrator copies are evidence-only
+    # (3) BB-6 multiplicity: canonically-equal same-role copies collapse to one; among
+    #     divergent same-role copies a fully-§10.4.1-signed copy takes precedence over
+    #     lesser-signed ones; equal-standing divergence voids the side (BB-7 not-retrieved).
+    for role in {"buyer", "seller"}:
+      role_copies := [b for b in copies where b.anchoredByRole == role]
+      if |distinct canonical forms of role_copies| <= 1:
+        copies := copies minus (role_copies minus one)              // collapse duplicates
+      else if exactly one canonical form carries all §10.4.1 required signatures:
+        copies := copies minus (role_copies minus that copy)        // full-signature precedence
+      else:
+        copies := copies minus role_copies                          // equal standing — BB-6 void
     if copies is empty: continue
     if |copies| == 1 AND the missing buyer/seller address was not authoritatively absent under §10.4.3: continue
     role_of_party := the role of the BundleParty p in copies[0].parties where p.primaryClaim == party
@@ -525,7 +594,7 @@ derive(party, bundles, windowStart, windowEnd):
 
 Three normative guards apply during reconciliation:
 
-- (i) **signature validation first** — each copy MUST pass §10.4.1 before it is considered. A single-signed bundle is valid only for an abort outcome; a single-signed `completed`/`failed-*` MUST be dropped. This closes the attack where a lone counterparty-anchored `failed-counterparty` is perspective-flipped to depress the victim's score. Any copy whose `anchoredByRole` does not match its anchor-address role (§10.4.2) MUST be dropped;
+- (i) **signature validation first** — each copy MUST pass §10.4.1 before it is considered. A single-signed bundle is valid only for an abort outcome; a single-signed `completed`/`failed-*` MUST be dropped. This closes the attack where a lone counterparty-anchored `failed-counterparty` is perspective-flipped to depress the victim's score. Any copy failing the §10.4.2 `anchoredByRole` cross-check — against the anchor-address role on a pure-mapping substrate, or against the verified `BundleBinding`'s role (BB-4/BB-5) on a write-input substrate — MUST be dropped. Divergent same-role copies resolve per BB-6 before the self/counterparty selection below — a fully-signed copy takes precedence over lesser-signed divergents, and only equal-standing divergence voids the side — preserving the at-most-one-copy-per-role invariant;
 - (ii) **divergence → exclusion** — the scored party's own copy and a counterparty copy *canonically diverge* when they contradict in `outcome`, in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass`, or by a `phaseSummary` entry present in only one copy (the single §10.4.3 definition) — NOT on mere advisory-field skew. A divergent jobId is a §10.4.3(d) dispute and MUST be excluded from ALL metrics, rather than silently trusting the self-copy. Exclusion removes the jobId from both the numerator and `party_fault_denom`, so a disputed session neither helps nor harms the score. There is no `disputed` value in the `outcome` enum (§10.4.1); this is an exclusion, not an outcome;
 - (iii) **buyer/seller only** — `perspective_flip` is a buyer↔seller involution. Orchestrator-anchored copies are evidence-only and are not used as a reputation perspective (orchestrator reputation is out of scope for v0.1). This also makes the counterparty-copy selection unambiguous: at most one buyer/seller counterparty copy per jobId.
 
@@ -679,8 +748,8 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Role | Requirements |
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
-| Bundle producer | Sign per §10.4.1; anchor per §10.4.2; include all required references per §10.4.3 |
-| Bundle consumer | Recompute canonical hash; verify domain-separated signatures; dereference and validate every contained AttestationRef |
+| Bundle producer | Sign per §10.4.1; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings, handle multiplicity, fail closed, exhaust surfaces before one-sided classification); recompute canonical hash; verify domain-separated signatures; dereference and validate every contained AttestationRef |
 | Reputation deriver | Apply algorithm in §10.5.1 verbatim; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the §10.5.1 `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |

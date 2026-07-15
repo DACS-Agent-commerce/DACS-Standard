@@ -174,7 +174,7 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
 | `dacs2:composite:{jobId}:{evaluatedParty}` (§7.7.2) | `evaluatedParty` (a ClaimReference) | `jobId` |
 | `dacs5:rating:{jobId}:{rater}` (§10.6.1) | `rater` (a ClaimReference) | `jobId` |
-| `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.3) | none — hash-based, no colon-bearing segment | — |
+| `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.2) | none — hash-based, no colon-bearing segment | — |
 
 In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a reserved-delimiter-free token (§6.3.1 grammar), and `phaseIndex`/`resolved`/`v{recipeVersion}` are fixed structural segments — none need encoding.
 
@@ -285,6 +285,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |
 | DACS-5 attestation bundle | "dacs-bundle:v1:" | §10.4.1 |
+| DACS-5 BundleBinding | "dacs-bundle-binding:v1:" | §10.4.2 |
 | DACS-5 rating record | "dacs-rating:v1:" | §10.6 |
 | DACS-1 bundle session-key root binding | "dacs-session-binding:v1:" | §6.3.2 |
 | DACS-3 auto-accept commitment | "dacs-auto-accept-commitment:v1:" | §8.4.1 |

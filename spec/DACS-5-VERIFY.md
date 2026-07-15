@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1; v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact + BB-1..BB-8 logical→native bundle resolution §10.4.2, and the bundleVersion "2" absolute `faultedParty` fault-attribution model §10.4.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1; v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact + BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` fault attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain — §10.4.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -140,7 +140,7 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
   - **Symmetry.** A policy-permitted cancellation is neutral for both parties — there is no `-by-self`/`-by-other` blame to split. The counterparty's copy, if any, records `aborted-by-other` per ST-3, and the same teeth check applied to it yields the same neutral result; mutual notice is what earns the mutual neutrality. Because the neutrality is symmetric, a consumer MUST resolve the `cancellation` marker across **both** non-divergent copies of the session — a marker carried on *either* copy establishes the cancellation for *both* parties' scores. A one-sided marker is **not** a §10.4.3 canonical divergence (that definition is scoped to `outcome` / `phaseSummary`), so it MUST NOT be treated as an advisory one-sided field; otherwise the neutral (and the indeterminate) verdict would collapse for the party whose own copy omits the marker (§10.5.1 resolves it at jobId reconciliation).
   - **Precedence.** A cancellation is a deliberate party action and ranks **with** abort (ST-3), above the ST-9 timeout: a party electing to cancel within an open deadline does so as a party decision, not a timeout. `with-fee` cancellation — a cancellation owing a fee after `commit-completed` — is **not defined** here; only the `pre-commit` case is honoured, and a `with-fee` value confers no neutrality.
 
-**State → bundle `outcome` mapping (normative).** Every terminal state maps to exactly one AttestationBundle `outcome` (§10.4), partitioned by the terminal phase’s `errorClass` where applicable:
+**State → bundle `outcome` mapping (normative).** Every terminal state maps to exactly one bundle `outcome` (both bundle types share the enum) (§10.4), partitioned by the terminal phase’s `errorClass` where applicable:
 
 | Terminal state | errorClass | Bundle `outcome` |
 |----------------|-----------|------------------|
@@ -167,18 +167,18 @@ SessionRecord is off-chain by default. The orchestrator persists it locally. Cou
 
 The frozen end-of-session artifact. Signed by all parties; anchored via SR-2.
 
+Two bundle types share this section. The legacy **`AttestationBundle`** (`bundleVersion: "1"`) is the pre-fault-attribution class: fault is read role-relatively from its `outcome`. The **`FaultAttestationBundle`** (`faultBundleVersion: "1"`, defined after the shared component types below) is the v0.3 production type carrying absolute hashed fault attribution. Every rule in §10.4–§10.5 applies to both types alike except where it names one type.
+
 ```
 type AttestationBundle = {
 
-  bundleVersion: "1" | "2"                              // "2" carries the hashed `faultedParty`; "1" is the pre-faultedParty legacy class (§10.4.1)
+  bundleVersion: "1"                                    // the legacy class's §11.2.5 version literal. Fault is read role-relatively from `outcome` (§10.4.1); new v0.3 production anchors FaultAttestationBundle instead
 
   jobId: string
 
   outcome: "completed" | "failed-perm" | "failed-counterparty" | "failed-substrate" | "aborted-by-self" | "aborted-by-other"
 
-  faultedParty?: "buyer" | "seller" | "orchestrator" | "none"   // bundleVersion "2" only, REQUIRED there. The ABSOLUTE party responsible for `outcome`, perspective-independent (unlike `anchoredByRole`). Hashed. Mapping and consistency rule in §10.4.1
-
-  anchoredByRole: "buyer" | "seller" | "orchestrator"   // provenance: which party anchored THIS copy. `outcome` is spelled from this party's perspective, but fault attribution does NOT read `outcome` through this field — it reads the absolute hashed `faultedParty` (§10.5.1). Excluded from the hash; forgery-protected by the §10.4.2 cross-check
+  anchoredByRole: "buyer" | "seller" | "orchestrator"   // provenance: which party anchored THIS copy; `outcome` is spelled from this party's perspective and, on this legacy class, fault is read role-relatively through it (§10.5.1). Excluded from the hash; forgery-protected by the §10.4.2 cross-check
 
   listingRef: { listingId: string; version: number; contentHash: string }
 
@@ -246,16 +246,44 @@ type BundleSignature = {
 
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
 
-  value: string                               // unpadded Base64URL (CORE §B.7 SIG-6) over "dacs-bundle:v1:" || attestation_bundle_hash
+  value: string                               // unpadded Base64URL (CORE §B.7 SIG-6) of the ed25519/ecdsa signature over the type's §10.4.1 domain-separated payload ("dacs-bundle:v1:" or "dacs-fault-bundle:v1:") || attestation_bundle_hash, NOT the raw bundle hash
 
+}
+```
+
+**FaultAttestationBundle (v0.3 production type).** The absolute-fault variant of the end-of-session artifact. Identical to `AttestationBundle` in every shared field's meaning; it differs in exactly two ways: its version literal is `faultBundleVersion` (its structural discriminator — CORE §11.1.2 new-type refusal), and it carries the REQUIRED hashed `faultedParty`. It signs under its own `dacs-fault-bundle:v1:` domain (§B.7).
+
+```
+type FaultAttestationBundle = {
+  faultBundleVersion: "1"                     // the type's §11.2.5 version literal and structural discriminator: a FaultAttestationBundle carries `faultBundleVersion` and never `bundleVersion`
+  jobId: string
+  outcome: "completed" | "failed-perm" | "failed-counterparty" | "failed-substrate" | "aborted-by-self" | "aborted-by-other"
+  faultedParty: "buyer" | "seller" | "orchestrator" | "none"   // REQUIRED. The ABSOLUTE party responsible for `outcome`, perspective-independent (unlike `anchoredByRole`). Hashed. Permissible-set and consistency rule in §10.4.1
+  anchoredByRole: "buyer" | "seller" | "orchestrator"   // provenance: which party anchored THIS copy. `outcome` is spelled from this party's perspective, but fault attribution does NOT read `outcome` through this field — it reads the absolute hashed `faultedParty` (§10.5.1). Excluded from the hash; forgery-protected by the §10.4.2 cross-check
+  listingRef: { listingId: string; version: number; contentHash: string }
+  agreementRef?: AttestationRef
+  cancellation?: CancellationMarker
+  parties: BundleParty[]
+  phaseSummary: BundlePhaseEntry[]
+  vetRecords: AttestationRef[]
+  settlementEvidence: AttestationRef[]
+  amendments?: AttestationRef[]
+  ratingRefs?: AttestationRef[]
+  recipeRegistryVersion: number
+  railRegistryVersion: number
+  finalisedAt: number
+  signatures: BundleSignature[]               // both buyer and seller (and orchestrator if separate); each value over the FaultAttestationBundle domain-separated payload (§10.4.1)
 }
 ```
 
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
-Per the §B.2 canonical-form template, omitting the `signatures` **and `anchoredByRole`** fields. Every other field is hashed, including `bundleVersion` and, on bundleVersion "2", `faultedParty`. The **attestation-bundle hash** (`attestation_bundle_hash`) is the content hash of that canonical form — sha256(canonical_form), hex-encoded — a computed value, not a stored field (distinct from `BundleParty.bundleHash`, which hashes a party's IdentityBundle). Each BundleSignature.value MUST be computed over a domain-separated payload:
+Per the §B.2 canonical-form template, omitting the `signatures` **and `anchoredByRole`** fields — identically for both bundle types. Every other field is hashed, including the type's version literal (`bundleVersion` / `faultBundleVersion`) and, on a `FaultAttestationBundle`, `faultedParty`. The **attestation-bundle hash** (`attestation_bundle_hash`) is the content hash of that canonical form — sha256(canonical_form), hex-encoded — a computed value, not a stored field (distinct from `BundleParty.bundleHash`, which hashes a party's IdentityBundle), computed identically for both types. Each BundleSignature.value MUST be computed over the type's domain-separated payload:
 
-signed_bytes := "dacs-bundle:v1:" || attestation_bundle_hash
+signed_bytes := "dacs-bundle:v1:" || attestation_bundle_hash            (AttestationBundle)
+signed_bytes := "dacs-fault-bundle:v1:" || attestation_bundle_hash      (FaultAttestationBundle)
+
+The two domains are distinct §B.7 registry entries: a signature over one type MUST NOT validate as a signature over the other.
 
 `BundleSignature.value` and each DACS-5 `ComponentSignature.value`, including a
 rating signature, MUST use CORE §B.7 SIG-6. The encoded value carries the
@@ -263,29 +291,29 @@ signature over `signed_bytes`, not over the raw bundle hash.
 
 > **Note (non-normative).** `anchoredByRole` is per-copy — buyer vs seller vs orchestrator — and is carried only for derive()'s perspective read (§10.5.1); it is excluded from the hashed canonical form exactly like `signatures` so the two-sided copies remain canonically equal in the happy path. This is a recognised, specified omission, not a SIG-5 silent strip.
 
-**Absolute fault attribution (`faultedParty`).** `faultedParty` names the party responsible for `outcome` in absolute terms, independent of which copy carries it. It is REQUIRED on bundleVersion "2" and absent on the legacy "1" class. It is part of the hashed canonical form. For a copy whose `anchoredByRole` is R, with counterparty C, the mapping from `outcome` is fixed:
+**Absolute fault attribution (`faultedParty`).** `faultedParty` names the party responsible for `outcome` in absolute terms, independent of which copy carries it. It is REQUIRED on a `FaultAttestationBundle` and does not exist on the legacy `AttestationBundle`. It is part of the hashed canonical form. For a copy whose `anchoredByRole` is R, the permissible values are fixed by `outcome`:
 
-| `outcome` | `faultedParty` |
-|-----------|----------------|
+| `outcome` | permissible `faultedParty` |
+|-----------|----------------------------|
 | `completed` | `none` |
 | `failed-substrate` | `none` |
 | `failed-perm` | R |
-| `failed-counterparty` | C |
 | `aborted-by-self` | R |
-| `aborted-by-other` | C |
+| `failed-counterparty` | any party role in this session's `parties[]` other than R |
+| `aborted-by-other` | any party role in this session's `parties[]` other than R |
 
-- A bundleVersion "2" producer MUST set `faultedParty` per that mapping.
-- A consumer MUST reject a bundleVersion "2" copy that omits `faultedParty`.
-- A consumer MUST reject a bundleVersion "2" copy whose `faultedParty` contradicts the mapping for its `(outcome, anchoredByRole)`.
-- The two perspective-paired copies of one session MUST carry an identical `faultedParty`, since they name the same responsible party in absolute terms.
+- A `FaultAttestationBundle` producer MUST set `faultedParty` to the actual responsible party within the permissible set. In a two-party session the counterparty rows admit exactly one value (the buyer↔seller involution partner), preserving the prior exact mapping byte-for-byte; in a session with a distinct orchestrator the producer names whichever non-R party was responsible. An orchestrator-anchored copy (R = orchestrator) follows the same rule.
+- A consumer MUST reject a `FaultAttestationBundle` copy that omits `faultedParty`.
+- A consumer MUST reject a `FaultAttestationBundle` copy whose `faultedParty` is outside the permissible set for its `(outcome, anchoredByRole)`.
+- The perspective-paired copies of one session MUST carry an identical `faultedParty`, since they name the same responsible party in absolute terms.
 
 *Example.* A seller aborts. The buyer anchors `{outcome: "aborted-by-other", anchoredByRole: "buyer", faultedParty: "seller"}` and the seller's own copy anchors `{outcome: "aborted-by-self", anchoredByRole: "seller", faultedParty: "seller"}`. The role-relative `outcome` spelling differs, but both name the seller, so the absolute attribution is identical and the deriver reads fault from `faultedParty` (§10.5.1).
 
-Under DACS-5 v0.3 a producer MUST anchor bundleVersion "2" bundles. A consumer MUST classify a bundleVersion "1" bundle as the legacy class and read its fault from the role-relative `outcome`, not from a `faultedParty` field.
+Under DACS-5 v0.3 a producer MUST anchor `FaultAttestationBundle` records. A consumer MUST classify an `AttestationBundle` as the legacy class and read its fault role-relatively from `outcome`, never from a `faultedParty` field.
 
-> **Note (non-normative).** `faultedParty` makes fault role-invariant. In the legacy "1" class, fault is read from the role-relative `outcome` through the unhashed `anchoredByRole`, so a counterparty could re-anchor a single-signed abort under its own role and silently reverse blame. Hashing fault as an absolute party closes that rebind: it either contradicts the mapping and is rejected, or forces a re-signed divergent copy that voids the side under §10.4.3(d). Legacy "1" bundles are never rewritten and keep the pre-faultedParty residual; "2" closes it under v0.3.
+> **Note (non-normative).** `faultedParty` makes fault role-invariant. On the legacy `AttestationBundle`, fault is read from the role-relative `outcome` through the unhashed `anchoredByRole`, so a counterparty could re-anchor a single-signed abort under its own role and silently reverse blame. Hashing fault as an absolute party closes that rebind: it either contradicts the mapping and is rejected, or forces a re-signed divergent copy that voids the side under §10.4.3(d). Legacy `AttestationBundle` records are never rewritten and keep the pre-faultedParty residual; `FaultAttestationBundle` closes it under v0.3.
 
-The "dacs-bundle:v1:" string prefix prevents cross-protocol signature confusion: an attacker capturing a bundle signature MUST NOT be able to replay it as a listing signature, agreement signature, or any other DACS signature even if the hash bytes collide.
+The "dacs-bundle:v1:" and "dacs-fault-bundle:v1:" string prefixes prevent cross-protocol signature confusion: an attacker capturing a bundle signature MUST NOT be able to replay it as a listing signature, agreement signature, the other bundle type's signature, or any other DACS signature even if the hash bytes collide.
 
 Verification and signer rules:
 
@@ -301,7 +329,7 @@ The bundle MUST be anchored via SR-2. **Two-sided anchoring scheme:**
 - Each signing party (buyer, seller, and orchestrator if distinct) anchors its own bundle at a party-specific **logical** address: `stor-{sha256(jobId + "-bundle-" + role)}` where role is "buyer", "seller", or "orchestrator". How this logical address maps to the substrate's native address is governed by the "Logical vs native bundle addresses" rules below (BB-1..BB-8). On a write-input-mapping substrate the native address is **not** recomputed from this logical form — it is resolved through the published `BundleBinding`.
 - **Each anchored copy MUST set `anchoredByRole` to the role of the anchoring party, and that value MUST equal the `role` segment of the logical address the copy is bound to (§10.4.2).**
 - **A consumer MUST reject a copy whose `anchoredByRole` does not match the role under which it was resolved:** on a pure-mapping substrate, the `role` segment of the address it was fetched from; on a write-input-mapping substrate, the verified `role` of the `BundleBinding` it was resolved through (BB-4/BB-5). Since `anchoredByRole` is excluded from the hash per §10.4.1, this cross-check is what protects it from forgery. On a pure-mapping substrate the address itself carries the role; on a write-input substrate the role is carried by the binding, established jointly by the BB-4 signature verification and the BB-5 post-fetch check that `signer` is the bundle party holding `role`.
-- **A consumer MUST reject a bundleVersion "2" copy whose hashed `faultedParty` contradicts its `(outcome, anchoredByRole)` per the §10.4.1 mapping.** A copy re-anchored under the wrong role fails this check, since `faultedParty` is hashed and absolute.
+- **A consumer MUST reject a `FaultAttestationBundle` copy whose hashed `faultedParty` is outside the §10.4.1 permissible set for its `(outcome, anchoredByRole)`.** A copy re-anchored under the wrong role fails this check, since `faultedParty` is hashed and absolute.
 
 In the happy case both sides’ bundles are canonically equal (they differ only in the unhashed `anchoredByRole`) and consumers can read either; in the divergence case both sides are independently retrievable for dispute purposes (see §10.4.3).
 
@@ -326,7 +354,7 @@ type BundleBinding = {
   role: "buyer" | "seller" | "orchestrator"
   logicalAddress: string          // the derived logical bundle address, carried explicitly
   nativeAddress: string           // the write-input-derived native address the copy is anchored at
-  bundleContentHash: string       // the anchored bundle's §10.4.1 `attestation_bundle_hash` (sha256 hex of its canonical form), matched byte-for-byte at BB-5
+  bundleContentHash: string       // the anchored copy's §10.4.1 `attestation_bundle_hash` (computed identically for both bundle types) (sha256 hex of its canonical form), matched byte-for-byte at BB-5
   anchorTx?: string               // the SR-2 anchor transaction — the canonical pointer, when known
   signer: ClaimReference          // primary claim of the anchoring party; MUST be a party to the bundle
   signature: ComponentSignature   // over "dacs-bundle-binding:v1:" || sha256(canonical form), per §B.7; canonical form per the §B.2 template, omitting `signature`
@@ -403,7 +431,7 @@ The bundle MUST NOT include references to any record outside the session’s sco
 
 Two parties producing independent bundles for the same session MUST converge on identical bundle content (by canonical-form equality — which excludes the per-copy `anchoredByRole` and `signatures` fields per §10.4.1, so the happy-path copies are equal despite carrying different `anchoredByRole` values) or MUST surface the divergence as a dispute. Each side anchors its own bundle at its own derived address. The two `stor-{sha256(jobId + "-bundle-{role}")}` values are the **logical** bundle addresses (§10.4.2). A consumer looking up "the bundle(s) for session X" resolves each side's native address per the §10.4.2 binding rules (BB-5): on a pure-mapping substrate by direct computation; on a write-input-mapping substrate such as Demos through that side's published `BundleBinding`s, never by recomputation (BB-6/BB-7). The consumer then queries both sides' resolved native addresses.
 
-**Definition — "canonically diverge" (normative, defined once).** The two copies' canonical forms differ in `outcome`, or in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass` — i.e. a *contradiction* about what happened. A `phaseSummary` entry present in one copy and absent in the other **is** a divergence: the entry set is a normative input, and a copy asserting a phase the other's record denies is a contradiction about which phases ran, not advisory skew (it is also the guard against appending a fabricated phase entry that would otherwise escape entry-wise comparison). A difference confined to advisory fields (e.g. `finalisedAt` skew, one-sided `ratingRefs`, amendment ordering) is NOT a divergence. For a bundleVersion "2" pair the `outcome` contradiction is read on the absolute `faultedParty` and the outcome class (`completed`, `failed-substrate`, abort, or failure), not the role-relative `outcome` spelling. Two "2" copies naming the same `faultedParty` and class do not diverge, even where one reads `aborted-by-self` and the other `aborted-by-other`; the shared-index `phaseSummary` limb applies to both versions unchanged. Legacy bundleVersion "1" copies use the `outcome`-spelling definition above. (This is the same definition the §10.5.1 deriver applies — guard (ii) — so a consumer and a deriver never reach opposite verdicts, and a party cannot force a spurious "disputed" classification by perturbing an advisory field.)
+**Definition — "canonically diverge" (normative, defined once).** The two copies' canonical forms differ in `outcome`, or in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass` — i.e. a *contradiction* about what happened. A `phaseSummary` entry present in one copy and absent in the other **is** a divergence: the entry set is a normative input, and a copy asserting a phase the other's record denies is a contradiction about which phases ran, not advisory skew (it is also the guard against appending a fabricated phase entry that would otherwise escape entry-wise comparison). A difference confined to advisory fields (e.g. `finalisedAt` skew, one-sided `ratingRefs`, amendment ordering) is NOT a divergence. For a `FaultAttestationBundle` pair the `outcome` contradiction is read on the absolute `faultedParty` and the outcome class (`completed`, `failed-substrate`, abort, or failure), not the role-relative `outcome` spelling. Two `FaultAttestationBundle` copies naming the same `faultedParty` and class do not diverge, even where one reads `aborted-by-self` and the other `aborted-by-other`; the shared-index `phaseSummary` limb applies to both versions unchanged. Legacy `AttestationBundle` copies use the `outcome`-spelling definition above. (This is the same definition the §10.5.1 deriver applies — guard (ii) — so a consumer and a deriver never reach opposite verdicts, and a party cannot force a spurious "disputed" classification by perturbing an advisory field.)
 
 Consumers MUST:
 
@@ -412,12 +440,12 @@ Consumers MUST:
   - a copy carrying all §10.4.1 required signatures is the unified session bundle; the missing copy is an anchoring omission, not an abort, and no abort outcome is attributed to either party;
   - a single-signed copy with an abort outcome is classified per the §10.11 bundle-suppression rule: `aborted-by-self` for the non-signer, `aborted-by-other` for the signer;
   - a single-signed copy with any other outcome is rejected per §10.4.1, leaving no valid bundle for the session;
-- (c) if both are present and do NOT diverge (canonically equal, differing only in advisory fields, or a bundleVersion "2" perspective pair agreeing on `faultedParty` and outcome class), treat as the unified session bundle — a reputation-deriving consumer prefers the scored party's own anchored copy where they differ advisorily (matching §10.5.1's reconciliation), while a consumer with no scoring context (e.g. an auditor) MAY treat either copy as canonical for non-reputation purposes, since by definition they agree on every contradiction-bearing field;
+- (c) if both are present and do NOT diverge (canonically equal, differing only in advisory fields, or a `FaultAttestationBundle` perspective pair agreeing on `faultedParty` and outcome class), treat as the unified session bundle — a reputation-deriving consumer prefers the scored party's own anchored copy where they differ advisorily (matching §10.5.1's reconciliation), while a consumer with no scoring context (e.g. an auditor) MAY treat either copy as canonical for non-reputation purposes, since by definition they agree on every contradiction-bearing field;
 - (d) if both are present and canonically diverge (a contradiction per the definition above), treat the session as disputed — each bundle stands on its own signatures and consumers must decide an out-of-band dispute-handling policy (e.g., flag for human review). This discretion does **not** extend to DACS-5 `ReputationDerivation`: a conforming `derive()` MUST exclude the jobId from ALL metrics under §10.5.1 guard (ii) and MUST NOT select either party's copy for party-specific reputation.
 
 v0.1 does not specify a dispute resolution path; divergence is handled out-of-band. A future minor version (DACS-X, dispute) may specify selective transcript disclosure under signed party agreement or arbitrator order.
 
-`absent`, `indeterminate`, `one-sided`, `unified`, and `divergent` are consumer lookup dispositions, not values of `AttestationBundle.outcome`. In particular, `indeterminate` records that the two-address observation was incomplete; it asserts neither absence nor a canonical contradiction.
+`absent`, `indeterminate`, `one-sided`, `unified`, and `divergent` are consumer lookup dispositions, not values of the §10.4.1 bundle `outcome` enum (common to both bundle types). In particular, `indeterminate` records that the two-address observation was incomplete; it asserts neither absence nor a canonical contradiction.
 
 ### 10.5 Reputation derivation
 
@@ -447,7 +475,7 @@ type ReputationDerivation = {
 
 #### 10.5.1 Derivation algorithm
 
-*Input precondition: each input copy is resolution-context-tagged — the role under which it was resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate) accompanies the copy, since an `AttestationBundle` does not itself carry its resolving context.*
+*Input precondition: each input copy is resolution-context-tagged — the role under which it was resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate) accompanies the copy, since neither bundle type carries its resolving context.*
 
 *Settlement uniqueness (SB-2, §9.5.8): across the bundles reconciled below, a `settlement-tx-id` bound to more than one `(jobId, phaseIndex)` is counted once (earliest `observedAt`), so a reused settlement transaction cannot inflate `observedTransactionalVolume` or completion across jobs.*
 
@@ -485,8 +513,8 @@ derive(party, bundles, windowStart, windowEnd):
     #     against the anchor-address role segment on a pure-mapping substrate, or against the
     #     verified BundleBinding's role (BB-4/BB-5) on a write-input substrate. The anchoredByRole
     #     cross-check is copy-integrity only; it is NOT the fault source.
-    # (2b) §10.4.1 faultedParty consistency: drop any bundleVersion "2" copy that omits faultedParty
-    #     or whose faultedParty contradicts its (outcome, anchoredByRole) mapping — the cross-role-rebind reject.
+    # (2b) §10.4.1 faultedParty consistency: drop any FaultAttestationBundle copy that omits faultedParty
+    #     or whose faultedParty violates its (outcome, anchoredByRole) permissible set (§10.4.1) — the cross-role-rebind reject.
     copies := [b for b in copies where valid_signatures_per_§10.4.1(b) AND anchoredByRole_matches_resolution_context(b) AND faultedParty_consistent_per_§10.4.1(b)]
     copies := [b for b in copies where b.anchoredByRole in {"buyer", "seller"}]   // orchestrator copies are evidence-only
     # (3) BB-6 multiplicity: canonically-equal same-role copies collapse to one; among
@@ -511,7 +539,7 @@ derive(party, bundles, windowStart, windowEnd):
       authoritative := self_copy
     else:
       authoritative := cp                                                       // only a counterparty copy exists (e.g. §10.11 suppression)
-    outcome := scored_outcome(authoritative, role_of_party)                     // fault from the absolute faultedParty (bundleVersion "2"), or the legacy role-relative residual ("1"); see below
+    outcome := scored_outcome(authoritative, role_of_party)                     // fault from the absolute faultedParty (FaultAttestationBundle), or the legacy role-relative residual (AttestationBundle); see below
     # (ST-10) policy-permitted cancellation — resolve the `cancellation` marker across BOTH
     # non-divergent copies of this jobId (a marker on EITHER self_copy or cp counts). A one-sided
     # marker is NOT a §10.4.3 canonical divergence (that guard is scoped to outcome / phaseSummary),
@@ -526,20 +554,20 @@ derive(party, bundles, windowStart, windowEnd):
     reconciled.append(authoritative); outcomes.append(outcome)
   # scored_outcome(b, R) -> the scored party's perspective outcome for reconciled copy b:
   #   completed -> completed ; failed-substrate -> failed-substrate
-  #   bundleVersion "2": read the absolute hashed faultedParty (§10.4.1). The scored party
+  #   FaultAttestationBundle: read the absolute hashed faultedParty (§10.4.1). The scored party
   #     is at fault iff b.faultedParty == R. With outcome-class abort|failure from b.outcome:
   #       (fault, abort)   -> aborted-by-self       (fault, failure)   -> failed-perm
   #       (¬fault, abort)  -> aborted-by-other      (¬fault, failure)  -> failed-counterparty
   #     This reads fault from the absolute field, NOT from b.outcome via anchoredByRole.
-  #   bundleVersion "1" (legacy): no faultedParty — the disclosed role-relative residual (§10.4.1):
+  #   legacy AttestationBundle: no faultedParty — the disclosed role-relative residual (§10.4.1):
   #     b.outcome if b.anchoredByRole == R, else perspective_flip(b.outcome).
-  # perspective_flip (legacy "1" only): aborted-by-self <-> aborted-by-other ;
+  # perspective_flip (legacy AttestationBundle only): aborted-by-self <-> aborted-by-other ;
   #   failed-perm <-> failed-counterparty ; completed / failed-substrate unchanged.
-  # divergence rule (self_copy, cp): for bundleVersion "2", they diverge iff they differ in
+  # divergence rule (self_copy, cp): for a FaultAttestationBundle pair, they diverge iff they differ in
   #   faultedParty, in outcome-class ({completed, failed-substrate, abort, failure}), or in a
   #   phaseSummary entry (§10.4.3) — NOT in the role-relative outcome spelling, which the absolute
   #   faultedParty reconciles (the invariant: paired copies carry an identical faultedParty). For
-  #   legacy "1", divergence is the §10.4.3 canonical definition (contradictory outcome / phaseSummary).
+  #   a legacy pair, divergence is the §10.4.3 canonical definition (contradictory outcome / phaseSummary).
   # The §10.4.1 filter guarantees a non-abort outcome here is fully-signed and thus legitimately attributable.
   # All downstream metrics use `reconciled` (deduped bundles) / `outcomes`, never raw `scoped`.
 
@@ -647,7 +675,7 @@ Three normative guards apply during reconciliation:
 
 A fourth normative guard applies to any one-copy jobId:
 
-- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to the signed `AttestationBundle`. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
+- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to the signed bundle (either type). A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
@@ -795,7 +823,7 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Role | Requirements |
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
-| Bundle producer | Anchor bundleVersion "2" with `faultedParty` per the §10.4.1 mapping; sign per §10.4.1; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
+| Bundle producer | Anchor `FaultAttestationBundle` with `faultedParty` per the §10.4.1 permissible-set rule; sign per §10.4.1; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
 | Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings, handle multiplicity, fail closed, exhaust surfaces before one-sided classification); reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole) per §10.4.1; recompute canonical hash; verify domain-separated signatures; dereference and validate every contained AttestationRef |
 | Reputation deriver | Apply algorithm in §10.5.1 verbatim; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the §10.5.1 `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
@@ -807,7 +835,7 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 
 **Bundle as the audit unit vs individual phase records.** Each phase already anchors its evidence; the bundle is the unifying envelope auditors start from and walk references out of. Without it, every consumer would reconstruct the session graph from disparate anchors.
 
-**Domain-separated bundle signature.** The `dacs-bundle:v1:` prefix prevents confusing a bundle signature with any other DACS signature even when hash bytes collide — part of the §B.7 universal scheme.
+**Domain-separated bundle signature.** The `dacs-bundle:v1:` / `dacs-fault-bundle:v1:` prefixes prevent confusing a bundle signature with any other DACS signature even when hash bytes collide — part of the §B.7 universal scheme.
 
 **Per-primary-claim reputation vs wallet-keyed.** Wallet-keying would let a strong `key:0xabc…` reputation launder into a fresh `lei:…`. Per-primary-claim keying prevents it; a wallet honestly holding multiple claims accumulates separate reputations, surfaced cross-claim (via SR-1) without inheritance.
 
@@ -845,7 +873,7 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 
 **Replay across sessions.** *Threat:* an attacker captures a signed bundle and replays it as a different session’s bundle. *Mitigation:* the bundle includes jobId; the signature payload includes the bundle hash which includes jobId. Replay against a different jobId fails verification.
 
-**Cross-protocol signature confusion.** *Threat:* a bundle signature is replayed as some other DACS signature (listing, agreement) where the underlying hash bytes happen to align. *Mitigation:* the universal signature scheme in §B.7 defines per-artifact domain separators across the entire DACS v0.1 stack; the bundle domain separator is "dacs-bundle:v1:" and other artifact kinds use their own separators per the table in §B.7. A signature produced under any artifact kind cannot validate as a signature under any other kind, even when the hash bytes coincide.
+**Cross-protocol signature confusion.** *Threat:* a bundle signature is replayed as some other DACS signature (listing, agreement) where the underlying hash bytes happen to align. *Mitigation:* the universal signature scheme in §B.7 defines per-artifact domain separators across the entire DACS v0.1 stack; the bundle domain separators are "dacs-bundle:v1:" and "dacs-fault-bundle:v1:", and other artifact kinds use their own separators per the table in §B.7. A signature produced under any artifact kind cannot validate as a signature under any other kind, even when the hash bytes coincide.
 
 **Reputation poisoning via collusion.** *Threat:* two colluding parties run many fake sessions to inflate each other’s reputation. *Mitigation:* this is fundamentally hard to prevent at the protocol level. DACS-5 mitigates by per-primary-claim keying (collusion inflates only one tier of reputation), by transactional-volume reporting (consumers can see if a party’s reputation comes from many tiny sessions vs few large ones), and by composability with external signal sources. The volume signal is **weak and must not be over-trusted**: `observedTransactionalVolume` is reported per-currency, unnormalised, with no FX conversion (§10.5), so a colluding pair transacting across many low-significance currencies can keep every `PriceTerm` row small and evade the "few large vs many tiny" heuristic; cross-currency rows are not comparable or summable. The v0.2 `transactionCountByCurrency` metric (§10.5.1) supplies the per-currency transaction count strengthening that heuristic; an FX-normalised aggregate remains roadmap. Consumers SHOULD read volume alongside `bundleCount` and external signals rather than as a standalone collusion gate. Consumers handling stakes worth the cost of collusion SHOULD weigh DACS-5 metrics against external signals.
 

@@ -26,6 +26,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
+| [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -42,6 +43,39 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `bundle-absence-evidence-v0.3.json` — CORE §5 SR-2 + DACS-5 §10.4.3 / §10.5.1 guard (iv)
+
+4 candidate vectors for the two-address bundle-read gate introduced by #251.
+They keep a single unqualified `not found`, a transport error, and inconsistent
+finalized-state views `indeterminate`; allow one-sided classification only when
+the substrate binding's declared absence policy is satisfied; and restore the
+normal divergent-copy exclusion when an independent view returns the hidden
+counterparty copy.
+
+The included `2-of-3` read is an example policy chosen by the fixture, not a DACS
+quorum requirement. CORE permits a finalized non-membership proof or another
+binding-defined authenticated independent quorum, provided the binding declares
+finality, authentication, independence/threshold, freshness, and state-
+consistency rules. The current Demos mapping declares no such policy, so its
+ordinary `not found` path exercises the indeterminate case.
+
+#### Vector schema
+
+Each entry in `vectors[]`:
+
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `expected` | §7.5.1 verdict: `pass` \| `fail` \| `indeterminate` |
+| `binding.absenceEvidencePolicy` | binding-defined policy, or `null` when none exists |
+| `reads` / `variants` | positive content, absence observations, or failure/state-skew inputs |
+| `want.readDispositions` | CORE SR-2 result per buyer/seller address where applicable |
+| `want.lookupDisposition` | DACS-5 consumer result: `one-sided`, `divergent`, or `indeterminate` |
+| `want.reputationEffect` | `include` only after authoritative absence; otherwise `exclude` |
+
+This is a candidate set. Independent cross-run convergence and golden promotion
+remain pending.
 
 ### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
 

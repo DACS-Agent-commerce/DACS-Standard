@@ -317,8 +317,8 @@ Two parties producing independent bundles for the same session MUST converge on 
 
 Consumers MUST:
 
-- (a) fetch both addresses;
-- (b) if exactly one bundle is present, classify by the present copy's signature set:
+- (a) fetch both addresses and retain the CORE SR-2 read disposition for each. A consumer MAY enter rule (b) only when exactly one valid bundle is `present` and the other expected address is authoritatively `absent`. If fewer than two valid copies are present and any missing address is `indeterminate`, the overall lookup is `indeterminate`. If neither copy is present, the lookup is `absent` only when both expected addresses are authoritatively `absent`; otherwise it is `indeterminate`. Returned content that fails §10.4.1 or §10.4.2 validation is not absence and MUST be rejected under those rules;
+- (b) if exactly one valid bundle is present and the other expected address is authoritatively absent, classify by the present copy's signature set:
   - a copy carrying all §10.4.1 required signatures is the unified session bundle; the missing copy is an anchoring omission, not an abort, and no abort outcome is attributed to either party;
   - a single-signed copy with an abort outcome is classified per the §10.11 bundle-suppression rule: `aborted-by-self` for the non-signer, `aborted-by-other` for the signer;
   - a single-signed copy with any other outcome is rejected per §10.4.1, leaving no valid bundle for the session;
@@ -326,6 +326,8 @@ Consumers MUST:
 - (d) if both are present and canonically diverge (a contradiction per the definition above), treat the session as disputed — each bundle stands on its own signatures and consumers must decide an out-of-band dispute-handling policy (e.g., flag for human review). This discretion does **not** extend to DACS-5 `ReputationDerivation`: a conforming `derive()` MUST exclude the jobId from ALL metrics under §10.5.1 guard (ii) and MUST NOT select either party's copy for party-specific reputation.
 
 v0.1 does not specify a dispute resolution path; divergence is handled out-of-band. A future minor version (DACS-X, dispute) may specify selective transcript disclosure under signed party agreement or arbitrator order.
+
+`absent`, `indeterminate`, `one-sided`, `unified`, and `divergent` are consumer lookup dispositions, not values of `AttestationBundle.outcome`. In particular, `indeterminate` records that the two-address observation was incomplete; it asserts neither absence nor a canonical contradiction.
 
 ### 10.5 Reputation derivation
 
@@ -391,6 +393,7 @@ derive(party, bundles, windowStart, windowEnd):
     copies := [b for b in copies where valid_signatures_per_§10.4.1(b) AND anchoredByRole_matches_address(b)]
     copies := [b for b in copies where b.anchoredByRole in {"buyer", "seller"}]   // orchestrator copies are evidence-only
     if copies is empty: continue
+    if |copies| == 1 AND the missing buyer/seller address was not authoritatively absent under §10.4.3: continue
     role_of_party := the role of the BundleParty p in copies[0].parties where p.primaryClaim == party
     self_copy := the b in copies where b.anchoredByRole == role_of_party        // scored party's own copy, if present
     cp        := the b in copies where b.anchoredByRole != role_of_party        // at most one (the buyer/seller counterparty copy)
@@ -521,6 +524,10 @@ Three normative guards apply during reconciliation:
 - (i) **signature validation first** — each copy MUST pass §10.4.1 before it is considered. A single-signed bundle is valid only for an abort outcome; a single-signed `completed`/`failed-*` MUST be dropped. This closes the attack where a lone counterparty-anchored `failed-counterparty` is perspective-flipped to depress the victim's score. Any copy whose `anchoredByRole` does not match its anchor-address role (§10.4.2) MUST be dropped;
 - (ii) **divergence → exclusion** — the scored party's own copy and a counterparty copy *canonically diverge* when they contradict in `outcome`, in a `phaseSummary` entry's `outcome`/`errorClass`, or by a `phaseSummary` entry present in only one copy (the single §10.4.3 definition) — NOT on mere advisory-field skew. A divergent jobId is a §10.4.3(d) dispute and MUST be excluded from ALL metrics, rather than silently trusting the self-copy. Exclusion removes the jobId from both the numerator and `party_fault_denom`, so a disputed session neither helps nor harms the score. There is no `disputed` value in the `outcome` enum (§10.4.1); this is an exclusion, not an outcome;
 - (iii) **buyer/seller only** — `perspective_flip` is a buyer↔seller involution. Orchestrator-anchored copies are evidence-only and are not used as a reputation perspective (orchestrator reputation is out of scope for v0.1). This also makes the counterparty-copy selection unambiguous: at most one buyer/seller counterparty copy per jobId.
+
+A fourth normative guard applies to any one-copy jobId:
+
+- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to the signed `AttestationBundle`. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
@@ -708,7 +715,11 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 
 **Bundle forgery.** *Threat:* an attacker produces a fake bundle claiming a session that did not happen, hoping to influence reputation. *Mitigation:* the bundle must be co-signed by both parties; signatures use domain-separated payloads; consumers verify both signatures against the parties’ verified primary claims. A unilateral bundle cannot influence the counterparty’s reputation.
 
-**Bundle suppression.** *Threat:* a party who performed badly in a session refuses to sign the bundle, hoping to prevent its publication. *Mitigation:* the non-signing party’s outcome (aborted-by-self) is recorded in the counterparty’s bundle attempt; consumers seeing a bundle with only one signature MUST classify the session as aborted-by-self for the non-signer and aborted-by-other for the signer. The non-signer’s reputation takes the appropriate hit even if they refuse to sign. (Implementation note: a one-sided bundle MUST follow exactly the same canonical form and signing rules; the absence of the counterparty’s signature is what flags the outcome. This is the carve-out referenced by §10.4.1 — the reject-missing-required-signature rule applies only to the non-abort outcomes, so a one-signature `aborted-by-self`/`aborted-by-other` bundle reaches this classification rather than being rejected.)
+**Bundle suppression.** *Threat:* a party who performed badly in a session refuses to sign the bundle, hoping to prevent its publication. *Mitigation:* the counterparty's bundle attempt records the non-signer's claimed outcome. Consumers MUST apply the `aborted-by-self`/`aborted-by-other` attribution only after the missing role's address is authoritatively absent under §10.4.3. The non-signer's reputation takes the appropriate hit when that gate is satisfied.
+
+*Implementation note:* a one-sided bundle MUST follow the same canonical form and signing rules. The absent counterparty signature flags the claimed outcome, while the SR-2 absence evidence qualifies its use for reputation. The §10.4.1 missing-signature rejection applies only to non-abort outcomes, so a single-signed abort bundle reaches this classification rather than being rejected.
+
+**Bundle-copy read censorship.** *Threat:* malicious read infrastructure withholds one anchored copy so two divergent bundles appear to be a clean one-copy session. *Mitigation:* §10.4.3 applies the CORE SR-2 absence-evidence policy before any one-sided classification, and §10.5.1 guard (iv) excludes an unqualified one-copy jobId from every reputation metric. A binding without authoritative absence support therefore loses one-copy reputation availability but does not fail open into party blame.
 
 **Sybil reputation farming.** *Threat:* an attacker creates many cheap primary claims (key:…) and farms self-deal reputation between them. *Mitigation:* DACS-5 metrics are partitioned by primary claim and do not inherit; Sybil farming over key:… claims accumulates reputation only against those claims, not against higher-tier presentations. The DACS-2 supplementary signals (counterparty being a known Sybil cluster) feed back into Vet for any party who cares.
 

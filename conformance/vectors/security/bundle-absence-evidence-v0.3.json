@@ -1,0 +1,232 @@
+{
+  "set": "bundle-absence-evidence-v0.3",
+  "spec": "CORE \u00a75 SR-2; DACS-5 \u00a710.4.3 / \u00a710.5.1 guard (iv)",
+  "gaps": [
+    "#251 bundle-copy read censorship"
+  ],
+  "decisionModel": "\u00a77.5.1 4-value, never collapsed",
+  "hash": "7f8b1cbe6fbb6da9eee57f29d33bf0343a7160f23286e2351fb95da35148e9cb",
+  "count": 4,
+  "vectors": [
+    {
+      "name": "single-path-not-found-is-indeterminate",
+      "expected": "indeterminate",
+      "note": "An ordinary not-found response proves only that this read path returned no content; it does not prove that the counterparty copy is absent.",
+      "binding": {
+        "absenceEvidencePolicy": null
+      },
+      "scoredRole": "seller",
+      "reads": {
+        "buyer": {
+          "response": "content",
+          "bundle": {
+            "valid": true,
+            "anchoredByRole": "buyer",
+            "signatureSet": [
+              "buyer"
+            ],
+            "outcome": "aborted-by-other",
+            "canonicalHash": "1111111111111111111111111111111111111111111111111111111111111111"
+          }
+        },
+        "seller": {
+          "response": "not-found",
+          "authenticated": false,
+          "finalizedState": null
+        }
+      },
+      "want": {
+        "readDispositions": {
+          "buyer": "present",
+          "seller": "indeterminate"
+        },
+        "lookupDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "maySelectCopy": false,
+        "mayPerspectiveFlip": false,
+        "mayAttributeAbort": false
+      }
+    },
+    {
+      "name": "binding-qualified-absence-allows-one-sided",
+      "expected": "pass",
+      "note": "The binding-defined 2-of-3 example is sufficient only because this binding declares it and the two authenticated independent responses agree on the same fresh finalized state.",
+      "binding": {
+        "absenceEvidencePolicy": {
+          "finalityRule": "state checkpoint is finalized before evaluation",
+          "authentication": "verify each endpoint's configured response-signing key",
+          "independence": "responses must come from distinct configured operators",
+          "threshold": "2-of-3",
+          "freshness": "checkpoint age no more than 60 seconds",
+          "stateConsistency": "all counted responses bind the same checkpoint hash"
+        }
+      },
+      "scoredRole": "seller",
+      "reads": {
+        "buyer": {
+          "response": "content",
+          "bundle": {
+            "valid": true,
+            "anchoredByRole": "buyer",
+            "signatureSet": [
+              "buyer"
+            ],
+            "outcome": "aborted-by-other",
+            "canonicalHash": "2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        },
+        "seller": {
+          "response": "not-found",
+          "finalizedState": "checkpoint-900",
+          "checkpointHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "freshnessSeconds": 12,
+          "authenticatedIndependentResponses": [
+            {
+              "operator": "operator-a",
+              "checkpointHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "result": "not-found",
+              "signatureValid": true
+            },
+            {
+              "operator": "operator-b",
+              "checkpointHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "result": "not-found",
+              "signatureValid": true
+            }
+          ]
+        }
+      },
+      "want": {
+        "readDispositions": {
+          "buyer": "present",
+          "seller": "absent"
+        },
+        "lookupDisposition": "one-sided",
+        "reputationEffect": "include",
+        "selectedCopy": "buyer",
+        "mayPerspectiveFlip": true,
+        "scoredOutcome": "aborted-by-self",
+        "mayAttributeAbort": true
+      }
+    },
+    {
+      "name": "independent-view-reveals-divergence",
+      "expected": "fail",
+      "note": "A single not-found observation cannot hide a valid counterparty copy returned by an independent view; once both copies are present their contradictory outcomes make the jobId divergent.",
+      "binding": {
+        "absenceEvidencePolicy": {
+          "finalityRule": "state checkpoint is finalized before evaluation",
+          "authentication": "verify each endpoint's configured response-signing key",
+          "independence": "responses must come from distinct configured operators",
+          "threshold": "2-of-3",
+          "freshness": "checkpoint age no more than 60 seconds",
+          "stateConsistency": "all counted responses bind the same checkpoint hash"
+        }
+      },
+      "scoredRole": "seller",
+      "reads": {
+        "buyer": {
+          "response": "content",
+          "bundle": {
+            "valid": true,
+            "anchoredByRole": "buyer",
+            "signatureSet": [
+              "buyer",
+              "seller"
+            ],
+            "outcome": "completed",
+            "canonicalHash": "3333333333333333333333333333333333333333333333333333333333333333"
+          }
+        },
+        "seller": {
+          "observations": [
+            {
+              "operator": "operator-a",
+              "response": "not-found",
+              "signatureValid": true,
+              "checkpointHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            },
+            {
+              "operator": "operator-b",
+              "response": "content",
+              "signatureValid": true,
+              "checkpointHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "bundle": {
+                "valid": true,
+                "anchoredByRole": "seller",
+                "signatureSet": [
+                  "buyer",
+                  "seller"
+                ],
+                "outcome": "failed-counterparty",
+                "canonicalHash": "4444444444444444444444444444444444444444444444444444444444444444"
+              }
+            }
+          ]
+        }
+      },
+      "want": {
+        "readDispositions": {
+          "buyer": "present",
+          "seller": "present"
+        },
+        "lookupDisposition": "divergent",
+        "reputationEffect": "exclude",
+        "maySelectCopy": false,
+        "mayPerspectiveFlip": false,
+        "mayAttributeAbort": false
+      }
+    },
+    {
+      "name": "transport-or-inconsistent-state-remains-indeterminate",
+      "expected": "indeterminate",
+      "note": "Neither a transport failure nor authenticated responses tied to different finalized states satisfies an absence-evidence policy.",
+      "binding": {
+        "absenceEvidencePolicy": {
+          "finalityRule": "state checkpoint is finalized before evaluation",
+          "authentication": "verify each endpoint's configured response-signing key",
+          "independence": "responses must come from distinct configured operators",
+          "threshold": "2-of-3",
+          "freshness": "checkpoint age no more than 60 seconds",
+          "stateConsistency": "all counted responses bind the same checkpoint hash"
+        }
+      },
+      "variants": [
+        {
+          "name": "transport-failure",
+          "missingAddressRead": {
+            "response": "transport-error"
+          },
+          "wantReadDisposition": "indeterminate"
+        },
+        {
+          "name": "inconsistent-finalized-state",
+          "missingAddressRead": {
+            "authenticatedIndependentResponses": [
+              {
+                "operator": "operator-a",
+                "result": "not-found",
+                "signatureValid": true,
+                "checkpointHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              },
+              {
+                "operator": "operator-b",
+                "result": "not-found",
+                "signatureValid": true,
+                "checkpointHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+              }
+            ]
+          },
+          "wantReadDisposition": "indeterminate"
+        }
+      ],
+      "want": {
+        "lookupDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "maySelectCopy": false,
+        "mayPerspectiveFlip": false,
+        "mayAttributeAbort": false
+      }
+    }
+  ]
+}

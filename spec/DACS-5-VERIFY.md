@@ -471,9 +471,19 @@ type ReputationDerivation = {
   }
   computedAt: number
   windowingBasis: "finalisedAt" | "sr2-anchor-timestamp"   // which clock the §10.5.1 window was applied against; re-derivation MUST use the same one (§10.5.3 determinism receipt)
+  resolutionContext: ResolutionContextEntry[]   // one entry per reconciled jobId (§10.5.1): the resolution facts derive() consumed that the copies themselves cannot carry. REQUIRED (empty array only when bundleRefs is empty). Never part of any signed bundle (§10.5.1 guard (iv)); it is derivation-record data.
   bundleRefs: AttestationRef[]                 // exactly the reconciled set (§10.5.1), in canonical ascending-contentHash order (§10.5.3 determinism receipt)
 }
+
+type ResolutionContextEntry = {
+  contentHash: string                           // keys the entry to its bundleRefs member (ascending-contentHash order, §10.5.3)
+  resolvedRole: "buyer" | "seller"              // the §10.5.1 input-precondition role under which the authoritative copy was resolved — the anchor-address role (pure-mapping) or the verified BundleBinding role (BB-4/BB-5); required because anchoredByRole is hash-excluded, so deref(bundleRefs) alone cannot recover it
+  counterpartyDisposition: "present" | "absent"   // the §10.4.3 read disposition of the OTHER expected buyer/seller address. "present" for a two-copy jobId; "absent" only for a one-copy jobId that passed guard (iv)
+  absenceEvidenceRef?: { kind: string; locator: string; contentHash: string }   // REQUIRED iff counterpartyDisposition == "absent": an opaque, hash-bound reference to the substrate-policy-defined absence evidence (CORE §5) the deriver relied on. DACS does not define its format; the substrate binding's absence-evidence policy does
+}
 ```
+
+A derivation MUST contain exactly one `ResolutionContextEntry` per `bundleRefs` member, keyed by `contentHash`. A one-copy jobId whose entry lacks a valid `absenceEvidenceRef` MUST NOT be included in a published derivation — §10.5.1 guard (iv) already excludes it from the metrics, and this rule extends that exclusion to the receipt: publication requires the evidence that qualified the inclusion. Two reconciled copies of different jobIds MAY share a `contentHash` only if byte-identical; entries are then deduplicated with `bundleRefs`.
 
 #### 10.5.1 Derivation algorithm
 
@@ -668,6 +678,7 @@ derive(party, bundles, windowStart, windowEnd):
   // bundleCount=0 result as the `scoped`-empty early return — there is no separate code path.
 
   bundleRefs := sort([ref(b) for b in reconciled], ascending by contentHash)   // deduped authoritative copies (matches bundleCount); canonical ascending-contentHash order per the §10.5.3 determinism receipt; empty when reconciled is empty
+  resolutionContext := [entry(b) for b in reconciled, same order]   // per-jobId resolution facts (resolvedRole, counterparty disposition, absence evidence ref) — the §10.5.3 receipt's replay context; empty when reconciled is empty
   windowingBasis := <"finalisedAt" | "sr2-anchor-timestamp">   // record which clock the window predicate was applied against (§10.5.1); re-derivation MUST use the same basis
 
   return ReputationDerivation with computed metrics
@@ -688,7 +699,7 @@ Three normative guards apply during reconciliation:
 
 A fourth normative guard applies to any one-copy jobId:
 
-- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to the signed bundle (either type). A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
+- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context — published as the derivation's `resolutionContext` (§10.5.3) — and MUST NOT add them to the signed bundle (either type). A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
@@ -738,9 +749,10 @@ Each surface is a different point on the trust / performance trade-off; the algo
 
 - (1) `bundleRefs` MUST be exactly the §10.5.1 `reconciled` set — the post-window-filter, two-sided-reconciled authoritative bundles `derive()` actually aggregated (one per jobId) — neither a superset nor a subset;
 - (2) `bundleRefs` MUST be serialised in **canonical order: ascending lexicographic by `AttestationRef.contentHash`** (the same tie-break discipline as SE-5). Because `contentHash` is a sha256 digest the ordering is total; two refs sharing a `contentHash` reference byte-identical content and collapse to one entry. Two derivers that computed identical metrics over the same set therefore cannot disagree on `bundleRefs` byte-order;
-- (3) a consumer that re-runs `derive(partyPrimaryClaim, deref(bundleRefs), windowStart, windowEnd)` under the recorded `windowingBasis` MUST obtain byte-identical `metrics` and `bundleCount`.
+- (3) `resolutionContext` MUST contain exactly one entry per `bundleRefs` member, keyed by `contentHash` in the same canonical order, carrying the resolution facts the copies cannot: the resolved role of each authoritative copy and, for every one-copy jobId, the counterparty address's `absenceEvidenceRef` — the authoritative-absence evidence the deriver relied on (§10.5.1 guard (iv));
+- (4) a consumer that re-runs `derive(partyPrimaryClaim, deref(bundleRefs), windowStart, windowEnd)` under the recorded `windowingBasis`, supplying each copy's `resolutionContext` entry as its §10.5.1 input-precondition tag, MUST obtain byte-identical `metrics` and `bundleCount`. A derivation whose `resolutionContext` is missing, mis-keyed, or insufficient for that replay is not independently reproducible and is non-conforming.
 
-Because §10.5.1 lets high-stakes consumers window against the SR-2 anchor timestamp rather than the producer-set `finalisedAt`, two derivers using different windowing bases legitimately compute different sets. The receipt is therefore defined **relative to the declared `windowingBasis`**, which a conforming derivation MUST record. This makes any published derivation auditable against its declared inputs. It does NOT establish *completeness*: whether `bundleRefs` contains every relevant bundle is out of scope — no authoritative "which bundles exist" oracle is defined, and catalogs are best-effort per (b). Conformance: given a fixed `bundleRefs` set, window, and `windowingBasis`, `derive()` output is byte-identical across implementations.
+Because §10.5.1 lets high-stakes consumers window against the SR-2 anchor timestamp rather than the producer-set `finalisedAt`, two derivers using different windowing bases legitimately compute different sets. The receipt is therefore defined **relative to the declared `windowingBasis`**, which a conforming derivation MUST record. This makes any published derivation auditable against its declared inputs, including the one-copy absence evidence that admitted each single-sided jobId. It does NOT establish *completeness*: whether `bundleRefs` contains every relevant bundle is out of scope — no authoritative "which bundles exist" oracle is defined, and catalogs are best-effort per (b). Conformance: given a fixed `bundleRefs` set, window, and `windowingBasis`, `derive()` output is byte-identical across implementations.
 
 #### 10.5.4 Category-scoped derivation
 

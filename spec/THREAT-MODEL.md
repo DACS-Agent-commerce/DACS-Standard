@@ -101,6 +101,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | HTLC free-option abandonment (payer declines reveal after market move; payee capital locked) | malicious counterparty | §9.5.4 HTLC-10 (prefer liquidity-tank or payer stake; DACS-5 records the pattern) | partial — known HTLC property, not standardised in v0.1 |
 | Sealed-envelope front-running | competing bidder | §8.12 (hash commitment + private channel) | mitigated |
 | Sealed-envelope post-deadline submission | malicious counterparty | §8.4.3 (chain-timestamp anchoring) | mitigated |
+| Sealed-envelope same-bidder commit swapping | malicious bidder / implementation divergence | §8.4.3 SE-9 (earliest anchored commit authoritative; same-anchor bidHash total order; later commits inert) | mitigated |
 | Sealed-envelope procurement role inversion | malicious orchestrator / implementation bug | §8.4.3 SE-8 + §8.5.2 (pinned-mode role-direction validation at the agreement commitment phase) | mitigated |
 | Agreement-listing mismatch | malicious counterparty | §8.5.2 (validation in the agreement commitment phase) | mitigated |
 | Payee-bound terms ignored by an older payer | minor-version skew | §8.5 distinct PayeeBoundAgreementDocument + §8.6 distinct commitment phase + §9.5.1 structural artifact gate + CORE §11.1.2 new-type refusal | mitigated |

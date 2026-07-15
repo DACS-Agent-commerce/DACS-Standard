@@ -36,6 +36,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 
@@ -402,6 +403,31 @@ Run (reference): `npx tsx conformance/security-vectors/rail-availability-selecti
 A top-level `ctx` (`commitDeadline`, `revealWindowSec`, `authenticatedSender`); each entry in `vectors[]`: `name`, `expected`, `note`, `commit` (`bidHash`, `bidderClaim`, `commitTimestamp`, `anchorTimestamp`), `reveal` (`bid`, `salt`, `anchorTimestamp`) or `null`.
 
 Run (reference): `npx tsx conformance/security-vectors/sealed-envelope-deadline/run.mts` → 15/15.
+
+### `sealed-envelope-multicommit-v0.1.json` — §8.4.3 SE-9 (same-bidder commit authority)
+
+4 vectors pin the authoritative commitment when one bidder anchors multiple
+in-window commits (#209):
+
+- the earliest SR-2 anchor timestamp wins and self-reported `commitTimestamp`
+  never affects authority;
+- revealing only a later same-bidder commit excludes that bidder as a bidHash
+  mismatch;
+- a lowest-price case proves the resulting winner differs from an incorrect
+  latest-commit implementation; and
+- equal anchor timestamps use ascending lowercase-hex `bidHash`, independent of
+  collection order.
+
+#### Vector schema
+
+Each entry carries `commits[]`, `reveals[]`, and a `subjectBidderClaim`.
+`expected` is the subject bidder's admission verdict after SE-9 authority
+resolution. `expectedAuthoritativeCommits`, `expectedAdmittedBidderClaims`, and
+`expectedWinnerClaim` pin the intermediate authority/admission decisions and the
+final selection result. Commit and reveal hashes use the §8.4.3
+`dacs-sealed-bid:v1:` preimage with 32-byte base64url salts.
+
+Candidate set; independent implementation cross-run pending.
 
 ### `private-deliverables-v0.1.json` — §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6, private delivery + entitlement credentials)
 

@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-3
+
+- **Same-bidder sealed-envelope commit authority — SE-9** (§8.4.3; #209) — makes the earliest valid in-window SR-2-anchored commit for each authenticated `bidderClaim` authoritative, with ascending lowercase-hex `bidHash` as the total-order limb when anchor timestamps are equal. Exact duplicates collapse; every later same-bidder commit is inert, and a reveal that opens only a non-authoritative commit is excluded as a bidHash mismatch. An unresolvable otherwise-candidate anchor leaves that bidder's authority `indeterminate`, never silently selects another commit. This prevents a bidder from anchoring multiple bids and choosing the favourable one at reveal time, and prevents implementations from deriving different winners by choosing earliest, latest, or reject-all. Adds four candidate security vectors; no schema change and no additional DACS-3 version bump beyond the already-unreleased v0.3 surface.
+
 ### Fixed — DACS-1 addressing
 
 - **Demos listing address mapping and CF-4 conformance cleanup** (§6.3.4, CORE §B.1; #237) — makes `storageProgramName` explicitly implementation-defined and opaque: DACS requires a Demos-valid colon-free name but does not define a reversible logical-address encoding, because the native `stor-` handle already depends on write inputs and consumers resolve through the required published logical→native binding. Removes the unreproducible 64-hex `addressing.native` output and stale DACS-VERIFY-0003 observation from the golden set; the current substrate rule is `first40hex` and the removed vector omitted the deployer/name/nonce/salt inputs needed to reproduce it. Corrects the CF-4 listing vector to use an unencoded URL-safe `listingId`, matching the schema and fixed-segment table. Golden count: 204 → 203.

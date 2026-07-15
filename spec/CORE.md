@@ -102,6 +102,17 @@ Every DACS standard names the substrate capability it depends on. The capabiliti
 
 A substrate shipping all five can host a full DACS implementation. A substrate that ships some subset can host DACS partially: listings whose pipelines require unsupported capabilities are unfulfillable there, but the rest of the stack still works.
 
+**SR-2 read outcomes and authoritative absence (normative).** An SR-2 read has one of three dispositions: `present`, `absent`, or `indeterminate`. `present` means content was returned for the requested native address; the consuming rule still verifies its canonical hash, signatures, and artifact-specific bindings. `absent` means the applicable substrate binding's declared absence-evidence policy established that no record exists at that address in the policy's referenced finalized state. Every other no-content result is `indeterminate`, including a transport error, an ordinary unqualified `not found`, a stale response, or mutually inconsistent state views.
+
+An SR-2 binding MAY omit authoritative absence support. A binding that supports a DACS decision whose outcome depends on absence MUST declare an absence-evidence policy specifying:
+
+- the finalized state or finality rule against which absence is evaluated;
+- how each response or proof is authenticated;
+- the independence and threshold requirements when a read quorum is used; and
+- the freshness and state-consistency checks applied before combining responses.
+
+A finalized non-membership proof or a binding-defined authenticated independent quorum MAY satisfy that policy. DACS does not prescribe one mechanism or a universal quorum number. When the binding has no declared policy, or a read does not satisfy it, a consumer MUST return `indeterminate` rather than promote non-observation to `absent`. This requirement changes no signed artifact shape; absence evidence is substrate read context retained by the consumer.
+
 **Substrate-coupling status in v0.1.**
 
 - **SR-1, SR-2, and SR-5 are specified at the protocol level.** Another substrate that ships an equivalent primitive (cross-substrate identity aggregation; content-addressed anchored storage; atomic cross-chain settlement) can interoperate with DACS implementations on Demos at the artifact level: the bundles, listings, and evidence records validate the same way.

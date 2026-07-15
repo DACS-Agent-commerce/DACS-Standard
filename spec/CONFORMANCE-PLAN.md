@@ -21,7 +21,8 @@ Exercise each rule at its normative home; full text is not restated (define-once
 | BR-1..BR-5 (bundle reader) | §6.3.2 | accept-conformant; reject unsigned / missing-required-`verifiedBy` / unverified-`presentedBy`-when-selector-set; unknown-scheme → unverified; SIWD `dacs:<hex>` Resource + session-`Nonce` match | `conformance/fixtures/identity/` |
 | match() (BundleRequirement) | §6.3.3 | required missing / required failing / oneOf satisfied / oneOf unsatisfied / selector match / mismatch | `conformance/vectors/` |
 | LP-1..LP-4, LR-1..LR-3 | §6.3 | publisher: sign / anchor / version-monotonicity / revocation; reader: halt-on-first-failure, revoked refusal, size-cap | `conformance/vectors/` |
-| Discovery | §6.3.6 | well-known parser; catalog endpoint shape; anchor cross-check from `ListingSummary` | `conformance/vectors/` |
+| RB-1..RB-6 (revocation binding) | §6.3.4 | anchor/sign marker; retain revoked discovery entry; resolve opaque native anchor; verify hash/signature/tuple; revoked/indeterminate refusal; successful-absence boundary | `conformance/vectors/security/revocation-binding-v0.3.json` |
+| Discovery | §6.3.5 / §6.3.6 | well-known parser; catalog endpoint shape; listing and revocation anchor cross-checks from retained discovery records | `conformance/vectors/` |
 | IT-1..IT-3 (identity tier) | §6.3.2.1 | derive from verified-and-fresh claims only; ignore self-asserted; deterministic; institutional precedence; stale-`verifiedBy` does not elevate | `conformance/fixtures/identity/` |
 
 ### 14.2 DACS-2 — Vet

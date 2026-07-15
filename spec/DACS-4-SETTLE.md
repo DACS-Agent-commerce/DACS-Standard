@@ -102,7 +102,7 @@ type ChainTxRef =
 
   | { kind: "ap2"; mandateId: string; providerRef: string; protocolVersion: string; receiptAttestation?: AttestationRef }   // receiptAttestation REQUIRED on a success-outcome record (AP2-2, §9.5.6): the SR-3 attestation of the provider payment-status response, contentHash = attested response hash; MAY be absent only on failure-outcome records
 
-  | { kind: "x402"; httpResource: string; paymentReceiptHash: string; settlementTxHash?: string; chainId?: number; protocolVersion: string }
+  | { kind: "x402"; httpResource: string; paymentReceiptHash: string; settlementTxHash?: string; chainId?: number; protocolVersion: string }   // paymentReceiptHash and protocolVersion follow X402-1..X402-4 (§9.5.7)
 
   | { kind: "htlc-lock"; chainId: number; contractAddress: string; lockTxHash: string }
 
@@ -572,9 +572,14 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 
 1. Resolve rail; verify `network.kind == "x402-resource"`.
 2. Construct an x402 payment payload (signed authorisation per x402 spec); the authorisation MUST include the session `jobId` (SB-3, §9.5.8) so the verifier can bind the settlement to this session. Submit the GET request to the resource with x402 headers.
-3. Receive the resource response and an x402 receipt; read the on-chain settlement transaction hash from the x402 `PAYMENT-RESPONSE` header (x402 settles a gasless USDC transfer on its settlement chain, e.g. Base).
-4. Construct SettlementEvidence with `txRef` of kind `x402` carrying httpResource, paymentReceiptHash (sha256 of the receipt), and the x402 `protocolVersion` (#27). The handler MUST populate `settlementTxHash` + `chainId` whenever the facilitator returns them — the normal case. A record carrying `settlementTxHash`/`chainId` is **chain-verifiable directly against the settlement chain, exactly like the `evm` rail**: the primary audit path, with the receipt hash supplementary.
+3. Receive the paid resource response. Select, decode, and validate its x402 settlement-response header under X402-1..X402-4. Read the on-chain settlement transaction and network from that response.
+4. Construct SettlementEvidence with an `x402` txRef carrying `httpResource`, the X402-2 `paymentReceiptHash`, and `protocolVersion`. The handler MUST populate `settlementTxHash` and `chainId` whenever the settlement response supplies their source values. A record carrying both remains chain-verifiable directly against the settlement chain, like the `evm` rail; this is the primary audit path, with the receipt hash supplementary.
 5. Anchor via SR-2; return success.
+
+- **(X402-1) Versioned receipt selection.** For a success-outcome record, `protocolVersion` MUST be the negotiated x402 version as a minimal unsigned-decimal string. Version `"1"` selects `X-PAYMENT-RESPONSE`; version `"2"` selects `PAYMENT-RESPONSE`. The handler MUST base64-decode the selected header, parse its JSON as that version's `SettlementResponse`, require `success == true`, and retain every received member, including `extensions` and unrecognised members. A handler MUST refuse a protocol version whose settlement-response header or schema it does not implement.
+- **(X402-2) Canonical receipt hash.** The handler MUST set `paymentReceiptHash = lowerhex(SHA-256(UTF8(JCS(settlementResponse))))`, where JCS is RFC 8785 over the complete X402-1 object. The value MUST be exactly 64 lower-case hexadecimal digits without `0x`. The base64 header text, decoded non-canonical JSON bytes, an on-chain transaction receipt, and `settlementTxHash` alone are not conforming preimages.
+- **(X402-3) Receipt/evidence consistency.** A successful response's `transaction` MUST equal `settlementTxHash` when that field is recorded. Its `network` MUST map to `chainId` when that field is recorded: directly from v2 `eip155:{chainId}`, or through the registered v1 legacy-network mapping. A mismatch MUST reject the evidence; it MUST NOT be repaired by hashing a different receipt interpretation.
+- **(X402-4) Verification and invalid input.** A verifier presented with the response header MUST independently apply X402-1 and X402-2 and compare the resulting 32 bytes. Invalid base64, invalid JSON/schema, a non-success response, a non-canonical stored hash, or a hash mismatch MUST be rejected. A handler without the complete successful response object MUST NOT emit success-outcome `pay-x402` evidence.
 
 > **Note (non-normative) — what pay-x402 adds beyond bare x402.** A direct x402 transaction produces a receipt the client and server hold off-chain; there is no anchored audit trail and the transaction is not bound to a DACS session. pay-x402 binds the x402 transaction into a DACS session by:
 >
@@ -584,11 +589,14 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 >
 > For pure HTTP-402 use cases that do not need a session bundle, bare x402 is appropriate; pay-x402 is the right wrapper when the x402 transaction participates in a multi-stage agent commerce lifecycle.
 
+> **Note (non-normative) — why JCS.** x402 transports a JSON object in base64 but does not make one language's emitted property order, whitespace, escaping, or base64 spelling authoritative. X402-2 makes those transport differences hash-identical while preserving every semantic receipt member. The off-chain receipt remains the material disclosed to a receipt verifier; the on-chain DACS field is its commitment.
+
 **Failure modes.**
 
 - server-side x402 endpoint rejects (insufficient payment, unsupported scheme) → `counterparty`
 - HTTP error after payment submitted → `transient` (retry with idempotency key)
-- payment-receipt signature invalid → `permanent`
+- malformed, non-success, hash-mismatched, or transaction/network-inconsistent settlement response → `permanent`
+- signed receipt extension present but its signature invalid → `permanent`
 
 #### 9.5.8 Session-bound settlement evidence (SB-1..SB-3)
 

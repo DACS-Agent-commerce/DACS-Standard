@@ -111,6 +111,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Liquidity-tank operator compromise | substrate operator | §9.13 (substrate consensus + 15-day recovery) | partial — substrate-trust-floor |
 | AP2 mandate replay | network observer | §9.5.6 (AP2 mandate nonce/exp — upstream evidence; DACS records the `ap2` txRef and anchors it via SR-2) | specified — pay-ap2 not yet reference-backed |
 | x402 settlement-reference forgery | malicious server | §9.5.8 SB-3 (jobId bound into the EIP-3009/EIP-712 authorization; DACS confirms the on-chain settlement, never trusts `PAYMENT-RESPONSE` alone) | mitigated — DACS-side binding, not inherited |
+| x402 receipt reserialization / substitution | implementation bug or malicious server | §9.5.7 X402-1..X402-4 (versioned header selection; complete decoded-object JCS hash; transaction/network cross-check) | mitigated |
 | Refund laundering | malicious seller | §9.13 (anchored amendments) | mitigated |
 | Decimal-overflow on cross-decimal pay | implementation bug | §9.13 (string-decimal arithmetic) | mitigated |
 | Bundle forgery | malicious counterparty | §10.11 (co-signature requirement) | mitigated |

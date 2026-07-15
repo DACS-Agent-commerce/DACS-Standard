@@ -1,0 +1,211 @@
+{
+  "set": "x402-receipt-hash-v0.1",
+  "spec": "DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing",
+  "decisionModel": "Select the response header by negotiated x402 version, base64-decode and parse the complete successful SettlementResponse, hash its RFC 8785 JCS bytes, and reject malformed, non-success, hash-mismatched, or transaction/network-inconsistent evidence.",
+  "source": "x402-foundation/x402@22a7677f829584073638d2e5b9898e1f19089b61",
+  "hash": "c4b01a078fc98d82643ec38d0c89c9351b8fbc0665d0afbb3426975c1c129c26",
+  "count": 11,
+  "vectors": [
+    {
+      "name": "v1-success-x-payment-response",
+      "rule": "X402-1 / X402-2",
+      "expected": "pass",
+      "protocolVersion": "1",
+      "responseHeader": {
+        "name": "X-PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJiYXNlLXNlcG9saWEiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiJ9"
+      },
+      "evidence": {
+        "paymentReceiptHash": "9856a8f91bc693aa4a064c64a1faf714c6a3fd5b9f94d2bec83cc174a8be4be0",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "canonicalReceipt": "{\"network\":\"base-sepolia\",\"payer\":\"0x857b06519E91e3A54538791bDbb0E22373e36b66\",\"success\":true,\"transaction\":\"0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de\"}",
+        "paymentReceiptHash": "9856a8f91bc693aa4a064c64a1faf714c6a3fd5b9f94d2bec83cc174a8be4be0",
+        "action": "accept"
+      }
+    },
+    {
+      "name": "v2-success-payment-response",
+      "rule": "X402-1 / X402-2",
+      "expected": "pass",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiJ9"
+      },
+      "evidence": {
+        "paymentReceiptHash": "d8505c979c87711c9c0e88f43c4209dd9a256e9174bd641c72a12ebb78104332",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "canonicalReceipt": "{\"network\":\"eip155:84532\",\"payer\":\"0x857b06519E91e3A54538791bDbb0E22373e36b66\",\"success\":true,\"transaction\":\"0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de\"}",
+        "paymentReceiptHash": "d8505c979c87711c9c0e88f43c4209dd9a256e9174bd641c72a12ebb78104332",
+        "action": "accept"
+      }
+    },
+    {
+      "name": "v2-reordered-pretty-json-same-hash",
+      "rule": "X402-2",
+      "expected": "pass",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "ewogICJwYXllciI6ICIweDg1N2IwNjUxOUU5MWUzQTU0NTM4NzkxYkRiYjBFMjIzNzNlMzZiNjYiLAogICJuZXR3b3JrIjogImVpcDE1NTo4NDUzMiIsCiAgInRyYW5zYWN0aW9uIjogIjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsCiAgInN1Y2Nlc3MiOiB0cnVlCn0="
+      },
+      "evidence": {
+        "paymentReceiptHash": "d8505c979c87711c9c0e88f43c4209dd9a256e9174bd641c72a12ebb78104332",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "sameReceiptAs": "v2-success-payment-response",
+        "paymentReceiptHash": "d8505c979c87711c9c0e88f43c4209dd9a256e9174bd641c72a12ebb78104332",
+        "action": "accept"
+      }
+    },
+    {
+      "name": "v2-extension-member-is-committed",
+      "rule": "X402-1 / X402-2",
+      "expected": "pass",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiIsImV4dGVuc2lvbnMiOnsib3JnLng0MDIub2ZmZXItcmVjZWlwdCI6eyJyZWNlaXB0Ijp7InNpZ25hdHVyZSI6InNpZzp2MSIsImlzc3VlZEF0IjoiMjAyNi0wNy0xM1QxMDoyNDozMVoifX19fQ=="
+      },
+      "evidence": {
+        "paymentReceiptHash": "4d8c67f99b293494ddb70db79383fd187e4369f598da44d51bacc2af41c781e7",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "canonicalReceipt": "{\"extensions\":{\"org.x402.offer-receipt\":{\"receipt\":{\"issuedAt\":\"2026-07-13T10:24:31Z\",\"signature\":\"sig:v1\"}}},\"network\":\"eip155:84532\",\"payer\":\"0x857b06519E91e3A54538791bDbb0E22373e36b66\",\"success\":true,\"transaction\":\"0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de\"}",
+        "paymentReceiptHash": "4d8c67f99b293494ddb70db79383fd187e4369f598da44d51bacc2af41c781e7",
+        "action": "accept"
+      }
+    },
+    {
+      "name": "v2-extension-mutation-breaks-hash",
+      "rule": "X402-2 / X402-4",
+      "expected": "fail",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiIsImV4dGVuc2lvbnMiOnsib3JnLng0MDIub2ZmZXItcmVjZWlwdCI6eyJyZWNlaXB0Ijp7InNpZ25hdHVyZSI6InNpZzp2MiIsImlzc3VlZEF0IjoiMjAyNi0wNy0xM1QxMDoyNDozMVoifX19fQ=="
+      },
+      "evidence": {
+        "paymentReceiptHash": "4d8c67f99b293494ddb70db79383fd187e4369f598da44d51bacc2af41c781e7",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "computedPaymentReceiptHash": "361d6d93d95af05e8f3ae0d846fc58c35f605c235b9ee7b2b4390a63034fc3f0",
+        "reason": "paymentReceiptHash-mismatch",
+        "action": "reject"
+      }
+    },
+    {
+      "name": "transaction-hash-placeholder-is-not-receipt-hash",
+      "rule": "X402-2 / X402-4",
+      "expected": "fail",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiJ9"
+      },
+      "evidence": {
+        "paymentReceiptHash": "6b47456dae769905ab6457359b78a12eaace27ff81813243358e0c6363b9909a",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "computedPaymentReceiptHash": "d8505c979c87711c9c0e88f43c4209dd9a256e9174bd641c72a12ebb78104332",
+        "reason": "settlementTxHash-alone-is-nonconforming",
+        "action": "reject"
+      }
+    },
+    {
+      "name": "v2-wrong-v1-response-header",
+      "rule": "X402-1 / X402-4",
+      "expected": "error",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "X-PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiJ9"
+      },
+      "want": {
+        "reason": "response-header-does-not-match-protocolVersion",
+        "action": "reject-before-decode"
+      }
+    },
+    {
+      "name": "v2-invalid-base64",
+      "rule": "X402-4",
+      "expected": "error",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "%%%not-base64%%%"
+      },
+      "want": {
+        "reason": "invalid-base64",
+        "action": "reject"
+      }
+    },
+    {
+      "name": "v2-non-success-response",
+      "rule": "X402-1 / X402-4",
+      "expected": "fail",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjpmYWxzZSwiZXJyb3JSZWFzb24iOiJpbnN1ZmZpY2llbnRfZnVuZHMiLCJ0cmFuc2FjdGlvbiI6IiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiJ9"
+      },
+      "want": {
+        "decodedSuccess": false,
+        "reason": "settlementResponse-not-success",
+        "action": "reject"
+      }
+    },
+    {
+      "name": "v2-transaction-mismatch",
+      "rule": "X402-3",
+      "expected": "fail",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MmZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiJ9"
+      },
+      "evidence": {
+        "paymentReceiptHash": "3dfb0fd2d3981a707c842d18fd197bf4e67408e2259f873de7b8d8e7f2eae7f8",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "reason": "transaction-does-not-match-settlementTxHash",
+        "action": "reject"
+      }
+    },
+    {
+      "name": "v2-network-chainid-mismatch",
+      "rule": "X402-3",
+      "expected": "fail",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6MSIsInBheWVyIjoiMHg4NTdiMDY1MTlFOTFlM0E1NDUzODc5MWJEYmIwRTIyMzczZTM2YjY2In0="
+      },
+      "evidence": {
+        "paymentReceiptHash": "897e6aa9a6d2539e2c302f4f0c23fc4081706c390fb2b7900e24cb507aceee92",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "reason": "network-does-not-map-to-chainId",
+        "action": "reject"
+      }
+    }
+  ]
+}

@@ -32,6 +32,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 13 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -42,6 +43,29 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `sb3-eip3009-nonce-v0.1.json` — §9.5.8 SB-3 (byte-exact x402 EIP-3009 binding)
+
+13 candidate vectors pin the EIP-3009 `bytes32 nonce` that binds a `pay-x402`
+authorization to `(jobId, phaseIndex)`. The positive vectors reproduce the live
+Base Sepolia value reported in #241 and prove job/phase separation plus NFC
+normalization. Negative vectors distinguish a well-formed mismatch (`fail`, with
+no SB-3 fallback) from malformed nonce/phase input (`error`). Retry vectors pin
+the no-double-charge rule: a previously used authorization resumes only when
+chain evidence proves the same transfer already settled; otherwise used or
+cancelled state fails closed and never causes a fresh nonce.
+
+#### Vector schema
+
+Each entry carries `op` (`derive`, `verify-binding`, or `retry`), `jobId`, and
+`phaseIndex`. Verification cases add `presentedNonce`; retry cases add
+`priorAuthorization`. `expected` is the §7.5.1 verdict, while `want` pins the
+derived nonce/binding branch or retry action. Textual nonce fixtures use the
+canonical lower-case `0x` + 64-hex form.
+
+The set-level `hash` is sha256 over the compact JSON `vectors` array, as checked
+by `scripts/validate_security_vectors.py`. Candidate set; independent
+implementation cross-run pending.
 
 ### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
 

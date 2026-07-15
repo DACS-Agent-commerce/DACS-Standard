@@ -3,7 +3,7 @@
 
 This is intentionally narrow: it checks quoted `dacs...:v1:` domain strings in
 the normative specification against the §7.7 registered signature separators and
-registered non-signature commitment prefixes. It does not scan logical addresses
+registered non-signature hash-domain prefixes. It does not scan logical addresses
 such as `dacs2:registry:v0.1`.
 """
 from __future__ import annotations
@@ -42,15 +42,15 @@ def registered_domains(spec_text: str) -> set[str]:
         "**Payload shape — single-hash vs composite.**",
     )
     domains = extract_domains(registry)
-    # Commitment-hash domain tags are registered in prose immediately after the
-    # signature registry table — deliberately NOT in the signature table, since
-    # they are commitment-hash preimages, not signature `signed_bytes` (SIG-1
-    # does not apply). They are still sanctioned, registered v0.1 domain tags.
-    idx = spec_text.find("**Commitment-hash domain tags.**")
+    # Non-signature hash-domain tags are registered in prose immediately after
+    # the signature registry table — deliberately NOT in the signature table,
+    # since they are hash preimages, not signature `signed_bytes` (SIG-1 does
+    # not apply). They are still sanctioned, registered v0.1 domain tags.
+    idx = spec_text.find("**Non-signature hash-domain tags.**")
     if idx != -1:
-        para_end = spec_text.find("\n\n", idx)
-        commitment_para = spec_text[idx : para_end if para_end != -1 else idx + 2000]
-        domains |= extract_domains(commitment_para)
+        section_end = spec_text.find("**Conformance.**", idx)
+        hash_domain_section = spec_text[idx : section_end if section_end != -1 else idx + 4000]
+        domains |= extract_domains(hash_domain_section)
     return domains
 
 

@@ -1,0 +1,187 @@
+{
+  "set": "sb3-eip3009-nonce-v0.1",
+  "spec": "DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding)",
+  "hash": "052b12dec9a0fe8af6e9cf6c6a4e87e587181e3b406bbe5bb5cd109599b558cd",
+  "count": 13,
+  "vectors": [
+    {
+      "name": "reported-live-vector",
+      "op": "verify-binding",
+      "expected": "pass",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 3,
+      "presentedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+      "want": {
+        "derivedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+        "binding": "present-and-matches"
+      },
+      "note": "live Base Sepolia value reported in #241; independent implementations MUST reproduce the same bytes32"
+    },
+    {
+      "name": "phase-index-changes-nonce",
+      "op": "verify-binding",
+      "expected": "pass",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 4,
+      "presentedNonce": "0x80fa47321a52f728f5ecbde7a5ceb44dd6086c9902dd8b95980b05909e5ea969",
+      "want": {
+        "derivedNonce": "0x80fa47321a52f728f5ecbde7a5ceb44dd6086c9902dd8b95980b05909e5ea969",
+        "binding": "present-and-matches"
+      },
+      "note": "the same job in a different repeated payment phase derives a different nonce"
+    },
+    {
+      "name": "job-id-changes-nonce",
+      "op": "verify-binding",
+      "expected": "pass",
+      "jobId": "practice-dacs-0002",
+      "phaseIndex": 3,
+      "presentedNonce": "0x69256a3bf1c9bd6a5ba1ffc93705d44c5322e03de8f1e3ad6b6d709f4254ce29",
+      "want": {
+        "derivedNonce": "0x69256a3bf1c9bd6a5ba1ffc93705d44c5322e03de8f1e3ad6b6d709f4254ce29",
+        "binding": "present-and-matches"
+      },
+      "note": "a different session derives a different nonce at the same phase index"
+    },
+    {
+      "name": "job-id-nfc-normalized",
+      "op": "verify-binding",
+      "expected": "pass",
+      "jobId": "cafe\u0301-job",
+      "phaseIndex": 0,
+      "presentedNonce": "0xc4d6eb3c8774ff6078765567559c1ce1953badb01ba1ea8a5252561712294397",
+      "want": {
+        "normalizedJobId": "café-job",
+        "derivedNonce": "0xc4d6eb3c8774ff6078765567559c1ce1953badb01ba1ea8a5252561712294397",
+        "binding": "present-and-matches"
+      },
+      "note": "a decomposed input is NFC-normalized before UTF-8 encoding"
+    },
+    {
+      "name": "random-nonce-mismatch",
+      "op": "verify-binding",
+      "expected": "fail",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 3,
+      "presentedNonce": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "want": {
+        "derivedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+        "binding": "present-and-mismatches",
+        "fallback": false
+      },
+      "note": "a well-formed random/provider-generated nonce is present but mismatched, so evidence is rejected rather than downgraded to fallback"
+    },
+    {
+      "name": "wrong-phase-nonce-mismatch",
+      "op": "verify-binding",
+      "expected": "fail",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 4,
+      "presentedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+      "want": {
+        "derivedNonce": "0x80fa47321a52f728f5ecbde7a5ceb44dd6086c9902dd8b95980b05909e5ea969",
+        "binding": "present-and-mismatches",
+        "fallback": false
+      },
+      "note": "the phase-3 nonce cannot bind evidence anchored at phase 4"
+    },
+    {
+      "name": "short-nonce-error",
+      "op": "verify-binding",
+      "expected": "error",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 3,
+      "presentedNonce": "0x00000000000000000000000000000000000000000000000000000000000000",
+      "want": {
+        "binding": "malformed"
+      },
+      "note": "a nonce that is not exactly bytes32 is malformed, not a clean binding mismatch"
+    },
+    {
+      "name": "missing-hex-prefix-error",
+      "op": "verify-binding",
+      "expected": "error",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 3,
+      "presentedNonce": "2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+      "want": {
+        "binding": "malformed"
+      },
+      "note": "the DACS textual form requires the 0x prefix"
+    },
+    {
+      "name": "negative-phase-index-error",
+      "op": "derive",
+      "expected": "error",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": -1,
+      "want": {
+        "binding": "malformed-input"
+      },
+      "note": "phaseIndex is a non-negative BundlePhaseEntry index"
+    },
+    {
+      "name": "leading-zero-phase-index-error",
+      "op": "derive",
+      "expected": "error",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": "03",
+      "want": {
+        "binding": "malformed-input"
+      },
+      "note": "a string spelling with leading zeroes is not the canonical integer phaseIndex"
+    },
+    {
+      "name": "used-same-transfer-resumes",
+      "op": "retry",
+      "expected": "pass",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 3,
+      "derivedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+      "priorAuthorization": {
+        "state": "used",
+        "sameTransferParameters": true,
+        "settlementTxId": "evm:84532:1111111111111111111111111111111111111111111111111111111111111111:0"
+      },
+      "want": {
+        "action": "resume-existing",
+        "mustGenerateFreshNonce": false
+      },
+      "note": "a proven prior settlement for the same authorization is an idempotent resume, never a second charge"
+    },
+    {
+      "name": "used-different-transfer-fails-closed",
+      "op": "retry",
+      "expected": "fail",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 3,
+      "derivedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+      "priorAuthorization": {
+        "state": "used",
+        "sameTransferParameters": false
+      },
+      "want": {
+        "action": "refuse",
+        "mustGenerateFreshNonce": false
+      },
+      "note": "a used nonce not attributable to this exact phase transfer fails closed"
+    },
+    {
+      "name": "cancelled-nonce-fails-closed",
+      "op": "retry",
+      "expected": "fail",
+      "jobId": "practice-dacs-0001",
+      "phaseIndex": 3,
+      "derivedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
+      "priorAuthorization": {
+        "state": "cancelled",
+        "sameTransferParameters": false
+      },
+      "want": {
+        "action": "refuse",
+        "mustGenerateFreshNonce": false
+      },
+      "note": "cancellation cannot be bypassed by minting a fresh nonce for the same session phase"
+    }
+  ]
+}

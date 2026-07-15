@@ -429,9 +429,11 @@ The bundle MUST NOT include references to any record outside the session’s sco
 
 **For sessions terminating with failed-substrate**, the bundle’s outcome captures the substrate failure; the failure does not count as either party’s fault in DACS-5 reputation derivation.
 
-Two parties producing independent bundles for the same session MUST converge on identical bundle content (by canonical-form equality — which excludes the per-copy `anchoredByRole` and `signatures` fields per §10.4.1, so the happy-path copies are equal despite carrying different `anchoredByRole` values) or MUST surface the divergence as a dispute. Each side anchors its own bundle at its own derived address. The two `stor-{sha256(jobId + "-bundle-{role}")}` values are the **logical** bundle addresses (§10.4.2). A consumer looking up "the bundle(s) for session X" resolves each side's native address per the §10.4.2 binding rules (BB-5): on a pure-mapping substrate by direct computation; on a write-input-mapping substrate such as Demos through that side's published `BundleBinding`s, never by recomputation (BB-6/BB-7). The consumer then queries both sides' resolved native addresses.
+Two parties producing independent bundles for the same session MUST converge on the same session facts or MUST surface the divergence as a dispute. Convergence is canonical-form equality (which excludes the per-copy `anchoredByRole` and `signatures` fields per §10.4.1, so happy-path copies are equal despite different `anchoredByRole` values) — or, for a `FaultAttestationBundle` perspective pair, agreement on `faultedParty` and outcome class with role-relative `outcome` spellings that differ only per the §10.4.1 permissible-set mapping: such a pair converges even though the canonical forms differ. Each side anchors its own bundle at its own derived address. The two `stor-{sha256(jobId + "-bundle-{role}")}` values are the **logical** bundle addresses (§10.4.2). A consumer looking up "the bundle(s) for session X" resolves each side's native address per the §10.4.2 binding rules (BB-5): on a pure-mapping substrate by direct computation; on a write-input-mapping substrate such as Demos through that side's published `BundleBinding`s, never by recomputation (BB-6/BB-7). The consumer then queries both sides' resolved native addresses.
 
 **Definition — "canonically diverge" (normative, defined once).** The two copies' canonical forms differ in `outcome`, or in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass` — i.e. a *contradiction* about what happened. A `phaseSummary` entry present in one copy and absent in the other **is** a divergence: the entry set is a normative input, and a copy asserting a phase the other's record denies is a contradiction about which phases ran, not advisory skew (it is also the guard against appending a fabricated phase entry that would otherwise escape entry-wise comparison). A difference confined to advisory fields (e.g. `finalisedAt` skew, one-sided `ratingRefs`, amendment ordering) is NOT a divergence. For a `FaultAttestationBundle` pair the `outcome` contradiction is read on the absolute `faultedParty` and the outcome class (`completed`, `failed-substrate`, abort, or failure), not the role-relative `outcome` spelling. Two `FaultAttestationBundle` copies naming the same `faultedParty` and class do not diverge, even where one reads `aborted-by-self` and the other `aborted-by-other`; the shared-index `phaseSummary` limb applies to both versions unchanged. Legacy `AttestationBundle` copies use the `outcome`-spelling definition above. (This is the same definition the §10.5.1 deriver applies — guard (ii) — so a consumer and a deriver never reach opposite verdicts, and a party cannot force a spurious "disputed" classification by perturbing an advisory field.)
+
+**Mixed-version pairs (normative).** When one side of a session anchors a `FaultAttestationBundle` and the other a legacy `AttestationBundle`, the pair is compared on the common fault surface: the legacy copy's role-relative `outcome` is mapped through its `anchoredByRole` per the §10.4.1 permissible-set table to an implied absolute fault, and its outcome class is read directly. The pair canonically diverges when the implied absolute fault contradicts the `FaultAttestationBundle`'s `faultedParty`, when the outcome classes contradict, or on the shared-index `phaseSummary` limb (unchanged for all pairs). A non-divergent mixed pair is a unified session bundle whose authoritative copy for derivation is the `FaultAttestationBundle` (§10.5.1). Every same-session pair is therefore classified by exactly one of: the canonical-equality rule, the `FaultAttestationBundle`-pair rule, this mixed-version rule, or the legacy `outcome`-spelling rule — there is no unclassified pair.
 
 Consumers MUST:
 
@@ -440,7 +442,7 @@ Consumers MUST:
   - a copy carrying all §10.4.1 required signatures is the unified session bundle; the missing copy is an anchoring omission, not an abort, and no abort outcome is attributed to either party;
   - a single-signed copy with an abort outcome is classified per the §10.11 bundle-suppression rule: `aborted-by-self` for the non-signer, `aborted-by-other` for the signer;
   - a single-signed copy with any other outcome is rejected per §10.4.1, leaving no valid bundle for the session;
-- (c) if both are present and do NOT diverge (canonically equal, differing only in advisory fields, or a `FaultAttestationBundle` perspective pair agreeing on `faultedParty` and outcome class), treat as the unified session bundle — a reputation-deriving consumer prefers the scored party's own anchored copy where they differ advisorily (matching §10.5.1's reconciliation), while a consumer with no scoring context (e.g. an auditor) MAY treat either copy as canonical for non-reputation purposes, since by definition they agree on every contradiction-bearing field;
+- (c) if both are present and do NOT diverge (canonically equal, differing only in advisory fields, or a `FaultAttestationBundle` perspective pair — or non-divergent mixed-version pair — agreeing on the absolute fault and outcome class per the definitions above), treat as the unified session bundle — a reputation-deriving consumer prefers the scored party's own anchored copy where they differ advisorily, except that in a mixed-version pair the `FaultAttestationBundle` copy is authoritative (matching §10.5.1's reconciliation), while a consumer with no scoring context (e.g. an auditor) MAY treat either copy as canonical for non-reputation purposes, since by definition they agree on every contradiction-bearing field;
 - (d) if both are present and canonically diverge (a contradiction per the definition above), treat the session as disputed — each bundle stands on its own signatures and consumers must decide an out-of-band dispute-handling policy (e.g., flag for human review). This discretion does **not** extend to DACS-5 `ReputationDerivation`: a conforming `derive()` MUST exclude the jobId from ALL metrics under §10.5.1 guard (ii) and MUST NOT select either party's copy for party-specific reputation.
 
 v0.1 does not specify a dispute resolution path; divergence is handled out-of-band. A future minor version (DACS-X, dispute) may specify selective transcript disclosure under signed party agreement or arbitrator order.
@@ -505,6 +507,7 @@ derive(party, bundles, windowStart, windowEnd):
   reconciled := []   // one authoritative bundle per jobId
   outcomes := []     // its outcome, perspective-adjusted to the scored party (index-aligned with reconciled)
   cancelled_jobids := {}   // jobIds with an established §10.3.1 ST-10 policy-permitted cancellation (neutral for BOTH parties), resolved across both non-divergent copies
+  orchestrator_fault_jobids := {}   // jobIds whose authoritative FaultAttestationBundle names faultedParty "orchestrator" — neutral for buyer and seller (orchestrator reputation is out of scope in v0.1)
   for jobId, copies in (scoped grouped by b.jobId):
     # (1) §10.4.1 signature validation: a non-abort outcome (completed / failed-perm /
     #     failed-counterparty / failed-substrate) MUST carry all required signatures;
@@ -533,9 +536,11 @@ derive(party, bundles, windowStart, windowEnd):
     role_of_party := the role of the BundleParty p in copies[0].parties where p.primaryClaim == party
     self_copy := the b in copies where b.anchoredByRole == role_of_party        // scored party's own copy, if present
     cp        := the b in copies where b.anchoredByRole != role_of_party        // at most one (the buyer/seller counterparty copy)
-    if self_copy exists:
-      if cp exists AND self_copy and cp diverge (divergence rule below):
-        continue   // (§10.4.3(d)) genuine dispute — EXCLUDE this jobId from ALL metrics (numerator and denominator), do not silently trust self_copy
+    if self_copy exists AND cp exists AND self_copy and cp diverge (divergence rule below):
+      continue   // (§10.4.3(d)) genuine dispute — EXCLUDE this jobId from ALL metrics (numerator and denominator), do not silently trust self_copy
+    if self_copy exists AND cp exists AND exactly one of them is a FaultAttestationBundle:
+      authoritative := that FaultAttestationBundle copy               // non-divergent mixed-version pair (§10.4.3): absolute fault is authoritative
+    else if self_copy exists:
       authoritative := self_copy
     else:
       authoritative := cp                                                       // only a counterparty copy exists (e.g. §10.11 suppression)
@@ -551,43 +556,51 @@ derive(party, bundles, windowStart, windowEnd):
         cannot resolve   -> continue                    // indeterminate — EXCLUDE jobId from ALL metrics (never neutral, never a fresh fault), exactly like the §10.4.3(d) dispute case
         resolves+permits -> cancelled_jobids.add(jobId)  // established: reputation-neutral for BOTH parties, whether the scored-party outcome is aborted-by-self OR aborted-by-other
         resolves+forbids -> (no-op)                      // invalid marker — the abort stays its ordinary fault bucket below
+    if authoritative is a FaultAttestationBundle AND authoritative.faultedParty == "orchestrator":
+      orchestrator_fault_jobids.add(jobId)
     reconciled.append(authoritative); outcomes.append(outcome)
   # scored_outcome(b, R) -> the scored party's perspective outcome for reconciled copy b:
   #   completed -> completed ; failed-substrate -> failed-substrate
   #   FaultAttestationBundle: read the absolute hashed faultedParty (§10.4.1). The scored party
-  #     is at fault iff b.faultedParty == R. With outcome-class abort|failure from b.outcome:
+  #     is at fault iff b.faultedParty == R; when b.faultedParty == "orchestrator" the outcome is
+  #     spelled not-at-fault for the scored buyer/seller and the jobId is neutralised below. With outcome-class abort|failure from b.outcome:
   #       (fault, abort)   -> aborted-by-self       (fault, failure)   -> failed-perm
   #       (¬fault, abort)  -> aborted-by-other      (¬fault, failure)  -> failed-counterparty
   #     This reads fault from the absolute field, NOT from b.outcome via anchoredByRole.
   #   legacy AttestationBundle: no faultedParty — the disclosed role-relative residual (§10.4.1):
   #     b.outcome if b.anchoredByRole == R, else perspective_flip(b.outcome).
+  #   FaultAttestationBundle with faultedParty == "orchestrator": neither buyer nor seller is at
+  #     fault — the jobId joins the orchestrator-fault neutral class below (excluded from both
+  #     fault denominators, retained in bundleCount), regardless of the abort|failure class.
   # perspective_flip (legacy AttestationBundle only): aborted-by-self <-> aborted-by-other ;
   #   failed-perm <-> failed-counterparty ; completed / failed-substrate unchanged.
-  # divergence rule (self_copy, cp): for a FaultAttestationBundle pair, they diverge iff they differ in
+  # divergence rule (self_copy, cp): per the single §10.4.3 definition incl. its mixed-version rule. For a FaultAttestationBundle pair, they diverge iff they differ in
   #   faultedParty, in outcome-class ({completed, failed-substrate, abort, failure}), or in a
   #   phaseSummary entry (§10.4.3) — NOT in the role-relative outcome spelling, which the absolute
   #   faultedParty reconciles (the invariant: paired copies carry an identical faultedParty). For
-  #   a legacy pair, divergence is the §10.4.3 canonical definition (contradictory outcome / phaseSummary).
+  #   a legacy pair, the §10.4.3 outcome-spelling definition; for a mixed pair, the §10.4.3 mixed-version rule (implied absolute fault vs faultedParty).
   # The §10.4.1 filter guarantees a non-abort outcome here is fully-signed and thus legitimately attributable.
   # All downstream metrics use `reconciled` (deduped bundles) / `outcomes`, never raw `scoped`.
 
   completed := [o for o in outcomes where o == "completed"]
 
-  failed_perm := [o for o in outcomes where o == "failed-perm"]   // party-fault: stays in party_fault_denom but not in |completed|, so it depresses completionRate; v0.1 surfaces no separate party-fault rate metric
+  failed_perm := [o for (b, o) in zip(reconciled, outcomes) where o == "failed-perm" AND b.jobId not in orchestrator_fault_jobids]   // party-fault: stays in party_fault_denom but not in |completed|, so it depresses completionRate; v0.1 surfaces no separate party-fault rate metric
 
-  failed_counterparty := [o for o in outcomes where o == "failed-counterparty"]
+  failed_counterparty := [o for (b, o) in zip(reconciled, outcomes) where o == "failed-counterparty" AND b.jobId not in orchestrator_fault_jobids]
 
   failed_substrate := [o for o in outcomes where o == "failed-substrate"]
 
   cancelled_neutral := [b for b in reconciled where b.jobId in cancelled_jobids]   // established §10.3.1 ST-10 policy-permitted cancellations — reputation-neutral for BOTH parties, so collected by jobId (NOT by outcome string: the scored-party outcome may be aborted-by-self OR aborted-by-other). Excluded from every fault bucket and from both denominators below, yet still counted in |outcomes| (an observable, non-fault session — we attribute, we do not hide). A marker that resolved-and-forbade was never added to cancelled_jobids and stays its ordinary abort fault; a marker that could not be resolved was already dropped from `outcomes` (loop `continue` above).
 
-  aborted_by_self := [o for (b, o) in zip(reconciled, outcomes) where o == "aborted-by-self" AND b.jobId not in cancelled_jobids]   // party-initiated abort (§10.11): like failed_perm, depresses completionRate via the denominator; no separate metric in v0.1. A policy-cancelled abort is excluded here (it is in cancelled_neutral instead).
+  aborted_by_self := [o for (b, o) in zip(reconciled, outcomes) where o == "aborted-by-self" AND b.jobId not in cancelled_jobids AND b.jobId not in orchestrator_fault_jobids]   // party-initiated abort (§10.11): like failed_perm, depresses completionRate via the denominator; no separate metric in v0.1. A policy-cancelled abort is excluded here (it is in cancelled_neutral instead).
 
-  aborted_by_other := [o for (b, o) in zip(reconciled, outcomes) where o == "aborted-by-other" AND b.jobId not in cancelled_jobids]   // counterparty abort, with policy-cancelled ones excluded — so the non-cancelling party does NOT eat a counterparty fault on a validly-cancelled session (ST-10 symmetry)
+  aborted_by_other := [o for (b, o) in zip(reconciled, outcomes) where o == "aborted-by-other" AND b.jobId not in cancelled_jobids AND b.jobId not in orchestrator_fault_jobids]   // counterparty abort, with policy-cancelled ones excluded — so the non-cancelling party does NOT eat a counterparty fault on a validly-cancelled session (ST-10 symmetry)
 
   counterparty_fault_count := |aborted_by_other| + |failed_counterparty|
 
-  party_fault_denom := |outcomes| − |failed_substrate| − |cancelled_neutral|   // a verified policy-permitted cancellation (§10.3.1 ST-10) is neutral — dropped from the denominator exactly like failed_substrate, so it neither counts as completion nor as fault
+  orchestrator_fault_neutral := [b for b in reconciled where b.jobId in orchestrator_fault_jobids]   // orchestrator-fault sessions (§10.4.1 permissible set): neither scored party is at fault; excluded from both fault denominators like failed_substrate, retained in bundleCount
+
+  party_fault_denom := |outcomes| − |failed_substrate| − |cancelled_neutral| − |orchestrator_fault_neutral|   // a verified policy-permitted cancellation (§10.3.1 ST-10) is neutral — dropped from the denominator exactly like failed_substrate, so it neither counts as completion nor as fault
 
   completionRate := |completed| / party_fault_denom   when party_fault_denom > 0 else null
 
@@ -662,15 +675,15 @@ derive(party, bundles, windowStart, windowEnd):
 
 **Two-sided reconciliation (normative).** Two-sided anchoring (§10.4.2) can place two bundles for one jobId in the input, each recording `outcome` from *its anchorer's* perspective. The deriver MUST collapse the input to one authoritative bundle per jobId before partitioning (the `reconciled` step above). It MUST interpret `outcome` relative to the *scored* party, not the anchorer. The read rules:
 
-- When the scored party's own anchored copy is present (`b.anchoredByRole` == the scored party's role), `outcome` is read literally: `aborted-by-self` means "this party aborted"; `aborted-by-other` means "the counterparty aborted against this party".
-- When only a counterparty-anchored copy exists (e.g. the §10.11 bundle-suppression case, where the withdrawing party did not anchor), `outcome` is read through `perspective_flip`: `aborted-by-self ↔ aborted-by-other` and `failed-perm ↔ failed-counterparty`. The aborter still takes the hit and the victim does not.
+- The authoritative copy's scored outcome is `scored_outcome(authoritative, role_of_party)` uniformly: on a `FaultAttestationBundle` fault is read from the absolute hashed `faultedParty`; on a legacy `AttestationBundle` it is the role-relative residual — read literally from the scored party's own copy, or through `perspective_flip` from a counterparty copy.
+- `perspective_flip` (`aborted-by-self ↔ aborted-by-other`, `failed-perm ↔ failed-counterparty`) exists only inside that legacy branch — e.g. the §10.11 bundle-suppression case where only a counterparty-anchored legacy copy survives. The aborter still takes the hit and the victim does not; a `FaultAttestationBundle` never needs the flip, since `faultedParty` is perspective-independent.
 
 > **Note (non-normative).** Reading raw `outcome` across both copies (the pre-reconciliation behaviour) would double-count an abort against the victim and invert the §10.11 guarantee; the reconciliation closes that.
 
 Three normative guards apply during reconciliation:
 
 - (i) **signature validation first** — each copy MUST pass §10.4.1 before it is considered. A single-signed bundle is valid only for an abort outcome; a single-signed `completed`/`failed-*` MUST be dropped. This closes the attack where a lone counterparty-anchored `failed-counterparty` is perspective-flipped to depress the victim's score. Any copy failing the §10.4.2 `anchoredByRole` cross-check — against the anchor-address role on a pure-mapping substrate, or against the verified `BundleBinding`'s role (BB-4/BB-5) on a write-input substrate — MUST be dropped. Divergent same-role copies resolve per BB-6 before the self/counterparty selection below — a fully-signed copy takes precedence over lesser-signed divergents, and only equal-standing divergence voids the side — preserving the at-most-one-copy-per-role invariant;
-- (ii) **divergence → exclusion** — the scored party's own copy and a counterparty copy *canonically diverge* when they contradict in `outcome`, in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass`, or by a `phaseSummary` entry present in only one copy (the single §10.4.3 definition) — NOT on mere advisory-field skew. A divergent jobId is a §10.4.3(d) dispute and MUST be excluded from ALL metrics, rather than silently trusting the self-copy. Exclusion removes the jobId from both the numerator and `party_fault_denom`, so a disputed session neither helps nor harms the score. There is no `disputed` value in the `outcome` enum (§10.4.1); this is an exclusion, not an outcome;
+- (ii) **divergence → exclusion** — the scored party's own copy and a counterparty copy *canonically diverge* when they contradict in `outcome`, in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass`, or by a `phaseSummary` entry present in only one copy — the single §10.4.3 definition, whose `FaultAttestationBundle`-pair rule reads the `outcome` contradiction on the absolute `faultedParty` and outcome class, and whose mixed-version rule compares the implied absolute fault — never on mere advisory-field skew. A divergent jobId is a §10.4.3(d) dispute and MUST be excluded from ALL metrics, rather than silently trusting the self-copy. Exclusion removes the jobId from both the numerator and `party_fault_denom`, so a disputed session neither helps nor harms the score. There is no `disputed` value in the `outcome` enum (§10.4.1); this is an exclusion, not an outcome;
 - (iii) **buyer/seller only** — `perspective_flip` is a buyer↔seller involution. Orchestrator-anchored copies are evidence-only and are not used as a reputation perspective (orchestrator reputation is out of scope for v0.1). This also makes the counterparty-copy selection unambiguous: at most one buyer/seller counterparty copy per jobId.
 
 A fourth normative guard applies to any one-copy jobId:
@@ -679,7 +692,7 @@ A fourth normative guard applies to any one-copy jobId:
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
-**Neutral exclusions from the fault denominator.** Two classes are excluded from the party-fault denominator — `party_fault_denom = |outcomes| − |failed_substrate| − |cancelled_neutral|`: **`failed-substrate`** sessions (substrate-induced, nobody's fault) and **established §10.3.1 ST-10 policy-permitted cancellations** (an advertised, signed cancellation right, neutral for *both* parties — resolved across both non-divergent copies, so the exclusion applies whether the scored-party outcome is `aborted-by-self` or `aborted-by-other`). Neither damages either party's reputation; both remain in `bundleCount` as observable, non-fault sessions.
+**Neutral exclusions from the fault denominator.** Three classes are excluded from the party-fault denominator — `party_fault_denom = |outcomes| − |failed_substrate| − |cancelled_neutral| − |orchestrator_fault_neutral|`: **`failed-substrate`** sessions (substrate-induced, nobody's fault) and **established §10.3.1 ST-10 policy-permitted cancellations** (an advertised, signed cancellation right, neutral for *both* parties — resolved across both non-divergent copies, so the exclusion applies whether the scored-party outcome is `aborted-by-self` or `aborted-by-other`), and **orchestrator-fault sessions** (a `FaultAttestationBundle` naming `faultedParty: "orchestrator"` — a distinct orchestrator, not the scored buyer or seller, was responsible; orchestrator reputation is out of scope in v0.1, §10.5.1 guard (iii)). None of the three damages either party's reputation; both remain in `bundleCount` as observable, non-fault sessions.
 
 **Null vs empty metrics.** The **scalar** metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) produce numeric values when their denominator > 0. With denominator == 0 (e.g., bundleCount=0, or all sessions failed-substrate; for `counterpartyAdjustedCompletionRate`, also when every reconciled bundle was counterparty-caused) they produce null — distinct from zero, signalling "no signal" rather than "zero signal". The **array** metrics `observedTransactionalVolume` and `transactionCountByCurrency` (non-nullable) and `bundleRefs` (a non-nullable `AttestationRef[]`) produce `[]` on the empty path: an empty list, never null. Every return path therefore yields a schema-total `ReputationDerivation`.
 

@@ -52,6 +52,16 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         stages = [artifact["stage"] for artifact in data["artifacts"]]
         self.assertEqual(stages, ["DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"])
 
+    def test_happy_path_pay_phases_bind_to_accepted_rails(self):
+        data = json.loads(VECTORS.read_text())
+        listing = next(artifact["artifact"] for artifact in data["artifacts"] if artifact["kind"] == "Listing")
+        accepted_rails = {rail["railId"] for rail in listing["acceptedRails"]}
+        pay_phases = [phase for phase in listing["pipeline"] if phase["kind"].startswith("pay-")]
+        self.assertTrue(pay_phases)
+        for phase in pay_phases:
+            with self.subTest(kind=phase["kind"]):
+                self.assertIn(phase.get("parameters", {}).get("rail"), accepted_rails)
+
     def test_artifacts_have_stable_content_hashes_spec_refs_and_registered_domains(self):
         data = json.loads(VECTORS.read_text())
         validator = load_vector_validator()

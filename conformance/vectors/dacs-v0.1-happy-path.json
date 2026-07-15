@@ -72,7 +72,10 @@
             "kind": "commit-agreement"
           },
           {
-            "kind": "pay-evm-erc20"
+            "kind": "pay-evm-erc20",
+            "parameters": {
+              "rail": "evm-erc20:8453:USDC"
+            }
           },
           {
             "kind": "deliver-attested-payload"
@@ -100,10 +103,10 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
-          "value": "2mNIFUAb4i3rTY414a3iW7EHo2oeHBXqoFlNOOz8Pb7wmUSbvZw77NNgfuvfSQBqY9TBUd8t98/RphSJ9gbZAQ=="
+          "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ=="
         }
       },
-      "contentHash": "sha256:23e171f396217c0801186c40945bcdfd9530d6b5e3909ff19113ce32734971cf"
+      "contentHash": "sha256:c5685dae0d9246524e93358d52c5b13c2df0aba837755f862f1f1e7dc55d2171"
     },
     {
       "id": "composite-verify-cci",
@@ -164,7 +167,7 @@
         "listingRef": {
           "listingId": "lst-regen-0001",
           "version": 1,
-          "contentHash": "23e171f396217c0801186c40945bcdfd9530d6b5e3909ff19113ce32734971cf"
+          "contentHash": "c5685dae0d9246524e93358d52c5b13c2df0aba837755f862f1f1e7dc55d2171"
         },
         "parties": [
           {
@@ -213,16 +216,16 @@
           {
             "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
             "algorithm": "ed25519",
-            "value": "8XgxDuiLa9IlvBybrV/oEK6MkMhp8dla8ElgnffVz4yfUSjg+EZJgFinImZ9/CcwAptIGFOtuzK0EBHS8PhhBw=="
+            "value": "5qkUWrUicWm9CI+SbVRhqPJytAfK7W6ur8ItnSC6SNTGNAgdQENs8KuttLXeQ9aZRpR/YFn+mM59eYz/Dy4RDQ=="
           },
           {
             "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
             "algorithm": "ed25519",
-            "value": "65zD+fHo2sxJGc1Wbm+ZYpNxx7pTH3Siz4lxVB3cWptJgnY5pgNkgUL53jMcN+dgJCfZ4ECetNi3QavCMp4pCg=="
+            "value": "XrsqEnaqfXvaDU4eOe+RVqUJaCLUJgkap012A04QpRJlfZuTrpSXTB2FgvdIOnOy7ma2O36SnEaFc095mZbzAQ=="
           }
         ]
       },
-      "contentHash": "sha256:4e419db39e7cdd5ec646728f0b7f67544fc01ca74c9a7d6491b61a22e75eecfb"
+      "contentHash": "sha256:5f8cde1dbee73e80b636bcb361b2d762cf994570d934322607eb7bce1c43bd84"
     },
     {
       "id": "settlement-htlc-release",
@@ -285,7 +288,7 @@
         "listingRef": {
           "listingId": "lst-regen-0001",
           "version": 1,
-          "contentHash": "23e171f396217c0801186c40945bcdfd9530d6b5e3909ff19113ce32734971cf"
+          "contentHash": "c5685dae0d9246524e93358d52c5b13c2df0aba837755f862f1f1e7dc55d2171"
         },
         "parties": [
           {
@@ -320,16 +323,16 @@
           {
             "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
             "algorithm": "ed25519",
-            "value": "j7pTZRMvIcs5+aHj5UNRRpisg37wCmKADFSo5Xr16COYkZoEPOdqn1WihJb2ZNOpnshuqZn7FR89QAb3HpPwDw=="
+            "value": "dMO2HZWJzw0mBg2b97wIZ5i43dgcD2AwR1zRibJcF0D8LGq9rgsXj2fl1tXSuav+sxoqHOD76fkMe7UN6z6MDA=="
           },
           {
             "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
             "algorithm": "ed25519",
-            "value": "p9JhBTq1Yfdkvnvj66UiwsR/M5WoWgy+X592CXucilpW7AS7HbmRkgZYE90Inoxad7UmQuxhL70CNtXgirBCAg=="
+            "value": "zvROXaqMGgcsktn/C4ILeW+fXRj59Sj19LwzQTtfRGyR3BSVaEzjTZFH2xugaHmYSeEOu2gsc8F4c7BmNMjrCQ=="
           }
         ]
       },
-      "contentHash": "sha256:1db782557da3f184abcbc3ada7dbe0468986ace2f1a6b4b87cdb3784fe490c66"
+      "contentHash": "sha256:ffd1956f2e90703ac914168214461a245bc8a96dda52dd1340eec7cc55d07e0b"
     }
   ],
   "expectedResult": {

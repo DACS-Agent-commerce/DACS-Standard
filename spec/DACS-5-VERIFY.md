@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1; v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1; v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact + BB-1..BB-8 logical→native bundle resolution §10.4.2, and the bundleVersion "2" absolute `faultedParty` fault-attribution model §10.4.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -795,8 +795,8 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Role | Requirements |
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
-| Bundle producer | Sign per §10.4.1; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
-| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings, handle multiplicity, fail closed, exhaust surfaces before one-sided classification); recompute canonical hash; verify domain-separated signatures; dereference and validate every contained AttestationRef |
+| Bundle producer | Anchor bundleVersion "2" with `faultedParty` per the §10.4.1 mapping; sign per §10.4.1; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings, handle multiplicity, fail closed, exhaust surfaces before one-sided classification); reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole) per §10.4.1; recompute canonical hash; verify domain-separated signatures; dereference and validate every contained AttestationRef |
 | Reputation deriver | Apply algorithm in §10.5.1 verbatim; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the §10.5.1 `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |

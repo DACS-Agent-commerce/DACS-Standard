@@ -32,6 +32,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -51,6 +52,33 @@ copies have the same `jobId`, bundle outcome, phase-index set, per-entry
 outcome, and absent `errorClass`, but the shared index names different phase
 kinds. The expected consumer verdict is `divergent`; a DACS-5 reputation
 deriver excludes the jobId from every metric and does not select either copy.
+
+### `revocation-binding-v0.3.json` — §6.3.4 RB-1..RB-6
+
+14 candidate scenarios for resolving and validating a listing revocation marker
+without knowing its StorageProgram name. The two positive marker fixtures use
+real Ed25519 signatures over `"dacs-revocation:v1:" || markerContentHash` and
+pin both opaque-name and convention-name native-address derivations. Consumers
+receive only the published `RevocationBinding`; producer write inputs remain
+fixture provenance and are not resolution inputs.
+
+Coverage includes logical-address derivation, marker content-hash and signature
+checks, the exact listing-tuple match, the retained `status: "revoked"`
+condition, unreachable anchors, stale or hash-inconsistent discovery state, and
+the current-model successful `absent` path. The expected top-level verdict is
+the new-session admission result: a verified revocation is `fail`, a completed
+active/no-binding check is `pass`, and any incomplete or inconsistent check is
+`indeterminate`.
+
+Two multi-surface cases pin RB-6 precedence: a verified marker wins over an
+active mirror, while an indeterminate revoked record prevents another active
+mirror from manufacturing a clean absence result.
+
+Each entry in `vectors[]` carries `surface`, `markerRead`, optional binding or
+signature overrides, and `want` with the exact `RevocationCheck`, session
+effect, and failing step. The common `fixtures` block holds the listing context,
+signed markers, bindings, and producer-only Demos write inputs. Cross-running
+against the offered producer and reader fixtures remains pending.
 
 ### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
 

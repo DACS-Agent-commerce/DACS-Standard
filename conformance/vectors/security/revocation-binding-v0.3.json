@@ -1,0 +1,229 @@
+{
+  "set": "revocation-binding-v0.3",
+  "spec": "DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution",
+  "provenance": {
+    "generator": "DACS steward scenario matrix",
+    "command": "independent runners apply each case's fixture and overrides",
+    "commit": "pending independent cross-run"
+  },
+  "gaps": [
+    "#249 revocation marker logical-to-native binding",
+    "live convention-named fixture incorporation pending contributor handoff"
+  ],
+  "decisionModel": "A valid marker yields a revoked check and refuses the new session. A current integrity-consistent active record without a binding yields absent and permits revocation step 5 to pass. Missing required bindings, tuple/logical/hash/signature failures, unreachable anchors, stale records, and surface-integrity failures yield indeterminate and refuse the new session.",
+  "publicKeys": {
+    "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05": "iw64cX4_FjVt3PVtQh-2o90lEdCjSvhQfXYBIPpCOwU"
+  },
+  "fixtures": {
+    "listing": {
+      "sellerPrimaryClaim": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05",
+      "listingId": "opaque-service",
+      "listingVersion": 3,
+      "listingContentHash": "38505a4a62f31a3be18cfdec8d00aca911d2e2e43e3a2d917c08d4644e9e11ab",
+      "signer": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05"
+    },
+    "markers": {
+      "valid-v3": {
+        "listingId": "opaque-service",
+        "listingVersion": 3,
+        "listingContentHash": "38505a4a62f31a3be18cfdec8d00aca911d2e2e43e3a2d917c08d4644e9e11ab",
+        "revokedAt": 1784073600000,
+        "reason": "withdrawn",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05",
+          "value": "Jtwo824p5mXNVW7jNM33kuSIdoqI+3hxXoaAEAQSa67AW1bXH8dgsGHMtTK3ThJC9O5m3Je3+yHtc/WzOqVSAQ=="
+        }
+      },
+      "valid-wrong-v4": {
+        "listingId": "opaque-service",
+        "listingVersion": 4,
+        "listingContentHash": "38505a4a62f31a3be18cfdec8d00aca911d2e2e43e3a2d917c08d4644e9e11ab",
+        "revokedAt": 1784073600000,
+        "reason": "withdrawn",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05",
+          "value": "CfjCsGEGOJC52u+c4pGyF9xJlq+P8Typ6iszj7fJw4BT1edyLPvXk6L1rueAe0iHv4zwqbYhCMdLLcpMroDmDQ=="
+        }
+      }
+    },
+    "bindings": {
+      "opaque-name": {
+        "sellerPrimaryClaim": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05",
+        "listingId": "opaque-service",
+        "listingVersion": 3,
+        "listingContentHash": "38505a4a62f31a3be18cfdec8d00aca911d2e2e43e3a2d917c08d4644e9e11ab",
+        "logicalAddress": "dacs1-revoked:cci%3A8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05:opaque-service:v3",
+        "markerAnchor": {
+          "kind": "storage-program",
+          "locator": "stor-472f25e7244f8c8d9e3e1aa05146d01a901ff33b"
+        },
+        "producerWriteInputs": {
+          "deployerAddress": "demos:0x9f4a",
+          "storageProgramName": "rvk_Z9q_opaque",
+          "nonce": 481,
+          "salt": "salt-rvk-01"
+        },
+        "markerContentHash": "11dd099a871ed2021a39c9d0da7a2b3db60efe3dfe336a959df7c8d1ed2bb7dd"
+      },
+      "convention-name": {
+        "sellerPrimaryClaim": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05",
+        "listingId": "opaque-service",
+        "listingVersion": 3,
+        "listingContentHash": "38505a4a62f31a3be18cfdec8d00aca911d2e2e43e3a2d917c08d4644e9e11ab",
+        "logicalAddress": "dacs1-revoked:cci%3A8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05:opaque-service:v3",
+        "markerAnchor": {
+          "kind": "storage-program",
+          "locator": "stor-81788ebd9e9f7b8d4d7b4ef768a6cd2020a36304"
+        },
+        "producerWriteInputs": {
+          "deployerAddress": "demos:0x9f4a",
+          "storageProgramName": "dacs1-revoked_opaque-service_v3",
+          "nonce": 482,
+          "salt": "salt-rvk-02"
+        },
+        "markerContentHash": "11dd099a871ed2021a39c9d0da7a2b3db60efe3dfe336a959df7c8d1ed2bb7dd"
+      }
+    }
+  },
+  "hash": "2c38f4450ec9cf60a2dc0bfbf2ad4bbcbd3f00ca720bb6938d813f98349ddf40",
+  "count": 14,
+  "vectors": [
+    {
+      "name": "opaque-name-binding-resolves-revoked",
+      "rule": "RB-1..RB-4",
+      "expected": "fail",
+      "surface": {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": "opaque-name"},
+      "markerRead": {"status": "ok", "fixture": "valid-v3"},
+      "want": {"revocationCheck": "revoked", "session": "refuse"},
+      "note": "The reader receives no programName and resolves the unrelated opaque native locator solely through the binding."
+    },
+    {
+      "name": "convention-name-binding-resolves-revoked",
+      "rule": "RB-1..RB-4",
+      "expected": "fail",
+      "surface": {"kind": "catalog", "status": "revoked", "catalogAgeHours": 1, "binding": "convention-name"},
+      "markerRead": {"status": "ok", "fixture": "valid-v3"},
+      "want": {"revocationCheck": "revoked", "session": "refuse"},
+      "note": "A convention-shaped producer still resolves through the binding; readers do not infer the native locator from its name."
+    },
+    {
+      "name": "binding-logical-address-mismatch",
+      "rule": "RB-4 step 2",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": "opaque-name"},
+      "bindingOverrides": {"logicalAddress": "dacs1-revoked:cci%3Awrong:opaque-service:v3"},
+      "markerRead": {"status": "ok", "fixture": "valid-v3"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "logicalAddress"},
+      "note": "A binding whose logical address is not derived from its listing tuple does not establish marker absence or revocation."
+    },
+    {
+      "name": "binding-marker-content-hash-mismatch",
+      "rule": "RB-4 step 3",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": "opaque-name"},
+      "bindingOverrides": {"markerContentHash": "0000000000000000000000000000000000000000000000000000000000000000"},
+      "markerRead": {"status": "ok", "fixture": "valid-v3"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "markerContentHash"},
+      "note": "Catalog or index poisoning cannot turn a different fetched artifact into a valid marker."
+    },
+    {
+      "name": "validly-signed-marker-wrong-listing-version",
+      "rule": "RB-4 step 5",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": "opaque-name"},
+      "bindingOverrides": {"markerContentHash": "a0a735d6e41fe883ce0aa1430537b4875abe8338aab018c103a4d850f6fa19b7"},
+      "markerRead": {"status": "ok", "fixture": "valid-wrong-v4"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "markerTuple"},
+      "note": "A valid signature for version 4 cannot revoke version 3."
+    },
+    {
+      "name": "marker-signature-invalid",
+      "rule": "RB-4 step 4",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": "opaque-name"},
+      "markerRead": {"status": "ok", "fixture": "valid-v3", "signatureOverride": "Atwo824p5mXNVW7jNM33kuSIdoqI+3hxXoaAEAQSa67AW1bXH8dgsGHMtTK3ThJC9O5m3Je3+yHtc/WzOqVSAQ=="},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "markerSignature"},
+      "note": "The discovery binding cannot establish authority when the listing key did not sign the marker."
+    },
+    {
+      "name": "revoked-status-missing-binding",
+      "rule": "RB-3/RB-5",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": null},
+      "markerRead": {"status": "not-attempted"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "requiredBinding"},
+      "note": "A revoked tombstone without its required binding is not a clean marker-absent result."
+    },
+    {
+      "name": "marker-anchor-unreachable",
+      "rule": "RB-4/RB-5",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": "opaque-name"},
+      "markerRead": {"status": "transport-error", "fixture": null},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "markerFetch"},
+      "note": "Failure to fetch the advertised native anchor fails closed."
+    },
+    {
+      "name": "well-known-index-hash-mismatch",
+      "rule": "RB-6",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "active", "integrity": "indexHash-mismatch", "binding": null},
+      "markerRead": {"status": "not-attempted"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "surfaceIntegrity"},
+      "note": "A stale or altered index cannot establish marker absence."
+    },
+    {
+      "name": "fresh-active-record-establishes-absent",
+      "rule": "RB-6",
+      "expected": "pass",
+      "surface": {"kind": "well-known", "status": "active", "integrity": "current-indexHash", "binding": null},
+      "markerRead": {"status": "not-applicable"},
+      "want": {"revocationCheck": "absent", "session": "continue"},
+      "note": "A successful integrity-consistent active record is the current-model marker-absent path."
+    },
+    {
+      "name": "active-record-carrying-binding-is-inconsistent",
+      "rule": "RB-3/RB-5",
+      "expected": "indeterminate",
+      "surface": {"kind": "well-known", "status": "active", "integrity": "current-indexHash", "binding": "opaque-name"},
+      "markerRead": {"status": "not-attempted"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "statusBindingConsistency"},
+      "note": "An active record is forbidden from carrying a revocation binding."
+    },
+    {
+      "name": "stale-catalog-record-cannot-establish-absent",
+      "rule": "RB-6",
+      "expected": "indeterminate",
+      "surface": {"kind": "catalog", "status": "active", "catalogAgeHours": 25, "binding": null},
+      "markerRead": {"status": "not-attempted"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "catalogFreshness"},
+      "note": "A catalog-only record older than the existing 24-hour freshness window cannot establish absence."
+    },
+    {
+      "name": "valid-revocation-precedes-active-mirror",
+      "rule": "RB-6 precedence",
+      "expected": "fail",
+      "surfaces": [
+        {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": "opaque-name"},
+        {"kind": "catalog", "status": "active", "catalogAgeHours": 1, "binding": null}
+      ],
+      "markerRead": {"status": "ok", "fixture": "valid-v3"},
+      "want": {"revocationCheck": "revoked", "session": "refuse"},
+      "note": "One verified marker wins over another surface's active record."
+    },
+    {
+      "name": "indeterminate-precedes-active-mirror",
+      "rule": "RB-6 precedence",
+      "expected": "indeterminate",
+      "surfaces": [
+        {"kind": "well-known", "status": "revoked", "integrity": "current-indexHash", "binding": null},
+        {"kind": "catalog", "status": "active", "catalogAgeHours": 1, "binding": null}
+      ],
+      "markerRead": {"status": "not-attempted"},
+      "want": {"revocationCheck": "indeterminate", "session": "refuse", "failedAt": "requiredBinding"},
+      "note": "A malformed revoked tombstone is not erased by another surface's active record."
+    }
+  ]
+}

@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-1 conformance
+
+- **Listing preserve-unknown vectors** (CORE §B.7 SIG-3/SIG-5, §11.1.2, DACS-1 §6.3.4; #247) — turns the existing additivity contract into a signed, portable Listing test without changing normative semantics. A Listing with an inert unknown top-level field verifies when hashed as received; mutating or removing the field after signing fails. A validly signed unknown phase kind remains unsupported, preserving the closed action-discriminator boundary. This exposes closed top-level-key allowlists as non-conforming while retaining required-field and known-phase validation.
+
 ### Fixed — DACS-3
 
 - **Same-bidder sealed-envelope commit authority — SE-9** (§8.4.3; #209) — makes the earliest valid in-window SR-2-anchored commit for each authenticated `bidderClaim` authoritative, with ascending lowercase-hex `bidHash` as the total-order limb when anchor timestamps are equal. Exact duplicates collapse; every later same-bidder commit is inert, and a reveal that opens only a non-authoritative commit is excluded as a bidHash mismatch. An unresolvable otherwise-candidate anchor leaves that bidder's authority `indeterminate`, never silently selects another commit. This prevents a bidder from anchoring multiple bids and choosing the favourable one at reveal time, and prevents implementations from deriving different winners by choosing earliest, latest, or reject-all. Adds four candidate security vectors; no schema change and no additional DACS-3 version bump beyond the already-unreleased v0.3 surface.

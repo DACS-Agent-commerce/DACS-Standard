@@ -1,0 +1,224 @@
+{
+  "set": "sealed-envelope-multicommit-v0.1",
+  "spec": "DACS-3 §8.4.3 (SE-9 same-bidder commit authority)",
+  "gaps": [
+    "#209 same-bidder multi-commit authority"
+  ],
+  "decisionModel": "expected is the subject bidder's admission verdict after SE-9 authority resolution; expectedWinnerClaim is the deterministic selection output",
+  "ctx": {
+    "commitDeadline": 1750000000000,
+    "revealWindowSec": 300,
+    "listingCurrency": "USDC",
+    "selectionRule": "lowest-price"
+  },
+  "hash": "521d0688eae9d220c99d56217258e4b8fbae1ed0533e0dfdefae15a2f657f53e",
+  "count": 4,
+  "vectors": [
+    {
+      "name": "multi-commit-earliest-authoritative",
+      "expected": "pass",
+      "note": "A1 anchors before A2, so A1 is authoritative even though A2 self-reports an earlier commitTimestamp; revealing A1 admits bidder A and A2 is inert",
+      "subjectBidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "commits": [
+        {
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999999500,
+          "anchorTimestamp": 1749999998000
+        },
+        {
+          "bidHash": "f221355e4b78133dfbeeb96d3bd574c5146c8aabda92b13309128b609424c6f8",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999997000,
+          "anchorTimestamp": 1749999999000
+        }
+      ],
+      "reveals": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bid": {
+            "price": {
+              "amount": "100.00",
+              "currency": "USDC"
+            },
+            "deliverable": {
+              "ref": "svc-1"
+            }
+          },
+          "salt": "ERERERERERERERERERERERERERERERERERERERERERE",
+          "anchorTimestamp": 1750000060000
+        }
+      ],
+      "expectedAuthoritativeCommits": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668"
+        }
+      ],
+      "expectedAdmittedBidderClaims": [
+        "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "expectedWinnerClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "multi-commit-later-reveal-excluded",
+      "expected": "fail",
+      "note": "A1 anchors before A2; revealing only A2 does not open the authoritative commit, so bidder A is excluded and the candidate set is empty",
+      "subjectBidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "commits": [
+        {
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999999500,
+          "anchorTimestamp": 1749999998000
+        },
+        {
+          "bidHash": "f221355e4b78133dfbeeb96d3bd574c5146c8aabda92b13309128b609424c6f8",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999997000,
+          "anchorTimestamp": 1749999999000
+        }
+      ],
+      "reveals": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bid": {
+            "price": {
+              "amount": "70.00",
+              "currency": "USDC"
+            },
+            "deliverable": {
+              "ref": "svc-1"
+            }
+          },
+          "salt": "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI",
+          "anchorTimestamp": 1750000060000
+        }
+      ],
+      "expectedAuthoritativeCommits": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668"
+        }
+      ],
+      "expectedAdmittedBidderClaims": [],
+      "expectedWinnerClaim": null
+    },
+    {
+      "name": "multi-commit-earliest-vs-latest-winner-divergence",
+      "expected": "fail",
+      "note": "A reveals later A2 at 70 while B validly reveals 90; earliest-authoritative excludes A2, so B wins instead of the cross-implementation-divergent latest-commit result A",
+      "subjectBidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "commits": [
+        {
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999999500,
+          "anchorTimestamp": 1749999998000
+        },
+        {
+          "bidHash": "f221355e4b78133dfbeeb96d3bd574c5146c8aabda92b13309128b609424c6f8",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999997000,
+          "anchorTimestamp": 1749999999000
+        },
+        {
+          "bidHash": "b69e9fa71e374e5829c24faabf86fbef29eceef6501dc2395a63d33af31cbb06",
+          "bidderClaim": "cci:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "commitTimestamp": 1749999998200,
+          "anchorTimestamp": 1749999998500
+        }
+      ],
+      "reveals": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bid": {
+            "price": {
+              "amount": "70.00",
+              "currency": "USDC"
+            },
+            "deliverable": {
+              "ref": "svc-1"
+            }
+          },
+          "salt": "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiI",
+          "anchorTimestamp": 1750000060000
+        },
+        {
+          "bidderClaim": "cci:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bid": {
+            "price": {
+              "amount": "90.00",
+              "currency": "USDC"
+            },
+            "deliverable": {
+              "ref": "svc-1"
+            }
+          },
+          "salt": "MzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM",
+          "anchorTimestamp": 1750000061000
+        }
+      ],
+      "expectedAuthoritativeCommits": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668"
+        },
+        {
+          "bidderClaim": "cci:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "bidHash": "b69e9fa71e374e5829c24faabf86fbef29eceef6501dc2395a63d33af31cbb06"
+        }
+      ],
+      "expectedAdmittedBidderClaims": [
+        "cci:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ],
+      "expectedWinnerClaim": "cci:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "name": "multi-commit-same-anchor-total-order",
+      "expected": "pass",
+      "note": "A2 is deliberately listed first and self-reports earlier, but both commits share an SR-2 anchor timestamp; ascending lowercase-hex bidHash makes A1 authoritative independent of collection order",
+      "subjectBidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "commits": [
+        {
+          "bidHash": "f221355e4b78133dfbeeb96d3bd574c5146c8aabda92b13309128b609424c6f8",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999997000,
+          "anchorTimestamp": 1749999998000
+        },
+        {
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668",
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "commitTimestamp": 1749999999500,
+          "anchorTimestamp": 1749999998000
+        }
+      ],
+      "reveals": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bid": {
+            "price": {
+              "amount": "100.00",
+              "currency": "USDC"
+            },
+            "deliverable": {
+              "ref": "svc-1"
+            }
+          },
+          "salt": "ERERERERERERERERERERERERERERERERERERERERERE",
+          "anchorTimestamp": 1750000060000
+        }
+      ],
+      "expectedAuthoritativeCommits": [
+        {
+          "bidderClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "bidHash": "c4e34284fd00ed11861faf0dcaab725cff89f109fd2605c2baebf9d2caacd668"
+        }
+      ],
+      "expectedAdmittedBidderClaims": [
+        "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "expectedWinnerClaim": "cci:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ]
+}

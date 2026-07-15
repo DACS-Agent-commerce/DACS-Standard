@@ -26,14 +26,18 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
+| [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 13 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 
@@ -43,6 +47,74 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `bundle-absence-evidence-v0.3.json` — CORE §5 SR-2 + DACS-5 §10.4.3 / §10.5.1 guard (iv)
+
+4 candidate vectors for the two-address bundle-read gate introduced by #251.
+They keep a single unqualified `not found`, a transport error, and inconsistent
+finalized-state views `indeterminate`; allow one-sided classification only when
+the substrate binding's declared absence policy is satisfied; and restore the
+normal divergent-copy exclusion when an independent view returns the hidden
+counterparty copy.
+
+The included `2-of-3` read is an example policy chosen by the fixture, not a DACS
+quorum requirement. CORE permits a finalized non-membership proof or another
+binding-defined authenticated independent quorum, provided the binding declares
+finality, authentication, independence/threshold, freshness, and state-
+consistency rules. The current Demos mapping declares no such policy, so its
+ordinary `not found` path exercises the indeterminate case.
+
+#### Vector schema
+
+Each entry in `vectors[]`:
+
+| field | meaning |
+|-------|---------|
+| `name` | stable case id |
+| `expected` | §7.5.1 verdict: `pass` \| `fail` \| `indeterminate` |
+| `binding.absenceEvidencePolicy` | binding-defined policy, or `null` when none exists |
+| `reads` / `variants` | positive content, absence observations, or failure/state-skew inputs |
+| `want.readDispositions` | CORE SR-2 result per buyer/seller address where applicable |
+| `want.lookupDisposition` | DACS-5 consumer result: `one-sided`, `divergent`, or `indeterminate` |
+| `want.reputationEffect` | `include` only after authoritative absence; otherwise `exclude` |
+
+This is a candidate set. Independent cross-run convergence and golden promotion
+remain pending.
+
+### `phase-kind-divergence-v0.3.json` — §10.4.3 / §10.5.1 guard (ii)
+
+One candidate comparator case isolates the ruling's exact fork: the two bundle
+copies have the same `jobId`, bundle outcome, phase-index set, per-entry
+outcome, and absent `errorClass`, but the shared index names different phase
+kinds. The expected consumer verdict is `divergent`; a DACS-5 reputation
+deriver excludes the jobId from every metric and does not select either copy.
+
+### `revocation-binding-v0.3.json` — §6.3.4 RB-1..RB-6
+
+14 candidate scenarios for resolving and validating a listing revocation marker
+without knowing its StorageProgram name. The two positive marker fixtures use
+real Ed25519 signatures over `"dacs-revocation:v1:" || markerContentHash` and
+pin both opaque-name and convention-name native-address derivations. Consumers
+receive only the published `RevocationBinding`; producer write inputs remain
+fixture provenance and are not resolution inputs.
+
+Coverage includes logical-address derivation, marker content-hash and signature
+checks, the exact listing-tuple match, the retained `status: "revoked"`
+condition, unreachable anchors, stale or hash-inconsistent discovery state, and
+the current-model successful `absent` path. The expected top-level verdict is
+the new-session admission result: a verified revocation is `fail`, a completed
+active/no-binding check is `pass`, and any incomplete or inconsistent check is
+`indeterminate`.
+
+Two multi-surface cases pin RB-6 precedence: a verified marker wins over an
+active mirror, while an indeterminate revoked record prevents another active
+mirror from manufacturing a clean absence result.
+
+Each entry in `vectors[]` carries `surface`, `markerRead`, optional binding or
+signature overrides, and `want` with the exact `RevocationCheck`, session
+effect, and failing step. The common `fixtures` block holds the listing context,
+signed markers, bindings, and producer-only Demos write inputs. Cross-running
+against the offered producer and reader fixtures remains pending.
 
 ### `sb3-eip3009-nonce-v0.1.json` — §9.5.8 SB-3 (byte-exact x402 EIP-3009 binding)
 
@@ -355,6 +427,31 @@ Run (reference): `npx tsx conformance/security-vectors/rail-availability-selecti
 A top-level `ctx` (`commitDeadline`, `revealWindowSec`, `authenticatedSender`); each entry in `vectors[]`: `name`, `expected`, `note`, `commit` (`bidHash`, `bidderClaim`, `commitTimestamp`, `anchorTimestamp`), `reveal` (`bid`, `salt`, `anchorTimestamp`) or `null`.
 
 Run (reference): `npx tsx conformance/security-vectors/sealed-envelope-deadline/run.mts` → 15/15.
+
+### `sealed-envelope-multicommit-v0.1.json` — §8.4.3 SE-9 (same-bidder commit authority)
+
+4 vectors pin the authoritative commitment when one bidder anchors multiple
+in-window commits (#209):
+
+- the earliest SR-2 anchor timestamp wins and self-reported `commitTimestamp`
+  never affects authority;
+- revealing only a later same-bidder commit excludes that bidder as a bidHash
+  mismatch;
+- a lowest-price case proves the resulting winner differs from an incorrect
+  latest-commit implementation; and
+- equal anchor timestamps use ascending lowercase-hex `bidHash`, independent of
+  collection order.
+
+#### Vector schema
+
+Each entry carries `commits[]`, `reveals[]`, and a `subjectBidderClaim`.
+`expected` is the subject bidder's admission verdict after SE-9 authority
+resolution. `expectedAuthoritativeCommits`, `expectedAdmittedBidderClaims`, and
+`expectedWinnerClaim` pin the intermediate authority/admission decisions and the
+final selection result. Commit and reveal hashes use the §8.4.3
+`dacs-sealed-bid:v1:` preimage with 32-byte base64url salts.
+
+Candidate set; independent implementation cross-run pending.
 
 ### `private-deliverables-v0.1.json` — §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6, private delivery + entitlement credentials)
 

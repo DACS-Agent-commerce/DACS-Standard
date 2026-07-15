@@ -1735,7 +1735,7 @@
       "id": "verify-consume-divergent",
       "area": "verify",
       "spec": "§10.4.3(d)",
-      "summary": "canonically divergent bundles are retained for per-party policy",
+      "summary": "canonically divergent bundles yield a disputed consumer verdict; party-specific DACS-5 reputation selection is forbidden",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
@@ -2070,7 +2070,7 @@
       "id": "verify-reputation-divergence-excluded",
       "area": "verify",
       "spec": "§10.5.1/§10.4.3(d)",
-      "summary": "guard (ii): contradictory self/counterparty copies are excluded from BOTH numerator and party_fault_denom",
+      "summary": "the same contradictory copies classify divergent and guard (ii) excludes them from BOTH numerator and party_fault_denom",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {

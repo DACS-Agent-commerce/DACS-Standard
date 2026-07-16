@@ -27,7 +27,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
-| [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `error` / `fail` / `indeterminate` / `pass` |
+| [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |

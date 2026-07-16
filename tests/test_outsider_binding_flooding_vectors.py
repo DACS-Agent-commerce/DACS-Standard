@@ -1,14 +1,26 @@
 """Checks for conformance/vectors/security/outsider-binding-flooding-v0.3.json.
 
-Exercises the §10.4.2 BB-6 authorized-candidate rule against the round-3 blocker #4
-attack: an outsider cannot force a void, and budget exhaustion / no-authorized-binding
-resolve to indeterminate, never absent and never a void.
+Exercises the §10.4.2 BB-6 authorized-candidate rule. Round-5 adds the round-4 blocker #2
+fixes (E6): a per-signer fetch budget plus a mandatory derivation-context prune. Two new
+vectors run the EXECUTED resolver (tests/dacs5_reference.resolve_bb6):
+
+  - outsider-flood-worst-order: nine outsider hashes ALL sort STRICTLY BELOW the honest
+    hash — the adversarial ordering the round-3 vector avoided (its test asserted the
+    convenient "honest within the first 8" ordering). Here the assertion is inverted and
+    the honest copy still resolves, because the per-signer budget isolates each signer.
+  - outsider-sybil-flood: eight DISTINCT outsider keypairs cannot starve the honest
+    signer's per-signer allocation.
+
+A global-budget / no-prune resolver (the mutation) would return indeterminate on both.
+Signature verification is gated on `cryptography`.
 """
 import base64
 import hashlib
 import json
 import unittest
 from pathlib import Path
+
+import dacs5_reference as R
 
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -25,6 +37,8 @@ EXPECTED_NAMES = {
     "co-signed-map-prefetch-prunes-outsiders",
     "honest-self-flood-budget-exhaustion",
     "outsider-flood-no-honest-binding",
+    "outsider-flood-worst-order",
+    "outsider-sybil-flood",
 }
 
 
@@ -59,36 +73,42 @@ class OutsiderBindingFloodingTests(unittest.TestCase):
             self.assertIn(v["expected"], {"pass", "indeterminate"})
 
     def test_no_vector_ever_voids(self):
-        # the core round-3 property: an outsider flood never produces a void.
         for v in self.vectors:
             with self.subTest(vector=v["name"]):
                 self.assertFalse(v["want"].get("void", False), "no vector may resolve to a void")
 
-    def test_honest_copy_resolves_over_flood(self):
-        v = self.by_name["outsider-flood-nine-plus-one-honest"]
-        self.assertEqual(v["expected"], "pass")
-        self.assertEqual(v["want"]["authorizedBindings"], 1)
-        self.assertEqual(v["want"]["outsiderBindings"], 9)
-        self.assertEqual(v["want"]["sideDisposition"], "present")
-        self.assertIn(v["want"]["resolvedNativeAddress"], v["anchored"])
+    def test_worst_order_hashes_sort_strictly_below_honest(self):
+        """Round-5, inverted from round-4: assert ADVERSARIALLY that at least eight outsider
+        hashes sort strictly below the honest binding's hash — the ordering the attacker
+        controls — and require the honest copy to still resolve."""
+        v = self.by_name["outsider-flood-worst-order"]
+        honest = v["honestContentHash"]
+        outsider = [b["bundleContentHash"] for b in v["bindings"] if b["signer"] != "did:demos:seller"]
+        below = [h for h in outsider if h < honest]
+        self.assertGreaterEqual(len(below), 8, "worst-order must place >=8 outsider hashes below the honest one")
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "present")
+        self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"])
 
-    def test_honest_binding_sorts_within_fetch_budget(self):
-        # BB-6 fetches at most N=8 candidates in ascending bundleContentHash order. The honest
-        # (victim-role-holder-signed) binding must sort within the first 8, or the pass verdict is
-        # unreachable — this pins it so regeneration can never silently break it.
-        v = self.by_name["outsider-flood-nine-plus-one-honest"]
-        ordered = sorted(v["bindings"], key=lambda b: b["bundleContentHash"])
-        honest_index = next(
-            i for i, b in enumerate(ordered, start=1)
-            if b["signature"]["signer"] == "did:demos:seller"
-        )
-        self.assertLessEqual(honest_index, 8, "honest binding must sort within the N=8 fetch budget")
+    def test_sybil_distinct_keys_do_not_starve_honest(self):
+        """Eight DISTINCT outsider keys, each its own per-signer bucket; the honest signer
+        still resolves. A global (jobId,role) budget would let them crowd it out."""
+        v = self.by_name["outsider-sybil-flood"]
+        signers = {b["signer"] for b in v["bindings"] if b["signer"] != "did:demos:seller"}
+        self.assertEqual(len(signers), 8, "sybil flood must use 8 distinct outsider keys")
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "present")
+        self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"])
 
-    def test_budget_exhaustion_is_indeterminate(self):
-        v = self.by_name["honest-self-flood-budget-exhaustion"]
-        self.assertEqual(v["expected"], "indeterminate")
-        self.assertGreater(v["want"]["authorizedCandidates"], v["want"]["budget"])
-        self.assertEqual(v["want"]["sideDisposition"], "indeterminate")
+    def test_executed_resolver_matches_want_disposition(self):
+        """Run resolve_bb6 over every vector that carries a partyMap/anchored and require the
+        executed disposition to agree with want.sideDisposition."""
+        for v in self.vectors:
+            if "partyMap" not in v:
+                continue
+            res = R.resolve_bb6(v["bindings"], party_map=v.get("partyMap"), anchored=v.get("anchored"))
+            with self.subTest(vector=v["name"]):
+                self.assertEqual(res["disposition"], v["want"]["sideDisposition"])
 
     def test_no_authorized_binding_is_indeterminate_not_absent(self):
         v = self.by_name["outsider-flood-no-honest-binding"]
@@ -99,8 +119,6 @@ class OutsiderBindingFloodingTests(unittest.TestCase):
 
     @unittest.skipUnless(HAVE_CRYPTO, "cryptography package not installed; CI runs the stdlib checks.")
     def test_all_signatures_verify(self):
-        # Even outsider bindings are validly self-signed (BB-4 passes); their failure is authorization,
-        # not signature.
         keys = {r: Ed25519PrivateKey.from_private_bytes(bytes.fromhex(s)) for r, s in self.data["seeds"].items()}
         pub = {f"did:demos:{r}": keys[r].public_key() for r in self.data["seeds"]}
         for v in self.vectors:

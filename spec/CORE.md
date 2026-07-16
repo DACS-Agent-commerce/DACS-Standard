@@ -287,6 +287,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-5 attestation bundle | "dacs-bundle:v1:" | §10.4.1 |
 | DACS-5 fault attestation bundle | "dacs-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 BundleBinding | "dacs-bundle-binding:v1:" | §10.4.2 |
+| DACS-5 FaultAttestationBundle extended pointer | "dacs-fault-bundle-pointer:v1:" | §10.4.2 |
 | DACS-5 rating record | "dacs-rating:v1:" | §10.6 |
 | DACS-1 bundle session-key root binding | "dacs-session-binding:v1:" | §6.3.2 |
 | DACS-3 auto-accept commitment | "dacs-auto-accept-commitment:v1:" | §8.4.1 |

@@ -1,70 +1,382 @@
 {
   "set": "receipt-rederivation-v0.3",
-  "spec": "DACS-5 §10.5.3 determinism receipt clauses (3)/(4) + §10.5.1 resolutionContext",
+  "spec": "DACS-5 §10.5.3 determinism receipt clauses (3)/(4) + §10.5.1 resolutionContext (E5)",
+  "provenance": {
+    "generator": "scripts/generate_dacs5_reputation_vectors.py (deterministic; synthetic disclosed seeds)",
+    "canonicalisation": "RFC 8785 JCS over the artifact minus its hash-excluded fields (FaultAttestationBundle/AttestationBundle: signatures+anchoredByRole; binding: signature); attestation_bundle_hash = sha256 hex; ed25519 over the CORE §B.7 domain-separated payload (dacs-fault-bundle:v1: / dacs-bundle:v1: / dacs-bundle-binding:v1: || hash), base64url-unpadded.",
+    "note": "Concrete FAB copies signed under dacs-fault-bundle:v1:. The pass vector replays through derive(); the fail vectors are published receipts missing a REQUIRED resolutionContext member.",
+    "seeds": "synthetic repeated-byte ed25519 seeds; buyer a1.., seller c3.., orchestrator 0e.., outsider f0.."
+  },
   "gaps": [
-    "round-3 review: receipt rederivation context (#5)"
+    "round-3 review: receipt rederivation context (#5)",
+    "#248 round-4 blocker #1: replayable receipt"
   ],
-  "decisionModel": "A published ReputationDerivation MUST carry exactly one resolutionContext entry per bundleRefs member, keyed by contentHash, giving the resolved role and — for every one-copy jobId — the counterparty address's absenceEvidenceRef. A rederivation supplying each entry as its §10.5.1 input-precondition tag MUST reproduce byte-identical metrics and bundleCount; a missing, mis-keyed, or insufficient resolutionContext is non-conforming, and a one-copy jobId without a valid absenceEvidenceRef MUST NOT be published.",
+  "decisionModel": "A published ReputationDerivation MUST carry one resolutionContext entry per bundleRefs member: roleEvidence backing resolvedRole, counterpartyRef for a two-copy jobId (so a rederiver can re-run §10.4.3 divergence + authority selection), and absenceEvidenceRef + absenceBinding for a one-copy jobId. A rederivation supplying each entry as its §10.5.1 tag MUST reproduce byte-identical metrics and bundleCount; a receipt missing any REQUIRED member is non-conforming.",
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+    "did:demos:orchestrator": "C-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw",
+    "did:demos:outsider": "X2cTKUw88agU6NjKCInbI-aCO3UkuvE0n7x9n1FSlFs"
+  },
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "orchestrator": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+    "outsider": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"
+  },
   "vectors": [
     {
       "name": "complete-resolution-context-replays-identical",
-      "rule": "§10.5.3 (3)/(4)",
+      "rule": "§10.5.3 (3)/(4); E5",
       "expected": "pass",
-      "note": "a derivation whose resolutionContext has one entry per bundleRefs member — including a one-copy entry carrying absenceEvidenceRef — replays byte-identical under the recorded windowingBasis; conforming.",
-      "derivation": {
-        "bundleRefs": [
-          "hashA",
-          "hashB"
-        ],
-        "resolutionContext": [
-          {
-            "contentHash": "hashA",
-            "resolvedRole": "seller",
-            "counterpartyDisposition": "present"
+      "note": "two jobIds: a two-copy present jobId (both completed FAB copies) carrying counterpartyRef, and a one-copy absent jobId (seller aborted-by-self) carrying absenceEvidenceRef + absenceBinding. Dereferencing bundleRefs and re-running derive() with each entry as its tag reproduces byte-identical metrics and bundleCount.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "taggedBundles": [
+        {
+          "bundle": {
+            "faultBundleVersion": "1",
+            "jobId": "RCP-A",
+            "outcome": "completed",
+            "faultedParty": "none",
+            "anchoredByRole": "seller",
+            "listingRef": {
+              "listingId": "listing-RCP-A",
+              "version": 1,
+              "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+            },
+            "parties": [
+              {
+                "role": "buyer",
+                "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+                "primaryClaim": "did:demos:buyer"
+              },
+              {
+                "role": "seller",
+                "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+                "primaryClaim": "did:demos:seller"
+              }
+            ],
+            "phaseSummary": [
+              {
+                "index": 0,
+                "kind": "deliver-storage-program",
+                "outcome": "ok"
+              }
+            ],
+            "vetRecords": [],
+            "settlementEvidence": [],
+            "recipeRegistryVersion": 1,
+            "railRegistryVersion": 1,
+            "finalisedAt": 1780004000000,
+            "signatures": [
+              {
+                "party": "did:demos:buyer",
+                "algorithm": "ed25519",
+                "value": "n1JIsLULNy_1VSQmPRhoigwJ49yviVC-3ZyWk6W5a-L1QIEnVMaPUG35jh3MEPkQk0K-_468sQdqZa709j1-BA"
+              },
+              {
+                "party": "did:demos:seller",
+                "algorithm": "ed25519",
+                "value": "6e7SDz3aT2TDYbhd_nXJoAXpCFn2goN1Wg8AVX_CTAAcksk495nuv0VmUIVma1Ttn9J6_TyCSyxCiY1ZFenRBg"
+              }
+            ]
           },
-          {
-            "contentHash": "hashB",
-            "resolvedRole": "buyer",
-            "counterpartyDisposition": "absent",
-            "absenceEvidenceRef": {
-              "kind": "non-membership-proof",
-              "locator": "stor-0000000000000000000000000000000000000000",
-              "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+          "resolvedRole": "seller",
+          "counterpartyDisposition": "present",
+          "counterpartyRef": {
+            "kind": "dacs-5-bundle",
+            "id": "RCP-A-buyer",
+            "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
+          },
+          "roleEvidence": {
+            "kind": "binding",
+            "binding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-A",
+              "role": "seller",
+              "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+              "nativeAddress": "stor-20fc918da649a9cc5197135c541aaab61093e507",
+              "bundleContentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+              "anchorTx": "demos-testnet:tx-20fc918da649a9cc",
+              "signer": "did:demos:seller",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:seller",
+                "value": "I8dxZMmc4PtYLIS9RII_q73kitJHJWXSe4K7s6a28N12eOHpLTZsaJvVNDEjWMrRdOMCt3sira04_lIHOS1BDQ"
+              }
             }
           }
-        ],
-        "windowingBasis": "sr2-anchor-timestamp"
+        },
+        {
+          "bundle": {
+            "faultBundleVersion": "1",
+            "jobId": "RCP-B",
+            "outcome": "aborted-by-self",
+            "faultedParty": "seller",
+            "anchoredByRole": "seller",
+            "listingRef": {
+              "listingId": "listing-RCP-B",
+              "version": 1,
+              "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+            },
+            "parties": [
+              {
+                "role": "buyer",
+                "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+                "primaryClaim": "did:demos:buyer"
+              },
+              {
+                "role": "seller",
+                "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+                "primaryClaim": "did:demos:seller"
+              }
+            ],
+            "phaseSummary": [
+              {
+                "index": 0,
+                "kind": "deliver-storage-program",
+                "outcome": "ok"
+              }
+            ],
+            "vetRecords": [],
+            "settlementEvidence": [],
+            "recipeRegistryVersion": 1,
+            "railRegistryVersion": 1,
+            "finalisedAt": 1780004000000,
+            "signatures": [
+              {
+                "party": "did:demos:seller",
+                "algorithm": "ed25519",
+                "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+              }
+            ]
+          },
+          "resolvedRole": "seller",
+          "counterpartyDisposition": "absent",
+          "absenceEvidenceRef": {
+            "kind": "non-membership-proof",
+            "locator": "stor-0000000000000000000000000000000000000000",
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          "absenceBinding": {
+            "bindingVersion": "1",
+            "jobId": "RCP-B",
+            "role": "buyer",
+            "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+            "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+            "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+            "signer": "did:demos:buyer",
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:buyer",
+              "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+            }
+          },
+          "roleEvidence": {
+            "kind": "binding",
+            "binding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "seller",
+              "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+              "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+              "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+              "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+              "signer": "did:demos:seller",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:seller",
+                "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+              }
+            }
+          }
+        }
+      ],
+      "derefBundles": {
+        "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "n1JIsLULNy_1VSQmPRhoigwJ49yviVC-3ZyWk6W5a-L1QIEnVMaPUG35jh3MEPkQk0K-_468sQdqZa709j1-BA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "6e7SDz3aT2TDYbhd_nXJoAXpCFn2goN1Wg8AVX_CTAAcksk495nuv0VmUIVma1Ttn9J6_TyCSyxCiY1ZFenRBg"
+            }
+          ]
+        },
+        "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004001000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "05p0t-hKWx6LD9UsVTp6jLZzKFt_xHZG4bwhvJA2j2i0HwvQeDGVHtbo4DXFgsqfK7W9Ewfba4mRDgBT1INKAA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "zvpXu2WvMfQqXouG0n6VNZO3zuW2UbnjE91daLV-v6p2V-YoauIdBN23fudZG8bhbvZseG9Yx-hYEjxHMESRDQ"
+            }
+          ]
+        },
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
       },
       "want": {
         "conforming": true,
         "replayByteIdentical": true,
         "reputationEffect": "include",
-        "reason": "resolutionContext has exactly one entry per bundleRefs member keyed by contentHash; replay reproduces byte-identical metrics/bundleCount (§10.5.3 (3)/(4))"
+        "bundleCount": 2,
+        "metrics": {
+          "completionRate": 0.5,
+          "counterpartyAdjustedCompletionRate": 0.5,
+          "counterpartyFaultRate": 0.0
+        },
+        "reason": "complete resolutionContext (roleEvidence + counterpartyRef + absenceBinding) replays byte-identical (§10.5.3 (3)/(4))"
       }
     },
     {
-      "name": "miskeyed-resolution-context-is-nonconforming",
-      "rule": "§10.5.3 (4)",
+      "name": "receipt-missing-counterparty-ref",
+      "rule": "§10.5.3 (3)/(4); E5",
       "expected": "fail",
-      "note": "the resolutionContext is missing an entry for one bundleRefs member (mis-keyed by contentHash); the derivation is not independently reproducible.",
+      "note": "a published receipt whose two-copy (present) entry omits counterpartyRef; a rederiver cannot re-run §10.4.3 divergence or authority selection against the counterparty copy, so the receipt is not independently reproducible and is non-conforming.",
       "derivation": {
         "bundleRefs": [
-          "hashA",
-          "hashB"
+          "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319"
         ],
         "resolutionContext": [
           {
-            "contentHash": "hashA",
+            "contentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
             "resolvedRole": "seller",
-            "counterpartyDisposition": "present"
+            "counterpartyDisposition": "present",
+            "roleEvidence": {
+              "kind": "address",
+              "resolvedAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c"
+            }
           }
         ],
-        "windowingBasis": "sr2-anchor-timestamp"
+        "windowingBasis": "finalisedAt"
       },
       "want": {
         "conforming": false,
         "reputationEffect": "exclude",
-        "reason": "resolutionContext is missing/mis-keyed for a bundleRefs member; the derivation is not independently reproducible and is non-conforming (§10.5.3 (4))"
+        "reason": "present-disposition entry missing counterpartyRef; a rederiver cannot re-run §10.4.3 divergence/authority — non-conforming (E5)"
       }
     },
     {
@@ -74,16 +386,20 @@
       "note": "a one-copy jobId whose resolutionContext entry is absent-disposition but lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation.",
       "derivation": {
         "bundleRefs": [
-          "hashB"
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
         ],
         "resolutionContext": [
           {
-            "contentHash": "hashB",
-            "resolvedRole": "buyer",
-            "counterpartyDisposition": "absent"
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "absent",
+            "roleEvidence": {
+              "kind": "address",
+              "resolvedAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be"
+            }
           }
         ],
-        "windowingBasis": "sr2-anchor-timestamp"
+        "windowingBasis": "finalisedAt"
       },
       "want": {
         "conforming": false,
@@ -91,8 +407,42 @@
         "reputationEffect": "exclude",
         "reason": "a one-copy jobId whose entry lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation (§10.5.3/guard (iv))"
       }
+    },
+    {
+      "name": "miskeyed-resolution-context-is-nonconforming",
+      "rule": "§10.5.3 (4)",
+      "expected": "fail",
+      "note": "the resolutionContext is missing an entry for one bundleRefs member (mis-keyed by contentHash); the derivation is not independently reproducible.",
+      "derivation": {
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+          "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "present",
+            "counterpartyRef": {
+              "kind": "dacs-5-bundle",
+              "id": "RCP-A-buyer",
+              "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
+            },
+            "roleEvidence": {
+              "kind": "address",
+              "resolvedAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c"
+            }
+          }
+        ],
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "reputationEffect": "exclude",
+        "reason": "resolutionContext is missing/mis-keyed for a bundleRefs member; not independently reproducible and non-conforming (§10.5.3 (4))"
+      }
     }
   ],
-  "count": 3,
-  "hash": "7130992ef63d4c86a26abc271805b8d3e983b3ed71ca04a9a40623c0d1fa393c"
+  "count": 4,
+  "hash": "c2c5c06a7235aff5332deffe39f3d22a0240a0cf04188dd6e0146e9d369588ee"
 }

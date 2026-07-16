@@ -41,6 +41,7 @@ ROLE_BY_CLAIM = {c: r for r, c in CLAIM.items()}
 BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
 LEGACY_DOMAIN = "dacs-bundle:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
+FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 FINALISED_AT = 1780004000000
 
 
@@ -87,8 +88,16 @@ def _parties():
     ]
 
 
+def _parties3():
+    """Three-party roster (distinct orchestrator) for the E4 implied-fault-SET vectors."""
+    return _parties() + [
+        {"role": "orchestrator", "bundleHash": sha("bundle", "orchestrator"), "primaryClaim": CLAIM["orchestrator"]},
+    ]
+
+
 def make_fab(keys, job_id, outcome, faulted_party, anchored_by_role, sign_roles,
-             phase_kind="deliver-storage-program", phase_outcome="ok"):
+             phase_kind="deliver-storage-program", phase_outcome="ok", parties=None,
+             finalised_at=FINALISED_AT):
     b = {
         "faultBundleVersion": "1",
         "jobId": job_id,
@@ -97,13 +106,13 @@ def make_fab(keys, job_id, outcome, faulted_party, anchored_by_role, sign_roles,
         "anchoredByRole": anchored_by_role,
         "listingRef": {"listingId": "listing-" + job_id, "version": 1,
                        "contentHash": sha("listing", job_id)},
-        "parties": _parties(),
+        "parties": parties or _parties(),
         "phaseSummary": [{"index": 0, "kind": phase_kind, "outcome": phase_outcome}],
         "vetRecords": [],
         "settlementEvidence": [],
         "recipeRegistryVersion": 1,
         "railRegistryVersion": 1,
-        "finalisedAt": FINALISED_AT,
+        "finalisedAt": finalised_at,
         "signatures": [],
     }
     h = bundle_hash(b)
@@ -116,7 +125,7 @@ def make_fab(keys, job_id, outcome, faulted_party, anchored_by_role, sign_roles,
 
 
 def make_legacy(keys, job_id, outcome, anchored_by_role, sign_roles,
-                phase_kind="deliver-storage-program", phase_outcome="ok"):
+                phase_kind="deliver-storage-program", phase_outcome="ok", parties=None):
     b = {
         "bundleVersion": "1",
         "jobId": job_id,
@@ -124,7 +133,7 @@ def make_legacy(keys, job_id, outcome, anchored_by_role, sign_roles,
         "anchoredByRole": anchored_by_role,
         "listingRef": {"listingId": "listing-" + job_id, "version": 1,
                        "contentHash": sha("listing", job_id)},
-        "parties": _parties(),
+        "parties": parties or _parties(),
         "phaseSummary": [{"index": 0, "kind": phase_kind, "outcome": phase_outcome}],
         "vetRecords": [],
         "settlementEvidence": [],
@@ -158,6 +167,21 @@ def make_binding(keys, job_id, role, signer_role, native, content_hash, idx=0):
     bd["signature"] = {"algorithm": "ed25519", "signer": CLAIM[signer_role],
                        "value": b64u(keys[signer_role].sign(payload))}
     return bd
+
+
+def make_fab_pointer(keys, signer_role, full_url, full_content_hash):
+    """FaultBundleExtendedPointer (E7), signed over dacs-fault-bundle-pointer:v1: || hash."""
+    p = {
+        "faultBundleVersion": "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": full_url,
+        "fullBundleContentHash": full_content_hash,
+    }
+    ph = binding_hash(p)   # sha256(canonical(pointer minus signature)) — same excluded-field shape
+    payload = (FAULT_POINTER_DOMAIN + ph).encode("utf-8")
+    p["signature"] = {"algorithm": "ed25519", "signer": CLAIM[signer_role],
+                      "value": b64u(keys[signer_role].sign(payload))}
+    return p
 
 
 def concrete_header(keys, name, spec, gaps, decision, note):
@@ -285,7 +309,63 @@ def build_mixed_version(keys):
         "copies": {"seller": lega, "buyer": legb},
         "want": {"expected": "pass", "convergence": "unified", "authoritativeCopyType": "AttestationBundle",
                  "reputationEffect": "include", "scoredRole": "seller", "scoredOutcome": "aborted-by-self",
-                 "reason": "legacy pair uses the outcome-spelling definition; perspective-partner spellings do not diverge"},
+                 "reason": "legacy pair reconciled via perspective_flip; partner spellings are one event, not a contradiction (§10.4.3/§10.5.1)"},
+    })
+    # (6) legacy+legacy GENUINE divergence: both copies aborted-by-self from opposite roles ->
+    #     flip the counterparty copy (buyer's aborted-by-self -> aborted-by-other) contradicts the
+    #     seller's aborted-by-self; both parties blame themselves -> canonical divergence -> exclude.
+    v6j = j + "-6"
+    lega6 = make_legacy(keys, v6j, "aborted-by-self", "seller", ["seller"])
+    legb6 = make_legacy(keys, v6j, "aborted-by-self", "buyer", ["buyer"])
+    vectors.append({
+        "name": "legacy-legacy-genuine-divergence",
+        "rule": "§10.4.3 legacy perspective-reconciled",
+        "expected": "fail",
+        "note": ("two legacy copies each anchoring aborted-by-self from its own role; flipping the "
+                 "counterparty copy to the scored perspective yields aborted-by-other, which contradicts the "
+                 "scored copy's aborted-by-self. Both parties blame themselves — a genuine contradiction, not "
+                 "a perspective partner — so the pair canonically diverges and the jobId is excluded."),
+        "copies": {"seller": lega6, "buyer": legb6},
+        "want": {"expected": "fail", "convergence": "divergent", "authoritativeCopyType": None,
+                 "reputationEffect": "exclude",
+                 "reason": "perspective-reconciled outcomes contradict (both blame self); §10.4.3 legacy divergence, excluded"},
+    })
+    # (7) mixed + distinct ORCHESTRATOR, non-divergent: legacy buyer failed-counterparty implies the
+    #     fault SET {seller, orchestrator}; the FAB names faultedParty=orchestrator, a MEMBER of that set,
+    #     with the same failure class -> unified, FAB authoritative (E4 set-membership rule).
+    v7j = j + "-7"
+    fab7 = make_fab(keys, v7j, "failed-counterparty", "orchestrator", "seller", ["buyer", "seller"], parties=_parties3())
+    leg7 = make_legacy(keys, v7j, "failed-counterparty", "buyer", ["buyer", "seller"], parties=_parties3())
+    vectors.append({
+        "name": "mixed-orchestrator-nondivergent",
+        "rule": "§10.4.3 mixed-version implied-fault SET (3-party)",
+        "expected": "pass",
+        "note": ("three-party session with a distinct orchestrator. The legacy buyer copy's "
+                 "failed-counterparty implies a non-buyer at fault — the SET {seller, orchestrator}. The FAB "
+                 "names faultedParty=orchestrator, a member of that set, same failure class; the pair is "
+                 "unified and the FaultAttestationBundle is authoritative. A singular 'implied absolute fault' "
+                 "would be undefined here — set membership resolves it."),
+        "copies": {"seller": fab7, "buyer": leg7},
+        "want": {"expected": "pass", "convergence": "unified", "authoritativeCopyType": "FaultAttestationBundle",
+                 "reputationEffect": "include", "impliedFaultSet": ["orchestrator", "seller"], "faultedParty": "orchestrator",
+                 "reason": "FAB faultedParty (orchestrator) is a member of the legacy implied-fault set {seller, orchestrator}; non-divergent (§10.4.3 E4)"},
+    })
+    # (8) mixed + distinct ORCHESTRATOR, divergent: legacy buyer aborted-by-other implies {seller,
+    #     orchestrator}; the FAB names faultedParty=buyer, NOT a member of that set -> divergent -> exclude.
+    v8j = j + "-8"
+    fab8 = make_fab(keys, v8j, "aborted-by-other", "buyer", "seller", ["seller"], parties=_parties3())
+    leg8 = make_legacy(keys, v8j, "aborted-by-other", "buyer", ["buyer"], parties=_parties3())
+    vectors.append({
+        "name": "mixed-orchestrator-divergent",
+        "rule": "§10.4.3 mixed-version implied-fault SET (3-party)",
+        "expected": "fail",
+        "note": ("three-party session. The legacy buyer copy's aborted-by-other implies the fault SET "
+                 "{seller, orchestrator}; the FAB names faultedParty=buyer, which is NOT a member of that set. "
+                 "Non-membership is a contradiction, so the pair canonically diverges and the jobId is excluded."),
+        "copies": {"seller": fab8, "buyer": leg8},
+        "want": {"expected": "fail", "convergence": "divergent", "authoritativeCopyType": None,
+                 "reputationEffect": "exclude", "impliedFaultSet": ["orchestrator", "seller"], "faultedParty": "buyer",
+                 "reason": "FAB faultedParty (buyer) is not a member of the legacy implied-fault set {seller, orchestrator}; §10.4.3 divergence, excluded (E4)"},
     })
     d["vectors"] = vectors
     return finalize(d)
@@ -454,6 +534,79 @@ def build_outsider_flooding(keys):
                  "authorizedBindings": 0, "void": False, "absent": False,
                  "reason": "no BB-4-valid authorized binding resolves; the side is indeterminate — neither present nor authoritatively absent (BB-7), not a void"},
     })
+    # (5) WORST-ORDER (round-4 blocker #2): nine outsider hashes ALL sort STRICTLY BELOW the honest
+    #     hash — the adversarial ordering the round-3 vector avoided. Under the E6 per-signer budget
+    #     (and the MANDATORY derivation-context prune) the honest role-holder's binding is in its own
+    #     budget bucket, so the flood cannot starve it: the honest copy still resolves -> present.
+    v5j = j + "-5"
+    hb5 = make_fab(keys, v5j, "completed", "none", "seller", ["buyer", "seller"])
+    hn5 = native_address(v5j, "seller", 0)
+    hh5 = bundle_hash(hb5)
+    honest5 = make_binding(keys, v5j, "seller", "seller", hn5, hh5, idx=0)
+    # outsider hashes 0x0..0x8 — the smallest possible 64-hex values, guaranteed strictly < hh5.
+    worst = [make_binding(keys, v5j, "seller", "outsider", native_address(v5j, "seller", 500 + k),
+                          "%064x" % k, idx=500 + k) for k in range(9)]
+    vectors.append({
+        "name": "outsider-flood-worst-order",
+        "rule": "BB-6 per-signer budget (E6); round-4 blocker #2",
+        "expected": "pass",
+        "note": ("nine outsider self-signed bindings whose claimed bundleContentHash values all sort strictly "
+                 "below the honest seller binding's hash — the worst-case ordering the round-3 vector did not "
+                 "cover. With the E6 per-signer budget the outsiders (one signer) never consume the honest "
+                 "signer's allocation, and in a derivation context the mandatory party-map prune drops them "
+                 "pre-fetch; the honest copy resolves regardless of hash ordering."),
+        "request": {"jobId": v5j, "role": "seller"},
+        "bindings": worst + [honest5],
+        "anchored": {hn5: hb5},
+        "partyMap": {CLAIM["seller"]: "seller"},
+        "honestContentHash": hh5,
+        "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn5,
+                 "outsiderHashesBelowHonest": 9, "void": False,
+                 "reason": "per-signer budget + mandatory derivation-context prune: an outsider's worst-order flood cannot suppress the authorized role-holder (E6)"},
+    })
+    # (6) SYBIL flood: eight DISTINCT outsider keys (not one outsider re-signing) plus one honest seller
+    #     binding. Even distinct-key sybils each get their OWN per-signer budget bucket and none is
+    #     authorized, so they are inert; the honest signer's bucket still resolves -> present.
+    v6j = j + "-6"
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    sybil_seeds = {"sybil%d" % k: ("d%d" % k) * 32 for k in range(8)}   # visibly synthetic: d0.. .. d7..
+    sybil_keys = {name: Ed25519PrivateKey.from_private_bytes(bytes.fromhex(s)) for name, s in sybil_seeds.items()}
+    sybil_claim = {name: "did:demos:%s" % name for name in sybil_seeds}
+    hb6 = make_fab(keys, v6j, "completed", "none", "seller", ["buyer", "seller"])
+    hn6 = native_address(v6j, "seller", 0)
+    honest6 = make_binding(keys, v6j, "seller", "seller", hn6, bundle_hash(hb6), idx=0)
+    sybil_bindings = []
+    for k, name in enumerate(sybil_seeds):
+        bd = {"bindingVersion": "1", "jobId": v6j, "role": "seller",
+              "logicalAddress": logical_address(v6j, "seller"),
+              "nativeAddress": native_address(v6j, "seller", 600 + k),
+              "bundleContentHash": sha("sybil", v6j, str(k)),
+              "anchorTx": "demos-testnet:tx-sybil-%d" % k, "signer": sybil_claim[name]}
+        payload = (BINDING_DOMAIN + binding_hash(bd)).encode("utf-8")
+        bd["signature"] = {"algorithm": "ed25519", "signer": sybil_claim[name],
+                           "value": b64u(sybil_keys[name].sign(payload))}
+        sybil_bindings.append(bd)
+    vectors.append({
+        "name": "outsider-sybil-flood",
+        "rule": "BB-6 per-signer budget (E6) — distinct-key sybil",
+        "expected": "pass",
+        "note": ("eight distinct outsider keypairs (visibly synthetic disclosed seeds d0.. .. d7..) each anchor "
+                 "one self-signed binding for the victim (jobId, seller), plus one honest seller binding. Each "
+                 "distinct signer gets its own per-signer budget bucket and none is authorized, so all eight "
+                 "are inert; the honest signer's bucket resolves the side -> present. A per-(jobId,role) global "
+                 "budget would let eight distinct keys crowd out the honest one — the E6 per-signer budget does not."),
+        "request": {"jobId": v6j, "role": "seller"},
+        "bindings": sybil_bindings + [honest6],
+        "anchored": {hn6: hb6},
+        "partyMap": {CLAIM["seller"]: "seller"},
+        "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn6,
+                 "distinctOutsiderKeys": 8, "void": False,
+                 "reason": "per-signer budget isolates each distinct signer; eight sybil keys cannot starve the authorized role-holder's allocation (E6)"},
+    })
+    # disclose the sybil keypairs so the vector is independently verifiable
+    d["seeds"].update(sybil_seeds)
+    d["publicKeys"].update({sybil_claim[name]: b64u(sybil_keys[name].public_key().public_bytes_raw())
+                            for name in sybil_seeds})
     d["vectors"] = vectors
     return finalize(d)
 
@@ -540,73 +693,187 @@ def build_unresolved_vs_absent():
 
 
 # ---- S5: receipt-rederivation (abstract) ----
-def build_receipt_rederivation():
-    d = {
-        "set": "receipt-rederivation-v0.3",
-        "spec": "DACS-5 §10.5.3 determinism receipt clauses (3)/(4) + §10.5.1 resolutionContext",
-        "gaps": ["round-3 review: receipt rederivation context (#5)"],
-        "decisionModel": ("A published ReputationDerivation MUST carry exactly one resolutionContext entry per "
-                          "bundleRefs member, keyed by contentHash, giving the resolved role and — for every "
-                          "one-copy jobId — the counterparty address's absenceEvidenceRef. A rederivation "
-                          "supplying each entry as its §10.5.1 input-precondition tag MUST reproduce "
-                          "byte-identical metrics and bundleCount; a missing, mis-keyed, or insufficient "
-                          "resolutionContext is non-conforming, and a one-copy jobId without a valid "
-                          "absenceEvidenceRef MUST NOT be published."),
-    }
-    vectors = [
-        {
-            "name": "complete-resolution-context-replays-identical",
-            "rule": "§10.5.3 (3)/(4)",
-            "expected": "pass",
-            "note": ("a derivation whose resolutionContext has one entry per bundleRefs member — including a "
-                     "one-copy entry carrying absenceEvidenceRef — replays byte-identical under the recorded "
-                     "windowingBasis; conforming."),
-            "derivation": {
-                "bundleRefs": ["hashA", "hashB"],
-                "resolutionContext": [
-                    {"contentHash": "hashA", "resolvedRole": "seller", "counterpartyDisposition": "present"},
-                    {"contentHash": "hashB", "resolvedRole": "buyer", "counterpartyDisposition": "absent",
-                     "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": "stor-" + "0" * 40,
-                                            "contentHash": PLACEHOLDER}},
-                ],
-                "windowingBasis": "sr2-anchor-timestamp",
-            },
-            "want": {"conforming": True, "replayByteIdentical": True, "reputationEffect": "include",
-                     "reason": "resolutionContext has exactly one entry per bundleRefs member keyed by contentHash; replay reproduces byte-identical metrics/bundleCount (§10.5.3 (3)/(4))"},
-        },
-        {
-            "name": "miskeyed-resolution-context-is-nonconforming",
-            "rule": "§10.5.3 (4)",
-            "expected": "fail",
-            "note": ("the resolutionContext is missing an entry for one bundleRefs member (mis-keyed by "
-                     "contentHash); the derivation is not independently reproducible."),
-            "derivation": {
-                "bundleRefs": ["hashA", "hashB"],
-                "resolutionContext": [
-                    {"contentHash": "hashA", "resolvedRole": "seller", "counterpartyDisposition": "present"},
-                ],
-                "windowingBasis": "sr2-anchor-timestamp",
-            },
-            "want": {"conforming": False, "reputationEffect": "exclude",
-                     "reason": "resolutionContext is missing/mis-keyed for a bundleRefs member; the derivation is not independently reproducible and is non-conforming (§10.5.3 (4))"},
-        },
-        {
-            "name": "one-copy-without-absence-evidence-must-not-publish",
-            "rule": "§10.5.3 E3; §10.5.1 guard (iv)",
-            "expected": "fail",
-            "note": ("a one-copy jobId whose resolutionContext entry is absent-disposition but lacks a valid "
-                     "absenceEvidenceRef MUST NOT be included in a published derivation."),
-            "derivation": {
-                "bundleRefs": ["hashB"],
-                "resolutionContext": [
-                    {"contentHash": "hashB", "resolvedRole": "buyer", "counterpartyDisposition": "absent"},
-                ],
-                "windowingBasis": "sr2-anchor-timestamp",
-            },
-            "want": {"conforming": False, "mustNotPublish": True, "reputationEffect": "exclude",
-                     "reason": "a one-copy jobId whose entry lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation (§10.5.3/guard (iv))"},
-        },
+RCP_WINDOW = [1780000000000, 1780900000000]
+
+
+def build_receipt_rederivation(keys):
+    """CONCRETE (round-5): real signed FaultAttestationBundle content + full E5 resolutionContext
+    (roleEvidence / counterpartyRef / absenceBinding). A rederiver dereferences bundleRefs, re-runs
+    derive() supplying each entry as its §10.5.1 tag, and reproduces byte-identical metrics."""
+    j = "RCP"
+    d = concrete_header(
+        keys, "receipt-rederivation-v0.3",
+        "DACS-5 §10.5.3 determinism receipt clauses (3)/(4) + §10.5.1 resolutionContext (E5)",
+        ["round-3 review: receipt rederivation context (#5)", "#248 round-4 blocker #1: replayable receipt"],
+        ("A published ReputationDerivation MUST carry one resolutionContext entry per bundleRefs member: "
+         "roleEvidence backing resolvedRole, counterpartyRef for a two-copy jobId (so a rederiver can re-run "
+         "§10.4.3 divergence + authority selection), and absenceEvidenceRef + absenceBinding for a one-copy "
+         "jobId. A rederivation supplying each entry as its §10.5.1 tag MUST reproduce byte-identical metrics "
+         "and bundleCount; a receipt missing any REQUIRED member is non-conforming."),
+        ("Concrete FAB copies signed under dacs-fault-bundle:v1:. The pass vector replays through derive(); "
+         "the fail vectors are published receipts missing a REQUIRED resolutionContext member."),
+    )
+    party = CLAIM["seller"]
+
+    # --- pass fixture: Job A two-copy present (both completed), Job B one-copy absent (seller abort) ---
+    ja, jb = j + "-A", j + "-B"
+    a_seller = make_fab(keys, ja, "completed", "none", "seller", ["buyer", "seller"])
+    # counterparty copy: distinguished only by an ADVISORY finalisedAt skew (still in-window and
+    # NOT a §10.4.3 divergence), so it has a distinct contentHash the counterpartyRef can point at.
+    a_buyer = make_fab(keys, ja, "completed", "none", "buyer", ["buyer", "seller"], finalised_at=FINALISED_AT + 1000)
+    b_seller = make_fab(keys, jb, "aborted-by-self", "seller", "seller", ["seller"])
+    ha_s, ha_b, hb_s = bundle_hash(a_seller), bundle_hash(a_buyer), bundle_hash(b_seller)
+    # write-input substrate: roleEvidence is the verified BB-4/BB-5 binding for the authoritative
+    # copy; the absent side additionally carries the binding resolving the MISSING buyer address.
+    a_seller_binding = make_binding(keys, ja, "seller", "seller", native_address(ja, "seller"), ha_s)
+    b_seller_binding = make_binding(keys, jb, "seller", "seller", native_address(jb, "seller"), hb_s)
+    absence_binding = make_binding(keys, jb, "buyer", "buyer", native_address(jb, "buyer"), PLACEHOLDER)
+    tagged = [
+        {"bundle": a_seller, "resolvedRole": "seller", "counterpartyDisposition": "present",
+         "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer", "contentHash": ha_b},
+         "roleEvidence": {"kind": "binding", "binding": a_seller_binding}},
+        {"bundle": b_seller, "resolvedRole": "seller", "counterpartyDisposition": "absent",
+         "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": "stor-" + "0" * 40, "contentHash": PLACEHOLDER},
+         "absenceBinding": absence_binding,
+         "roleEvidence": {"kind": "binding", "binding": b_seller_binding}},
     ]
+    vectors = []
+    vectors.append({
+        "name": "complete-resolution-context-replays-identical",
+        "rule": "§10.5.3 (3)/(4); E5",
+        "expected": "pass",
+        "note": ("two jobIds: a two-copy present jobId (both completed FAB copies) carrying counterpartyRef, "
+                 "and a one-copy absent jobId (seller aborted-by-self) carrying absenceEvidenceRef + "
+                 "absenceBinding. Dereferencing bundleRefs and re-running derive() with each entry as its tag "
+                 "reproduces byte-identical metrics and bundleCount."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "taggedBundles": tagged,
+        "derefBundles": {ha_s: a_seller, ha_b: a_buyer, hb_s: b_seller},
+        "want": {"conforming": True, "replayByteIdentical": True, "reputationEffect": "include",
+                 "bundleCount": 2,
+                 "metrics": {"completionRate": 0.5, "counterpartyAdjustedCompletionRate": 0.5, "counterpartyFaultRate": 0.0},
+                 "reason": "complete resolutionContext (roleEvidence + counterpartyRef + absenceBinding) replays byte-identical (§10.5.3 (3)/(4))"},
+    })
+    # --- fail: present entry missing counterpartyRef (round-4 blocker #1) ---
+    vectors.append({
+        "name": "receipt-missing-counterparty-ref",
+        "rule": "§10.5.3 (3)/(4); E5",
+        "expected": "fail",
+        "note": ("a published receipt whose two-copy (present) entry omits counterpartyRef; a rederiver cannot "
+                 "re-run §10.4.3 divergence or authority selection against the counterparty copy, so the "
+                 "receipt is not independently reproducible and is non-conforming."),
+        "derivation": {
+            "bundleRefs": [ha_s],
+            "resolutionContext": [
+                {"contentHash": ha_s, "resolvedRole": "seller", "counterpartyDisposition": "present",
+                 "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(ja, "seller")}},
+            ],
+            "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "reputationEffect": "exclude",
+                 "reason": "present-disposition entry missing counterpartyRef; a rederiver cannot re-run §10.4.3 divergence/authority — non-conforming (E5)"},
+    })
+    # --- fail: one-copy absent entry missing absenceEvidenceRef ---
+    vectors.append({
+        "name": "one-copy-without-absence-evidence-must-not-publish",
+        "rule": "§10.5.3 E3; §10.5.1 guard (iv)",
+        "expected": "fail",
+        "note": ("a one-copy jobId whose resolutionContext entry is absent-disposition but lacks a valid "
+                 "absenceEvidenceRef MUST NOT be included in a published derivation."),
+        "derivation": {
+            "bundleRefs": [hb_s],
+            "resolutionContext": [
+                {"contentHash": hb_s, "resolvedRole": "seller", "counterpartyDisposition": "absent",
+                 "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(jb, "seller")}},
+            ],
+            "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "mustNotPublish": True, "reputationEffect": "exclude",
+                 "reason": "a one-copy jobId whose entry lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation (§10.5.3/guard (iv))"},
+    })
+    # --- fail: resolutionContext mis-keyed (fewer entries than bundleRefs) ---
+    vectors.append({
+        "name": "miskeyed-resolution-context-is-nonconforming",
+        "rule": "§10.5.3 (4)",
+        "expected": "fail",
+        "note": ("the resolutionContext is missing an entry for one bundleRefs member (mis-keyed by "
+                 "contentHash); the derivation is not independently reproducible."),
+        "derivation": {
+            "bundleRefs": sorted([ha_s, hb_s]),
+            "resolutionContext": [
+                {"contentHash": sorted([ha_s, hb_s])[0], "resolvedRole": "seller", "counterpartyDisposition": "present",
+                 "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer", "contentHash": ha_b},
+                 "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(ja, "seller")}},
+            ],
+            "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "reputationEffect": "exclude",
+                 "reason": "resolutionContext is missing/mis-keyed for a bundleRefs member; not independently reproducible and non-conforming (§10.5.3 (4))"},
+    })
+    d["vectors"] = vectors
+    return finalize(d)
+
+
+# ---- S6: fab-bundle-extended-pointer (E7 triple-identity) ----
+def build_fab_extended_pointer(keys):
+    j = "FBEP"
+    d = concrete_header(
+        keys, "fab-bundle-extended-pointer-v0.3",
+        "DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7)",
+        ["#248 FaultAttestationBundle extended-pointer path (round-4 blocker #4)"],
+        ("A FaultAttestationBundle too large for the size cap anchors a FaultBundleExtendedPointer "
+         "(faultBundleVersion discriminator, dacs-fault-bundle-pointer:v1: domain). BB-5 check 8 and the "
+         "§10.4.1 comparison apply to the DEREFERENCED full bundle: binding.bundleContentHash == "
+         "pointer.fullBundleContentHash == the recomputed §10.4.1 hash of the dereferenced bundle — three "
+         "values, one identity. A signature failure or dereferenced-hash mismatch is rejected content (BB-7), "
+         "never absence."),
+        ("Concrete FAB + fault-typed pointer + binding. The pointer signs under dacs-fault-bundle-pointer:v1: "
+         "and the dereferenced full bundle under dacs-fault-bundle:v1:. Verdict pass = triple-identity holds; "
+         "fail = the pointer/binding agree with each other but neither equals the dereferenced bundle's hash "
+         "(rejected content — the case a compare-the-pointer's-own-hash shortcut would wrongly accept)."),
+    )
+    vectors = []
+    # (1) valid: binding == pointer == recomputed dereferenced hash
+    v1j = j + "-1"
+    full1 = make_fab(keys, v1j, "completed", "none", "seller", ["buyer", "seller"])
+    h1 = bundle_hash(full1)
+    native1 = native_address(v1j, "seller")
+    vectors.append({
+        "name": "fab-pointer-valid",
+        "rule": "§10.4.2 extended-pointer; §10.4.1 triple-identity (E7)",
+        "expected": "pass",
+        "note": ("the record at the resolved nativeAddress is a FaultBundleExtendedPointer; its "
+                 "fullBundleContentHash equals the recomputed §10.4.1 hash of the dereferenced full bundle, "
+                 "which equals the binding's bundleContentHash — three values, one identity."),
+        "nativeAddress": native1,
+        "pointer": make_fab_pointer(keys, "seller", f"https://cdn.example/{v1j}", h1),
+        "dereferenced": full1,
+        "binding": make_binding(keys, v1j, "seller", "seller", native1, h1),
+        "want": {"expected": "pass", "tripleIdentity": True, "reputationEffect": "include",
+                 "reason": "binding.bundleContentHash == pointer.fullBundleContentHash == recomputed §10.4.1 hash of the dereferenced bundle"},
+    })
+    # (2) content-mismatch: pointer and binding agree on a hash that is NOT the dereferenced bundle's.
+    #     A faithful predicate recomputes the §10.4.1 hash of the dereferenced bundle and rejects; a
+    #     shortcut that compares the pointer's own claimed hash against the binding would wrongly accept.
+    v2j = j + "-2"
+    full2 = make_fab(keys, v2j, "completed", "none", "seller", ["buyer", "seller"])
+    wrong = sha("wrong-content", v2j)   # 64-hex, != bundle_hash(full2)
+    native2 = native_address(v2j, "seller")
+    vectors.append({
+        "name": "fab-pointer-content-mismatch",
+        "rule": "§10.4.2 extended-pointer BB-5 check 8 (E7)",
+        "expected": "fail",
+        "note": ("the pointer's fullBundleContentHash and the binding's bundleContentHash agree with each "
+                 "other but neither equals the recomputed §10.4.1 hash of the dereferenced bundle; the "
+                 "dereferenced content does not match, so the pointer is rejected content (BB-7), never absence."),
+        "nativeAddress": native2,
+        "pointer": make_fab_pointer(keys, "seller", f"https://cdn.example/{v2j}", wrong),
+        "dereferenced": full2,
+        "binding": make_binding(keys, v2j, "seller", "seller", native2, wrong),
+        "want": {"expected": "fail", "tripleIdentity": False, "reputationEffect": "exclude",
+                 "reason": "pointer.fullBundleContentHash != recomputed §10.4.1 hash of the dereferenced bundle; rejected content (BB-7)"},
+    })
     d["vectors"] = vectors
     return finalize(d)
 
@@ -622,7 +889,8 @@ def all_sets():
         "fault-bundle-perspective-pair-v0.3.json": build_perspective_pair(keys),
         "outsider-binding-flooding-v0.3.json": build_outsider_flooding(keys),
         "unresolved-vs-absent-v0.3.json": build_unresolved_vs_absent(),
-        "receipt-rederivation-v0.3.json": build_receipt_rederivation(),
+        "receipt-rederivation-v0.3.json": build_receipt_rederivation(keys),
+        "fab-bundle-extended-pointer-v0.3.json": build_fab_extended_pointer(keys),
     }
 
 

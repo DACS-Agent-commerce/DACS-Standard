@@ -540,10 +540,349 @@
         "reputationEffect": "include",
         "scoredRole": "seller",
         "scoredOutcome": "aborted-by-self",
-        "reason": "legacy pair uses the outcome-spelling definition; perspective-partner spellings do not diverge"
+        "reason": "legacy pair reconciled via perspective_flip; partner spellings are one event, not a contradiction (§10.4.3/§10.5.1)"
+      }
+    },
+    {
+      "name": "legacy-legacy-genuine-divergence",
+      "rule": "§10.4.3 legacy perspective-reconciled",
+      "expected": "fail",
+      "note": "two legacy copies each anchoring aborted-by-self from its own role; flipping the counterparty copy to the scored perspective yields aborted-by-other, which contradicts the scored copy's aborted-by-self. Both parties blame themselves — a genuine contradiction, not a perspective partner — so the pair canonically diverges and the jobId is excluded.",
+      "copies": {
+        "seller": {
+          "bundleVersion": "1",
+          "jobId": "MVR-6",
+          "outcome": "aborted-by-self",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-MVR-6",
+            "version": 1,
+            "contentHash": "aaca38cd7142f2411c5d625a03259e4adb34844d935d969fcb14f9ee459d6eb9"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Hva57vKF6iyuNQeD7YO9Xd3G1XTwkYE1ihOTCt6b-gKYWLAid16YJAXei0YXoY90BIXuJl2jhgXcFUqk5kFdCA"
+            }
+          ]
+        },
+        "buyer": {
+          "bundleVersion": "1",
+          "jobId": "MVR-6",
+          "outcome": "aborted-by-self",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-MVR-6",
+            "version": 1,
+            "contentHash": "aaca38cd7142f2411c5d625a03259e4adb34844d935d969fcb14f9ee459d6eb9"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "mRck2EEI7W0SM2wQkDIJ1_nSO0AblGxHLLimR7QzF35RIviQ32eZ6iYNRIosVooU8pesE2Y_3oHW7uwpp2waDA"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "convergence": "divergent",
+        "authoritativeCopyType": null,
+        "reputationEffect": "exclude",
+        "reason": "perspective-reconciled outcomes contradict (both blame self); §10.4.3 legacy divergence, excluded"
+      }
+    },
+    {
+      "name": "mixed-orchestrator-nondivergent",
+      "rule": "§10.4.3 mixed-version implied-fault SET (3-party)",
+      "expected": "pass",
+      "note": "three-party session with a distinct orchestrator. The legacy buyer copy's failed-counterparty implies a non-buyer at fault — the SET {seller, orchestrator}. The FAB names faultedParty=orchestrator, a member of that set, same failure class; the pair is unified and the FaultAttestationBundle is authoritative. A singular 'implied absolute fault' would be undefined here — set membership resolves it.",
+      "copies": {
+        "seller": {
+          "faultBundleVersion": "1",
+          "jobId": "MVR-7",
+          "outcome": "failed-counterparty",
+          "faultedParty": "orchestrator",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-MVR-7",
+            "version": 1,
+            "contentHash": "5ef861e571b6b197642213a874659d9fd5ad8613138e163ae73600b2b26b5070"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            },
+            {
+              "role": "orchestrator",
+              "bundleHash": "8489e733d78f7998af48f0dee5fd6777656e8b5a52ac8cbd791c900fe10cb203",
+              "primaryClaim": "did:demos:orchestrator"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "ZR4DOFdmBZX9RLNYFGSACkv_qjAKJL-Cl1XuvrOfpAwAjbIcdnh3TSsD07yMoBUgTcSwv9thuKQwGwBpoKY4Aw"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "11yTLhO_PvnDiW6OiA2A2MNSzSCXjz9zoWAVH50KH2_Fo6gH9FHhZqjZRtvbzlzxM2QM7UI_bqs6iI4QS03xDQ"
+            }
+          ]
+        },
+        "buyer": {
+          "bundleVersion": "1",
+          "jobId": "MVR-7",
+          "outcome": "failed-counterparty",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-MVR-7",
+            "version": 1,
+            "contentHash": "5ef861e571b6b197642213a874659d9fd5ad8613138e163ae73600b2b26b5070"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            },
+            {
+              "role": "orchestrator",
+              "bundleHash": "8489e733d78f7998af48f0dee5fd6777656e8b5a52ac8cbd791c900fe10cb203",
+              "primaryClaim": "did:demos:orchestrator"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "9Reu7DCDoiTdnnUtqj6PslE3_6QS8lbvHJVq6_qAqN3OPCJKA9kbxak1qCbkdOi1TGMmjSdizGCptfkCbVJ7Cg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "fAGe5izxlbW9Bs7JzHMhXVZ1yn9T-DyONj_Vj_LMwcYLn3y6yvn59AkYEdFRN28CFiditdELu-D3F2SOSdL-AQ"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "convergence": "unified",
+        "authoritativeCopyType": "FaultAttestationBundle",
+        "reputationEffect": "include",
+        "impliedFaultSet": [
+          "orchestrator",
+          "seller"
+        ],
+        "faultedParty": "orchestrator",
+        "reason": "FAB faultedParty (orchestrator) is a member of the legacy implied-fault set {seller, orchestrator}; non-divergent (§10.4.3 E4)"
+      }
+    },
+    {
+      "name": "mixed-orchestrator-divergent",
+      "rule": "§10.4.3 mixed-version implied-fault SET (3-party)",
+      "expected": "fail",
+      "note": "three-party session. The legacy buyer copy's aborted-by-other implies the fault SET {seller, orchestrator}; the FAB names faultedParty=buyer, which is NOT a member of that set. Non-membership is a contradiction, so the pair canonically diverges and the jobId is excluded.",
+      "copies": {
+        "seller": {
+          "faultBundleVersion": "1",
+          "jobId": "MVR-8",
+          "outcome": "aborted-by-other",
+          "faultedParty": "buyer",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-MVR-8",
+            "version": 1,
+            "contentHash": "e3bf7494109e8fed97fd62dc712c1294358e9ad1467f34b18e37a637bc4b15f9"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            },
+            {
+              "role": "orchestrator",
+              "bundleHash": "8489e733d78f7998af48f0dee5fd6777656e8b5a52ac8cbd791c900fe10cb203",
+              "primaryClaim": "did:demos:orchestrator"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "zYBApi14wm-surW_s2URJ-Dve5e_5rY2bTzcaW4vGmxSfE8e4EG3Bt34L2v1FB_YliAbAZTbbkCU6lFHxLn9Aw"
+            }
+          ]
+        },
+        "buyer": {
+          "bundleVersion": "1",
+          "jobId": "MVR-8",
+          "outcome": "aborted-by-other",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-MVR-8",
+            "version": 1,
+            "contentHash": "e3bf7494109e8fed97fd62dc712c1294358e9ad1467f34b18e37a637bc4b15f9"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            },
+            {
+              "role": "orchestrator",
+              "bundleHash": "8489e733d78f7998af48f0dee5fd6777656e8b5a52ac8cbd791c900fe10cb203",
+              "primaryClaim": "did:demos:orchestrator"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "WcvCauliJBWvTkcc06Mqnk4xAnQs1gAh4x_BiDTuE22N2TuVfVa9W5hX4QhA3oNU9uTGKRESPTMLg-y0mBSEDA"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "convergence": "divergent",
+        "authoritativeCopyType": null,
+        "reputationEffect": "exclude",
+        "impliedFaultSet": [
+          "orchestrator",
+          "seller"
+        ],
+        "faultedParty": "buyer",
+        "reason": "FAB faultedParty (buyer) is not a member of the legacy implied-fault set {seller, orchestrator}; §10.4.3 divergence, excluded (E4)"
       }
     }
   ],
-  "count": 5,
-  "hash": "74585390d7180ef6e2b7bcf6cd7299e5b579b7a0deb749275167398231dea498"
+  "count": 8,
+  "hash": "7c8e2908cf1c08eb679dfff93223029cfe04943e5cc63531bf4a2b685ce8efaa"
 }

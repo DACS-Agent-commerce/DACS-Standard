@@ -1,0 +1,204 @@
+{
+  "set": "fab-bundle-extended-pointer-v0.3",
+  "spec": "DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7)",
+  "provenance": {
+    "generator": "scripts/generate_dacs5_reputation_vectors.py (deterministic; synthetic disclosed seeds)",
+    "canonicalisation": "RFC 8785 JCS over the artifact minus its hash-excluded fields (FaultAttestationBundle/AttestationBundle: signatures+anchoredByRole; binding: signature); attestation_bundle_hash = sha256 hex; ed25519 over the CORE §B.7 domain-separated payload (dacs-fault-bundle:v1: / dacs-bundle:v1: / dacs-bundle-binding:v1: || hash), base64url-unpadded.",
+    "note": "Concrete FAB + fault-typed pointer + binding. The pointer signs under dacs-fault-bundle-pointer:v1: and the dereferenced full bundle under dacs-fault-bundle:v1:. Verdict pass = triple-identity holds; fail = the pointer/binding agree with each other but neither equals the dereferenced bundle's hash (rejected content — the case a compare-the-pointer's-own-hash shortcut would wrongly accept).",
+    "seeds": "synthetic repeated-byte ed25519 seeds; buyer a1.., seller c3.., orchestrator 0e.., outsider f0.."
+  },
+  "gaps": [
+    "#248 FaultAttestationBundle extended-pointer path (round-4 blocker #4)"
+  ],
+  "decisionModel": "A FaultAttestationBundle too large for the size cap anchors a FaultBundleExtendedPointer (faultBundleVersion discriminator, dacs-fault-bundle-pointer:v1: domain). BB-5 check 8 and the §10.4.1 comparison apply to the DEREFERENCED full bundle: binding.bundleContentHash == pointer.fullBundleContentHash == the recomputed §10.4.1 hash of the dereferenced bundle — three values, one identity. A signature failure or dereferenced-hash mismatch is rejected content (BB-7), never absence.",
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+    "did:demos:orchestrator": "C-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw",
+    "did:demos:outsider": "X2cTKUw88agU6NjKCInbI-aCO3UkuvE0n7x9n1FSlFs"
+  },
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "orchestrator": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+    "outsider": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"
+  },
+  "vectors": [
+    {
+      "name": "fab-pointer-valid",
+      "rule": "§10.4.2 extended-pointer; §10.4.1 triple-identity (E7)",
+      "expected": "pass",
+      "note": "the record at the resolved nativeAddress is a FaultBundleExtendedPointer; its fullBundleContentHash equals the recomputed §10.4.1 hash of the dereferenced full bundle, which equals the binding's bundleContentHash — three values, one identity.",
+      "nativeAddress": "stor-cff04f9f19043ba834210e7b0ce2ec7dc7020f5d",
+      "pointer": {
+        "faultBundleVersion": "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": "https://cdn.example/FBEP-1",
+        "fullBundleContentHash": "49ffea1b69e3a17b33ab8d4cc8cbba59a81f73f4ebc117873a17eade57e9e0b1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "CMkvXCnX5NoTTo8HG1EDPzoU0kPfaLiUezG6Awb_GLI4fyDcuqoQOYgpnzZa5SNWrUBFHo2XGe-Er-NOjVekAQ"
+        }
+      },
+      "dereferenced": {
+        "faultBundleVersion": "1",
+        "jobId": "FBEP-1",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-FBEP-1",
+          "version": 1,
+          "contentHash": "432a0d31f6f9ab8b9ad8061d5b04c4dd48602f46a3bdcb3aef86bfaf17358da9"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1780004000000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "Tqfi_wd1i9frSwGjF_13L5TheYNSzu5TEcA51A7Y8qmmB16hIenWL5AhMPzO-1R4NW1497Kx6J5V6p2u2JY1Aw"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "CjlTcGvlm4v_xaxg9PvkC6JPRwucb0DV17aO8OR8qIl-aSDlV_CFfd_A0S44Q47zo-tyoBY9W_-GWm7RzacWCw"
+          }
+        ]
+      },
+      "binding": {
+        "bindingVersion": "1",
+        "jobId": "FBEP-1",
+        "role": "seller",
+        "logicalAddress": "stor-9135021364fdbfc9da3432839ef51c70a461217aa723343cf42f8887e165ac7d",
+        "nativeAddress": "stor-cff04f9f19043ba834210e7b0ce2ec7dc7020f5d",
+        "bundleContentHash": "49ffea1b69e3a17b33ab8d4cc8cbba59a81f73f4ebc117873a17eade57e9e0b1",
+        "anchorTx": "demos-testnet:tx-cff04f9f19043ba8",
+        "signer": "did:demos:seller",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "4wb-s2xJ5k_j93FOhgaD7YgujRBWBHBUBT26-62i3CDchQjVb3T-gjlRXj5oCFbDG5ribgxBGQKiK6hcZcwwBg"
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "tripleIdentity": true,
+        "reputationEffect": "include",
+        "reason": "binding.bundleContentHash == pointer.fullBundleContentHash == recomputed §10.4.1 hash of the dereferenced bundle"
+      }
+    },
+    {
+      "name": "fab-pointer-content-mismatch",
+      "rule": "§10.4.2 extended-pointer BB-5 check 8 (E7)",
+      "expected": "fail",
+      "note": "the pointer's fullBundleContentHash and the binding's bundleContentHash agree with each other but neither equals the recomputed §10.4.1 hash of the dereferenced bundle; the dereferenced content does not match, so the pointer is rejected content (BB-7), never absence.",
+      "nativeAddress": "stor-00f26a861a006025556e7c0037e29bf890b8086b",
+      "pointer": {
+        "faultBundleVersion": "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": "https://cdn.example/FBEP-2",
+        "fullBundleContentHash": "ecc4a78e9853261d43e2f94d362cf66353bacf9cbaddb899cb45b44d3c8025a1",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "ZzkN7JTT6CzXv5PLX9ClrWK8ypeKLjtXKVB1jx1yJLKuKrzMgQth3fI336JsGUSk6QSV29C3_7VIIRnI1jCWAQ"
+        }
+      },
+      "dereferenced": {
+        "faultBundleVersion": "1",
+        "jobId": "FBEP-2",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-FBEP-2",
+          "version": 1,
+          "contentHash": "502f6655b61d7ac6eb8d38519c558b50fd741a7c4bb16f90f21e853f2efcd6eb"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1780004000000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "r0u3RuEKeb6XrQi9jEaARGKGYhTt5FOw8qNBJzDHUa6V7m-D-RHGB06BB8hjzf6ArSdgKorgeNk8ngPBIaL9DA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "OuheWLqIn3tczfQ4dhIcsSkDT3IQ_4mwatWnwYrkeg-AUL3-wdt03ajcZQFrYM2F1pGBz3Ba-JncD9qMaaPkCw"
+          }
+        ]
+      },
+      "binding": {
+        "bindingVersion": "1",
+        "jobId": "FBEP-2",
+        "role": "seller",
+        "logicalAddress": "stor-304c7f7ef757da3c4896cd395ea689215b681a7a74731831c811c422237f9a00",
+        "nativeAddress": "stor-00f26a861a006025556e7c0037e29bf890b8086b",
+        "bundleContentHash": "ecc4a78e9853261d43e2f94d362cf66353bacf9cbaddb899cb45b44d3c8025a1",
+        "anchorTx": "demos-testnet:tx-00f26a861a006025",
+        "signer": "did:demos:seller",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "irsDsVBYkXpPY3u8M5SIZTAkRKijOFKm7OHiwM4GYcUjyMmdXSkln8VZDsk30g5_vf72ywImnPjmGyRrN8hVDA"
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "tripleIdentity": false,
+        "reputationEffect": "exclude",
+        "reason": "pointer.fullBundleContentHash != recomputed §10.4.1 hash of the dereferenced bundle; rejected content (BB-7)"
+      }
+    }
+  ],
+  "count": 2,
+  "hash": "9d1329a1ecd7ab18f1b5d351d6f4ddbb33a46e903c1efff9ad0b8d87ce5a3bcf"
+}

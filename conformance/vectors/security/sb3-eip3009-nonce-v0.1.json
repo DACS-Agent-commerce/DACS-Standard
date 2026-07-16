@@ -1,8 +1,8 @@
 {
   "set": "sb3-eip3009-nonce-v0.1",
   "spec": "DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding)",
-  "hash": "052b12dec9a0fe8af6e9cf6c6a4e87e587181e3b406bbe5bb5cd109599b558cd",
-  "count": 13,
+  "hash": "8861bdefe9f9e865b748b14166ad20f357e58fd1aac56ffc8f7ba455d841406d",
+  "count": 14,
   "vectors": [
     {
       "name": "reported-live-vector",
@@ -15,7 +15,9 @@
         "derivedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff",
         "binding": "present-and-matches"
       },
-      "note": "live Base Sepolia value reported in #241; independent implementations MUST reproduce the same bytes32"
+      "note": "live Base Sepolia value reported in #241; independent implementations MUST reproduce the same bytes32",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff"
     },
     {
       "name": "phase-index-changes-nonce",
@@ -28,7 +30,9 @@
         "derivedNonce": "0x80fa47321a52f728f5ecbde7a5ceb44dd6086c9902dd8b95980b05909e5ea969",
         "binding": "present-and-matches"
       },
-      "note": "the same job in a different repeated payment phase derives a different nonce"
+      "note": "the same job in a different repeated payment phase derives a different nonce",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x80fa47321a52f728f5ecbde7a5ceb44dd6086c9902dd8b95980b05909e5ea969"
     },
     {
       "name": "job-id-changes-nonce",
@@ -41,13 +45,15 @@
         "derivedNonce": "0x69256a3bf1c9bd6a5ba1ffc93705d44c5322e03de8f1e3ad6b6d709f4254ce29",
         "binding": "present-and-matches"
       },
-      "note": "a different session derives a different nonce at the same phase index"
+      "note": "a different session derives a different nonce at the same phase index",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x69256a3bf1c9bd6a5ba1ffc93705d44c5322e03de8f1e3ad6b6d709f4254ce29"
     },
     {
       "name": "job-id-nfc-normalized",
       "op": "verify-binding",
       "expected": "pass",
-      "jobId": "cafe\u0301-job",
+      "jobId": "café-job",
       "phaseIndex": 0,
       "presentedNonce": "0xc4d6eb3c8774ff6078765567559c1ce1953badb01ba1ea8a5252561712294397",
       "want": {
@@ -55,7 +61,9 @@
         "derivedNonce": "0xc4d6eb3c8774ff6078765567559c1ce1953badb01ba1ea8a5252561712294397",
         "binding": "present-and-matches"
       },
-      "note": "a decomposed input is NFC-normalized before UTF-8 encoding"
+      "note": "a decomposed input is NFC-normalized before UTF-8 encoding",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0xc4d6eb3c8774ff6078765567559c1ce1953badb01ba1ea8a5252561712294397"
     },
     {
       "name": "random-nonce-mismatch",
@@ -69,7 +77,9 @@
         "binding": "present-and-mismatches",
         "fallback": false
       },
-      "note": "a well-formed random/provider-generated nonce is present but mismatched, so evidence is rejected rather than downgraded to fallback"
+      "note": "a well-formed random/provider-generated nonce is present but mismatched, so evidence is rejected rather than downgraded to fallback",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff"
     },
     {
       "name": "wrong-phase-nonce-mismatch",
@@ -83,7 +93,9 @@
         "binding": "present-and-mismatches",
         "fallback": false
       },
-      "note": "the phase-3 nonce cannot bind evidence anchored at phase 4"
+      "note": "the phase-3 nonce cannot bind evidence anchored at phase 4",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x80fa47321a52f728f5ecbde7a5ceb44dd6086c9902dd8b95980b05909e5ea969"
     },
     {
       "name": "short-nonce-error",
@@ -95,7 +107,8 @@
       "want": {
         "binding": "malformed"
       },
-      "note": "a nonce that is not exactly bytes32 is malformed, not a clean binding mismatch"
+      "note": "a nonce that is not exactly bytes32 is malformed, not a clean binding mismatch",
+      "validationScope": "derivation-only"
     },
     {
       "name": "missing-hex-prefix-error",
@@ -107,7 +120,8 @@
       "want": {
         "binding": "malformed"
       },
-      "note": "the DACS textual form requires the 0x prefix"
+      "note": "the DACS textual form requires the 0x prefix",
+      "validationScope": "derivation-only"
     },
     {
       "name": "negative-phase-index-error",
@@ -118,7 +132,8 @@
       "want": {
         "binding": "malformed-input"
       },
-      "note": "phaseIndex is a non-negative BundlePhaseEntry index"
+      "note": "phaseIndex is a non-negative BundlePhaseEntry index",
+      "validationScope": "derivation-only"
     },
     {
       "name": "leading-zero-phase-index-error",
@@ -129,7 +144,8 @@
       "want": {
         "binding": "malformed-input"
       },
-      "note": "a string spelling with leading zeroes is not the canonical integer phaseIndex"
+      "note": "a string spelling with leading zeroes is not the canonical integer phaseIndex",
+      "validationScope": "derivation-only"
     },
     {
       "name": "used-same-transfer-resumes",
@@ -147,7 +163,9 @@
         "action": "resume-existing",
         "mustGenerateFreshNonce": false
       },
-      "note": "a proven prior settlement for the same authorization is an idempotent resume, never a second charge"
+      "note": "a proven prior settlement for the same authorization is an idempotent resume, never a second charge",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff"
     },
     {
       "name": "used-different-transfer-fails-closed",
@@ -164,7 +182,9 @@
         "action": "refuse",
         "mustGenerateFreshNonce": false
       },
-      "note": "a used nonce not attributable to this exact phase transfer fails closed"
+      "note": "a used nonce not attributable to this exact phase transfer fails closed",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff"
     },
     {
       "name": "cancelled-nonce-fails-closed",
@@ -181,7 +201,24 @@
         "action": "refuse",
         "mustGenerateFreshNonce": false
       },
-      "note": "cancellation cannot be bypassed by minting a fresh nonce for the same session phase"
+      "note": "cancellation cannot be bypassed by minting a fresh nonce for the same session phase",
+      "validationScope": "derivation-only",
+      "expectedNonce": "0x2fc3598e85489ed2fb4d2bf9f4eb5cc8dd6998eec89645d64450f9630240e1ff"
+    },
+    {
+      "name": "valid-ulid-full-input",
+      "op": "verify-binding",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "presentedNonce": "0xaeed3b79a6eedc2c19ce773a286dc5a897271cd92ed41a7f7ae5847fe3c9e9e2",
+      "want": {
+        "derivedNonce": "0xaeed3b79a6eedc2c19ce773a286dc5a897271cd92ed41a7f7ae5847fe3c9e9e2",
+        "binding": "present-and-matches"
+      },
+      "note": "a schema-valid ULID exercises the full SB-3 input path, not only the nonce-derivation unit",
+      "validationScope": "full-input",
+      "expectedNonce": "0xaeed3b79a6eedc2c19ce773a286dc5a897271cd92ed41a7f7ae5847fe3c9e9e2"
     }
   ]
 }

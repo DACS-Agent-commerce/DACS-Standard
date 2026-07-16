@@ -29,13 +29,14 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4 | 4 | `fail` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
-| [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 13 | `error` / `fail` / `pass` |
+| [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -116,28 +117,75 @@ effect, and failing step. The common `fixtures` block holds the listing context,
 signed markers, bindings, and producer-only Demos write inputs. Cross-running
 against the offered producer and reader fixtures remains pending.
 
+### `listing-preserve-unknown-v0.1.json` — CORE §B.7 SIG-3/SIG-5 + §11.1.2
+
+4 candidate vectors pin forward-readable Listing verification without making
+action discriminants fail open. A complete Listing carries one inert unknown
+top-level field and a real Ed25519 signature over
+`"dacs-listing:v1:" || listing_hash`:
+
+- the unchanged document passes even when the reader does not recognise the
+  field's meaning;
+- mutating or removing the field changes the recomputed hash and invalidates
+  the signature; and
+- a separately signed Listing with an unknown phase kind passes its signature
+  check but refuses as unsupported under §11.1.2's new-type rule.
+
+The fixture also carries a valid per-claim IdentityBundle presentation, a raw
+public key, byte-exact artifact hashes, and the hash produced by an erroneous
+known-key projection. This lets a runner distinguish a closed top-level
+allowlist from required-field validation without importing a language-specific
+Listing schema.
+
+#### Vector schema
+
+| field | meaning |
+|-------|---------|
+| `fixture` | complete signed Listing selected from the top-level `fixtures` map |
+| `transform` | no change, one unknown-field mutation, or removal before verification |
+| `expected` | verifier verdict: `pass` or `fail` |
+| `want.computedArtifactHash` | `sha256(JCS(listing-with-signature-omitted))` after the transform |
+| `want.signature` | expected Ed25519 result before semantic Listing validation |
+| `want.listingDisposition` | accept, reject, or refuse as an unsupported new type |
+
+Run the dependency-free reference assertions with
+`python3 -m unittest tests.test_listing_preserve_unknown_vectors -v`.
+
 ### `sb3-eip3009-nonce-v0.1.json` — §9.5.8 SB-3 (byte-exact x402 EIP-3009 binding)
 
-13 candidate vectors pin the EIP-3009 `bytes32 nonce` that binds a `pay-x402`
+14 candidate vectors pin the EIP-3009 `bytes32 nonce` that binds a `pay-x402`
 authorization to `(jobId, phaseIndex)`. The positive vectors reproduce the live
 Base Sepolia value reported in #241 and prove job/phase separation plus NFC
-normalization. Negative vectors distinguish a well-formed mismatch (`fail`, with
-no SB-3 fallback) from malformed nonce/phase input (`error`). Retry vectors pin
+normalization.
+
+Negative vectors distinguish a well-formed mismatch — `fail` with no SB-3
+fallback — from malformed nonce/phase input (`error`). Retry vectors pin
 the no-double-charge rule: a previously used authorization resumes only when
 chain evidence proves the same transfer already settled; otherwise used or
-cancelled state fails closed and never causes a fresh nonce.
+cancelled state fails closed and never causes a fresh nonce. One valid-ULID case
+exercises the full input shape; the live, Unicode, mismatch, malformed, and retry
+cases are explicitly marked `derivation-only`, so their verdict does not imply
+full artifact-schema acceptance.
 
 #### Vector schema
 
 Each entry carries `op` (`derive`, `verify-binding`, or `retry`), `jobId`, and
 `phaseIndex`. Verification cases add `presentedNonce`; retry cases add
-`priorAuthorization`. `expected` is the §7.5.1 verdict, while `want` pins the
-derived nonce/binding branch or retry action. Textual nonce fixtures use the
-canonical lower-case `0x` + 64-hex form.
+`priorAuthorization`. Every case whose valid raw inputs reach derivation carries
+`expectedNonce`; malformed inputs rejected before derivation deliberately do
+not. `validationScope` distinguishes `derivation-only` from `full-input`.
+`expected` is the §7.5.1 verdict, while `want` pins the derived nonce/binding
+branch or retry action. Textual nonce fixtures use the canonical lower-case
+`0x` + 64-hex form.
 
-The set-level `hash` is sha256 over the compact JSON `vectors` array, as checked
-by `scripts/validate_security_vectors.py`. Candidate set; independent
-implementation cross-run pending.
+The set-level `hash` is sha256 over the compact JSON `vectors` array. The generic
+security-vector validator checks that envelope, and the focused dependency-free
+test recomputes every pinned nonce, the NFC equivalence, malformed-input refusal,
+binding comparisons, and retry reuse:
+
+`python3 -m unittest tests.test_sb3_eip3009_nonce_vectors -v`
+
+Candidate set; independent implementation cross-run pending.
 
 ### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
 

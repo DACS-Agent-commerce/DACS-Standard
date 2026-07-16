@@ -441,17 +441,26 @@ def build_outsider_flooding(keys):
     j = "OBF"
     d = concrete_header(
         keys, "outsider-binding-flooding-v0.3",
-        "DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity (round-3 blocker #4)",
-        ["#251 read censorship", "round-3 review: BB-6 outsider-triggerable cap"],
+        "DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3)",
+        ["#251 read censorship", "round-3 review: BB-6 outsider-triggerable cap",
+         "#248 round-6 blocker #3: BB-7 side-level exhaustion (Random)"],
         ("BB-6 keys collapse/precedence/void on the authenticated-and-authorized predicate, not the "
          "observable candidate count: a candidate is authorized only when its signer is the bundle party "
          "holding role. Outsider self-signed bindings are BB-4-valid but unauthorized — pruned pre-fetch "
-         "when a co-signed party map is available, inert post-fetch otherwise. Budget exhaustion and a side "
-         "with no authorized binding are indeterminate (BB-7), never a void or a fabricated one-sided "
-         "classification."),
+         "when a co-signed party map is available, inert post-fetch otherwise. BB-7 exhaustion is SIDE-level: "
+         "if ANY signer bucket (after the party-map prune) holds more than the N=8 per-signer budget, its "
+         "budget exhausts with candidates unfetched and the WHOLE side is indeterminate — overriding any "
+         "authorized candidate that resolved, never a void or a fabricated one-sided classification."),
         ("Concrete honest (seller) and outsider (f0..) bindings. The outsider is not a bundle party, so its "
          "self-signed bindings verify (BB-4) but fail authorization (BB-5 check 9). Verdict pass = the honest "
-         "copy resolves; indeterminate = budget exhaustion or no authorized binding."),
+         "copy resolves with no bucket exhausted; indeterminate = a bucket exhausts N=8 (BB-7) or no authorized "
+         "binding resolves. PROVENANCE: the round-3 `outsider-flood-nine-plus-one-honest` expectation was "
+         "`present`; that contradicted BB-6/BB-7 (a 9-candidate single-signer bucket exhausts N=8 with a "
+         "candidate unfetched -> indeterminate) and was CORRECTED per the #248 round-5 review (Random, blocker "
+         "3). The expectation was corrected to the rule; the rule was not bent to fit the fixture. "
+         "`co-signed-map-prefetch-prunes-outsiders` was also corrected (round-6 rider): its body omitted "
+         "the partyMap its name/want claimed, so the prune was pinned metadata; the map is now carried and "
+         "the prune executes (five outsiders pruned pre-fetch, only the honest address fetched)."),
     )
     vectors = []
     req = {"jobId": None, "role": "seller"}
@@ -465,17 +474,23 @@ def build_outsider_flooding(keys):
                          sha("flood", v1j, str(k)), idx=100 + k) for k in range(9)]
     vectors.append({
         "name": "outsider-flood-nine-plus-one-honest",
-        "rule": "BB-6 authorization",
-        "expected": "pass",
-        "note": ("the review-3 attack: nine outsider self-signed bindings for the victim (jobId, seller) plus "
-                 "one honest seller binding. The outsiders are unauthorized and inert; the honest copy "
-                 "resolves and no side is voided."),
+        "rule": "BB-6 authorization; BB-7 side-level exhaustion",
+        "expected": "indeterminate",
+        "note": ("nine outsider self-signed bindings for the victim (jobId, seller) under ONE outsider signer, "
+                 "plus one honest seller binding, with NO co-signed party map. CORRECTED (#248 round-5 review, "
+                 "Random blocker 3): the round-3 expectation `present` contradicted BB-6/BB-7. The outsider "
+                 "signer's 9-candidate bucket exhausts the N=8 fetch budget with one candidate still unfetched "
+                 "(the ninth outsider cannot be known inert without fetching it), so BB-7 makes the WHOLE side "
+                 "indeterminate — overriding the honest copy that resolves. The expectation was corrected to "
+                 "the rule; the rule was not bent to fit the fixture. A consumer MAY re-run with a larger "
+                 "budget to lift the exhaustion-indeterminate."),
         "request": {"jobId": v1j, "role": "seller"},
         "bindings": [honest] + outs,
         "anchored": {hn: hb},
-        "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn,
+        "want": {"expected": "indeterminate", "sideDisposition": "indeterminate", "resolvedNativeAddress": None,
                  "outsiderBindings": 9, "authorizedBindings": 1, "void": False,
-                 "reason": "outsider bindings are BB-4-valid but unauthorized (signer is not the bundle party holding role); they are inert and the honest authorized copy resolves — no void"},
+                 "exhaustedSigners": [CLAIM["outsider"]], "mayRerunWithLargerBudget": True,
+                 "reason": "the single outsider signer's 9-candidate bucket exhausts N=8 with a candidate unfetched; BB-7 side-level exhaustion overrides the resolved honest copy -> indeterminate (never absent, never a void)"},
     })
     # (2) co-signed party map available -> pre-fetch prune
     v2j = j + "-2"
@@ -489,32 +504,41 @@ def build_outsider_flooding(keys):
         "rule": "BB-6 co-signed party map",
         "expected": "pass",
         "note": ("a co-signed copy of the same jobId supplies the role→primary-claim party map; the consumer "
-                 "prunes the candidate set to the mapped signer (seller) before any fetch, so the outsider "
-                 "bindings are never fetched."),
+                 "prunes the candidate set to the mapped signer (seller) before any fetch, so the five outsider "
+                 "bindings are never fetched and only the honest seller nativeAddress is fetched. CORRECTED "
+                 "(#248 round-6 rider): the round-6 body omitted the partyMap its name and want claimed, so the "
+                 "prune was pinned metadata, not executed; the map is now carried and the prune is executed."),
         "request": {"jobId": v2j, "role": "seller"},
         "bindings": [honest2] + outs2,
         "anchored": {hn2: hb2},
+        "partyMap": {CLAIM["seller"]: "seller"},
         "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn2,
-                 "prunedPreFetch": 5, "fetched": 1, "void": False,
-                 "reason": "co-signed party map prunes the candidate set to the mapped signer before any fetch (BB-6); outsiders never fetched"},
+                 "prunedPreFetch": 5, "fetched": 1, "void": False, "exhaustedSigners": [],
+                 "reason": "co-signed party map prunes the five outsider candidates to the mapped signer before any fetch (BB-6); only the honest seller address is fetched"},
     })
-    # (3) honest self-flood >8, no map -> budget exhaustion -> indeterminate
+    # (3) honest self-flood >8, no map -> budget exhaustion -> indeterminate. The honest role-holder's
+    #     OWN copies are authorized (it is the party holding role), so the side is indeterminate purely
+    #     because its bucket exhausts N=8 — without the exhaustion rule these would resolve `present`.
     v3j = j + "-3"
-    self_floods = [make_binding(keys, v3j, "seller", "seller", native_address(v3j, "seller", 300 + k),
+    hb3 = make_fab(keys, v3j, "completed", "none", "seller", ["buyer", "seller"])
+    self_flood_addrs = [native_address(v3j, "seller", 300 + k) for k in range(9)]
+    self_floods = [make_binding(keys, v3j, "seller", "seller", self_flood_addrs[k],
                                 sha("selfflood", v3j, str(k)), idx=300 + k) for k in range(9)]
     vectors.append({
         "name": "honest-self-flood-budget-exhaustion",
         "rule": "BB-6 fetch budget; BB-7",
         "expected": "indeterminate",
         "note": ("the honest role-holder publishes nine single-signed self-authorized bindings that diverge, "
-                 "with no co-signed map to prune; nine authorized candidates exceed the N=8 fetch budget, so "
-                 "the side disposition is indeterminate — never a classification."),
+                 "with no co-signed map to prune; the seller signer's nine-candidate bucket exceeds the N=8 "
+                 "fetch budget, so it exhausts with a candidate unfetched and BB-7 makes the side "
+                 "indeterminate — never a classification. Now EXECUTED through resolve_bb6 (round-6 blocker 3)."),
         "request": {"jobId": v3j, "role": "seller"},
         "bindings": self_floods,
-        "anchored": {},
+        "anchored": {a: hb3 for a in self_flood_addrs},
         "want": {"expected": "indeterminate", "sideDisposition": "indeterminate",
                  "authorizedCandidates": 9, "budget": 8, "void": False, "mayRerunWithLargerBudget": True,
-                 "reason": "budget exhaustion yields the side disposition indeterminate, never a classification — a consumer MAY re-run resolution with a larger budget (BB-6/BB-7)"},
+                 "exhaustedSigners": [CLAIM["seller"]],
+                 "reason": "the seller signer's 9-candidate bucket exhausts N=8 with a candidate unfetched; BB-7 side-level exhaustion -> indeterminate, never a classification — a consumer MAY re-run with a larger budget"},
     })
     # (4) outsider flood with no honest binding -> indeterminate (not absent, not void)
     v4j = j + "-4"
@@ -531,8 +555,8 @@ def build_outsider_flooding(keys):
         "bindings": outs4,
         "anchored": {},
         "want": {"expected": "indeterminate", "sideDisposition": "indeterminate",
-                 "authorizedBindings": 0, "void": False, "absent": False,
-                 "reason": "no BB-4-valid authorized binding resolves; the side is indeterminate — neither present nor authoritatively absent (BB-7), not a void"},
+                 "authorizedBindings": 0, "void": False, "absent": False, "exhaustedSigners": [],
+                 "reason": "no BB-4-valid authorized binding resolves (bucket of 6 <= N=8, so not an exhaustion); the side is indeterminate — neither present nor authoritatively absent (BB-7), not a void"},
     })
     # (5) WORST-ORDER (round-4 blocker #2): nine outsider hashes ALL sort STRICTLY BELOW the honest
     #     hash — the adversarial ordering the round-3 vector avoided. Under the E6 per-signer budget
@@ -561,8 +585,8 @@ def build_outsider_flooding(keys):
         "partyMap": {CLAIM["seller"]: "seller"},
         "honestContentHash": hh5,
         "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn5,
-                 "outsiderHashesBelowHonest": 9, "void": False,
-                 "reason": "per-signer budget + mandatory derivation-context prune: an outsider's worst-order flood cannot suppress the authorized role-holder (E6)"},
+                 "outsiderHashesBelowHonest": 9, "void": False, "exhaustedSigners": [],
+                 "reason": "mandatory derivation-context prune drops the outsider bucket pre-fetch, so no bucket exhausts and the authorized role-holder resolves (E6); an outsider's worst-order flood cannot suppress it"},
     })
     # (6) SYBIL flood: eight DISTINCT outsider keys (not one outsider re-signing) plus one honest seller
     #     binding. Even distinct-key sybils each get their OWN per-signer budget bucket and none is
@@ -600,8 +624,41 @@ def build_outsider_flooding(keys):
         "anchored": {hn6: hb6},
         "partyMap": {CLAIM["seller"]: "seller"},
         "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn6,
-                 "distinctOutsiderKeys": 8, "void": False,
-                 "reason": "per-signer budget isolates each distinct signer; eight sybil keys cannot starve the authorized role-holder's allocation (E6)"},
+                 "distinctOutsiderKeys": 8, "void": False, "exhaustedSigners": [],
+                 "reason": "the party-map prune drops the eight sybil buckets pre-fetch; each distinct signer would get its own bucket anyway, so none exhausts and the authorized role-holder resolves (E6)"},
+    })
+    # (7) ARM 1 (xm33 B2 design): worst-order flood with NO co-signed map, every bucket <= 8. Eight
+    #     outsider bindings under ONE outsider signer, all bundleContentHash sorting strictly BELOW the
+    #     honest hash; one honest seller binding; NO partyMap; anchored = {honest -> the seller bundle}.
+    #     The outsider bucket holds exactly 8 (== budget), so it does NOT exhaust; the per-signer budget
+    #     keeps the honest seller's own bucket resolvable regardless of the adversarial low-hash ordering.
+    #     This is the anchored/no-map worst-order case xm33's arm 1 assumes: present, no exhaustion.
+    v7j = j + "-7"
+    hb7 = make_fab(keys, v7j, "completed", "none", "seller", ["buyer", "seller"])
+    hn7 = native_address(v7j, "seller", 0)
+    hh7 = bundle_hash(hb7)
+    honest7 = make_binding(keys, v7j, "seller", "seller", hn7, hh7, idx=0)
+    # eight outsider hashes 0x0..0x7 — the smallest 64-hex values, guaranteed strictly < hh7; one signer.
+    worst_nomap = [make_binding(keys, v7j, "seller", "outsider", native_address(v7j, "seller", 700 + k),
+                                "%064x" % k, idx=700 + k) for k in range(8)]
+    vectors.append({
+        "name": "outsider-flood-worst-order-no-map",
+        "rule": "BB-6 per-signer budget (E6), anchored/no-map path; BB-7 (arm 1, xm33 B2)",
+        "expected": "pass",
+        "note": ("xm33 B2 arm 1: eight outsider self-signed bindings under ONE outsider signer whose "
+                 "bundleContentHash values all sort strictly BELOW the honest seller binding's hash, with NO "
+                 "co-signed party map (anchored/no-map path). The outsider bucket holds exactly 8 == N, so it "
+                 "does not exhaust; the per-signer budget puts the honest seller in its own bucket, so the "
+                 "worst-order flood cannot starve it and the honest copy resolves -> present. This makes the "
+                 "per-signer budget load-bearing on the anchored-only path (a single global budget would let "
+                 "the eight low-hash outsiders crowd out the honest one)."),
+        "request": {"jobId": v7j, "role": "seller"},
+        "bindings": worst_nomap + [honest7],
+        "anchored": {hn7: hb7},
+        "honestContentHash": hh7,
+        "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn7,
+                 "outsiderHashesBelowHonest": 8, "void": False, "exhaustedSigners": [],
+                 "reason": "anchored/no-map path: the outsider bucket holds exactly 8 (no exhaustion) and the per-signer budget isolates the honest seller's bucket, so it resolves despite every outsider hash sorting below it (E6, arm 1)"},
     })
     # disclose the sybil keypairs so the vector is independently verifiable
     d["seeds"].update(sybil_seeds)
@@ -696,24 +753,51 @@ def build_unresolved_vs_absent():
 RCP_WINDOW = [1780000000000, 1780900000000]
 
 
+FINALIZED_STATE_REF = "demos-testnet:finalized-1780004000000"
+
+
+def evidence_hash(ev):
+    return hashlib.sha256(canonical(ev)).hexdigest()
+
+
+def make_absence_evidence(native, kind="non-membership-proof"):
+    """AbsenceEvidence (R2): CORE §5 owns policy semantics; DACS-5 defines only the binding relation
+    (absenceBinding.nativeAddress == AbsenceEvidence.nativeAddress). Address-cohering, dereferenceable."""
+    return {"kind": kind, "nativeAddress": native, "finalizedStateRef": FINALIZED_STATE_REF}
+
+
 def build_receipt_rederivation(keys):
-    """CONCRETE (round-5): real signed FaultAttestationBundle content + full E5 resolutionContext
-    (roleEvidence / counterpartyRef / absenceBinding). A rederiver dereferences bundleRefs, re-runs
-    derive() supplying each entry as its §10.5.1 tag, and reproduces byte-identical metrics."""
+    """CONCRETE: real signed FaultAttestationBundle content + full resolutionContext. A rederiver
+    dereferences bundleRefs, EXECUTES the per-copy validation, and reproduces byte-identical metrics.
+
+    Round-6 blocker #1: the replayable receipt is a DISTINCT type, `ReplayableReputationDerivation`,
+    with its own `replayableDerivationVersion: "1"` discriminator (CORE §11.1.2 new-type refusal).
+    Round-6 blocker #2: replay now actually AUTHENTICATES every copy — roleEvidence via BB-4/BB-5,
+    BB-6 selection reproduced from `bb6Context`, §10.4.3 divergence re-run against the dereferenced
+    `counterpartyRef` (authenticated by `counterpartyRoleEvidence`), and the absence address/proof
+    relation (`absenceBinding.nativeAddress == AbsenceEvidence.nativeAddress`). Four negative vectors
+    (N1-N4) are published receipts that replay REFUSES, one per Random's round-5 mutation class."""
     j = "RCP"
     d = concrete_header(
         keys, "receipt-rederivation-v0.3",
-        "DACS-5 §10.5.3 determinism receipt clauses (3)/(4) + §10.5.1 resolutionContext (E5)",
-        ["round-3 review: receipt rederivation context (#5)", "#248 round-4 blocker #1: replayable receipt"],
-        ("A published ReputationDerivation MUST carry one resolutionContext entry per bundleRefs member: "
-         "roleEvidence backing resolvedRole, counterpartyRef for a two-copy jobId (so a rederiver can re-run "
-         "§10.4.3 divergence + authority selection), and absenceEvidenceRef + absenceBinding for a one-copy "
-         "jobId. A rederivation supplying each entry as its §10.5.1 tag MUST reproduce byte-identical metrics "
-         "and bundleCount; a receipt missing any REQUIRED member is non-conforming."),
-        ("Concrete FAB copies signed under dacs-fault-bundle:v1:. The pass vector replays through derive(); "
-         "the fail vectors are published receipts missing a REQUIRED resolutionContext member."),
+        "DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2",
+        ["round-3 review: receipt rederivation context (#5)", "#248 round-4 blocker #1: replayable receipt",
+         "#248 round-6 blocker #1: derivation compatibility split", "#248 round-6 blocker #2: replay actually validates"],
+        ("A published ReplayableReputationDerivation carries the replayableDerivationVersion discriminator "
+         "(never derivationVersion) and one resolutionContext entry per bundleRefs member. Replay EXECUTES: "
+         "roleEvidence BB-4/BB-5 re-verification; BB-6 re-selection from bb6Context (candidateBindings/partyMap/"
+         "budget) that MUST reach roleEvidence.binding.nativeAddress; §10.4.3 divergence re-run against the "
+         "dereferenced counterpartyRef, whose role is authenticated by counterpartyRoleEvidence; and the "
+         "absence relation absenceBinding.nativeAddress == dereferenced AbsenceEvidence.nativeAddress with "
+         "absenceEvidenceRef.contentHash == sha256(canonical(AbsenceEvidence)). Any failure => refusal."),
+        ("Concrete FAB copies + BundleBindings + AbsenceEvidence objects (disclosed seeds). The pass vector "
+         "replays byte-identically through the full validation; N1-N4 are published receipts each carrying one "
+         "of Random's round-5 mutations (divergent counterparty, invalid counterparty role binding, misbound "
+         "absence evidence, competing same-role BB-6 copy) and MUST be refused; the member-missing + refusal "
+         "vectors from round-6 #1 are retained."),
     )
     party = CLAIM["seller"]
+    PM = {CLAIM["seller"]: "seller"}   # authenticated role-holder map (MANDATORY in derivation context)
 
     # --- pass fixture: Job A two-copy present (both completed), Job B one-copy absent (seller abort) ---
     ja, jb = j + "-A", j + "-B"
@@ -723,37 +807,50 @@ def build_receipt_rederivation(keys):
     a_buyer = make_fab(keys, ja, "completed", "none", "buyer", ["buyer", "seller"], finalised_at=FINALISED_AT + 1000)
     b_seller = make_fab(keys, jb, "aborted-by-self", "seller", "seller", ["seller"])
     ha_s, ha_b, hb_s = bundle_hash(a_seller), bundle_hash(a_buyer), bundle_hash(b_seller)
-    # write-input substrate: roleEvidence is the verified BB-4/BB-5 binding for the authoritative
-    # copy; the absent side additionally carries the binding resolving the MISSING buyer address.
-    a_seller_binding = make_binding(keys, ja, "seller", "seller", native_address(ja, "seller"), ha_s)
-    b_seller_binding = make_binding(keys, jb, "seller", "seller", native_address(jb, "seller"), hb_s)
-    absence_binding = make_binding(keys, jb, "buyer", "buyer", native_address(jb, "buyer"), PLACEHOLDER)
+    na_a_s, na_a_b = native_address(ja, "seller"), native_address(ja, "buyer")
+    na_b_s, na_b_b = native_address(jb, "seller"), native_address(jb, "buyer")
+    # roleEvidence: verified BB-4/BB-5 binding for the authoritative copy; counterpartyRoleEvidence:
+    # the binding authenticating the counterparty's role (anchoredByRole is unhashed); absenceBinding:
+    # the binding resolving the MISSING buyer address, coherent with the AbsenceEvidence object.
+    a_seller_binding = make_binding(keys, ja, "seller", "seller", na_a_s, ha_s)
+    a_buyer_binding = make_binding(keys, ja, "buyer", "buyer", na_a_b, ha_b)
+    b_seller_binding = make_binding(keys, jb, "seller", "seller", na_b_s, hb_s)
+    absence_binding = make_binding(keys, jb, "buyer", "buyer", na_b_b, PLACEHOLDER)
+    ev_b = make_absence_evidence(na_b_b)
+    ev_b_hash = evidence_hash(ev_b)
+    bb6_a = {"candidateBindings": [a_seller_binding], "partyMap": PM, "budget": 8}
+    bb6_b = {"candidateBindings": [b_seller_binding], "partyMap": PM, "budget": 8}
     tagged = [
         {"bundle": a_seller, "resolvedRole": "seller", "counterpartyDisposition": "present",
          "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer", "contentHash": ha_b},
-         "roleEvidence": {"kind": "binding", "binding": a_seller_binding}},
+         "counterpartyRoleEvidence": {"kind": "binding", "binding": a_buyer_binding},
+         "roleEvidence": {"kind": "binding", "binding": a_seller_binding},
+         "bb6Context": bb6_a},
         {"bundle": b_seller, "resolvedRole": "seller", "counterpartyDisposition": "absent",
-         "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": "stor-" + "0" * 40, "contentHash": PLACEHOLDER},
+         "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
          "absenceBinding": absence_binding,
-         "roleEvidence": {"kind": "binding", "binding": b_seller_binding}},
+         "roleEvidence": {"kind": "binding", "binding": b_seller_binding},
+         "bb6Context": bb6_b},
     ]
+    absence_evidence_map = {ev_b_hash: ev_b}
     vectors = []
     vectors.append({
         "name": "complete-resolution-context-replays-identical",
-        "rule": "§10.5.3 (3)/(4); E5",
+        "rule": "§10.5 Replay (1)-(4); §10.5.3 (3)",
         "expected": "pass",
-        "note": ("two jobIds: a two-copy present jobId (both completed FAB copies) carrying counterpartyRef, "
-                 "and a one-copy absent jobId (seller aborted-by-self) carrying absenceEvidenceRef + "
-                 "absenceBinding. Dereferencing bundleRefs and re-running derive() with each entry as its tag "
-                 "reproduces byte-identical metrics and bundleCount."),
+        "note": ("two jobIds: a two-copy present jobId (both completed FAB copies) carrying counterpartyRef + "
+                 "counterpartyRoleEvidence + bb6Context, and a one-copy absent jobId (seller aborted-by-self) "
+                 "carrying a dereferenceable AbsenceEvidence + coherent absenceBinding + bb6Context. Replay "
+                 "authenticates every copy AND reproduces byte-identical metrics and bundleCount."),
         "party": party,
         "window": RCP_WINDOW,
         "taggedBundles": tagged,
         "derefBundles": {ha_s: a_seller, ha_b: a_buyer, hb_s: b_seller},
+        "absenceEvidence": absence_evidence_map,
         "want": {"conforming": True, "replayByteIdentical": True, "reputationEffect": "include",
                  "bundleCount": 2,
                  "metrics": {"completionRate": 0.5, "counterpartyAdjustedCompletionRate": 0.5, "counterpartyFaultRate": 0.0},
-                 "reason": "complete resolutionContext (roleEvidence + counterpartyRef + absenceBinding) replays byte-identical (§10.5.3 (3)/(4))"},
+                 "reason": "complete, authenticated resolutionContext replays byte-identical and passes all four replay checks (§10.5 Replay)"},
     })
     # --- fail: present entry missing counterpartyRef (round-4 blocker #1) ---
     vectors.append({
@@ -764,6 +861,7 @@ def build_receipt_rederivation(keys):
                  "re-run §10.4.3 divergence or authority selection against the counterparty copy, so the "
                  "receipt is not independently reproducible and is non-conforming."),
         "derivation": {
+            "replayableDerivationVersion": "1",
             "bundleRefs": [ha_s],
             "resolutionContext": [
                 {"contentHash": ha_s, "resolvedRole": "seller", "counterpartyDisposition": "present",
@@ -782,6 +880,7 @@ def build_receipt_rederivation(keys):
         "note": ("a one-copy jobId whose resolutionContext entry is absent-disposition but lacks a valid "
                  "absenceEvidenceRef MUST NOT be included in a published derivation."),
         "derivation": {
+            "replayableDerivationVersion": "1",
             "bundleRefs": [hb_s],
             "resolutionContext": [
                 {"contentHash": hb_s, "resolvedRole": "seller", "counterpartyDisposition": "absent",
@@ -800,6 +899,7 @@ def build_receipt_rederivation(keys):
         "note": ("the resolutionContext is missing an entry for one bundleRefs member (mis-keyed by "
                  "contentHash); the derivation is not independently reproducible."),
         "derivation": {
+            "replayableDerivationVersion": "1",
             "bundleRefs": sorted([ha_s, hb_s]),
             "resolutionContext": [
                 {"contentHash": sorted([ha_s, hb_s])[0], "resolvedRole": "seller", "counterpartyDisposition": "present",
@@ -810,6 +910,198 @@ def build_receipt_rederivation(keys):
         },
         "want": {"conforming": False, "reputationEffect": "exclude",
                  "reason": "resolutionContext is missing/mis-keyed for a bundleRefs member; not independently reproducible and non-conforming (§10.5.3 (4))"},
+    })
+
+    # --- REFUSAL VECTORS (round-6 blocker #1): CORE §11.1.2 new-type refusal on the discriminator.
+    # A single well-formed one-copy-absent receipt BODY, cloned three ways, differing only in the
+    # discriminator shape. Each MUST be refused before any member check. The body is replay-able
+    # (bundleRefs + resolutionContext + derefBundles) so that a mutant which DELETES the refusal
+    # gate would proceed and produce a non-None replay, failing the refusal assertion.
+    refusal_rc = [
+        {"contentHash": hb_s, "resolvedRole": "seller", "counterpartyDisposition": "absent",
+         "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": "stor-" + "0" * 40, "contentHash": PLACEHOLDER},
+         "absenceBinding": absence_binding,
+         "roleEvidence": {"kind": "binding", "binding": b_seller_binding}},
+    ]
+    refusal_body = {
+        "bundleRefs": [hb_s],
+        "resolutionContext": refusal_rc,
+        "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt",
+    }
+    refusal_deref = {hb_s: b_seller}
+    # (a) resolutionContext under the LEGACY derivationVersion "1" — no replay claim exists on the
+    #     legacy ReputationDerivation type, so a replay consumer refuses.
+    vectors.append({
+        "name": "legacy-derivationversion-carrying-resolutioncontext-is-refused",
+        "rule": "CORE §11.1.2 new-type refusal; §10.5",
+        "expected": "fail",
+        "note": ("a published object carries resolutionContext but the legacy derivationVersion \"1\" "
+                 "discriminator, not replayableDerivationVersion. The legacy ReputationDerivation makes no "
+                 "replay claim, so a replay consumer MUST refuse it as unsupported before any member check."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": refusal_deref,
+        "derivation": {"derivationVersion": "1", **refusal_body},
+        "want": {"conforming": False, "refused": True, "refusalCategory": "discriminator", "reputationEffect": "exclude",
+                 "reason": "object carries legacy derivationVersion, not replayableDerivationVersion \"1\"; refused before member check (CORE §11.1.2)"},
+    })
+    # (b) a replayable object with the discriminator STRIPPED — no discriminator at all.
+    vectors.append({
+        "name": "stripped-discriminator-is-refused",
+        "rule": "CORE §11.1.2 new-type refusal; §10.5",
+        "expected": "fail",
+        "note": ("a well-formed replayable receipt body with its replayableDerivationVersion discriminator "
+                 "stripped. Stripping the (unsigned) discriminator downgrades the object to a legacy "
+                 "derivation making no replay claim; a replay consumer MUST refuse it."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": refusal_deref,
+        "derivation": dict(refusal_body),
+        "want": {"conforming": False, "refused": True, "refusalCategory": "discriminator", "reputationEffect": "exclude",
+                 "reason": "object lacks replayableDerivationVersion \"1\"; refused before member check (CORE §11.1.2)"},
+    })
+    # (c) an object carrying BOTH discriminators — ambiguous type identity, refused.
+    vectors.append({
+        "name": "both-discriminators-is-refused",
+        "rule": "CORE §11.1.2 new-type refusal; §10.5",
+        "expected": "fail",
+        "note": ("a published object carries BOTH replayableDerivationVersion \"1\" and the legacy "
+                 "derivationVersion \"1\". A ReplayableReputationDerivation MUST NOT carry derivationVersion; "
+                 "the ambiguous type identity is refused before any member check."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": refusal_deref,
+        "derivation": {"replayableDerivationVersion": "1", "derivationVersion": "1", **refusal_body},
+        "want": {"conforming": False, "refused": True, "refusalCategory": "discriminator", "reputationEffect": "exclude",
+                 "reason": "object carries both replayableDerivationVersion and derivationVersion; a ReplayableReputationDerivation MUST NOT carry derivationVersion (CORE §11.1.2)"},
+    })
+
+    # --- N1-N4 (round-6 blocker #2): each a published receipt that replay REFUSES, one per Random's
+    #     round-5 mutation class. All are pre-built ReplayableReputationDerivation objects.
+    # N1: the dereferenced counterparty copy canonically diverges (§10.4.3) -> divergence() true.
+    a_buyer_div = make_fab(keys, ja, "aborted-by-self", "buyer", "buyer", ["buyer"])
+    ha_bdiv = bundle_hash(a_buyer_div)
+    na_a_bdiv = native_address(ja, "buyer", 1)
+    a_buyer_div_binding = make_binding(keys, ja, "buyer", "buyer", na_a_bdiv, ha_bdiv)
+    vectors.append({
+        "name": "divergent-counterparty-refused",
+        "rule": "§10.5 Replay (3); §10.4.3 (N1)",
+        "expected": "fail",
+        "note": ("a two-copy present receipt whose dereferenced counterparty copy canonically diverges from "
+                 "the authoritative copy (completed vs aborted). Replay re-runs §10.4.3 divergence() against the "
+                 "authenticated counterparty and MUST refuse."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {ha_s: a_seller, ha_bdiv: a_buyer_div},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [ha_s],
+            "resolutionContext": [
+                {"contentHash": ha_s, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": a_seller_binding}, "bb6Context": bb6_a,
+                 "counterpartyDisposition": "present",
+                 "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer-div", "contentHash": ha_bdiv},
+                 "counterpartyRoleEvidence": {"kind": "binding", "binding": a_buyer_div_binding}},
+            ],
+            "metrics": {"completionRate": 1.0, "counterpartyAdjustedCompletionRate": 1.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "divergence", "reputationEffect": "exclude",
+                 "reason": "dereferenced counterparty copy canonically diverges; §10.4.3 reconciliation refuses the receipt (N1)"},
+    })
+    # N2: counterpartyRoleEvidence.binding.role is flipped (seller, should be buyer) -> role authentication fails.
+    a_buyer_wrongrole_binding = make_binding(keys, ja, "seller", "buyer", na_a_b, ha_b)  # role="seller", signer=buyer
+    vectors.append({
+        "name": "invalid-counterparty-role-binding-refused",
+        "rule": "§10.5 Replay (3) counterparty authentication (N2)",
+        "expected": "fail",
+        "note": ("a two-copy present receipt whose counterpartyRoleEvidence binding declares the WRONG role "
+                 "(seller instead of the counterparty's buyer). anchoredByRole is unhashed, so the receipt must "
+                 "carry a role-correct binding; replay MUST refuse the mis-roled one."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {ha_s: a_seller, ha_b: a_buyer},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [ha_s],
+            "resolutionContext": [
+                {"contentHash": ha_s, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": a_seller_binding}, "bb6Context": bb6_a,
+                 "counterpartyDisposition": "present",
+                 "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer", "contentHash": ha_b},
+                 "counterpartyRoleEvidence": {"kind": "binding", "binding": a_buyer_wrongrole_binding}},
+            ],
+            "metrics": {"completionRate": 1.0, "counterpartyAdjustedCompletionRate": 1.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "counterparty-role", "reputationEffect": "exclude",
+                 "reason": "counterpartyRoleEvidence.binding.role != the counterparty's role; role authentication fails (N2)"},
+    })
+    # N3: absenceBinding.nativeAddress != the dereferenced AbsenceEvidence.nativeAddress.
+    na_b_b_wrong = native_address(jb, "buyer", 9)
+    absence_binding_misbound = make_binding(keys, jb, "buyer", "buyer", na_b_b_wrong, PLACEHOLDER)
+    vectors.append({
+        "name": "misbound-absence-evidence-refused",
+        "rule": "§10.5 Replay (4) absence relation (N3)",
+        "expected": "fail",
+        "note": ("a one-copy absent receipt whose absenceBinding resolves a DIFFERENT native address than the "
+                 "dereferenced AbsenceEvidence.nativeAddress. The absence evidence does not attach to the "
+                 "counterparty's actual address, so replay MUST refuse."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {hb_s: b_seller},
+        "absenceEvidence": {ev_b_hash: ev_b},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [hb_s],
+            "resolutionContext": [
+                {"contentHash": hb_s, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_b,
+                 "counterpartyDisposition": "absent",
+                 "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
+                 "absenceBinding": absence_binding_misbound},
+            ],
+            "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "absence-relation", "reputationEffect": "exclude",
+                 "reason": "absenceBinding.nativeAddress != dereferenced AbsenceEvidence.nativeAddress (N3)"},
+    })
+    # N4: bb6Context carries a SECOND authorized same-signer candidate whose bundleContentHash sorts BELOW
+    #     the authoritative one, so re-running BB-6 re-selects a different nativeAddress. Bucket size 2 (<=8),
+    #     no exhaustion — the refusal depends only on deterministic ascending-contentHash selection.
+    competitor = make_binding(keys, jb, "seller", "seller", native_address(jb, "seller", 2), "%064x" % 0)
+    bb6_n4 = {"candidateBindings": [b_seller_binding, competitor], "partyMap": PM, "budget": 8}
+    vectors.append({
+        "name": "competing-same-role-copy-changes-bb6-refused",
+        "rule": "§10.5 Replay (2) BB-6 reproduction (N4)",
+        "expected": "fail",
+        "note": ("a one-copy receipt whose bb6Context candidate set contains a SECOND authorized same-signer "
+                 "(seller) binding whose bundleContentHash sorts below the authoritative one. Re-running BB-6 "
+                 "over the candidate set selects the competitor's nativeAddress, not roleEvidence.binding's, so "
+                 "replay MUST refuse. Bucket size 2 (<=8): no budget exhaustion, deterministic selection only."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {hb_s: b_seller},
+        "absenceEvidence": {ev_b_hash: ev_b},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [hb_s],
+            "resolutionContext": [
+                {"contentHash": hb_s, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_n4,
+                 "counterpartyDisposition": "absent",
+                 "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
+                 "absenceBinding": absence_binding},
+            ],
+            "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "bb6-reselection", "reputationEffect": "exclude",
+                 "competingCandidateBucketSize": 2,
+                 "reason": "BB-6 re-selection over bb6Context.candidateBindings yields a different nativeAddress than roleEvidence.binding (N4)"},
     })
     d["vectors"] = vectors
     return finalize(d)

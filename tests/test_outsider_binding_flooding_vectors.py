@@ -39,6 +39,7 @@ EXPECTED_NAMES = {
     "outsider-flood-no-honest-binding",
     "outsider-flood-worst-order",
     "outsider-sybil-flood",
+    "outsider-flood-worst-order-no-map",
 }
 
 
@@ -100,15 +101,84 @@ class OutsiderBindingFloodingTests(unittest.TestCase):
         self.assertEqual(res["disposition"], "present")
         self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"])
 
-    def test_executed_resolver_matches_want_disposition(self):
-        """Run resolve_bb6 over every vector that carries a partyMap/anchored and require the
-        executed disposition to agree with want.sideDisposition."""
+    def test_executed_resolver_matches_want(self):
+        """Run resolve_bb6 over EVERY vector (round-6 blocker 3: no metadata pinning) and require the
+        executed disposition, resolvedNativeAddress, and exhaustedSigners to agree with want."""
         for v in self.vectors:
-            if "partyMap" not in v:
-                continue
             res = R.resolve_bb6(v["bindings"], party_map=v.get("partyMap"), anchored=v.get("anchored"))
             with self.subTest(vector=v["name"]):
                 self.assertEqual(res["disposition"], v["want"]["sideDisposition"])
+                self.assertEqual(res["resolvedNativeAddress"], v["want"].get("resolvedNativeAddress"))
+                self.assertEqual(sorted(res["exhaustedSigners"]),
+                                 sorted(v["want"].get("exhaustedSigners", [])),
+                                 "exhaustedSigners must match want")
+
+    def test_nine_plus_one_exhausts_to_indeterminate(self):
+        """Round-6 blocker 3 (Random): the nine-plus-one flood is a SINGLE outsider bucket of 9 with no
+        co-signed map, so its N=8 budget exhausts with a candidate unfetched — the whole side is
+        indeterminate (BB-7), overriding the honest copy that resolves. EXECUTED, not pinned."""
+        v = self.by_name["outsider-flood-nine-plus-one-honest"]
+        self.assertNotIn("partyMap", v, "the flip depends on there being NO co-signed map")
+        res = R.resolve_bb6(v["bindings"], party_map=None, anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "indeterminate")
+        self.assertIsNone(res["resolvedNativeAddress"])
+        self.assertEqual(res["exhaustedSigners"], v["want"]["exhaustedSigners"])
+
+    def test_honest_self_flood_exhausts_to_indeterminate(self):
+        """The honest role-holder over-publishing (9 self-signed candidates, one bucket, no map) exhausts
+        its own N=8 budget -> indeterminate. EXECUTED."""
+        v = self.by_name["honest-self-flood-budget-exhaustion"]
+        res = R.resolve_bb6(v["bindings"], party_map=v.get("partyMap"), anchored=v.get("anchored"))
+        self.assertEqual(res["disposition"], "indeterminate")
+        self.assertEqual(res["exhaustedSigners"], v["want"]["exhaustedSigners"])
+
+    def test_arm1_no_map_worst_order_still_resolves(self):
+        """xm33 B2 arm 1 (design credited to xm33): a no-map/anchored worst-order case with EVERY bucket
+        <= 8 — eight outsider bindings under one signer, all sorting below the honest hash, no partyMap.
+        The per-signer budget keeps the honest seller resolvable; assert present + honest address, and an
+        ordering guard that the count of outsider hashes below the honest one equals want (computed from
+        the fixture, not a literal), which also locks fixture integrity."""
+        v = self.by_name["outsider-flood-worst-order-no-map"]
+        self.assertNotIn("partyMap", v, "arm 1 is the anchored/no-map path")
+        honest = v["honestContentHash"]
+        outsider = [b["bundleContentHash"] for b in v["bindings"] if b["signer"] != "did:demos:seller"]
+        below = [h for h in outsider if h < honest]
+        self.assertEqual(len(below), v["want"]["outsiderHashesBelowHonest"])
+        # every bucket <= 8, so no exhaustion is possible here (the whole point of arm 1)
+        self.assertLessEqual(len(outsider), 8)
+        res = R.resolve_bb6(v["bindings"], party_map=None, anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "present")
+        self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"])
+        self.assertEqual(res["exhaustedSigners"], [])
+
+    def test_co_signed_map_prefetch_prune_executes(self):
+        """Round-6 rider: the co-signed party map prunes the five outsider candidates BEFORE any fetch,
+        so only the honest seller address is fetched. Executed (the map was formerly pinned metadata the
+        body did not carry): assert present, honest address, outsiders disjoint from fetched, exactly one
+        address fetched, and no exhaustion."""
+        v = self.by_name["co-signed-map-prefetch-prunes-outsiders"]
+        self.assertIn("partyMap", v, "the vector must carry the co-signed party map it is named for")
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        outsider_addrs = {b["nativeAddress"] for b in v["bindings"] if b["signer"] != "did:demos:seller"}
+        self.assertEqual(res["disposition"], "present")
+        self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"])
+        self.assertTrue(outsider_addrs.isdisjoint(set(res["fetched"])),
+                        "the map prune must drop every outsider address before fetch")
+        self.assertEqual(len(res["fetched"]), 1, "only the honest seller address is fetched after the prune")
+        self.assertEqual(len(outsider_addrs), v["want"]["prunedPreFetch"])
+        self.assertEqual(res["exhaustedSigners"], [])
+
+    def test_arm2_mapped_worst_order_prune_is_observable(self):
+        """xm33 B2 arm 2 (design credited to xm33): on the MAPPED worst-order vector, assert every
+        outsider binding's nativeAddress is DISJOINT from the set of fetched addresses — i.e. the
+        co-signed party-map prune drops the outsiders BEFORE any fetch (prefetch pruning observable)."""
+        v = self.by_name["outsider-flood-worst-order"]
+        self.assertIn("partyMap", v)
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        outsider_addrs = {b["nativeAddress"] for b in v["bindings"] if b["signer"] != "did:demos:seller"}
+        self.assertTrue(outsider_addrs.isdisjoint(set(res["fetched"])),
+                        "mapped prune must drop outsider addresses before fetch (none may appear in fetched)")
+        self.assertEqual(res["disposition"], "present")
 
     def test_no_authorized_binding_is_indeterminate_not_absent(self):
         v = self.by_name["outsider-flood-no-honest-binding"]

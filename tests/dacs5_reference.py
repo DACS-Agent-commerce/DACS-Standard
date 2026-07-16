@@ -98,6 +98,36 @@ def verify_sig(pubkey_bytes, domain, content_hash, sig_value):
         return False
 
 
+def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_content_hash=None):
+    """BB-4 + targeted BB-5 checks on a BundleBinding, for receipt replay (round-6 blocker #2).
+
+    Structural checks ALWAYS run: signature.signer == binding.signer (BB-4);
+    binding.jobId == expected_jobid and binding.role == expected_role (BB-5 check 4);
+    binding.bundleContentHash == expected_content_hash byte-for-byte when supplied (BB-5 check 8).
+    The domain-separated signature over BINDING_DOMAIN || binding_hash(binding) is verified ONLY
+    when `pubkeys` is provided AND HAVE_CRYPTO (callers pass pubkeys=None to skip crypto, mirroring
+    the existing gating idiom). `pubkeys` maps a signer ClaimReference -> raw ed25519 public bytes.
+    Returns {"ok": bool, "reason": str}."""
+    if not isinstance(binding, dict):
+        return {"ok": False, "reason": "binding is not an object"}
+    sig = binding.get("signature") or {}
+    if sig.get("signer") != binding.get("signer"):
+        return {"ok": False, "reason": "BB-4: signature.signer != binding.signer"}
+    if binding.get("jobId") != expected_jobid:
+        return {"ok": False, "reason": "BB-5: binding.jobId != %r" % (expected_jobid,)}
+    if binding.get("role") != expected_role:
+        return {"ok": False, "reason": "BB-5: binding.role != %r" % (expected_role,)}
+    if expected_content_hash is not None and binding.get("bundleContentHash") != expected_content_hash:
+        return {"ok": False, "reason": "BB-5 check 8: binding.bundleContentHash != expected"}
+    if pubkeys is not None and HAVE_CRYPTO:
+        pk = pubkeys.get(binding.get("signer"))
+        if pk is None:
+            return {"ok": False, "reason": "BB-4: no public key for signer %r" % (binding.get("signer"),)}
+        if not verify_sig(pk, BINDING_DOMAIN, binding_hash(binding), sig.get("value", "")):
+            return {"ok": False, "reason": "BB-4: binding signature does not verify"}
+    return {"ok": True, "reason": "binding valid"}
+
+
 def is_fab(bundle):
     return "faultBundleVersion" in bundle
 
@@ -240,8 +270,13 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
                outsider's flood never consumes the honest role-holder's allocation (E6).
     anchored : optional {nativeAddress -> bundle} for authorization (BB-5 check 9).
 
+    BB-7 exhaustion is SIDE-level (round-6 blocker #3): if ANY signer bucket (after the party_map
+    prune) holds more than `budget` candidates, its budget exhausts with candidate addresses still
+    unfetched, and the WHOLE side's disposition is `indeterminate` — overriding any authorized
+    candidate that resolved, never `absent`, never a void.
+
     Returns {"disposition": "present"|"indeterminate", "resolvedNativeAddress": str|None,
-             "fetched": [nativeAddress,...], "authorizedSigners": [...]}.
+             "fetched": [nativeAddress,...], "authorizedSigners": [...], "exhaustedSigners": [...]}.
     """
     authorized_signer = None
     if party_map:
@@ -259,9 +294,13 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
     fetched = []
     resolved = None
     authorized = []
+    exhausted = []
     for signer, sbindings in by_signer.items():
         # total order: ascending (bundleContentHash, nativeAddress)
         ordered = sorted(sbindings, key=lambda b: (b["bundleContentHash"], b["nativeAddress"]))
+        if len(sbindings) > budget:
+            # BB-7: this signer's budget exhausts with candidate addresses still unfetched.
+            exhausted.append(signer)
         for b in ordered[:budget]:  # per-signer budget
             fetched.append(b["nativeAddress"])
             # BB-5 check 9 authorization: signer must be the party holding role.
@@ -277,11 +316,19 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
                 if resolved is None:
                     resolved = b["nativeAddress"]
 
+    exhausted = sorted(set(exhausted))
+    authorized_signers = sorted(set(authorized))
+    if exhausted:
+        # BB-7 is SIDE-level: any signer bucket that exhausts N with candidates unfetched makes the
+        # WHOLE side `indeterminate`, overriding any authorized candidate that resolved — never absent,
+        # never a void. A consumer MAY re-run with a larger budget to lift an exhaustion-indeterminate.
+        return {"disposition": "indeterminate", "resolvedNativeAddress": None,
+                "fetched": fetched, "authorizedSigners": authorized_signers, "exhaustedSigners": exhausted}
     if resolved is not None:
         return {"disposition": "present", "resolvedNativeAddress": resolved,
-                "fetched": fetched, "authorizedSigners": sorted(set(authorized))}
+                "fetched": fetched, "authorizedSigners": authorized_signers, "exhaustedSigners": exhausted}
     return {"disposition": "indeterminate", "resolvedNativeAddress": None,
-            "fetched": fetched, "authorizedSigners": sorted(set(authorized))}
+            "fetched": fetched, "authorizedSigners": authorized_signers, "exhaustedSigners": exhausted}
 
 
 # --------------------------------------------------------------------------- #
@@ -408,15 +455,24 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
                  "counterpartyDisposition": t.get("counterpartyDisposition")}
         if t.get("counterpartyDisposition") == "present":
             entry["counterpartyRef"] = t.get("counterpartyRef")
+            if t.get("counterpartyRoleEvidence") is not None:
+                entry["counterpartyRoleEvidence"] = t.get("counterpartyRoleEvidence")
         elif t.get("counterpartyDisposition") == "absent":
             entry["absenceEvidenceRef"] = t.get("absenceEvidenceRef")
             if t.get("absenceBinding") is not None:
                 entry["absenceBinding"] = t.get("absenceBinding")
         if t.get("roleEvidence") is not None:
             entry["roleEvidence"] = t.get("roleEvidence")
+        if t.get("bb6Context") is not None:
+            entry["bb6Context"] = t.get("bb6Context")
         resolution_context.append(entry)
 
     return {
+        # E1 (round-6 blocker #1): the replayable receipt is a DISTINCT type carrying its own
+        # structural discriminator, never the legacy `derivationVersion` (CORE §11.1.2 new-type
+        # refusal; mirrors the AttestationBundle/FaultAttestationBundle split). derive() emits the
+        # ReplayableReputationDerivation; the legacy ReputationDerivation has no `resolutionContext`.
+        "replayableDerivationVersion": REPLAYABLE_DERIVATION_VERSION,
         "bundleCount": len(reconciled),
         "metrics": {
             "completionRate": completion_rate,
@@ -429,10 +485,37 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     }
 
 
+REPLAYABLE_DERIVATION_VERSION = "1"
+
+
+def is_replayable_derivation(d):
+    """True iff `d` is a well-formed ReplayableReputationDerivation: it carries the
+    replayableDerivationVersion discriminator and NOT the legacy derivationVersion (§10.5)."""
+    return (isinstance(d, dict)
+            and d.get("replayableDerivationVersion") == REPLAYABLE_DERIVATION_VERSION
+            and "derivationVersion" not in d)
+
+
+def require_replayable_derivation(d):
+    """CORE §11.1.2 new-type-refusal gate for the replayable receipt (mirrors the
+    resolve_fab_pointer discriminator refusal). A replay consumer MUST refuse an object
+    lacking replayableDerivationVersion "1", or carrying the legacy derivationVersion — no
+    replay claim exists on the legacy ReputationDerivation. Returns {"ok": bool, "reason": str}."""
+    if not isinstance(d, dict) or d.get("replayableDerivationVersion") != REPLAYABLE_DERIVATION_VERSION:
+        return {"ok": False, "reason": "not a ReplayableReputationDerivation discriminator (replayableDerivationVersion != \"1\")"}
+    if "derivationVersion" in d:
+        return {"ok": False, "reason": "carries legacy derivationVersion; a ReplayableReputationDerivation MUST NOT carry derivationVersion"}
+    return {"ok": True, "reason": "replayable-derivation discriminator holds"}
+
+
 def receipt_required_members_present(derivation):
     """§10.5.3 (3)/(4) as amended by E5: every entry must carry the members REQUIRED for
     its disposition (roleEvidence always; counterpartyRef when present; absenceEvidenceRef
-    when absent). Returns (ok, [reasons])."""
+    when absent). The object MUST first pass the ReplayableReputationDerivation refusal gate
+    (CORE §11.1.2). Returns (ok, [reasons])."""
+    gate = require_replayable_derivation(derivation)
+    if not gate["ok"]:
+        return (False, ["discriminator refusal: " + gate["reason"]])
     reasons = []
     refs = derivation.get("bundleRefs", [])
     ctx = derivation.get("resolutionContext", [])
@@ -443,33 +526,144 @@ def receipt_required_members_present(derivation):
     for e in ctx:
         if "roleEvidence" not in e or e["roleEvidence"] is None:
             reasons.append("%s: missing roleEvidence" % e.get("contentHash"))
+        role_ev = e.get("roleEvidence") or {}
+        # binding-backed entries carry the BB-6 multiplicity inputs to reproduce selection (R2).
+        if role_ev.get("kind") == "binding" and not e.get("bb6Context"):
+            reasons.append("%s: binding roleEvidence missing bb6Context" % e.get("contentHash"))
         disp = e.get("counterpartyDisposition")
-        if disp == "present" and not e.get("counterpartyRef"):
-            reasons.append("%s: present disposition missing counterpartyRef" % e.get("contentHash"))
+        if disp == "present":
+            if not e.get("counterpartyRef"):
+                reasons.append("%s: present disposition missing counterpartyRef" % e.get("contentHash"))
+            # the counterparty's role authentication (anchoredByRole is unhashed) is REQUIRED (R2).
+            if not e.get("counterpartyRoleEvidence"):
+                reasons.append("%s: present disposition missing counterpartyRoleEvidence" % e.get("contentHash"))
         if disp == "absent":
             if not e.get("absenceEvidenceRef"):
                 reasons.append("%s: absent disposition missing absenceEvidenceRef" % e.get("contentHash"))
             # write-input substrate (roleEvidence is a binding): the missing side's absenceBinding
             # is REQUIRED so the absence evidence provably attaches to the counterparty's address (E5).
-            role_ev = e.get("roleEvidence") or {}
             if role_ev.get("kind") == "binding" and not e.get("absenceBinding"):
                 reasons.append("%s: absent disposition on a write-input substrate missing absenceBinding" % e.get("contentHash"))
     return (not reasons, reasons)
 
 
-def replay_receipt(derivation, deref, party, window_start, window_end):
-    """§10.5.3 (4): re-run derive() over deref(bundleRefs), supplying each entry as its
-    §10.5.1 tag, and confirm byte-identical metrics + bundleCount. Returns
-    (byte_identical, replayed_derivation)."""
+def _canon_sha(obj):
+    return hashlib.sha256(canonical(obj)).hexdigest()
+
+
+def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None):
+    """Executable replay validation of every authenticated copy in a ReplayableReputationDerivation
+    (round-6 blocker #2). For each entry: re-verify roleEvidence (BB-4/BB-5 via verify_binding);
+    reproduce BB-6 selection over bb6Context; on a present disposition dereference counterpartyRef,
+    verify counterpartyRoleEvidence, and require divergence()==False; on an absent disposition
+    dereference the AbsenceEvidence, hash-check absenceEvidenceRef, verify absenceBinding, and require
+    absenceBinding.nativeAddress == AbsenceEvidence.nativeAddress. Structural checks always run;
+    binding-signature verification runs only under pubkeys+HAVE_CRYPTO. Must first pass the
+    discriminator gate. evidence_deref(contentHash) -> AbsenceEvidence. Returns (ok, [reasons])."""
+    gate = require_replayable_derivation(derivation)
+    if not gate["ok"]:
+        return (False, ["discriminator refusal: " + gate["reason"]])
+    reasons = []
+    ev_get = evidence_deref if evidence_deref is not None else (lambda h: None)
+    for entry in derivation.get("resolutionContext", []):
+        ch = entry.get("contentHash")
+        auth = deref(ch)
+        if not isinstance(auth, dict):
+            reasons.append("%s: authoritative copy not dereferenceable" % ch)
+            continue
+        role = entry.get("resolvedRole")
+        other = _other(role) if role in ("buyer", "seller") else None
+        re_ = entry.get("roleEvidence") or {}
+        # (1) roleEvidence re-verification + (2) BB-6 reproduction.
+        if re_.get("kind") == "binding":
+            vb = verify_binding(re_.get("binding") or {}, pubkeys,
+                                expected_jobid=auth.get("jobId"), expected_role=role,
+                                expected_content_hash=ch)
+            if not vb["ok"]:
+                reasons.append("%s: roleEvidence %s" % (ch, vb["reason"]))
+                continue
+            ctx = entry.get("bb6Context")
+            if not ctx:
+                reasons.append("%s: binding roleEvidence missing bb6Context" % ch)
+                continue
+            native = (re_.get("binding") or {}).get("nativeAddress")
+            res = resolve_bb6(ctx.get("candidateBindings", []), ctx.get("partyMap"),
+                              ctx.get("budget", BB6_DEFAULT_BUDGET), anchored={native: auth})
+            if res["disposition"] != "present" or res["resolvedNativeAddress"] != native:
+                reasons.append("%s: BB-6 re-selection differs (got %r/%s, want present/%s)"
+                               % (ch, res["disposition"], res["resolvedNativeAddress"], native))
+                continue
+        # (3) present: re-run §10.4.3 reconciliation against the dereferenced counterparty copy.
+        disp = entry.get("counterpartyDisposition")
+        if disp == "present":
+            cref = entry.get("counterpartyRef") or {}
+            cp = deref(cref.get("contentHash"))
+            if not isinstance(cp, dict):
+                reasons.append("%s: counterpartyRef not dereferenceable" % ch)
+                continue
+            cre = entry.get("counterpartyRoleEvidence")
+            if not cre:
+                reasons.append("%s: present disposition missing counterpartyRoleEvidence" % ch)
+                continue
+            if cre.get("kind") == "binding":
+                vb2 = verify_binding(cre.get("binding") or {}, pubkeys,
+                                     expected_jobid=auth.get("jobId"), expected_role=other,
+                                     expected_content_hash=cref.get("contentHash"))
+                if not vb2["ok"]:
+                    reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
+                    continue
+            if divergence(auth, cp):
+                reasons.append("%s: counterparty copy canonically diverges (§10.4.3)" % ch)
+                continue
+        # (4) absent: re-check the absence address/proof relation.
+        elif disp == "absent":
+            aer = entry.get("absenceEvidenceRef") or {}
+            ab = entry.get("absenceBinding")
+            ev = ev_get(aer.get("contentHash"))
+            if not isinstance(ev, dict):
+                reasons.append("%s: AbsenceEvidence not dereferenceable" % ch)
+                continue
+            if aer.get("contentHash") != _canon_sha(ev):
+                reasons.append("%s: absenceEvidenceRef.contentHash != sha256(AbsenceEvidence)" % ch)
+                continue
+            if not isinstance(ab, dict):
+                reasons.append("%s: absent disposition missing absenceBinding" % ch)
+                continue
+            vb3 = verify_binding(ab, pubkeys, expected_jobid=auth.get("jobId"), expected_role=other)
+            if not vb3["ok"]:
+                reasons.append("%s: absenceBinding %s" % (ch, vb3["reason"]))
+                continue
+            if ab.get("nativeAddress") != ev.get("nativeAddress"):
+                reasons.append("%s: absenceBinding.nativeAddress != AbsenceEvidence.nativeAddress" % ch)
+                continue
+    return (not reasons, reasons)
+
+
+def replay_receipt(derivation, deref, party, window_start, window_end, evidence_deref=None, pubkeys=None):
+    """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
+    full per-copy validation (validate_resolution_context) — roleEvidence BB-4/BB-5, BB-6
+    reproduction, §10.4.3 divergence against the dereferenced counterparty, and the absence
+    address/proof relation — then confirm byte-identical metrics + bundleCount. The object MUST
+    first pass the ReplayableReputationDerivation refusal gate (CORE §11.1.2); a refused or
+    invalid object carries no replay claim. evidence_deref(contentHash) -> AbsenceEvidence;
+    pubkeys enables crypto binding-signature verification (None => structural only).
+    Returns (byte_identical, replayed_derivation) — (False, None) on refusal."""
+    if not require_replayable_derivation(derivation)["ok"]:
+        return (False, None)
+    ok, _reasons = validate_resolution_context(derivation, deref, evidence_deref, pubkeys)
+    if not ok:
+        return (False, None)
     tagged = []
     for entry in derivation["resolutionContext"]:
         b = deref(entry["contentHash"])
         tag = {"bundle": b, "resolvedRole": entry["resolvedRole"],
                "counterpartyDisposition": entry.get("counterpartyDisposition"),
                "counterpartyRef": entry.get("counterpartyRef"),
+               "counterpartyRoleEvidence": entry.get("counterpartyRoleEvidence"),
                "absenceEvidenceRef": entry.get("absenceEvidenceRef"),
                "absenceBinding": entry.get("absenceBinding"),
-               "roleEvidence": entry.get("roleEvidence")}
+               "roleEvidence": entry.get("roleEvidence"),
+               "bb6Context": entry.get("bb6Context")}
         tagged.append(tag)
     replayed = derive(party, tagged, window_start, window_end, derivation.get("windowingBasis", "finalisedAt"))
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])

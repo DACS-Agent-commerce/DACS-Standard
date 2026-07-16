@@ -118,7 +118,7 @@ class ImplementationManifestTests(unittest.TestCase):
             {
                 "id": "known-gap",
                 "capabilityRefs": ["pay-x402"],
-                "ruleRefs": ["X402-2"],
+                "ruleRefs": ["SB-3"],
                 "status": "open",
                 "effect": "nonconforming",
                 "description": "Known protocol mismatch.",
@@ -128,6 +128,54 @@ class ImplementationManifestTests(unittest.TestCase):
         errors = self.validate(manifest)
 
         self.assertTrue(any("invalidated by open nonconforming deviations" in error for error in errors))
+
+    def test_open_nonconforming_deviation_does_not_invalidate_nonpassing_claim(self):
+        cases = [
+            ("capability", "implemented", "implemented", "fixed-price"),
+            ("experimental", "experimental", "experimental", "x-fixed-price"),
+        ]
+        for level, result, support_status, capability_id in cases:
+            with self.subTest(result=result):
+                manifest = load_example()
+                claim = manifest["claims"][0]
+                claim["level"] = level
+                claim["result"] = result
+                capability = manifest["capabilities"][0]
+                capability["supportStatus"] = support_status
+                capability["id"] = capability_id
+                manifest["deviations"] = [
+                    {
+                        "id": "known-gap",
+                        "capabilityRefs": ["fixed-price"],
+                        "ruleRefs": ["PS-1"],
+                        "status": "open",
+                        "effect": "nonconforming",
+                        "description": "Known protocol mismatch without a conformance claim.",
+                    }
+                ]
+
+                errors = self.validate(manifest)
+
+                self.assertEqual(errors, [])
+
+    def test_unknown_optional_members_do_not_change_conformance_evaluation(self):
+        manifest = load_example()
+        manifest["registryOverride"] = {"pay-x402": "authorized"}
+        manifest["implementation"]["authorization"] = "transaction-signer"
+        manifest["claims"][0]["authorization"] = "runtime-bypass"
+
+        errors = self.validate(manifest)
+
+        self.assertEqual(errors, [])
+
+    def test_rule_refs_must_resolve_to_a_rule_or_document_section(self):
+        manifest = load_example()
+        manifest["claims"][0]["ruleRefs"] = ["PS-999", "DACS-5-99.99"]
+
+        errors = self.validate(manifest)
+
+        self.assertTrue(any("unresolved specification references" in error for error in errors))
+        self.assertTrue(any("PS-999" in error and "DACS-5-99.99" in error for error in errors))
 
     def test_operational_deviation_does_not_invalidate_claim(self):
         manifest = load_example("pay-dem-rfq-seller.json")

@@ -18,7 +18,8 @@ Run the dependency-free validator from the repository root:
 python3 scripts/validate_implementation_manifests.py
 ```
 
-The validator checks the normative shape, profile and suite pins, reference integrity,
-claim/status compatibility, deterministic case IDs, experimental prefixes, and open
-deviations. It does not certify that a self-asserted implementation actually ran the
-reported command. Consumers still verify artifacts and perform normal runtime preflight.
+The validator checks the normative shape, profile and suite pins, capability/evidence
+reference integrity, labelled-rule and document-section resolution, claim/status
+compatibility, deterministic case IDs, experimental prefixes, and open deviations. It
+does not certify that a self-asserted implementation actually ran the reported command.
+Consumers still verify artifacts and perform normal runtime preflight.

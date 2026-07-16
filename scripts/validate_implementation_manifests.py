@@ -14,6 +14,10 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import specsource  # noqa: E402
+from validate_rule_ids import defined_rule_ids  # noqa: E402
+
 DEFAULT_DIR = ROOT / "conformance" / "implementation-manifests"
 SCHEMA = ROOT / "conformance" / "implementation-manifest.schema.json"
 
@@ -65,6 +69,22 @@ TOP_LEVEL_REQUIRED = {
     "liveTests",
     "deviations",
 }
+SECTION_NUMBER = r"(?:[0-9]+|[A-Z])(?:\.[0-9]+)*"
+SECTION_HEADING = re.compile(rf"^#{{2,6}}\s+§?({SECTION_NUMBER})\b")
+SPEC_DOCUMENTS = {
+    "CORE": (
+        "spec/CORE.md",
+        "spec/DEMOS-MAPPING.md",
+        "spec/THREAT-MODEL.md",
+        "spec/GLOSSARY.md",
+        "spec/CONFORMANCE-PLAN.md",
+    ),
+    "DACS-1": ("spec/DACS-1-IDENTIFY.md",),
+    "DACS-2": ("spec/DACS-2-VET.md",),
+    "DACS-3": ("spec/DACS-3-NEGOTIATE.md",),
+    "DACS-4": ("spec/DACS-4-SETTLE.md",),
+    "DACS-5": ("spec/DACS-5-VERIFY.md",),
+}
 
 
 def read_json(path: Path) -> Any:
@@ -105,6 +125,34 @@ def check_string_list(
         if unknown:
             errors.append(f"{label} contains unsupported values: {', '.join(unknown)}")
     return value
+
+
+def collect_rule_reference_targets(root: Path) -> set[str]:
+    """Return labelled rule ids plus canonical document-scoped section refs."""
+    targets = set(defined_rule_ids(specsource.spec_text(root)))
+    for document, relative_paths in SPEC_DOCUMENTS.items():
+        for relative_path in relative_paths:
+            path = root / relative_path
+            if not path.is_file():
+                continue
+            for line in path.read_text(encoding="utf-8").splitlines():
+                match = SECTION_HEADING.match(line)
+                if match:
+                    targets.add(f"{document}-{match.group(1)}")
+    return targets
+
+
+def check_rule_refs(
+    value: Any,
+    label: str,
+    targets: set[str],
+    errors: list[str],
+) -> list[str]:
+    refs = check_string_list(value, label, errors, nonempty=True)
+    unresolved = sorted(set(refs) - targets)
+    if unresolved:
+        errors.append(f"{label} contains unresolved specification references: {', '.join(unresolved)}")
+    return refs
 
 
 def require_object(value: Any, label: str, errors: list[str]) -> dict[str, Any]:
@@ -212,6 +260,9 @@ def validate_manifest(data: Any, *, root: Path = ROOT, source: str = "manifest")
     if not manifest:
         return errors
     require_fields(manifest, TOP_LEVEL_REQUIRED, source, errors)
+    rule_reference_targets = collect_rule_reference_targets(root)
+    if not rule_reference_targets:
+        errors.append(f"{source} cannot resolve ruleRefs because no specification rules or sections were found")
     if manifest.get("manifestVersion") != "1":
         errors.append(f"{source}.manifestVersion must be \"1\"")
     if not is_rfc3339(manifest.get("generatedAt")):
@@ -337,7 +388,7 @@ def validate_manifest(data: Any, *, root: Path = ROOT, source: str = "manifest")
             check_string_list(claim.get("modules"), f"{label}.modules", errors, allowed=MODULES, nonempty=True)
         )
         cap_refs = check_string_list(claim.get("capabilityRefs"), f"{label}.capabilityRefs", errors, nonempty=True)
-        check_string_list(claim.get("ruleRefs"), f"{label}.ruleRefs", errors, nonempty=True)
+        check_rule_refs(claim.get("ruleRefs"), f"{label}.ruleRefs", rule_reference_targets, errors)
         evidence_refs = check_string_list(claim.get("evidenceRefs"), f"{label}.evidenceRefs", errors)
         if not claim_roles <= roles:
             errors.append(f"{label}.roles must be declared in top-level roles")
@@ -405,7 +456,7 @@ def validate_manifest(data: Any, *, root: Path = ROOT, source: str = "manifest")
             errors,
         )
         cap_refs = check_string_list(deviation.get("capabilityRefs"), f"{label}.capabilityRefs", errors, nonempty=True)
-        check_string_list(deviation.get("ruleRefs"), f"{label}.ruleRefs", errors, nonempty=True)
+        check_rule_refs(deviation.get("ruleRefs"), f"{label}.ruleRefs", rule_reference_targets, errors)
         unknown_caps = sorted(set(cap_refs) - set(capabilities))
         if unknown_caps:
             errors.append(f"{label}.capabilityRefs contains unknown refs: {', '.join(unknown_caps)}")

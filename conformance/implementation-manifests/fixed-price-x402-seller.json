@@ -45,7 +45,7 @@
       "roles": ["seller"],
       "modules": ["DACS-4"],
       "capabilityRefs": ["pay-x402"],
-      "ruleRefs": ["X402-1", "X402-2", "X402-3", "X402-4"],
+      "ruleRefs": ["DACS-4-9.5.7", "SB-1", "SB-2", "SB-3"],
       "evidenceRefs": ["x402-vectors"]
     },
     {

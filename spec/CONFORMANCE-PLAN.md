@@ -170,7 +170,7 @@ type ImplementationClaim = {
   roles: ImplementationManifest["roles"]
   modules: ("CORE" | "DACS-1" | "DACS-2" | "DACS-3" | "DACS-4" | "DACS-5")[]
   capabilityRefs: string[]
-  ruleRefs: string[]
+  ruleRefs: string[]                           // labelled rule ids or document-scoped section refs
   evidenceRefs: string[]                       // DeterministicTestRun ids
 }
 
@@ -208,7 +208,7 @@ type LiveTest = {
 type ImplementationDeviation = {
   id: string
   capabilityRefs: string[]
-  ruleRefs: string[]
+  ruleRefs: string[]                           // labelled rule ids or document-scoped section refs
   status: "open" | "resolved"
   effect: "nonconforming" | "operational"
   description: string
@@ -229,10 +229,12 @@ Claim language is fixed:
 - (IM-2) Each capability MUST report support, availability, and test status on their separate axes. `availability` MAY be omitted for a non-operational library capability.
 - (IM-3) A passing claim MUST name its roles, modules, capabilities, rule references, and deterministic evidence. An unqualified full-profile claim MUST cover every pinned document.
 - (IM-4) `conformance-tested` requires passing deterministic runs whose case ids exist in the pinned conformance manifest. Live tests MUST NOT substitute for deterministic evidence.
-- (IM-5) An open `nonconforming` deviation invalidates every claim referencing its affected capability. An `operational` deviation MUST NOT be presented as a protocol failure.
+- (IM-5) An open `nonconforming` deviation invalidates every `conformant` or `conformance-tested` claim referencing its affected capability. It does not invalidate an `implemented` or `experimental` claim, because those results do not assert conformance. An `operational` deviation MUST NOT be presented as a protocol failure.
 - (IM-6) An experimental capability MUST use an `x-` identifier. It MUST NOT appear in a `conformant` or `conformance-tested` claim.
-- (IM-7) A manifest MUST NOT override registry availability, substrate preflight, or runtime verification. Consumers MUST treat it as self-asserted reporting metadata.
+- (IM-7) A manifest MUST NOT override registry availability, substrate preflight, or runtime verification. Consumers MUST treat it as self-asserted reporting metadata. An unrecognized optional member MUST be preserved where integrity processing requires SIG-5 behaviour. Until a supported specification revision defines that member, it MUST NOT affect conformance evaluation or be assigned authorization, registry, substrate-preflight, runtime-verification, or transaction semantics.
 - (IM-8) `manifestVersion` follows CORE §11.1.2. Additive optional fields preserve version `"1"`; changed required fields or enum semantics require a new major value.
+
+Every `ruleRefs` entry MUST resolve in the profile revision named by `profile.commit`. A reference is either a labelled rule id such as `SIG-5`, or a document-scoped section reference such as `DACS-5-10.5.1`. The repository validator resolves both forms against the supported specification sources in its checkout. A consumer evaluating a different pinned revision MUST perform equivalent resolution against that revision; an unresolved reference invalidates the manifest.
 
 The normative JSON shape is
 [`conformance/implementation-manifest.schema.json`](../conformance/implementation-manifest.schema.json).

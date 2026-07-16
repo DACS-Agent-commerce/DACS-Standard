@@ -38,6 +38,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
+| [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 
@@ -570,6 +571,26 @@ Language-neutral data: feed each `agreement` (+ `settlement`/`rail` where presen
 ```
 npx tsx conformance/security-vectors/feeschedule-reconciliation/run.mts
 # → 17/17 vectors pass
+```
+
+### `settlement-finalization-propagation-v0.3.json` — §9.7 FP-1..FP-4
+
+Six candidate cases pin the difference between an in-memory settlement draft and the
+final DACS-4/DACS-5 artifact set. The positive case changes one EVM transaction hash,
+recomputes the evidence hash, updates both bundle reference sites and the duplicated
+phase transaction reference, then requires both signature layers to be regenerated.
+The fixture carries byte-recomputable draft/final evidence and bundle hashes.
+
+The negative cases reject a signed or anchored placeholder, a stale bundle reference,
+a stale `phaseSummary[].txRefs` value, stale evidence/bundle signatures, and an unrelated
+agreement mutation. The operation accepts only the source change plus its transitive
+integrity closure; `BundleParty.bundleHash` remains unchanged because it hashes the
+party's DACS-1 identity bundle.
+
+Run the dependency-free executable checks from the repository root:
+
+```sh
+python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 ```
 
 ## Status

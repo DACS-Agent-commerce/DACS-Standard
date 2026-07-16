@@ -50,7 +50,7 @@ Exercise each rule at its normative home; full text is not restated (define-once
 | PS-1..PS-3 | §8.8 | exactly-one negotiate phase; exactly one of the two agreement commitment phases immediately follows; pattern ↔ pricing-model compatibility | `conformance/` |
 | Agreement validation | §8.5.2 | price-band / rail-acceptance / deliverable / deadline / pattern checks; artifact ↔ commitment-phase match; exact pay-phase payout-binding coverage; `priceAnchor` valid-when-present, optional | `conformance/` |
 | Agreement-artifact minor compatibility | §8.5, CORE §11.1.2 / §11.2.5 | legacy reader accepts AgreementDocument and structurally rejects PayeeBoundAgreementDocument before action; current reader accepts both; reject both/neither discriminators and cross-domain signatures | `conformance/vectors/security/payee-destination-binding-v0.1.json` |
-| CA-1..CA-5 | §8.6 | refuse-advance-until-ok; double-commit reject; immutability after anchor; domain-sep commitment signature; reject artifact/phase coercion; SIG-2 cross-domain replay refusal | `conformance/vectors/security/payee-destination-binding-v0.1.json` |
+| CA-1..CA-7 | §8.6 | refuse-advance-until-ok; double-commit reject; immutability after anchor; domain-sep commitment signature; reject artifact/phase coercion; orchestrator authority independent of SR-2 deployer/owner/address; agreement binding by verified party signatures + `agreementHash`; SIG-2 cross-domain replay refusal | `conformance/vectors/security/payee-destination-binding-v0.1.json`; `conformance/vectors/security/commitment-anchor-authority-v0.3.json` |
 
 ### 14.4 DACS-4 — Settle
 

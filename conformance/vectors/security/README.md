@@ -28,6 +28,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4 | 4 | `fail` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -214,6 +215,19 @@ SB-2 verifier and assert `(decision, effect)`. The reference run lives in
 npx tsx conformance/security-vectors/sb2-settlement-uniqueness/run.mts
 # → 20/20 vectors pass
 ```
+
+### `commitment-anchor-authority-v0.3.json` — §8.6 CA-6/CA-7
+
+Four vectors distinguish agreement authority from physical SR-2 ownership. Buyer- and
+seller-deployed commitment anchors produce the same accepted result when the orchestrator
+signature, party-signed agreement, and `agreementHash` match. A physical owner cannot replace
+the orchestrator signer or rescue a mismatched agreement hash. The pinned agreement reuses the
+signed legacy fixture from `payee-destination-binding-v0.1`; the commitment signature uses a
+deterministic test-only Ed25519 key.
+
+The decision inputs retain `deployer`, `owner`, and `nativeAddress` so implementations can prove
+those values do not enter authority or agreement-binding decisions. They remain useful
+operational metadata for substrate retrieval and audit.
 
 ### `payee-destination-binding-v0.1.json` — §8.5/§8.6 artifact compatibility + §9.5.1 PB-1..PB-3
 

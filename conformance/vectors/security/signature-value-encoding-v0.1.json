@@ -1,0 +1,122 @@
+{
+  "set": "signature-value-encoding-v0.1",
+  "spec": "CORE §B.7 SIG-6",
+  "provenance": {
+    "sourceFixture": "dacs-v0.1-happy-path.json#artifacts[0].artifact.signature",
+    "validationScope": "signature-value wire encoding; cryptographic validity is independently pinned by the source fixture",
+    "algorithm": "ed25519"
+  },
+  "signatureBytesHex": "436f7b1e403a964f7b23c121c47b16cbf1ce9a60fd1f4b709998991cb8cd682939cd2c3e94446a33839515e83d45a37a32f378fbc51a9b30ad084acac5cf8405",
+  "canonicalValue": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ",
+  "count": 10,
+  "hash": "5bacef9a3568cc1307d1be4838ed0f71886c4fe588d180b320076e880b2d82be",
+  "vectors": [
+    {
+      "name": "canonical-base64url-unpadded",
+      "mode": "conforming-verifier",
+      "algorithm": "ed25519",
+      "value": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ",
+      "expected": "accept",
+      "want": {
+        "failureStage": null,
+        "decodedLength": 64
+      }
+    },
+    {
+      "name": "standard-base64-same-bytes-rejected",
+      "mode": "conforming-verifier",
+      "algorithm": "ed25519",
+      "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ==",
+      "expected": "reject",
+      "want": {
+        "failureStage": "wire",
+        "reason": "standard-base64-alphabet-and-padding"
+      }
+    },
+    {
+      "name": "padded-base64url-same-bytes-rejected",
+      "mode": "conforming-verifier",
+      "algorithm": "ed25519",
+      "value": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ==",
+      "expected": "reject",
+      "want": {
+        "failureStage": "wire",
+        "reason": "padding-forbidden"
+      }
+    },
+    {
+      "name": "embedded-whitespace-rejected",
+      "mode": "conforming-verifier",
+      "algorithm": "ed25519",
+      "value": "Q297HkA6lk97I8EhxHsW y_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ",
+      "expected": "reject",
+      "want": {
+        "failureStage": "wire",
+        "reason": "non-base64url-character"
+      }
+    },
+    {
+      "name": "impossible-length-rejected",
+      "mode": "conforming-verifier",
+      "algorithm": "ed25519",
+      "value": "A",
+      "expected": "reject",
+      "want": {
+        "failureStage": "wire",
+        "reason": "impossible-base64url-length"
+      }
+    },
+    {
+      "name": "non-zero-residual-bits-rejected",
+      "mode": "conforming-verifier",
+      "algorithm": "ed25519",
+      "value": "AB",
+      "expected": "reject",
+      "want": {
+        "failureStage": "wire",
+        "reason": "reencode-mismatch"
+      }
+    },
+    {
+      "name": "canonical-wire-wrong-ed25519-length-rejected",
+      "mode": "conforming-verifier",
+      "algorithm": "ed25519",
+      "value": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-E",
+      "expected": "reject",
+      "want": {
+        "failureStage": "algorithm",
+        "decodedLength": 63
+      }
+    },
+    {
+      "name": "declared-standard-base64-legacy-import",
+      "mode": "legacy-import",
+      "declaredEncoding": "standard-base64-padded",
+      "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ==",
+      "expected": "accept",
+      "want": {
+        "canonicalValue": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ"
+      }
+    },
+    {
+      "name": "declared-lowercase-hex-legacy-import",
+      "mode": "legacy-import",
+      "declaredEncoding": "lowercase-hex",
+      "value": "436f7b1e403a964f7b23c121c47b16cbf1ce9a60fd1f4b709998991cb8cd682939cd2c3e94446a33839515e83d45a37a32f378fbc51a9b30ad084acac5cf8405",
+      "expected": "accept",
+      "want": {
+        "canonicalValue": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ"
+      }
+    },
+    {
+      "name": "undeclared-legacy-encoding-rejected",
+      "mode": "legacy-import",
+      "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ==",
+      "expected": "reject",
+      "want": {
+        "failureStage": "legacy-import",
+        "reason": "source-encoding-required"
+      }
+    }
+  ]
+}

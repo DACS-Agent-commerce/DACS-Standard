@@ -82,7 +82,7 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | RT-1, RT-2 (rate phase) | §10.6.1 | run-after-settle; one-record-per-direction; rating domain-sep sig; RT-1 producer-reject out-of-range/over-length; RT-2 deriver-exclude non-conforming; `dimensions` opaque | `conformance/` |
 | ERC-8004 publication (optional) | §10.7 | token-owner-signed entry; bundle-anchor pointer; rate-limit | `conformance/` |
 
-### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-5, CF-1..CF-4, CD-1, SN-1..SN-4)
+### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-4, CD-1, SN-1..SN-4)
 
 A cross-cutting test category that every conforming implementation runs once:
 
@@ -100,6 +100,7 @@ A cross-cutting test category that every conforming implementation runs once:
 - **CD-1 (canonical decimal).** `"1.50"` and `"1.5"` as `PriceTerm.amount` MUST produce identical agreement hashes and signatures.
 - **SN-1..SN-4 (session nonce).** A presenter-chosen nonce the verifier did not issue MUST be rejected (SN-1); a native `sessionNonce` below 128 bits / not ≥32 lowercase-hex chars MUST be rejected (SN-2); a **same-session** replay of an already-consumed nonce MUST be rejected (SN-4); a nonce still unconsumed past its bounded challenge lifetime MUST be rejected (SN-4 retention); and a nonce issued for one `jobId` MUST NOT validate a presentation for another `jobId` — the cross-session case is caught by the §6.3.2 match against the jobId-issued nonce (SN-3), not SN-4.
 - **SIG-5 (preserve-unknown).** A verifier built against schema vN MUST successfully verify the signature on a document produced under vN+1 that adds an unknown field, by hashing the document as received (unknown field included); a verifier that strips the unknown field before hashing (and thus rejects) FAILS this test. The concrete Listing cases are `conformance/vectors/security/listing-preserve-unknown-v0.1.json`: an unchanged signed Listing carrying one inert unknown top-level field passes, while mutation or removal of that field fails the signature. A separately signed Listing with an unknown phase kind still refuses as unsupported under §11.1.2's new-type rule.
+- **SIG-6 (signature-value encoding).** Decode an unpadded Base64URL `value` whose bytes produce both `-` and `_`; exact re-encoding passes. Standard Base64 for the same bytes, padded Base64URL, whitespace, impossible lengths, and non-zero residual bits MUST fail before cryptographic verification. After canonical decoding, algorithm-specific length and signature validation still apply. The concrete cases are `conformance/vectors/security/signature-value-encoding-v0.1.json`.
 
 ### 14.7 Governance (GOV-1..GOV-3)
 

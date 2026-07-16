@@ -833,7 +833,7 @@ type ComponentSignature = {
 
   signer: ClaimReference                       // primary claim of the signing party; per-artifact role is given in each record's inline comment (e.g. phase orchestrator, refunding party, grantor)
 
-  value: string                                // signature over the domain-separated payload defined for the artifact (§B.7)
+  value: string                                // unpadded Base64URL signature over the artifact payload (CORE §B.7 SIG-6)
 
 }
 ```
@@ -841,7 +841,11 @@ type ComponentSignature = {
 Every anchored record that carries a `signature: ComponentSignature` field MUST populate it with this shape:
 
 - `signer` MUST be a ClaimReference whose role is fixed by the artifact's inline comment;
-- `value` MUST be the signature over that artifact's domain-separated payload as defined in its section.
+- `value` MUST be the unpadded Base64URL signature over that artifact's domain-separated payload, validated per CORE §B.7 SIG-6.
+
+`RailSignature.value` and every other DACS-4 signature-envelope `value` use the
+same SIG-6 encoding. Protocol-specific transaction references retain their own
+encodings, including the base58 Solana `ChainTxRef.signature`.
 
 Per the §B.2 canonical-form template, omitting the `signature` field. `supersedesEvidenceRef`, when present, is part of the hashed canonical form (only `signature` is omitted), so an ST-8 `:resolved` record's hash binds the interim record it supersedes. The signature is computed over:
 signed_bytes := "dacs-evidence:v1:" || evidence_hash

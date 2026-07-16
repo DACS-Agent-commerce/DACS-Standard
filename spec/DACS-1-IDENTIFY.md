@@ -441,7 +441,7 @@ type ListingTerms = {
 type ListingSignature = {
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
   signer: ClaimReference               // MUST appear in seller.identity.claims
-  value: string                        // signature over the domain-separated listing payload ("dacs-listing:v1:" || listing_hash), per §6.3.4
+  value: string                        // unpadded Base64URL (CORE §B.7 SIG-6) over "dacs-listing:v1:" || listing_hash
 }
 ```
 
@@ -541,7 +541,7 @@ Versioning rules:
 type RevocationSignature = {
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
   signer: ClaimReference
-  value: string
+  value: string                        // unpadded Base64URL, CORE §B.7 SIG-6
 }
 
 type RevocationMarker = {

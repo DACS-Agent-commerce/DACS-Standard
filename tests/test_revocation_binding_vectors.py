@@ -9,6 +9,10 @@ ROOT = Path(__file__).resolve().parents[1]
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "revocation-binding-v0.3.json"
 
 
+def decode_base64url(value):
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
 def canonical_json(value):
     return json.dumps(
         value,
@@ -79,9 +83,9 @@ class RevocationBindingVectorTests(unittest.TestCase):
 
     def test_fixture_key_and_signatures_have_ed25519_lengths(self):
         public_key = next(iter(self.data["publicKeys"].values()))
-        self.assertEqual(len(base64.urlsafe_b64decode(public_key + "=")), 32)
+        self.assertEqual(len(decode_base64url(public_key)), 32)
         for marker in self.data["fixtures"]["markers"].values():
-            self.assertEqual(len(base64.b64decode(marker["signature"]["value"])), 64)
+            self.assertEqual(len(decode_base64url(marker["signature"]["value"])), 64)
 
     def test_scenario_matrix_covers_required_verdicts_and_failures(self):
         cases = {vector["name"]: vector for vector in self.data["vectors"]}

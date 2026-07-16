@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-5 conformance
+
+- **Legacy reputation goldens aligned with authoritative-absence guard** (§10.5.1 guard (iv), §14.5; #264) — retires 14 positive pre-guard outputs from the current golden surface because their six one-copy input bundles carry no retained two-address read dispositions. The signed fixture remains byte-stable and its historical metric outputs remain candidates for regeneration with valid resolution context; they are not grandfathered as current conformance. A new golden case and executable predicate pin the current result: raw one-copy inputs without authoritative-absence context produce `bundleCount = 0`, empty references/array metrics, and null scalar metrics. The three negative-by-design reputation cases remain golden. No normative protocol rule changes.
+
 ### Fixed — DACS-1 conformance
 
 - **Listing preserve-unknown vectors** (CORE §B.7 SIG-3/SIG-5, §11.1.2, DACS-1 §6.3.4; #247) — turns the existing additivity contract into a signed, portable Listing test without changing normative semantics. A Listing with an inert unknown top-level field verifies when hashed as received; mutating or removing the field after signing fails. A validly signed unknown phase kind remains unsupported, preserving the closed action-discriminator boundary. This exposes closed top-level-key allowlists as non-conforming while retaining required-field and known-phase validation.

@@ -29,6 +29,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4 | 4 | `fail` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
@@ -137,6 +138,40 @@ Each entry carries `protocolVersion`, the received `responseHeader`, optional
 `evidence`, and `want`. Positive cases pin the JCS string and receipt hash;
 negative cases pin the rejection reason. This is a candidate set. Independent
 implementation cross-run and golden promotion remain pending.
+
+### `listing-preserve-unknown-v0.1.json` — CORE §B.7 SIG-3/SIG-5 + §11.1.2
+
+4 candidate vectors pin forward-readable Listing verification without making
+action discriminants fail open. A complete Listing carries one inert unknown
+top-level field and a real Ed25519 signature over
+`"dacs-listing:v1:" || listing_hash`:
+
+- the unchanged document passes even when the reader does not recognise the
+  field's meaning;
+- mutating or removing the field changes the recomputed hash and invalidates
+  the signature; and
+- a separately signed Listing with an unknown phase kind passes its signature
+  check but refuses as unsupported under §11.1.2's new-type rule.
+
+The fixture also carries a valid per-claim IdentityBundle presentation, a raw
+public key, byte-exact artifact hashes, and the hash produced by an erroneous
+known-key projection. This lets a runner distinguish a closed top-level
+allowlist from required-field validation without importing a language-specific
+Listing schema.
+
+#### Vector schema
+
+| field | meaning |
+|-------|---------|
+| `fixture` | complete signed Listing selected from the top-level `fixtures` map |
+| `transform` | no change, one unknown-field mutation, or removal before verification |
+| `expected` | verifier verdict: `pass` or `fail` |
+| `want.computedArtifactHash` | `sha256(JCS(listing-with-signature-omitted))` after the transform |
+| `want.signature` | expected Ed25519 result before semantic Listing validation |
+| `want.listingDisposition` | accept, reject, or refuse as an unsupported new type |
+
+Run the dependency-free reference assertions with
+`python3 -m unittest tests.test_listing_preserve_unknown_vectors -v`.
 
 ### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
 

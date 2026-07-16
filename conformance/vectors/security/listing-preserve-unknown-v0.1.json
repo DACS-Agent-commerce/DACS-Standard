@@ -1,0 +1,275 @@
+{
+  "set": "listing-preserve-unknown-v0.1",
+  "spec": "CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4",
+  "provenance": {
+    "generator": "DACS steward deterministic Ed25519 fixture",
+    "keySeed": "sha256('DACS issue 247 preserve-unknown Listing vector seed')",
+    "canonicalization": "RFC 8785 JCS (all fixture numbers are integers)"
+  },
+  "signatureDomain": "dacs-listing:v1:",
+  "omittedHashField": "signature",
+  "unknownTopLevelField": "futureOptionalMetadata",
+  "knownTopLevelFields": [
+    "dacsVersion",
+    "listingVersion",
+    "listingId",
+    "seller",
+    "offering",
+    "buyerRequirement",
+    "pipeline",
+    "pricing",
+    "acceptedRails",
+    "terms",
+    "validity",
+    "requiredCapabilities",
+    "signature"
+  ],
+  "publicKeys": {
+    "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c": "k1LLIvEJ01cVXoAjeXEbf58XFk-JWACtQyJYXVZMRiw"
+  },
+  "fixtures": {
+    "identityBundleHash": "714eccb5392320b3ddf7a87047d9de4e6f8e44d7bd370096ef8d2ea95c91f308",
+    "listing-with-inert-extension": {
+      "artifactHash": "7b1aa462dc768d75eb6465c3e9a9fc5d03aa456379cb932f5bf83d9cc1c2ceee",
+      "knownFieldProjectionHash": "590495d084a3aef11e004b7fb6d0b604a444d37082165c4e817cec4e0727f208",
+      "listing": {
+        "dacsVersion": "1",
+        "listingVersion": 1,
+        "listingId": "sig5-extension-listing",
+        "seller": {
+          "identity": {
+            "bundleVersion": "1",
+            "presentedBy": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
+            "presentedAt": 1784073600000,
+            "claims": [
+              {
+                "ref": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c"
+              }
+            ],
+            "presentation": {
+              "kind": "per-claim",
+              "signatures": [
+                {
+                  "ref": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
+                  "signature": "PZrr1QKg5N9eJFLYlu0CLU/g3NyW12IuyHAWstQBFFW9SnlKBid3kLUvlPJeg/NLva95bFSZMIxLerUk43sNBA=="
+                }
+              ]
+            }
+          },
+          "displayName": "Forward-compatible seller"
+        },
+        "offering": {
+          "title": "Signed extension fixture",
+          "description": "Pins preserve-unknown behavior for Listing readers.",
+          "category": "conformance.signature",
+          "tags": [
+            "sig5",
+            "listing"
+          ],
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json"
+          }
+        },
+        "buyerRequirement": {
+          "requirementVersion": "1",
+          "required": [
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            }
+          ]
+        },
+        "pipeline": [
+          {
+            "kind": "negotiate-fixed-price"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "pricing": {
+          "kind": "fixed",
+          "price": {
+            "amount": "1",
+            "currency": "USDC",
+            "unit": "job"
+          }
+        },
+        "terms": {},
+        "validity": {
+          "notBefore": 1784073600000,
+          "notAfter": 1815609600000
+        },
+        "futureOptionalMetadata": {
+          "displayTier": "blue",
+          "note": "inert metadata ignored by readers that do not recognise it"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
+          "value": "W7K9t6IJz+TPkk292OQFBuRTMGKvNvYrrFheKaiGDbk2wmPWoU9d14FXsA2OqkGqVnoiim34YYuWp7tkJ8OTBw=="
+        }
+      }
+    },
+    "listing-with-unknown-phase": {
+      "artifactHash": "27841278b437e08a16d999f58f87a06bc6b6bc743b86c4c907f975c244da8a46",
+      "listing": {
+        "dacsVersion": "1",
+        "listingVersion": 1,
+        "listingId": "sig5-unknown-phase-listing",
+        "seller": {
+          "identity": {
+            "bundleVersion": "1",
+            "presentedBy": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
+            "presentedAt": 1784073600000,
+            "claims": [
+              {
+                "ref": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c"
+              }
+            ],
+            "presentation": {
+              "kind": "per-claim",
+              "signatures": [
+                {
+                  "ref": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
+                  "signature": "PZrr1QKg5N9eJFLYlu0CLU/g3NyW12IuyHAWstQBFFW9SnlKBid3kLUvlPJeg/NLva95bFSZMIxLerUk43sNBA=="
+                }
+              ]
+            }
+          },
+          "displayName": "Forward-compatible seller"
+        },
+        "offering": {
+          "title": "Signed extension fixture",
+          "description": "Pins preserve-unknown behavior for Listing readers.",
+          "category": "conformance.signature",
+          "tags": [
+            "sig5",
+            "listing"
+          ],
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json"
+          }
+        },
+        "buyerRequirement": {
+          "requirementVersion": "1",
+          "required": [
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            }
+          ]
+        },
+        "pipeline": [
+          {
+            "kind": "negotiate-future-mode"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "pricing": {
+          "kind": "fixed",
+          "price": {
+            "amount": "1",
+            "currency": "USDC",
+            "unit": "job"
+          }
+        },
+        "terms": {},
+        "validity": {
+          "notBefore": 1784073600000,
+          "notAfter": 1815609600000
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
+          "value": "JRv2/BRNNsJIHGkD1WqIwcES8bWg+F2BMIwVo1KQAGMzVjZNlzSbXoY3YfQJkeRf/tHXpNwsPUO6aFCnADkjDQ=="
+        }
+      }
+    }
+  },
+  "hash": "aaacbe1dd914a9a74293172e9baf2ca8a3690b9cd55d380f531620b5b1d9b2af",
+  "count": 4,
+  "vectors": [
+    {
+      "name": "unknown-inert-top-level-field-verifies",
+      "rule": "SIG-5; §11.1.2 additivity",
+      "operation": "verify-listing",
+      "fixture": "listing-with-inert-extension",
+      "transform": {
+        "kind": "none"
+      },
+      "expected": "pass",
+      "want": {
+        "computedArtifactHash": "7b1aa462dc768d75eb6465c3e9a9fc5d03aa456379cb932f5bf83d9cc1c2ceee",
+        "signature": "valid",
+        "unknownFieldDisposition": "preserve-in-hash-ignore-semantics",
+        "listingDisposition": "accept"
+      },
+      "note": "A closed top-level allowlist that rejects this Listing is non-conforming."
+    },
+    {
+      "name": "mutated-unknown-field-breaks-signature",
+      "rule": "SIG-3; SIG-5",
+      "operation": "verify-listing",
+      "fixture": "listing-with-inert-extension",
+      "transform": {
+        "kind": "set",
+        "path": "futureOptionalMetadata.displayTier",
+        "value": "red"
+      },
+      "expected": "fail",
+      "want": {
+        "computedArtifactHash": "27a2948ea53f43920e8ccb08a0d8e44a7e773164ef4f590040ab9305c7b22261",
+        "signature": "invalid",
+        "listingDisposition": "reject",
+        "failedAt": "signature"
+      },
+      "note": "Ignoring an unknown field's meaning does not remove it from the signed scope."
+    },
+    {
+      "name": "removed-unknown-field-breaks-signature",
+      "rule": "SIG-3; SIG-5",
+      "operation": "verify-listing",
+      "fixture": "listing-with-inert-extension",
+      "transform": {
+        "kind": "remove",
+        "path": "futureOptionalMetadata"
+      },
+      "expected": "fail",
+      "want": {
+        "computedArtifactHash": "590495d084a3aef11e004b7fb6d0b604a444d37082165c4e817cec4e0727f208",
+        "signature": "invalid",
+        "listingDisposition": "reject",
+        "failedAt": "signature"
+      },
+      "note": "Projecting onto known keys strips signed bytes and cannot verify the original signature."
+    },
+    {
+      "name": "valid-signature-unknown-phase-kind-refuses",
+      "rule": "§11.1.2 new-type refusal",
+      "operation": "verify-listing",
+      "fixture": "listing-with-unknown-phase",
+      "transform": {
+        "kind": "none"
+      },
+      "expected": "fail",
+      "want": {
+        "computedArtifactHash": "27841278b437e08a16d999f58f87a06bc6b6bc743b86c4c907f975c244da8a46",
+        "signature": "valid",
+        "listingDisposition": "refuse-unsupported",
+        "failedAt": "pipeline[0].kind"
+      },
+      "note": "Preserve-unknown does not authorize execution of an unknown action discriminator."
+    }
+  ]
+}

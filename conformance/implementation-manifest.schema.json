@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DACS-Agent-commerce/DACS-Standard/blob/next/conformance/implementation-manifest.schema.json",
+  "title": "DACS ImplementationManifest",
+  "description": "Optional machine-readable implementation support and conformance-evidence report defined by DACS §14.10.",
+  "type": "object",
+  "required": [
+    "manifestVersion",
+    "generatedAt",
+    "implementation",
+    "profile",
+    "roles",
+    "conformanceSuite",
+    "claims",
+    "capabilities",
+    "testRuns",
+    "liveTests",
+    "deviations"
+  ],
+  "properties": {
+    "manifestVersion": { "const": "1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "implementation": { "$ref": "#/$defs/implementation" },
+    "profile": { "$ref": "#/$defs/profile" },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/role" }
+    },
+    "conformanceSuite": { "$ref": "#/$defs/conformanceSuite" },
+    "claims": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/claim" }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "testRuns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testRun" }
+    },
+    "liveTests": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/liveTest" }
+    },
+    "deviations": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/deviation" }
+    }
+  },
+  "$defs": {
+    "hex40": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "hex64": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "role": {
+      "enum": ["buyer", "seller", "orchestrator", "verifier", "directory-indexer"]
+    },
+    "module": {
+      "enum": ["CORE", "DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"]
+    },
+    "implementation": {
+      "type": "object",
+      "required": ["name", "version", "repository", "commit"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "version": { "$ref": "#/$defs/nonEmptyString" },
+        "repository": { "$ref": "#/$defs/nonEmptyString" },
+        "commit": { "$ref": "#/$defs/hex40" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "required": ["id", "repository", "commit", "documents"],
+      "properties": {
+        "id": { "const": "DACS-v0.1" },
+        "repository": { "$ref": "#/$defs/nonEmptyString" },
+        "commit": { "$ref": "#/$defs/hex40" },
+        "documents": {
+          "type": "object",
+          "required": ["CORE", "DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"],
+          "properties": {
+            "CORE": { "$ref": "#/$defs/nonEmptyString" },
+            "DACS-1": { "$ref": "#/$defs/nonEmptyString" },
+            "DACS-2": { "$ref": "#/$defs/nonEmptyString" },
+            "DACS-3": { "$ref": "#/$defs/nonEmptyString" },
+            "DACS-4": { "$ref": "#/$defs/nonEmptyString" },
+            "DACS-5": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "conformanceSuite": {
+      "type": "object",
+      "required": ["repository", "commit", "manifestPath", "manifestSha256"],
+      "properties": {
+        "repository": { "$ref": "#/$defs/nonEmptyString" },
+        "commit": { "$ref": "#/$defs/hex40" },
+        "manifestPath": { "$ref": "#/$defs/nonEmptyString" },
+        "manifestSha256": { "$ref": "#/$defs/hex64" }
+      }
+    },
+    "claim": {
+      "type": "object",
+      "required": ["id", "level", "result", "roles", "modules", "capabilityRefs", "ruleRefs", "evidenceRefs"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "level": { "enum": ["full-profile", "module", "role", "capability", "experimental"] },
+        "result": { "enum": ["conformant", "conformance-tested", "implemented", "experimental"] },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/role" }
+        },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/module" }
+        },
+        "capabilityRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "ruleRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "required": ["ref", "kind", "id", "modules", "roles", "supportStatus", "testStatus", "evidenceRefs"],
+      "properties": {
+        "ref": { "$ref": "#/$defs/nonEmptyString" },
+        "kind": {
+          "enum": [
+            "claim-scheme",
+            "verification-method",
+            "negotiation-pattern",
+            "payment-phase",
+            "payment-rail",
+            "delivery-type",
+            "substrate-capability",
+            "bundle-operation",
+            "reputation-operation",
+            "directory-operation"
+          ]
+        },
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "modules": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/module" }
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/role" }
+        },
+        "supportStatus": { "enum": ["implemented", "experimental", "unsupported"] },
+        "availability": { "enum": ["live", "operator_gated", "closed_data", "bilateral", "mocked", "disabled", "failed"] },
+        "testStatus": { "enum": ["not_tested", "partial", "passed", "failed"] },
+        "evidenceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        }
+      }
+    },
+    "testRun": {
+      "type": "object",
+      "required": ["id", "result", "caseIds", "command"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "result": { "enum": ["pass", "fail"] },
+        "caseIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "command": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "liveTest": {
+      "type": "object",
+      "required": ["id", "capabilityRefs", "result", "executedAt", "evidence"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "capabilityRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "result": { "enum": ["pass", "fail", "inconclusive"] },
+        "executedAt": { "type": "string", "format": "date-time" },
+        "evidence": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "deviation": {
+      "type": "object",
+      "required": ["id", "capabilityRefs", "ruleRefs", "status", "effect", "description"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "capabilityRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "ruleRefs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "status": { "enum": ["open", "resolved"] },
+        "effect": { "enum": ["nonconforming", "operational"] },
+        "description": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    }
+  }
+}

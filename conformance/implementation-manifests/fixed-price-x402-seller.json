@@ -1,0 +1,121 @@
+{
+  "manifestVersion": "1",
+  "generatedAt": "2026-07-16T08:00:00Z",
+  "implementation": {
+    "name": "example-fixed-price-x402-seller",
+    "version": "1.0.0",
+    "repository": "https://example.invalid/dacs/x402-seller",
+    "commit": "1111111111111111111111111111111111111111"
+  },
+  "profile": {
+    "id": "DACS-v0.1",
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "db9f9c0075a63d69d4464bac62cbfb2362a3f223",
+    "documents": {
+      "CORE": "0.1",
+      "DACS-1": "0.1",
+      "DACS-2": "0.1",
+      "DACS-3": "0.1",
+      "DACS-4": "0.1",
+      "DACS-5": "0.1"
+    }
+  },
+  "roles": ["seller"],
+  "conformanceSuite": {
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "db9f9c0075a63d69d4464bac62cbfb2362a3f223",
+    "manifestPath": "conformance/MANIFEST.json",
+    "manifestSha256": "9fdbe4952f04719ddcb79a1c6d3a755244231d092af63056db8642e10122ff41"
+  },
+  "claims": [
+    {
+      "id": "claim-fixed-price",
+      "level": "capability",
+      "result": "conformance-tested",
+      "roles": ["seller"],
+      "modules": ["DACS-3"],
+      "capabilityRefs": ["fixed-price"],
+      "ruleRefs": ["PS-1", "PS-2", "PS-3"],
+      "evidenceRefs": ["fixed-price-vectors"]
+    },
+    {
+      "id": "claim-pay-x402",
+      "level": "capability",
+      "result": "conformance-tested",
+      "roles": ["seller"],
+      "modules": ["DACS-4"],
+      "capabilityRefs": ["pay-x402"],
+      "ruleRefs": ["X402-1", "X402-2", "X402-3", "X402-4"],
+      "evidenceRefs": ["x402-vectors"]
+    },
+    {
+      "id": "claim-x402-default-rail",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["seller"],
+      "modules": ["DACS-4"],
+      "capabilityRefs": ["x402-default-rail"],
+      "ruleRefs": ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"],
+      "evidenceRefs": ["x402-vectors"]
+    }
+  ],
+  "capabilities": [
+    {
+      "ref": "fixed-price",
+      "kind": "negotiation-pattern",
+      "id": "fixed-price",
+      "modules": ["DACS-3"],
+      "roles": ["seller"],
+      "supportStatus": "implemented",
+      "availability": "live",
+      "testStatus": "passed",
+      "evidenceRefs": ["fixed-price-vectors"]
+    },
+    {
+      "ref": "pay-x402",
+      "kind": "payment-phase",
+      "id": "pay-x402",
+      "modules": ["DACS-4"],
+      "roles": ["seller"],
+      "supportStatus": "implemented",
+      "availability": "live",
+      "testStatus": "passed",
+      "evidenceRefs": ["x402-vectors"]
+    },
+    {
+      "ref": "x402-default-rail",
+      "kind": "payment-rail",
+      "id": "x402:default",
+      "modules": ["DACS-4"],
+      "roles": ["seller"],
+      "supportStatus": "implemented",
+      "availability": "live",
+      "testStatus": "partial",
+      "evidenceRefs": ["x402-vectors"]
+    }
+  ],
+  "testRuns": [
+    {
+      "id": "fixed-price-vectors",
+      "result": "pass",
+      "caseIds": ["neg-pattern-mismatch", "neg-priceanchor-absent-ok"],
+      "command": "example-agent conformance run --capability fixed-price"
+    },
+    {
+      "id": "x402-vectors",
+      "result": "pass",
+      "caseIds": ["settlement-x402-pass"],
+      "command": "example-agent conformance run --capability pay-x402"
+    }
+  ],
+  "liveTests": [
+    {
+      "id": "base-sepolia-x402-live",
+      "capabilityRefs": ["pay-x402"],
+      "result": "pass",
+      "executedAt": "2026-07-16T07:30:00Z",
+      "evidence": "https://example.invalid/evidence/base-sepolia-x402-live"
+    }
+  ],
+  "deviations": []
+}

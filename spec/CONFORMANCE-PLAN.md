@@ -126,3 +126,115 @@ The following are not part of v0.1 conformance and SHOULD NOT be tested as such:
 - Streaming / continuous-flow rails (deferred).
 - Cross-major DACS pipelines (deferred). Same-major cross-minor handling of existing and newly registered artifact/phase types is required by CORE §11.1.2 / §11.2.5 and is in scope above.
 - Dispute *resolution* flows (DACS-X, anticipated). Divergence *detection* — the two-sided lookup plus canonical-divergence classification and out-of-band handling of §10.4.3(d) — **is** in scope for v0.1 conformance; DACS-5 reputation handling is already pinned to §10.5.1 exclusion, while only the dispute-resolution layer is deferred.
+
+### 14.10 Implementation conformance claims
+
+An `ImplementationManifest` is an optional machine-readable report describing what
+one implementation supports and the evidence behind its claims. Publishing a manifest
+does not change transaction behaviour or make the report a trusted protocol artifact.
+
+```
+type ImplementationManifest = {
+  manifestVersion: "1"
+  generatedAt: string                         // RFC 3339 timestamp
+  implementation: {
+    name: string
+    version: string
+    repository: string
+    commit: string                            // 40 lower-case hex
+  }
+  profile: {
+    id: "DACS-v0.1"
+    repository: string
+    commit: string                            // exact specification revision
+    documents: Record<"CORE" | "DACS-1" | "DACS-2" | "DACS-3" | "DACS-4" | "DACS-5", string>
+  }
+  roles: ("buyer" | "seller" | "orchestrator" | "verifier" | "directory-indexer")[]
+  conformanceSuite: {
+    repository: string
+    commit: string
+    manifestPath: string
+    manifestSha256: string                    // 64 lower-case hex
+  }
+  claims: ImplementationClaim[]
+  capabilities: CapabilitySupport[]
+  testRuns: DeterministicTestRun[]
+  liveTests: LiveTest[]
+  deviations: ImplementationDeviation[]
+}
+
+type ImplementationClaim = {
+  id: string
+  level: "full-profile" | "module" | "role" | "capability" | "experimental"
+  result: "conformant" | "conformance-tested" | "implemented" | "experimental"
+  roles: ImplementationManifest["roles"]
+  modules: ("CORE" | "DACS-1" | "DACS-2" | "DACS-3" | "DACS-4" | "DACS-5")[]
+  capabilityRefs: string[]
+  ruleRefs: string[]
+  evidenceRefs: string[]                       // DeterministicTestRun ids
+}
+
+type CapabilitySupport = {
+  ref: string
+  kind: "claim-scheme" | "verification-method" | "negotiation-pattern" |
+        "payment-phase" | "payment-rail" | "delivery-type" |
+        "substrate-capability" | "bundle-operation" |
+        "reputation-operation" | "directory-operation"
+  id: string                                   // normative token, registry id, SR id, or x-* token
+  modules: ImplementationClaim["modules"]
+  roles: ImplementationManifest["roles"]
+  supportStatus: "implemented" | "experimental" | "unsupported"
+  availability?: "live" | "operator_gated" | "closed_data" | "bilateral" |
+                 "mocked" | "disabled" | "failed"
+  testStatus: "not_tested" | "partial" | "passed" | "failed"
+  evidenceRefs: string[]
+}
+
+type DeterministicTestRun = {
+  id: string
+  result: "pass" | "fail"
+  caseIds: string[]                             // ids from the pinned conformance manifest
+  command: string
+}
+
+type LiveTest = {
+  id: string
+  capabilityRefs: string[]
+  result: "pass" | "fail" | "inconclusive"
+  executedAt: string                           // RFC 3339 timestamp
+  evidence: string
+}
+
+type ImplementationDeviation = {
+  id: string
+  capabilityRefs: string[]
+  ruleRefs: string[]
+  status: "open" | "resolved"
+  effect: "nonconforming" | "operational"
+  description: string
+}
+```
+
+Claim language is fixed:
+
+| `level` | Permitted claim |
+| --- | --- |
+| `full-profile` | “DACS v0.1 conformant” |
+| `module` | “DACS-N vX.Y conformant for the declared roles” |
+| `role` | “DACS v0.1 ROLE conformant for the declared modules” |
+| `capability` | “DACS v0.1 conformance-tested for CAPABILITY” or “implements CAPABILITY” |
+| `experimental` | “experimental DACS extension x-*” |
+
+- (IM-1) A manifest MUST pin the profile revision and conformance-suite manifest by repository, commit, path, and SHA-256 hash.
+- (IM-2) Each capability MUST report support, availability, and test status on their separate axes. `availability` MAY be omitted for a non-operational library capability.
+- (IM-3) A passing claim MUST name its roles, modules, capabilities, rule references, and deterministic evidence. An unqualified full-profile claim MUST cover every pinned document.
+- (IM-4) `conformance-tested` requires passing deterministic runs whose case ids exist in the pinned conformance manifest. Live tests MUST NOT substitute for deterministic evidence.
+- (IM-5) An open `nonconforming` deviation invalidates every claim referencing its affected capability. An `operational` deviation MUST NOT be presented as a protocol failure.
+- (IM-6) An experimental capability MUST use an `x-` identifier. It MUST NOT appear in a `conformant` or `conformance-tested` claim.
+- (IM-7) A manifest MUST NOT override registry availability, substrate preflight, or runtime verification. Consumers MUST treat it as self-asserted reporting metadata.
+- (IM-8) `manifestVersion` follows CORE §11.1.2. Additive optional fields preserve version `"1"`; changed required fields or enum semantics require a new major value.
+
+The normative JSON shape is
+[`conformance/implementation-manifest.schema.json`](../conformance/implementation-manifest.schema.json).
+Repository examples and dependency-free validation live under
+[`conformance/implementation-manifests/`](../conformance/implementation-manifests/).

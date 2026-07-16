@@ -75,6 +75,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Threat | Primary adversary | Where mitigated | Status |
 | --- | --- | --- | --- |
 | Forged listing | malicious counterparty | §6.6 + §B.7 (signatures + domain separator) | mitigated |
+| Signed Listing extension stripped or rejected by a closed-key verifier | implementation bug / minor-version skew | §B.7 SIG-5 + §11.1.2 additivity; signed Listing conformance vectors | mitigated |
 | Identity-bundle replay | network observer | §6.3.2 (session nonce) + §6.6 | mitigated |
 | Attestation-bundle replay across sessions | malicious counterparty | §10.11 (jobId bound into the bundle hash) | mitigated |
 | Catalog poisoning | malicious infrastructure | §6.3.6 (clients dereference anchors) | mitigated |

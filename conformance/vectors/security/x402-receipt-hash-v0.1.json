@@ -1,10 +1,10 @@
 {
   "set": "x402-receipt-hash-v0.1",
   "spec": "DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing",
-  "decisionModel": "Select the response header by negotiated x402 version, base64-decode and parse the complete successful SettlementResponse, hash its RFC 8785 JCS bytes, and reject malformed, non-success, hash-mismatched, or transaction/network-inconsistent evidence.",
+  "decisionModel": "Select the response header by negotiated x402 version, base64-decode and parse the complete successful SettlementResponse, recursively NFC-normalise every JSON string value under CORE CF-1, hash the resulting RFC 8785 JCS bytes, and reject malformed, non-success, hash-mismatched, or transaction/network-inconsistent evidence.",
   "source": "x402-foundation/x402@22a7677f829584073638d2e5b9898e1f19089b61",
-  "hash": "c4b01a078fc98d82643ec38d0c89c9351b8fbc0665d0afbb3426975c1c129c26",
-  "count": 11,
+  "hash": "2b0863114e4021caef77cee3ea4a0237fd8a054d0d8522f6d5b65961952ce816",
+  "count": 12,
   "vectors": [
     {
       "name": "v1-success-x-payment-response",
@@ -63,6 +63,27 @@
       "want": {
         "sameReceiptAs": "v2-success-payment-response",
         "paymentReceiptHash": "d8505c979c87711c9c0e88f43c4209dd9a256e9174bd641c72a12ebb78104332",
+        "action": "accept"
+      }
+    },
+    {
+      "name": "v2-decomposed-unicode-is-nfc-normalised",
+      "rule": "X402-2 / CF-1",
+      "expected": "pass",
+      "protocolVersion": "2",
+      "responseHeader": {
+        "name": "PAYMENT-RESPONSE",
+        "value": "eyJzdWNjZXNzIjp0cnVlLCJ0cmFuc2FjdGlvbiI6IjB4MWZiODYxMWMxYWVmNDE4ZjI3MTRkYzVlYzA0ZjY4NTZjM2MyYTZmNjRiZjQ1ODQ2MmVlNDYzMjkzMDZjMTRkZSIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MzIiLCJwYXllciI6IjB4ODU3YjA2NTE5RTkxZTNBNTQ1Mzg3OTFiRGJiMEUyMjM3M2UzNmI2NiIsImV4dGVuc2lvbnMiOnsib3JnLmV4YW1wbGUucmVjZWlwdC1ub3RlIjp7Im5vdGUiOiJjYWZlzIEifX19"
+      },
+      "evidence": {
+        "paymentReceiptHash": "80d6579b0afd724191b89f42c44ef62fd8cfad7484922d990f8001dcf401dec7",
+        "settlementTxHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de",
+        "chainId": 84532
+      },
+      "want": {
+        "canonicalReceipt": "{\"extensions\":{\"org.example.receipt-note\":{\"note\":\"café\"}},\"network\":\"eip155:84532\",\"payer\":\"0x857b06519E91e3A54538791bDbb0E22373e36b66\",\"success\":true,\"transaction\":\"0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de\"}",
+        "directJcsWithoutNfcHash": "40cefd14b46497a5a834cd105962e90d3200db5248c7aeed420e964ebf5ac16d",
+        "paymentReceiptHash": "80d6579b0afd724191b89f42c44ef62fd8cfad7484922d990f8001dcf401dec7",
         "action": "accept"
       }
     },

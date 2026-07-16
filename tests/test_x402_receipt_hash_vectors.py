@@ -2,6 +2,7 @@ import base64
 import binascii
 import hashlib
 import json
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -16,9 +17,25 @@ EXPECTED_HEADERS = {
 }
 
 
+def nfc_deep(value):
+    if isinstance(value, str):
+        return unicodedata.normalize("NFC", value)
+    if isinstance(value, list):
+        return [nfc_deep(item) for item in value]
+    if isinstance(value, dict):
+        return {key: nfc_deep(item) for key, item in value.items()}
+    return value
+
+
 def canonical_json(value):
     # The fixtures use only strings, booleans, objects, and arrays, for which
-    # this byte form is the RFC 8785 JCS form.
+    # this byte form is the RFC 8785 JCS form after DACS CF-1's NFC pre-pass.
+    return json.dumps(
+        nfc_deep(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+
+
+def direct_jcs_without_nfc(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
         "utf-8"
     )
@@ -78,6 +95,20 @@ class X402ReceiptHashVectorTests(unittest.TestCase):
         self.assertEqual(decode_header(compact), decode_header(pretty))
         self.assertEqual(compact["evidence"]["paymentReceiptHash"], pretty["evidence"]["paymentReceiptHash"])
 
+    def test_decomposed_unicode_gets_cf1_nfc_prepass(self):
+        vector = self.by_name["v2-decomposed-unicode-is-nfc-normalised"]
+        receipt = decode_header(vector)
+        note = receipt["extensions"]["org.example.receipt-note"]["note"]
+        self.assertNotEqual(note, unicodedata.normalize("NFC", note))
+        self.assertNotEqual(
+            hashlib.sha256(direct_jcs_without_nfc(receipt)).hexdigest(),
+            vector["want"]["paymentReceiptHash"],
+        )
+        self.assertEqual(
+            hashlib.sha256(canonical_json(receipt)).hexdigest(),
+            vector["want"]["paymentReceiptHash"],
+        )
+
     def test_extensions_are_preserved_and_mutation_breaks_the_hash(self):
         original = self.by_name["v2-extension-member-is-committed"]
         mutated = self.by_name["v2-extension-mutation-breaks-hash"]
@@ -119,9 +150,10 @@ class X402ReceiptHashVectorTests(unittest.TestCase):
     def test_normative_text_pins_the_same_algorithm_and_exclusions(self):
         spec = SPEC.read_text(encoding="utf-8")
         self.assertIn(
-            "paymentReceiptHash = lowerhex(SHA-256(UTF8(JCS(settlementResponse))))",
+            "paymentReceiptHash = lowerhex(SHA-256(UTF8(JCS(nfcSettlementResponse))))",
             spec,
         )
+        self.assertIn("recursively NFC-normalise every JSON string value", spec)
         self.assertIn('Version `"1"` selects `X-PAYMENT-RESPONSE`', spec)
         self.assertIn('version `"2"` selects `PAYMENT-RESPONSE`', spec)
         self.assertIn("including `extensions` and unrecognised members", spec)

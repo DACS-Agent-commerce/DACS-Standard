@@ -40,7 +40,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
-| [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 11 | `error` / `fail` / `pass` |
+| [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
 _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
@@ -119,11 +119,12 @@ against the offered producer and reader fixtures remains pending.
 
 ### `x402-receipt-hash-v0.1.json` — §9.5.7 X402-1..X402-4
 
-11 candidate vectors pin the existing `paymentReceiptHash` to SHA-256 over the
-RFC 8785 JCS form of the complete decoded successful x402 `SettlementResponse`.
-They cover v1 `X-PAYMENT-RESPONSE` and v2 `PAYMENT-RESPONSE`, prove that property
-order and whitespace do not change the hash, and require extension members to
-remain in the canonical object.
+12 candidate vectors pin the existing `paymentReceiptHash` to SHA-256 over the
+RFC 8785 JCS form of the complete decoded successful x402 `SettlementResponse`
+after recursively NFC-normalising every JSON string value under CORE CF-1. They
+cover v1 `X-PAYMENT-RESPONSE` and v2 `PAYMENT-RESPONSE`, prove that property
+order, whitespace, and decomposed-versus-precomposed Unicode do not change the
+hash, and require extension members to remain in the canonical object.
 
 Negative cases reject an extension mutation, the live #246 placeholder
 `sha256(settlementTxHash)`, a version/header mismatch, invalid base64, a

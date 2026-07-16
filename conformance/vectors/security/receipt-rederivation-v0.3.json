@@ -1,0 +1,98 @@
+{
+  "set": "receipt-rederivation-v0.3",
+  "spec": "DACS-5 §10.5.3 determinism receipt clauses (3)/(4) + §10.5.1 resolutionContext",
+  "gaps": [
+    "round-3 review: receipt rederivation context (#5)"
+  ],
+  "decisionModel": "A published ReputationDerivation MUST carry exactly one resolutionContext entry per bundleRefs member, keyed by contentHash, giving the resolved role and — for every one-copy jobId — the counterparty address's absenceEvidenceRef. A rederivation supplying each entry as its §10.5.1 input-precondition tag MUST reproduce byte-identical metrics and bundleCount; a missing, mis-keyed, or insufficient resolutionContext is non-conforming, and a one-copy jobId without a valid absenceEvidenceRef MUST NOT be published.",
+  "vectors": [
+    {
+      "name": "complete-resolution-context-replays-identical",
+      "rule": "§10.5.3 (3)/(4)",
+      "expected": "pass",
+      "note": "a derivation whose resolutionContext has one entry per bundleRefs member — including a one-copy entry carrying absenceEvidenceRef — replays byte-identical under the recorded windowingBasis; conforming.",
+      "derivation": {
+        "bundleRefs": [
+          "hashA",
+          "hashB"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "hashA",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "present"
+          },
+          {
+            "contentHash": "hashB",
+            "resolvedRole": "buyer",
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-0000000000000000000000000000000000000000",
+              "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+            }
+          }
+        ],
+        "windowingBasis": "sr2-anchor-timestamp"
+      },
+      "want": {
+        "conforming": true,
+        "replayByteIdentical": true,
+        "reputationEffect": "include",
+        "reason": "resolutionContext has exactly one entry per bundleRefs member keyed by contentHash; replay reproduces byte-identical metrics/bundleCount (§10.5.3 (3)/(4))"
+      }
+    },
+    {
+      "name": "miskeyed-resolution-context-is-nonconforming",
+      "rule": "§10.5.3 (4)",
+      "expected": "fail",
+      "note": "the resolutionContext is missing an entry for one bundleRefs member (mis-keyed by contentHash); the derivation is not independently reproducible.",
+      "derivation": {
+        "bundleRefs": [
+          "hashA",
+          "hashB"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "hashA",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "present"
+          }
+        ],
+        "windowingBasis": "sr2-anchor-timestamp"
+      },
+      "want": {
+        "conforming": false,
+        "reputationEffect": "exclude",
+        "reason": "resolutionContext is missing/mis-keyed for a bundleRefs member; the derivation is not independently reproducible and is non-conforming (§10.5.3 (4))"
+      }
+    },
+    {
+      "name": "one-copy-without-absence-evidence-must-not-publish",
+      "rule": "§10.5.3 E3; §10.5.1 guard (iv)",
+      "expected": "fail",
+      "note": "a one-copy jobId whose resolutionContext entry is absent-disposition but lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation.",
+      "derivation": {
+        "bundleRefs": [
+          "hashB"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "hashB",
+            "resolvedRole": "buyer",
+            "counterpartyDisposition": "absent"
+          }
+        ],
+        "windowingBasis": "sr2-anchor-timestamp"
+      },
+      "want": {
+        "conforming": false,
+        "mustNotPublish": true,
+        "reputationEffect": "exclude",
+        "reason": "a one-copy jobId whose entry lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation (§10.5.3/guard (iv))"
+      }
+    }
+  ],
+  "count": 3,
+  "hash": "7130992ef63d4c86a26abc271805b8d3e983b3ed71ca04a9a40623c0d1fa393c"
+}

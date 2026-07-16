@@ -1,0 +1,681 @@
+{
+  "set": "outsider-binding-flooding-v0.3",
+  "spec": "DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity (round-3 blocker #4)",
+  "provenance": {
+    "generator": "scripts/generate_dacs5_reputation_vectors.py (deterministic; synthetic disclosed seeds)",
+    "canonicalisation": "RFC 8785 JCS over the artifact minus its hash-excluded fields (FaultAttestationBundle/AttestationBundle: signatures+anchoredByRole; binding: signature); attestation_bundle_hash = sha256 hex; ed25519 over the CORE §B.7 domain-separated payload (dacs-fault-bundle:v1: / dacs-bundle:v1: / dacs-bundle-binding:v1: || hash), base64url-unpadded.",
+    "note": "Concrete honest (seller) and outsider (f0..) bindings. The outsider is not a bundle party, so its self-signed bindings verify (BB-4) but fail authorization (BB-5 check 9). Verdict pass = the honest copy resolves; indeterminate = budget exhaustion or no authorized binding.",
+    "seeds": "synthetic repeated-byte ed25519 seeds; buyer a1.., seller c3.., orchestrator 0e.., outsider f0.."
+  },
+  "gaps": [
+    "#251 read censorship",
+    "round-3 review: BB-6 outsider-triggerable cap"
+  ],
+  "decisionModel": "BB-6 keys collapse/precedence/void on the authenticated-and-authorized predicate, not the observable candidate count: a candidate is authorized only when its signer is the bundle party holding role. Outsider self-signed bindings are BB-4-valid but unauthorized — pruned pre-fetch when a co-signed party map is available, inert post-fetch otherwise. Budget exhaustion and a side with no authorized binding are indeterminate (BB-7), never a void or a fabricated one-sided classification.",
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+    "did:demos:orchestrator": "C-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw",
+    "did:demos:outsider": "X2cTKUw88agU6NjKCInbI-aCO3UkuvE0n7x9n1FSlFs"
+  },
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "orchestrator": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+    "outsider": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"
+  },
+  "vectors": [
+    {
+      "name": "outsider-flood-nine-plus-one-honest",
+      "rule": "BB-6 authorization",
+      "expected": "pass",
+      "note": "the review-3 attack: nine outsider self-signed bindings for the victim (jobId, seller) plus one honest seller binding. The outsiders are unauthorized and inert; the honest copy resolves and no side is voided.",
+      "request": {
+        "jobId": "OBF-1",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-7b55741207f37a3e33ac8b802eff215734048ef5",
+          "bundleContentHash": "61b2f3ef0e0dc93c57daea613dfbc3597b2a0c5e56a65ddb95fe0df286d14b18",
+          "anchorTx": "demos-testnet:tx-7b55741207f37a3e",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "pW6sa0YKJaO0r9H01szWOuefOddIj-D6UTovJUdp9ezqRy7as5eDXN5ywyCI9MzJvbqCPJpx4neFsxgFsFYkAg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-da28582c057df0cc15f5ad8e778adac561f81312",
+          "bundleContentHash": "ee31132495912d640237e22d582caba74f1a2e9edfb594fabaf4e9efd8f4f5be",
+          "anchorTx": "demos-testnet:tx-da28582c057df0cc",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "86atp5vwZpiHn2SVaidFv9fBChhODCNLhwaXLoVRw2TKVAkBDR5Mer0BfultdPEQ4z1WSs8QD3p2noQALayADQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-17d4e468fb5f7c6139dea28edee543356b481935",
+          "bundleContentHash": "63319b406ddac194266ecb66d781530f1d7ba133a5dbda10827a1cf4b6aec209",
+          "anchorTx": "demos-testnet:tx-17d4e468fb5f7c61",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "ovWZ9tKOY3QMu-uWWI5EmBfq7JytQv-1a1GincIfN5mjTjKigf_5diR68yMCeXI2iKZWoYdgegNKbATOmz6nAw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-eea044ea49471bb7c0b3708c37fbe429c79301e4",
+          "bundleContentHash": "eae20593617843bc0337c2383846dc7a4f47c2d8b859400916dc8b00785454db",
+          "anchorTx": "demos-testnet:tx-eea044ea49471bb7",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "CfSlQdaJtx_HXzQB_4tvoocVHfOrhZBJPb-IQIFcJgTMWlde_uzTtbVb_x825fGJwZ9l2Fn43zrVtYSykFxdAw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-845e43abf583a4ce20779c291f3ea4f144c4d480",
+          "bundleContentHash": "dfb441d9aa8519615844bc3885a85b0767e79984946925cab2482aeb42e969f6",
+          "anchorTx": "demos-testnet:tx-845e43abf583a4ce",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "R1O2AOdP3-Jne1ZddRjkHUFRXRS7wb4gAckB-81y_Jk6YmRFohf5MXmtf7YbDq2rc34BV9aCUbwcy7njoUTsCg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-b55bcb48c140c197694933e9dc2d268b347ce0de",
+          "bundleContentHash": "5cd90a74f3a7dfbf66df3217e23343663e6446d80c448dac12b9235fd5d2a4d5",
+          "anchorTx": "demos-testnet:tx-b55bcb48c140c197",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "c06MOC4pKP8JzSrPZub1hodlvxw8FEWclJhOL7W6JaHWLL6Ns3bUe2SSSvjFsm5TVpfdM74HYq4Vn-Z-LWrVCQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-5d4ef344ecb7761e9ab3a1c1f38ac6f34885848a",
+          "bundleContentHash": "18c08525c60f489d92f92bf18aa66cdb42cf717e09a72008687116f240b1faf1",
+          "anchorTx": "demos-testnet:tx-5d4ef344ecb7761e",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "yu1xN-uplCnUqwGhSZ_6QCyvSbfr5EFOFqxm6x5fVV8fe05-hiEAb2WfIC86GJZCCgyo2xiGm-8dnUeVyoO8Bw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-82cce5752ba0f2cae697e565324e043c870ab337",
+          "bundleContentHash": "4e10cdedc200434c1071193af770f70371f84facc16e42d2a717d4e2af96261c",
+          "anchorTx": "demos-testnet:tx-82cce5752ba0f2ca",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "EgjgXAXcE0RvdbJ7x4AauXtkX772is7bEVdjAAtHfIkpSy7Xm9DgwUUWKCdHJ6u0j6VN0v5gaRFcLbyeRaUNDQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-50302ca3a6664ea811c46eb5c2dd05dd04349db1",
+          "bundleContentHash": "12222f6f887f1c054640ecbca3029dcf98b056f9cb7cfc4254d3de487629633a",
+          "anchorTx": "demos-testnet:tx-50302ca3a6664ea8",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "SQdbbmzLZKftWlLPW-PTDQN9XHI7ifqrLZM812TwPWM1IhIqG-8ELBBJcGbbgBcgsYXMhewclSZz57kjHxNDAg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-1",
+          "role": "seller",
+          "logicalAddress": "stor-9f6445567bb7709510dbb09c31e0bbcad8a07be0c90f501fd28956038851ef39",
+          "nativeAddress": "stor-692504564d5341083dab4422289af3cbad775955",
+          "bundleContentHash": "3390a36f0359672752caf5b4e53894152b1d8632122a5da8e152d93b38ba36eb",
+          "anchorTx": "demos-testnet:tx-692504564d534108",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "REkv5JBnIcKsghJFEuUl9VyJVyBoEi1CsthprqvR-dvjtgrEX28G7GjTBVNM_7-by4UDcOrdIuAGzkb5Lz5xDQ"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-7b55741207f37a3e33ac8b802eff215734048ef5": {
+          "faultBundleVersion": "1",
+          "jobId": "OBF-1",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-OBF-1",
+            "version": 1,
+            "contentHash": "0c65af5d2b7f0f7d40ba1756dce0e52000e0793575d62a95a61d705c8e456747"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "p1wtQLqEDTH8tlEUV1vVX3RcYZkXIIfGPo56A28DnqwYGilhF_FM6b8CAfRkGpzzCP7K1iGYEWZIwxP4O7ZgBw"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "tl3Ro7pRKCdqcENG6P35SzTCvLIx7L5LzQSfG2a266p50e3XzNn6dKr6OUZ6xFW9VyVusqUYii1fEl2QC_PSDw"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "sideDisposition": "present",
+        "resolvedNativeAddress": "stor-7b55741207f37a3e33ac8b802eff215734048ef5",
+        "outsiderBindings": 9,
+        "authorizedBindings": 1,
+        "void": false,
+        "reason": "outsider bindings are BB-4-valid but unauthorized (signer is not the bundle party holding role); they are inert and the honest authorized copy resolves — no void"
+      }
+    },
+    {
+      "name": "co-signed-map-prefetch-prunes-outsiders",
+      "rule": "BB-6 co-signed party map",
+      "expected": "pass",
+      "note": "a co-signed copy of the same jobId supplies the role→primary-claim party map; the consumer prunes the candidate set to the mapped signer (seller) before any fetch, so the outsider bindings are never fetched.",
+      "request": {
+        "jobId": "OBF-2",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-2",
+          "role": "seller",
+          "logicalAddress": "stor-d51734b72845592628683b1fa3bbc1f64981782cac147f882fc5500537b83d4b",
+          "nativeAddress": "stor-cec9babe6ef0be0a43206f088da50327ae207a59",
+          "bundleContentHash": "9405883308aad7c6b33398fe8f7c0bd800bb34198daa02415f873d69179914c8",
+          "anchorTx": "demos-testnet:tx-cec9babe6ef0be0a",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "NUlF9ja0Av0aJfLorTBqjAG9yoNlZNO0qzm2S6H4jlPIiae5WyfDVd0-FP-CEY_RfncD07cDK_2jrNZa2dO4AA"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-2",
+          "role": "seller",
+          "logicalAddress": "stor-d51734b72845592628683b1fa3bbc1f64981782cac147f882fc5500537b83d4b",
+          "nativeAddress": "stor-0ef172d55a63a66eb1e5cdd47e7710cbf2c2f473",
+          "bundleContentHash": "a77114291d0202f26d0f3ee917b0c7cdc2b2e6012b6e271b728b313cfd438add",
+          "anchorTx": "demos-testnet:tx-0ef172d55a63a66e",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "GBtU6N-aAdLg_dOQcOedTOKDDVded_jPicoNabQAOv5gTE1bbMrCDLzob8zsqJGo4kI7QyOFYGbqWU-Hbq7zDA"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-2",
+          "role": "seller",
+          "logicalAddress": "stor-d51734b72845592628683b1fa3bbc1f64981782cac147f882fc5500537b83d4b",
+          "nativeAddress": "stor-74ab8ad251188af7447a12bc4f99ed26ba22ab59",
+          "bundleContentHash": "429b805eea06872ac7b72a31971f76b1065d7b66d288afbb3650766f2c680e10",
+          "anchorTx": "demos-testnet:tx-74ab8ad251188af7",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "TpxEJfita6o_nM9Ph9hNlF2ByYCnbWwo7Lu05_hCpiW-Y3VtOhJZeSkc07DRy6ReJYi2UhuiBlE9Ju46wAGJBA"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-2",
+          "role": "seller",
+          "logicalAddress": "stor-d51734b72845592628683b1fa3bbc1f64981782cac147f882fc5500537b83d4b",
+          "nativeAddress": "stor-902714d19ca497bc2bd02a13befa27932f74b653",
+          "bundleContentHash": "89a3e28cda6d237c0ff5535f02662753f35d1beb59deaf7101d7c405669d26cf",
+          "anchorTx": "demos-testnet:tx-902714d19ca497bc",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "yt6GcxG7pVxrnPdIR-jInREAKZvIocIqPN2EnOS4YhNRXSIzDfW1o8tc-Eij_d3ms7zEyYlMC5N4lYQoTIL8Dw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-2",
+          "role": "seller",
+          "logicalAddress": "stor-d51734b72845592628683b1fa3bbc1f64981782cac147f882fc5500537b83d4b",
+          "nativeAddress": "stor-cf63e2c36805e272562484573476d825c41aa32c",
+          "bundleContentHash": "310b2509706c45db4c83027f9086189a26b78521c744ab0b1364f112878d0dea",
+          "anchorTx": "demos-testnet:tx-cf63e2c36805e272",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "DG5m4wHW7TMJv4XwPqfVHF-Tr67Jn9kqBwpE3Hgv6hV1Xop-3RWPkRgJH9PVDPnnr2oyJBZHx8KZboTd51DKAg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-2",
+          "role": "seller",
+          "logicalAddress": "stor-d51734b72845592628683b1fa3bbc1f64981782cac147f882fc5500537b83d4b",
+          "nativeAddress": "stor-9673a6fc0bd9ff99ed78fb29aa4b0b16e0d6c34a",
+          "bundleContentHash": "34a899752c55a2bef73597a57cb529840342a5c57b2a6d9803131ed6661be4d2",
+          "anchorTx": "demos-testnet:tx-9673a6fc0bd9ff99",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "TTMfHKj-B_MhbGlnpF93l31ypJYKUuFUh1yIZNd673ub1omlaPvECLu6dN7zzphSfZbovK-8frhaoyYyaFIQDg"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-cec9babe6ef0be0a43206f088da50327ae207a59": {
+          "faultBundleVersion": "1",
+          "jobId": "OBF-2",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-OBF-2",
+            "version": 1,
+            "contentHash": "e3217611016e2e1243fea32823451e09c6f1087babed5002c9380072925dafd6"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "lUwKAF4f_SQceQGrZfbksXV_ookltPADD2Ljrde_RfAYO5AeaYw6ltzd-MNW6doce2NuwuwVXVen859e48rEDg"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "1frNmiUi2xDLuO378EULSYcyj608haaYSQvZ2zc5R0mrW8zh8CKT8efX3HG73kKksEwGdBjd-xq-gmSPL8nTDA"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "sideDisposition": "present",
+        "resolvedNativeAddress": "stor-cec9babe6ef0be0a43206f088da50327ae207a59",
+        "prunedPreFetch": 5,
+        "fetched": 1,
+        "void": false,
+        "reason": "co-signed party map prunes the candidate set to the mapped signer before any fetch (BB-6); outsiders never fetched"
+      }
+    },
+    {
+      "name": "honest-self-flood-budget-exhaustion",
+      "rule": "BB-6 fetch budget; BB-7",
+      "expected": "indeterminate",
+      "note": "the honest role-holder publishes nine single-signed self-authorized bindings that diverge, with no co-signed map to prune; nine authorized candidates exceed the N=8 fetch budget, so the side disposition is indeterminate — never a classification.",
+      "request": {
+        "jobId": "OBF-3",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-5274dd6c0cc0c9c72ce6f7ccb7ff9a0db4697289",
+          "bundleContentHash": "282d3c3253acdbcb3afa366b567a674e5db579057632083e4bc640afac92b058",
+          "anchorTx": "demos-testnet:tx-5274dd6c0cc0c9c7",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "_QKCbomfvT8fz8vbZJgNUYkJqC8eOEFWnOoH7ONu_FXSrHlYCW8zBioklnSJpLqcZgCrbWnY2VLE_4Cy3ICcAQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-543d289660f3b4a285ff6f159cc2604e8b9e71c6",
+          "bundleContentHash": "bc3b45dced7aab718ab0c9dae18fc1ce820068f5f0b2d7313ed4d91a858aff34",
+          "anchorTx": "demos-testnet:tx-543d289660f3b4a2",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "uGeXUIzB4NA4CrRs1Xa4YDGPQ03RyoyjVg-6VLzqgHbawPQkBlrGBbz5BaF4MCyYkXl-EK2Ts0q-rd5ZGAsbCQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-a7998c0dfc393fce6a91ab32d3af389340543fa6",
+          "bundleContentHash": "f1939bbf408c8fd85bc372f0379cf42807fb1434c0b4f3f5a57a773bde4b66ad",
+          "anchorTx": "demos-testnet:tx-a7998c0dfc393fce",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "9bK30qO03-s_sTwpEbCXMXYrpPiwYaSwzxMlzXjBEupQdQEoTTzb_OOQzcI7oJ4-5_CVlVyjfKxeV0b9MQgQAw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-8f2dcbf2fefdab06b444a5bc231acc7644e2b7d2",
+          "bundleContentHash": "8a200997630ccdff28af176116d1b2a33013603747ea862a0980c7b2c7354154",
+          "anchorTx": "demos-testnet:tx-8f2dcbf2fefdab06",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "1z5wtnLzPye2SAnvvPS-MR4Dor5WimP5Tr-2ViRXZQ86SJMx6lTalXJisEH_2WJmvqoxWZlJVgzlwNHOHkWxAA"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-5180cd53ce025083256fd25fe5ed82b69bcefab5",
+          "bundleContentHash": "4bb757e61435dc36dab25647678043df7b2670f64e1a72d4d73c7e6f5a235494",
+          "anchorTx": "demos-testnet:tx-5180cd53ce025083",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "P0s1a8P7EPBQXRFpS15LcxJ7Lmb1Bk2ufrCogM63L0CvykroytnF3bZwD8uVf8nH-82W8k6Lyf37tAKWZqN_Cw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-9a74fb77664f5789f44a42b5b336931b96f8d85c",
+          "bundleContentHash": "0386fe7634cb88a523b77fdb4d6364131d98ec37d2bd5dc3a9bdfc58eccfb432",
+          "anchorTx": "demos-testnet:tx-9a74fb77664f5789",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "13hYQHDyzemGfZdU5khDP32V_1W-e4cdP_PzQpf8TrhiiIYAvtjaUROZrSuKHWzMzaj7tcMDcP7PowX_U9yGCQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-9b17a79b8b0d4e212195aa7c54ef49e896a621de",
+          "bundleContentHash": "c3d6d9d9373c8a86dc6bf83e5b87eb649c9982a58eb9dd9fd36fa4db19552250",
+          "anchorTx": "demos-testnet:tx-9b17a79b8b0d4e21",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "6D8i0YfvNy4ViWjFBvFqkfMDOYuw7rY18NljBw_86QBZ3I_qPtmdsC1nSa2rwwCmZ5_gqL_Kf_shADr1ZKnSDg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-c5ff87e963fd0a043b23c8b164debceb2fc459d6",
+          "bundleContentHash": "ce5d1053f83451fd9a6afcd2bb0ce42de5cf6b0826525135e57da13e413f8ee5",
+          "anchorTx": "demos-testnet:tx-c5ff87e963fd0a04",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "Peo0gbPYRLrx-Y4S-3HBpQldApVheUUc7FuJlySoe8lyvhUJhmaxDTlEsyp4YpvLqF-TjL62n7vn4nk88F1OBg"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-3",
+          "role": "seller",
+          "logicalAddress": "stor-03693d2a4a4e02469f559d26bdb2323005c1cae36d1bb6e49d3cdf162616447a",
+          "nativeAddress": "stor-9be230bcad83504ad78897014ca0a423e6b239b5",
+          "bundleContentHash": "0da7dda9182bab23182f95a585e363391f122c00e4447fd5fbe5443f5300d388",
+          "anchorTx": "demos-testnet:tx-9be230bcad83504a",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "cmOe2owtrXSxgvGURX-1V14jHbK7BKbHM5DXT4gS2Qj__lH7jqMHusvBKcbzLzS-UcJhlXVG64yn0qkR89DNDg"
+          }
+        }
+      ],
+      "anchored": {},
+      "want": {
+        "expected": "indeterminate",
+        "sideDisposition": "indeterminate",
+        "authorizedCandidates": 9,
+        "budget": 8,
+        "void": false,
+        "mayRerunWithLargerBudget": true,
+        "reason": "budget exhaustion yields the side disposition indeterminate, never a classification — a consumer MAY re-run resolution with a larger budget (BB-6/BB-7)"
+      }
+    },
+    {
+      "name": "outsider-flood-no-honest-binding",
+      "rule": "BB-6 authorization; BB-7",
+      "expected": "indeterminate",
+      "note": "only outsider self-signed bindings exist for the (jobId, seller) side; none is authorized, so no authorized binding resolves and the side disposition is indeterminate — neither present nor authoritatively absent, and not a void.",
+      "request": {
+        "jobId": "OBF-4",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-4",
+          "role": "seller",
+          "logicalAddress": "stor-c932567a40a163a38665960fb33cdbb73b6b6ddf2cd81c4d1e189b26b43f65ac",
+          "nativeAddress": "stor-68441a82a8289b4e2f1c2964717383014df094b9",
+          "bundleContentHash": "313f4e95985b0ebac3c049184a811745fb1f67f9df7d51b4f26f120e1a516cc2",
+          "anchorTx": "demos-testnet:tx-68441a82a8289b4e",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "NIFMrPYKmGyjUqWhj0JEkxGFXCZGfPk07aprFJ4DjpuNezou-tFPsjSVXClsWxPkPOSOkDyDE2QjhAogeBlhAw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-4",
+          "role": "seller",
+          "logicalAddress": "stor-c932567a40a163a38665960fb33cdbb73b6b6ddf2cd81c4d1e189b26b43f65ac",
+          "nativeAddress": "stor-ddaf4e96505c9a9e9f59d661fad8bd988c0db377",
+          "bundleContentHash": "dcea4688f5a4173975c34e1d9406f6a6a9ffb213f88f50f237c20e92f3cd5a8c",
+          "anchorTx": "demos-testnet:tx-ddaf4e96505c9a9e",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "i3BhHgNw33JeSmE7E1gZ-AsrwhLMbN_xXkWEs8cMXAzJeo_PVIgLksStbBsTHPSVr52NEIU1Mdpmtztm4sL3DA"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-4",
+          "role": "seller",
+          "logicalAddress": "stor-c932567a40a163a38665960fb33cdbb73b6b6ddf2cd81c4d1e189b26b43f65ac",
+          "nativeAddress": "stor-090921b5546d3149436c5241ff5b8f5657b5059c",
+          "bundleContentHash": "bd7868820ed22bf1b1a22483ff16ad920776bb796bae76259afb4104dae9f639",
+          "anchorTx": "demos-testnet:tx-090921b5546d3149",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "AAS2stJwmlcR8p4BqBOhl2T-RJ4DWPpUwrg0HAs4OgHjxgZl9vORWk5uF9-wpWpAstreIlug2Yk_ELYNkeo5BA"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-4",
+          "role": "seller",
+          "logicalAddress": "stor-c932567a40a163a38665960fb33cdbb73b6b6ddf2cd81c4d1e189b26b43f65ac",
+          "nativeAddress": "stor-ebb2fb6aedf7e717377682267751e2fa98712c26",
+          "bundleContentHash": "7430abc7292826327312c1e12ccae3a9b829aab522cbba8a5acca233d3accaca",
+          "anchorTx": "demos-testnet:tx-ebb2fb6aedf7e717",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "6RLIksGM-Sp9jHQZWh8iVbrk0X9c36fqtSaxluEn3wws_zzkDEYM4uVdzWZr5gsBrRJ8QGIo_04w-NkhN3j5AQ"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-4",
+          "role": "seller",
+          "logicalAddress": "stor-c932567a40a163a38665960fb33cdbb73b6b6ddf2cd81c4d1e189b26b43f65ac",
+          "nativeAddress": "stor-93ad0387971e0a6e62c0e9f8e51dcfb7e3c4c71f",
+          "bundleContentHash": "f569942636433f682d40d2617b10583ba982c407680d626f9d098ad195129413",
+          "anchorTx": "demos-testnet:tx-93ad0387971e0a6e",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "tZ6p9M_3x6JN1PGIaDHgWVk4l83cJU1SIux9VjFB8O6Z2C8G55VPmbWR0_iN0eF5j4GCuiqovksPhhYL8dG-Aw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-4",
+          "role": "seller",
+          "logicalAddress": "stor-c932567a40a163a38665960fb33cdbb73b6b6ddf2cd81c4d1e189b26b43f65ac",
+          "nativeAddress": "stor-a1d171b0d92664d9c7ac26c69dd0e335b2765afe",
+          "bundleContentHash": "49dd333daf03c1cc7490d64c94540dbcb3ac93a167a94d91068523d504dd976b",
+          "anchorTx": "demos-testnet:tx-a1d171b0d92664d9",
+          "signer": "did:demos:outsider",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:outsider",
+            "value": "em4LIEh9H54RUsanXcB2lwgSeS2_dtIcJJpq_TopadK-Zuw4ypsRYiXW4Uan6FwUMoMAiE38PP2El3vq1CrBAQ"
+          }
+        }
+      ],
+      "anchored": {},
+      "want": {
+        "expected": "indeterminate",
+        "sideDisposition": "indeterminate",
+        "authorizedBindings": 0,
+        "void": false,
+        "absent": false,
+        "reason": "no BB-4-valid authorized binding resolves; the side is indeterminate — neither present nor authoritatively absent (BB-7), not a void"
+      }
+    }
+  ],
+  "count": 4,
+  "hash": "16229a9aafb6917e337f83879b78c34e613eede36b01805e2113eb4522a50bac"
+}

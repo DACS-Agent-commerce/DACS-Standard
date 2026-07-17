@@ -1,0 +1,140 @@
+{
+  "set": "commitment-anchor-authority-v0.3",
+  "spec": "DACS-3 §8.6 CA-6/CA-7",
+  "tier": "candidate",
+  "description": "Pins commitment authority to the authenticated session orchestrator and agreementHash, never the SR-2 deployer, owner, or native address.",
+  "count": 4,
+  "hash": "c643ad1d26b4d98c807c5b9a44129a00f5370c5218600c39cd7c5406c2768f2e",
+  "provenance": {
+    "issue": "DACS-Agent-commerce/DACS-Standard#245",
+    "agreementSource": "payee-destination-binding-v0.1 / agreement-legacy-reader-accepts-legacy",
+    "commitmentKey": "deterministic Ed25519 seed 0x22 repeated 32 bytes; test-only"
+  },
+  "publicKeys": {
+    "cci-lei:984500PBBUYER0000010": "Ngsms4AKMIpGv3Ssc54Msf_RF7kDyNRbE5A4kGl0Wvs",
+    "cci-lei:984500PBSELLER000010": "BuwkmF-v_71CiQrUMIDkQHwQlKiJPWch4F_Q_DmHhNY",
+    "did:demos:orchestrator": "oJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+  },
+  "sessionParties": [
+    {"role": "buyer", "primaryClaim": "cci-lei:984500PBBUYER0000010"},
+    {"role": "seller", "primaryClaim": "cci-lei:984500PBSELLER000010"},
+    {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}
+  ],
+  "agreement": {
+    "agreementVersion": "1",
+    "jobId": "pb-job-2026-07-14",
+    "listingRef": {
+      "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+      "version": 1,
+      "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b"
+    },
+    "parties": [
+      {
+        "role": "buyer",
+        "primaryClaim": "cci-lei:984500PBBUYER0000010",
+        "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+        "vetRecordRef": {"kind": "dacs-2-composite", "id": "vet-buyer", "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"}
+      },
+      {
+        "role": "seller",
+        "primaryClaim": "cci-lei:984500PBSELLER000010",
+        "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+        "vetRecordRef": {"kind": "dacs-2-composite", "id": "vet-seller", "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"}
+      }
+    ],
+    "derivedFromPattern": "fixed-price",
+    "terms": {
+      "price": {"amount": "10", "currency": "USDC"},
+      "rail": {"railId": "evm-erc20:8453:USDC"},
+      "deliverable": {"deliverableType": "storage-program", "hash": "c61143d51bb6f60c888d55f33865808f4936bf83941b3c2a178466e925b38f8b"},
+      "deadline": 1720971600000
+    },
+    "generatedAt": 1720968000000,
+    "signatures": [
+      {"party": "cci-lei:984500PBBUYER0000010", "algorithm": "ed25519", "value": "JuzhWqJ10H_F_aCaOmW0wKUhZmgjyU86t1ukX1j-8TgwCI1l3TItHEhkhh8quHrQv_Tvx1F55MgG67yMuP2pDw"},
+      {"party": "cci-lei:984500PBSELLER000010", "algorithm": "ed25519", "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA"}
+    ]
+  },
+  "agreementHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+  "commitmentRecord": {
+    "dacsVersion": "1",
+    "jobId": "pb-job-2026-07-14",
+    "agreementHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+    "listingRef": {
+      "listingId": "did:demos:agent:pb-fixture/payee-binding-legacy/1",
+      "version": 1,
+      "contentHash": "b5cb52350829ad663a5af43259c4bd8627650328bbb8786ddaa957520cade34b"
+    },
+    "parties": ["cci-lei:984500PBBUYER0000010", "cci-lei:984500PBSELLER000010"],
+    "pattern": "fixed-price",
+    "committedAt": 1720969000000
+  },
+  "commitmentRecordHash": "98e246b5f0bc9028c9655c8d56397a4c554565be38814a6db63a193124082887",
+  "commitmentSignature": {
+    "signer": "did:demos:orchestrator",
+    "algorithm": "ed25519",
+    "value": "YR4QGKxlBOV1Pw5xCetfCYrSmRzOP0t59IeRLC08E4sTxLWdqpcB4Q_pkx30OnuQ4R9RJhEBYuFO3tpvKu26CQ"
+  },
+  "vectors": [
+    {
+      "name": "buyer-deployer-does-not-become-agreement-authority",
+      "expected": "pass",
+      "signatureMode": "valid-orchestrator",
+      "agreementMutation": null,
+      "commitmentAnchor": {
+        "logicalAddress": "dacs3:commit:pb-job-2026-07-14",
+        "nativeAddress": "stor-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "deployer": "cci-lei:984500PBBUYER0000010",
+        "owner": "cci-lei:984500PBBUYER0000010"
+      },
+      "want": {
+        "commitmentAuthority": "did:demos:orchestrator",
+        "agreementAuthors": ["cci-lei:984500PBBUYER0000010", "cci-lei:984500PBSELLER000010"],
+        "physicalOwnerAuthoritative": false
+      }
+    },
+    {
+      "name": "seller-deployer-produces-the-same-authority-result",
+      "expected": "pass",
+      "signatureMode": "valid-orchestrator",
+      "agreementMutation": null,
+      "commitmentAnchor": {
+        "logicalAddress": "dacs3:commit:pb-job-2026-07-14",
+        "nativeAddress": "stor-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "deployer": "cci-lei:984500PBSELLER000010",
+        "owner": "cci-lei:984500PBSELLER000010"
+      },
+      "want": {
+        "commitmentAuthority": "did:demos:orchestrator",
+        "agreementAuthors": ["cci-lei:984500PBBUYER0000010", "cci-lei:984500PBSELLER000010"],
+        "physicalOwnerAuthoritative": false
+      }
+    },
+    {
+      "name": "physical-owner-cannot-substitute-for-orchestrator-signature",
+      "expected": "fail",
+      "signatureMode": "buyer-substitution",
+      "agreementMutation": null,
+      "commitmentAnchor": {
+        "logicalAddress": "dacs3:commit:pb-job-2026-07-14",
+        "nativeAddress": "stor-cccccccccccccccccccccccccccccccccccccccc",
+        "deployer": "cci-lei:984500PBBUYER0000010",
+        "owner": "cci-lei:984500PBBUYER0000010"
+      },
+      "want": {"rejection": "unauthorized-commitment-signer", "physicalOwnerAuthoritative": false}
+    },
+    {
+      "name": "physical-owner-cannot-rescue-agreement-hash-mismatch",
+      "expected": "fail",
+      "signatureMode": "valid-orchestrator",
+      "agreementMutation": {"path": "terms.price.amount", "value": "11"},
+      "commitmentAnchor": {
+        "logicalAddress": "dacs3:commit:pb-job-2026-07-14",
+        "nativeAddress": "stor-dddddddddddddddddddddddddddddddddddddddd",
+        "deployer": "did:demos:orchestrator",
+        "owner": "did:demos:orchestrator"
+      },
+      "want": {"rejection": "agreement-hash-mismatch", "physicalOwnerAuthoritative": false}
+    }
+  ]
+}

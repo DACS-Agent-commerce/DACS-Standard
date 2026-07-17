@@ -40,6 +40,7 @@ EXPECTED_NAMES = {
     "outsider-flood-worst-order",
     "outsider-sybil-flood",
     "outsider-flood-worst-order-no-map",
+    "cross-role-insider-binding-pruned",
 }
 
 
@@ -179,6 +180,26 @@ class OutsiderBindingFloodingTests(unittest.TestCase):
         self.assertTrue(outsider_addrs.isdisjoint(set(res["fetched"])),
                         "mapped prune must drop outsider addresses before fetch (none may appear in fetched)")
         self.assertEqual(res["disposition"], "present")
+
+    def test_cross_role_insider_pruned(self):
+        """Round-7 blocker: under a FULL {buyer,seller} co-signed party map, a buyer-signed binding that
+        CLAIMS role:seller (valid signature; correct jobId/logicalAddress; bundleContentHash matching the
+        honest bundle) MUST be pruned by BB-5 check 9 role-match — the buyer's authenticated role is buyer,
+        not seller — so the honest seller binding resolves and the insider copy is NEVER selected. A resolver
+        that authorizes on key-membership (signer in party_map) resolves the insider copy instead."""
+        v = self.by_name["cross-role-insider-binding-pruned"]
+        self.assertEqual(v["partyMap"], {"did:demos:buyer": "buyer", "did:demos:seller": "seller"},
+                         "the flaw is triggered by a FULL two-party map, so the insider signer IS a map key")
+        insiders = [b for b in v["bindings"] if b["signer"] == "did:demos:buyer" and b["role"] == "seller"]
+        self.assertEqual(len(insiders), 1, "vector must carry exactly one buyer-signed role:seller insider")
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "present")
+        self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"],
+                         "the honest seller binding must resolve, not the insider copy")
+        self.assertNotEqual(res["resolvedNativeAddress"], insiders[0]["nativeAddress"],
+                            "the insider copy must never resolve the seller side")
+        self.assertNotIn("did:demos:buyer", res["authorizedSigners"],
+                         "the buyer must not be authorized for the seller side")
 
     def test_no_authorized_binding_is_indeterminate_not_absent(self):
         v = self.by_name["outsider-flood-no-honest-binding"]

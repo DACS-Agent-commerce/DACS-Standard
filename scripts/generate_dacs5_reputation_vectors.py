@@ -660,6 +660,41 @@ def build_outsider_flooding(keys):
                  "outsiderHashesBelowHonest": 8, "void": False, "exhaustedSigners": [],
                  "reason": "anchored/no-map path: the outsider bucket holds exactly 8 (no exhaustion) and the per-signer budget isolates the honest seller's bucket, so it resolves despite every outsider hash sorting below it (E6, arm 1)"},
     })
+    # (8) CROSS-ROLE INSIDER (round-7 blocker): a FULL co-signed party map names BOTH parties
+    #     ({buyer:buyer, seller:seller}). The BUYER — a mapped, authenticated party — signs a binding
+    #     that CLAIMS role "seller" (valid buyer signature; correct jobId / logicalAddress / matching
+    #     bundleContentHash), ordered ahead of the honest seller binding. Key-membership authorization
+    #     (signer in party_map) authorizes it for the SELLER side because the mapped role (buyer) is
+    #     discarded; role-match authorization (BB-5 check 9) prunes it — the buyer does not hold seller.
+    v8j = j + "-8"
+    hb8 = make_fab(keys, v8j, "completed", "none", "seller", ["buyer", "seller"])
+    hn8 = native_address(v8j, "seller", 0)
+    hh8 = bundle_hash(hb8)
+    honest8 = make_binding(keys, v8j, "seller", "seller", hn8, hh8, idx=0)
+    insider_native = native_address(v8j, "seller", 800)
+    # buyer signs a binding claiming role "seller"; bundleContentHash matches the honest bundle (hh8).
+    insider = make_binding(keys, v8j, "seller", "buyer", insider_native, hh8, idx=800)
+    vectors.append({
+        "name": "cross-role-insider-binding-pruned",
+        "rule": "BB-6 role-match authorization (BB-5 check 9); round-7",
+        "expected": "pass",
+        "note": ("a full co-signed party map names both parties (buyer->buyer, seller->seller). The buyer, a "
+                 "mapped and authenticated party, publishes a binding CLAIMING role seller with a valid buyer "
+                 "signature and the correct jobId/logicalAddress and a bundleContentHash matching the honest "
+                 "seller bundle, ordered ahead of the honest seller binding. Authorizing on key-membership "
+                 "(the buyer's signer IS a map key) resolves the insider copy for the seller side because the "
+                 "mapped role is discarded; BB-5 check 9 role-match authorization (the buyer's authenticated "
+                 "role is buyer, not seller) prunes the insider pre-fetch, and the honest seller binding resolves."),
+        "request": {"jobId": v8j, "role": "seller"},
+        "bindings": [insider, honest8],
+        "anchored": {hn8: hb8},
+        "partyMap": {CLAIM["buyer"]: "buyer", CLAIM["seller"]: "seller"},
+        "honestContentHash": hh8,
+        "insiderNativeAddress": insider_native,
+        "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": hn8,
+                 "void": False, "exhaustedSigners": [], "prunedInsider": insider_native,
+                 "reason": "the buyer-signed binding claims role seller but the authenticated party map maps the buyer to buyer, not seller; BB-5 check 9 role-match prunes it pre-fetch and the honest seller binding resolves (never the insider copy)"},
+    })
     # disclose the sybil keypairs so the vector is independently verifiable
     d["seeds"].update(sybil_seeds)
     d["publicKeys"].update({sybil_claim[name]: b64u(sybil_keys[name].public_key().public_bytes_raw())
@@ -1102,6 +1137,79 @@ def build_receipt_rederivation(keys):
         "want": {"conforming": False, "refused": True, "refusalCategory": "bb6-reselection", "reputationEffect": "exclude",
                  "competingCandidateBucketSize": 2,
                  "reason": "BB-6 re-selection over bb6Context.candidateBindings yields a different nativeAddress than roleEvidence.binding (N4)"},
+    })
+    # N5 (round-7 blocker): FORGED bb6Context.partyMap. The map claims the BUYER's authenticated claim
+    #     holds role "seller" — contradicting the authoritative bundle roster (the buyer holds "buyer").
+    #     The candidate set and every other member is valid, so a replay that consumes the partyMap
+    #     WITHOUT authenticating it against the roster resolves BB-6 and replays byte-identically; a replay
+    #     that authenticates the partyMap against the roster before any authorization use MUST refuse.
+    forged_pm = {CLAIM["seller"]: "seller", CLAIM["buyer"]: "seller"}
+    bb6_forged = {"candidateBindings": [b_seller_binding], "partyMap": forged_pm, "budget": 8}
+    vectors.append({
+        "name": "forged-partymap-unauthenticated-refused",
+        "rule": "§10.5 Replay (2) partyMap authentication; BB-6 (round-7 N5)",
+        "expected": "fail",
+        "note": ("a one-copy absent receipt whose bb6Context.partyMap maps the buyer's claim to role seller, "
+                 "contradicting the authenticated bundle roster (the buyer holds buyer). Every member and "
+                 "candidate is otherwise valid, so a replay that trusts the partyMap unauthenticated resolves "
+                 "BB-6 and reproduces the metrics; a replay that authenticates the partyMap against the roster "
+                 "before any authorization use MUST refuse the receipt (round-7)."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {hb_s: b_seller},
+        "absenceEvidence": {ev_b_hash: ev_b},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [hb_s],
+            "resolutionContext": [
+                {"contentHash": hb_s, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_forged,
+                 "counterpartyDisposition": "absent",
+                 "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
+                 "absenceBinding": absence_binding},
+            ],
+            "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "partymap-authentication", "reputationEffect": "exclude",
+                 "reason": "bb6Context.partyMap maps the buyer's claim to role seller, contradicting the authenticated bundle roster (buyer holds buyer); replay MUST refuse before any authorization use (round-7 N5)"},
+    })
+    # N6 (round-7 blocker): the bb6Context carries a SECOND candidate binding that is BB-5-invalid for the
+    #     requested side — it claims role "buyer" yet is signed by the seller (a valid seller signature over
+    #     a buyer-role binding). It sorts ABOVE the honest candidate, so an unfixed replay (which never
+    #     re-verifies candidates) still selects the honest address and replays; a replay that re-runs BB-4 +
+    #     BB-5 checks 1-5 on EVERY candidate MUST refuse (the candidate's role != the requested seller role).
+    bad_candidate = make_binding(keys, jb, "buyer", "seller", native_address(jb, "seller", 5), "f" * 64)
+    bb6_badcand = {"candidateBindings": [b_seller_binding, bad_candidate], "partyMap": PM, "budget": 8}
+    vectors.append({
+        "name": "bad-candidate-binding-in-context-refused",
+        "rule": "§10.5 Replay (2) BB-4/BB-5 candidate re-verification; round-7 N6",
+        "expected": "fail",
+        "note": ("a one-copy absent receipt whose bb6Context candidate set carries a second binding that is "
+                 "BB-5-invalid for the requested seller side: it claims role buyer but is signed by the seller "
+                 "(the signature verifies over the buyer-role binding). Its bundleContentHash sorts above the "
+                 "honest candidate, so an unfixed replay selects the honest address and replays byte-identically "
+                 "without ever re-verifying the candidate; a replay that re-runs BB-4 + BB-5 checks 1-5 on EVERY "
+                 "carried candidate MUST refuse because the candidate's role != the requested role (round-7 N6)."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {hb_s: b_seller},
+        "absenceEvidence": {ev_b_hash: ev_b},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [hb_s],
+            "resolutionContext": [
+                {"contentHash": hb_s, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_badcand,
+                 "counterpartyDisposition": "absent",
+                 "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
+                 "absenceBinding": absence_binding},
+            ],
+            "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "candidate-verification", "reputationEffect": "exclude",
+                 "reason": "a bb6Context candidate claims role buyer on the seller side; BB-4/BB-5 re-verification of every candidate refuses the receipt (round-7 N6)"},
     })
     d["vectors"] = vectors
     return finalize(d)

@@ -39,6 +39,8 @@ EXPECTED_NAMES = {
     "invalid-counterparty-role-binding-refused",
     "misbound-absence-evidence-refused",
     "competing-same-role-copy-changes-bb6-refused",
+    "forged-partymap-unauthenticated-refused",
+    "bad-candidate-binding-in-context-refused",
 }
 
 REFUSAL_NAMES = (
@@ -53,6 +55,9 @@ NEGATIVE_NAMES = (
     "invalid-counterparty-role-binding-refused",
     "misbound-absence-evidence-refused",
     "competing-same-role-copy-changes-bb6-refused",
+    # round-7: forged partyMap (authenticated against the roster) and a BB-5-invalid carried candidate.
+    "forged-partymap-unauthenticated-refused",
+    "bad-candidate-binding-in-context-refused",
 )
 
 

@@ -1593,8 +1593,326 @@
         "competingCandidateBucketSize": 2,
         "reason": "BB-6 re-selection over bb6Context.candidateBindings yields a different nativeAddress than roleEvidence.binding (N4)"
       }
+    },
+    {
+      "name": "forged-partymap-unauthenticated-refused",
+      "rule": "§10.5 Replay (2) partyMap authentication; BB-6 (round-7 N5)",
+      "expected": "fail",
+      "note": "a one-copy absent receipt whose bb6Context.partyMap maps the buyer's claim to role seller, contradicting the authenticated bundle roster (the buyer holds buyer). Every member and candidate is otherwise valid, so a replay that trusts the partyMap unauthenticated resolves BB-6 and reproduces the metrics; a replay that authenticates the partyMap against the roster before any authorization use MUST refuse the receipt (round-7).",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "seller",
+                  "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                  "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                  "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                  "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller",
+                "did:demos:buyer": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "contentHash": "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "partymap-authentication",
+        "reputationEffect": "exclude",
+        "reason": "bb6Context.partyMap maps the buyer's claim to role seller, contradicting the authenticated bundle roster (buyer holds buyer); replay MUST refuse before any authorization use (round-7 N5)"
+      }
+    },
+    {
+      "name": "bad-candidate-binding-in-context-refused",
+      "rule": "§10.5 Replay (2) BB-4/BB-5 candidate re-verification; round-7 N6",
+      "expected": "fail",
+      "note": "a one-copy absent receipt whose bb6Context candidate set carries a second binding that is BB-5-invalid for the requested seller side: it claims role buyer but is signed by the seller (the signature verifies over the buyer-role binding). Its bundleContentHash sorts above the honest candidate, so an unfixed replay selects the honest address and replays byte-identically without ever re-verifying the candidate; a replay that re-runs BB-4 + BB-5 checks 1-5 on EVERY carried candidate MUST refuse because the candidate's role != the requested role (round-7 N6).",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "seller",
+                  "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                  "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                  "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                  "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                  }
+                },
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "buyer",
+                  "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+                  "nativeAddress": "stor-3ee1c30ef867ba91dffd28139b0139f5434e42ae",
+                  "bundleContentHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                  "anchorTx": "demos-testnet:tx-3ee1c30ef867ba91",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "bLQ4dzSz-RgSSgrFasa2ken12IhuA9Dw2jYYEoIPOaC1uzpnc5a02BrRwPMk4aXJe_fDygzHPZauFSPSTXwbDw"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "contentHash": "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "candidate-verification",
+        "reputationEffect": "exclude",
+        "reason": "a bb6Context candidate claims role buyer on the seller side; BB-4/BB-5 re-verification of every candidate refuses the receipt (round-7 N6)"
+      }
     }
   ],
-  "count": 11,
-  "hash": "c2a509b69e3daa0d4c56cc7dedb5383f013e6431f1523c22d2b6426206aa5934"
+  "count": 13,
+  "hash": "de6bf870ae3ec7f24359041a9d407ecc4051a65ff05faabfe4f4fb380152ec58"
 }

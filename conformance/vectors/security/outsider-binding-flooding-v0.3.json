@@ -1777,8 +1777,115 @@
         "exhaustedSigners": [],
         "reason": "anchored/no-map path: the outsider bucket holds exactly 8 (no exhaustion) and the per-signer budget isolates the honest seller's bucket, so it resolves despite every outsider hash sorting below it (E6, arm 1)"
       }
+    },
+    {
+      "name": "cross-role-insider-binding-pruned",
+      "rule": "BB-6 role-match authorization (BB-5 check 9); round-7",
+      "expected": "pass",
+      "note": "a full co-signed party map names both parties (buyer->buyer, seller->seller). The buyer, a mapped and authenticated party, publishes a binding CLAIMING role seller with a valid buyer signature and the correct jobId/logicalAddress and a bundleContentHash matching the honest seller bundle, ordered ahead of the honest seller binding. Authorizing on key-membership (the buyer's signer IS a map key) resolves the insider copy for the seller side because the mapped role is discarded; BB-5 check 9 role-match authorization (the buyer's authenticated role is buyer, not seller) prunes the insider pre-fetch, and the honest seller binding resolves.",
+      "request": {
+        "jobId": "OBF-8",
+        "role": "seller"
+      },
+      "bindings": [
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-8",
+          "role": "seller",
+          "logicalAddress": "stor-b8cfc7d930d54f0530734494889c6dd1d65ea20a7930429220ce1b0f8cb97b37",
+          "nativeAddress": "stor-1274e464253574e37474ec82a1402795bbcdf756",
+          "bundleContentHash": "9c109aef58164214e5de6a59b7e283c30d2ed1334ec3d1da47249010ef5687ee",
+          "anchorTx": "demos-testnet:tx-1274e464253574e3",
+          "signer": "did:demos:buyer",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:buyer",
+            "value": "B2SylKu5XrxJg8xFayMvKrD-oh0mkz2UxXJk2EAconxb-jQeuSyZJcnRFkJKqHJHKtKssL4H416aaiI03ki7Cw"
+          }
+        },
+        {
+          "bindingVersion": "1",
+          "jobId": "OBF-8",
+          "role": "seller",
+          "logicalAddress": "stor-b8cfc7d930d54f0530734494889c6dd1d65ea20a7930429220ce1b0f8cb97b37",
+          "nativeAddress": "stor-0b052d91c2b70abe30b5f38fd6d0109f088f7bc6",
+          "bundleContentHash": "9c109aef58164214e5de6a59b7e283c30d2ed1334ec3d1da47249010ef5687ee",
+          "anchorTx": "demos-testnet:tx-0b052d91c2b70abe",
+          "signer": "did:demos:seller",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:seller",
+            "value": "Sbx8LY4oH_xtx9yGeKtFdignDcBLmBS3qBSbWSN55mGG4tPRkth4e8sqh2c9nqB27Sf7Q8qNR0Izpv1sT9t3AA"
+          }
+        }
+      ],
+      "anchored": {
+        "stor-0b052d91c2b70abe30b5f38fd6d0109f088f7bc6": {
+          "faultBundleVersion": "1",
+          "jobId": "OBF-8",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-OBF-8",
+            "version": 1,
+            "contentHash": "cbb1320a8fb9fb121fbd351b29e9742bffafb7b28ac22cc581d45461f1e60456"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "ZsGsODs-Ux6egiuSa6rXLpdv7QM8gMCzWTilXN95AmVibFeNwXKZGBrEmWDmKdDGYJT6t7NJKiJkhoDfB3msAQ"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "w4HxZhqrvQC6TwpE6soVOPeXwHR0kIc-MsqjiIAZ82kIaX2gJ_YyTiHQKycYU1dzbpjjC33R_GcUmf9GbNn6Cw"
+            }
+          ]
+        }
+      },
+      "partyMap": {
+        "did:demos:buyer": "buyer",
+        "did:demos:seller": "seller"
+      },
+      "honestContentHash": "9c109aef58164214e5de6a59b7e283c30d2ed1334ec3d1da47249010ef5687ee",
+      "insiderNativeAddress": "stor-1274e464253574e37474ec82a1402795bbcdf756",
+      "want": {
+        "expected": "pass",
+        "sideDisposition": "present",
+        "resolvedNativeAddress": "stor-0b052d91c2b70abe30b5f38fd6d0109f088f7bc6",
+        "void": false,
+        "exhaustedSigners": [],
+        "prunedInsider": "stor-1274e464253574e37474ec82a1402795bbcdf756",
+        "reason": "the buyer-signed binding claims role seller but the authenticated party map maps the buyer to buyer, not seller; BB-5 check 9 role-match prunes it pre-fetch and the honest seller binding resolves (never the insider copy)"
+      }
     }
   ],
-  "count": 7,
-  "hash": "6e835a7bc6f6433da6e2f91e353132460eaa468e2894cb2859833de9771dedbc"
+  "count": 8,
+  "hash": "1891de860cfe11ec85877239421aa423769f6918e1a87d18d5cd8382e921a689"
 }

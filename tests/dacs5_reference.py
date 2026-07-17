@@ -258,6 +258,15 @@ def scored_outcome(bundle, role_of_party):
 # --------------------------------------------------------------------------- #
 # BB-6 resolution with per-signer budget (E6)
 # --------------------------------------------------------------------------- #
+def _holds_role(bundle, signer, role):
+    """BB-5 check 9: `signer` is the bundle party holding `role` (parties[].primaryClaim == signer
+    AND parties[].role == role). Authorization is a roster fact, never mere presence at an address."""
+    if not isinstance(bundle, dict):
+        return False
+    return any(p.get("primaryClaim") == signer and p.get("role") == role
+               for p in bundle.get("parties", []))
+
+
 def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=None):
     """§10.4.2 BB-6 authorized-candidate resolution as amended by E6.
 
@@ -278,13 +287,12 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
     Returns {"disposition": "present"|"indeterminate", "resolvedNativeAddress": str|None,
              "fetched": [nativeAddress,...], "authorizedSigners": [...], "exhaustedSigners": [...]}.
     """
-    authorized_signer = None
     if party_map:
-        # MANDATORY prune to the mapped signer(s) before any fetch.
-        mapped = set(party_map)
-        bindings = [b for b in bindings if b["signer"] in mapped]
-        # the signer holding the requested role, if the map names one
-        authorized_signer = next(iter(party_map), None)
+        # MANDATORY prune before any fetch, by ROLE-MATCH (BB-5 check 9): a candidate is authorized only
+        # when its signer's AUTHENTICATED role (party_map[signer]) equals the role the binding CLAIMS.
+        # Key-membership alone is NOT authorization — an insider signer mapped to a DIFFERENT role must
+        # not resolve the requested side (round-7 cross-role-insider fix).
+        bindings = [b for b in bindings if party_map.get(b["signer"]) == b.get("role")]
 
     # group by authenticated signer; each signer gets its OWN budget
     by_signer = {}
@@ -303,14 +311,15 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
             exhausted.append(signer)
         for b in ordered[:budget]:  # per-signer budget
             fetched.append(b["nativeAddress"])
-            # BB-5 check 9 authorization: signer must be the party holding role.
+            # BB-5 check 9 authorization: the signer must be the bundle party holding the role the
+            # binding CLAIMS — via the authenticated party_map, or the anchored bundle's roster.
             is_authorized = False
             if party_map is not None:
-                is_authorized = signer in party_map
+                is_authorized = party_map.get(signer) == b.get("role")
             elif anchored is not None and b["nativeAddress"] in anchored:
-                # post-fetch authorization proxy: an anchored bundle whose signatures
-                # name this signer as the role holder. Modelled by presence in `anchored`.
-                is_authorized = True
+                # post-fetch authorization: the anchored bundle's roster must name this signer as the
+                # holder of the claimed role (BB-5 check 9), not mere presence at the address.
+                is_authorized = _holds_role(anchored[b["nativeAddress"]], signer, b.get("role"))
             if is_authorized:
                 authorized.append(signer)
                 if resolved is None:
@@ -585,6 +594,29 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             ctx = entry.get("bb6Context")
             if not ctx:
                 reasons.append("%s: binding roleEvidence missing bb6Context" % ch)
+                continue
+            # (round-7) authenticate bb6Context.partyMap against the authoritative bundle roster BEFORE any
+            # authorization use — an unauthenticated partyMap must never drive BB-6. Every {signer: role}
+            # entry MUST match a bundle party (primaryClaim == signer AND role == role); any that does not
+            # fails the receipt closed.
+            roster = {p.get("primaryClaim"): p.get("role") for p in auth.get("parties", [])}
+            unauth_pm = sorted(s for s, r in (ctx.get("partyMap") or {}).items() if roster.get(s) != r)
+            if unauth_pm:
+                reasons.append("%s: bb6Context.partyMap not authenticated against the bundle roster (%s)"
+                               % (ch, unauth_pm))
+                continue
+            # (round-7) re-run BB-4 + BB-5 checks 1-5 on EVERY candidate binding carried in the context; a
+            # malformed or unauthentic candidate fails the receipt closed (resolve_bb6 assumes a validated
+            # candidate set, so the validation must happen here).
+            bad_candidate = None
+            for cand in ctx.get("candidateBindings", []):
+                vbc = verify_binding(cand, pubkeys, expected_jobid=auth.get("jobId"), expected_role=role)
+                if not vbc["ok"]:
+                    bad_candidate = (cand.get("nativeAddress"), vbc["reason"])
+                    break
+            if bad_candidate is not None:
+                reasons.append("%s: bb6Context candidate binding fails BB-4/BB-5 re-verification (%s: %s)"
+                               % (ch, bad_candidate[0], bad_candidate[1]))
                 continue
             native = (re_.get("binding") or {}).get("nativeAddress")
             res = resolve_bb6(ctx.get("candidateBindings", []), ctx.get("partyMap"),

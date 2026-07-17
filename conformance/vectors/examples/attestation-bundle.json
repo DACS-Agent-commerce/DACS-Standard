@@ -48,12 +48,12 @@
       {
         "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
         "algorithm": "ed25519",
-        "value": "6lBFFazEYwO/YsRET5CGqAQss4dcCnuvahehv/BuJumD58+rBkvu1PgZXKtrZok3eCe+Yu4/yLdOAGNRS2A3BA=="
+        "value": "6lBFFazEYwO_YsRET5CGqAQss4dcCnuvahehv_BuJumD58-rBkvu1PgZXKtrZok3eCe-Yu4_yLdOAGNRS2A3BA"
       },
       {
         "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
         "algorithm": "ed25519",
-        "value": "z54bNMUe+Kws9IV23W/aco4jabs7qYmvVMB+iw4+sCudjEQdEWO+9zcMDPuJsCszldUXCVSW43aY8qmuzX2zDQ=="
+        "value": "z54bNMUe-Kws9IV23W_aco4jabs7qYmvVMB-iw4-sCudjEQdEWO-9zcMDPuJsCszldUXCVSW43aY8qmuzX2zDQ"
       }
     ]
   }

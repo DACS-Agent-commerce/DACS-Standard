@@ -1,0 +1,122 @@
+{
+  "manifestVersion": "1",
+  "generatedAt": "2026-07-16T08:00:00Z",
+  "implementation": {
+    "name": "example-pay-dem-rfq-buyer",
+    "version": "1.0.0",
+    "repository": "https://example.invalid/dacs/pay-dem-buyer",
+    "commit": "2222222222222222222222222222222222222222"
+  },
+  "profile": {
+    "id": "DACS-v0.1",
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "494fc1b7a0a523d2da6e630203084eb2d6020a2b",
+    "documents": {
+      "CORE": "0.1",
+      "DACS-1": "0.1",
+      "DACS-2": "0.1",
+      "DACS-3": "0.1",
+      "DACS-4": "0.1",
+      "DACS-5": "0.1"
+    }
+  },
+  "roles": ["buyer"],
+  "conformanceSuite": {
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "db9f9c0075a63d69d4464bac62cbfb2362a3f223",
+    "manifestPath": "conformance/MANIFEST.json",
+    "manifestSha256": "185bf14ce7f1da6053b8dc0d7f208639cda6f078d9ff46f8d75a2a1767a7c408"
+  },
+  "claims": [
+    {
+      "id": "claim-rfq-buyer",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["buyer"],
+      "modules": ["DACS-3"],
+      "capabilityRefs": ["rfq"],
+      "ruleRefs": ["RFQ-1", "RFQ-2", "RFQ-3", "RFQ-4"],
+      "evidenceRefs": ["rfq-policy-vectors"]
+    },
+    {
+      "id": "claim-pay-dem-buyer",
+      "level": "capability",
+      "result": "conformance-tested",
+      "roles": ["buyer"],
+      "modules": ["DACS-4"],
+      "capabilityRefs": ["pay-dem"],
+      "ruleRefs": ["PB-1", "PB-2", "PB-3"],
+      "evidenceRefs": ["pay-dem-vectors"]
+    },
+    {
+      "id": "claim-dem-native-rail-buyer",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["buyer"],
+      "modules": ["DACS-4"],
+      "capabilityRefs": ["demos-native-dem-rail"],
+      "ruleRefs": ["RD-1", "RD-2", "RD-3", "RD-4", "RD-5"],
+      "evidenceRefs": ["pay-dem-vectors"]
+    }
+  ],
+  "capabilities": [
+    {
+      "ref": "rfq",
+      "kind": "negotiation-pattern",
+      "id": "rfq",
+      "modules": ["DACS-3"],
+      "roles": ["buyer"],
+      "supportStatus": "implemented",
+      "availability": "live",
+      "testStatus": "partial",
+      "evidenceRefs": ["rfq-policy-vectors"]
+    },
+    {
+      "ref": "pay-dem",
+      "kind": "payment-phase",
+      "id": "pay-dem",
+      "modules": ["DACS-4"],
+      "roles": ["buyer"],
+      "supportStatus": "implemented",
+      "availability": "operator_gated",
+      "testStatus": "passed",
+      "evidenceRefs": ["pay-dem-vectors"]
+    },
+    {
+      "ref": "demos-native-dem-rail",
+      "kind": "payment-rail",
+      "id": "demos-native:DEM",
+      "modules": ["DACS-4"],
+      "roles": ["buyer"],
+      "supportStatus": "implemented",
+      "availability": "operator_gated",
+      "testStatus": "partial",
+      "evidenceRefs": ["pay-dem-vectors"]
+    }
+  ],
+  "testRuns": [
+    {
+      "id": "rfq-policy-vectors",
+      "result": "pass",
+      "caseIds": ["neg-rail-reject", "neg-pattern-mismatch"],
+      "command": "example-agent conformance run --capability rfq"
+    },
+    {
+      "id": "pay-dem-vectors",
+      "result": "pass",
+      "caseIds": ["pb2-tier1-pay-dem-intrinsic-matches"],
+      "command": "example-agent conformance run --capability pay-dem"
+    }
+  ],
+  "liveTests": [],
+  "deviations": [
+    {
+      "id": "dem-test-funding",
+      "capabilityRefs": ["pay-dem"],
+      "ruleRefs": ["RAV-R1"],
+      "status": "open",
+      "effect": "operational",
+      "description": "Live execution requires an operator-funded DEM test account; deterministic conformance is unaffected."
+    }
+  ]
+}

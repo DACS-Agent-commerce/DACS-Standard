@@ -520,6 +520,10 @@ type AttestationRef = {
 The VerifyResult follows the §B.2 canonical-form template, omitting the `signature` field; the signature is computed over:
 signed_bytes := "dacs-verifyresult:v1:" || verifyresult_hash
 
+`VerifyResultSignature.value`, `RecipeSignature.value`, and every DACS-2
+`ComponentSignature.value` MUST use the unpadded Base64URL encoding and strict
+verification rules in CORE §B.7 (SIG-6).
+
 **Validator-set claim references.** When AttestationRef.signer designates the producer of a consensus-backed-proxy or evm-rpc attestation, the ClaimReference MUST use the substrate-validator-set scheme: substrate-validator-set:<substrateId>:<epochOrSetId>.
 
 - <substrateId> is a registered substrate identifier (v0.1 registry: "demos-mainnet", "demos-testnet"; future substrates added by the registry steward).

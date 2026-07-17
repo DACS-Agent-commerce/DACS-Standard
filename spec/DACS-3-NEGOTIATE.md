@@ -451,7 +451,7 @@ type AgreementSignature = {
 
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
 
-  value: string                        // signature over the artifact's domain-separated agreement hash
+  value: string                        // unpadded Base64URL (CORE §B.7 SIG-6) over the artifact's domain-separated agreement hash
 
 }
 ```
@@ -466,6 +466,9 @@ Each artifact follows the §B.2 canonical-form template, omitting the `signature
 | --- | --- |
 | `AgreementDocument` | `"dacs-agreement:v1:" || agreement_hash` |
 | `PayeeBoundAgreementDocument` | `"dacs-payee-bound-agreement:v1:" || agreement_hash` |
+
+Every DACS-3 signature-envelope `value`, including channel-message, agreement,
+commitment, and transcript signatures, MUST use CORE §B.7 SIG-6.
 
 A verifier MUST select the artifact schema and signing domain before interpreting `terms`. It MUST reject an artifact carrying both version discriminators or neither, and MUST NOT strip an unknown discriminator and retry verification as the other artifact type.
 

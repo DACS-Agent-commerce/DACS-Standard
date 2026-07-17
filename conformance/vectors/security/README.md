@@ -36,11 +36,13 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
 _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
@@ -117,6 +119,29 @@ effect, and failing step. The common `fixtures` block holds the listing context,
 signed markers, bindings, and producer-only Demos write inputs. Cross-running
 against the offered producer and reader fixtures remains pending.
 
+### `x402-receipt-hash-v0.1.json` — §9.5.7 X402-1..X402-4
+
+12 candidate vectors pin the existing `paymentReceiptHash` to SHA-256 over the
+RFC 8785 JCS form of the complete decoded successful x402 `SettlementResponse`
+after recursively NFC-normalising every JSON string value under CORE CF-1. They
+cover v1 `X-PAYMENT-RESPONSE` and v2 `PAYMENT-RESPONSE`, prove that property
+order, whitespace, and decomposed-versus-precomposed Unicode do not change the
+hash, and require extension members to remain in the canonical object.
+
+Negative cases reject an extension mutation, the live #246 placeholder
+`sha256(settlementTxHash)`, a version/header mismatch, invalid base64, a
+non-success response, a transaction mismatch, and a v2 CAIP-2 network/chainId
+mismatch. The fixtures use the official x402 v1/v2 response shapes at
+`x402-foundation/x402@22a7677` but define DACS canonicalization rather than
+treating any SDK's JSON serializer as authoritative.
+
+#### Vector schema
+
+Each entry carries `protocolVersion`, the received `responseHeader`, optional
+`evidence`, and `want`. Positive cases pin the JCS string and receipt hash;
+negative cases pin the rejection reason. This is a candidate set. Independent
+implementation cross-run and golden promotion remain pending.
+
 ### `listing-preserve-unknown-v0.1.json` — CORE §B.7 SIG-3/SIG-5 + §11.1.2
 
 4 candidate vectors pin forward-readable Listing verification without making
@@ -167,6 +192,42 @@ an explicit out-of-band source encoding; an undeclared legacy value rejects.
 
 Run the dependency-free assertions with
 `python3 -m unittest tests.test_signature_value_encoding_vectors -v`.
+
+### `sb3-eip3009-nonce-v0.1.json` — §9.5.8 SB-3 (byte-exact x402 EIP-3009 binding)
+
+14 candidate vectors pin the EIP-3009 `bytes32 nonce` that binds a `pay-x402`
+authorization to `(jobId, phaseIndex)`. The positive vectors reproduce the live
+Base Sepolia value reported in #241 and prove job/phase separation plus NFC
+normalization.
+
+Negative vectors distinguish a well-formed mismatch — `fail` with no SB-3
+fallback — from malformed nonce/phase input (`error`). Retry vectors pin
+the no-double-charge rule: a previously used authorization resumes only when
+chain evidence proves the same transfer already settled; otherwise used or
+cancelled state fails closed and never causes a fresh nonce. One valid-ULID case
+exercises the full input shape; the live, Unicode, mismatch, malformed, and retry
+cases are explicitly marked `derivation-only`, so their verdict does not imply
+full artifact-schema acceptance.
+
+#### Vector schema
+
+Each entry carries `op` (`derive`, `verify-binding`, or `retry`), `jobId`, and
+`phaseIndex`. Verification cases add `presentedNonce`; retry cases add
+`priorAuthorization`. Every case whose valid raw inputs reach derivation carries
+`expectedNonce`; malformed inputs rejected before derivation deliberately do
+not. `validationScope` distinguishes `derivation-only` from `full-input`.
+`expected` is the §7.5.1 verdict, while `want` pins the derived nonce/binding
+branch or retry action. Textual nonce fixtures use the canonical lower-case
+`0x` + 64-hex form.
+
+The set-level `hash` is sha256 over the compact JSON `vectors` array. The generic
+security-vector validator checks that envelope, and the focused dependency-free
+test recomputes every pinned nonce, the NFC equivalence, malformed-input refusal,
+binding comparisons, and retry reuse:
+
+`python3 -m unittest tests.test_sb3_eip3009_nonce_vectors -v`
+
+Candidate set; independent implementation cross-run pending.
 
 ### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
 

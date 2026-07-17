@@ -11,6 +11,14 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
 > — they are no longer quarantined. For the broader verifier-emitted conformance
 > suite see [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (204 cases).
 
+> **SIG-6 transition.** These two generated lifecycle chains predate the canonical
+> signature-value ruling and retain padded standard-Base64 signature spellings.
+> Each downstream artifact binds the complete serialized content hash of earlier
+> artifacts, so changing a spelling requires generator-side chain regeneration
+> and re-signing rather than an in-place edit. They are legacy migration inputs,
+> not SIG-6 wire-encoding cases. Current encoding conformance is pinned by
+> [`security/signature-value-encoding-v0.1.json`](./security/signature-value-encoding-v0.1.json).
+
 ## Included vectors
 
 - [`dacs-v0.1-happy-path.json`](./dacs-v0.1-happy-path.json) — one minimal

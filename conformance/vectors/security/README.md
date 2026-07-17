@@ -39,6 +39,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
+| [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
@@ -174,6 +175,23 @@ Listing schema.
 
 Run the dependency-free reference assertions with
 `python3 -m unittest tests.test_listing_preserve_unknown_vectors -v`.
+
+### `signature-value-encoding-v0.1.json` — CORE §B.7 SIG-6
+
+10 candidate vectors pin the textual wire encoding independently of signature
+generation. The byte fixture is a real 64-byte Ed25519 signature from the
+minimum lifecycle set; its canonical spelling contains both `-` and `_`,
+so an implementation cannot accidentally pass with an alphabet-neutral value.
+
+The conforming path accepts only exact unpadded Base64URL. It rejects the same
+bytes in padded standard Base64, padded Base64URL, whitespace-bearing form,
+impossible-length form, and a spelling with non-zero residual bits. One case
+then passes the wire decoder but fails the separate Ed25519 length check.
+Legacy standard Base64 and lowercase hex convert only when the importer receives
+an explicit out-of-band source encoding; an undeclared legacy value rejects.
+
+Run the dependency-free assertions with
+`python3 -m unittest tests.test_signature_value_encoding_vectors -v`.
 
 ### `sb3-eip3009-nonce-v0.1.json` — §9.5.8 SB-3 (byte-exact x402 EIP-3009 binding)
 
@@ -351,8 +369,8 @@ scope: version discriminator, `jobId`, `listingRef`, `parties`,
 is recomputed from JCS with `signatures` omitted; it is not a document field.
 
 The set-level `publicKeys` map gives every agreement-signature party's Ed25519
-public key as base64url raw bytes without padding. Agreement `signatures[].value`
-entries are Ed25519 signatures encoded as standard base64. To reproduce the
+public key as Base64URL raw bytes without padding. Agreement `signatures[].value`
+entries use the same unpadded Base64URL encoding required by CORE §B.7 SIG-6. To reproduce the
 signature verdicts, remove `signatures`, compute `artifactHash =
 sha256(JCS(agreement-without-signatures))`, then verify each signature over
 `signatureDomain || artifactHash` using the matching `publicKeys[signature.party]`.

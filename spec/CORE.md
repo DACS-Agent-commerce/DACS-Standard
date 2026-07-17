@@ -305,6 +305,53 @@ For composite-payload separators each appended value MUST be a fixed-length hex 
 
 Both follow the same domain-separation discipline, preventing cross-use of the resulting hashes. Neither is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
 
+**Signature-value wire encoding.** This rule covers every DACS-owned signature
+envelope whose cryptographic result is carried in a string field named `value`.
+The field MUST encode the raw signature bytes as RFC 4648 §5 Base64URL, using
+the URL-safe `-` and `_` alphabet and omitting all `=` padding:
+
+```
+signature_value := base64url(signature_bytes).remove_trailing("=")
+```
+
+The canonical string is non-empty and contains only `A-Z`, `a-z`, `0-9`, `-`,
+and `_`.
+
+A verifier MUST reject padding, whitespace, the standard-Base64 `+` or `/`
+characters, impossible lengths, invalid residual bits, and every other
+non-canonical spelling before cryptographic verification.
+
+It MUST decode the value and compare it with an unpadded Base64URL re-encoding
+of the decoded bytes.
+The comparison MUST be exact.
+
+Decoded length and internal signature format remain algorithm-specific. A
+verifier MUST validate them separately.
+
+This rule applies to DACS signature envelopes such as `ListingSignature`,
+`RevocationSignature`, `AgreementSignature`, `ComponentSignature`, and
+`BundleSignature`. It does not override encodings defined by a composed protocol
+and carried in a protocol-specific field, such as a SIWD wallet `signature` or a
+Solana `ChainTxRef.signature`. A producer importing such a signature into a DACS
+`value` field MUST decode the upstream representation and re-encode its raw bytes
+in the canonical DACS form.
+
+Draft artifacts produced before SIG-6 used standard Base64, Base64URL, and hex.
+Those spellings are legacy inputs, not alternate conforming encodings.
+
+An implementation MAY expose an explicitly selected legacy-import path supplied
+with the source encoding out of band. That path MUST strictly decode the declared
+encoding, preserve the exact signature bytes, and emit the canonical DACS value.
+
+It MUST NOT auto-detect by trying decoders or accept the legacy spelling on the
+conforming verification path.
+
+Re-encoding the same bytes does not change the signed payload because signature
+fields are omitted from the artifact hash. An immutable stored serialization
+still needs a migrated publication. If a dependent artifact commits the complete
+stored serialization, its reference MUST be updated and the dependent artifact
+MUST be regenerated and re-signed.
+
 **Conformance.**
 
 - (SIG-1) Every signature in the DACS v0.x line MUST be computed over the appropriate domain-separated payload from the table above (single-hash or composite per the note above).
@@ -312,6 +359,7 @@ Both follow the same domain-separation discipline, preventing cross-use of the r
 - (SIG-3) Signatures whose payload computation cannot be reproduced exactly MUST be rejected.
 - (SIG-4) An artifact kind not in the current v0.x table MUST use a domain separator of the form "dacs-x-" || kind || ":v" || version || ":" until accepted into a future version of the registry.
 - (SIG-5) **Preserve-unknown.** A verifier MUST reconstruct the signed payload (canonical form and artifact hash) over the document **as received**, including any fields it does not recognise. It MUST NOT strip, drop, or otherwise omit unrecognised fields before recomputing the canonical form — doing so changes the hash and would reject a validly-signed document produced under a later minor version. A verifier MAY ignore the *meaning* of unknown fields but MUST include their bytes in the hash.
+- (SIG-6) **Canonical signature value.** Producers and verifiers MUST apply the unpadded Base64URL wire encoding, canonicality check, algorithm-specific validation, and legacy-import boundary defined above.
 
 > **Note (non-normative).** SIG-5 is what makes the "forward-readable shapes" guarantee of §11.1.2 hold for signed artifacts: an older verifier can still verify a newer minor version's signature, interpreting only the fields it knows.
 
@@ -509,6 +557,7 @@ Cross-stage references for DACS-1 through DACS-5. Per-stage chapters may cite ad
 **Normative — RFCs**
 
 - RFC 2119 — *Key words for use in RFCs to Indicate Requirement Levels*. Bradner. 1997.
+- RFC 4648 — *The Base16, Base32, and Base64 Data Encodings*. Josefsson. 2006.
 - RFC 7231 §6.5.2 — *Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content — 402 Payment Required*. Fielding & Reschke. 2014.
 - RFC 8174 — *Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words*. Leiba. 2017.
 - RFC 8555 — *Automatic Certificate Management Environment (ACME)*. Barnes et al. 2019.

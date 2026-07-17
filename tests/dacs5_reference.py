@@ -267,6 +267,18 @@ def _holds_role(bundle, signer, role):
                for p in bundle.get("parties", []))
 
 
+def _full_standing(bundle):
+    """§10.4.1 signature standing for BB-6 full-signature precedence: a copy is FULL-standing iff a
+    signature is present for EVERY party in its `parties[]` (co-signed); anything less is lesser
+    standing. Structural presence-per-party — crypto verification of those signatures is covered by
+    the per-set signature tests."""
+    if not isinstance(bundle, dict):
+        return False
+    parties = {p.get("primaryClaim") for p in bundle.get("parties", [])}
+    signed = {s.get("party") for s in bundle.get("signatures", [])}
+    return bool(parties) and parties <= signed
+
+
 def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=None):
     """§10.4.2 BB-6 authorized-candidate resolution as amended by E6.
 
@@ -300,7 +312,7 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
         by_signer.setdefault(b["signer"], []).append(b)
 
     fetched = []
-    resolved = None
+    authorized_copies = []
     authorized = []
     exhausted = []
     for signer, sbindings in by_signer.items():
@@ -322,22 +334,41 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
                 is_authorized = _holds_role(anchored[b["nativeAddress"]], signer, b.get("role"))
             if is_authorized:
                 authorized.append(signer)
-                if resolved is None:
-                    resolved = b["nativeAddress"]
+                authorized_copies.append(b)
 
     exhausted = sorted(set(exhausted))
     authorized_signers = sorted(set(authorized))
+
+    def _out(disposition, resolved):
+        return {"disposition": disposition, "resolvedNativeAddress": resolved,
+                "fetched": fetched, "authorizedSigners": authorized_signers, "exhaustedSigners": exhausted}
+
     if exhausted:
-        # BB-7 is SIDE-level: any signer bucket that exhausts N with candidates unfetched makes the
-        # WHOLE side `indeterminate`, overriding any authorized candidate that resolved — never absent,
-        # never a void. A consumer MAY re-run with a larger budget to lift an exhaustion-indeterminate.
-        return {"disposition": "indeterminate", "resolvedNativeAddress": None,
-                "fetched": fetched, "authorizedSigners": authorized_signers, "exhaustedSigners": exhausted}
-    if resolved is not None:
-        return {"disposition": "present", "resolvedNativeAddress": resolved,
-                "fetched": fetched, "authorizedSigners": authorized_signers, "exhaustedSigners": exhausted}
-    return {"disposition": "indeterminate", "resolvedNativeAddress": None,
-            "fetched": fetched, "authorizedSigners": authorized_signers, "exhaustedSigners": exhausted}
+        # BB-7 is SIDE-level and precedes the ladder (spec order): any signer bucket that exhausts N
+        # with candidates unfetched makes the WHOLE side `indeterminate`, overriding any authorized
+        # candidate — never absent, never a void. A consumer MAY re-run with a larger budget.
+        return _out("indeterminate", None)
+    if not authorized_copies:
+        # no BB-4-valid authorized binding resolved -> indeterminate (BB-7), never absent.
+        return _out("indeterminate", None)
+
+    # BB-6 same-role ladder over the surviving authorized, fetched copies (§10.4.2 BB-6 / §10.5.1
+    # lines 634-644). Copies are in ascending (bundleContentHash, nativeAddress) order.
+    ladder = sorted(authorized_copies, key=lambda b: (b["bundleContentHash"], b["nativeAddress"]))
+    forms = {}  # canonical form (bundleContentHash) -> its copies, ascending
+    for b in ladder:
+        forms.setdefault(b["bundleContentHash"], []).append(b)
+    if len(forms) <= 1:
+        # (b) collapse: canonically-equal copies collapse to one retrieved copy -> present.
+        return _out("present", ladder[0]["nativeAddress"])
+    # (c) full-signature precedence: standing computed from each form's ANCHORED bundle — FULL iff a
+    #     signature is present for every party. Exactly one full-standing form takes precedence.
+    full_forms = [h for h, cps in forms.items()
+                  if anchored is not None and _full_standing(anchored.get(cps[0]["nativeAddress"]))]
+    if len(full_forms) == 1:
+        return _out("present", forms[full_forms[0]][0]["nativeAddress"])
+    # (d) equal standing (all lesser-signed, or 2+ full-standing) -> void -> indeterminate (BB-6/BB-7).
+    return _out("indeterminate", None)
 
 
 # --------------------------------------------------------------------------- #

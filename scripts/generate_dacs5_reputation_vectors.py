@@ -695,6 +695,85 @@ def build_outsider_flooding(keys):
                  "void": False, "exhaustedSigners": [], "prunedInsider": insider_native,
                  "reason": "the buyer-signed binding claims role seller but the authenticated party map maps the buyer to buyer, not seller; BB-5 check 9 role-match prunes it pre-fetch and the honest seller binding resolves (never the insider copy)"},
     })
+    # ---- SAME-ROLE LADDER (round-7 rider-2): EXECUTED vectors for the BB-6 intra-signer multiplicity
+    #      ladder. Under role-match authorization two authorized same-role copies exist only for the SAME
+    #      signer (the role holder), so these are same-signer multiplicity cases. WANTS ARE SPEC-DERIVED
+    #      from §10.4.2 BB-6 / §10.5.1 (lines 634-644), never from the oracle.
+    # L1 collapse: two canonically-EQUAL authorized seller copies (identical §10.4.1 content, distinct
+    #      native addresses) -> BB-6 "canonically equal copies collapse to one retrieved copy" -> present.
+    v9j = j + "-9"
+    hb9 = make_fab(keys, v9j, "completed", "none", "seller", ["buyer", "seller"])
+    hh9 = bundle_hash(hb9)
+    n9a = native_address(v9j, "seller", 0)
+    n9b = native_address(v9j, "seller", 1)
+    l1a = make_binding(keys, v9j, "seller", "seller", n9a, hh9, idx=0)
+    l1b = make_binding(keys, v9j, "seller", "seller", n9b, hh9, idx=1)  # same content hash -> canonically equal
+    l1_resolved = min(n9a, n9b)  # ascending (bundleContentHash, nativeAddress): equal hash -> lower native
+    vectors.append({
+        "name": "ladder-l1-canonically-equal-collapse",
+        "rule": "BB-6 collapse (canonically-equal); round-7 rider-2",
+        "expected": "pass",
+        "note": "L1: two canonically-equal authorized seller copies (identical §10.4.1 content) collapse to one retrieved copy (BB-6) -> present.",
+        "request": {"jobId": v9j, "role": "seller"},
+        "bindings": [l1a, l1b],
+        "anchored": {n9a: hb9, n9b: hb9},
+        "partyMap": {CLAIM["seller"]: "seller"},
+        "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": l1_resolved,
+                 "void": False, "exhaustedSigners": [],
+                 "specCitation": "§10.4.2 BB-6: 'canonically equal copies (§10.4.1) collapse to one retrieved copy'",
+                 "reason": "canonically-equal authorized same-role copies collapse to one retrieved copy (BB-6) -> present"},
+    })
+    # L2 precedence: two canonically-UNEQUAL divergent authorized seller copies, one carrying ALL §10.4.1
+    #      required signatures (co-signed completed) and one lesser-signed (single-signed abort). BB-6:
+    #      "one carrying all §10.4.1 required signatures takes precedence and lesser-signed copies MUST be
+    #      discarded" -> present, resolved = the FULLY-SIGNED copy's native (regardless of hash order).
+    v10j = j + "-10"
+    full_bundle = make_fab(keys, v10j, "completed", "none", "seller", ["buyer", "seller"])   # all required sigs
+    lesser_bundle = make_fab(keys, v10j, "aborted-by-self", "seller", "seller", ["seller"])  # single-signed abort (divergent)
+    h_full, h_lesser = bundle_hash(full_bundle), bundle_hash(lesser_bundle)
+    n_full, n_lesser = native_address(v10j, "seller", 0), native_address(v10j, "seller", 1)
+    b_full = make_binding(keys, v10j, "seller", "seller", n_full, h_full, idx=0)
+    b_lesser = make_binding(keys, v10j, "seller", "seller", n_lesser, h_lesser, idx=1)
+    vectors.append({
+        "name": "ladder-l2-full-signature-precedence",
+        "rule": "BB-6 full-signature precedence; round-7 rider-2",
+        "expected": "pass",
+        "note": "L2: divergent authorized seller copies; the co-signed completed copy carries all §10.4.1 required signatures and takes precedence over the single-signed abort (BB-6) -> present, resolved = fully-signed copy.",
+        "request": {"jobId": v10j, "role": "seller"},
+        "bindings": [b_full, b_lesser],
+        "anchored": {n_full: full_bundle, n_lesser: lesser_bundle},
+        "partyMap": {CLAIM["seller"]: "seller"},
+        "want": {"expected": "pass", "sideDisposition": "present", "resolvedNativeAddress": n_full,
+                 "void": False, "exhaustedSigners": [],
+                 "fullSignedContentHash": h_full, "lesserSignedContentHash": h_lesser,
+                 "specCitation": "§10.4.2 BB-6: 'one carrying all §10.4.1 required signatures takes precedence and lesser-signed copies MUST be discarded'",
+                 "reason": "the fully-signed (co-signed completed) copy takes BB-6 precedence over the lesser-signed divergent; resolved = fully-signed native"},
+    })
+    # L3 equal-standing void: two canonically-UNEQUAL divergent authorized seller copies of EQUAL signature
+    #      standing (both single-signed aborts diverging on the absolute faultedParty). BB-6/BB-7: "only
+    #      equal signature standing ... MUST NOT select among them and that side's read disposition is
+    #      indeterminate" -> indeterminate (never a classification).
+    v11j = j + "-11"
+    void_a = make_fab(keys, v11j, "aborted-by-self", "seller", "seller", ["seller"])   # faultedParty seller
+    void_b = make_fab(keys, v11j, "aborted-by-other", "buyer", "seller", ["seller"])   # faultedParty buyer (divergent)
+    hva, hvb = bundle_hash(void_a), bundle_hash(void_b)
+    nva, nvb = native_address(v11j, "seller", 0), native_address(v11j, "seller", 1)
+    lva = make_binding(keys, v11j, "seller", "seller", nva, hva, idx=0)
+    lvb = make_binding(keys, v11j, "seller", "seller", nvb, hvb, idx=1)
+    vectors.append({
+        "name": "ladder-l3-equal-standing-void",
+        "rule": "BB-6 equal-standing void; BB-7; round-7 rider-2",
+        "expected": "indeterminate",
+        "note": "L3: two equal-standing single-signed authorized seller copies diverge on the absolute faultedParty (seller vs buyer); BB-6 selects neither and the side's read disposition is indeterminate (BB-7).",
+        "request": {"jobId": v11j, "role": "seller"},
+        "bindings": [lva, lvb],
+        "anchored": {nva: void_a, nvb: void_b},
+        "partyMap": {CLAIM["seller"]: "seller"},
+        "want": {"expected": "indeterminate", "sideDisposition": "indeterminate", "resolvedNativeAddress": None,
+                 "void": False, "exhaustedSigners": [],
+                 "specCitation": "§10.4.2 BB-6/BB-7: 'only when canonically unequal authorized copies are of equal signature standing ... the consumer MUST NOT select among them and that side's read disposition is indeterminate'",
+                 "reason": "equal-standing divergent authorized same-role copies void the side; read disposition indeterminate (BB-6/BB-7), never a classification"},
+    })
     # disclose the sybil keypairs so the vector is independently verifiable
     d["seeds"].update(sybil_seeds)
     d["publicKeys"].update({sybil_claim[name]: b64u(sybil_keys[name].public_key().public_bytes_raw())

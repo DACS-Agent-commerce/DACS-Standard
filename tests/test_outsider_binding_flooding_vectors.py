@@ -41,6 +41,9 @@ EXPECTED_NAMES = {
     "outsider-sybil-flood",
     "outsider-flood-worst-order-no-map",
     "cross-role-insider-binding-pruned",
+    "ladder-l1-canonically-equal-collapse",
+    "ladder-l2-full-signature-precedence",
+    "ladder-l3-equal-standing-void",
 }
 
 
@@ -200,6 +203,37 @@ class OutsiderBindingFloodingTests(unittest.TestCase):
                             "the insider copy must never resolve the seller side")
         self.assertNotIn("did:demos:buyer", res["authorizedSigners"],
                          "the buyer must not be authorized for the seller side")
+
+    def test_ladder_l1_canonically_equal_collapse(self):
+        """BB-6 same-role ladder L1: two canonically-equal authorized seller copies (identical §10.4.1
+        content, distinct native addresses) collapse to one retrieved copy -> present. Executed via
+        resolve_bb6; the fixture's two copies share exactly one canonical form."""
+        v = self.by_name["ladder-l1-canonically-equal-collapse"]
+        self.assertEqual(len({b["bundleContentHash"] for b in v["bindings"]}), 1,
+                         "L1 requires two copies of one canonical form")
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "present")
+        self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"])
+
+    def test_ladder_l2_full_signature_precedence(self):
+        """BB-6 same-role ladder L2: among divergent authorized seller copies, the co-signed
+        (full-standing) copy takes precedence over the single-signed one -> present, resolved =
+        fully-signed native. The fully-signed form has the HIGHER content hash, so a lowest-hash-first
+        resolver (no ladder) would wrongly pick the lesser-signed copy — this locks precedence, not order."""
+        v = self.by_name["ladder-l2-full-signature-precedence"]
+        self.assertGreater(v["want"]["fullSignedContentHash"], v["want"]["lesserSignedContentHash"],
+                           "fixture integrity: the fully-signed copy must NOT be the lower-hash one")
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "present")
+        self.assertEqual(res["resolvedNativeAddress"], v["want"]["resolvedNativeAddress"])
+
+    def test_ladder_l3_equal_standing_void(self):
+        """BB-6/BB-7 same-role ladder L3: two equal-standing (both single-signed) divergent authorized
+        seller copies void the side -> indeterminate, no address selected. Executed via resolve_bb6."""
+        v = self.by_name["ladder-l3-equal-standing-void"]
+        res = R.resolve_bb6(v["bindings"], party_map=v["partyMap"], anchored=v["anchored"])
+        self.assertEqual(res["disposition"], "indeterminate")
+        self.assertIsNone(res["resolvedNativeAddress"])
 
     def test_no_authorized_binding_is_indeterminate_not_absent(self):
         v = self.by_name["outsider-flood-no-honest-binding"]

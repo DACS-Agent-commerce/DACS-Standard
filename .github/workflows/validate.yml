@@ -28,6 +28,9 @@ jobs:
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
 
+      - name: Validate implementation manifests
+        run: python3 scripts/validate_implementation_manifests.py
+
       - name: Validate security vector sets (candidate tier)
         run: python3 scripts/validate_security_vectors.py
 

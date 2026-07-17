@@ -111,7 +111,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
-          "value": "W7K9t6IJz+TPkk292OQFBuRTMGKvNvYrrFheKaiGDbk2wmPWoU9d14FXsA2OqkGqVnoiim34YYuWp7tkJ8OTBw=="
+          "value": "W7K9t6IJz-TPkk292OQFBuRTMGKvNvYrrFheKaiGDbk2wmPWoU9d14FXsA2OqkGqVnoiim34YYuWp7tkJ8OTBw"
         }
       }
     },
@@ -192,7 +192,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
-          "value": "JRv2/BRNNsJIHGkD1WqIwcES8bWg+F2BMIwVo1KQAGMzVjZNlzSbXoY3YfQJkeRf/tHXpNwsPUO6aFCnADkjDQ=="
+          "value": "JRv2_BRNNsJIHGkD1WqIwcES8bWg-F2BMIwVo1KQAGMzVjZNlzSbXoY3YfQJkeRf_tHXpNwsPUO6aFCnADkjDQ"
         }
       }
     }

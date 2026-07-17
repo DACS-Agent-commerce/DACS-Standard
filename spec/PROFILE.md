@@ -15,6 +15,21 @@ A DACS **profile** pins a coherent set of document versions that implement and c
 
 **Conformance to "DACS v0.1"** means conformance to every document at the version pinned above, exercised by the [conformance vectors](../conformance/).
 
+## Qualified implementation claims
+
+The unqualified phrase **“DACS v0.1 conformant”** retains the full-profile meaning
+above. Implementations with a narrower surface can make qualified module, role, or
+capability claims without implying support for the complete profile.
+
+Qualified claims use the optional `ImplementationManifest` reporting contract in
+[§14.10](CONFORMANCE-PLAN.md#1410-implementation-conformance-claims). A manifest
+separates implemented support, operational availability, and test evidence. Declaring
+an optional capability `unsupported` is not itself a conformance failure, but the
+capability cannot appear inside a passing claim.
+
+The manifest is reporting metadata. It does not replace artifact verification,
+registry availability checks, substrate preflight, or any normative transaction rule.
+
 ## Scope is a profile decision
 
 Which stages, methods, and rails a release ships is decided here, not by deleting specification text. A future profile MAY:

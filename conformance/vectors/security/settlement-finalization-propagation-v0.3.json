@@ -1,0 +1,307 @@
+{
+  "set": "settlement-finalization-propagation-v0.3",
+  "spec": "DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3",
+  "decisionModel": "A placeholder is draft-only. Final settlement source data rebuilds and re-signs SettlementEvidence, propagates through every present bundle reference or duplicate, and rebuilds and re-signs the AttestationBundle without changing unrelated session semantics.",
+  "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
+  "hash": "f7ac3446cb19766933b1bc60c3bca3841429291744efcf6041a343e2219a7282",
+  "count": 6,
+  "fixture": {
+    "draftEvidence": {
+      "evidenceVersion": "1",
+      "jobId": "DACS-SETTLE-FINALISE-0001",
+      "phase": "pay-evm-erc20",
+      "outcome": "success",
+      "paymentTxRefs": [
+        {
+          "kind": "evm",
+          "chainId": 8453,
+          "txHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ],
+      "paymentAmount": {
+        "amount": "5",
+        "currency": "USDC"
+      },
+      "settlementFinality": {
+        "model": "block-depth",
+        "finalityBlocks": 1,
+        "finalityObservedAt": 1784192400000
+      },
+      "observedAt": 1784192400000
+    },
+    "finalEvidence": {
+      "evidenceVersion": "1",
+      "jobId": "DACS-SETTLE-FINALISE-0001",
+      "phase": "pay-evm-erc20",
+      "outcome": "success",
+      "paymentTxRefs": [
+        {
+          "kind": "evm",
+          "chainId": 8453,
+          "txHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de"
+        }
+      ],
+      "paymentAmount": {
+        "amount": "5",
+        "currency": "USDC"
+      },
+      "settlementFinality": {
+        "model": "block-depth",
+        "finalityBlocks": 1,
+        "finalityObservedAt": 1784192400000
+      },
+      "observedAt": 1784192400000
+    },
+    "draftEvidenceHash": "4c3b5cfa322728f9cdb87932b5d8250b940415bbfba698c90804e27434d89b5b",
+    "finalEvidenceHash": "895b8ed823307465e0dbd8c8f2b149928268a073e0edfb267c668505219ca731",
+    "draftBundle": {
+      "bundleVersion": "1",
+      "jobId": "DACS-SETTLE-FINALISE-0001",
+      "outcome": "completed",
+      "listingRef": {
+        "listingId": "listing-finalise-0001",
+        "version": 1,
+        "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "agreementRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs3:commit:DACS-SETTLE-FINALISE-0001"
+        },
+        "contentHash": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "parties": [
+        {
+          "role": "buyer",
+          "bundleHash": "3333333333333333333333333333333333333333333333333333333333333333",
+          "primaryClaim": "did:demos:buyer"
+        },
+        {
+          "role": "seller",
+          "bundleHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "primaryClaim": "did:demos:seller"
+        }
+      ],
+      "phaseSummary": [
+        {
+          "index": 3,
+          "kind": "pay-evm-erc20",
+          "outcome": "ok",
+          "txRefs": [
+            {
+              "kind": "evm",
+              "chainId": 8453,
+              "txHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+            }
+          ],
+          "attestationRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:payment:DACS-SETTLE-FINALISE-0001:evm-erc20%3A8453%3AUSDC:3"
+            },
+            "contentHash": "4c3b5cfa322728f9cdb87932b5d8250b940415bbfba698c90804e27434d89b5b"
+          }
+        }
+      ],
+      "vetRecords": [],
+      "settlementEvidence": [
+        {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payment:DACS-SETTLE-FINALISE-0001:evm-erc20%3A8453%3AUSDC:3"
+          },
+          "contentHash": "4c3b5cfa322728f9cdb87932b5d8250b940415bbfba698c90804e27434d89b5b"
+        }
+      ],
+      "recipeRegistryVersion": 1,
+      "railRegistryVersion": 1,
+      "finalisedAt": 1784192401000
+    },
+    "finalBundle": {
+      "bundleVersion": "1",
+      "jobId": "DACS-SETTLE-FINALISE-0001",
+      "outcome": "completed",
+      "listingRef": {
+        "listingId": "listing-finalise-0001",
+        "version": 1,
+        "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "agreementRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs3:commit:DACS-SETTLE-FINALISE-0001"
+        },
+        "contentHash": "2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "parties": [
+        {
+          "role": "buyer",
+          "bundleHash": "3333333333333333333333333333333333333333333333333333333333333333",
+          "primaryClaim": "did:demos:buyer"
+        },
+        {
+          "role": "seller",
+          "bundleHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "primaryClaim": "did:demos:seller"
+        }
+      ],
+      "phaseSummary": [
+        {
+          "index": 3,
+          "kind": "pay-evm-erc20",
+          "outcome": "ok",
+          "txRefs": [
+            {
+              "kind": "evm",
+              "chainId": 8453,
+              "txHash": "0x1fb8611c1aef418f2714dc5ec04f6856c3c2a6f64bf458462ee46329306c14de"
+            }
+          ],
+          "attestationRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:payment:DACS-SETTLE-FINALISE-0001:evm-erc20%3A8453%3AUSDC:3"
+            },
+            "contentHash": "895b8ed823307465e0dbd8c8f2b149928268a073e0edfb267c668505219ca731"
+          }
+        }
+      ],
+      "vetRecords": [],
+      "settlementEvidence": [
+        {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payment:DACS-SETTLE-FINALISE-0001:evm-erc20%3A8453%3AUSDC:3"
+          },
+          "contentHash": "895b8ed823307465e0dbd8c8f2b149928268a073e0edfb267c668505219ca731"
+        }
+      ],
+      "recipeRegistryVersion": 1,
+      "railRegistryVersion": 1,
+      "finalisedAt": 1784192401000
+    },
+    "draftBundleHash": "f3d7eefaf550a857518152f3260ef9f826b9a83d324e2d116c5cc5f23394f315",
+    "finalBundleHash": "e6ee7cd0438725d824f5cd58a72617a6a1db30352c7c2c0bf94dfbab72868e6a"
+  },
+  "requiredChangedPaths": [
+    "SettlementEvidence.paymentTxRefs[0].txHash",
+    "SettlementEvidence.contentHash",
+    "SettlementEvidence.signature.value",
+    "AttestationBundle.settlementEvidence[0].contentHash",
+    "AttestationBundle.phaseSummary[0].txRefs[0].txHash",
+    "AttestationBundle.phaseSummary[0].attestationRef.contentHash",
+    "AttestationBundle.attestationBundleHash",
+    "AttestationBundle.signatures"
+  ],
+  "allowedChangedPaths": [
+    "SettlementEvidence.paymentTxRefs[0].txHash",
+    "SettlementEvidence.contentHash",
+    "SettlementEvidence.signature.value",
+    "SettlementEvidence.anchor",
+    "AttestationBundle.settlementEvidence[0].contentHash",
+    "AttestationBundle.settlementEvidence[0].anchor",
+    "AttestationBundle.phaseSummary[0].txRefs[0].txHash",
+    "AttestationBundle.phaseSummary[0].attestationRef.contentHash",
+    "AttestationBundle.phaseSummary[0].attestationRef.anchor",
+    "AttestationBundle.attestationBundleHash",
+    "AttestationBundle.signatures",
+    "AttestationBundle.anchor"
+  ],
+  "vectors": [
+    {
+      "name": "final-source-propagates-through-evidence-and-bundle",
+      "rule": "FP-2..FP-4",
+      "expected": "pass",
+      "draftDisposition": "in-memory-only",
+      "changedPaths": [
+        "SettlementEvidence.paymentTxRefs[0].txHash",
+        "SettlementEvidence.contentHash",
+        "SettlementEvidence.signature.value",
+        "AttestationBundle.settlementEvidence[0].contentHash",
+        "AttestationBundle.phaseSummary[0].txRefs[0].txHash",
+        "AttestationBundle.phaseSummary[0].attestationRef.contentHash",
+        "AttestationBundle.attestationBundleHash",
+        "AttestationBundle.signatures"
+      ],
+      "note": "The final transaction hash changes both artifact hashes and requires both signature layers to be regenerated. Unrelated session fields remain byte-identical."
+    },
+    {
+      "name": "signed-anchored-placeholder-is-never-valid-evidence",
+      "rule": "FP-1",
+      "expected": "fail",
+      "draftDisposition": "signed-anchored-success",
+      "changedPaths": [
+        "SettlementEvidence.paymentTxRefs[0].txHash",
+        "SettlementEvidence.contentHash",
+        "SettlementEvidence.signature.value",
+        "AttestationBundle.settlementEvidence[0].contentHash",
+        "AttestationBundle.phaseSummary[0].txRefs[0].txHash",
+        "AttestationBundle.phaseSummary[0].attestationRef.contentHash",
+        "AttestationBundle.attestationBundleHash",
+        "AttestationBundle.signatures"
+      ],
+      "note": "Later correction does not make the earlier signed or anchored placeholder conforming."
+    },
+    {
+      "name": "evidence-rebuilt-but-bundle-reference-stays-stale",
+      "rule": "FP-3/FP-4",
+      "expected": "fail",
+      "draftDisposition": "in-memory-only",
+      "changedPaths": [
+        "SettlementEvidence.paymentTxRefs[0].txHash",
+        "SettlementEvidence.contentHash",
+        "SettlementEvidence.signature.value"
+      ],
+      "note": "Changing only the payment evidence is the unreachable acceptance criterion identified by #244."
+    },
+    {
+      "name": "bundle-reference-updated-but-phase-txref-stays-placeholder",
+      "rule": "FP-3/FP-4",
+      "expected": "fail",
+      "draftDisposition": "in-memory-only",
+      "changedPaths": [
+        "SettlementEvidence.paymentTxRefs[0].txHash",
+        "SettlementEvidence.contentHash",
+        "SettlementEvidence.signature.value",
+        "AttestationBundle.settlementEvidence[0].contentHash",
+        "AttestationBundle.phaseSummary[0].attestationRef.contentHash",
+        "AttestationBundle.attestationBundleHash",
+        "AttestationBundle.signatures"
+      ],
+      "note": "A duplicated phaseSummary txRef cannot retain the placeholder after the authoritative phase result is final."
+    },
+    {
+      "name": "hashes-updated-without-required-resigning",
+      "rule": "FP-2/FP-3",
+      "expected": "fail",
+      "draftDisposition": "in-memory-only",
+      "changedPaths": [
+        "SettlementEvidence.paymentTxRefs[0].txHash",
+        "SettlementEvidence.contentHash",
+        "AttestationBundle.settlementEvidence[0].contentHash",
+        "AttestationBundle.phaseSummary[0].txRefs[0].txHash",
+        "AttestationBundle.phaseSummary[0].attestationRef.contentHash",
+        "AttestationBundle.attestationBundleHash"
+      ],
+      "note": "A different evidence or bundle hash invalidates the old domain-separated signature payload."
+    },
+    {
+      "name": "unrelated-agreement-change-is-outside-propagation-closure",
+      "rule": "FP-3/FP-4",
+      "expected": "fail",
+      "draftDisposition": "in-memory-only",
+      "changedPaths": [
+        "SettlementEvidence.paymentTxRefs[0].txHash",
+        "SettlementEvidence.contentHash",
+        "SettlementEvidence.signature.value",
+        "AttestationBundle.settlementEvidence[0].contentHash",
+        "AttestationBundle.phaseSummary[0].txRefs[0].txHash",
+        "AttestationBundle.phaseSummary[0].attestationRef.contentHash",
+        "AttestationBundle.attestationBundleHash",
+        "AttestationBundle.signatures",
+        "AttestationBundle.agreementRef.contentHash"
+      ],
+      "note": "Finalising settlement cannot be used to swap the already committed agreement."
+    }
+  ]
+}

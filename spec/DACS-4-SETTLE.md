@@ -873,6 +873,17 @@ encodings, including the base58 Solana `ChainTxRef.signature`.
 Per the §B.2 canonical-form template, omitting the `signature` field. `supersedesEvidenceRef`, when present, is part of the hashed canonical form (only `signature` is omitted), so an ST-8 `:resolved` record's hash binds the interim record it supersedes. The signature is computed over:
 signed_bytes := "dacs-evidence:v1:" || evidence_hash
 
+#### Final settlement data and propagation
+
+An implementation may prepare an in-memory evidence draft before a payment rail returns its final transaction or receipt data. That draft is not a `SettlementEvidence` record and is outside the protocol until finalised as follows:
+
+- (FP-1) A placeholder, predicted, or otherwise unconfirmed transaction or receipt value MUST NOT appear in a signed or SR-2-anchored success-outcome `SettlementEvidence`. A terminal `AttestationBundle` MUST NOT reference such a draft.
+- (FP-2) After the rail returns its authoritative final values, the producer MUST construct a fresh `SettlementEvidence`, recompute every rail-defined derived field, recompute `evidence_hash`, sign the new `dacs-evidence:v1:` payload, and anchor that exact signed record. An already anchored record is immutable; replacement is a new record or a spec-defined supersession, never an in-place mutation.
+- (FP-3) A bundle produced from the final evidence MUST carry its final `AttestationRef` in `settlementEvidence[]` and in the corresponding `phaseSummary[].attestationRef` when that optional pointer is present. Any duplicated `phaseSummary[].txRefs` MUST be regenerated from the final phase result and MUST NOT retain a placeholder. The producer MUST then recompute the attestation-bundle hash and every required `dacs-bundle:v1:` signature. This propagation does not authorize a change to any unrelated listing, agreement, party, vet, delivery, amendment, rating, or registry field.
+- (FP-4) A checker comparing an in-memory draft artifact set with the same-outcome final set MUST accept the transitive integrity closure. The closure contains authoritative settlement-source fields and fields derived from those sources by the rail. It also contains the evidence hash/signature/anchor, downstream evidence or transaction references, and bundle hash/signatures/anchor. The checker MUST still perform ordinary artifact, reference, and signature verification. It MUST reject a stale propagated value or a semantic change outside that closure. It MUST NOT require that only the bytes of `SettlementEvidence` differ. A changed phase outcome follows the ordinary lifecycle and evidence rules instead of this propagation-only comparison.
+
+> **Note (non-normative).** `BundleParty.bundleHash` hashes that party's DACS-1 `IdentityBundle`; it is not the DACS-5 attestation-bundle hash and does not change during settlement finalisation.
+
 #### 9.7.1 Refunds and partial refunds
 
 Refunds are not a separate phase type in v0.1. A refund is modelled as a SettlementAmendment record anchored after the original SettlementEvidence:

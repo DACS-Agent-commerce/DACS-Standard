@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -571,7 +571,7 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 **Procedure.**
 
 1. Resolve rail; verify `network.kind == "x402-resource"`.
-2. Construct an x402 payment payload (signed authorisation per x402 spec); the authorisation MUST include the session `jobId` (SB-3, §9.5.8) so the verifier can bind the settlement to this session. Submit the GET request to the resource with x402 headers.
+2. Construct an x402 payment payload (signed authorisation per x402 spec); the authorisation MUST carry the session binding defined by SB-3 (§9.5.8) — the signed Permit2 witness or the byte-exact EIP-3009 nonce — so the verifier can bind the settlement to this session. Submit the GET request to the resource with x402 headers.
 3. Receive the paid resource response. Select, decode, and validate its x402 settlement-response header under X402-1..X402-4. Read the on-chain settlement transaction and network from that response.
 4. Construct SettlementEvidence with an `x402` txRef carrying `httpResource`, the X402-2 `paymentReceiptHash`, and `protocolVersion`. The handler MUST populate `settlementTxHash` and `chainId` whenever the settlement response supplies their source values. A record carrying both remains chain-verifiable directly against the settlement chain, like the `evm` rail; this is the primary audit path, with the receipt hash supplementary.
 5. Anchor via SR-2; return success.
@@ -594,9 +594,10 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 **Failure modes.**
 
 - server-side x402 endpoint rejects (insufficient payment, unsupported scheme) → `counterparty`
-- HTTP error after payment submitted → `transient` (retry with idempotency key)
+- HTTP error after payment submitted → `transient` (retry only through the rail's idempotency/reconciliation path; for EIP-3009, use the derived-nonce rule below)
 - malformed, non-success, hash-mismatched, or transaction/network-inconsistent settlement response → `permanent`
 - signed receipt extension present but its signature invalid → `permanent`
+- EIP-3009 nonce already used or cancelled and not reconcilable to this phase's completed transfer → `permanent`
 
 #### 9.5.8 Session-bound settlement evidence (SB-1..SB-3)
 
@@ -611,7 +612,19 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
 - **(SB-2) Cross-session uniqueness.** A consumer that aggregates settlement evidence across sessions — including the DACS-5 reputation reconciliation (§10.5.1) — MUST NOT count one `settlement-tx-id` under more than one `(jobId, phaseIndex)`. A second binding of the same id is rejected for the later record (earlier `observedAt` wins; ties broken by lower evidence hash). The check is scoped to the consumer's own evidence set; a global cross-network uniqueness index is out of scope. This closes the double-count threat on every rail with no on-chain change.
 - **(SB-3) On-chain session binding (optional, per rail).** A rail MAY bind `jobId` into its settlement-side record, closing coincidental-citation as well. v0.2 defines one for `pay-x402`; v0.3 adds the `pay-ap2` provider-metadata binding (AP2-1, §9.5.6: `dacs_job_id` in the provider-side payment metadata, checked in the AP2-2 attested status response). For `pay-x402` the binding surface differs by authorization type:
   - **Permit2** — the handler MUST place `jobId` in the signed `witness` field; the verifier MUST check it equals `evidence.jobId`.
-  - **EIP-3009** (`transferWithAuthorization`) — there is no arbitrary signed field, so the handler MUST derive the authorization `nonce` as `nonce = H(jobId ‖ phaseIndex ‖ …)` and the verifier MUST recompute and match it.
+  - **EIP-3009** (`transferWithAuthorization`) — there is no arbitrary signed field, so the handler MUST derive the authorization's `bytes32 nonce` exactly as follows:
+
+    ```text
+    preimage = UTF8("dacs-sb3:v1:")
+               || UTF8(NFC(jobId))
+               || 0x3a
+               || ASCII(decimal(phaseIndex))
+    nonceBytes = SHA-256(preimage)
+    ```
+
+    `UTF8` is UTF-8 without a byte-order mark. `0x3a` is the single ASCII colon byte. `decimal(phaseIndex)` is the non-negative integer's minimal base-10 ASCII representation (`0` for zero; no sign and no leading zeroes). `nonceBytes` is used directly as the 32-byte EIP-3009 value; when a DACS implementation serialises that value as text it MUST use `0x` followed by exactly 64 lower-case hexadecimal digits. The handler MUST use this derived value and MUST NOT substitute a random or provider-generated nonce. The verifier MUST recover `phaseIndex` from the SB-1 payment-evidence anchor, independently recompute `nonceBytes` from `evidence.jobId`, and compare the decoded 32 bytes. A well-formed nonce that differs is a **present-and-mismatches** rejection under the branch rule below; a malformed nonce encoding is `error`.
+
+    The derived nonce is also the retry identity. After an indeterminate submission, the handler MUST reconcile the token contract's authorization state before submitting again. If chain evidence proves that the same authorization and transfer parameters already settled this `(jobId, phaseIndex)`, the handler MUST resume with that existing settlement reference rather than charge again. A nonce that is used or cancelled but cannot be reconciled to that completed transfer MUST fail closed; the handler MUST NOT generate a fresh nonce for the same `(jobId, phaseIndex)`.
 
   Either way the binding rides inside the payer-signed authorization (no new contract). For a smart-account (ERC-4337) payer the signature is an ERC-1271 contract signature (`isValidSignature`) rather than an EOA signature; a verifier MUST accept either, selecting by whether the payer address has on-chain code as of the settlement transaction's block.
 
@@ -623,6 +636,8 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
   Log-forwarder (evm) and Memo (solana) bindings are anticipated per-rail follow-ons. For a `PayeeBoundAgreementDocument`, a rail with no declared binding relies on SB-1 + SB-2 with the §9.5.1 amount/payee match — where the payee side of that match is the PB-1 agreement-bound destination, not a free-standing evidence field — and is weaker against coincidental-citation; a verifier SHOULD prefer a bound rail for high-value settlements. A legacy `AgreementDocument` provides no PB-1 destination guarantee.
 
 > **Note (non-normative).** SB-2 is structurally the §B.8 SN-4 single-use marker with the scope inverted — a settlement-tx-id is single-use per session as a session nonce is.
+
+> **Note (non-normative — x402 implementation boundary).** An EIP-3009 facilitator receives an already-signed opaque `bytes32` nonce; the derivation above does not require facilitator changes. Generic buyer clients that always generate their own random nonce need a DACS-specific payment-scheme adapter (or equivalent caller-controlled authorization construction) to satisfy SB-3.
 
 #### 9.5.9 pay-dem
 

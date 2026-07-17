@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6, clarifies the listing-publisher / counterparty-role interpretation for sealed-envelope procurement listings, registers the minor-safe `commit-payee-bound-agreement` phase, extends the §6.3.5 well-known index and §6.3.6 catalog with the DACS-5 bundle-binding discovery surfaces (`bundleBindings` index + `GET /api/dacs/bundles/{jobId}`), and makes listing-revocation markers independently resolvable through `RevocationBinding`). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** on the common DACS v0.1 baseline. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 

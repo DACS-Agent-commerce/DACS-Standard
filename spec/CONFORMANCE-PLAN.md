@@ -50,7 +50,7 @@ Exercise each rule at its normative home; full text is not restated (define-once
 | PS-1..PS-3 | §8.8 | exactly-one negotiate phase; exactly one of the two agreement commitment phases immediately follows; pattern ↔ pricing-model compatibility | `conformance/` |
 | Agreement validation | §8.5.2 | price-band / rail-acceptance / deliverable / deadline / pattern checks; artifact ↔ commitment-phase match; exact pay-phase payout-binding coverage; `priceAnchor` valid-when-present, optional | `conformance/` |
 | Agreement-artifact minor compatibility | §8.5, CORE §11.1.2 / §11.2.5 | legacy reader accepts AgreementDocument and structurally rejects PayeeBoundAgreementDocument before action; current reader accepts both; reject both/neither discriminators and cross-domain signatures | `conformance/vectors/security/payee-destination-binding-v0.1.json` |
-| CA-1..CA-5 | §8.6 | refuse-advance-until-ok; double-commit reject; immutability after anchor; domain-sep commitment signature; reject artifact/phase coercion; SIG-2 cross-domain replay refusal | `conformance/vectors/security/payee-destination-binding-v0.1.json` |
+| CA-1..CA-7 | §8.6 | refuse-advance-until-ok; double-commit reject; immutability after anchor; domain-sep commitment signature; reject artifact/phase coercion; orchestrator authority independent of SR-2 deployer/owner/address; agreement binding by verified party signatures + `agreementHash`; SIG-2 cross-domain replay refusal | `conformance/vectors/security/payee-destination-binding-v0.1.json`; `conformance/vectors/security/commitment-anchor-authority-v0.3.json` |
 
 ### 14.4 DACS-4 — Settle
 
@@ -61,7 +61,8 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | RD-1..RD-5 | §9.4.3 | steward-sig + domain separator; anchor; version monotonicity; railType↔asset/network consistency | `conformance/fixtures/settlement/` |
 | PC-1..PC-7 | §9.5.1 | input-shape; anchored evidence; correct `attestationRef` (deferrable under PC-7); all `errorClass` values; PC-5 currency-resolution; PC-6 `settlementFinality` present-on-success/absent-on-delivery; PC-7 cross-chain anchor decoupling | `conformance/fixtures/settlement/` |
 | PB-1..PB-3 | §9.5.1 | payee-bound destination match/mismatch; exact `(railId, phaseIndex)` coverage; tier-1/2/3 selection including tier-1 intrinsic and tier-2 controlled-claim positive cases; applicable-unresolvable pause with exact recorded cause; resolver `error` stays `error`; no downgrade; SB-3 fallback is not imported into the pre-pay gate; legacy agreement follows legacy behaviour and carries no PB claim | `conformance/vectors/security/payee-destination-binding-v0.1.json` |
-| SB-1..SB-3 | §9.5.8 | settlement bound to `(jobId, phaseIndex)` (SB-1); a `settlement-tx-id` reused under a second `(jobId, phaseIndex)` is counted once across a consumer's set (SB-2); optional on-chain `jobId` binding — for `pay-x402`, authorization `jobId` MUST match `evidence.jobId` (SB-3) | `conformance/fixtures/settlement/` |
+| X402-1..X402-4 | §9.5.7 | v1/v2 response-header selection; recursive CF-1 NFC pre-pass then full decoded-object JCS hash; JSON/base64 normalization; extensions and unknown members preserved; malformed/non-success refusal; hash and transaction/network mismatch rejection | `conformance/vectors/security/x402-receipt-hash-v0.1.json` |
+| SB-1..SB-3 | §9.5.8 | settlement bound to `(jobId, phaseIndex)` (SB-1); a `settlement-tx-id` reused under a second `(jobId, phaseIndex)` is counted once across a consumer's set (SB-2); optional on-chain `jobId` binding — for `pay-x402` EIP-3009, byte-exact `SHA-256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`, match/mismatch, malformed input, NFC, and retry/no-random-substitution behaviour (SB-3) | `conformance/vectors/security/sb2-settlement-uniqueness-v0.1.json`; `conformance/vectors/security/sb3-eip3009-nonce-v0.1.json` |
 | HTLC-1..HTLC-10 | §9.5.4 | buyerSalt entropy/confidentiality/non-reuse; HKDF derivation + input-uniqueness; canonical claim order; per-chain hashlocks; timelock asymmetry on absolute expiry (pinned params, source-finality margin); HTLC-9/ST-8 asymmetric resolution; HTLC-10 free-option | `conformance/fixtures/settlement/htlc9-asymmetric.json` |
 | CD-1 | §B.2 | economically-equal decimals (`"1.50"`=`"1.5"`) → identical hashes/signatures | `conformance/vectors/` (CD-1) |
 | AMEND-1..AMEND-4 | §9.7.1 | `amendsEvidenceRef` resolves + jobId match; refund/partial-refund reference success-only; summed `refundAmount` ≤ `paymentAmount`; flagged-amendment not treated as valid unwind | `conformance/fixtures/settlement/` |
@@ -77,13 +78,13 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | ST-1..ST-8 (state machine) | §10.3.1 | every `(from→to)` legal-only; illegal-pair reject (ST-1); abort from any `*-pending` (ST-3); rate branch + non-fatal (ST-4/5); ST-7 pause→resume / →failed-substrate; ST-8 `settle-asymmetric` forward-resolution (→completed on final source-claim, →failed-counterparty on expiry, →paused on SR-2 outage), non-terminal; terminal→`outcome` map (ST-6) | `conformance/fixtures/settlement/` |
 | Bundle production | §10.4 | two-sided anchoring at role addresses; `anchoredByRole` ↔ address (mismatch rejected); canonical-equality happy path (excludes anchoredByRole/signatures); `dacs-bundle:v1:` sig; extended-pointer | `conformance/fixtures/` |
 | Bundle consumption | §10.4.3 | two-sided lookup; one-sided only after authoritative absence; unqualified `not found`, transport failure, or inconsistent state views → indeterminate; independent second copy restores normal unified/divergent classification; divergence = bundle `outcome`, shared-index `phaseSummary.kind`/`outcome`/`errorClass`, or entry-presence contradiction (advisory skew is NOT divergence); out-of-band dispute handling; consumer verdicts are not bundle outcome values; DACS-5 reputation excludes divergent and indeterminate jobIds | `conformance/fixtures/`; `conformance/vectors/security/bundle-absence-evidence-v0.3.json`; `conformance/vectors/security/phase-kind-divergence-v0.3.json` |
-| Reputation derivation | §10.5.1 | all outcome partitions; party-fault denominator excl. failed-substrate; **blame-weighted `counterpartyAdjustedCompletionRate` additionally excludes failed-counterparty + aborted-by-other** (null when that denominator is 0); **`transactionCountByCurrency` matches `observedTransactionalVolume` currencies**; null vs zero; empty-input totality; two-sided reconciliation + `perspective_flip`; reconciliation guards including divergent-job exclusion; rating de-duplication | `conformance/fixtures/reputation/` |
+| Reputation derivation | §10.5.1 | all outcome partitions; party-fault denominator excl. failed-substrate; **blame-weighted `counterpartyAdjustedCompletionRate` additionally excludes failed-counterparty + aborted-by-other** (null when that denominator is 0); **`transactionCountByCurrency` matches `observedTransactionalVolume` currencies**; null vs zero; empty-input totality; two-sided reconciliation + `perspective_flip`; reconciliation guards including divergent-job exclusion and guard (iv) exclusion of a raw one-copy input without authoritative-absence context; rating de-duplication | `conformance/fixtures/reputation/`; `conformance/fixtures/session-bundles-reputation.json`; `conformance/vectors/security/bundle-absence-evidence-v0.3.json` |
 | Determinism receipt | §10.5.3 | `bundleRefs` = `reconciled` set, ascending-`contentHash` order; re-derive byte-identical `metrics`/`bundleCount` under recorded `windowingBasis`; omitting basis or mis-ordering is non-conforming | `conformance/` |
 | Category-scoped derivation | §10.5.4 | prefix filter before §10.5.1; non-resolving `agreementRef` excluded; exact-or-`category+"."` prefix; hint accuracy | `conformance/` |
 | RT-1, RT-2 (rate phase) | §10.6.1 | run-after-settle; one-record-per-direction; rating domain-sep sig; RT-1 producer-reject out-of-range/over-length; RT-2 deriver-exclude non-conforming; `dimensions` opaque | `conformance/` |
 | ERC-8004 publication (optional) | §10.7 | token-owner-signed entry; bundle-anchor pointer; rate-limit | `conformance/` |
 
-### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-5, CF-1..CF-4, CD-1, SN-1..SN-4)
+### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-4, CD-1, SN-1..SN-4)
 
 A cross-cutting test category that every conforming implementation runs once:
 
@@ -101,6 +102,7 @@ A cross-cutting test category that every conforming implementation runs once:
 - **CD-1 (canonical decimal).** `"1.50"` and `"1.5"` as `PriceTerm.amount` MUST produce identical agreement hashes and signatures.
 - **SN-1..SN-4 (session nonce).** A presenter-chosen nonce the verifier did not issue MUST be rejected (SN-1); a native `sessionNonce` below 128 bits / not ≥32 lowercase-hex chars MUST be rejected (SN-2); a **same-session** replay of an already-consumed nonce MUST be rejected (SN-4); a nonce still unconsumed past its bounded challenge lifetime MUST be rejected (SN-4 retention); and a nonce issued for one `jobId` MUST NOT validate a presentation for another `jobId` — the cross-session case is caught by the §6.3.2 match against the jobId-issued nonce (SN-3), not SN-4.
 - **SIG-5 (preserve-unknown).** A verifier built against schema vN MUST successfully verify the signature on a document produced under vN+1 that adds an unknown field, by hashing the document as received (unknown field included); a verifier that strips the unknown field before hashing (and thus rejects) FAILS this test. The concrete Listing cases are `conformance/vectors/security/listing-preserve-unknown-v0.1.json`: an unchanged signed Listing carrying one inert unknown top-level field passes, while mutation or removal of that field fails the signature. A separately signed Listing with an unknown phase kind still refuses as unsupported under §11.1.2's new-type rule.
+- **SIG-6 (signature-value encoding).** Decode an unpadded Base64URL `value` whose bytes produce both `-` and `_`; exact re-encoding passes. Standard Base64 for the same bytes, padded Base64URL, whitespace, impossible lengths, and non-zero residual bits MUST fail before cryptographic verification. After canonical decoding, algorithm-specific length and signature validation still apply. The concrete cases are `conformance/vectors/security/signature-value-encoding-v0.1.json`.
 
 ### 14.7 Governance (GOV-1..GOV-3)
 
@@ -127,3 +129,117 @@ The following are not part of v0.1 conformance and SHOULD NOT be tested as such:
 - Streaming / continuous-flow rails (deferred).
 - Cross-major DACS pipelines (deferred). Same-major cross-minor handling of existing and newly registered artifact/phase types is required by CORE §11.1.2 / §11.2.5 and is in scope above.
 - Dispute *resolution* flows (DACS-X, anticipated). Divergence *detection* — the two-sided lookup plus canonical-divergence classification and out-of-band handling of §10.4.3(d) — **is** in scope for v0.1 conformance; DACS-5 reputation handling is already pinned to §10.5.1 exclusion, while only the dispute-resolution layer is deferred.
+
+### 14.10 Implementation conformance claims
+
+An `ImplementationManifest` is an optional machine-readable report describing what
+one implementation supports and the evidence behind its claims. Publishing a manifest
+does not change transaction behaviour or make the report a trusted protocol artifact.
+
+```
+type ImplementationManifest = {
+  manifestVersion: "1"
+  generatedAt: string                         // RFC 3339 timestamp
+  implementation: {
+    name: string
+    version: string
+    repository: string
+    commit: string                            // 40 lower-case hex
+  }
+  profile: {
+    id: "DACS-v0.1"
+    repository: string
+    commit: string                            // exact specification revision
+    documents: Record<"CORE" | "DACS-1" | "DACS-2" | "DACS-3" | "DACS-4" | "DACS-5", string>
+  }
+  roles: ("buyer" | "seller" | "orchestrator" | "verifier" | "directory-indexer")[]
+  conformanceSuite: {
+    repository: string
+    commit: string
+    manifestPath: string
+    manifestSha256: string                    // 64 lower-case hex
+  }
+  claims: ImplementationClaim[]
+  capabilities: CapabilitySupport[]
+  testRuns: DeterministicTestRun[]
+  liveTests: LiveTest[]
+  deviations: ImplementationDeviation[]
+}
+
+type ImplementationClaim = {
+  id: string
+  level: "full-profile" | "module" | "role" | "capability" | "experimental"
+  result: "conformant" | "conformance-tested" | "implemented" | "experimental"
+  roles: ImplementationManifest["roles"]
+  modules: ("CORE" | "DACS-1" | "DACS-2" | "DACS-3" | "DACS-4" | "DACS-5")[]
+  capabilityRefs: string[]
+  ruleRefs: string[]                           // labelled rule ids or document-scoped section refs
+  evidenceRefs: string[]                       // DeterministicTestRun ids
+}
+
+type CapabilitySupport = {
+  ref: string
+  kind: "claim-scheme" | "verification-method" | "negotiation-pattern" |
+        "payment-phase" | "payment-rail" | "delivery-type" |
+        "substrate-capability" | "bundle-operation" |
+        "reputation-operation" | "directory-operation"
+  id: string                                   // normative token, registry id, SR id, or x-* token
+  modules: ImplementationClaim["modules"]
+  roles: ImplementationManifest["roles"]
+  supportStatus: "implemented" | "experimental" | "unsupported"
+  availability?: "live" | "operator_gated" | "closed_data" | "bilateral" |
+                 "mocked" | "disabled" | "failed"
+  testStatus: "not_tested" | "partial" | "passed" | "failed"
+  evidenceRefs: string[]
+}
+
+type DeterministicTestRun = {
+  id: string
+  result: "pass" | "fail"
+  caseIds: string[]                             // ids from the pinned conformance manifest
+  command: string
+}
+
+type LiveTest = {
+  id: string
+  capabilityRefs: string[]
+  result: "pass" | "fail" | "inconclusive"
+  executedAt: string                           // RFC 3339 timestamp
+  evidence: string
+}
+
+type ImplementationDeviation = {
+  id: string
+  capabilityRefs: string[]
+  ruleRefs: string[]                           // labelled rule ids or document-scoped section refs
+  status: "open" | "resolved"
+  effect: "nonconforming" | "operational"
+  description: string
+}
+```
+
+Claim language is fixed:
+
+| `level` | Permitted claim |
+| --- | --- |
+| `full-profile` | “DACS v0.1 conformant” |
+| `module` | “DACS-N vX.Y conformant for the declared roles” |
+| `role` | “DACS v0.1 ROLE conformant for the declared modules” |
+| `capability` | “DACS v0.1 conformance-tested for CAPABILITY” or “implements CAPABILITY” |
+| `experimental` | “experimental DACS extension x-*” |
+
+- (IM-1) A manifest MUST pin the profile revision and conformance-suite manifest by repository, commit, path, and SHA-256 hash.
+- (IM-2) Each capability MUST report support, availability, and test status on their separate axes. `availability` MAY be omitted for a non-operational library capability.
+- (IM-3) A passing claim MUST name its roles, modules, capabilities, rule references, and deterministic evidence. An unqualified full-profile claim MUST cover every pinned document.
+- (IM-4) `conformance-tested` requires passing deterministic runs whose case ids exist in the pinned conformance manifest. Live tests MUST NOT substitute for deterministic evidence.
+- (IM-5) An open `nonconforming` deviation invalidates every `conformant` or `conformance-tested` claim referencing its affected capability. It does not invalidate an `implemented` or `experimental` claim, because those results do not assert conformance. An `operational` deviation MUST NOT be presented as a protocol failure.
+- (IM-6) An experimental capability MUST use an `x-` identifier. It MUST NOT appear in a `conformant` or `conformance-tested` claim.
+- (IM-7) A manifest MUST NOT override registry availability, substrate preflight, or runtime verification. Consumers MUST treat it as self-asserted reporting metadata. An unrecognized optional member MUST be preserved where integrity processing requires SIG-5 behaviour. Until a supported specification revision defines that member, it MUST NOT affect conformance evaluation or be assigned authorization, registry, substrate-preflight, runtime-verification, or transaction semantics.
+- (IM-8) `manifestVersion` follows CORE §11.1.2. Additive optional fields preserve version `"1"`; changed required fields or enum semantics require a new major value.
+
+Every `ruleRefs` entry MUST resolve in the profile revision named by `profile.commit`. A reference is either a labelled rule id such as `SIG-5`, or a document-scoped section reference such as `DACS-5-10.5.1`. The repository validator resolves both forms against the supported specification sources in its checkout. A consumer evaluating a different pinned revision MUST perform equivalent resolution against that revision; an unresolved reference invalidates the manifest.
+
+The normative JSON shape is
+[`conformance/implementation-manifest.schema.json`](../conformance/implementation-manifest.schema.json).
+Repository examples and dependency-free validation live under
+[`conformance/implementation-manifests/`](../conformance/implementation-manifests/).

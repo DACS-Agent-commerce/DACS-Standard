@@ -141,7 +141,7 @@ class ListingPreserveUnknownVectorTests(unittest.TestCase):
         ).encode("ascii")
         return verify_ed25519(
             self.public_keys[signature["signer"]],
-            base64.b64decode(signature["value"]),
+            decode_base64url(signature["value"]),
             message,
         )
 

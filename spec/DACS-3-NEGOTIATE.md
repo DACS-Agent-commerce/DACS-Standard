@@ -451,7 +451,7 @@ type AgreementSignature = {
 
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
 
-  value: string                        // signature over the artifact's domain-separated agreement hash
+  value: string                        // unpadded Base64URL (CORE §B.7 SIG-6) over the artifact's domain-separated agreement hash
 
 }
 ```
@@ -466,6 +466,9 @@ Each artifact follows the §B.2 canonical-form template, omitting the `signature
 | --- | --- |
 | `AgreementDocument` | `"dacs-agreement:v1:" || agreement_hash` |
 | `PayeeBoundAgreementDocument` | `"dacs-payee-bound-agreement:v1:" || agreement_hash` |
+
+Every DACS-3 signature-envelope `value`, including channel-message, agreement,
+commitment, and transcript signatures, MUST use CORE §B.7 SIG-6.
 
 A verifier MUST select the artifact schema and signing domain before interpreting `terms`. It MUST reject an artifact carrying both version discriminators or neither, and MUST NOT strip an unknown discriminator and retry verification as the other artifact type.
 
@@ -625,6 +628,10 @@ type CommitmentRecord = {
 - (CA-3) Once anchored, the commitment is immutable. Re-commitments for the same jobId MUST be rejected.
 - (CA-4) The agreement artifact itself MAY be anchored separately (publicly or privately). For institutional flows, the agreement artifact is typically NOT anchored on the public chain — only its hash is. Parties retain the agreement artifact off-chain (or encrypted-anchored).
 - (CA-5) A commitment handler MUST reject the other phase's artifact type before signature or listing-term interpretation. It MUST NOT coerce a `PayeeBoundAgreementDocument` into an `AgreementDocument`, or vice versa, by dropping an unknown version discriminator or `terms.payoutBindings`.
+- (CA-6) **Commitment authority.** The authenticated session orchestrator is the protocol authority for the commitment phase. A consumer MUST verify the step 5 commitment signature against that orchestrator's primary claim. The SR-2 transaction submitter, deployer, owner, and native address MUST NOT establish agreement authority or a buyer/seller role.
+- (CA-7) **Agreement binding.** A consumer MUST verify the agreement's required party signatures, recompute `agreementHash`, and match it to the `CommitmentRecord`. When CA-4 is used, the separate agreement anchor's deployer, owner, and native address MUST NOT affect acceptance.
+
+> **Note (non-normative).** The orchestrator is accountable for causing the commitment phase to anchor successfully. It need not be the raw substrate key recorded as a StorageProgram deployer or owner. A buyer- or seller-submitted transaction therefore does not change which parties authored the agreement; their agreement signatures and the committed hash establish that fact.
 
 ### 8.7 Channel transcript and disclosure
 

@@ -384,7 +384,28 @@
       "phaseIndexMismatch": "divergent",
       "advisorySkew": "unified"
     },
+    "reputationDisposition": {
+      "current": "golden — guard (iv) excludes the raw one-copy fixture because it supplies no authoritative-absence context",
+      "legacy": "candidate — historical metrics require regeneration with valid resolution context"
+    },
     "reputation": {
+      "windowStart": 1780050000000,
+      "windowEnd": 1780050010000,
+      "windowingBasis": "finalisedAt",
+      "computedAt": 1780050020000,
+      "bundleCount": 0,
+      "metrics": {
+        "completionRate": null,
+        "counterpartyAdjustedCompletionRate": null,
+        "counterpartyFaultRate": null,
+        "averageBuyerRating": null,
+        "averageSellerRating": null,
+        "observedTransactionalVolume": [],
+        "transactionCountByCurrency": []
+      },
+      "bundleRefs": []
+    },
+    "legacyReputationCandidate": {
       "windowStart": 1780050000000,
       "windowEnd": 1780050010000,
       "windowingBasis": "finalisedAt",

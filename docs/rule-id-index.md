@@ -47,6 +47,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | VP-R* | VerifyResult retry semantics | §7.6.1 | §14.2 |
 | VPC-* | Vet phase contract | §7.8 | §14.2 |
 | WN-* | Advisory verification warnings | §7.7 | §14.2 |
+| X402-* | x402 settlement-response selection, canonical receipt hashing, and evidence consistency | §9.5.7 | §14.4 |
 
 ## How to use this index
 

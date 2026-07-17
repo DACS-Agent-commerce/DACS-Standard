@@ -1,0 +1,111 @@
+{
+  "manifestVersion": "1",
+  "generatedAt": "2026-07-16T08:00:00Z",
+  "implementation": {
+    "name": "example-independent-verifier-indexer",
+    "version": "1.0.0",
+    "repository": "https://example.invalid/dacs/verifier-indexer",
+    "commit": "4444444444444444444444444444444444444444"
+  },
+  "profile": {
+    "id": "DACS-v0.1",
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "db9f9c0075a63d69d4464bac62cbfb2362a3f223",
+    "documents": {
+      "CORE": "0.1",
+      "DACS-1": "0.1",
+      "DACS-2": "0.1",
+      "DACS-3": "0.1",
+      "DACS-4": "0.1",
+      "DACS-5": "0.1"
+    }
+  },
+  "roles": ["verifier", "directory-indexer"],
+  "conformanceSuite": {
+    "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
+    "commit": "db9f9c0075a63d69d4464bac62cbfb2362a3f223",
+    "manifestPath": "conformance/MANIFEST.json",
+    "manifestSha256": "9fdbe4952f04719ddcb79a1c6d3a755244231d092af63056db8642e10122ff41"
+  },
+  "claims": [
+    {
+      "id": "claim-bundle-verifier",
+      "level": "capability",
+      "result": "conformance-tested",
+      "roles": ["verifier"],
+      "modules": ["DACS-5"],
+      "capabilityRefs": ["verify-attestation-bundle"],
+      "ruleRefs": ["SIG-1", "SIG-2", "SIG-5"],
+      "evidenceRefs": ["bundle-verifier-vectors"]
+    },
+    {
+      "id": "claim-reputation-deriver",
+      "level": "capability",
+      "result": "conformance-tested",
+      "roles": ["verifier"],
+      "modules": ["DACS-5"],
+      "capabilityRefs": ["derive-reputation"],
+      "ruleRefs": ["DACS-5-10.5.1", "DACS-5-10.5.3"],
+      "evidenceRefs": ["reputation-vectors"]
+    },
+    {
+      "id": "claim-directory-indexer",
+      "level": "capability",
+      "result": "implemented",
+      "roles": ["directory-indexer"],
+      "modules": ["DACS-1"],
+      "capabilityRefs": ["listing-directory"],
+      "ruleRefs": ["DACS-1-6.3.6"],
+      "evidenceRefs": []
+    }
+  ],
+  "capabilities": [
+    {
+      "ref": "verify-attestation-bundle",
+      "kind": "bundle-operation",
+      "id": "verify-attestation-bundle",
+      "modules": ["DACS-5"],
+      "roles": ["verifier"],
+      "supportStatus": "implemented",
+      "testStatus": "passed",
+      "evidenceRefs": ["bundle-verifier-vectors"]
+    },
+    {
+      "ref": "derive-reputation",
+      "kind": "reputation-operation",
+      "id": "derive-reputation",
+      "modules": ["DACS-5"],
+      "roles": ["verifier"],
+      "supportStatus": "implemented",
+      "testStatus": "passed",
+      "evidenceRefs": ["reputation-vectors"]
+    },
+    {
+      "ref": "listing-directory",
+      "kind": "directory-operation",
+      "id": "listing-directory",
+      "modules": ["DACS-1"],
+      "roles": ["directory-indexer"],
+      "supportStatus": "implemented",
+      "availability": "live",
+      "testStatus": "not_tested",
+      "evidenceRefs": []
+    }
+  ],
+  "testRuns": [
+    {
+      "id": "bundle-verifier-vectors",
+      "result": "pass",
+      "caseIds": ["bundle-0004-pass", "bundle-required-signer-fail", "bundle-malformed-key-error"],
+      "command": "example-verifier conformance run --capability verify-attestation-bundle"
+    },
+    {
+      "id": "reputation-vectors",
+      "result": "pass",
+      "caseIds": ["verify-reputation-determinism-receipt", "verify-consume-divergent"],
+      "command": "example-verifier conformance run --capability derive-reputation"
+    }
+  ],
+  "liveTests": [],
+  "deviations": []
+}

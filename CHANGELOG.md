@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — conformance reporting
+
+- **Scoped implementation claims and `ImplementationManifest`** (PROFILE, §14.10 IM-1..IM-8; #260) — preserves unqualified “DACS v0.1 conformant” as a full-profile claim while defining optional, machine-readable module, role, capability, and experimental claims. Capability reports separate implemented support, operational availability, and deterministic test status. Reports pin the exact specification and conformance-manifest revisions, and distinguish live-only evidence from deterministic conformance. Experimental or unsupported capabilities cannot construct a passing claim. Adds a normative JSON schema, four examples, and dependency-free CI validation. The manifest is self-asserted reporting metadata and never bypasses registry availability, substrate preflight, artifact verification, or another protocol obligation.
+
 ### Fixed — DACS-1 conformance
 
 - **Listing preserve-unknown vectors** (CORE §B.7 SIG-3/SIG-5, §11.1.2, DACS-1 §6.3.4; #247) — turns the existing additivity contract into a signed, portable Listing test without changing normative semantics. A Listing with an inert unknown top-level field verifies when hashed as received; mutating or removing the field after signing fails. A validly signed unknown phase kind remains unsupported, preserving the closed action-discriminator boundary. This exposes closed top-level-key allowlists as non-conforming while retaining required-field and known-phase validation.

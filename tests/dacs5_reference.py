@@ -390,7 +390,8 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
 
 
 # --------------------------------------------------------------------------- #
-# derive() faithful to §10.5.1 484-698 as amended (E1-E5)
+# derive() executes the named §10.5.1 484-698 predicates as amended (E1-E5) — selected
+# derivation fields, not a complete ReplayableReputationDerivation implementation
 # --------------------------------------------------------------------------- #
 def _primary_claims(bundle):
     return {p["primaryClaim"] for p in bundle.get("parties", [])}
@@ -404,7 +405,8 @@ def _role_of_party(bundle, party):
 
 
 def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
-    """Faithful §10.5.1 reputation derivation.
+    """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
+    complete ReplayableReputationDerivation implementation.
 
     tagged_bundles: list of {"bundle": <dict>, "resolvedRole": "buyer"|"seller",
       "counterpartyDisposition": "present"|"absent"|None, "counterpartyRef": ...?,
@@ -465,9 +467,12 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
 
     n = len(outcomes)
     completed = outc("completed")
-    failed_substrate = outc("failed-substrate")
-    orch_neutral = [t for t in reconciled if t["bundle"]["jobId"] in orch_fault]
-    cancelled_neutral = [t for t in reconciled if t["bundle"]["jobId"] in cancelled]
+    # jobIds removed from the party-fault denominator. ST-10's temporal invariant keeps these three
+    # classes disjoint, but the union is taken at the subtraction site so a future overlap cannot
+    # double-subtract a single jobId (behaviour-neutral today).
+    fs_jobs = {t["bundle"]["jobId"] for (t, o) in zip(reconciled, outcomes) if o == "failed-substrate"}
+    orch_jobs = {t["bundle"]["jobId"] for t in reconciled if t["bundle"]["jobId"] in orch_fault}
+    cancelled_jobs = {t["bundle"]["jobId"] for t in reconciled if t["bundle"]["jobId"] in cancelled}
 
     def cnt(pred):
         return sum(1 for (t, o) in zip(reconciled, outcomes) if pred(t, o))
@@ -477,7 +482,7 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
                            and t["bundle"]["jobId"] not in cancelled and t["bundle"]["jobId"] not in orch_fault)
     counterparty_fault = aborted_by_other + failed_counterparty
 
-    party_fault_denom = n - len(failed_substrate) - len(cancelled_neutral) - len(orch_neutral)
+    party_fault_denom = n - len(fs_jobs | orch_jobs | cancelled_jobs)
     completion_rate = (len(completed) / party_fault_denom) if party_fault_denom > 0 else None
     party_blame_denom = party_fault_denom - counterparty_fault
     cp_adj = (len(completed) / party_blame_denom) if party_blame_denom > 0 else None

@@ -573,7 +573,7 @@ Three relations make each authenticated copy independently checkable at replay:
 - **BB-6 reproduction.** A binding-backed entry MUST carry the `bb6Context` multiplicity inputs that reproduce why the authoritative copy won BB-6 selection. A replay that re-runs BB-6 over `candidateBindings` under `partyMap` and `budget` and reaches a `resolvedNativeAddress` other than `roleEvidence.binding.nativeAddress` is non-conforming.
 - **Absence relation.** `absenceBinding.nativeAddress` MUST equal the dereferenced `AbsenceEvidence.nativeAddress`. `absenceBinding` MUST itself be BB-4-valid, with `role` equal to the missing side's role and `jobId` equal to the entry's jobId. BB-5 check 8 (`bundleContentHash` byte-equality with fetched content) is inapplicable to `absenceBinding` — the missing side's bundle never anchored, so no fetched content exists to match; the binding is verified per BB-4 with `jobId` and `role` equality and the `nativeAddress` relation above.
 
-A deriver publishing a replayable receipt emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. It sets `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`. The legacy §10.5.1 `derive()` emits a `ReputationDerivation` with no `resolutionContext` and is otherwise unchanged.
+A deriver publishing a replayable receipt emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. It sets `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`. The legacy ReputationDerivation output shape remains unchanged; replayability is introduced through the distinct ReplayableReputationDerivation type.
 
 **Replay (normative, extends the §10.5.3 determinism receipt).** A `ReplayableReputationDerivation` MUST be replayable as below, and is non-conforming if it is missing, mis-keyed, lacks any member REQUIRED for an entry's disposition, or fails any check:
 
@@ -585,6 +585,8 @@ A deriver publishing a replayable receipt emits `replayableDerivationVersion: "1
 - **re-check absence** — dereference `AbsenceEvidence`, require `absenceEvidenceRef.contentHash` to equal its `sha256(canonical)`, verify `absenceBinding` per the absence relation, and require `absenceBinding.nativeAddress` to equal `AbsenceEvidence.nativeAddress`.
 
 The discriminator is unsigned. Stripping `replayableDerivationVersion` from a published receipt downgrades it to a legacy `ReputationDerivation` making no replay claim — a loss of claims, not a forgery, since the surviving metrics remain auditable under §10.5.3 (1)–(3).
+
+> **Note (non-normative).** A conforming replay proves the receipt's *internal consistency* and the *authentication* of the evidence it re-verifies — the `roleEvidence`/`counterpartyRoleEvidence` bindings, the `partyMap` against the bundle roster, and the `bb6Context` candidates (BB-4/BB-5). It does NOT prove *completeness* or faithful disclosure: a deriver that omits relevant bundles from `bundleRefs` is not detected by replay — the §10.5.3 completeness residual (no authoritative "which bundles exist" oracle; #251-adjacent).
 
 #### 10.5.1 Derivation algorithm
 

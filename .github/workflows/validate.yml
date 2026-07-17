@@ -26,7 +26,7 @@ jobs:
           python-version: '3.x'
 
       - name: Install crypto dependency
-        run: python3 -m pip install 'cryptography>=46,<47'
+        run: python3 -m pip install 'cryptography==46.0.5'
 
       - name: crypto import gate (fail-closed)
         run: python3 -c "import cryptography; print(cryptography.__version__)"

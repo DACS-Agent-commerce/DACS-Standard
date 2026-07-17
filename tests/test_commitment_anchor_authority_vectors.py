@@ -116,7 +116,7 @@ class CommitmentAnchorAuthorityVectorTests(unittest.TestCase):
             public_key = Ed25519PublicKey.from_public_bytes(b64url_decode(self.data["publicKeys"][signature["party"]]))
             with self.subTest(party=signature["party"]):
                 try:
-                    public_key.verify(base64.b64decode(signature["value"]), agreement_payload)
+                    public_key.verify(b64url_decode(signature["value"]), agreement_payload)
                 except InvalidSignature:
                     self.fail("agreement signature must verify")
 
@@ -124,7 +124,7 @@ class CommitmentAnchorAuthorityVectorTests(unittest.TestCase):
         signature = self.data["commitmentSignature"]
         public_key = Ed25519PublicKey.from_public_bytes(b64url_decode(self.data["publicKeys"][signature["signer"]]))
         try:
-            public_key.verify(base64.b64decode(signature["value"]), commitment_payload)
+            public_key.verify(b64url_decode(signature["value"]), commitment_payload)
         except InvalidSignature:
             self.fail("commitment signature must verify")
 

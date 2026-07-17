@@ -51,8 +51,8 @@
     },
     "generatedAt": 1720968000000,
     "signatures": [
-      {"party": "cci-lei:984500PBBUYER0000010", "algorithm": "ed25519", "value": "JuzhWqJ10H/F/aCaOmW0wKUhZmgjyU86t1ukX1j+8TgwCI1l3TItHEhkhh8quHrQv/Tvx1F55MgG67yMuP2pDw=="},
-      {"party": "cci-lei:984500PBSELLER000010", "algorithm": "ed25519", "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA=="}
+      {"party": "cci-lei:984500PBBUYER0000010", "algorithm": "ed25519", "value": "JuzhWqJ10H_F_aCaOmW0wKUhZmgjyU86t1ukX1j-8TgwCI1l3TItHEhkhh8quHrQv_Tvx1F55MgG67yMuP2pDw"},
+      {"party": "cci-lei:984500PBSELLER000010", "algorithm": "ed25519", "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA"}
     ]
   },
   "agreementHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
@@ -73,7 +73,7 @@
   "commitmentSignature": {
     "signer": "did:demos:orchestrator",
     "algorithm": "ed25519",
-    "value": "YR4QGKxlBOV1Pw5xCetfCYrSmRzOP0t59IeRLC08E4sTxLWdqpcB4Q/pkx30OnuQ4R9RJhEBYuFO3tpvKu26CQ=="
+    "value": "YR4QGKxlBOV1Pw5xCetfCYrSmRzOP0t59IeRLC08E4sTxLWdqpcB4Q_pkx30OnuQ4R9RJhEBYuFO3tpvKu26CQ"
   },
   "vectors": [
     {

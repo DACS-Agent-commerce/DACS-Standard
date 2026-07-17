@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: the blame-weighted `counterpartyAdjustedCompletionRate` + `transactionCountByCurrency` reputation metrics §10.5.1, the ST-9 session-deadline timeout terminal §10.3.1, and the ST-10 policy-permitted pre-commit cancellation §10.3.1; v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact + BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` fault attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain — §10.4.1). **Depends on:** SR-1 (preferred for cross-substrate primary-claim keying), SR-2 (required for bundle anchoring); composes with ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 sessions (reputation lookups), external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** on the common DACS v0.1 baseline. v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 

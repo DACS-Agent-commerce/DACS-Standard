@@ -298,7 +298,12 @@ The v0.x registry of domain separators at this revision is closed:
 
 For composite-payload separators each appended value MUST be a fixed-length hex sha256 digest (or, for `session_key`, the fixed-length hex public key) so the concatenation is unambiguously parseable. This is the sanctioned exception to the single-`artifact_hash` shape; these separators are first-class registry entries, not `dacs-x-` extensions.
 
-**Commitment-hash domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). One further `dacs-*:v1:` tag is a **commitment-hash** domain, not a signature payload: `dacs-sealed-bid:v1:` (the sealed-envelope bidHash preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)`, §8.4.3). It follows the same domain-separation discipline (preventing cross-use of the hash) but is NOT a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to it; it is the one sanctioned commitment-hash domain tag in v0.1.
+**Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Two further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
+
+- `dacs-sealed-bid:v1:` — the sealed-envelope commitment preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)` (§8.4.3);
+- `dacs-sb3:v1:` — the EIP-3009 session-binding nonce preimage `sha256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))` (§9.5.8).
+
+Both follow the same domain-separation discipline, preventing cross-use of the resulting hashes. Neither is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
 
 **Conformance.**
 

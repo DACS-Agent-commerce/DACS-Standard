@@ -384,6 +384,122 @@ class Round9OrderingContractTests(unittest.TestCase):
         self.assertNotIn(out_hash, fetched,
                          "F2: the pruned outsider bundle must never be fetched; current fetch list = %r" % (fetched,))
 
+    # -------------------------------------------------------------------------------------- F4
+    def test_f4_cross_role_counterparty_pruned_silently(self):
+        """F4 (step-9 audit) — under a FULL authenticated partyMap {buyer->buyer, seller->seller}, a
+        MAPPED counterparty (buyer) that publishes a binding CLAIMING role:seller (valid buyer signature)
+        must be pruned by ROLE, not merely by signer-membership: the buyer does not hold seller, so its
+        cross-role candidate must be dropped pre-fetch and MUST NOT sink an honest receipt. RED at
+        1029ee5: the step-7 prune keeps candidates by `signer in party_map`, so the buyer's cross-role
+        binding survives to the fetch loop — (a) an unfetchable one refuses 'not dereferenceable', and
+        (b) a fetchable one is fetched (should be zero fetch work). This concerns the COUNTERPARTY's
+        cross-role candidate only; the role-holder's own malformed candidate (N6) still refuses."""
+        FULLPM = {CLAIM["buyer"]: "buyer", CLAIM["seller"]: "seller"}
+
+        def build(job, cross_role_fetchable):
+            honest = make_fab(job, "completed", "none", "seller", ["buyer", "seller"])
+            h = bundle_hash(honest)
+            n = native_address(job, "seller", 0)
+            bind_h = make_binding(job, "seller", "seller", n, h)
+            cp = native_address(job, "buyer")
+            absb = make_binding(job, "buyer", "buyer", cp, PLACEHOLDER)
+            ev = make_absence_evidence(cp)
+            evh = evidence_hash(ev)
+            xn = native_address(job, "seller", 9)
+            deref_map = {h: honest}
+            if cross_role_fetchable:
+                x = make_fab(job, "completed", "none", "seller", ["buyer", "seller"])  # real co-signed bundle
+                xh = bundle_hash(x)
+                deref_map[xh] = x
+            else:
+                xh = sha("crossrole-unfetch", job)                                     # bundle intentionally ABSENT
+            x_bind = make_binding(job, "seller", "buyer", xn, xh)   # buyer-signed, CLAIMS role seller, valid sig
+            bb6 = {"candidateBindings": [bind_h, x_bind], "partyMap": FULLPM, "budget": 8}
+            deriv = _derivation(h, _absent_entry(job, h, bind_h, bb6, absb, evh, cp))
+            return deriv, deref_map, {evh: ev}, xh
+
+        for label, fetchable in (("a: cross-role bundle unfetchable", False),
+                                 ("b: cross-role bundle fetchable", True)):
+            with self.subTest(vector=label):
+                deriv, deref_map, ev_map, xh = build("R9-F4-" + ("a" if not fetchable else "b"), fetchable)
+                fetched = []
+
+                def deref(x):
+                    fetched.append(x)
+                    return deref_map.get(x)
+
+                vok, reasons = R.validate_resolution_context(deriv, deref, lambda x: ev_map.get(x), PUBKEYS)
+                # CONTRACT: a mapped counterparty's cross-role candidate is pruned by role pre-fetch — the honest
+                # receipt accepts and no fetch work is spent on it. RED at 1029ee5: (a) refuses; (b) fetches it.
+                self.assertEqual((vok, reasons), (True, []),
+                                 "F4 %s: a cross-role counterparty candidate must not sink an honest receipt; "
+                                 "current wrong behaviour = %r" % (label, reasons))
+                self.assertNotIn(xh, fetched,
+                                 "F4 %s: a role-holder-strict prune must spend zero fetch on the cross-role "
+                                 "candidate; current fetch list = %r" % (label, fetched))
+
+    # -------------------------------------------------------------------------------------- F5
+    def test_f5_poison_inert_under_cross_role_flood(self):
+        """F5 (step-10 audit) — a cross-role flood past budget must not bypass BB-5 post-fetch validation.
+        An honest seller receipt carrying a seller-signed POISONED competitor (byte-recompute-fail, normally
+        dropped inert) plus 10 buyer-signed role:seller candidates (unfetchable) under budget 8. RED at
+        1029ee5: the buyer flood inflates the membership per-signer count, firing the pre-fetch exhaustion
+        branch which resolves via resolve_bb6(survivors, …, anchored={}) — performing NO post-fetch
+        validation, so the poison survives as a competing form and flips the side to indeterminate. The
+        poison must instead be fetched and dropped inert on the normal validate route (R1), and the honest
+        receipt must accept."""
+        FULLPM = {CLAIM["buyer"]: "buyer", CLAIM["seller"]: "seller"}
+        j = "R9-F5"
+        honest = make_fab(j, "completed", "none", "seller", ["buyer", "seller"])
+        h = bundle_hash(honest)
+        n = native_address(j, "seller", 0)
+        bind_h = make_binding(j, "seller", "seller", n, h)
+        poison_bundle = make_fab(j, "failed-substrate", "none", "seller", ["buyer", "seller"])
+        poison_claim = "b" * 64
+        self.assertNotEqual(bundle_hash(poison_bundle), poison_claim, "poison must fail check-8 byte recompute")
+        poison = make_binding(j, "seller", "seller", native_address(j, "seller", 3), poison_claim)
+        flood = [make_binding(j, "seller", "buyer", native_address(j, "seller", 100 + k), sha("flood", j, str(k)))
+                 for k in range(10)]
+        cp = native_address(j, "buyer")
+        absb = make_binding(j, "buyer", "buyer", cp, PLACEHOLDER)
+        ev = make_absence_evidence(cp)
+        evh = evidence_hash(ev)
+        deref_map = {h: honest, poison_claim: poison_bundle}   # flood bundles intentionally unfetchable
+        ev_map = {evh: ev}
+
+        def run(candidate_bindings):
+            bb6 = {"candidateBindings": candidate_bindings, "partyMap": FULLPM, "budget": 8}
+            deriv = _derivation(h, _absent_entry(j, h, bind_h, bb6, absb, evh, cp))
+            fetched = []
+
+            def deref(x):
+                fetched.append(x)
+                return deref_map.get(x)
+
+            vok, reasons = R.validate_resolution_context(deriv, deref, lambda x: ev_map.get(x), PUBKEYS)
+            return vok, reasons, fetched
+
+        # inline control (holds now AND after the fix): without the flood, the poison is fetched and dropped
+        # inert on the normal validate route, and the honest receipt accepts.
+        cvok, creasons, cfetched = run([bind_h, poison])
+        self.assertEqual((cvok, creasons), (True, []),
+                         "F5 control: without the flood the honest receipt must accept; got %r" % (creasons,))
+        self.assertIn(poison_claim, cfetched, "F5 control: the poison must be fetched on the normal route")
+
+        # main: WITH the flood, the honest receipt must still accept — the flood is not seller-bucket load and
+        # the poison must be dropped inert on the normal validate route. RED at 1029ee5: the exhaustion branch
+        # fires and refuses "BB-6 re-selection differs (got 'indeterminate'/None, …)".
+        vok, reasons, fetched = run([bind_h, poison] + flood)
+        self.assertEqual((vok, reasons), (True, []),
+                         "F5: a cross-role flood must not bypass post-fetch validation; current wrong behaviour = %r"
+                         % (reasons,))
+        for k in range(10):
+            self.assertNotIn(sha("flood", j, str(k)), fetched,
+                             "F5: unfetchable cross-role flood candidates must never be fetched")
+        self.assertIn(poison_claim, fetched,
+                      "F5: the poison must be fetched and dropped inert on the normal validate route; "
+                      "current fetch list = %r" % (fetched,))
+
 
 if __name__ == "__main__":
     unittest.main()

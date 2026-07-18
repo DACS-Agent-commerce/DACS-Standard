@@ -17,7 +17,13 @@ The spec's §14 conformance chapter defines conformant behaviour but ships no se
 
 ```sh
 python3 scripts/validate_conformance_vectors.py --manifest conformance/MANIFEST.json
+python3 scripts/run_lifecycle_walkthrough.py --check
 ```
+
+For a runnable five-stage builder path, see the dependency-free
+[`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed
+fixtures, emits canonical bytes/hashes/signature payloads/refs, and executes five
+deterministic failure examples without importing a live substrate SDK.
 
 Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`, then copy `conformance/` back here. Deterministic by construction: every key and signature is derived from fixed public seeds and every timestamp is pinned, so each run is byte-stable. No private key material is stored — seeds are public test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 

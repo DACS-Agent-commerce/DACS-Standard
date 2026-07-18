@@ -22,7 +22,7 @@ from urllib.parse import unquote, urlparse
 
 LINK_RE = re.compile(r"(?<!!)\[[^\]\n]+\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
-SKIP_DIRS = {".git", ".github", ".mypy_cache", ".pytest_cache", "__pycache__"}
+SKIP_DIRS = {".context", ".git", ".github", ".mypy_cache", ".pytest_cache", "__pycache__"}
 
 
 def github_slug(heading: str, seen: Counter[str]) -> str:

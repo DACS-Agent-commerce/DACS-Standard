@@ -369,7 +369,10 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
                (MANDATORY in a derivation context). None models "no co-signed map yet".
     budget   : N per authenticated signer per (jobId, role) (default 8). Per-signer, so an
                outsider's flood never consumes the honest role-holder's allocation (E6).
-    anchored : optional {nativeAddress -> bundle} for authorization (BB-5 check 9).
+    anchored : optional {nativeAddress -> bundle} for authorization (BB-5 check 9). PRECONDITION
+               (round-9 F3): every bundle passed in `anchored` MUST already have passed full BB-5
+               post-fetch validation (incl. §10.4.1 signature validity) — signature standing
+               (_full_standing) is never computed on an unvalidated copy.
 
     BB-7 exhaustion is SIDE-level (round-6 blocker #3): if ANY signer bucket (after the party_map
     prune) holds more than `budget` candidates, its budget exhausts with candidate addresses still
@@ -728,14 +731,29 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 reasons.append("%s: bb6Context.partyMap not authenticated against the bundle roster (%s)"
                                % (ch, unauth_pm))
                 continue
-            # (round-7 + round-8) re-run BB-4 + BB-5 checks 2-5 on EVERY candidate binding carried in the
-            # context (verify_binding: check 2 = BB-4 signer + crypto-gated signature; check 3 = bindingVersion;
-            # check 4 = jobId/role; check 5 = logicalAddress == derive(jobId, role)). Check 1 (discovery-surface
-            # resolution) is NOT replayable — replay consumes the deriver-supplied candidateBindings, the
-            # disclosed §10.5.3 completeness residual (#251). A malformed or unauthentic candidate fails the
-            # receipt closed (resolve_bb6 assumes a validated candidate set, so the validation must happen here).
+            # (round-9) reconstruct the anchored map in the BB-6 MANDATED ORDER:
+            #   PRUNE -> RE-VERIFY -> BUDGET(exhaustion) -> ORDER -> FETCH -> VALIDATE -> LADDER.
+            # (round-9 audit F2) The authenticated-partyMap prune MUST precede the per-candidate BB-4/BB-5
+            # re-verification: an UNAUTHORIZED candidate (its signer is not a party in the authenticated map)
+            # is dropped SILENTLY — however malformed its binding — consuming no verification/fetch work, so an
+            # outsider cannot force refusal of an honest receipt. The re-verification then runs on SURVIVORS
+            # only; an AUTHORIZED candidate (mapped signer) that fails BB-4/BB-5 still refuses (N6). The N5
+            # partyMap-vs-roster forgery check above already ran, so a forged map never reaches this prune.
+            if "budget" not in ctx:
+                reasons.append("%s: bb6Context.budget absent (BB-6 fetch budget is schema-required)" % ch)
+                continue
+            budget = ctx["budget"]                                   # RECORDED budget — never re-defaulted
+            party_map = ctx.get("partyMap")
+            # a. PRUNE FIRST (pre-verify, pre-fetch): keep only candidates whose signer is a party in the
+            #    authenticated map; true outsiders drop silently (round-9 R2 / audit F2).
+            if party_map:
+                survivors = [c for c in ctx.get("candidateBindings", []) if c.get("signer") in party_map]
+            else:
+                survivors = list(ctx.get("candidateBindings", []))
+            # b. RE-VERIFY BB-4 + BB-5 checks 2-5 (verify_binding) on the SURVIVORS only. Check 1 (discovery-
+            #    surface resolution) is not replayable; a malformed AUTHORIZED candidate fails the receipt closed.
             bad_candidate = None
-            for cand in ctx.get("candidateBindings", []):
+            for cand in survivors:
                 vbc = verify_binding(cand, pubkeys, expected_jobid=auth.get("jobId"), expected_role=role)
                 if not vbc["ok"]:
                     bad_candidate = (cand.get("nativeAddress"), vbc["reason"])
@@ -744,68 +762,55 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 reasons.append("%s: bb6Context candidate binding fails BB-4/BB-5 re-verification (%s: %s)"
                                % (ch, bad_candidate[0], bad_candidate[1]))
                 continue
-            # (round-9) reconstruct the anchored map in the BB-6 MANDATED ORDER:
-            #   PRUNE -> ORDER -> BUDGET -> FETCH -> VALIDATE -> LADDER.
-            # The round-8 loop dereferenced EVERY candidate before pruning and then handed resolve_bb6 the
-            # full candidate set (re-authorizing inert copies off the partyMap at lesser standing). Round-9
-            # prunes unauthorized candidates BEFORE any fetch, orders + budgets the survivors, fully
-            # validates each fetched copy (BB-5 checks 7/8/9), and hands resolve_bb6 ONLY the surviving VALID
-            # bindings + their byte-revalidated bundles — an invalid copy is truly inert.
-            #   BOUNDARY: an AUTHORIZED candidate that cannot be fetched (or null-native) => REFUSE the receipt
-            #   (round-8 N8); an UNAUTHORIZED candidate prunes SILENTLY, consuming zero fetch work (round-9 R2);
-            #   a fetched-then-invalid copy (any BB-5 post-fetch check) is DROPPED inert, never reaching the
-            #   ladder at any standing (round-9 R1 / R3a / R3b). BB-5 checks 2-5 are enforced by verify_binding
-            #   in the round-7 loop above; this loop adds the fetch-dependent checks 7/8/9 via _post_fetch_valid.
-            if "budget" not in ctx:
-                reasons.append("%s: bb6Context.budget absent (BB-6 fetch budget is schema-required)" % ch)
-                continue
-            budget = ctx["budget"]                                   # RECORDED budget — never re-defaulted
-            party_map = ctx.get("partyMap")
-            # a. PRUNE FIRST (pre-fetch), by AUTHENTICATED partyMap role-match: an outsider whose signer is not
-            #    the mapped holder of the claimed role is dropped silently, never fetched (round-9 R2). Only an
-            #    AUTHORIZED-but-unfetchable candidate refuses (round-8 N8), so the prune must precede the fetch.
-            if party_map:
-                survivors = [c for c in ctx.get("candidateBindings", [])
-                             if party_map.get(c.get("signer")) == c.get("role")]
-            else:
-                survivors = list(ctx.get("candidateBindings", []))
-            # b. ORDER ascending by (bundleContentHash, nativeAddress), then apply the RECORDED per-signer budget.
-            survivors.sort(key=lambda c: (c.get("bundleContentHash"), c.get("nativeAddress")))
-            per_signer = {}
-            budgeted = []
-            for c in survivors:
-                bucket = per_signer.setdefault(c.get("signer"), [])
-                if len(bucket) < budget:
-                    bucket.append(c)
-                    budgeted.append(c)
-            # c. FETCH + d. FULL BB-5 post-fetch VALIDATION over that pruned+ordered+budgeted subset only.
-            anchored = {}
-            valid_bindings = []
-            candidate_refusal = None
-            for cand in budgeted:
-                nat = cand.get("nativeAddress")
-                if not isinstance(nat, str):
-                    candidate_refusal = "BB-5: candidate nativeAddress absent/null (%r)" % (nat,)
-                    break
-                cb = cand.get("bundleContentHash")
-                try:
-                    fetched = deref(cb)
-                except KeyError:
-                    fetched = None   # content-addressed miss — deref may raise or return None; both => unfetchable
-                if not isinstance(fetched, dict):
-                    candidate_refusal = "BB-6 candidate bundle not dereferenceable: %s" % (cb,)
-                    break
-                pf_ok, _pf_reason = _post_fetch_valid(fetched, cand, pubkeys)
-                if not pf_ok:
-                    continue   # fetched-then-invalid => DROPPED, truly inert (never reaches the ladder)
-                anchored[nat] = fetched
-                valid_bindings.append(cand)
-            if candidate_refusal is not None:
-                reasons.append("%s: %s" % (ch, candidate_refusal))
-                continue
             native = (re_.get("binding") or {}).get("nativeAddress")
-            # e. only the surviving VALID bindings + their validated bundles reach resolve_bb6 (LADDER).
-            res = resolve_bb6(valid_bindings, party_map, budget, anchored=anchored)
+            # c. BUDGET EXHAUSTION (round-9 audit F1): if any post-prune signer bucket exceeds the RECORDED
+            #    budget, the side is BB-7 exhausted with candidate addresses unfetched. Spend NO fetch work —
+            #    hand resolve_bb6 the FULL survivor set so it (seeing the whole bucket) reports the exhaustion
+            #    `indeterminate` itself, and the receipt refuses via the existing re-selection path below.
+            per_signer_count = {}
+            for c in survivors:
+                per_signer_count[c.get("signer")] = per_signer_count.get(c.get("signer"), 0) + 1
+            if any(n > budget for n in per_signer_count.values()):
+                res = resolve_bb6(survivors, party_map, budget, anchored={})
+            else:
+                # d. ORDER ascending by (bundleContentHash, nativeAddress), then apply the RECORDED per-signer
+                #    budget; e. FETCH + FULL BB-5 post-fetch VALIDATION over that ordered+budgeted subset only.
+                #      BOUNDARY: an AUTHORIZED candidate that cannot be fetched (or null-native) => REFUSE (N8);
+                #      a fetched-then-invalid copy (any BB-5 post-fetch check) is DROPPED inert (R1 / R3a / R3b).
+                survivors.sort(key=lambda c: (c.get("bundleContentHash"), c.get("nativeAddress")))
+                per_signer = {}
+                budgeted = []
+                for c in survivors:
+                    bucket = per_signer.setdefault(c.get("signer"), [])
+                    if len(bucket) < budget:
+                        bucket.append(c)
+                        budgeted.append(c)
+                anchored = {}
+                valid_bindings = []
+                candidate_refusal = None
+                for cand in budgeted:
+                    nat = cand.get("nativeAddress")
+                    if not isinstance(nat, str):
+                        candidate_refusal = "BB-5: candidate nativeAddress absent/null (%r)" % (nat,)
+                        break
+                    cb = cand.get("bundleContentHash")
+                    try:
+                        fetched = deref(cb)
+                    except KeyError:
+                        fetched = None   # content-addressed miss — deref may raise or return None; both => unfetchable
+                    if not isinstance(fetched, dict):
+                        candidate_refusal = "BB-6 candidate bundle not dereferenceable: %s" % (cb,)
+                        break
+                    pf_ok, _pf_reason = _post_fetch_valid(fetched, cand, pubkeys)
+                    if not pf_ok:
+                        continue   # fetched-then-invalid => DROPPED, truly inert (never reaches the ladder)
+                    anchored[nat] = fetched
+                    valid_bindings.append(cand)
+                if candidate_refusal is not None:
+                    reasons.append("%s: %s" % (ch, candidate_refusal))
+                    continue
+                # f. only the surviving VALID bindings + their validated bundles reach resolve_bb6 (LADDER).
+                res = resolve_bb6(valid_bindings, party_map, budget, anchored=anchored)
             if res["disposition"] != "present" or res["resolvedNativeAddress"] != native:
                 reasons.append("%s: BB-6 re-selection differs (got %r/%s, want present/%s)"
                                % (ch, res["disposition"], res["resolvedNativeAddress"], native))

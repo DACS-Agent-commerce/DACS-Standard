@@ -408,8 +408,11 @@ class Round9OrderingContractTests(unittest.TestCase):
             xn = native_address(job, "seller", 9)
             deref_map = {h: honest}
             if cross_role_fetchable:
-                x = make_fab(job, "completed", "none", "seller", ["buyer", "seller"])  # real co-signed bundle
+                # real co-signed seller-anchored bundle, but a DIFFERENT hashed outcome than the honest copy so
+                # its content hash is distinct (failed-substrate keeps faultedParty "none" per the permissible set).
+                x = make_fab(job, "failed-substrate", "none", "seller", ["buyer", "seller"])
                 xh = bundle_hash(x)
+                self.assertNotEqual(xh, h, "fixture: cross-role bundle must not collide with the honest bundle")
                 deref_map[xh] = x
             else:
                 xh = sha("crossrole-unfetch", job)                                     # bundle intentionally ABSENT

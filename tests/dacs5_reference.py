@@ -733,21 +733,25 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 continue
             # (round-9) reconstruct the anchored map in the BB-6 MANDATED ORDER:
             #   PRUNE -> RE-VERIFY -> BUDGET(exhaustion) -> ORDER -> FETCH -> VALIDATE -> LADDER.
-            # (round-9 audit F2) The authenticated-partyMap prune MUST precede the per-candidate BB-4/BB-5
-            # re-verification: an UNAUTHORIZED candidate (its signer is not a party in the authenticated map)
-            # is dropped SILENTLY — however malformed its binding — consuming no verification/fetch work, so an
-            # outsider cannot force refusal of an honest receipt. The re-verification then runs on SURVIVORS
-            # only; an AUTHORIZED candidate (mapped signer) that fails BB-4/BB-5 still refuses (N6). The N5
-            # partyMap-vs-roster forgery check above already ran, so a forged map never reaches this prune.
+            # (round-9 audit F2/F4/F5) The authenticated-partyMap prune MUST precede the per-candidate BB-4/BB-5
+            # re-verification and is ROLE-HOLDER-STRICT on the ENTRY's resolvedRole: keep a candidate iff its
+            # signer's AUTHENTICATED role is the side being resolved. A candidate whose signer is not the mapped
+            # role-holder — a true outsider (F2) OR a mapped counterparty publishing a cross-role binding
+            # (F4/E1a) — is dropped SILENTLY, however malformed its binding, consuming zero verification/fetch
+            # work; so neither can force refusal of an honest receipt, and the exhaustion count below contains
+            # ONLY the genuine role-holder bucket, so a cross-role flood can never fire the anchored={} route
+            # (F5). The predicate keys on the signer's MAPPED role, NOT the candidate's CLAIMED role field: a
+            # role-holder-signed candidate claiming the wrong role survives and refuses via re-verification (N6).
+            # The N5 partyMap-vs-roster forgery check above already ran, so a forged map never reaches this prune.
             if "budget" not in ctx:
                 reasons.append("%s: bb6Context.budget absent (BB-6 fetch budget is schema-required)" % ch)
                 continue
             budget = ctx["budget"]                                   # RECORDED budget — never re-defaulted
             party_map = ctx.get("partyMap")
-            # a. PRUNE FIRST (pre-verify, pre-fetch): keep only candidates whose signer is a party in the
-            #    authenticated map; true outsiders drop silently (round-9 R2 / audit F2).
+            # a. PRUNE FIRST (pre-verify, pre-fetch), role-holder-strict on the entry's resolvedRole (`role`);
+            #    no map => no prune. Cross-role / outsider candidates drop silently, zero fetch (F2/F4/F5).
             if party_map:
-                survivors = [c for c in ctx.get("candidateBindings", []) if c.get("signer") in party_map]
+                survivors = [c for c in ctx.get("candidateBindings", []) if party_map.get(c.get("signer")) == role]
             else:
                 survivors = list(ctx.get("candidateBindings", []))
             # b. RE-VERIFY BB-4 + BB-5 checks 2-5 (verify_binding) on the SURVIVORS only. Check 1 (discovery-

@@ -279,13 +279,84 @@ def _holds_role(bundle, signer, role):
 def _full_standing(bundle):
     """§10.4.1 signature standing for BB-6 full-signature precedence: a copy is FULL-standing iff a
     signature is present for EVERY party in its `parties[]` (co-signed); anything less is lesser
-    standing. Structural presence-per-party — crypto verification of those signatures is covered by
-    the per-set signature tests."""
+    standing. Structural presence-per-party.
+
+    HARDENING (round-9): standing is a presence count and MUST NOT be computed on a copy whose
+    signatures have not already been validated. In the replay reconstruction the only bundles that
+    reach resolve_bb6 (and thus this predicate, via `anchored`) are the ones _post_fetch_valid()
+    passed — signature validity is therefore established BEFORE any standing is derived, so a copy
+    with unverifiable signatures can never be counted at full (or any) standing."""
     if not isinstance(bundle, dict):
         return False
     parties = {p.get("primaryClaim") for p in bundle.get("parties", [])}
     signed = {s.get("party") for s in bundle.get("signatures", [])}
     return bool(parties) and parties <= signed
+
+
+def _bundle_signatures_valid(bundle, pubkeys):
+    """§10.4.1 bundle signature validity + required-signer (round-9 BB-5 check 9 facet). The copy's
+    anchoring role-holder (parties[] entry whose role == anchoredByRole) MUST carry a signature;
+    structural presence always, ed25519 verification of EVERY carried signature under pubkeys +
+    HAVE_CRYPTO (callers pass pubkeys=None to skip crypto, mirroring the module's gating idiom).
+    Returns (ok, reason)."""
+    if not isinstance(bundle, dict):
+        return (False, "bundle is not an object")
+    anchor_role = bundle.get("anchoredByRole")
+    role_holder = {p.get("role"): p.get("primaryClaim") for p in bundle.get("parties", [])}
+    required = role_holder.get(anchor_role)
+    sigs = {s.get("party"): s for s in bundle.get("signatures", [])}
+    if required is None or required not in sigs:
+        return (False, "§10.4.1 required signer (the %r role-holder) has no signature" % (anchor_role,))
+    if pubkeys is not None and HAVE_CRYPTO:
+        h = bundle_hash(bundle)
+        dom = bundle_domain(bundle)
+        for party, s in sigs.items():
+            pk = pubkeys.get(party)
+            if pk is None:
+                return (False, "no public key for bundle signer %r" % (party,))
+            if not verify_sig(pk, dom, h, s.get("value", "")):
+                return (False, "§10.4.1 bundle signature does not verify for signer %r" % (party,))
+    return (True, "ok")
+
+
+def _post_fetch_valid(fetched, binding, pubkeys):
+    """FULL BB-5 post-fetch validation of one fetched copy against the binding that resolved it
+    (round-9). Any failure => the copy is INERT (the caller DROPS it; it never reaches the BB-6
+    ladder at any standing). Checks, in order:
+
+      check 7  — fetched.jobId == binding.jobId
+      check 9  — signer holds the claimed role in the bundle roster (BB-5 check 9 authorization)
+      check 9  — anchoredByRole consistency: the copy is anchored by the role it binds
+      check 9  — §10.4.1 fault-permissible set: faultedParty ∈ implied set for (outcome, anchoredByRole)
+      check 9  — §10.4.1 bundle signature validity + required-signer (crypto-gated)
+      check 8  — §10.4.1 byte recompute: bundle_hash(fetched) == binding.bundleContentHash
+
+    Returns (ok, reason)."""
+    if not isinstance(fetched, dict):
+        return (False, "fetched copy is not an object")
+    if fetched.get("jobId") != binding.get("jobId"):
+        return (False, "BB-5 check 7: fetched.jobId != binding.jobId")
+    if not _holds_role(fetched, binding.get("signer"), binding.get("role")):
+        return (False, "BB-5 check 9: signer does not hold the claimed role in the bundle roster")
+    if fetched.get("anchoredByRole") != binding.get("role"):
+        return (False, "BB-5 check 9: anchoredByRole (%r) != bound role (%r)"
+                % (fetched.get("anchoredByRole"), binding.get("role")))
+    if is_fab(fetched):
+        roster = roster_roles(fetched)
+        try:
+            fset = implied_fault_set(fetched.get("outcome"), fetched.get("anchoredByRole"), roster)
+        except ValueError as exc:
+            return (False, "§10.4.1 %s" % (exc,))
+        if fetched.get("faultedParty") not in fset:
+            return (False, "§10.4.1 faultedParty %r outside the permissible set %r for (%r, %r)"
+                    % (fetched.get("faultedParty"), sorted(fset), fetched.get("outcome"),
+                       fetched.get("anchoredByRole")))
+    ok_sig, reason = _bundle_signatures_valid(fetched, pubkeys)
+    if not ok_sig:
+        return (False, reason)
+    if bundle_hash(fetched) != binding.get("bundleContentHash"):
+        return (False, "BB-5 check 8: recomputed §10.4.1 hash != binding.bundleContentHash")
+    return (True, "ok")
 
 
 def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=None):
@@ -673,23 +744,45 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 reasons.append("%s: bb6Context candidate binding fails BB-4/BB-5 re-verification (%s: %s)"
                                % (ch, bad_candidate[0], bad_candidate[1]))
                 continue
-            # (round-8) reconstruct the COMPLETE anchored map resolve_bb6 needs — one byte-revalidated
-            # bundle per candidate — instead of anchoring only the claimed-winner copy. Two divergent
-            # full-standing forms are BB-6 equal-standing (indeterminate); the single-winner map hid the
-            # competitor's full standing and wrongly resolved `present`. Every bundle placed in `anchored`
-            # is byte-revalidated by construction (BB-5 check 8 recompute + BB-5 check 9 post-fetch role).
-            #   BOUNDARY: absent-budget / null-native / unfetchable candidate => REFUSE the receipt (a broken
-            #   receipt); fetched-then-invalid (check-8 recompute OR post-fetch role) => the copy is INERT —
-            #   skipped, never added to `anchored`, never counted toward collapse/precedence/void (BB-6).
-            #   BB-5 checks 2-5 are enforced by verify_binding in the round-7 loop above; this reconstruction
-            #   loop adds only the fetch-dependent checks — check 8 (byte recompute) and check 9 (post-fetch role).
+            # (round-9) reconstruct the anchored map in the BB-6 MANDATED ORDER:
+            #   PRUNE -> ORDER -> BUDGET -> FETCH -> VALIDATE -> LADDER.
+            # The round-8 loop dereferenced EVERY candidate before pruning and then handed resolve_bb6 the
+            # full candidate set (re-authorizing inert copies off the partyMap at lesser standing). Round-9
+            # prunes unauthorized candidates BEFORE any fetch, orders + budgets the survivors, fully
+            # validates each fetched copy (BB-5 checks 7/8/9), and hands resolve_bb6 ONLY the surviving VALID
+            # bindings + their byte-revalidated bundles — an invalid copy is truly inert.
+            #   BOUNDARY: an AUTHORIZED candidate that cannot be fetched (or null-native) => REFUSE the receipt
+            #   (round-8 N8); an UNAUTHORIZED candidate prunes SILENTLY, consuming zero fetch work (round-9 R2);
+            #   a fetched-then-invalid copy (any BB-5 post-fetch check) is DROPPED inert, never reaching the
+            #   ladder at any standing (round-9 R1 / R3a / R3b). BB-5 checks 2-5 are enforced by verify_binding
+            #   in the round-7 loop above; this loop adds the fetch-dependent checks 7/8/9 via _post_fetch_valid.
             if "budget" not in ctx:
                 reasons.append("%s: bb6Context.budget absent (BB-6 fetch budget is schema-required)" % ch)
                 continue
-            budget = ctx["budget"]
+            budget = ctx["budget"]                                   # RECORDED budget — never re-defaulted
+            party_map = ctx.get("partyMap")
+            # a. PRUNE FIRST (pre-fetch), by AUTHENTICATED partyMap role-match: an outsider whose signer is not
+            #    the mapped holder of the claimed role is dropped silently, never fetched (round-9 R2). Only an
+            #    AUTHORIZED-but-unfetchable candidate refuses (round-8 N8), so the prune must precede the fetch.
+            if party_map:
+                survivors = [c for c in ctx.get("candidateBindings", [])
+                             if party_map.get(c.get("signer")) == c.get("role")]
+            else:
+                survivors = list(ctx.get("candidateBindings", []))
+            # b. ORDER ascending by (bundleContentHash, nativeAddress), then apply the RECORDED per-signer budget.
+            survivors.sort(key=lambda c: (c.get("bundleContentHash"), c.get("nativeAddress")))
+            per_signer = {}
+            budgeted = []
+            for c in survivors:
+                bucket = per_signer.setdefault(c.get("signer"), [])
+                if len(bucket) < budget:
+                    bucket.append(c)
+                    budgeted.append(c)
+            # c. FETCH + d. FULL BB-5 post-fetch VALIDATION over that pruned+ordered+budgeted subset only.
             anchored = {}
+            valid_bindings = []
             candidate_refusal = None
-            for cand in ctx.get("candidateBindings", []):
+            for cand in budgeted:
                 nat = cand.get("nativeAddress")
                 if not isinstance(nat, str):
                     candidate_refusal = "BB-5: candidate nativeAddress absent/null (%r)" % (nat,)
@@ -702,17 +795,17 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 if not isinstance(fetched, dict):
                     candidate_refusal = "BB-6 candidate bundle not dereferenceable: %s" % (cb,)
                     break
-                if bundle_hash(fetched) != cb:
-                    continue   # BB-5 check 8 (byte recompute) fails => fetched-then-invalid => INERT
-                if not _holds_role(fetched, cand.get("signer"), cand.get("role")):
-                    continue   # BB-5 check 9 (post-fetch role) fails => fetched-then-invalid => INERT
+                pf_ok, _pf_reason = _post_fetch_valid(fetched, cand, pubkeys)
+                if not pf_ok:
+                    continue   # fetched-then-invalid => DROPPED, truly inert (never reaches the ladder)
                 anchored[nat] = fetched
+                valid_bindings.append(cand)
             if candidate_refusal is not None:
                 reasons.append("%s: %s" % (ch, candidate_refusal))
                 continue
             native = (re_.get("binding") or {}).get("nativeAddress")
-            res = resolve_bb6(ctx.get("candidateBindings", []), ctx.get("partyMap"),
-                              budget, anchored=anchored)
+            # e. only the surviving VALID bindings + their validated bundles reach resolve_bb6 (LADDER).
+            res = resolve_bb6(valid_bindings, party_map, budget, anchored=anchored)
             if res["disposition"] != "present" or res["resolvedNativeAddress"] != native:
                 reasons.append("%s: BB-6 re-selection differs (got %r/%s, want present/%s)"
                                % (ch, res["disposition"], res["resolvedNativeAddress"], native))

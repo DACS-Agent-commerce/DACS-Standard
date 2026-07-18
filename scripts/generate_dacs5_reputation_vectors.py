@@ -1290,6 +1290,169 @@ def build_receipt_rederivation(keys):
         "want": {"conforming": False, "refused": True, "refusalCategory": "candidate-verification", "reputationEffect": "exclude",
                  "reason": "a bb6Context candidate claims role buyer on the seller side; BB-4/BB-5 re-verification of every candidate refuses the receipt (round-7 N6)"},
     })
+    # N7 (round-8 blocker): TWO divergent FULL-standing same-role (seller) copies at one jobId. Both are
+    #     co-signed by buyer+seller (full standing), differ on a MATERIAL hashed field (outcome
+    #     completed vs failed-substrate — a genuine equivocation on what happened, not clock jitter), and
+    #     are both authorized under the same partyMap {seller->seller}. Per BB-6, two canonically-unequal
+    #     authorized copies of EQUAL signature standing equivocate without a governing record: the consumer
+    #     MUST select neither and the side is `indeterminate`. A replay that reconstructs the COMPLETE
+    #     anchored map from EVERY candidate bundle sees both full forms and refuses; a replay that anchors
+    #     only the claimed-winner copy sees one full form, resolves `present`, and wrongly accepts.
+    eq_a = make_fab(keys, "RCP-C", "completed", "none", "seller", ["buyer", "seller"])        # full
+    eq_b = make_fab(keys, "RCP-C", "failed-substrate", "none", "seller", ["buyer", "seller"])  # full, divergent outcome
+    eq_ha, eq_hb = bundle_hash(eq_a), bundle_hash(eq_b)
+    eq_na, eq_nb = native_address("RCP-C", "seller", 0), native_address("RCP-C", "seller", 1)
+    eq_bind_a = make_binding(keys, "RCP-C", "seller", "seller", eq_na, eq_ha)
+    eq_bind_b = make_binding(keys, "RCP-C", "seller", "seller", eq_nb, eq_hb)
+    eq_nc_b = native_address("RCP-C", "buyer")
+    eq_absbind = make_binding(keys, "RCP-C", "buyer", "buyer", eq_nc_b, PLACEHOLDER)
+    eq_ev = make_absence_evidence(eq_nc_b)
+    eq_ev_hash = evidence_hash(eq_ev)
+    eq_bb6 = {"candidateBindings": [eq_bind_a, eq_bind_b], "partyMap": PM, "budget": 8}
+    vectors.append({
+        "name": "equal-standing-two-full-copies-void-refused",
+        "rule": "§10.4.2 BB-6 equal-standing divergence; §10.5 Replay (2)",
+        "expected": "fail",
+        "note": ("a one-copy absent receipt whose bb6Context candidate set carries TWO seller-role copies at "
+                 "one jobId that are BOTH full-standing (each co-signed by buyer+seller, sign_roles == "
+                 "[buyer, seller]) yet canonically UNEQUAL — they diverge on the material hashed outcome field "
+                 "(completed vs failed-substrate, faultedParty none in both), a genuine equivocation on what "
+                 "happened rather than a finalisedAt skew. Both are authorized under partyMap {seller->seller}. "
+                 "Per BB-6 two canonically-unequal authorized copies of equal signature standing select "
+                 "neither and the side is indeterminate. A replay that reconstructs the complete anchored map "
+                 "from every candidate bundle sees both full forms and MUST refuse; a replay that anchors only "
+                 "the claimed-winner copy (roleEvidence.binding) sees a single full form and wrongly resolves "
+                 "present (round-8 N7)."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {eq_ha: eq_a, eq_hb: eq_b},
+        "absenceEvidence": {eq_ev_hash: eq_ev},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [eq_ha],
+            "resolutionContext": [
+                {"contentHash": eq_ha, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": eq_bind_a}, "bb6Context": eq_bb6,
+                 "counterpartyDisposition": "absent",
+                 "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": eq_nc_b, "contentHash": eq_ev_hash},
+                 "absenceBinding": eq_absbind},
+            ],
+            "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "bb6-equal-standing-void",
+                 "reputationEffect": "exclude", "competingCandidateBucketSize": 2, "fullStandingFormCount": 2,
+                 "reason": "two divergent full-standing same-role (seller) copies of equal signature standing; "
+                           "BB-6 selects neither and the side is indeterminate. A replay reconstructing the "
+                           "COMPLETE anchored map from all candidate bundles MUST refuse; the single-winner "
+                           "anchored map wrongly resolves present (round-8 N7)"},
+    })
+    # N8 (round-8): a candidate carried in bb6Context whose bundle is ABSENT from the fetchable set. The
+    #     honest winner is one full-standing seller copy; the competitor binding is well-formed and
+    #     BB-4/BB-5(1-5)-valid, but deref(its bundleContentHash) misses. BOUNDARY: an unfetchable candidate
+    #     is a broken receipt => REFUSE (fail-closed), never a silent drop that would resolve present/W —
+    #     the round-8 guard against the r7 single-winner disease one level out.
+    uf_w = make_fab(keys, "RCP-D", "completed", "none", "seller", ["buyer", "seller"])         # honest full winner
+    uf_x = make_fab(keys, "RCP-D", "failed-substrate", "none", "seller", ["buyer", "seller"])  # competitor bundle, OMITTED from derefBundles
+    uf_hw, uf_hx = bundle_hash(uf_w), bundle_hash(uf_x)   # uf_hx is a genuine content hash whose bundle is never published
+    uf_nw, uf_nx = native_address("RCP-D", "seller", 0), native_address("RCP-D", "seller", 1)
+    uf_bind_w = make_binding(keys, "RCP-D", "seller", "seller", uf_nw, uf_hw)
+    uf_bind_x = make_binding(keys, "RCP-D", "seller", "seller", uf_nx, uf_hx)
+    uf_nc_b = native_address("RCP-D", "buyer")
+    uf_absbind = make_binding(keys, "RCP-D", "buyer", "buyer", uf_nc_b, PLACEHOLDER)
+    uf_ev = make_absence_evidence(uf_nc_b)
+    uf_ev_hash = evidence_hash(uf_ev)
+    uf_bb6 = {"candidateBindings": [uf_bind_w, uf_bind_x], "partyMap": PM, "budget": 8}
+    vectors.append({
+        "name": "unfetchable-competitor-candidate-refused",
+        "rule": "§10.4.2 BB-6 candidate dereference; §10.5 Replay (2)",
+        "expected": "fail",
+        "note": ("a one-copy absent receipt whose bb6Context candidate set carries a second seller-role binding "
+                 "(uf_bind_x) whose bundleContentHash is a genuine §10.4.1 hash but whose bundle is deliberately "
+                 "NOT published in derefBundles. The candidate is BB-4/BB-5(checks 1-5)-valid, so the round-7 "
+                 "candidate re-verification passes; the complete-anchored-map reconstruction then cannot "
+                 "dereference the candidate bundle. This is the unfetchable => REFUSE boundary (fail-closed): a "
+                 "replay MUST refuse rather than silently drop the competitor and resolve present/W — the r7 "
+                 "single-winner disease one level out (round-8 N8)."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {uf_hw: uf_w},   # competitor bundle uf_x intentionally ABSENT
+        "absenceEvidence": {uf_ev_hash: uf_ev},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [uf_hw],
+            "resolutionContext": [
+                {"contentHash": uf_hw, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": uf_bind_w}, "bb6Context": uf_bb6,
+                 "counterpartyDisposition": "absent",
+                 "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": uf_nc_b, "contentHash": uf_ev_hash},
+                 "absenceBinding": uf_absbind},
+            ],
+            "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": False, "refused": True, "refusalCategory": "bb6-candidate-unfetchable",
+                 "reputationEffect": "exclude",
+                 "reason": "a candidate binding carried in bb6Context has no dereferenceable bundle; replay cannot "
+                           "complete the validated candidate set and MUST refuse (fail-closed) rather than silently "
+                           "drop the competitor (round-8 N8)"},
+    })
+    # N9 (round-8): a candidate whose bundle IS published but whose bytes DO NOT hash to the binding's claimed
+    #     bundleContentHash. The honest winner is one full-standing seller copy. po_bind_p claims po_hp_claim
+    #     ('b'*64), and derefBundles maps that CLAIMED hash to bytes (po_p) whose recomputed §10.4.1 hash
+    #     (bundle_hash(po_p)) differs. BOUNDARY: fetched-then-invalid (BB-5 check 8 byte recompute fails) => the
+    #     copy is INERT (dropped, never counted toward collapse/precedence/void), so the honest full winner
+    #     resolves present. A byte-BLIND claim-compare check-8 would accept po_p as a second full form and
+    #     wrongly return indeterminate — this PASS vector guards check-8 as a genuine recompute. want = PASS.
+    po_w = make_fab(keys, "RCP-E", "completed", "none", "seller", ["buyer", "seller"])         # honest full winner
+    po_p = make_fab(keys, "RCP-E", "failed-substrate", "none", "seller", ["buyer", "seller"])  # real full bundle; its binding lies about content
+    po_hw = bundle_hash(po_w)
+    po_hp_true = bundle_hash(po_p)   # the true §10.4.1 hash of the poisoned bytes
+    po_hp_claim = "b" * 64            # the binding LIES: a valid-shape 64-hex != po_hp_true (and != PLACEHOLDER '1'*64)
+    po_nw, po_np = native_address("RCP-E", "seller", 0), native_address("RCP-E", "seller", 1)
+    po_bind_w = make_binding(keys, "RCP-E", "seller", "seller", po_nw, po_hw)
+    po_bind_p = make_binding(keys, "RCP-E", "seller", "seller", po_np, po_hp_claim)   # claims po_hp_claim
+    po_nc_b = native_address("RCP-E", "buyer")
+    po_absbind = make_binding(keys, "RCP-E", "buyer", "buyer", po_nc_b, PLACEHOLDER)
+    po_ev = make_absence_evidence(po_nc_b)
+    po_ev_hash = evidence_hash(po_ev)
+    po_bb6 = {"candidateBindings": [po_bind_w, po_bind_p], "partyMap": PM, "budget": 8}
+    vectors.append({
+        "name": "poisoned-candidate-bundle-inert-honest-resolves",
+        "rule": "§10.4.2 BB-6 candidate check-8; §10.5 Replay (2)",
+        "expected": "pass",
+        "note": ("a one-copy absent receipt whose bb6Context carries a poisoned competitor: po_bind_p claims "
+                 "bundleContentHash 'b'*64, and derefBundles maps that claimed hash to bytes (po_p) whose "
+                 "recomputed §10.4.1 hash (bundle_hash(po_p)) differs. The complete-anchored-map reconstruction "
+                 "dereferences the bytes, recomputes the hash (BB-5 check 8), finds the mismatch, and treats the "
+                 "copy as INERT — dropped, never counted toward collapse/precedence/void. Only the honest "
+                 "full-standing winner po_w remains, so BB-6 resolves present/po_w and the receipt is ACCEPTED. A "
+                 "byte-blind claim-compare check-8 would accept po_p as a second full form and wrongly return "
+                 "indeterminate — this vector guards check-8 as a genuine recompute (round-8 N9)."),
+        "party": party,
+        "window": RCP_WINDOW,
+        "derefBundles": {po_hw: po_w, po_hp_claim: po_p},   # po_p keyed by the CLAIMED hash; bundle_hash(po_p) != po_hp_claim
+        "absenceEvidence": {po_ev_hash: po_ev},
+        "derivation": {
+            "replayableDerivationVersion": "1",
+            "bundleRefs": [po_hw],
+            "resolutionContext": [
+                {"contentHash": po_hw, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": po_bind_w}, "bb6Context": po_bb6,
+                 "counterpartyDisposition": "absent",
+                 "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": po_nc_b, "contentHash": po_ev_hash},
+                 "absenceBinding": po_absbind},
+            ],
+            "metrics": {"completionRate": 0.0, "counterpartyAdjustedCompletionRate": 0.0, "counterpartyFaultRate": 0.0},
+            "bundleCount": 1, "windowingBasis": "finalisedAt",
+        },
+        "want": {"conforming": True, "sideDisposition": "present", "resolvedNativeAddress": po_nw,
+                 "reputationEffect": "include", "inertCandidateBucketSize": 1,
+                 "reason": "the competitor candidate's dereferenced bundle fails the BB-5 check-8 byte recompute "
+                           "(claimed bundleContentHash != §10.4.1 hash of the returned bytes); it is INERT "
+                           "(dropped, not counted toward collapse/precedence/void); the honest full-standing "
+                           "winner resolves present (round-8 N9)"},
+    })
     d["vectors"] = vectors
     return finalize(d)
 

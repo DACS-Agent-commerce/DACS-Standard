@@ -41,6 +41,10 @@ FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 
 BB6_DEFAULT_BUDGET = 8
 
+# BB-5 check 3: the BundleBinding versions this consumer supports. §B.7 / §10.4.2 defines the
+# `bindingVersion: "1"` literal (spec line 352); every conformance binding carries the string "1".
+SUPPORTED_BINDING_VERSIONS = frozenset({"1"})
+
 # Outcome classes for the §10.4.3 divergence read (E1/E4): fault is compared on the
 # CLASS, not the role-relative spelling.
 _ABORT = {"aborted-by-self", "aborted-by-other"}
@@ -113,10 +117,15 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
     sig = binding.get("signature") or {}
     if sig.get("signer") != binding.get("signer"):
         return {"ok": False, "reason": "BB-4: signature.signer != binding.signer"}
+    if binding.get("bindingVersion") not in SUPPORTED_BINDING_VERSIONS:
+        return {"ok": False, "reason": "BB-5 check 3: unsupported bindingVersion %r"
+                % (binding.get("bindingVersion"),)}
     if binding.get("jobId") != expected_jobid:
         return {"ok": False, "reason": "BB-5: binding.jobId != %r" % (expected_jobid,)}
     if binding.get("role") != expected_role:
         return {"ok": False, "reason": "BB-5: binding.role != %r" % (expected_role,)}
+    if binding.get("logicalAddress") != logical_address(binding.get("jobId"), binding.get("role")):
+        return {"ok": False, "reason": "BB-5 check 5: logicalAddress != derive(jobId, role)"}
     if expected_content_hash is not None and binding.get("bundleContentHash") != expected_content_hash:
         return {"ok": False, "reason": "BB-5 check 8: binding.bundleContentHash != expected"}
     if pubkeys is not None and HAVE_CRYPTO:
@@ -616,6 +625,13 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         if not isinstance(auth, dict):
             reasons.append("%s: authoritative copy not dereferenceable" % ch)
             continue
+        # (round-8) byte-revalidate the claimed-authoritative copy: its dereferenced content MUST hash to
+        # the entry key (BB-5 check 8, genuine §10.4.1 recompute — not a claim compare). A bad winner is a
+        # broken receipt, not an inert copy, so REFUSE. Closes the isinstance-only trust gap for the winner.
+        if bundle_hash(auth) != ch:
+            reasons.append("%s: roleEvidence bundle content-hash mismatch (recomputed %s)"
+                           % (ch, bundle_hash(auth)))
+            continue
         role = entry.get("resolvedRole")
         other = _other(role) if role in ("buyer", "seller") else None
         re_ = entry.get("roleEvidence") or {}
@@ -641,9 +657,12 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 reasons.append("%s: bb6Context.partyMap not authenticated against the bundle roster (%s)"
                                % (ch, unauth_pm))
                 continue
-            # (round-7) re-run BB-4 + BB-5 checks 1-5 on EVERY candidate binding carried in the context; a
-            # malformed or unauthentic candidate fails the receipt closed (resolve_bb6 assumes a validated
-            # candidate set, so the validation must happen here).
+            # (round-7 + round-8) re-run BB-4 + BB-5 checks 2-5 on EVERY candidate binding carried in the
+            # context (verify_binding: check 2 = BB-4 signer + crypto-gated signature; check 3 = bindingVersion;
+            # check 4 = jobId/role; check 5 = logicalAddress == derive(jobId, role)). Check 1 (discovery-surface
+            # resolution) is NOT replayable — replay consumes the deriver-supplied candidateBindings, the
+            # disclosed §10.5.3 completeness residual (#251). A malformed or unauthentic candidate fails the
+            # receipt closed (resolve_bb6 assumes a validated candidate set, so the validation must happen here).
             bad_candidate = None
             for cand in ctx.get("candidateBindings", []):
                 vbc = verify_binding(cand, pubkeys, expected_jobid=auth.get("jobId"), expected_role=role)
@@ -654,9 +673,46 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 reasons.append("%s: bb6Context candidate binding fails BB-4/BB-5 re-verification (%s: %s)"
                                % (ch, bad_candidate[0], bad_candidate[1]))
                 continue
+            # (round-8) reconstruct the COMPLETE anchored map resolve_bb6 needs — one byte-revalidated
+            # bundle per candidate — instead of anchoring only the claimed-winner copy. Two divergent
+            # full-standing forms are BB-6 equal-standing (indeterminate); the single-winner map hid the
+            # competitor's full standing and wrongly resolved `present`. Every bundle placed in `anchored`
+            # is byte-revalidated by construction (BB-5 check 8 recompute + BB-5 check 9 post-fetch role).
+            #   BOUNDARY: absent-budget / null-native / unfetchable candidate => REFUSE the receipt (a broken
+            #   receipt); fetched-then-invalid (check-8 recompute OR post-fetch role) => the copy is INERT —
+            #   skipped, never added to `anchored`, never counted toward collapse/precedence/void (BB-6).
+            #   BB-5 checks 2-5 are enforced by verify_binding in the round-7 loop above; this reconstruction
+            #   loop adds only the fetch-dependent checks — check 8 (byte recompute) and check 9 (post-fetch role).
+            if "budget" not in ctx:
+                reasons.append("%s: bb6Context.budget absent (BB-6 fetch budget is schema-required)" % ch)
+                continue
+            budget = ctx["budget"]
+            anchored = {}
+            candidate_refusal = None
+            for cand in ctx.get("candidateBindings", []):
+                nat = cand.get("nativeAddress")
+                if not isinstance(nat, str):
+                    candidate_refusal = "BB-5: candidate nativeAddress absent/null (%r)" % (nat,)
+                    break
+                cb = cand.get("bundleContentHash")
+                try:
+                    fetched = deref(cb)
+                except KeyError:
+                    fetched = None   # content-addressed miss — deref may raise or return None; both => unfetchable
+                if not isinstance(fetched, dict):
+                    candidate_refusal = "BB-6 candidate bundle not dereferenceable: %s" % (cb,)
+                    break
+                if bundle_hash(fetched) != cb:
+                    continue   # BB-5 check 8 (byte recompute) fails => fetched-then-invalid => INERT
+                if not _holds_role(fetched, cand.get("signer"), cand.get("role")):
+                    continue   # BB-5 check 9 (post-fetch role) fails => fetched-then-invalid => INERT
+                anchored[nat] = fetched
+            if candidate_refusal is not None:
+                reasons.append("%s: %s" % (ch, candidate_refusal))
+                continue
             native = (re_.get("binding") or {}).get("nativeAddress")
             res = resolve_bb6(ctx.get("candidateBindings", []), ctx.get("partyMap"),
-                              ctx.get("budget", BB6_DEFAULT_BUDGET), anchored={native: auth})
+                              budget, anchored=anchored)
             if res["disposition"] != "present" or res["resolvedNativeAddress"] != native:
                 reasons.append("%s: BB-6 re-selection differs (got %r/%s, want present/%s)"
                                % (ch, res["disposition"], res["resolvedNativeAddress"], native))

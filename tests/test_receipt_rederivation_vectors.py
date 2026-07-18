@@ -41,6 +41,9 @@ EXPECTED_NAMES = {
     "competing-same-role-copy-changes-bb6-refused",
     "forged-partymap-unauthenticated-refused",
     "bad-candidate-binding-in-context-refused",
+    "equal-standing-two-full-copies-void-refused",
+    "unfetchable-competitor-candidate-refused",
+    "poisoned-candidate-bundle-inert-honest-resolves",
 }
 
 REFUSAL_NAMES = (
@@ -58,6 +61,18 @@ NEGATIVE_NAMES = (
     # round-7: forged partyMap (authenticated against the roster) and a BB-5-invalid carried candidate.
     "forged-partymap-unauthenticated-refused",
     "bad-candidate-binding-in-context-refused",
+    # round-8: two divergent full-standing same-role copies — BB-6 equal-standing void; the complete
+    # anchored-map reconstruction refuses where the single-winner map wrongly resolved `present`.
+    "equal-standing-two-full-copies-void-refused",
+    # round-8: a candidate whose bundle is absent from derefBundles — unfetchable => refuse (fail-closed).
+    "unfetchable-competitor-candidate-refused",
+)
+
+# round-8: PASS-shaped resolution receipts — validate_resolution_context ACCEPTS them. The poisoned
+# competitor's published bytes fail the BB-5 check-8 byte recompute, so it is INERT (dropped) and the
+# honest full-standing winner resolves present; acceptance proves the fetched-then-invalid => inert branch.
+POSITIVE_RESOLUTION_NAMES = (
+    "poisoned-candidate-bundle-inert-honest-resolves",
 )
 
 
@@ -167,6 +182,29 @@ class ReceiptRederivationTests(unittest.TestCase):
                 self.assertFalse(vok)
                 self.assertTrue(reasons)
                 self.assertFalse(v["want"]["conforming"])
+
+    def test_positive_resolution_vectors_are_accepted_by_replay(self):
+        """Round-8: a receipt whose bb6Context carries a POISONED competitor (published bytes that fail the
+        BB-5 check-8 byte recompute) is ACCEPTED — the poisoned copy is inert (dropped, not counted), so the
+        honest full-standing winner resolves present. If check-8 were a byte-blind claim-compare, the poisoned
+        copy would count as a second full form and replay would refuse (BB-6 equal-standing indeterminate);
+        acceptance therefore proves the fetched-then-invalid => inert branch and guards the genuine recompute."""
+        for name in POSITIVE_RESOLUTION_NAMES:
+            v = self.by_name[name]
+            deref = v["derefBundles"]
+            with self.subTest(vector=name):
+                self.assertTrue(R.is_replayable_derivation(v["derivation"]))
+                self.assertTrue(R.receipt_required_members_present(v["derivation"])[0])
+                # crypto ON: every candidate signature verifies, the poisoned copy is inert, receipt accepted
+                vok, reasons = R.validate_resolution_context(
+                    v["derivation"], lambda h: deref[h], _evidence_deref(v), _pubkeys(self.data))
+                self.assertTrue(vok, "%s must be accepted (poisoned competitor inert); reasons=%s" % (name, reasons))
+                self.assertEqual(reasons, [])
+                # structural path (pubkeys=None) also accepts
+                vok2, reasons2 = R.validate_resolution_context(
+                    v["derivation"], lambda h: deref[h], _evidence_deref(v))
+                self.assertTrue(vok2, "%s must accept on the structural path too; reasons=%s" % (name, reasons2))
+                self.assertTrue(v["want"]["conforming"])
 
     def test_random_round5_probes_refuse(self):
         """Random's round-5 mutations replayed as committed tests: starting from the PASS receipt,

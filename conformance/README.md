@@ -6,8 +6,8 @@ An independent, third-party set of conformance vectors for DACS v0.1, generated 
 
 Surface labels travel with each vector:
 
-- **GOLDEN (205)** — byte-stable and accepted by this reference verifier: 7 canonicalize, 5 decimal, 5 signing, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 49 verify, 24 vet, 19 negotiate, and 12 governance checks.
-- **CANDIDATE (28)** — `PayeeBoundAgreementDocument` artifact compatibility plus PB-1..PB-3 payee-destination binding vectors for §8.5/§8.6 and §9.5.1 pre-pay refusal / pause / error behaviour.
+- **GOLDEN (192)** — byte-stable reference outputs plus one steward-corrected guard-(iv) regression pinned by an executable predicate. Counts: 7 canonicalize, 5 decimal, 5 signing, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 36 verify, 24 vet, 19 negotiate, and 12 governance checks.
+- **CANDIDATE (42)** — 28 `PayeeBoundAgreementDocument` / PB-1..PB-3 vectors plus 14 historical reputation outputs whose one-copy inputs lack authoritative-absence context.
 
 ## Why
 
@@ -18,7 +18,14 @@ The spec's §14 conformance chapter defines conformant behaviour but ships no se
 ```sh
 python3 scripts/validate_conformance_vectors.py --manifest conformance/MANIFEST.json
 python3 scripts/run_lifecycle_walkthrough.py --check
+python3 scripts/validate_implementation_manifests.py
 ```
+
+Implementation support claims use the optional normative
+[`ImplementationManifest`](implementation-manifest.schema.json) reporting shape.
+Four validated examples live in [`implementation-manifests/`](implementation-manifests/).
+They pin this vector manifest by commit and SHA-256 hash; live-only tests remain
+separate and cannot substitute for deterministic cases.
 
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed
@@ -38,8 +45,8 @@ Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`,
 - `dispute`: 8 golden vectors, §11.2.1 DACS-X dispute flow with the 4-value decision (`pass`/`fail`/`indeterminate`/`error`). (The former HTLC-9 `correction`-amendment vector was retired — Round-4 R4-A removed the correction amendment and resolves an HTLC-9 asymmetric settlement through the ST-8 `settle-asymmetric` state at the settlement layer; see the §14.5 verify-st-asymmetric-* vectors.)
 - `disclosure`: 9 golden vectors, §8.7 DACS-X arbitrator transcript-disclosure (step 3, DP-1).
 - `settlement`: 37 golden vectors, §14.4 SettlementEvidence verification — PC-1..7 (anchor, attestationRef→evidence hash, outcome classification, currency-resolution, settlementFinality, anchor-pending cross-chain return), per-rail success (incl. `pay-x402` gasless-USDC-on-Base, §9.5.7), HTLC finality parameters, RD-5 railType↔asset/network coherence, §9.5.1/PIPE-5 amount==agreement.terms.price, CD-1/§9.3 amount canonicalisation, and the `dacs-4-evidence` signature.
-- `candidate`: 28 candidate vectors, §8.5/§8.6 `PayeeBoundAgreementDocument` artifact compatibility plus §9.5.1 PB-1..PB-3 payee-destination binding — legacy/current reader behaviour, legacy payoutBindings rejection, phase/artifact mismatch, cross-domain signature rejection, exact payout coverage, destination match/mismatch, positive tier-2 controlled-claim binding, positive tier-1 `pay-dem` intrinsic binding, tier-2 resolution mismatch, tier-2 resolver error, applicable-but-unresolvable tier-2 pause with exact recorded cause, SB-3 fallback separation, and repeated pay phases keyed by `(railId, phaseIndex)`.
-- `verify`: 49 golden vectors, §14.5 DACS-5 Verify — two-sided lookup `stor-{sha256(jobId+"-bundle-"+role)}` (§10.4.2) with jobId binding, §10.4.3(a-d) consumption (one-sided→aborted-by-self per §10.11, unified, divergent — "divergent" is a **consumer verdict, NOT an `outcome` enum value**; presence-mismatched `phaseSummary` entry sets are divergent; advisory-only skew is unified; divergent copies are dispute evidence but their jobId is excluded from DACS-5 reputation), the ST-1..8 transition table + state→outcome mapping (§10.3.1, incl. the non-terminal `settle-asymmetric` HTLC-9 open state, ST-8), and reputation derivation (§10.5.1 — two-sided per-jobId reconciliation via `anchoredByRole` with `perspective_flip` of a counterparty-anchored copy per §10.11; `party_fault_denom` excludes `failed-substrate`; divergent jobIds are excluded from all metrics; null≠zero; rating aggregation with `(rater,jobId,targetRole)` de-duplication; deterministic receipt `windowingBasis` + sorted `bundleRefs`; `observedTransactionalVolume` grouped by currency).
+- `candidate`: 42 candidate vectors — 28 §8.5/§8.6 `PayeeBoundAgreementDocument` / §9.5.1 PB-1..PB-3 cases, plus 14 pre-guard-(iv) reputation outputs retained for regeneration after valid resolution context is available.
+- `verify`: 36 golden vectors covering §14.5 DACS-5 Verify. Coverage includes two-sided lookup, §10.4.3 consumption, the ST-1..8 state machine, and current reputation guards. The guard-(iv) golden excludes raw one-copy inputs lacking authoritative-absence context. The 14 affected historical metric outputs are candidates, not current goldens.
 - `vet`: 24 golden vectors, DACS-2 method contract, retry semantics, MA-1..3 resolution, freshness, oneOf/cross-accumulator precedence, and counterparty-malformed fault attribution.
 - `negotiate`: 19 golden vectors, §8.4.3 / §8.5.1 / §8.5.2 listing-conformance checks including CD-1 price validation, negotiable band math, sealed-envelope role assignment, required signer coverage, and commit rejection for SE-8.
 - `governance`: 12 golden vectors, §14.7 GOV-1..3 steward disclosure and pin-time anchoring-phase checks.
@@ -59,7 +66,7 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable deliver-storage-program success SettlementEvidence (deliverable content hash + anchor, no settlementFinality).
 - `fixtures/session-bundle-one-sided.json` — a one-signature `aborted-by-other` bundle for the §10.4.3(b)/§10.11 one-sided case.
 - `fixtures/session-bundles-presence.json` — byte-stable buyer/seller bundle pairs for §10.4.3 phaseSummary entry-set mismatch and advisory-only skew.
-- `fixtures/session-bundles-reputation.json` — a mixed-outcome bundle set (completed / failed-counterparty / failed-substrate / aborted-by-self / aborted-by-other) for §10.5.1 reputation derivation.
+- `fixtures/session-bundles-reputation.json` — a legacy mixed-outcome one-copy bundle set with no retained two-address read context. Current §10.5.1 guard (iv) excludes it; its historical positive metric outputs are candidates for regeneration, not current goldens.
 - `vectors/golden.json` — pinned outputs: deterministic signature, logical-address encoding, bundle refs/hashes, dispute/disclosure decision maps + seeds, the §14.4 settlement decision map, and the §14.5 verify verdict/reputation maps.
 - `vectors/golden.json` provenance strings name the verifier-side runner used to construct complex inputs.
 

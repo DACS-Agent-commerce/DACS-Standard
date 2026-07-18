@@ -32,7 +32,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05",
-          "value": "Jtwo824p5mXNVW7jNM33kuSIdoqI+3hxXoaAEAQSa67AW1bXH8dgsGHMtTK3ThJC9O5m3Je3+yHtc/WzOqVSAQ=="
+          "value": "Jtwo824p5mXNVW7jNM33kuSIdoqI-3hxXoaAEAQSa67AW1bXH8dgsGHMtTK3ThJC9O5m3Je3-yHtc_WzOqVSAQ"
         }
       },
       "valid-wrong-v4": {
@@ -44,7 +44,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05",
-          "value": "CfjCsGEGOJC52u+c4pGyF9xJlq+P8Typ6iszj7fJw4BT1edyLPvXk6L1rueAe0iHv4zwqbYhCMdLLcpMroDmDQ=="
+          "value": "CfjCsGEGOJC52u-c4pGyF9xJlq-P8Typ6iszj7fJw4BT1edyLPvXk6L1rueAe0iHv4zwqbYhCMdLLcpMroDmDQ"
         }
       }
     },

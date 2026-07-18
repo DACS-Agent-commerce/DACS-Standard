@@ -29,8 +29,8 @@ separate and cannot substitute for deterministic cases.
 
 For a runnable five-stage builder path, see the dependency-free
 [`walkthrough/`](./walkthrough/) reference tool. It verifies the current signed
-fixtures, emits canonical bytes/hashes/signature payloads/refs, and executes five
-deterministic failure examples without importing a live substrate SDK.
+artifact chain, emits canonical bytes/hashes/signature payloads/refs, and executes
+five deterministic failure examples without importing a live substrate SDK.
 
 Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`, then copy `conformance/` back here. Deterministic by construction: every key and signature is derived from fixed public seeds and every timestamp is pinned, so each run is byte-stable. No private key material is stored — seeds are public test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 

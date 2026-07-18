@@ -24,7 +24,8 @@
 
 For a copy/paste-runnable, SDK-independent starting point, run the
 [`conformance/walkthrough/`](../conformance/walkthrough/) minimum-conformant
-lifecycle. It uses the pinned profile and fixtures plus a fake substrate adapter;
+lifecycle. It uses the pinned profile and conformance manifest, links to the
+repository vectors, and publishes through a fake substrate adapter;
 this document remains the separate live-Demos capability mapping.
 
 **Scenario.** A buyer agent commissions a content-moderation service from a seller agent. The seller posts a listing requiring buyer LEI + jurisdiction proof. Negotiation runs as an RFQ over an L2PS subnet (multi-turn, private). Settlement is cross-chain: buyer pays USDC on Base, seller receives USDC on Solana, routed via Demos's Liquidity Tank infrastructure (which the SDK accesses through `WorkStep`s of context `"xm"`). The seller delivers an entitlement record granting API access. Both parties co-sign the session bundle and anchor it as a Storage Program.

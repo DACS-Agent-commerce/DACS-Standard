@@ -292,6 +292,98 @@ class Round9OrderingContractTests(unittest.TestCase):
                                  % (label, (vok, reasons)))
                 self.assertTrue(reasons, "R3 %s: rejection must carry a non-empty reason; current = %r" % (label, reasons))
 
+    # -------------------------------------------------------------------------------------- F1
+    def test_f1_recorded_budget_exhaustion_reproduces_bb7_indeterminate(self):
+        """F1 (step-5 audit) — an authorized signer carrying MORE candidates than the RECORDED budget must
+        reproduce BB-7 side-level exhaustion (§10.4.2/BB-7: 'if the budget exhausts while candidate addresses
+        remain unfetched, the side's read disposition is indeterminate'). Two canonically-equal authorized
+        seller candidates (same bundleContentHash, distinct nativeAddress) with recorded budget=1; the receipt
+        claims present at the lower-native copy. RED at 35fd3a7: the reconstruction pre-caps per-signer
+        survivors to [:budget] and hands resolve_bb6 only the ≤budget subset, so resolve_bb6's
+        `len(sbindings) > budget` exhaustion detector never fires and the receipt is wrongly ACCEPTED.
+        EXECUTED via the full replay entry point, crypto ON."""
+        j = "R9-F1"
+        hb = make_fab(j, "completed", "none", "seller", ["buyer", "seller"])
+        h = bundle_hash(hb)
+        lo, hi = sorted([native_address(j, "seller", 0), native_address(j, "seller", 1)])
+        b_lo = make_binding(j, "seller", "seller", lo, h)   # winner: lower native, the one fetched under budget=1
+        b_hi = make_binding(j, "seller", "seller", hi, h)   # excluded by budget=1 (remains unfetched)
+        cp = native_address(j, "buyer")
+        absb = make_binding(j, "buyer", "buyer", cp, PLACEHOLDER)
+        ev = make_absence_evidence(cp)
+        evh = evidence_hash(ev)
+        bb6 = {"candidateBindings": [b_lo, b_hi], "partyMap": PM, "budget": 1}   # RECORDED budget = 1
+        entry = _absent_entry(j, h, b_lo, bb6, absb, evh, cp)
+        deriv = _derivation(h, entry)
+        deref = {h: hb}
+        ev_map = {evh: ev}
+
+        # control (holds today): direct resolve_bb6 over the SAME bindings/partyMap/budget, both natives anchored,
+        # sees the full 2-candidate bucket and reports BB-7 exhaustion for the seller.
+        direct = R.resolve_bb6([b_lo, b_hi], PM, 1, anchored={lo: hb, hi: hb})
+        self.assertEqual(direct["disposition"], "indeterminate",
+                         "control: an over-budget authorized bucket must exhaust to indeterminate; got %r" % (direct,))
+        self.assertIn(CLAIM["seller"], direct["exhaustedSigners"],
+                      "control: the seller signer must be recorded exhausted; got %r" % (direct["exhaustedSigners"],))
+
+        # CONTRACT: the full replay entry point must reproduce the same BB-7 exhaustion and REFUSE. RED at
+        # 35fd3a7: it accepts (True, []) because the reconstruction pre-caps the bucket before resolve_bb6.
+        vok, reasons = R.validate_resolution_context(deriv, lambda x: deref.get(x), lambda x: ev_map.get(x), PUBKEYS)
+        self.assertFalse(vok, "F1: over-budget exhaustion must refuse the receipt; current wrong behaviour = %r"
+                         % ((vok, reasons),))
+        joined = " ".join(reasons)
+        self.assertIn("BB-6 re-selection differs", joined,
+                      "F1: refusal must come from the BB-6 re-selection reproducing exhaustion; current = %r" % (reasons,))
+        self.assertIn("indeterminate", joined,
+                      "F1: the reproduced BB-6 disposition must be indeterminate (BB-7); current = %r" % (reasons,))
+
+    # -------------------------------------------------------------------------------------- F2
+    def test_f2_unauthorized_outsider_pruned_before_candidate_reverification(self):
+        """F2 (step-5 audit) — an UNAUTHORIZED outsider (signer NOT in the authenticated partyMap) must be
+        pruned BEFORE the round-7 candidate BB-4/BB-5 re-verification, so a malformed outsider candidate cannot
+        sink an otherwise-honest receipt. Here the outsider claims role:seller with INVALID binding signature
+        bytes and a bundle absent from the deref map, attached to a valid honest receipt. RED at 35fd3a7: the
+        round-7 re-verification loop runs over the full (unpruned) candidate set and refuses on the outsider's
+        bad signature. This concerns UNAUTHORIZED candidates only — the authorized-invalid-candidate refusal
+        (N6) is unaffected. EXECUTED via the full replay entry point, crypto ON; deref instrumented."""
+        j = "R9-F2"
+        honest = make_fab(j, "completed", "none", "seller", ["buyer", "seller"])
+        h = bundle_hash(honest)
+        n = native_address(j, "seller", 0)
+        bind_h = make_binding(j, "seller", "seller", n, h)
+        out_native = native_address(j, "seller", 5)
+        out_hash = sha("outsider-bundle", j)                      # a genuine hash whose bundle is NEVER published
+        bind_out = make_binding(j, "seller", "outsider", out_native, out_hash)
+        bind_out["signature"]["value"] = b64u(b"\x00" * 64)       # INVALID signature bytes
+        cp = native_address(j, "buyer")
+        absb = make_binding(j, "buyer", "buyer", cp, PLACEHOLDER)
+        ev = make_absence_evidence(cp)
+        evh = evidence_hash(ev)
+        bb6 = {"candidateBindings": [bind_h, bind_out], "partyMap": PM, "budget": 8}
+        entry = _absent_entry(j, h, bind_h, bb6, absb, evh, cp)
+        deriv = _derivation(h, entry)
+        deref_map = {h: honest}                                   # outsider bundle intentionally ABSENT
+        ev_map = {evh: ev}
+
+        # the outsider is not the mapped role-holder, so it must be pruned before it can force a refusal.
+        self.assertNotEqual(PM.get(bind_out["signer"]), bind_out["role"],
+                            "control: the outsider signer is not mapped to the seller role")
+
+        fetched = []
+
+        def deref(x):
+            fetched.append(x)
+            return deref_map.get(x)
+
+        vok, reasons = R.validate_resolution_context(deriv, deref, lambda x: ev_map.get(x), PUBKEYS)
+        # CONTRACT: an unauthorized outsider is pruned before re-verification, so the honest receipt ACCEPTS.
+        # RED at 35fd3a7: the round-7 loop refuses with "candidate binding fails BB-4/BB-5 re-verification".
+        self.assertEqual((vok, reasons), (True, []),
+                         "F2: an unauthorized outsider must not sink an honest receipt; current wrong behaviour = %r"
+                         % (reasons,))
+        self.assertNotIn(out_hash, fetched,
+                         "F2: the pruned outsider bundle must never be fetched; current fetch list = %r" % (fetched,))
+
 
 if __name__ == "__main__":
     unittest.main()

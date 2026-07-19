@@ -30,10 +30,20 @@ PIPE-3), final payment/delivery references propagated into DACS-5, and all
 required signatures on each role-specific bundle copy. No legacy pre-SIG-6
 lifecycle fixture is used as current conformance input.
 
-The walkthrough also executes five deterministic negative examples: malformed
-identity, an agreement selecting a rail outside listing policy, a duplicate
-settlement transaction ID, delivery failure after payment, and divergent
-buyer/seller bundles. The substrate adapter is deliberately fake and local.
+The local `canonical_json` helper is sufficient only for this walkthrough's
+restricted artifact surface of strings, integers, arrays, and ASCII object keys;
+it is not a reusable, general RFC 8785 implementation. Likewise, the pure-Python
+Ed25519 implementation and cached public test keys exist only to keep this
+deterministic fixture dependency-free. Production implementations should use a
+maintained cryptographic library and an explicit, threat-modelled key-validation
+policy.
+
+The walkthrough also executes five deterministic negative examples through the
+same validators, state transition, substrate uniqueness guard, and bundle
+consumer used by its successful flow: malformed identity, an agreement selecting
+a rail outside listing policy, a duplicate settlement transaction ID, delivery
+failure after payment, and divergent buyer/seller bundles. The substrate adapter
+is deliberately fake and local.
 Live Demos operational bindings remain tracked in [#212](https://github.com/DACS-Agent-commerce/DACS-Standard/issues/212)
 and [#242](https://github.com/DACS-Agent-commerce/DACS-Standard/issues/242), so
 this tool does not embed version-sensitive SDK imports or method names.

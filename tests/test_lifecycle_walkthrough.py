@@ -149,6 +149,81 @@ class LifecycleWalkthroughTests(unittest.TestCase):
         )
         self.assertTrue(all(case["passed"] for case in self.trace["negativeExamples"]))
 
+    def test_negative_examples_execute_shared_enforcement_paths(self):
+        cases = {case["id"]: case for case in self.trace["negativeExamples"]}
+
+        malformed = cases["malformed-identity"]
+        self.assertEqual(malformed["enforcementPath"], "validate_identity")
+        self.assertFalse(malformed["validation"]["accepted"])
+        self.assertIn(
+            "IdentityBundle.claims must be a non-empty array",
+            malformed["validation"]["errors"],
+        )
+        self.assertTrue(
+            all(
+                result["verified"]
+                for result in malformed["validation"]["verification"][
+                    "signatureResults"
+                ]
+            )
+        )
+
+        policy = cases["agreement-outside-listing-policy"]
+        self.assertEqual(
+            policy["enforcementPath"], "validate_agreement_against_listing"
+        )
+        self.assertFalse(policy["validation"]["accepted"])
+        self.assertEqual(
+            policy["validation"]["reason"],
+            "agreement selected a rail outside listing policy",
+        )
+        self.assertTrue(
+            all(
+                result["verified"]
+                for result in policy["validation"]["signatureResults"]
+            )
+        )
+
+        delivery = cases["delivery-failure-after-payment"]
+        self.assertEqual(
+            delivery["enforcementPath"], "evaluate_delivery_after_payment"
+        )
+        self.assertTrue(delivery["paymentRemainsRecorded"])
+        self.assertEqual(
+            delivery["resultingBundle"]["artifact"]["outcome"],
+            "failed-counterparty",
+        )
+        self.assertEqual(
+            delivery["resultingBundle"]["artifact"]["settlementEvidence"][0],
+            self.artifacts["settlement-payment-success"]["attestationRef"],
+        )
+        self.assertTrue(
+            all(
+                result["verified"]
+                for result in delivery["failureEvidence"]["signatureResults"]
+            )
+        )
+        self.assertTrue(
+            all(
+                result["verified"]
+                for result in delivery["resultingBundle"]["signatureResults"]
+            )
+        )
+
+        divergent = cases["divergent-buyer-seller-bundles"]
+        self.assertEqual(divergent["enforcementPath"], "consume_bundle_pair")
+        self.assertEqual(divergent["consumption"]["disposition"], "divergent")
+        self.assertEqual(
+            divergent["consumption"]["reputationDisposition"], "exclude"
+        )
+        self.assertTrue(
+            all(
+                result["verified"]
+                for results in divergent["consumption"]["signatureResults"].values()
+                for result in results
+            )
+        )
+
     def test_trace_is_pinned(self):
         self.module.check_pins(self.trace)
 

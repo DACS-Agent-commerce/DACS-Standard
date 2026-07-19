@@ -357,18 +357,14 @@ def identity_scope(bundle: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in bundle.items() if key != "presentation"}
 
 
-def build_identity(role: str) -> dict[str, Any]:
-    unsigned = {
-        "bundleVersion": "1",
-        "presentedBy": CLAIMS[role],
-        "presentedAt": NOW,
-        "sessionNonce": sha256_hex(f"{JOB_ID}:{role}:nonce".encode())[:32],
-        "claims": [{"ref": CLAIMS[role], "metadata": {"testRole": role}}],
-    }
+def sign_identity_presentation(bundle: dict[str, Any], role: str) -> dict[str, Any]:
+    """Sign an IdentityBundle scope, including deliberately malformed test scopes."""
+
+    signed = copy.deepcopy(bundle)
+    unsigned = identity_scope(signed)
     digest = sha256_hex(canonical_json(unsigned))
     payload = ("dacs-bundle-presentation:v1:" + digest).encode("ascii")
-    bundle = copy.deepcopy(unsigned)
-    bundle["presentation"] = {
+    signed["presentation"] = {
         "kind": "per-claim",
         "signatures": [
             {
@@ -377,7 +373,18 @@ def build_identity(role: str) -> dict[str, Any]:
             }
         ],
     }
-    return bundle
+    return signed
+
+
+def build_identity(role: str) -> dict[str, Any]:
+    unsigned = {
+        "bundleVersion": "1",
+        "presentedBy": CLAIMS[role],
+        "presentedAt": NOW,
+        "sessionNonce": sha256_hex(f"{JOB_ID}:{role}:nonce".encode())[:32],
+        "claims": [{"ref": CLAIMS[role], "metadata": {"testRole": role}}],
+    }
+    return sign_identity_presentation(unsigned, role)
 
 
 def verify_identity(bundle: dict[str, Any]) -> dict[str, Any]:
@@ -397,6 +404,39 @@ def verify_identity(bundle: dict[str, Any]) -> dict[str, Any]:
         "domainSeparator": "dacs-bundle-presentation:v1:",
         "signaturePayload": payload.decode("ascii"),
         "signatureResults": results,
+    }
+
+
+def validate_identity(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Execute the minimum IdentityBundle structure and presentation checks."""
+
+    errors: list[str] = []
+    if not isinstance(bundle, dict):
+        return {
+            "accepted": False,
+            "observed": "reject-counterparty",
+            "errors": ["IdentityBundle must be an object"],
+            "verification": None,
+        }
+    claims = bundle.get("claims")
+    if not isinstance(claims, list) or not claims:
+        errors.append("IdentityBundle.claims must be a non-empty array")
+    elif any(not isinstance(claim, dict) or not isinstance(claim.get("ref"), str) for claim in claims):
+        errors.append("every IdentityBundle claim must be an object with a string ref")
+    verification = None
+    try:
+        verification = verify_identity(bundle)
+    except (KeyError, TypeError, ValueError):
+        errors.append("IdentityBundle presentation is malformed")
+    if verification is not None:
+        results = verification["signatureResults"]
+        if not results or not all(item["verified"] for item in results):
+            errors.append("IdentityBundle presentation signature does not verify")
+    return {
+        "accepted": not errors,
+        "observed": "accepted" if not errors else "reject-counterparty",
+        "errors": errors,
+        "verification": verification,
     }
 
 
@@ -478,14 +518,168 @@ def stage_entry(stage: str, artifacts: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def validate_agreement_against_listing(
+    listing: dict[str, Any], agreement: dict[str, Any]
+) -> dict[str, Any]:
+    """Verify agreement signatures and enforce the listing's rail policy."""
+
+    signature_results = verify_signatures("PayeeBoundAgreementDocument", agreement)
+    required_signers = {
+        party["primaryClaim"]
+        for party in agreement.get("parties", [])
+        if party.get("role") in {"buyer", "seller"}
+    }
+    verified_signers = {
+        result["signer"] for result in signature_results if result["verified"]
+    }
+    selected_rail = agreement.get("terms", {}).get("rail", {}).get("railId")
+    accepted_rails = {
+        rail.get("railId") for rail in listing.get("acceptedRails", [])
+    }
+    reason = None
+    if not signature_results or not all(
+        result["verified"] for result in signature_results
+    ):
+        reason = "agreement signatures do not verify"
+    elif not required_signers or not required_signers <= verified_signers:
+        reason = "agreement is missing a required buyer or seller signature"
+    elif selected_rail not in accepted_rails:
+        reason = "agreement selected a rail outside listing policy"
+    return {
+        "accepted": reason is None,
+        "observed": "accept" if reason is None else "reject-before-settle",
+        "reason": reason,
+        "selectedRail": selected_rail,
+        "acceptedRails": sorted(rail for rail in accepted_rails if rail is not None),
+        "signatureResults": signature_results,
+    }
+
+
+def evaluate_delivery_after_payment(
+    payment: dict[str, Any], delivery_result: dict[str, Any]
+) -> dict[str, Any]:
+    """Apply the delivery transition while retaining already-recorded payment."""
+
+    if payment.get("outcome") != "success":
+        raise ValueError("delivery transition requires successful payment evidence")
+    evidence = {
+        "evidenceVersion": "1",
+        "jobId": payment["jobId"],
+        "phase": "deliver-storage-program",
+        "phaseIndex": 4,
+        "observedAt": NOW + 6000,
+    }
+    phase_entry: dict[str, Any] = {
+        "index": 4,
+        "kind": "deliver-storage-program",
+    }
+    if delivery_result.get("ok") is True:
+        content_hash = delivery_result.get("deliverableContentHash")
+        anchor = delivery_result.get("deliverableAnchor")
+        if not isinstance(content_hash, str) or not isinstance(anchor, dict):
+            raise ValueError("successful delivery result lacks content hash or anchor")
+        evidence.update(
+            {
+                "outcome": "success",
+                "deliverableContentHash": content_hash,
+                "deliverableAnchor": anchor,
+            }
+        )
+        phase_entry["outcome"] = "ok"
+        session_outcome = "completed"
+    else:
+        error_class = delivery_result.get("errorClass")
+        outcomes = {
+            "counterparty": "failed-counterparty",
+            "substrate": "failed-substrate",
+            "permanent": "failed-permanent",
+        }
+        if error_class not in outcomes:
+            raise ValueError("failed delivery result has an unsupported errorClass")
+        evidence.update({"outcome": "fail", "errorClass": error_class})
+        phase_entry.update({"outcome": "fail", "errorClass": error_class})
+        session_outcome = outcomes[error_class]
+    return {
+        "sessionOutcome": session_outcome,
+        "phaseEntry": phase_entry,
+        "evidenceUnsigned": evidence,
+        "paymentRemainsRecorded": True,
+    }
+
+
+def consume_bundle_pair(
+    left: dict[str, Any], right: dict[str, Any]
+) -> dict[str, Any]:
+    """Consume two role copies and classify whether reputation may use them."""
+
+    signature_results = {
+        "leftCopy": verify_signatures("AttestationBundle", left),
+        "rightCopy": verify_signatures("AttestationBundle", right),
+    }
+    for label, bundle in (("leftCopy", left), ("rightCopy", right)):
+        results = signature_results[label]
+        required_signers = {
+            party["primaryClaim"] for party in bundle.get("parties", [])
+        }
+        verified_signers = {
+            result["signer"] for result in results if result["verified"]
+        }
+        if (
+            not results
+            or not all(result["verified"] for result in results)
+            or not required_signers
+            or not required_signers <= verified_signers
+        ):
+            return {
+                "disposition": "invalid",
+                "reputationDisposition": "exclude",
+                "reason": f"{label} lacks valid signatures from every party",
+                "signatureResults": signature_results,
+            }
+    if left.get("jobId") != right.get("jobId"):
+        return {
+            "disposition": "invalid",
+            "reputationDisposition": "exclude",
+            "reason": "bundle copies identify different jobs",
+            "signatureResults": signature_results,
+        }
+    left_phases = {entry["index"]: entry for entry in left.get("phaseSummary", [])}
+    right_phases = {entry["index"]: entry for entry in right.get("phaseSummary", [])}
+    phase_keys = ("kind", "outcome", "errorClass")
+    divergent = left.get("outcome") != right.get("outcome") or set(
+        left_phases
+    ) != set(right_phases)
+    if not divergent:
+        divergent = any(
+            any(
+                left_phases[index].get(key) != right_phases[index].get(key)
+                for key in phase_keys
+            )
+            for index in left_phases
+        )
+    return {
+        "disposition": "divergent" if divergent else "unified",
+        "reputationDisposition": "exclude" if divergent else "include",
+        "reason": (
+            "signed bundle outcomes or phase summaries conflict"
+            if divergent
+            else "signed bundle outcomes and phase summaries agree"
+        ),
+        "signatureResults": signature_results,
+    }
+
+
 def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     identities = {role: build_identity(role) for role in SEEDS}
-    identity_results = {role: verify_identity(bundle) for role, bundle in identities.items()}
-    if not all(
-        all(item["verified"] for item in result["signatureResults"])
-        for result in identity_results.values()
-    ):
+    identity_validations = {
+        role: validate_identity(bundle) for role, bundle in identities.items()
+    }
+    if not all(result["accepted"] for result in identity_validations.values()):
         raise ValueError("identity presentation verification failed")
+    identity_results = {
+        role: result["verification"]
+        for role, result in identity_validations.items()
+    }
 
     deliverable = {
         "kind": "storage-program",
@@ -694,20 +888,20 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
     deliverable_binding = substrate.publish(
         deliverable_logical, deliverable_bytes, "seller"
     )
-    delivery_unsigned = {
-        "evidenceVersion": "1",
-        "jobId": JOB_ID,
-        "phase": "deliver-storage-program",
-        "phaseIndex": 4,
-        "outcome": "success",
-        "deliverableContentHash": sha256_hex(deliverable_bytes),
-        "deliverableAnchor": {
-            "kind": "storage-program",
-            "locator": deliverable_binding["nativeAddress"],
+    delivery_transition = evaluate_delivery_after_payment(
+        payment,
+        {
+            "ok": True,
+            "deliverableContentHash": sha256_hex(deliverable_bytes),
+            "deliverableAnchor": {
+                "kind": "storage-program",
+                "locator": deliverable_binding["nativeAddress"],
+            },
         },
-        "observedAt": NOW + 6000,
-    }
-    delivery = signed_single("SettlementEvidence", delivery_unsigned, "orchestrator")
+    )
+    delivery = signed_single(
+        "SettlementEvidence", delivery_transition["evidenceUnsigned"], "orchestrator"
+    )
     delivery_trace, delivery_ref = trace_artifact(
         stage="DACS-4",
         artifact_id="settlement-delivery-success",
@@ -736,17 +930,12 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
             "txRefs": payment["paymentTxRefs"],
             "attestationRef": payment_ref,
         },
-        {
-            "index": 4,
-            "kind": "deliver-storage-program",
-            "outcome": "ok",
-            "attestationRef": delivery_ref,
-        },
+        {**delivery_transition["phaseEntry"], "attestationRef": delivery_ref},
     ]
     bundle_unsigned = {
         "bundleVersion": "1",
         "jobId": JOB_ID,
-        "outcome": "completed",
+        "outcome": delivery_transition["sessionOutcome"],
         "listingRef": agreement_unsigned["listingRef"],
         "agreementRef": agreement_ref,
         "parties": [
@@ -768,6 +957,7 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
         "AttestationBundle", bundle_unsigned, ["buyer", "seller", "orchestrator"]
     )
     bundle_traces = []
+    bundle_copies = {}
     for role in ("buyer", "seller", "orchestrator"):
         bundle = copy.deepcopy(bundle_base)
         bundle["anchoredByRole"] = role
@@ -784,6 +974,7 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
             substrate=substrate,
         )
         bundle_traces.append(bundle_trace)
+        bundle_copies[role] = bundle
     dacs5 = stage_entry("DACS-5", bundle_traces)
 
     context = {
@@ -799,6 +990,7 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
         "delivery": delivery,
         "deliveryRef": delivery_ref,
         "bundleBase": bundle_base,
+        "bundleCopies": bundle_copies,
     }
     return [dacs1, dacs2, dacs3, dacs4, dacs5], context
 
@@ -822,10 +1014,9 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
         canonical_json(listing["offering"]["deliverable"])
     ):
         raise ValueError("agreement deliverable does not bind the listing")
-    if agreement["terms"]["rail"]["railId"] not in {
-        rail["railId"] for rail in listing["acceptedRails"]
-    }:
-        raise ValueError("agreement selected a rail outside listing policy")
+    agreement_validation = validate_agreement_against_listing(listing, agreement)
+    if not agreement_validation["accepted"]:
+        raise ValueError(agreement_validation["reason"])
     expected_vet = {json.dumps(ref, sort_keys=True) for ref in context["vetRefs"].values()}
     actual_party_vet = {
         json.dumps(party["vetRecordRef"], sort_keys=True) for party in agreement["parties"]
@@ -849,6 +1040,14 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
             raise ValueError("bundle phaseSummary index is not the bare pipeline index")
     if {item["party"] for item in bundle["signatures"]} != set(CLAIMS.values()):
         raise ValueError("completed bundle is missing a required signer")
+    bundle_consumption = consume_bundle_pair(
+        context["bundleCopies"]["buyer"], context["bundleCopies"]["seller"]
+    )
+    if (
+        bundle_consumption["disposition"] != "unified"
+        or bundle_consumption["reputationDisposition"] != "include"
+    ):
+        raise ValueError("matching happy-path bundles were not consumed as unified")
     for stage in stages:
         for item in stage["artifacts"]:
             if item["logicalAddress"] == item["publishedBinding"]["nativeAddress"]:
@@ -866,31 +1065,62 @@ def settlement_tx_id(record: dict[str, Any]) -> str:
 def malformed_identity_case(identity: dict[str, Any]) -> dict[str, Any]:
     candidate = copy.deepcopy(identity)
     candidate["claims"] = "not-an-array"
-    rejected = not isinstance(candidate.get("claims"), list)
+    candidate = sign_identity_presentation(candidate, "buyer")
+    validation = validate_identity(candidate)
+    signature_results = (
+        validation["verification"]["signatureResults"]
+        if validation["verification"] is not None
+        else []
+    )
+    presentation_valid = bool(signature_results) and all(
+        result["verified"] for result in signature_results
+    )
+    rejected_for_shape = (
+        "IdentityBundle.claims must be a non-empty array" in validation["errors"]
+    )
     return {
         "id": "malformed-identity",
         "mutation": "IdentityBundle.claims is a string instead of an array",
         "rules": ["BR-1", "VPC-4"],
         "vectorIds": ["vet-counterparty-malformed-attribution"],
+        "enforcementPath": "validate_identity",
+        "validation": validation,
         "expected": "reject-counterparty",
-        "observed": "reject-counterparty" if rejected else "accepted",
-        "passed": rejected,
+        "observed": validation["observed"],
+        "passed": presentation_valid and not validation["accepted"] and rejected_for_shape,
     }
 
 
 def outside_policy_case(listing: dict[str, Any], agreement: dict[str, Any]) -> dict[str, Any]:
-    candidate = copy.deepcopy(agreement)
-    candidate["terms"]["rail"]["railId"] = "evm-erc20:1:UNLISTED"
-    accepted = {rail["railId"] for rail in listing["acceptedRails"]}
-    rejected = candidate["terms"]["rail"]["railId"] not in accepted
+    candidate_unsigned = copy.deepcopy(
+        signing_scope("PayeeBoundAgreementDocument", agreement)
+    )
+    unlisted_rail = "evm-erc20:1:UNLISTED"
+    candidate_unsigned["terms"]["rail"]["railId"] = unlisted_rail
+    for payout in candidate_unsigned["terms"]["payoutBindings"]:
+        payout["railId"] = unlisted_rail
+    candidate = signed_multi(
+        "PayeeBoundAgreementDocument", candidate_unsigned, ["buyer", "seller"]
+    )
+    validation = validate_agreement_against_listing(listing, candidate)
+    signatures_valid = bool(validation["signatureResults"]) and all(
+        result["verified"] for result in validation["signatureResults"]
+    )
     return {
         "id": "agreement-outside-listing-policy",
         "mutation": "Agreement selects a rail absent from Listing.acceptedRails",
         "rules": ["RFQ-3", "CA-1", "§8.5.2 check 3"],
         "vectorIds": ["neg-rail-reject"],
+        "enforcementPath": "validate_agreement_against_listing",
+        "validation": validation,
         "expected": "reject-before-settle",
-        "observed": "reject-before-settle" if rejected else "accepted",
-        "passed": rejected,
+        "observed": validation["observed"],
+        "passed": (
+            signatures_valid
+            and not validation["accepted"]
+            and validation["reason"]
+            == "agreement selected a rail outside listing policy"
+        ),
     }
 
 
@@ -919,29 +1149,86 @@ def duplicate_settlement_case(substrate: FakeSubstrate) -> dict[str, Any]:
 
 
 def delivery_failure_case(context: dict[str, Any]) -> dict[str, Any]:
-    payment_succeeded = context["payment"]["outcome"] == "success"
-    fake_delivery_result = {"ok": False, "errorClass": "counterparty"}
-    observed = (
-        "failed-counterparty"
-        if payment_succeeded and not fake_delivery_result["ok"]
-        else "completed"
+    transition = evaluate_delivery_after_payment(
+        context["payment"], {"ok": False, "errorClass": "counterparty"}
+    )
+    substrate = FakeSubstrate()
+    failure_evidence = signed_single(
+        "SettlementEvidence", transition["evidenceUnsigned"], "orchestrator"
+    )
+    evidence_trace, evidence_ref = trace_artifact(
+        stage="DACS-4",
+        artifact_id="settlement-delivery-counterparty-failure",
+        kind="SettlementEvidence",
+        artifact=failure_evidence,
+        logical_address=f"dacs4:evidence:delivery-failure:{JOB_ID}",
+        publisher="orchestrator",
+        substrate=substrate,
+    )
+    failure_unsigned = copy.deepcopy(
+        signing_scope("AttestationBundle", context["bundleBase"])
+    )
+    failure_unsigned["outcome"] = transition["sessionOutcome"]
+    failure_unsigned["phaseSummary"][-1] = {
+        **transition["phaseEntry"],
+        "attestationRef": evidence_ref,
+    }
+    failure_unsigned["settlementEvidence"] = [context["paymentRef"], evidence_ref]
+    failure_bundle = signed_multi(
+        "AttestationBundle", failure_unsigned, ["buyer", "seller", "orchestrator"]
+    )
+    failure_bundle["anchoredByRole"] = "orchestrator"
+    bundle_trace, _ = trace_artifact(
+        stage="DACS-5",
+        artifact_id="attestation-bundle-delivery-counterparty-failure",
+        kind="AttestationBundle",
+        artifact=failure_bundle,
+        logical_address="stor-"
+        + sha256_hex(f"{JOB_ID}-bundle-delivery-failure".encode()),
+        publisher="orchestrator",
+        substrate=substrate,
+    )
+    evidence_signatures_valid = all(
+        result["verified"] for result in evidence_trace["signatureResults"]
+    )
+    bundle_signatures_valid = all(
+        result["verified"] for result in bundle_trace["signatureResults"]
     )
     return {
         "id": "delivery-failure-after-payment",
         "mutation": "delivery adapter returns counterparty failure after final payment",
         "rules": ["PIPE-3", "ST-2"],
         "vectorIds": ["settlement-delivery-missing-deliverable-fail"],
-        "paymentRemainsRecorded": payment_succeeded,
+        "enforcementPath": "evaluate_delivery_after_payment",
+        "paymentRemainsRecorded": transition["paymentRemainsRecorded"],
+        "failureEvidence": {
+            "artifact": failure_evidence,
+            "artifactHash": evidence_trace["artifactHash"],
+            "attestationRef": evidence_ref,
+            "signatureResults": evidence_trace["signatureResults"],
+        },
+        "resultingBundle": {
+            "artifact": failure_bundle,
+            "artifactHash": bundle_trace["artifactHash"],
+            "signatureResults": bundle_trace["signatureResults"],
+        },
         "expected": "failed-counterparty",
-        "observed": observed,
-        "passed": observed == "failed-counterparty",
+        "observed": transition["sessionOutcome"],
+        "passed": (
+            transition["sessionOutcome"] == "failed-counterparty"
+            and transition["paymentRemainsRecorded"]
+            and failure_unsigned["settlementEvidence"][0] == context["paymentRef"]
+            and evidence_signatures_valid
+            and bundle_signatures_valid
+        ),
     }
 
 
 def divergent_bundle_case(context: dict[str, Any]) -> dict[str, Any]:
-    buyer = copy.deepcopy(context["bundleBase"])
-    buyer["anchoredByRole"] = "buyer"
-    seller_unsigned = signing_scope("AttestationBundle", context["bundleBase"])
+    buyer = copy.deepcopy(context["bundleCopies"]["buyer"])
+    seller_unsigned = copy.deepcopy(
+        signing_scope("AttestationBundle", context["bundleBase"])
+    )
     seller_unsigned["outcome"] = "failed-counterparty"
     seller_unsigned["phaseSummary"][-1] = {
         "index": 4,
@@ -954,25 +1241,29 @@ def divergent_bundle_case(context: dict[str, Any]) -> dict[str, Any]:
         "AttestationBundle", seller_unsigned, ["buyer", "seller", "orchestrator"]
     )
     seller["anchoredByRole"] = "seller"
-    buyer_results = verify_signatures("AttestationBundle", buyer)
-    seller_results = verify_signatures("AttestationBundle", seller)
+    consumption = consume_bundle_pair(buyer, seller)
     buyer_hash = artifact_hash("AttestationBundle", buyer)
     seller_hash = artifact_hash("AttestationBundle", seller)
-    valid = all(item["verified"] for item in buyer_results + seller_results)
-    divergent = buyer["jobId"] == seller["jobId"] and (
-        buyer["outcome"] != seller["outcome"] or buyer_hash != seller_hash
-    )
     return {
         "id": "divergent-buyer-seller-bundles",
         "mutation": "separately signed role copies contradict on outcome and phase summary",
         "rules": ["§10.4.3(d)", "§10.5.1 guard (ii)"],
         "vectorIds": ["verify-consume-divergent"],
+        "enforcementPath": "consume_bundle_pair",
         "buyerBundleHash": buyer_hash,
         "sellerBundleHash": seller_hash,
-        "signatureResults": {"buyerCopy": buyer_results, "sellerCopy": seller_results},
+        "consumption": consumption,
         "expected": "divergent-exclude-from-reputation",
-        "observed": "divergent-exclude-from-reputation" if valid and divergent else "invalid",
-        "passed": valid and divergent,
+        "observed": (
+            "divergent-exclude-from-reputation"
+            if consumption["disposition"] == "divergent"
+            and consumption["reputationDisposition"] == "exclude"
+            else consumption["disposition"]
+        ),
+        "passed": (
+            consumption["disposition"] == "divergent"
+            and consumption["reputationDisposition"] == "exclude"
+        ),
     }
 
 

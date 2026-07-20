@@ -22,6 +22,12 @@
 > | `l2ps.L2PS()` | matches (`@kynesyslabs/demosdk/l2ps`); anonymous-key today (see §9.2) |
 > | `demos.crypto.encryptForRecipients`, `demos.dacs.sign` | not yet in the SDK (see gap list §9.4, §9.8) |
 
+For a copy/paste-runnable, SDK-independent starting point, run the
+[`conformance/walkthrough/`](../conformance/walkthrough/) minimum-conformant
+lifecycle. It uses the pinned profile and conformance manifest, links to the
+repository vectors, and publishes through a fake substrate adapter;
+this document remains the separate live-Demos capability mapping.
+
 **Scenario.** A buyer agent commissions a content-moderation service from a seller agent. The seller posts a listing requiring buyer LEI + jurisdiction proof. Negotiation runs as an RFQ over an L2PS subnet (multi-turn, private). Settlement is cross-chain: buyer pays USDC on Base, seller receives USDC on Solana, routed via Demos's Liquidity Tank infrastructure (which the SDK accesses through `WorkStep`s of context `"xm"`). The seller delivers an entitlement record granting API access. Both parties co-sign the session bundle and anchor it as a Storage Program.
 
 **Substrate primitives exercised.** SR-1 (CCI) · SR-2 (Storage Programs) · SR-3 (DAHR) · SR-4 (L2PS) · SR-5 (Liquidity Tank, accessed via `DemosWork` + `WorkStep` of context `"xm"`).

@@ -28,6 +28,9 @@ jobs:
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
 
+      - name: Run minimum-conformant lifecycle walkthrough
+        run: python3 scripts/run_lifecycle_walkthrough.py --check
+
       - name: Validate implementation manifests
         run: python3 scripts/validate_implementation_manifests.py
 

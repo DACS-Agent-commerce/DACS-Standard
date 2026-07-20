@@ -2,6 +2,14 @@
 
 This is a non-normative outline for operators preparing to implement DACS in production. It complements the existing [builders guide](./builders-guide.md) by focusing on operational, capital, and settlement-finality questions that the v0.1 specification deliberately leaves to implementers.
 
+## Executable starting point
+
+Before adding live substrate bindings, run the dependency-free
+[`conformance/walkthrough/`](../conformance/walkthrough/). It executes one pinned
+five-stage lifecycle, exposes the canonical/signature material at every boundary,
+and demonstrates five deterministic rejection paths. Replace its fake adapter
+only after the artifact flow passes unchanged.
+
 ## 1. Scope and assumptions
 
 - Identify which DACS stages your system will produce, consume, or both.

@@ -10,6 +10,11 @@ The conformance requirements and golden-vector test plan, per role and per modul
 
 This chapter sketches the test categories an implementer should cover to claim conformance to each DACS standard. It is a **plan, not a test suite**; the test suite itself (test vectors, expected outputs, golden files) is produced separately and tracked alongside reference implementations. Where a chapter’s conformance summary enumerates labelled rules (e.g., BP-1, LR-2, CM-3), the test plan groups them into runnable categories.
 
+The non-normative [`conformance/walkthrough/`](../conformance/walkthrough/)
+provides a dependency-free executable onboarding path through one pinned
+five-stage artifact set. It links each operation back to the rule and vector IDs
+below; it does not add or replace conformance requirements.
+
 ### 14.1 DACS-1 — Identify
 
 Exercise each rule at its normative home; full text is not restated (define-once). Fixtures under `conformance/`.

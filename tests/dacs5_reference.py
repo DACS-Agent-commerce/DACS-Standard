@@ -837,7 +837,7 @@ def _role_evidence_grammar(re_, ch, label):
 
 def _entry_structural_gate(entry, index):
     """Round-10 D6 + round-11 per-entry gate (step-5 1b). NO LONGER pure type-when-present: it now
-    enforces PRESENCE + VOCABULARY + member types for the full §10.5.3 ResolutionContextEntry grammar
+    enforces PRESENCE + VOCABULARY + member types for the §10.5.3 ResolutionContextEntry grammar
     (spec DACS-5-VERIFY.md lines 535-552), so a malformed untrusted entry refuses DETERMINISTICALLY —
     never a downstream fail-open, never a raise. candidateBindings is the SOLE EXCEPTION, kept
     type-when-present: BB-6 outsider garbage MUST stay prunable-inert and MUST NEVER be able to refuse

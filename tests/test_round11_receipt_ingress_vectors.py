@@ -285,7 +285,7 @@ _BINDING_ROOTS = [
 
 
 def _grid_paths():
-    """The full §10.5.3 entry-grammar path set with type tags + navigators, dual-base."""
+    """The §10.5.3 entry-grammar path set with type tags + navigators, dual-base."""
     A, P = "absent", "present"
     paths = [
         (A, "contentHash", "hashkey", lambda e: (e, "contentHash")),

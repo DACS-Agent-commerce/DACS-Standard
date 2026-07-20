@@ -309,6 +309,12 @@ def _grid_paths():
         (P, "counterpartyRoleEvidence.kind", "enum", lambda e: (e["counterpartyRoleEvidence"], "kind")),
         (P, "counterpartyRoleEvidence.binding", "object-req", lambda e: (e["counterpartyRoleEvidence"], "binding")),
         ("absent-addr", "roleEvidence.resolvedAddress", "str", lambda e: (e["roleEvidence"], "resolvedAddress")),
+        # (round-12) present address arm: roleEvidence AND counterpartyRoleEvidence are the SECOND XOR
+        # arm {kind:"address", resolvedAddress:string} (spec :540, :548). counterpartyRoleEvidence's
+        # binding arm is already swept on the `present` base; this rides the `present-addr` base so the
+        # counterparty address arm's REQUIRED string member is covered too.
+        ("present-addr", "roleEvidence.resolvedAddress", "str", lambda e: (e["roleEvidence"], "resolvedAddress")),
+        ("present-addr", "counterpartyRoleEvidence.resolvedAddress", "str", lambda e: (e["counterpartyRoleEvidence"], "resolvedAddress")),
     ]
     for base_key, prefix, root_fn in _BINDING_ROOTS:
         for member, tag in _BINDING_MEMBERS:
@@ -359,7 +365,22 @@ def _grid_base_absent_addr():
     return p, e
 
 
-_GRID_BASES = {"absent": _grid_base_absent, "present": _grid_base_present, "absent-addr": _grid_base_absent_addr}
+def _grid_base_present_addr():
+    """(round-12) present base with BOTH role-evidences switched to the address XOR arm (the T7-control
+    switch): binding.nativeAddress -> resolvedAddress, bb6Context removed (REQUIRED iff kind=='binding',
+    :541), resolvedRole kept valid. Accepts unmutated; enables the counterparty address arm sweep."""
+    p = build_present("GRID-PADR")
+    e = p["deriv"]["resolutionContext"][0]
+    re_nat = e["roleEvidence"]["binding"]["nativeAddress"]
+    cre_nat = e["counterpartyRoleEvidence"]["binding"]["nativeAddress"]
+    e["roleEvidence"] = {"kind": "address", "resolvedAddress": re_nat}
+    e["counterpartyRoleEvidence"] = {"kind": "address", "resolvedAddress": cre_nat}
+    del e["bb6Context"]
+    return p, e
+
+
+_GRID_BASES = {"absent": _grid_base_absent, "present": _grid_base_present,
+               "absent-addr": _grid_base_absent_addr, "present-addr": _grid_base_present_addr}
 
 # Random's four probes MUST appear as grid hits (and remain named regressions above).
 RANDOMS_FOUR = [
@@ -557,12 +578,24 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-5: binding.jobId must be a string (got int)" % newch]))
 
     def test_r11_coll2_role_type_collusion_defect(self):
-        """DEFECT: entry.resolvedRole AND binding.role both 123 — verify_binding's role equality (:180)
-        passes on the collusion, then logical_address(jobId, 123) (:182) concatenates str+int ->
-        TypeError, both modes. verify_binding ingress must type role. Refuse."""
+        """DEFECT: entry.resolvedRole AND binding.role both 123. As of round-12 B2 the entry's invalid
+        resolvedRole is refused DIRECTLY by _entry_structural_gate's enum vocabulary check, BEFORE the
+        evidence-kind branch reaches verify_binding — so the colluding non-string enum is caught strictly
+        earlier (and the str+int logical_address TypeError is unreachable). The binding.role ingress
+        type-check that this originally exercised is preserved on the valid-role arm by coll2b below."""
         p = build_absent("R11-COLL2")
         e = p["deriv"]["resolutionContext"][0]
         e["resolvedRole"] = 123
+        e["roleEvidence"]["binding"]["role"] = 123
+        self.assertEqual(vrc(p), (False, ["%s: resolvedRole must be one of ['buyer', 'seller'] (got 123)" % p["h"]]))
+
+    def test_r11_coll2b_binding_role_type_defect(self):
+        """DEFECT (round-12 sibling of coll2): resolvedRole is a VALID enum ("seller") but the
+        roleEvidence binding.role is 123 — the enum gate passes, so this still reaches and exercises
+        verify_binding's binding.role ingress type-check (:180-183). Refuse via the binding-role reason,
+        never a str+int logical_address TypeError."""
+        p = build_absent("R11-COLL2B")
+        e = p["deriv"]["resolutionContext"][0]
         e["roleEvidence"]["binding"]["role"] = 123
         self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-5: binding.role must be a string (got int)" % p["h"]]))
 

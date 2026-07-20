@@ -763,24 +763,77 @@ def require_replayable_derivation(d):
 
 
 def receipt_required_members_present(derivation):
-    """§10.5.3 (3)/(4) as amended by E5: every entry must carry the members REQUIRED for
-    its disposition (roleEvidence always; counterpartyRef when present; absenceEvidenceRef
-    when absent). The object MUST first pass the ReplayableReputationDerivation refusal gate
-    (CORE §11.1.2). Returns (ok, [reasons])."""
+    """§10.5.3 (3)/(4) as amended by E5, extended by round-12 into the integrated-replay
+    completeness gate. The object MUST first pass the ReplayableReputationDerivation refusal gate
+    (CORE §11.1.2). Every check refuses DETERMINISTICALLY with a stable reason — a malformed receipt
+    never raises. Fixed check order:
+      1. discriminator gate (CORE §11.1.2);
+      2. resolutionContext is a REQUIRED array (spec :532) — ABSENCE refuses EVEN when bundleRefs is
+         empty (round-12: the conforming empty form is an empty array, not a missing member);
+      3. every entry is an object carrying a string contentHash (read by the keying compare and the
+         §10.5.3 member checks) — a malformed entry refuses here instead of raising (round-12);
+      3b. bundleRefs is a REQUIRED array (spec :531) — absence refuses, a non-array refuses instead of
+         raising TypeError from the len()/keying compare below (round-12 lens closure);
+      4. resolutionContext length == bundleRefs length, and keyed to bundleRefs in canonical order
+         (spec :850-854);
+      5. metrics + bundleCount present with the types replay_receipt's byte-identity compare consumes
+         (round-12);
+      6. per-disposition member completeness (roleEvidence required, read type-guarded here — object-typing
+         is the round-11 grammar gate's job; binding roleEvidence carries bb6Context; a present entry
+         carries counterpartyRef + counterpartyRoleEvidence; an absent entry carries absenceEvidenceRef,
+         and a write-input substrate carries absenceBinding).
+    Returns (ok, [reasons])."""
     gate = require_replayable_derivation(derivation)
     if not gate["ok"]:
         return (False, ["discriminator refusal: " + gate["reason"]])
+    # (2) resolutionContext REQUIRED array. Missing refuses even with empty bundleRefs (round-12
+    #     behaviour change vs the prior absent+empty-refs (True, []); the empty form is an empty array).
+    if "resolutionContext" not in derivation:
+        return (False, ["resolutionContext is REQUIRED (spec :532)"])
+    ctx = derivation.get("resolutionContext")
+    if not isinstance(ctx, list):
+        return (False, ["resolutionContext must be an array (got %s)" % type(ctx).__name__])
+    # (3) each entry a dict with a string contentHash BEFORE the keying compare / member reads —
+    #     a malformed entry refuses (round-12 behaviour change: ctx=[{}] / non-dict entries / non-string
+    #     contentHash previously raised KeyError/TypeError, now deterministic refusals).
     reasons = []
-    refs = derivation.get("bundleRefs", [])
-    ctx = derivation.get("resolutionContext", [])
+    for i, e in enumerate(ctx):
+        if not isinstance(e, dict):
+            reasons.append("resolutionContext[%d]: entry is not an object (got %s)" % (i, type(e).__name__))
+        elif not isinstance(e.get("contentHash"), str):
+            reasons.append("resolutionContext[%d]: contentHash must be a string (got %s)"
+                           % (i, type(e.get("contentHash")).__name__))
+    if reasons:
+        return (False, reasons)
+    # (3b) bundleRefs is a REQUIRED member of the receipt type (spec :531) and is consumed by len()
+    #      + the keying compare below: absence refuses (same absence-vs-empty-array doctrine as
+    #      resolutionContext, :532) and a non-array refuses instead of raising TypeError (round-12
+    #      lens closure).
+    if "bundleRefs" not in derivation:
+        return (False, ["bundleRefs is REQUIRED (spec :531)"])
+    refs = derivation.get("bundleRefs")
+    if not isinstance(refs, list):
+        return (False, ["bundleRefs must be an array (got %s)" % type(refs).__name__])
+    # (4) length + keying/order against bundleRefs (both reasons byte-identical to prior rounds).
     if len(refs) != len(ctx):
         reasons.append("resolutionContext length != bundleRefs length")
     if [e["contentHash"] for e in ctx] != refs:
         reasons.append("resolutionContext not keyed to bundleRefs in order")
+    # (5) top-level replay inputs consumed by replay_receipt's byte-identity compare (round-12).
+    if "metrics" not in derivation or not isinstance(derivation.get("metrics"), dict):
+        reasons.append("metrics must be present and an object")
+    bc = derivation.get("bundleCount")
+    if "bundleCount" not in derivation or not isinstance(bc, int) or isinstance(bc, bool):
+        reasons.append("bundleCount must be present and an integer")
+    # (6) per-disposition member completeness (unchanged from E5).
     for e in ctx:
         if "roleEvidence" not in e or e["roleEvidence"] is None:
             reasons.append("%s: missing roleEvidence" % e.get("contentHash"))
-        role_ev = e.get("roleEvidence") or {}
+        # type-guarded read: object-TYPING of roleEvidence is the round-11 _entry_structural_gate's
+        # job (its grammar reason fires in validate); rrmp only needs to never raise pre-validate on
+        # the integrated path (round-12 lens closure).
+        role_ev = e.get("roleEvidence")
+        role_ev = role_ev if isinstance(role_ev, dict) else {}
         # binding-backed entries carry the BB-6 multiplicity inputs to reproduce selection (R2).
         if role_ev.get("kind") == "binding" and not e.get("bb6Context"):
             reasons.append("%s: binding roleEvidence missing bb6Context" % e.get("contentHash"))
@@ -843,7 +896,10 @@ def _entry_structural_gate(entry, index):
     type-when-present: BB-6 outsider garbage MUST stay prunable-inert and MUST NEVER be able to refuse
     an honest receipt (F2/F4 inertness, spec BB-6 :381/:387); its members are validated at BB-4/BB-5
     re-verification (verify_binding), which only role-holder survivors reach. Fixed, documented check
-    order for stable exact reasons. Returns (ok, reason)."""
+    order for stable exact reasons: entry-is-object -> contentHash-string -> dict-typed-members ->
+    resolvedRole-vocabulary (round-12 B2, before evidence-kind branching so both arms are covered) ->
+    roleEvidence grammar -> counterpartyDisposition -> counterparty/absence member shapes -> bb6Context.
+    Returns (ok, reason)."""
     if not isinstance(entry, dict):
         return (False, "resolutionContext[%d]: entry is not an object (got %s)" % (index, type(entry).__name__))
     # contentHash: REQUIRED string ref (spec :536) — keys the entry to bundleRefs and is deref'd as a key.
@@ -855,6 +911,13 @@ def _entry_structural_gate(entry, index):
         v = entry.get(field)
         if v is not None and not isinstance(v, dict):
             return (False, "%s: %s must be an object (got %s)" % (ch, field, type(v).__name__))
+    # resolvedRole: REQUIRED in the {"buyer","seller"} vocabulary (spec :537). Checked BEFORE the
+    # evidence-kind branch (round-12 B2) so an invalid enum refuses on BOTH the binding- and
+    # address-backed arms directly, not incidentally via the later binding-role comparison (which
+    # never runs on the address arm). Missing counts as invalid.
+    role = entry.get("resolvedRole")
+    if role not in ("buyer", "seller"):
+        return (False, "%s: resolvedRole must be one of ['buyer', 'seller'] (got %r)" % (ch, role))
     # roleEvidence: REQUIRED object on the {"binding","address"} XOR (spec :538-540).
     ok_re, reason_re = _role_evidence_grammar(entry.get("roleEvidence"), ch, "roleEvidence")
     if not ok_re:
@@ -969,10 +1032,14 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         return (False, ["discriminator refusal: " + gate["reason"]])
     reasons = []
     ev_get = evidence_deref if evidence_deref is not None else (lambda h: None)
-    # (1a) PRE-LOOP: resolutionContext present-but-not-a-list is a malformed receipt. Missing stays
-    # accepted (the `.get(...,[])` default), so an empty/absent context still returns (True, []).
+    # (1a) PRE-LOOP: resolutionContext is REQUIRED (spec :532). Missing now refuses with its own
+    # deterministic reason (round-12 B1c); present-but-not-a-list refuses with the existing reason
+    # (unchanged). An empty (present) array still returns (True, []) from the loop below — the
+    # length/keying/emptiness contract against bundleRefs is receipt_required_members_present's job.
+    if "resolutionContext" not in derivation:
+        return (False, ["resolutionContext is REQUIRED (spec :532)"])
     rc = derivation.get("resolutionContext", [])
-    if "resolutionContext" in derivation and not isinstance(rc, list):
+    if not isinstance(rc, list):
         return (False, ["resolutionContext must be an array (got %s)" % type(rc).__name__])
     for index, entry in enumerate(rc):
         # (1b) PER-ENTRY STRUCTURAL GATE: type-when-present for every receipt-supplied member the loop
@@ -1190,6 +1257,12 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     pubkeys enables crypto binding-signature verification (None => structural only).
     Returns (byte_identical, replayed_derivation) — (False, None) on refusal."""
     if not require_replayable_derivation(derivation)["ok"]:
+        return (False, None)
+    # (round-12) integrated-replay completeness gate BEFORE per-copy validation: an object missing the
+    # required resolutionContext / metrics / bundleCount members, or whose context is not keyed 1:1 to
+    # bundleRefs in order, carries no replay claim and must refuse deterministically (never raise).
+    ok_m, _reasons_m = receipt_required_members_present(derivation)
+    if not ok_m:
         return (False, None)
     ok, _reasons = validate_resolution_context(derivation, deref, evidence_deref, pubkeys)
     if not ok:

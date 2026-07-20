@@ -618,11 +618,15 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         self.assertEqual(vrc(p), (True, []))
 
     def test_r11_pf_drop_inert_control(self):
-        """CONTROL (R1/R3 drop-inert witness): a decoy candidate whose FETCHED copy is shape-VALID but
-        POST-FETCH-invalid (a completed FAB signed by SELLER only -> §10.4.1 required-signer fail)
-        alongside the honest winner. The copy is DROPPED inert, the honest winner resolves, the receipt
-        ACCEPTS (True, []). Pins that the Class-5 fix DROPS (not refuses) — green today AND after the
-        fix (today: no shape gate, _post_fetch drops; after: shape passes, _post_fetch drops)."""
+        """CONTROL (R1/R3 drop-inert witness — the ROUND-9 _post_fetch_valid drop LAYER): a decoy
+        candidate whose FETCHED copy is shape-VALID but POST-FETCH-invalid (a completed FAB signed by
+        SELLER only -> §10.4.1 required-signer fail) alongside the honest winner. The copy passes
+        _bundle_shape_ok, then DROPS at _post_fetch_valid; the honest winner resolves; the receipt
+        ACCEPTS (True, []). SCOPE: this pins the round-9 post-fetch drop, NOT the round-11 shape-gate
+        drop — its decoy is shape-VALID, so inverting the round-11 _bundle_shape_ok continue->refuse
+        leaves this control green (mutation MC2). The round-11 shape-gate drop-vs-refuse is pinned
+        instead by test_r11_pf_sig/pf_par: their (True, []) inert-accept assertions go RED if the shape
+        gate refuses instead of dropping a shape-INVALID fetched copy."""
         job = "R11-PF-DROP"
         p = build_absent(job)
         decoy_native = native_address(job, "seller", 6)
@@ -667,6 +671,39 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         executed = {c[0] for c in grid_cells()}
         for needed in RANDOMS_FOUR:
             self.assertIn(needed, executed, "Random's four must appear as grid hits: %s" % needed)
+
+    # ============================================================ B1.5b mutation-pin closures
+    def test_r11_binding_arm_nonobject_defect(self):
+        """PIN (MA3): uniquely pins the GRAMMAR-GATE binding-arm object check in _role_evidence_grammar
+        against its verify_binding backstop. A non-object roleEvidence/counterpartyRoleEvidence `binding`
+        refuses at the GATE with '...binding must be an object'; verify_binding would ALSO refuse but with
+        a DIFFERENT reason ('...binding is not an object'), so this EXACT-reason assertion goes red the
+        moment the gate check is bypassed (the contract-only grid cell stays green under that mutation —
+        it was the pin gap)."""
+        with self.subTest(site="roleEvidence"):
+            p = build_absent("R11-BA1")
+            p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"] = "x"
+            self.assertEqual(vrc(p), (False, ["%s: roleEvidence.binding must be an object (got str)" % p["h"]]))
+        with self.subTest(site="counterpartyRoleEvidence"):
+            p = build_present("R11-BA2")
+            p["deriv"]["resolutionContext"][0]["counterpartyRoleEvidence"]["binding"] = "x"
+            self.assertEqual(vrc(p), (False, ["%s: counterpartyRoleEvidence.binding must be an object (got str)" % p["h"]]))
+
+    def test_r11_signature_member_scalar_defect(self):
+        """PIN (MB9): uniquely pins verify_binding's INGRESS signature.signer / signature.value string
+        typing against their backstops. A non-string signer/value refuses at the ingress with the EXACT
+        'binding.signature.<f> must be a string' reason; WITHOUT the ingress check, signer=123 is
+        backstopped by the BB-4 'signature.signer != binding.signer' mismatch and value=123 by
+        sig6_canonical's isinstance guard — BOTH DIFFERENT reasons, so this exact-reason assertion is the
+        killer (the grid's wrong-scalar cells stay green under that mutation). NOTE: the value ingress
+        check is load-bearing for STRUCTURAL-mode callers (pubkeys=None) too — sig6_canonical is
+        crypto-gated, so without the ingress a struct-mode value=123 would not be typed at all."""
+        for member in ("signer", "value"):
+            with self.subTest(member=member):
+                p = build_absent("R11-SIGM-%s" % member)
+                p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"]["signature"][member] = 123
+                self.assertEqual(vrc(p), (False, [
+                    "%s: roleEvidence BB-4: binding.signature.%s must be a string (got int)" % (p["h"], member)]))
 
 
 if __name__ == "__main__":

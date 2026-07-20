@@ -50,6 +50,59 @@ SUPPORTED_BINDING_VERSIONS = frozenset({"1"})
 _ABORT = {"aborted-by-self", "aborted-by-other"}
 _FAILURE = {"failed-perm", "failed-counterparty"}
 
+# CORE §B.7 "Algorithm" (spec line 369) registers Ed25519, ECDSA-secp256k1, and sr1-aggregate as the
+# signing algorithms; the `algorithm` identifier the DACS-5 builders + conformance vectors write for a
+# BundleSignature / binding signature is the lowercase string "ed25519". This reference verifier only
+# implements ed25519 (verify_sig uses Ed25519PublicKey), so that is the supported set: an entry whose
+# algorithm is unsupported-by-this-verifier or absent has a payload this verifier cannot reproduce and
+# MUST be rejected (SIG-3). Dispatch is on this label, never assumed.
+SUPPORTED_SIGNATURE_ALGORITHMS = frozenset({"ed25519"})
+
+# CORE §B.7 SIG-6 canonical unpadded Base64URL alphabet (spec lines 320-321): the canonical value is
+# non-empty and contains ONLY these characters — no `=` padding, no whitespace, no standard-Base64 `+`/`/`.
+_SIG6_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+
+
+def sig6_canonical(value):
+    """CORE §B.7 SIG-6 strict canonical-signature-value check (spec lines 311-329). Returns (ok, reason).
+
+    A verifier MUST reject padding, whitespace, the standard-Base64 `+`/`/` characters, impossible
+    lengths, invalid residual bits, and every other non-canonical spelling BEFORE cryptographic
+    verification (SIG-6). The check is: (1) non-empty str over the unpadded URL-safe alphabet only, then
+    (2) decode the value and compare it with an unpadded Base64URL re-encoding of the decoded bytes,
+    exactly (this rejects non-minimal trailing residual bits that survive the alphabet filter).
+
+    This does NOT perform algorithm-specific length/format validation — that stays separate (spec
+    lines 331-332), enforced by verify_sig / SUPPORTED_SIGNATURE_ALGORITHMS."""
+    if not isinstance(value, str) or value == "":
+        return (False, "SIG-6: signature value is empty or not a string")
+    if any(c not in _SIG6_ALPHABET for c in value):
+        return (False, "SIG-6: signature value is non-canonical (padding, whitespace, or non-URL-safe alphabet)")
+    try:
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    except (ValueError, TypeError):
+        return (False, "SIG-6: signature value is not decodable unpadded Base64URL")
+    if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:
+        return (False, "SIG-6: signature value is a non-canonical Base64URL spelling (re-encode mismatch)")
+    return (True, "ok")
+
+
+def _required_bundle_signers(bundle):
+    """§10.4.1 required-signer set for BOTH bundle types — AttestationBundle and
+    FaultAttestationBundle (DACS-5 §10.4.1 lines 318-323): 'Required signers: buyer + seller. If the
+    orchestrator is a distinct party (not buyer or seller), the orchestrator signature is also
+    REQUIRED.' The rule is NOT type-specific — the `outcome` enum is common to both types and spec
+    :475/:798 state the single-signed non-abort rejection without distinguishing bundle types.
+    Returns the list of required roles in a stable order; orchestrator is included only when a
+    parties[] role 'orchestrator' is present AND its primaryClaim is distinct from both buyer's and
+    seller's (the spec's distinctness qualifier)."""
+    roster = {p.get("role"): p.get("primaryClaim") for p in bundle.get("parties", [])}
+    required = ["buyer", "seller"]
+    orch = roster.get("orchestrator")
+    if orch is not None and orch != roster.get("buyer") and orch != roster.get("seller"):
+        required.append("orchestrator")
+    return required
+
 
 # --------------------------------------------------------------------------- #
 # Canonicalisation + hashing (extracted from test_bundle_binding_vectors.py)
@@ -110,8 +163,10 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
     binding.bundleContentHash == expected_content_hash byte-for-byte when supplied (BB-5 check 8).
     The domain-separated signature over BINDING_DOMAIN || binding_hash(binding) is verified ONLY
     when `pubkeys` is provided AND HAVE_CRYPTO (callers pass pubkeys=None to skip crypto, mirroring
-    the existing gating idiom). `pubkeys` maps a signer ClaimReference -> raw ed25519 public bytes.
-    Returns {"ok": bool, "reason": str}."""
+    the existing gating idiom); under that crypto gate the binding signature also passes F3
+    algorithm-label dispatch (SUPPORTED_SIGNATURE_ALGORITHMS) and F4 SIG-6 canonical-value checking
+    (sig6_canonical) BEFORE the ed25519 verification. `pubkeys` maps a signer ClaimReference -> raw
+    ed25519 public bytes. Returns {"ok": bool, "reason": str}."""
     if not isinstance(binding, dict):
         return {"ok": False, "reason": "binding is not an object"}
     sig = binding.get("signature") or {}
@@ -132,6 +187,13 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
         pk = pubkeys.get(binding.get("signer"))
         if pk is None:
             return {"ok": False, "reason": "BB-4: no public key for signer %r" % (binding.get("signer"),)}
+        alg = sig.get("algorithm")                                # F3: dispatch on the declared label
+        if alg not in SUPPORTED_SIGNATURE_ALGORITHMS:
+            return {"ok": False, "reason": "BB-4/SIG-6: unsupported or missing binding signature "
+                    "algorithm %r for signer %r" % (alg, binding.get("signer"))}
+        ok_c, reason_c = sig6_canonical(sig.get("value", ""))     # F4: SIG-6 BEFORE verify_sig
+        if not ok_c:
+            return {"ok": False, "reason": "BB-4/%s (binding signature)" % (reason_c,)}
         if not verify_sig(pk, BINDING_DOMAIN, binding_hash(binding), sig.get("value", "")):
             return {"ok": False, "reason": "BB-4: binding signature does not verify"}
     return {"ok": True, "reason": "binding valid"}
@@ -281,6 +343,10 @@ def _full_standing(bundle):
     signature is present for EVERY party in its `parties[]` (co-signed); anything less is lesser
     standing. Structural presence-per-party.
 
+    This is the BB-6 PRECEDENCE standing (§10.4.2 spec line 381 — a structural all-parties-signed
+    count over already-validated copies), DISTINCT from admission's outcome-dependent required-signer
+    set (_required_bundle_signers / _bundle_signatures_valid F1); the two answer different questions.
+
     HARDENING (round-9): standing is a presence count and MUST NOT be computed on a copy whose
     signatures have not already been validated. In the replay reconstruction the only bundles that
     reach resolve_bb6 (and thus this predicate, via `anchored`) are the ones _post_fetch_valid()
@@ -294,27 +360,66 @@ def _full_standing(bundle):
 
 
 def _bundle_signatures_valid(bundle, pubkeys):
-    """§10.4.1 bundle signature validity + required-signer (round-9 BB-5 check 9 facet). The copy's
-    anchoring role-holder (parties[] entry whose role == anchoredByRole) MUST carry a signature;
-    structural presence always, ed25519 verification of EVERY carried signature under pubkeys +
-    HAVE_CRYPTO (callers pass pubkeys=None to skip crypto, mirroring the module's gating idiom).
-    Returns (ok, reason)."""
+    """§10.4.1 bundle signature validity + required-signer, applied IDENTICALLY to both bundle types
+    (round-10; AttestationBundle and FaultAttestationBundle). The required-signer set is
+    OUTCOME-DEPENDENT (spec DACS-5 §10.4.1 lines 318-323, :475/:798): a non-abort outcome
+    (completed / failed-perm / failed-counterparty / failed-substrate) requires buyer + seller
+    (+ distinct orchestrator) all signed; an abort outcome (aborted-by-*) MAY be single-signed and is
+    floored on the anchoring role-holder. Then EVERY carried signature entry (the RAW list, duplicates
+    included) is checked in order — F3 algorithm-label dispatch (SUPPORTED_SIGNATURE_ALGORITHMS) ->
+    F4 SIG-6 canonical value (sig6_canonical, BEFORE verify) -> F2 ed25519 verification of each entry.
+    Signature checks are crypto-gated (callers pass pubkeys=None to skip, mirroring the module's gating
+    idiom). Returns (ok, reason)."""
     if not isinstance(bundle, dict):
         return (False, "bundle is not an object")
     anchor_role = bundle.get("anchoredByRole")
     role_holder = {p.get("role"): p.get("primaryClaim") for p in bundle.get("parties", [])}
-    required = role_holder.get(anchor_role)
-    sigs = {s.get("party"): s for s in bundle.get("signatures", [])}
-    if required is None or required not in sigs:
-        return (False, "§10.4.1 required signer (the %r role-holder) has no signature" % (anchor_role,))
+    raw_sigs = bundle.get("signatures", [])                # RAW list — NEVER a party-keyed dict (F2: a
+    signers_present = {s.get("party") for s in raw_sigs}   # party-keyed dict silently drops all-but-last)
+
+    # F1 required-signer set (§10.4.1 verification-and-signer rules, DACS-5 lines 318-323), applied
+    # TYPE-AGNOSTICALLY to both AttestationBundle and FaultAttestationBundle (spec :475/:798: the
+    # single-signed non-abort rejection is not type-specific; the outcome enum is common to both):
+    #   non-abort outcome (completed / failed-perm / failed-counterparty / failed-substrate)  =>
+    #     buyer + seller (+ distinct orchestrator) MUST all have signed (spec line 322);
+    #   abort outcome (aborted-by-self / aborted-by-other) MAY be single-signed (spec line 323) — the
+    #     preserved floor is that the anchoring role-holder itself has signed.
+    if bundle.get("outcome") in _ABORT:
+        required = role_holder.get(anchor_role)
+        if required is None or required not in signers_present:
+            return (False, "§10.4.1 required signer (the %r role-holder) has no signature" % (anchor_role,))
+    else:
+        for role in _required_bundle_signers(bundle):
+            claim = role_holder.get(role)
+            if claim is None:
+                return (False, "§10.4.1 required signer role %r absent from the bundle roster "
+                               "(outcome %r requires buyer+seller%s)"
+                        % (role, bundle.get("outcome"),
+                           " + distinct orchestrator" if role == "orchestrator" else ""))
+            if claim not in signers_present:
+                return (False, "§10.4.1 required signer %r (%s) has no signature for a non-abort "
+                               "outcome %r" % (role, claim, bundle.get("outcome")))
+
+    # F2/F3/F4: EVERY carried signature entry (the RAW list, duplicates included) must be canonical,
+    # carry a supported algorithm, and verify. Crypto-gated exactly like the prior implementation
+    # (callers pass pubkeys=None to skip crypto); SIG-6 canonicality + algorithm dispatch run right
+    # before verify_sig at this same site.
     if pubkeys is not None and HAVE_CRYPTO:
         h = bundle_hash(bundle)
         dom = bundle_domain(bundle)
-        for party, s in sigs.items():
+        for s in raw_sigs:
+            party = s.get("party")
             pk = pubkeys.get(party)
             if pk is None:
                 return (False, "no public key for bundle signer %r" % (party,))
-            if not verify_sig(pk, dom, h, s.get("value", "")):
+            alg = s.get("algorithm")                              # F3: dispatch on the declared label
+            if alg not in SUPPORTED_SIGNATURE_ALGORITHMS:
+                return (False, "§10.4.1/SIG-6 unsupported or missing signature algorithm %r for bundle "
+                               "signer %r" % (alg, party))
+            ok_c, reason_c = sig6_canonical(s.get("value", ""))   # F4: SIG-6 BEFORE verify_sig
+            if not ok_c:
+                return (False, "%s for bundle signer %r" % (reason_c, party))
+            if not verify_sig(pk, dom, h, s.get("value", "")):    # F2: every entry must verify
                 return (False, "§10.4.1 bundle signature does not verify for signer %r" % (party,))
     return (True, "ok")
 
@@ -679,6 +784,104 @@ def _canon_sha(obj):
     return hashlib.sha256(canonical(obj)).hexdigest()
 
 
+# The §10.4.1 bundle `outcome` enum common to both bundle types (spec DACS-5 §10.4.1 line 481).
+# _outcome_class() accepts EXACTLY these and raises ValueError on anything else; that ValueError is
+# caught in _post_fetch_valid (implied_fault_set) but NOT in divergence(), so an unknown outcome on a
+# structurally-unvalidated counterparty copy would escape — hence the deref'd-copy validator pins it.
+_KNOWN_OUTCOMES = frozenset({"completed", "failed-substrate", "aborted-by-self",
+                             "aborted-by-other", "failed-perm", "failed-counterparty"})
+
+
+def _entry_structural_gate(entry, index):
+    """Round-10 D6 per-entry structural gate (step-5 1b): TYPE-WHEN-PRESENT for the receipt-supplied
+    members the replay loop reads by attribute/iteration/index. Presence/absence semantics are
+    UNCHANGED — a field that is absent, or falsy-None where the existing `or {}` / `if not` idiom
+    already tolerates None, is NOT newly flagged; only a present value of the wrong type refuses.
+    candidateBindings is the exception: its downstream read is `.get(...,[])` (defaults on MISSING
+    only, NOT on null), so a present-but-null value would still crash — it is flagged by membership.
+    Returns (ok, reason)."""
+    if not isinstance(entry, dict):
+        return (False, "resolutionContext[%d]: entry is not an object (got %s)" % (index, type(entry).__name__))
+    ch = entry.get("contentHash")
+    # dict-typed members guarded downstream by falsy-tolerant `or {}` / `if not`: flag truthy non-dict only.
+    for field in ("roleEvidence", "bb6Context", "counterpartyRef", "counterpartyRoleEvidence", "absenceEvidenceRef"):
+        v = entry.get(field)
+        if v is not None and not isinstance(v, dict):
+            return (False, "%s: %s must be an object (got %s)" % (ch, field, type(v).__name__))
+    ctx = entry.get("bb6Context")
+    if isinstance(ctx, dict):
+        pm = ctx.get("partyMap")
+        if pm is not None and not isinstance(pm, dict):
+            return (False, "%s: bb6Context.partyMap must be an object (got %s)" % (ch, type(pm).__name__))
+        if "candidateBindings" in ctx:
+            cbs = ctx["candidateBindings"]
+            if not isinstance(cbs, list):
+                return (False, "%s: bb6Context.candidateBindings must be an array (got %s)" % (ch, type(cbs).__name__))
+            for k, c in enumerate(cbs):
+                if not isinstance(c, dict):
+                    return (False, "%s: bb6Context.candidateBindings[%d] is not an object (got %s)"
+                            % (ch, k, type(c).__name__))
+                for sf in ("signer", "nativeAddress", "bundleContentHash"):
+                    sv = c.get(sf)
+                    if sv is not None and not isinstance(sv, str):
+                        return (False, "%s: bb6Context.candidateBindings[%d].%s must be a string (got %s)"
+                                % (ch, k, sf, type(sv).__name__))
+    return (True, None)
+
+
+def _bundle_shape_ok(bundle):
+    """Round-10 D6 deref'd-copy shape validator (step-5 1c). Validates EXACTLY the fields the replay
+    path consumes from a dereferenced bundle copy by subscript / hash-key / iteration — beyond the
+    isinstance-dict guard already applied — and nothing more. The consuming site justifying each field
+    is documented in the step-5 report. divergence() and the other helpers stay UNTOUCHED; this
+    validator is the shape gate in front of them. Returns (ok, reason)."""
+    # parties: roster_roles() does p["role"] (subscript); validate_resolution_context (:825) and
+    # _bundle_signatures_valid build dicts keyed by p.get("primaryClaim") (unhashable key => crash).
+    parties = bundle.get("parties")
+    if "parties" in bundle and not isinstance(parties, list):
+        return (False, "parties must be an array (got %s)" % type(parties).__name__)
+    for k, p in enumerate(parties or []):
+        if not isinstance(p, dict):
+            return (False, "parties[%d] is not an object (got %s)" % (k, type(p).__name__))
+        for pf in ("role", "primaryClaim"):
+            if not isinstance(p.get(pf), str):
+                return (False, "parties[%d].%s must be a string (got %s)" % (k, pf, type(p.get(pf)).__name__))
+    # signatures: _bundle_signatures_valid iterates the raw list; {s.get("party")} forms a set
+    # (unhashable party => crash); _full_standing likewise. Each entry is a dict with a string party.
+    sigs = bundle.get("signatures")
+    if "signatures" in bundle and not isinstance(sigs, list):
+        return (False, "signatures must be an array (got %s)" % type(sigs).__name__)
+    for k, s in enumerate(sigs or []):
+        if not isinstance(s, dict):
+            return (False, "signatures[%d] is not an object (got %s)" % (k, type(s).__name__))
+        if not isinstance(s.get("party"), str):
+            return (False, "signatures[%d].party must be a string (got %s)" % (k, type(s.get("party")).__name__))
+    # outcome: _outcome_class(copy["outcome"]) subscripts + rejects unknowns via ValueError (uncaught
+    # inside divergence); implied_fault_set(outcome) likewise. Must be a known-enum string.
+    outcome = bundle.get("outcome")
+    if not isinstance(outcome, str) or outcome not in _KNOWN_OUTCOMES:
+        return (False, "outcome must be one of %s (got %r)" % (sorted(_KNOWN_OUTCOMES), outcome))
+    # anchoredByRole: copy["anchoredByRole"] subscript in divergence (legacy/mixed); implied_fault_set.
+    if not isinstance(bundle.get("anchoredByRole"), str):
+        return (False, "anchoredByRole must be a string (got %s)" % type(bundle.get("anchoredByRole")).__name__)
+    # faultedParty: _fab_faulted(bundle) = bundle["faultedParty"] (subscript) on a FAB pair/mixed.
+    if is_fab(bundle) and not isinstance(bundle.get("faultedParty"), str):
+        return (False, "faultedParty must be a string on a FaultAttestationBundle (got %s)"
+                % type(bundle.get("faultedParty")).__name__)
+    # phaseSummary: _phase_summary_diverges builds {e["index"]: e} — e["index"] subscript AND dict key
+    # (must be present + hashable). kind/outcome/errorClass are `.get` (safe).
+    ps = bundle.get("phaseSummary")
+    if "phaseSummary" in bundle and not isinstance(ps, list):
+        return (False, "phaseSummary must be an array (got %s)" % type(ps).__name__)
+    for k, e in enumerate(ps or []):
+        if not isinstance(e, dict):
+            return (False, "phaseSummary[%d] is not an object (got %s)" % (k, type(e).__name__))
+        if not isinstance(e.get("index"), (int, str)):
+            return (False, "phaseSummary[%d].index must be an int or string (got %s)"
+                    % (k, type(e.get("index")).__name__))
+    return (True, None)
+
+
 def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None):
     """Executable replay validation of every authenticated copy in a ReplayableReputationDerivation
     (round-6 blocker #2). For each entry: re-verify roleEvidence (BB-4/BB-5 via verify_binding);
@@ -693,7 +896,18 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         return (False, ["discriminator refusal: " + gate["reason"]])
     reasons = []
     ev_get = evidence_deref if evidence_deref is not None else (lambda h: None)
-    for entry in derivation.get("resolutionContext", []):
+    # (1a) PRE-LOOP: resolutionContext present-but-not-a-list is a malformed receipt. Missing stays
+    # accepted (the `.get(...,[])` default), so an empty/absent context still returns (True, []).
+    rc = derivation.get("resolutionContext", [])
+    if "resolutionContext" in derivation and not isinstance(rc, list):
+        return (False, ["resolutionContext must be an array (got %s)" % type(rc).__name__])
+    for index, entry in enumerate(rc):
+        # (1b) PER-ENTRY STRUCTURAL GATE: type-when-present for every receipt-supplied member the loop
+        # reads by attr/iteration/index, BEFORE any of the falsy-only `or {}` idioms below run.
+        ok_entry, reason_entry = _entry_structural_gate(entry, index)
+        if not ok_entry:
+            reasons.append(reason_entry)
+            continue
         ch = entry.get("contentHash")
         auth = deref(ch)
         if not isinstance(auth, dict):
@@ -705,6 +919,12 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         if bundle_hash(auth) != ch:
             reasons.append("%s: roleEvidence bundle content-hash mismatch (recomputed %s)"
                            % (ch, bundle_hash(auth)))
+            continue
+        # (1c) WINNER shape validator — AFTER the content-hash check (hash-mismatch reason stays first),
+        # BEFORE any structural read of the winner (roster, signatures, faultedParty, divergence).
+        ok_w, reason_w = _bundle_shape_ok(auth)
+        if not ok_w:
+            reasons.append("%s: winner copy %s" % (ch, reason_w))
             continue
         role = entry.get("resolvedRole")
         other = _other(role) if role in ("buyer", "seller") else None
@@ -747,6 +967,13 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 reasons.append("%s: bb6Context.budget absent (BB-6 fetch budget is schema-required)" % ch)
                 continue
             budget = ctx["budget"]                                   # RECORDED budget — never re-defaulted
+            # F5: validate the recorded budget's TYPE/RANGE before ANY comparison, slice, or pass-down to
+            # resolve_bb6 — the BB-6 fetch budget is N=8 authorized-or-unresolved candidates per signer
+            # (§10.4.2 BB-6, spec line 381), a positive integer. A non-int (str/float/None) or bool or <1
+            # is a malformed receipt, refused closed — no TypeError may escape for an arbitrary value.
+            if (not isinstance(budget, int)) or isinstance(budget, bool) or budget < 1:
+                reasons.append("%s: bb6Context.budget must be an integer >= 1 (got %r)" % (ch, budget))
+                continue
             party_map = ctx.get("partyMap")
             # a. PRUNE FIRST (pre-verify, pre-fetch), role-holder-strict on the entry's resolvedRole (`role`);
             #    no map => no prune. Cross-role / outsider candidates drop silently, zero fetch (F2/F4/F5).
@@ -826,6 +1053,13 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             cp = deref(cref.get("contentHash"))
             if not isinstance(cp, dict):
                 reasons.append("%s: counterpartyRef not dereferenceable" % ch)
+                continue
+            # (1c) COUNTERPARTY shape validator — AFTER the isinstance-dict guard, BEFORE divergence()
+            # (which subscripts outcome/faultedParty/anchoredByRole/phaseSummary on an otherwise-
+            # unvalidated copy). divergence() itself stays untouched.
+            ok_cp, reason_cp = _bundle_shape_ok(cp)
+            if not ok_cp:
+                reasons.append("%s: counterparty copy %s" % (ch, reason_cp))
                 continue
             cre = entry.get("counterpartyRoleEvidence")
             if not cre:

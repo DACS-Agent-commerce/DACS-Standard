@@ -15,6 +15,26 @@ A DACS **profile** pins a coherent set of document versions that implement and c
 
 **Conformance to "DACS v0.1"** means conformance to every document at the version pinned above, exercised by the [conformance vectors](../conformance/).
 
+## Current v0.x release-line composition
+
+The unqualified profile name remains **DACS v0.1**: it names the common full-profile
+baseline and does not advance when one stage receives an additive minor release. A
+claim against a later v0.x revision therefore MUST also pin the exact specification
+commit and per-document versions. The current unreleased composition is:
+
+| Document | Version | Status |
+| --- | --- | --- |
+| [CORE](CORE.md) | 0.1 | Draft |
+| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.3 | Draft |
+| [DACS-2-VET](DACS-2-VET.md) | 0.2 | Draft |
+| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.3 | Draft |
+| [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.3 | Draft |
+| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.3 | Draft |
+
+This table is release-candidate metadata, not a release declaration. The final
+coordinated cut is identified by its annotated repository tag; until that tag exists,
+implementers pin a reviewed commit explicitly.
+
 ## Qualified implementation claims
 
 The unqualified phrase **“DACS v0.1 conformant”** retains the full-profile meaning

@@ -13,17 +13,17 @@
     "commit": "494fc1b7a0a523d2da6e630203084eb2d6020a2b",
     "documents": {
       "CORE": "0.1",
-      "DACS-1": "0.1",
-      "DACS-2": "0.1",
-      "DACS-3": "0.1",
-      "DACS-4": "0.1",
-      "DACS-5": "0.1"
+      "DACS-1": "0.3",
+      "DACS-2": "0.2",
+      "DACS-3": "0.3",
+      "DACS-4": "0.3",
+      "DACS-5": "0.3"
     }
   },
   "roles": ["seller"],
   "conformanceSuite": {
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
-    "commit": "db9f9c0075a63d69d4464bac62cbfb2362a3f223",
+    "commit": "494fc1b7a0a523d2da6e630203084eb2d6020a2b",
     "manifestPath": "conformance/MANIFEST.json",
     "manifestSha256": "185bf14ce7f1da6053b8dc0d7f208639cda6f078d9ff46f8d75a2a1767a7c408"
   },

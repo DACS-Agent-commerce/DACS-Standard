@@ -1,0 +1,204 @@
+{
+  "set": "metered-pricing-v0.3",
+  "spec": "DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec",
+  "decisionModel": "Metered agreements fail closed unless currency, unit, canonical whole-unit quantity, and exact decimal recomputation all agree. Fractional raw usage is ceiled before signing; unknown pricing kinds are rejected before commitment.",
+  "hash": "aa23887618b8c7670e43504a2ce9837ae32ced5eb72c236c61768724864efddb",
+  "count": 22,
+  "vectors": [
+    {
+      "name": "exact-whole-unit-product",
+      "rule": "MTR-1/MTR-4",
+      "surface": "agreement-validation",
+      "expected": "accept",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1.25", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "5", "currency": "USDC" }, "meteredQuantity": { "quantity": "4", "unit": "request" } },
+      "want": { "computedAmount": "5" }
+    },
+    {
+      "name": "minimum-total-dominates-product",
+      "rule": "MTR-2/MTR-4",
+      "surface": "agreement-validation",
+      "expected": "accept",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "0.25", "currency": "USDC" }, "unit": "token", "minTotal": { "amount": "2", "currency": "USDC" } },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "2", "unit": "token" } },
+      "want": { "computedAmount": "2" }
+    },
+    {
+      "name": "product-exceeds-minimum-total",
+      "rule": "MTR-2/MTR-4",
+      "surface": "agreement-validation",
+      "expected": "accept",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1.25", "currency": "USDC" }, "unit": "minute", "minTotal": { "amount": "2", "currency": "USDC" } },
+      "terms": { "price": { "amount": "3.75", "currency": "USDC" }, "meteredQuantity": { "quantity": "3", "unit": "minute" } },
+      "want": { "computedAmount": "3.75" }
+    },
+    {
+      "name": "zero-quantity-uses-positive-minimum",
+      "rule": "MTR-4 + PriceTerm positivity",
+      "surface": "agreement-validation",
+      "expected": "accept",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "0.5", "currency": "USDC" }, "unit": "request", "minTotal": { "amount": "1", "currency": "USDC" } },
+      "terms": { "price": { "amount": "1", "currency": "USDC" }, "meteredQuantity": { "quantity": "0", "unit": "request" } },
+      "want": { "computedAmount": "1" }
+    },
+    {
+      "name": "large-integer-product-is-exact",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "accept",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "0.000001", "currency": "USDC" }, "unit": "token" },
+      "terms": { "price": { "amount": "123.456789", "currency": "USDC" }, "meteredQuantity": { "quantity": "123456789", "unit": "token" } },
+      "want": { "computedAmount": "123.456789" }
+    },
+    {
+      "name": "fractional-raw-usage-ceils",
+      "rule": "MTR-4",
+      "surface": "quantity-derivation",
+      "expected": "accept",
+      "rawMeasurement": "2.01",
+      "want": { "quantity": "3" }
+    },
+    {
+      "name": "whole-raw-usage-stays-whole",
+      "rule": "MTR-4",
+      "surface": "quantity-derivation",
+      "expected": "accept",
+      "rawMeasurement": "2",
+      "want": { "quantity": "2" }
+    },
+    {
+      "name": "sub-unit-raw-usage-ceils-to-one",
+      "rule": "MTR-4",
+      "surface": "quantity-derivation",
+      "expected": "accept",
+      "rawMeasurement": "0.0001",
+      "want": { "quantity": "1" }
+    },
+    {
+      "name": "agreement-currency-mismatch",
+      "rule": "MTR-1",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "2", "currency": "EUR" }, "meteredQuantity": { "quantity": "2", "unit": "request" } },
+      "want": { "reason": "price-currency-mismatch" }
+    },
+    {
+      "name": "minimum-total-currency-mismatch",
+      "rule": "MTR-2",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request", "minTotal": { "amount": "2", "currency": "EUR" } },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "2", "unit": "request" } },
+      "want": { "reason": "min-total-currency-mismatch" }
+    },
+    {
+      "name": "empty-unit-label",
+      "rule": "MTR-3",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "" },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "2", "unit": "" } },
+      "want": { "reason": "empty-metered-unit" }
+    },
+    {
+      "name": "missing-metered-quantity",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "2", "currency": "USDC" } },
+      "want": { "reason": "missing-metered-quantity" }
+    },
+    {
+      "name": "metered-quantity-unit-mismatch",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "2", "unit": "token" } },
+      "want": { "reason": "metered-unit-mismatch" }
+    },
+    {
+      "name": "quantity-leading-zero",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "02", "unit": "request" } },
+      "want": { "reason": "non-canonical-metered-quantity" }
+    },
+    {
+      "name": "quantity-plus-sign",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "+2", "unit": "request" } },
+      "want": { "reason": "non-canonical-metered-quantity" }
+    },
+    {
+      "name": "quantity-negative",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "-2", "unit": "request" } },
+      "want": { "reason": "non-canonical-metered-quantity" }
+    },
+    {
+      "name": "quantity-decimal-point",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "2.0", "unit": "request" } },
+      "want": { "reason": "non-canonical-metered-quantity" }
+    },
+    {
+      "name": "quantity-exponent",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "100", "currency": "USDC" }, "meteredQuantity": { "quantity": "1e2", "unit": "request" } },
+      "want": { "reason": "non-canonical-metered-quantity" }
+    },
+    {
+      "name": "recomputed-total-mismatch",
+      "rule": "MTR-4",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1.25", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "5.01", "currency": "USDC" }, "meteredQuantity": { "quantity": "4", "unit": "request" } },
+      "want": { "reason": "metered-total-mismatch", "computedAmount": "5" }
+    },
+    {
+      "name": "non-canonical-recomputed-total",
+      "rule": "MTR-4/CD-1",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "metered", "unitPrice": { "amount": "1.25", "currency": "USDC" }, "unit": "request" },
+      "terms": { "price": { "amount": "5.00", "currency": "USDC" }, "meteredQuantity": { "quantity": "4", "unit": "request" } },
+      "want": { "reason": "non-canonical-price-amount", "computedAmount": "5" }
+    },
+    {
+      "name": "unknown-pricing-kind-fails-before-commit",
+      "rule": "MTR-5",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "future-volume-tier", "price": { "amount": "1", "currency": "USDC" } },
+      "terms": { "price": { "amount": "1", "currency": "USDC" } },
+      "want": { "reason": "unrecognized-pricing-kind", "commitAgreement": false }
+    },
+    {
+      "name": "metered-quantity-on-fixed-price-is-rejected",
+      "rule": "AgreementTerms presence iff metered",
+      "surface": "agreement-validation",
+      "expected": "reject",
+      "pricing": { "kind": "fixed", "price": { "amount": "2", "currency": "USDC" } },
+      "terms": { "price": { "amount": "2", "currency": "USDC" }, "meteredQuantity": { "quantity": "2", "unit": "request" } },
+      "want": { "reason": "unexpected-metered-quantity" }
+    }
+  ]
+}

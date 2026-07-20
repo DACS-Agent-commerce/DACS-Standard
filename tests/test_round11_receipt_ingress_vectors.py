@@ -195,6 +195,19 @@ def vrc(p):
                                          lambda x: p["ev"].get(x), PUBKEYS)
 
 
+def seller_binding_raw(job, native, content_hash, role="seller", signer_role="seller"):
+    """A BundleBinding built raw so nativeAddress / bundleContentHash may be None (make_binding slices
+    native[5:21]); signed over its real binding_hash so it passes BB-4 crypto in both modes."""
+    bd = {"bindingVersion": "1", "jobId": job, "role": role,
+          "logicalAddress": logical_address(job, role),
+          "nativeAddress": native, "bundleContentHash": content_hash,
+          "anchorTx": "demos-testnet:tx-x", "signer": CLAIM[signer_role]}
+    payload = (BINDING_DOMAIN + binding_hash(bd)).encode("utf-8")
+    bd["signature"] = {"algorithm": "ed25519", "signer": CLAIM[signer_role],
+                       "value": b64u(KEYS[signer_role].sign(payload))}
+    return bd
+
+
 class Round11ReceiptIngressTests(unittest.TestCase):
     def _assert_refused(self, observed, label):
         """TARGET contract: a malformed receipt refuses — ok is False, reasons non-empty. (Reaching
@@ -211,7 +224,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         skipped and the absent path passes -> fail-open (True, [])."""
         p = build_absent("R11-A")
         p["deriv"]["resolutionContext"][0]["roleEvidence"] = {}
-        self._assert_refused(vrc(p), "a/roleEvidence={}")
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence.kind must be one of ['address', 'binding'] (got None)" % p["h"]]))
 
     def test_r11_a2_role_evidence_unknown_kind_defect(self):
         """DEFECT (§10.5.3 :538-540 — 'its supported kind', Random's ask): an UNRECOGNISED roleEvidence
@@ -219,7 +232,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         re-verification -> fail-open (True, [])."""
         p = build_absent("R11-A2")
         p["deriv"]["resolutionContext"][0]["roleEvidence"] = {"kind": "not-a-real-kind"}
-        self._assert_refused(vrc(p), "a2/roleEvidence.kind=unknown")
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence.kind must be one of ['address', 'binding'] (got 'not-a-real-kind')" % p["h"]]))
 
     # ============================================================ (b) counterpartyDisposition off the set
     def test_r11_b_disposition_unknown_defect(self):
@@ -228,7 +241,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         entry passes unchecked -> fail-open (True, [])."""
         p = build_absent("R11-B")
         p["deriv"]["resolutionContext"][0]["counterpartyDisposition"] = "maybe-later"
-        self._assert_refused(vrc(p), "b/disposition=unknown")
+        self.assertEqual(vrc(p), (False, ["%s: counterpartyDisposition must be one of ['absent', 'present'] (got 'maybe-later')" % p["h"]]))
 
     def test_r11_b2_disposition_missing_defect(self):
         """DEFECT (§10.5.3 :546 — 'unsupported/missing disposition values', Random's ask): a MISSING
@@ -236,7 +249,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         -> fail-open (True, [])."""
         p = build_absent("R11-B2")
         del p["deriv"]["resolutionContext"][0]["counterpartyDisposition"]
-        self._assert_refused(vrc(p), "b2/disposition missing")
+        self.assertEqual(vrc(p), (False, ["%s: counterpartyDisposition must be one of ['absent', 'present'] (got None)" % p["h"]]))
 
     # ============================================================ (c) non-string contentHash refs
     def test_r11_c1_entry_content_hash_type_defect(self):
@@ -245,7 +258,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         'dict' escapes through the dict.get deref."""
         p = build_absent("R11-C1")
         p["deriv"]["resolutionContext"][0]["contentHash"] = {}
-        self._assert_refused(vrc(p), "c1/entry contentHash={}")
+        self.assertEqual(vrc(p), (False, ["resolutionContext[0]: contentHash must be a string (got dict)"]))
 
     def test_r11_c2_counterparty_content_hash_type_defect(self):
         """DEFECT (§10.5.3 :547 — counterpartyRef is an AttestationRef with a string contentHash): a
@@ -253,7 +266,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         present path deref([]) -> TypeError: unhashable type: 'list'."""
         p = build_present("R11-C2")
         p["deriv"]["resolutionContext"][0]["counterpartyRef"]["contentHash"] = []
-        self._assert_refused(vrc(p), "c2/counterpartyRef.contentHash=[]")
+        self.assertEqual(vrc(p), (False, ["%s: counterpartyRef.contentHash must be a string (got list)" % p["h"]]))
 
     def test_r11_c3_absence_content_hash_type_defect(self):
         """DEFECT (§10.5.3 :551 — absenceEvidenceRef.contentHash is a string ref): a non-string
@@ -261,7 +274,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         path evidence_deref({}) -> TypeError: unhashable type: 'dict'."""
         p = build_absent("R11-C3")
         p["deriv"]["resolutionContext"][0]["absenceEvidenceRef"]["contentHash"] = {}
-        self._assert_refused(vrc(p), "c3/absenceEvidenceRef.contentHash={}")
+        self.assertEqual(vrc(p), (False, ["%s: absenceEvidenceRef.contentHash must be a string (got dict)" % p["h"]]))
 
     # ============================================================ (d) non-object nested binding signature
     def test_r11_d_binding_signature_nonobject_defect(self):
@@ -271,7 +284,153 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         no attribute 'get'."""
         p = build_absent("R11-D")
         p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"]["signature"] = "notadict"
-        self._assert_refused(vrc(p), "d/binding.signature='notadict'")
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-4: binding.signature must be an object (got str)" % p["h"]]))
+
+    # ============================================================ B1.3 sweep DELTAS (red-first)
+    def _assert_inert_accept(self, observed, label):
+        """Class-5 contract: a decoy candidate whose FETCHED copy is malformed is DROPPED inert
+        (R1/R3a/R3b, BB-6/BB-7 inertness) — the honest winner still resolves, so the receipt ACCEPTS
+        (True, []). NOT a refusal: an extra candidate must never refuse an otherwise-honest receipt.
+        (Reaching this at all already proves no exception escaped; today these ESCAPE at the un-shape-
+        gated 3rd deref site, which IS the red no-escape assertion.)"""
+        self.assertEqual(observed, (True, []),
+                         "%s: malformed fetched candidate must drop inert -> (True, []), got %r" % (label, observed))
+
+    # ---- Class 4: candidate ordering-sort null keys (survive the type-when-present gate) --------
+    def test_r11_s1_candidate_bch_none_sort_defect(self):
+        """DEFECT: a seller candidate with bundleContentHash=None beside a present-string one reaches
+        the BB-6 ordering sort (:1011) -> TypeError comparing (None, na) vs (str, na). A null binding
+        member is a malformed candidate and MUST refuse, never raise."""
+        p = build_absent("R11-S1")
+        c = make_binding("R11-S1", "seller", "seller", native_address("R11-S1", "seller", 1), None)
+        p["deriv"]["resolutionContext"][0]["bb6Context"]["candidateBindings"].append(c)
+        self.assertEqual(vrc(p), (False, [
+            "%s: bb6Context candidate binding fails BB-4/BB-5 re-verification "
+            "(%s: BB-5: binding.bundleContentHash must be a string (got NoneType))"
+            % (p["h"], native_address("R11-S1", "seller", 1))]))
+
+    def test_r11_s2_candidate_native_none_sort_defect(self):
+        """DEFECT: a seller candidate with nativeAddress=None on a same-bundleContentHash tie reaches
+        the ordering sort (:1011) -> TypeError on the tie-break (str, str) vs (str, None). Refuse."""
+        p = build_absent("R11-S2")
+        c = seller_binding_raw("R11-S2", None, p["h"])
+        p["deriv"]["resolutionContext"][0]["bb6Context"]["candidateBindings"].append(c)
+        self.assertEqual(vrc(p), (False, [
+            "%s: bb6Context candidate binding fails BB-4/BB-5 re-verification "
+            "(None: BB-5: binding.nativeAddress must be a string (got NoneType))" % p["h"]]))
+
+    # ---- Class 1: XOR-arm / disposition vocabulary fail-open -----------------------------------
+    def test_r11_cre_counterparty_kind_unknown_defect(self):
+        """DEFECT (§10.5.3 :548 — counterpartyRoleEvidence XOR {binding|address}): on the present path
+        an UNKNOWN kind skips counterparty role authentication -> fail-open (True, []). Refuse."""
+        p = build_present("R11-CRE")
+        p["deriv"]["resolutionContext"][0]["counterpartyRoleEvidence"] = {"kind": "zzz"}
+        self.assertEqual(vrc(p), (False, ["%s: counterpartyRoleEvidence.kind must be one of ['address', 'binding'] (got 'zzz')" % p["h"]]))
+
+    def test_r11_adr0_address_arm_missing_resolved_defect(self):
+        """DEFECT (§10.5.3 :540 — address arm resolvedAddress REQUIRED string): a {kind:'address'} arm
+        with resolvedAddress MISSING is unvalidated -> fail-open. Refuse (structural shape only this
+        round; the role-segment SEMANTIC check is disclosed residual #3)."""
+        p = build_absent("R11-ADR0")
+        e = p["deriv"]["resolutionContext"][0]
+        e["roleEvidence"] = {"kind": "address"}
+        del e["bb6Context"]
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence.resolvedAddress must be a string (got NoneType)" % p["h"]]))
+
+    def test_r11_adr1_address_arm_nonstring_resolved_defect(self):
+        """DEFECT (§10.5.3 :540): a {kind:'address'} arm with a NON-STRING resolvedAddress is
+        unvalidated -> fail-open. Refuse."""
+        p = build_absent("R11-ADR1")
+        e = p["deriv"]["resolutionContext"][0]
+        e["roleEvidence"] = {"kind": "address", "resolvedAddress": 123}
+        del e["bb6Context"]
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence.resolvedAddress must be a string (got int)" % p["h"]]))
+
+    # ---- Class 3: verify_binding nested-member ingress (4 call sites + crypto sub-path) ---------
+    def test_r11_vbver_binding_version_unhashable_defect(self):
+        """DEFECT: an unhashable binding.bindingVersion escapes at `not in SUPPORTED_BINDING_VERSIONS`
+        (:175), BEFORE crypto, in both modes. Witnessed at TWO of the four verify_binding call sites
+        (roleEvidence vb, absenceBinding vb3); one ingress gate closes all four. Refuse."""
+        with self.subTest(site="roleEvidence"):
+            p = build_absent("R11-VBV1")
+            p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"]["bindingVersion"] = []
+            self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-5: binding.bindingVersion must be a string (got list)" % p["h"]]))
+        with self.subTest(site="absenceBinding"):
+            p = build_absent("R11-VBV2")
+            p["deriv"]["resolutionContext"][0]["absenceBinding"]["bindingVersion"] = []
+            self.assertEqual(vrc(p), (False, ["%s: absenceBinding BB-5: binding.bindingVersion must be a string (got list)" % p["h"]]))
+
+    def test_r11_vbalg_signature_algorithm_unhashable_defect(self):
+        """DEFECT (crypto sub-path): an unhashable signature.algorithm escapes at `not in
+        SUPPORTED_SIGNATURE_ALGORITHMS` (:191). Refuse (both modes, once ingress runs pre-crypto)."""
+        p = build_absent("R11-VBALG")
+        p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"]["signature"]["algorithm"] = []
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-4: binding.signature.algorithm must be a string (got list)" % p["h"]]))
+
+    def test_r11_vbsgn_signer_unhashable_dealiased_defect(self):
+        """DEFECT (crypto sub-path, de-aliased): with candidateBindings holding its OWN deepcopy, an
+        unhashable roleEvidence.binding.signer escapes at `pubkeys.get(signer)` (:187) in crypto mode.
+        build_absent otherwise aliases roleEvidence.binding into candidateBindings[0], masking it via
+        the candidate-signer gate. Refuse."""
+        p = build_absent("R11-VBSGN")
+        e = p["deriv"]["resolutionContext"][0]
+        e["bb6Context"]["candidateBindings"] = [copy.deepcopy(e["roleEvidence"]["binding"])]
+        e["roleEvidence"]["binding"]["signer"] = []
+        e["roleEvidence"]["binding"]["signature"]["signer"] = []
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-5: binding.signer must be a string (got list)" % p["h"]]))
+
+    # ---- Class 3: jobId / role type-collusion (concat sites) -----------------------------------
+    def test_r11_coll1_jobid_type_collusion_defect(self):
+        """DEFECT: winner.jobId AND binding.jobId both 123 — verify_binding's jobId equality (:178)
+        passes on the collusion, then logical_address(123, role) (:182) concatenates int+str ->
+        TypeError, both modes. verify_binding ingress must type jobId. Refuse."""
+        p = build_absent("R11-COLL1")
+        w = p["winner"]; w["jobId"] = 123
+        newch = bundle_hash(w)
+        p["deref"] = {newch: w}
+        p["deriv"]["bundleRefs"] = [newch]
+        e = p["deriv"]["resolutionContext"][0]
+        e["contentHash"] = newch
+        e["roleEvidence"]["binding"]["jobId"] = 123
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-5: binding.jobId must be a string (got int)" % newch]))
+
+    def test_r11_coll2_role_type_collusion_defect(self):
+        """DEFECT: entry.resolvedRole AND binding.role both 123 — verify_binding's role equality (:180)
+        passes on the collusion, then logical_address(jobId, 123) (:182) concatenates str+int ->
+        TypeError, both modes. verify_binding ingress must type role. Refuse."""
+        p = build_absent("R11-COLL2")
+        e = p["deriv"]["resolutionContext"][0]
+        e["resolvedRole"] = 123
+        e["roleEvidence"]["binding"]["role"] = 123
+        self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-5: binding.role must be a string (got int)" % p["h"]]))
+
+    # ---- Class 5: un-shape-gated fetched candidate copy (3rd deref site :1035) ------------------
+    def _pf_decoy(self, job, mutate_fetched, decoy_key="decoy" + "0" * 59):
+        """build_absent + a decoy seller candidate whose FETCHED copy is `mutate_fetched`-mangled; the
+        honest winner is intact. The decoy binding is well-formed, so it survives prune + BB-4/BB-5
+        re-verification and its fetched copy reaches the un-shape-gated _post_fetch_valid at :1035."""
+        p = build_absent(job)
+        decoy_native = native_address(job, "seller", 5)
+        mal = make_fab(job, "completed", "none", "seller", ["buyer", "seller"])
+        mutate_fetched(mal)
+        decoy_bind = make_binding(job, "seller", "seller", decoy_native, decoy_key)
+        p["deriv"]["resolutionContext"][0]["bb6Context"]["candidateBindings"].append(decoy_bind)
+        p["deref"][decoy_key] = mal
+        return p
+
+    def test_r11_pf_sig_fetched_party_unhashable_defect(self):
+        """DEFECT: a decoy whose FETCHED copy carries signatures[0].party=[] escapes at the
+        {s.get('party')} set comprehension in _bundle_signatures_valid (un-shape-gated fetched copy).
+        The fix shape-gates the fetched copy and DROPS it inert -> honest winner resolves -> ACCEPT."""
+        p = self._pf_decoy("R11-PFSIG",
+                           lambda W: W.__setitem__("signatures", [{"party": [], "algorithm": "ed25519", "value": "aa"}]))
+        self._assert_inert_accept(vrc(p), "pf-sig/fetched signatures[0].party []")
+
+    def test_r11_pf_par_fetched_parties_nonobject_defect(self):
+        """DEFECT: a decoy whose FETCHED copy carries parties[0]='x' escapes at _holds_role's p.get
+        genexpr (un-shape-gated fetched copy). The fix shape-gates + DROPS inert -> ACCEPT."""
+        p = self._pf_decoy("R11-PFPAR", lambda W: W.__setitem__("parties", ["x"]))
+        self._assert_inert_accept(vrc(p), "pf-par/fetched parties[0] non-object")
 
     # ============================================================ permanent well-formed controls
     def test_r11_absent_wellformed_control(self):
@@ -294,6 +453,24 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         entry = p["deriv"]["resolutionContext"][0]
         entry["roleEvidence"] = {"kind": "address", "resolvedAddress": p["n"]}
         del entry["bb6Context"]
+        self.assertEqual(vrc(p), (True, []))
+
+    def test_r11_pf_drop_inert_control(self):
+        """CONTROL (R1/R3 drop-inert witness): a decoy candidate whose FETCHED copy is shape-VALID but
+        POST-FETCH-invalid (a completed FAB signed by SELLER only -> §10.4.1 required-signer fail)
+        alongside the honest winner. The copy is DROPPED inert, the honest winner resolves, the receipt
+        ACCEPTS (True, []). Pins that the Class-5 fix DROPS (not refuses) — green today AND after the
+        fix (today: no shape gate, _post_fetch drops; after: shape passes, _post_fetch drops)."""
+        job = "R11-PF-DROP"
+        p = build_absent(job)
+        decoy_native = native_address(job, "seller", 6)
+        # distinct finalisedAt so bundle_hash differs from the winner (bundle_hash excludes signatures,
+        # so a same-content seller-only copy would otherwise collide on `h` and overwrite the winner).
+        decoy_bundle = make_fab(job, "completed", "none", "seller", ["seller"], finalised_at=FINALISED_AT + 1)
+        decoy_h = bundle_hash(decoy_bundle)
+        decoy_bind = make_binding(job, "seller", "seller", decoy_native, decoy_h)
+        p["deriv"]["resolutionContext"][0]["bb6Context"]["candidateBindings"].append(decoy_bind)
+        p["deref"][decoy_h] = decoy_bundle
         self.assertEqual(vrc(p), (True, []))
 
 

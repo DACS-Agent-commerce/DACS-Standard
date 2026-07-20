@@ -158,17 +158,38 @@ def verify_sig(pubkey_bytes, domain, content_hash, sig_value):
 def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_content_hash=None):
     """BB-4 + targeted BB-5 checks on a BundleBinding, for receipt replay (round-6 blocker #2).
 
-    Structural checks ALWAYS run: signature.signer == binding.signer (BB-4);
-    binding.jobId == expected_jobid and binding.role == expected_role (BB-5 check 4);
-    binding.bundleContentHash == expected_content_hash byte-for-byte when supplied (BB-5 check 8).
-    The domain-separated signature over BINDING_DOMAIN || binding_hash(binding) is verified ONLY
-    when `pubkeys` is provided AND HAVE_CRYPTO (callers pass pubkeys=None to skip crypto, mirroring
+    Structural checks ALWAYS run (both modes, pre-crypto): (round-11) the §B.7/§10.4.2 BundleBinding
+    REQUIRED members (spec lines 351-361) — bindingVersion / jobId / role / signer / nativeAddress /
+    bundleContentHash — MUST each be a string, and signature MUST be an object (when present) whose
+    signer / algorithm / value are strings (when present), BEFORE any member is used by string concat
+    (logical_address), set-membership (SUPPORTED_* frozensets), or dict-key (pubkeys.get) — so a
+    malformed binding refuses deterministically instead of raising. Then: signature.signer ==
+    binding.signer (BB-4); binding.jobId == expected_jobid and binding.role == expected_role (BB-5
+    check 4); binding.bundleContentHash == expected_content_hash byte-for-byte when supplied (BB-5
+    check 8). The domain-separated signature over BINDING_DOMAIN || binding_hash(binding) is verified
+    ONLY when `pubkeys` is provided AND HAVE_CRYPTO (callers pass pubkeys=None to skip crypto, mirroring
     the existing gating idiom); under that crypto gate the binding signature also passes F3
     algorithm-label dispatch (SUPPORTED_SIGNATURE_ALGORITHMS) and F4 SIG-6 canonical-value checking
     (sig6_canonical) BEFORE the ed25519 verification. `pubkeys` maps a signer ClaimReference -> raw
     ed25519 public bytes. Returns {"ok": bool, "reason": str}."""
     if not isinstance(binding, dict):
         return {"ok": False, "reason": "binding is not an object"}
+    # (round-11) structural ingress on the BundleBinding required members (spec §B.7 lines 351-361),
+    # ALWAYS run pre-crypto so no receipt-controlled member reaches a concat / `in`-frozenset / dict-key
+    # unchecked. Signature VERIFICATION stays crypto-gated below; only the SHAPE is enforced here.
+    for _f in ("bindingVersion", "jobId", "role", "signer", "nativeAddress", "bundleContentHash"):
+        if not isinstance(binding.get(_f), str):
+            return {"ok": False, "reason": "BB-5: binding.%s must be a string (got %s)"
+                    % (_f, type(binding.get(_f)).__name__)}
+    _sig = binding.get("signature")
+    if _sig is not None and not isinstance(_sig, dict):
+        return {"ok": False, "reason": "BB-4: binding.signature must be an object (got %s)"
+                % type(_sig).__name__}
+    for _f in ("signer", "algorithm", "value"):
+        _sv = (_sig or {}).get(_f)
+        if _sv is not None and not isinstance(_sv, str):
+            return {"ok": False, "reason": "BB-4: binding.signature.%s must be a string (got %s)"
+                    % (_f, type(_sv).__name__)}
     sig = binding.get("signature") or {}
     if sig.get("signer") != binding.get("signer"):
         return {"ok": False, "reason": "BB-4: signature.signer != binding.signer"}
@@ -792,22 +813,74 @@ _KNOWN_OUTCOMES = frozenset({"completed", "failed-substrate", "aborted-by-self",
                              "aborted-by-other", "failed-perm", "failed-counterparty"})
 
 
+def _role_evidence_grammar(re_, ch, label):
+    """§10.5.3 roleEvidence / counterpartyRoleEvidence XOR shape (spec DACS-5-VERIFY.md :538-540, :548):
+    a REQUIRED object; `kind` REQUIRED in the {"binding","address"} XOR; the "binding" arm carries a
+    REQUIRED "binding" object; the "address" arm carries a REQUIRED string "resolvedAddress". The
+    address arm's role-SEGMENT SEMANTIC check (spec :540) is NOT verified here — structural shape only
+    (disclosed residual #3). Returns (ok, reason)."""
+    if not isinstance(re_, dict):
+        return (False, "%s: %s must be an object (got %s)" % (ch, label, type(re_).__name__))
+    kind = re_.get("kind")
+    if kind == "binding":
+        if not isinstance(re_.get("binding"), dict):
+            return (False, "%s: %s.binding must be an object (got %s)"
+                    % (ch, label, type(re_.get("binding")).__name__))
+    elif kind == "address":
+        if not isinstance(re_.get("resolvedAddress"), str):
+            return (False, "%s: %s.resolvedAddress must be a string (got %s)"
+                    % (ch, label, type(re_.get("resolvedAddress")).__name__))
+    else:
+        return (False, "%s: %s.kind must be one of ['address', 'binding'] (got %r)" % (ch, label, kind))
+    return (True, None)
+
+
 def _entry_structural_gate(entry, index):
-    """Round-10 D6 per-entry structural gate (step-5 1b): TYPE-WHEN-PRESENT for the receipt-supplied
-    members the replay loop reads by attribute/iteration/index. Presence/absence semantics are
-    UNCHANGED — a field that is absent, or falsy-None where the existing `or {}` / `if not` idiom
-    already tolerates None, is NOT newly flagged; only a present value of the wrong type refuses.
-    candidateBindings is the exception: its downstream read is `.get(...,[])` (defaults on MISSING
-    only, NOT on null), so a present-but-null value would still crash — it is flagged by membership.
-    Returns (ok, reason)."""
+    """Round-10 D6 + round-11 per-entry gate (step-5 1b). NO LONGER pure type-when-present: it now
+    enforces PRESENCE + VOCABULARY + member types for the full §10.5.3 ResolutionContextEntry grammar
+    (spec DACS-5-VERIFY.md lines 535-552), so a malformed untrusted entry refuses DETERMINISTICALLY —
+    never a downstream fail-open, never a raise. candidateBindings is the SOLE EXCEPTION, kept
+    type-when-present: BB-6 outsider garbage MUST stay prunable-inert and MUST NEVER be able to refuse
+    an honest receipt (F2/F4 inertness, spec BB-6 :381/:387); its members are validated at BB-4/BB-5
+    re-verification (verify_binding), which only role-holder survivors reach. Fixed, documented check
+    order for stable exact reasons. Returns (ok, reason)."""
     if not isinstance(entry, dict):
         return (False, "resolutionContext[%d]: entry is not an object (got %s)" % (index, type(entry).__name__))
+    # contentHash: REQUIRED string ref (spec :536) — keys the entry to bundleRefs and is deref'd as a key.
     ch = entry.get("contentHash")
+    if not isinstance(ch, str):
+        return (False, "resolutionContext[%d]: contentHash must be a string (got %s)" % (index, type(ch).__name__))
     # dict-typed members guarded downstream by falsy-tolerant `or {}` / `if not`: flag truthy non-dict only.
     for field in ("roleEvidence", "bb6Context", "counterpartyRef", "counterpartyRoleEvidence", "absenceEvidenceRef"):
         v = entry.get(field)
         if v is not None and not isinstance(v, dict):
             return (False, "%s: %s must be an object (got %s)" % (ch, field, type(v).__name__))
+    # roleEvidence: REQUIRED object on the {"binding","address"} XOR (spec :538-540).
+    ok_re, reason_re = _role_evidence_grammar(entry.get("roleEvidence"), ch, "roleEvidence")
+    if not ok_re:
+        return (False, reason_re)
+    # counterpartyDisposition: REQUIRED in the {"present","absent"} vocabulary (spec :546).
+    disp = entry.get("counterpartyDisposition")
+    if disp not in ("present", "absent"):
+        return (False, "%s: counterpartyDisposition must be one of ['absent', 'present'] (got %r)" % (ch, disp))
+    # counterpartyRoleEvidence: same XOR SHAPE when carried (spec :548). Presence-per-disposition is E5's
+    # job in receipt_required_members_present; the gate validates shape when the member is present.
+    if entry.get("counterpartyRoleEvidence") is not None:
+        ok_cre, reason_cre = _role_evidence_grammar(entry.get("counterpartyRoleEvidence"), ch, "counterpartyRoleEvidence")
+        if not ok_cre:
+            return (False, reason_cre)
+    # counterpartyRef: AttestationRef with a REQUIRED string contentHash when carried (spec :547/:853).
+    cref = entry.get("counterpartyRef")
+    if isinstance(cref, dict) and not isinstance(cref.get("contentHash"), str):
+        return (False, "%s: counterpartyRef.contentHash must be a string (got %s)"
+                % (ch, type(cref.get("contentHash")).__name__))
+    # absenceEvidenceRef: kind / locator / contentHash all REQUIRED strings when carried (spec :551).
+    aer = entry.get("absenceEvidenceRef")
+    if isinstance(aer, dict):
+        for f in ("kind", "locator", "contentHash"):
+            if not isinstance(aer.get(f), str):
+                return (False, "%s: absenceEvidenceRef.%s must be a string (got %s)"
+                        % (ch, f, type(aer.get(f)).__name__))
     ctx = entry.get("bb6Context")
     if isinstance(ctx, dict):
         pm = ctx.get("partyMap")
@@ -1032,6 +1105,14 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                     if not isinstance(fetched, dict):
                         candidate_refusal = "BB-6 candidate bundle not dereferenceable: %s" % (cb,)
                         break
+                    # (round-11) shape-gate the fetched CANDIDATE copy before _post_fetch_valid reads it
+                    # by subscript / iteration / set-key — the un-shape-gated 3rd deref site (the winner
+                    # :NNN and counterparty :NNN copies are already _bundle_shape_ok'd). A shape-malformed
+                    # fetched copy is fetched-then-invalid => DROPPED (R1/R3a/R3b), NEVER a refusal — an
+                    # extra candidate must not refuse an honest receipt (BB-6/BB-7 inertness).
+                    ok_shape, _shape_reason = _bundle_shape_ok(fetched)
+                    if not ok_shape:
+                        continue   # fetched-then-shape-invalid => DROPPED inert (same R1/R3 semantics)
                     pf_ok, _pf_reason = _post_fetch_valid(fetched, cand, pubkeys)
                     if not pf_ok:
                         continue   # fetched-then-invalid => DROPPED, truly inert (never reaches the ladder)

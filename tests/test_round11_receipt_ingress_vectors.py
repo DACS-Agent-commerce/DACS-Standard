@@ -208,6 +208,168 @@ def seller_binding_raw(job, native, content_hash, role="seller", signer_role="se
     return bd
 
 
+# ============================================================================================
+# SCHEMA-GRID ORACLE (B1.4)
+# --------------------------------------------------------------------------------------------
+# Exhaustive (path x mutation) sweep over the §10.5.3 ResolutionContextEntry GRAMMAR ONLY
+# (spec DACS-5-VERIFY.md :535-552). SCOPE BOUNDARY (this is the exact surface the PR comment
+# quantifies): the deref'd-COPY surfaces — the winner copy, the counterparty copy, and fetched
+# candidate CONTENT — are DELIBERATELY EXCLUDED from this grid. They are class-closed elsewhere
+# with their own named regressions and distinct semantics (winner=refuse, counterparty=refuse,
+# fetched candidate=DROP-inert; see test_r11_pf_* and the round-10 D6 winner/counterparty gates).
+# CONTRACT per cell (contract-only; exact reasons live in the named round-11 regressions above):
+# run the REAL predicate in CRYPTO mode (PUBKEYS, matching the suite's crypto-mandatory policy),
+# assert NO exception, ok is False, reasons NON-EMPTY. Deterministic: sorted paths x fixed kind
+# order, zero randomness, zero new dependencies.
+
+# Fixed mutation-kind order. A kind is applied to a path ONLY where its value VIOLATES the grammar.
+KIND_ORDER = ["missing-key", "null", "wrong-scalar-type", "empty-container",
+              "unknown-enum-value", "non-object-where-object", "unhashable-where-hash-key"]
+
+# Per type-tag, the kinds that VIOLATE the grammar for that path (legal-value kinds are omitted, and
+# additionally recorded in LEGAL_CELLS for the oracle's honesty surface).
+_VIOLATING = {
+    "hashkey":         ["missing-key", "null", "wrong-scalar-type", "unhashable-where-hash-key"],
+    "str":             ["missing-key", "null", "wrong-scalar-type"],
+    "enum":            ["missing-key", "null", "wrong-scalar-type", "unknown-enum-value"],
+    "object-req":      ["missing-key", "null", "empty-container", "non-object-where-object"],
+    "object-nullable": ["wrong-scalar-type", "non-object-where-object"],   # null / {} / missing are LEGAL
+    "number":          ["missing-key", "null", "non-object-where-object"], # 123 is a LEGAL budget
+    "array":           ["missing-key", "null", "wrong-scalar-type", "empty-container", "non-object-where-object"],
+}
+
+
+def _mutated_value(kind, tag):
+    """The value a kind installs at a path (missing-key deletes; handled by the caller)."""
+    if kind == "null":
+        return None
+    if kind == "wrong-scalar-type":
+        return 123
+    if kind == "empty-container":
+        return [] if tag == "array" else {}
+    if kind == "unknown-enum-value":
+        return "zzz"
+    if kind == "non-object-where-object":
+        return "x"
+    if kind == "unhashable-where-hash-key":
+        return {}
+    raise AssertionError("no value for kind %r" % kind)   # missing-key never reaches here
+
+
+def _member_nav(root_fn, member):
+    """Navigator for a (possibly dotted) member under a binding-root accessor -> (container, key)."""
+    parts = member.split(".")
+
+    def nav(e):
+        obj = root_fn(e)
+        for part in parts[:-1]:
+            obj = obj[part]
+        return obj, parts[-1]
+    return nav
+
+
+# The BundleBinding member grammar (spec §B.7 :351-361), reused at every binding-bearing site.
+_BINDING_MEMBERS = [
+    ("bindingVersion", "str"), ("jobId", "str"), ("role", "enum"),
+    ("signer", "hashkey"), ("nativeAddress", "str"), ("bundleContentHash", "hashkey"),
+    ("logicalAddress", "str"), ("signature", "object-req"),
+    ("signature.signer", "str"), ("signature.algorithm", "str"), ("signature.value", "str"),
+]
+# (base_key, path-prefix, root accessor) for each of the four verify_binding call sites.
+_BINDING_ROOTS = [
+    ("absent", "roleEvidence.binding", lambda e: e["roleEvidence"]["binding"]),
+    ("absent", "bb6Context.candidateBindings[0]", lambda e: e["bb6Context"]["candidateBindings"][0]),
+    ("absent", "absenceBinding", lambda e: e["absenceBinding"]),
+    ("present", "counterpartyRoleEvidence.binding", lambda e: e["counterpartyRoleEvidence"]["binding"]),
+]
+
+
+def _grid_paths():
+    """The full §10.5.3 entry-grammar path set with type tags + navigators, dual-base."""
+    A, P = "absent", "present"
+    paths = [
+        (A, "contentHash", "hashkey", lambda e: (e, "contentHash")),
+        (A, "resolvedRole", "enum", lambda e: (e, "resolvedRole")),
+        (A, "roleEvidence", "object-req", lambda e: (e, "roleEvidence")),
+        (A, "roleEvidence.kind", "enum", lambda e: (e["roleEvidence"], "kind")),
+        (A, "roleEvidence.binding", "object-req", lambda e: (e["roleEvidence"], "binding")),
+        (A, "bb6Context", "object-req", lambda e: (e, "bb6Context")),
+        (A, "bb6Context.partyMap", "object-nullable", lambda e: (e["bb6Context"], "partyMap")),
+        (A, "bb6Context.budget", "number", lambda e: (e["bb6Context"], "budget")),
+        (A, "bb6Context.candidateBindings", "array", lambda e: (e["bb6Context"], "candidateBindings")),
+        (A, "counterpartyDisposition", "enum", lambda e: (e, "counterpartyDisposition")),
+        (A, "absenceEvidenceRef", "object-req", lambda e: (e, "absenceEvidenceRef")),
+        (A, "absenceEvidenceRef.kind", "str", lambda e: (e["absenceEvidenceRef"], "kind")),
+        (A, "absenceEvidenceRef.locator", "str", lambda e: (e["absenceEvidenceRef"], "locator")),
+        (A, "absenceEvidenceRef.contentHash", "hashkey", lambda e: (e["absenceEvidenceRef"], "contentHash")),
+        (A, "absenceBinding", "object-req", lambda e: (e, "absenceBinding")),
+        (P, "counterpartyRef", "object-req", lambda e: (e, "counterpartyRef")),
+        (P, "counterpartyRef.contentHash", "hashkey", lambda e: (e["counterpartyRef"], "contentHash")),
+        (P, "counterpartyRoleEvidence", "object-req", lambda e: (e, "counterpartyRoleEvidence")),
+        (P, "counterpartyRoleEvidence.kind", "enum", lambda e: (e["counterpartyRoleEvidence"], "kind")),
+        (P, "counterpartyRoleEvidence.binding", "object-req", lambda e: (e["counterpartyRoleEvidence"], "binding")),
+        ("absent-addr", "roleEvidence.resolvedAddress", "str", lambda e: (e["roleEvidence"], "resolvedAddress")),
+    ]
+    for base_key, prefix, root_fn in _BINDING_ROOTS:
+        for member, tag in _BINDING_MEMBERS:
+            paths.append((base_key, "%s.%s" % (prefix, member), tag, _member_nav(root_fn, member)))
+    return paths
+
+
+def grid_cells():
+    """Deterministic cell enumeration: sorted (base, path) x fixed KIND_ORDER, applicable
+    (grammar-violating) kinds only. Returns (case_id, base_key, path_id, tag, kind, nav)."""
+    cells = []
+    for base_key, path_id, tag, nav in sorted(_grid_paths(), key=lambda t: (t[0], t[1])):
+        for kind in KIND_ORDER:
+            if kind in _VIOLATING[tag]:
+                cells.append(("%s:%s:%s" % (base_key, path_id, kind), base_key, path_id, tag, kind, nav))
+    return cells
+
+
+# Grammar-LEGAL (path, kind) cells — NOT generated as refusal cells (excluded via type tag), listed
+# here for the oracle's honesty surface with the spec line that makes each legal.
+LEGAL_CELLS = [
+    ("absent:bb6Context.partyMap:missing-key", "partyMap 'object | null' — absent key reads as no-map (spec :543)"),
+    ("absent:bb6Context.partyMap:null", "partyMap 'object | null' (spec :543)"),
+    ("absent:bb6Context.partyMap:empty-container", "an empty object {} is a grammar-legal partyMap (spec :543)"),
+    ("absent:bb6Context.budget:wrong-scalar-type", "123 is a grammar-legal positive-integer budget (spec :544)"),
+]
+
+
+def _grid_base_absent():
+    p = build_absent("GRID-ABS")
+    e = p["deriv"]["resolutionContext"][0]
+    e["bb6Context"]["candidateBindings"] = [copy.deepcopy(e["roleEvidence"]["binding"])]   # DE-ALIAS
+    return p, e
+
+
+def _grid_base_present():
+    p = build_present("GRID-PRE")
+    e = p["deriv"]["resolutionContext"][0]
+    e["bb6Context"]["candidateBindings"] = [copy.deepcopy(e["roleEvidence"]["binding"])]   # DE-ALIAS
+    return p, e
+
+
+def _grid_base_absent_addr():
+    p = build_absent("GRID-ADR")
+    e = p["deriv"]["resolutionContext"][0]
+    e["roleEvidence"] = {"kind": "address", "resolvedAddress": p["n"]}
+    del e["bb6Context"]
+    return p, e
+
+
+_GRID_BASES = {"absent": _grid_base_absent, "present": _grid_base_present, "absent-addr": _grid_base_absent_addr}
+
+# Random's four probes MUST appear as grid hits (and remain named regressions above).
+RANDOMS_FOUR = [
+    "absent:contentHash:unhashable-where-hash-key",
+    "absent:roleEvidence:empty-container",
+    "absent:counterpartyDisposition:unknown-enum-value",
+    "absent:roleEvidence.binding.signature:non-object-where-object",
+]
+
+
 class Round11ReceiptIngressTests(unittest.TestCase):
     def _assert_refused(self, observed, label):
         """TARGET contract: a malformed receipt refuses — ok is False, reasons non-empty. (Reaching
@@ -472,6 +634,39 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         p["deriv"]["resolutionContext"][0]["bb6Context"]["candidateBindings"].append(decoy_bind)
         p["deref"][decoy_h] = decoy_bundle
         self.assertEqual(vrc(p), (True, []))
+
+    # ============================================================ B1.4 schema-grid oracle
+    def test_r11_schema_grid_oracle(self):
+        """Exhaustive (path x mutation) refusal oracle over the §10.5.3 entry grammar (see the
+        SCHEMA-GRID ORACLE header for scope + contract). One subTest per grid cell; each drives the
+        REAL predicate (crypto mode) on a de-aliased base and asserts the contract: NO exception
+        (a raise fails the subTest), ok is False, reasons non-empty. Deref'd-copy surfaces are OUT of
+        scope (class-closed by the named regressions). Grammar-legal cells are in LEGAL_CELLS, not
+        here."""
+        # base sanity: every de-aliased base must itself be a clean accept before mutation.
+        for base_key, base_fn in sorted(_GRID_BASES.items()):
+            with self.subTest(base=base_key):
+                p, _e = base_fn()
+                self.assertEqual(vrc(p), (True, []), "grid base %s must accept unmutated" % base_key)
+        for case_id, base_key, path_id, tag, kind, nav in grid_cells():
+            with self.subTest(case=case_id):
+                p, e = _GRID_BASES[base_key]()
+                obj, key = nav(e)
+                if kind == "missing-key":
+                    obj.pop(key, None)
+                else:
+                    obj[key] = _mutated_value(kind, tag)
+                ok, reasons = vrc(p)   # a raised exception here fails the subTest — the no-escape assertion
+                self.assertFalse(ok, "%s: expected refusal, got ok=True reasons=%r" % (case_id, reasons))
+                self.assertTrue(reasons, "%s: expected non-empty reasons, got %r" % (case_id, reasons))
+
+    def test_r11_grid_covers_randoms_four(self):
+        """Random's literal 'appear as grid hits AND remain named regressions': the four probe ids are
+        present in the deterministically-executed grid cell-id set (the named regressions a/c1/b/d
+        above are the exact-reason twins)."""
+        executed = {c[0] for c in grid_cells()}
+        for needed in RANDOMS_FOUR:
+            self.assertIn(needed, executed, "Random's four must appear as grid hits: %s" % needed)
 
 
 if __name__ == "__main__":

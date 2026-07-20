@@ -136,6 +136,30 @@ def make_legacy(job_id, outcome, anchored_by_role, sign_roles):
     return b
 
 
+def make_fab3(job_id, outcome, faulted_party, anchored_by_role, orch_claim, sign_roles):
+    """A 3-party FaultAttestationBundle (buyer + seller + orchestrator) mirroring make_fab, with a
+    caller-supplied orchestrator primaryClaim. Signs the requested roles over the FAB domain. Used to
+    exercise the §10.4.1 orchestrator-distinctness limb of the required-signer set."""
+    parties = [
+        {"role": "buyer", "bundleHash": sha("bundle", "buyer"), "primaryClaim": CLAIM["buyer"]},
+        {"role": "seller", "bundleHash": sha("bundle", "seller"), "primaryClaim": CLAIM["seller"]},
+        {"role": "orchestrator", "bundleHash": sha("bundle", "orchestrator"), "primaryClaim": orch_claim},
+    ]
+    b = {
+        "faultBundleVersion": "1", "jobId": job_id, "outcome": outcome,
+        "faultedParty": faulted_party, "anchoredByRole": anchored_by_role,
+        "listingRef": {"listingId": "listing-" + job_id, "version": 1, "contentHash": sha("listing", job_id)},
+        "parties": parties,
+        "phaseSummary": [{"index": 0, "kind": "deliver-storage-program", "outcome": "ok"}],
+        "vetRecords": [], "settlementEvidence": [], "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1, "finalisedAt": FINALISED_AT, "signatures": [],
+    }
+    payload = (BUNDLE_DOMAIN + bundle_hash(b)).encode("utf-8")
+    b["signatures"] = [{"party": CLAIM[r], "algorithm": "ed25519", "value": b64u(KEYS[r].sign(payload))}
+                       for r in sign_roles]
+    return b
+
+
 def make_absence_evidence(native):
     return {"kind": "non-membership-proof", "nativeAddress": native,
             "finalizedStateRef": "demos-testnet:finalized-1780004000000"}
@@ -434,6 +458,55 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         bindL = make_binding(j, "seller", "seller", native_address(j, "seller", 0), h)
         self.assertEqual(R._bundle_signatures_valid(legacy, PUBKEYS), (True, "ok"))
         self.assertEqual(R._post_fetch_valid(legacy, bindL, PUBKEYS), (True, "ok"))
+
+    # ============================================================ R10-1 orchestrator-distinctness limb
+    def test_r10_1_orchestrator_unsigned_defect(self):
+        """DEFECT: a completed seller-anchored FAB with a DISTINCT orchestrator (buyer+seller signed,
+        orchestrator NOT signed) is refused naming the orchestrator role — a non-abort required-signer
+        set includes a distinct orchestrator (§10.4.1 :318-323)."""
+        j = "R10-1O"
+        fab = make_fab3(j, "completed", "none", "seller", CLAIM["orchestrator"], ["buyer", "seller"])
+        h = bundle_hash(fab)
+        bindL = make_binding(j, "seller", "seller", native_address(j, "seller", 0), h)
+        self.assertEqual(
+            R._post_fetch_valid(fab, bindL, PUBKEYS),
+            (False, "§10.4.1 required signer 'orchestrator' (did:demos:orchestrator) has no signature for a non-abort outcome 'completed'"))
+
+    def test_r10_1_orchestrator_controls(self):
+        """CONTROLS (two positive arms): (i) orchestrator claim == buyer's claim, buyer+seller signed —
+        the orchestrator is legitimately NOT distinct, so buyer+seller suffices; (ii) distinct
+        orchestrator with ALL THREE roles signed — the direct control for the unsigned defect (same
+        roster, only the orchestrator signature differs)."""
+        ji = "R10-1Obi"
+        fab_i = make_fab3(ji, "completed", "none", "seller", CLAIM["buyer"], ["buyer", "seller"])
+        bind_i = make_binding(ji, "seller", "seller", native_address(ji, "seller", 0), bundle_hash(fab_i))
+        self.assertEqual(R._post_fetch_valid(fab_i, bind_i, PUBKEYS), (True, "ok"))
+        jii = "R10-1Obii"
+        fab_ii = make_fab3(jii, "completed", "none", "seller", CLAIM["orchestrator"], ["buyer", "seller", "orchestrator"])
+        bind_ii = make_binding(jii, "seller", "seller", native_address(jii, "seller", 0), bundle_hash(fab_ii))
+        self.assertEqual(R._post_fetch_valid(fab_ii, bind_ii, PUBKEYS), (True, "ok"))
+
+    def test_r10_1_orchestrator_none_claim_shape(self):
+        """SHAPE: a winner FAB whose roster carries orchestrator primaryClaim=None, driven through the
+        replay entry point, refuses at the deref'd-copy shape gate (parties[i].primaryClaim must be a
+        string) with no exception. The entry point is the contract — _bundle_shape_ok is not called
+        directly."""
+        j = "R10-1Oc"
+        winner = make_fab3(j, "completed", "none", "seller", None, ["buyer", "seller"])
+        h = bundle_hash(winner)
+        rb = make_binding(j, "seller", "seller", native_address(j, "seller", 0), h)
+        cp = native_address(j, "buyer")
+        absb = make_binding(j, "buyer", "buyer", cp, PLACEHOLDER)
+        ev = make_absence_evidence(cp)
+        evh = evidence_hash(ev)
+        bb6 = {"candidateBindings": [rb], "partyMap": dict(PM), "budget": 8}
+        entry = _absent_entry(j, h, rb, bb6, absb, evh, cp)
+        deriv = _derivation(h, entry)
+        observed = R.validate_resolution_context(deriv, lambda x: {h: winner}.get(x),
+                                                 lambda x: {evh: ev}.get(x), PUBKEYS)   # MUST NOT raise
+        self.assertEqual(
+            observed,
+            (False, ["%s: winner copy parties[2].primaryClaim must be a string (got NoneType)" % h]))
 
     # -- helpers for the deref'd-copy probes (winner is hash-matched; counterparty is unhashed) --
     def _winner_probe(self, job, mutate):

@@ -195,6 +195,24 @@ def vrc(p):
                                          lambda x: p["ev"].get(x), PUBKEYS)
 
 
+def vrc_mode(p, pubkeys):
+    """vrc with an EXPLICIT pubkeys mode. The B1.4 null pins assert BOTH modes because the B1
+    explicit-null slip was STRUCTURAL-mode-only (pubkeys=None): crypto (PUBKEYS) already refused a
+    null member via SIG-6 / algorithm-dispatch / signer-mismatch, so a crypto-only predicate (the
+    grid oracle, and the plain `vrc` above) could not reach the slip."""
+    return R.validate_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
+                                         lambda x: p["ev"].get(x), pubkeys)
+
+
+def vb_role_binding(p, pubkeys):
+    """Standalone verify_binding on the roleEvidence binding, mirroring vrc's binding-arm call
+    (expected_content_hash = entry contentHash). The STRUCTURAL tier of the B1.4 null pins."""
+    e = p["deriv"]["resolutionContext"][0]
+    b = e["roleEvidence"]["binding"]
+    return R.verify_binding(b, pubkeys, expected_jobid=b["jobId"],
+                            expected_role=e["resolvedRole"], expected_content_hash=p["h"])
+
+
 def seller_binding_raw(job, native, content_hash, role="seller", signer_role="seller"):
     """A BundleBinding built raw so nativeAddress / bundleContentHash may be None (make_binding slices
     native[5:21]); signed over its real binding_hash so it passes BB-4 crypto in both modes."""
@@ -206,6 +224,47 @@ def seller_binding_raw(job, native, content_hash, role="seller", signer_role="se
     bd["signature"] = {"algorithm": "ed25519", "signer": CLAIM[signer_role],
                        "value": b64u(KEYS[signer_role].sign(payload))}
     return bd
+
+
+# --- B2 (round-13): two distinct signed FAB copies reaching divergence(auth, cp) --------------
+def make_fab_ps(job, anchored, sign_roles, ps):
+    """make_fab with a CUSTOM phaseSummary, RE-SIGNED (phaseSummary is inside bundle_hash). B2 pins."""
+    b = make_fab(job, "completed", "none", anchored, list(sign_roles))
+    b["phaseSummary"] = copy.deepcopy(ps)
+    payload = (BUNDLE_DOMAIN + bundle_hash(b)).encode("utf-8")
+    b["signatures"] = [{"party": CLAIM[r], "algorithm": "ed25519", "value": b64u(KEYS[r].sign(payload))}
+                       for r in sign_roles]
+    return b
+
+
+def build_divergence_present(job, winner_ps, cp_ps):
+    """A present receipt over TWO distinct signed FAB copies reaching divergence(auth=A, cp=B): winner
+    A (anchored seller) carries winner_ps, counterparty B (anchored buyer) carries cp_ps. Returns a
+    receipt-factory dict (deriv/deref/ev/h) usable with vrc / vrc_mode / R.replay_receipt. B2 pins."""
+    A = make_fab_ps(job, "seller", ["buyer", "seller"], winner_ps)
+    hA = bundle_hash(A)
+    role_bind = make_binding(job, "seller", "seller", native_address(job, "seller", 0), hA)
+    B = make_fab_ps(job, "buyer", ["buyer", "seller"], cp_ps)
+    hB = bundle_hash(B)
+    cp_bind = make_binding(job, "buyer", "buyer", native_address(job, "buyer", 0), hB)
+    bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
+    entry = {"contentHash": hA, "resolvedRole": "seller",
+             "roleEvidence": {"kind": "binding", "binding": role_bind}, "bb6Context": bb6,
+             "counterpartyDisposition": "present", "counterpartyRef": {"contentHash": hB},
+             "counterpartyRoleEvidence": {"kind": "binding", "binding": cp_bind}}
+    return {"deriv": _derivation(hA, entry), "deref": {hA: A, hB: B}, "ev": {}, "h": hA,
+            "A": A, "B": B, "hB": hB}
+
+
+def _divergence_tags(job, winner_ps, cp_ps):
+    """Tagged-bundle inputs for R.derive() over the same two copies (exposes bundleCount)."""
+    A = make_fab_ps(job, "seller", ["buyer", "seller"], winner_ps)
+    B = make_fab_ps(job, "buyer", ["buyer", "seller"], cp_ps)
+    hA, hB = bundle_hash(A), bundle_hash(B)
+    return [{"bundle": A, "resolvedRole": "seller", "counterpartyDisposition": "present",
+             "counterpartyRef": {"contentHash": hB}},
+            {"bundle": B, "resolvedRole": "buyer", "counterpartyDisposition": "present",
+             "counterpartyRef": {"contentHash": hA}}]
 
 
 # ============================================================================================
@@ -737,6 +796,134 @@ class Round11ReceiptIngressTests(unittest.TestCase):
                 p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"]["signature"][member] = 123
                 self.assertEqual(vrc(p), (False, [
                     "%s: roleEvidence BB-4: binding.signature.%s must be a string (got int)" % (p["h"], member)]))
+
+    # ---- B1.4: explicit-null signature members (the sub-case MB9's scalar=123 pin cannot reach) --
+    def test_r13_b1_signature_member_null_defect(self):
+        """PIN (B1.4): explicit-null signature.signer / algorithm / value on an otherwise-valid
+        PRESENT signature MUST refuse at the member gate — EXACT reason — on BOTH tiers (standalone
+        verify_binding + integrated validate_resolution_context) and BOTH modes (pubkeys=None
+        structural + PUBKEYS crypto).
+
+        RISK (xm33 round-12 Blocker 1 / randomblocker): the pre-B1 ingress
+        `if _sv is not None and not isinstance(_sv, str)` EXEMPTED None, so a null member cleared the
+        documented always-on structural typing and reached ok:True on the pubkeys=None path
+        (sig6_canonical / algorithm-dispatch are crypto-gated).
+
+        WHY the existing pins cannot reach it: test_r11_signature_member_scalar_defect (MB9) sets the
+        member to 123 — caught by the old guard, so it can never reach the null sub-case — and runs
+        crypto-only (vrc=PUBKEYS); the schema-grid oracle's `signature.*:null` cells run crypto-only
+        and contract-only. Crypto mode refuses null via SIG-6 / algorithm / signer-mismatch — a
+        DIFFERENT reason. Exact-reason on the member-gate string, on the STRUCTURAL (pubkeys=None)
+        path, is what reaches the slip.
+
+        WHY signer is exact-reason too: :194 signature.signer == binding.signer is a live backstop
+        that ALSO refuses signer=None if the member gate were removed — but with a DIFFERENT reason
+        ('BB-4: signature.signer != binding.signer'). A refuse-only signer pin would stay GREEN on a
+        B1 revert (the r12 coll2 UNREACHABLE class). Pinning the exact member-gate reason forces the
+        pin onto the gate specifically, not the :194 backstop — so signer-null goes RED on revert.
+
+        KILLED BY: restoring `_sv is not None and not isinstance(_sv, str)` under `(_sig or {})`
+        (the B1 revert). Structural mode then accepts (ok:True / (True,[])) for value/algorithm and
+        the crypto/absent reasons shift for signer — every arm below goes RED."""
+        MEMBER_GATE = "BB-4: binding.signature.%s must be a string (got NoneType)"
+        for member in ("signer", "algorithm", "value"):
+            for pubkeys, mode in ((None, "structural-None"), (PUBKEYS, "crypto-PUBKEYS")):
+                p = build_absent("R13-SIGNULL-%s-%s" % (member, mode))
+                p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"]["signature"][member] = None
+                with self.subTest(member=member, tier="verify_binding", mode=mode):
+                    self.assertEqual(vb_role_binding(p, pubkeys),
+                                     {"ok": False, "reason": MEMBER_GATE % member})
+                with self.subTest(member=member, tier="validate_resolution_context", mode=mode):
+                    self.assertEqual(vrc_mode(p, pubkeys),
+                                     (False, ["%s: roleEvidence %s" % (p["h"], MEMBER_GATE % member)]))
+
+    def test_r13_b1_absent_signature_unchanged_control(self):
+        """CONTROL / INVARIANT PIN (B1.4): an ABSENT signature (the whole `signature` key deleted)
+        MUST still refuse at the :194 signature.signer == binding.signer equality — NOT at the
+        member gate. The B1 fix guards the member loop with `if _sig is not None:`, so a None/absent
+        signature SKIPS it and falls through to the signer-equality backstop ({}.get('signer') is
+        None != the required binding.signer).
+
+        Guards against an OVER-BROAD future fix that drops the `if _sig is not None:` guard and types
+        the members unconditionally: that would refuse the absent case with a member-gate reason
+        instead, and this exact-reason assertion catches the leak. Green today AND after B1; and
+        UNAFFECTED by the B1 revert (the absent path never entered the member loop) — so unlike the
+        null pins above, this one stays GREEN on revert, which is exactly correct: it guards a
+        different invariant, not the null fix."""
+        ABSENT = "BB-4: signature.signer != binding.signer"
+        for pubkeys, mode in ((None, "structural-None"), (PUBKEYS, "crypto-PUBKEYS")):
+            p = build_absent("R13-SIGABSENT-%s" % mode)
+            del p["deriv"]["resolutionContext"][0]["roleEvidence"]["binding"]["signature"]
+            with self.subTest(tier="verify_binding", mode=mode):
+                self.assertEqual(vb_role_binding(p, pubkeys), {"ok": False, "reason": ABSENT})
+            with self.subTest(tier="validate_resolution_context", mode=mode):
+                self.assertEqual(vrc_mode(p, pubkeys),
+                                 (False, ["%s: roleEvidence %s" % (p["h"], ABSENT)]))
+
+    # ---- B2 (round-13): phaseSummary bool-index (Limb A) + dup-index (Limb B) + divergence control -
+    def _replay(self, p):
+        return R.replay_receipt(p["deriv"], lambda x: p["deref"].get(x), CLAIM["seller"],
+                                FINALISED_AT - 1, FINALISED_AT + 1,
+                                evidence_deref=lambda x: p["ev"].get(x), pubkeys=PUBKEYS)
+
+    def test_r13_b2_bool_index_defect(self):
+        """PIN (B2 Limb A): a boolean phaseSummary index refuses at the SHAPE GATE with its own exact
+        reason, BEFORE _phase_summary_diverges. isinstance(True, int) is True, and True==1 (hash-equal)
+        collapses {e["index"]: e} in _phase_summary_diverges' keyed compare, masking a real divergence;
+        _bundle_shape_ok gates the winner (and counterparty) copy before divergence(), so the bool is
+        caught at Limb A on the validated path. Exact-reason on BOTH modes + replay_receipt rejection.
+        KILLED BY: removing the `if isinstance(idx, bool):` branch (Limb-A revert) — bool then passes
+        the (int,str) gate and the receipt no longer refuses at the bool reason. Independent of Limb B."""
+        K = "deliver-storage-program"
+        winner_ps = [{"index": 1, "kind": K, "outcome": "ok"},
+                     {"index": True, "kind": K, "outcome": "failed", "errorClass": "permanent"}]
+        cp_ps = [{"index": 1, "kind": K, "outcome": "failed", "errorClass": "permanent"}]
+        gate = "phaseSummary[1].index must be a non-boolean int or string (got bool)"
+        self.assertEqual(R._bundle_shape_ok(make_fab_ps("R13-B2A-H", "seller", ["buyer", "seller"], winner_ps)),
+                         (False, gate))
+        for pubkeys, mode in ((None, "structural-None"), (PUBKEYS, "crypto-PUBKEYS")):
+            with self.subTest(mode=mode):
+                p = build_divergence_present("R13-B2A-%s" % mode, winner_ps, cp_ps)
+                self.assertEqual(vrc_mode(p, pubkeys), (False, ["%s: winner copy %s" % (p["h"], gate)]))
+        self.assertEqual(self._replay(build_divergence_present("R13-B2A-RP", winner_ps, cp_ps)), (False, None))
+
+    def test_r13_b2_dup_index_defect(self):
+        """PIN (B2 Limb B): a DUPLICATE integer phaseSummary index refuses at the SHAPE GATE, before
+        _phase_summary_diverges keys {e["index"]: e} and silently last-write-wins (masking divergence).
+        REACHABILITY LOCK: pure-dup pins on Limb B ONLY. Post-fix a bool index is caught earlier at
+        Limb A and can no longer reach _phase_summary_diverges, so a bool-collision-inside-
+        _phase_summary_diverges pin would be UNREACHABLE (the r11 scalar-pin / B1 lesson) — this pin's
+        red is the pure int-1 duplicate.
+        KILLED BY: removing the seen_idx duplicate rejection (Limb-B revert). Independent of Limb A."""
+        K = "deliver-storage-program"
+        winner_ps = [{"index": 1, "kind": K, "outcome": "ok"},
+                     {"index": 1, "kind": K, "outcome": "failed", "errorClass": "permanent"}]
+        cp_ps = [{"index": 1, "kind": K, "outcome": "failed", "errorClass": "permanent"}]
+        gate = "phaseSummary[1].index is a duplicate/colliding index 1"
+        self.assertEqual(R._bundle_shape_ok(make_fab_ps("R13-B2B-H", "seller", ["buyer", "seller"], winner_ps)),
+                         (False, gate))
+        for pubkeys, mode in ((None, "structural-None"), (PUBKEYS, "crypto-PUBKEYS")):
+            with self.subTest(mode=mode):
+                p = build_divergence_present("R13-B2B-%s" % mode, winner_ps, cp_ps)
+                self.assertEqual(vrc_mode(p, pubkeys), (False, ["%s: winner copy %s" % (p["h"], gate)]))
+        self.assertEqual(self._replay(build_divergence_present("R13-B2B-RP", winner_ps, cp_ps)), (False, None))
+
+    def test_r13_b2_genuine_divergence_control(self):
+        """CONTROL / REGRESSION GUARD (B2): a NON-colliding genuinely-divergent phaseSummary (distinct
+        indices, contradictory outcome on shared index 1) MUST still be DETECTED — vrc refuses with the
+        §10.4.3 divergence reason AND derive() excludes the job (bundleCount 0). Guards that the B2
+        malformed-copy gate did NOT over-reach into genuine divergence detection: a future gate that
+        also drops genuine divergence goes RED here. Green today; UNAFFECTED by either limb revert."""
+        K = "deliver-storage-program"
+        winner_ps = [{"index": 1, "kind": K, "outcome": "ok"},
+                     {"index": 2, "kind": K, "outcome": "failed", "errorClass": "permanent"}]
+        cp_ps = [{"index": 1, "kind": K, "outcome": "failed", "errorClass": "permanent"}]
+        p = build_divergence_present("R13-B2C", winner_ps, cp_ps)
+        self.assertEqual(vrc_mode(p, PUBKEYS),
+                         (False, ["%s: counterparty copy canonically diverges (§10.4.3)" % p["h"]]))
+        derived = R.derive(CLAIM["seller"], _divergence_tags("R13-B2C-D", winner_ps, cp_ps),
+                           FINALISED_AT - 1, FINALISED_AT + 1, "finalisedAt")
+        self.assertEqual(derived["bundleCount"], 0)
 
 
 if __name__ == "__main__":

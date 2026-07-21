@@ -58,6 +58,16 @@ _FAILURE = {"failed-perm", "failed-counterparty"}
 # MUST be rejected (SIG-3). Dispatch is on this label, never assumed.
 SUPPORTED_SIGNATURE_ALGORITHMS = frozenset({"ed25519"})
 
+# §10.5.3 windowingBasis (spec DACS-5-VERIFY.md :530): a REQUIRED closed two-literal union naming
+# which clock the §10.5.1 window was applied against; re-derivation MUST use the recorded basis
+# (:854/:581). SUPPORTED_* is the VOCABULARY (both literals are valid); IMPLEMENTED_* is what this
+# reference can actually compute a window against. The SR-2-anchor-timestamp clock is a §10.5.1
+# SHOULD (spec :832/:1010), NOT implemented here — so it is a valid literal (passes the vocab gate)
+# but FAILS CLOSED at compute time (derive() refuses it; replay refuses an sr2-declared receipt),
+# rather than silently windowing on finalisedAt and mislabelling the receipt.
+SUPPORTED_WINDOWING_BASES = frozenset({"finalisedAt", "sr2-anchor-timestamp"})
+IMPLEMENTED_WINDOWING_BASES = frozenset({"finalisedAt"})
+
 # CORE §B.7 SIG-6 canonical unpadded Base64URL alphabet (spec lines 320-321): the canonical value is
 # non-empty and contains ONLY these characters — no `=` padding, no whitespace, no standard-Base64 `+`/`/`.
 _SIG6_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
@@ -161,7 +171,9 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
     Structural checks ALWAYS run (both modes, pre-crypto): (round-11) the §B.7/§10.4.2 BundleBinding
     REQUIRED members (spec lines 351-361) — bindingVersion / jobId / role / signer / nativeAddress /
     bundleContentHash — MUST each be a string, and signature MUST be an object (when present) whose
-    signer / algorithm / value are strings (when present), BEFORE any member is used by string concat
+    signer / algorithm / value are each a REQUIRED present string whenever signature is present (an
+    explicit-null or absent member refuses; an absent signature skips this member gate and refuses at
+    the signature.signer == binding.signer equality below), BEFORE any member is used by string concat
     (logical_address), set-membership (SUPPORTED_* frozensets), or dict-key (pubkeys.get) — so a
     malformed binding refuses deterministically instead of raising. Then: signature.signer ==
     binding.signer (BB-4); binding.jobId == expected_jobid and binding.role == expected_role (BB-5
@@ -185,11 +197,17 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
     if _sig is not None and not isinstance(_sig, dict):
         return {"ok": False, "reason": "BB-4: binding.signature must be an object (got %s)"
                 % type(_sig).__name__}
-    for _f in ("signer", "algorithm", "value"):
-        _sv = (_sig or {}).get(_f)
-        if _sv is not None and not isinstance(_sv, str):
-            return {"ok": False, "reason": "BB-4: binding.signature.%s must be a string (got %s)"
-                    % (_f, type(_sv).__name__)}
+    # (round-13 B1) WHEN a signature object is present, signer / algorithm / value are each a REQUIRED
+    # present string — explicit null is NOT exempt (the old `is not None` clause let null members clear
+    # this structural ingress and reach `ok: True` on the pubkeys=None path, since sig6_canonical is
+    # crypto-gated). An ABSENT signature (`_sig is None`) skips this loop and still refuses below at the
+    # signature.signer == binding.signer equality, so the absent case is unchanged.
+    if _sig is not None:
+        for _f in ("signer", "algorithm", "value"):
+            _sv = _sig.get(_f)
+            if not isinstance(_sv, str):
+                return {"ok": False, "reason": "BB-4: binding.signature.%s must be a string (got %s)"
+                        % (_f, type(_sv).__name__)}
     sig = binding.get("signature") or {}
     if sig.get("signer") != binding.get("signer"):
         return {"ok": False, "reason": "BB-4: signature.signer != binding.signer"}
@@ -625,7 +643,18 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     bundleRefs, windowingBasis). Metrics reproduce byte-identically across runs given
     the same tagged input + window + basis (the §10.5.3 determinism-receipt contract).
     """
-    clock = "finalisedAt"  # only finalisedAt is exercised by the round-5 fixtures
+    # (round-13 B3) fail-closed on any basis this reference cannot window against, instead of the
+    # prior silent `clock = "finalisedAt"` that recorded `basis` but computed finalisedAt regardless.
+    # sr2-anchor-timestamp is a valid §10.5.3 literal but a §10.5.1 SHOULD NOT implemented here — a
+    # DISTINCT not-implemented refusal; anything outside the vocab is a vocab error. Only IMPLEMENTED
+    # bases proceed, and the clock is the DECLARED basis (no hardcode that would mislabel the receipt).
+    if basis not in IMPLEMENTED_WINDOWING_BASES:
+        if basis in SUPPORTED_WINDOWING_BASES:
+            raise ValueError("windowingBasis %r is not implemented (fail-closed; §10.5.1 sr2 windowing "
+                             "is a SHOULD, not implemented by this reference)" % (basis,))
+        raise ValueError("windowingBasis must be one of %s (got %r)"
+                         % (sorted(SUPPORTED_WINDOWING_BASES), basis))
+    clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
     scoped = [t for t in tagged_bundles
               if party in _primary_claims(t["bundle"])
               and window_start <= t["bundle"][clock] <= window_end]
@@ -825,6 +854,16 @@ def receipt_required_members_present(derivation):
     bc = derivation.get("bundleCount")
     if "bundleCount" not in derivation or not isinstance(bc, int) or isinstance(bc, bool):
         reasons.append("bundleCount must be present and an integer")
+    # (5b) windowingBasis is a REQUIRED closed-union member (spec :530/:954): the receipt is defined
+    #      relative to the recorded basis (:856), so an absent basis refuses, and an out-of-vocab
+    #      value refuses (round-13 B3). sr2-anchor-timestamp is IN the vocab (a valid literal) and
+    #      PASSES here — its not-implemented fail-closed is a DISTINCT refusal at compute time
+    #      (derive() / the replay guard), never folded into this vocab reason.
+    if "windowingBasis" not in derivation:
+        reasons.append("windowingBasis is REQUIRED (spec :530)")
+    elif derivation.get("windowingBasis") not in SUPPORTED_WINDOWING_BASES:
+        reasons.append("windowingBasis must be one of %s (got %r)"
+                       % (sorted(SUPPORTED_WINDOWING_BASES), derivation.get("windowingBasis")))
     # (6) per-disposition member completeness (unchanged from E5).
     for e in ctx:
         if "roleEvidence" not in e or e["roleEvidence"] is None:
@@ -1009,12 +1048,28 @@ def _bundle_shape_ok(bundle):
     ps = bundle.get("phaseSummary")
     if "phaseSummary" in bundle and not isinstance(ps, list):
         return (False, "phaseSummary must be an array (got %s)" % type(ps).__name__)
+    seen_idx = set()
     for k, e in enumerate(ps or []):
         if not isinstance(e, dict):
             return (False, "phaseSummary[%d] is not an object (got %s)" % (k, type(e).__name__))
-        if not isinstance(e.get("index"), (int, str)):
+        idx = e.get("index")
+        # (round-13 B2 Limb A) reject bool with its OWN reason FIRST: isinstance(True, int) is True, and
+        # a bool index collides with an int index (True==1, hash-equal) in _phase_summary_diverges'
+        # {e["index"]: e} keyed compare — matching the bool-exclusion idiom at bundleCount (:834) and
+        # budget (:1122). The non-bool non-int/str path keeps its ORIGINAL reason unchanged (the round-10
+        # D6 index-type pin asserts that exact string for a NoneType index).
+        if isinstance(idx, bool):
+            return (False, "phaseSummary[%d].index must be a non-boolean int or string (got bool)" % k)
+        if not isinstance(idx, (int, str)):
             return (False, "phaseSummary[%d].index must be an int or string (got %s)"
-                    % (k, type(e.get("index")).__name__))
+                    % (k, type(idx).__name__))
+        # (round-13 B2 Limb B) reject a DUPLICATE/COLLIDING index BEFORE _phase_summary_diverges keys
+        # {e["index"]: e} and silently last-write-wins (which masks a real divergence). This gate runs
+        # on BOTH the winner (:1073) and counterparty (:1216) copies before divergence() is called, so
+        # a malformed copy refuses deterministically instead of reaching the pure-bool divergence read.
+        if idx in seen_idx:
+            return (False, "phaseSummary[%d].index is a duplicate/colliding index %r" % (k, idx))
+        seen_idx.add(idx)
     return (True, None)
 
 
@@ -1279,7 +1334,15 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
                "roleEvidence": entry.get("roleEvidence"),
                "bb6Context": entry.get("bb6Context")}
         tagged.append(tag)
-    replayed = derive(party, tagged, window_start, window_end, derivation.get("windowingBasis", "finalisedAt"))
+    # (round-13 B3) read the now-REQUIRED, vocab-checked windowingBasis WITHOUT a silent default —
+    # rrmp above guarantees it is present and in the vocab. Fail closed BEFORE the (bare) derive echo
+    # when the recorded basis is a valid literal this reference cannot compute (sr2-anchor-timestamp):
+    # re-deriving under finalisedAt while the receipt records sr2 would claim reproduction "under the
+    # recorded basis" (:854/:581) that never happened. A finalisedAt receipt replays unchanged.
+    basis = derivation["windowingBasis"]
+    if basis not in IMPLEMENTED_WINDOWING_BASES:
+        return (False, None)   # declared basis valid but unimplemented -> no honest replay claim
+    replayed = derive(party, tagged, window_start, window_end, basis)
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])
             and replayed["bundleCount"] == derivation["bundleCount"])
     return (same, replayed)

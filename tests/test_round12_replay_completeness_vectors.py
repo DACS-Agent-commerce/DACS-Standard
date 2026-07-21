@@ -310,6 +310,80 @@ class Round12ReplayCompletenessTests(unittest.TestCase):
         self.assertFalse(same)
         self.assertIsNone(replayed)
 
+    # ---- B3 (round-13): windowingBasis required / vocab / not-implemented (three distinct reasons) --
+    R13_REQUIRED = "windowingBasis is REQUIRED (spec :530)"
+    R13_VOCAB = "windowingBasis must be one of ['finalisedAt', 'sr2-anchor-timestamp'] (got 'wallclock')"
+    R13_NOT_IMPL = ("windowingBasis 'sr2-anchor-timestamp' is not implemented (fail-closed; §10.5.1 sr2 "
+                    "windowing is a SHOULD, not implemented by this reference)")
+
+    def test_r13_b3_windowingbasis_required(self):
+        """PIN (B3 required): a DELETED windowingBasis refuses at receipt_required_members_present with the
+        REQUIRED reason, and replay_receipt returns (False, None). Pre-fix the silent :1306
+        `derivation.get("windowingBasis", "finalisedAt")` default MASKED the absence (accepted + replayed
+        byte-identical under finalisedAt). Distinct from the vocab + not-implemented reasons.
+        KILLED BY: removing the rrmp `if "windowingBasis" not in derivation:` required-check."""
+        d = self._base()
+        del d["windowingBasis"]
+        ok, reasons = self.rrmp(copy.deepcopy(d))
+        self.assertFalse(ok)
+        self.assertIn(self.R13_REQUIRED, reasons)
+        same, replayed = self.replay(copy.deepcopy(d))
+        self.assertFalse(same)
+        self.assertIsNone(replayed)
+
+    def test_r13_b3_windowingbasis_vocab(self):
+        """PIN (B3 vocab): an OUT-OF-VOCAB windowingBasis ('wallclock') refuses at rrmp with the exact
+        VOCAB reason, and replay_receipt returns (False, None). sr2-anchor-timestamp is IN the vocab, so
+        it does NOT hit this pin — its fail-closed is the separate not-implemented pin below.
+        KILLED BY: removing the rrmp `elif ... not in SUPPORTED_WINDOWING_BASES` vocab-check."""
+        d = self._base()
+        d["windowingBasis"] = "wallclock"
+        self.assertEqual(self.rrmp(copy.deepcopy(d)), (False, [self.R13_VOCAB]))
+        same, replayed = self.replay(copy.deepcopy(d))
+        self.assertFalse(same)
+        self.assertIsNone(replayed)
+
+    def test_r13_b3_windowingbasis_sr2_not_implemented(self):
+        """PIN (B3 not-implemented): sr2-anchor-timestamp is IN-vocab (a valid literal) but the sr2
+        windowing clock is a §10.5.1 SHOULD NOT implemented here — it fails closed on TWO DISTINCT,
+        INDEPENDENT surfaces. REACHABILITY LOCK: sr2 pins the NOT-IMPLEMENTED surfaces, NOT the vocab pin
+        (it PASSES the vocab gate — asserted below; a sr2-on-vocab-pin would be wrong).
+          (3a) derive(basis='sr2-anchor-timestamp') RAISES the not-implemented ValueError.
+          (3b) a receipt DECLARING sr2 PASSES rrmp (vocab ok) but replay_receipt fails closed -> (False,
+               None) via the replay-tier IMPLEMENTED_WINDOWING_BASES guard — INDEPENDENT of derive's raise.
+        KILLED BY: (3a) reverting derive's sr2 guard; (3b) reverting the replay_receipt sr2 guard."""
+        with self.assertRaises(ValueError) as cm:  # (3a)
+            R.derive(self.v["party"], self.v["taggedBundles"], self.v["window"][0], self.v["window"][1],
+                     "sr2-anchor-timestamp")
+        self.assertEqual(str(cm.exception), self.R13_NOT_IMPL)
+        d = self._base()  # (3b)
+        d["windowingBasis"] = "sr2-anchor-timestamp"
+        self.assertEqual(self.rrmp(copy.deepcopy(d)), (True, []))   # sr2 IS in vocab -> passes rrmp
+        same, replayed = self.replay(copy.deepcopy(d))
+        self.assertFalse(same)
+        self.assertIsNone(replayed)
+
+    def test_r13_b3_finalisedat_control(self):
+        """CONTROL / REGRESSION GUARD (B3): the IMPLEMENTED basis stays fully functional end-to-end — a
+        finalisedAt receipt passes rrmp + validate, replays byte-identical, and derive(basis='finalisedAt')
+        records windowingBasis='finalisedAt'. A future over-broad fail-closed that breaks the implemented
+        basis goes RED here. Green today; UNAFFECTED by any of the B3 reverts (none touch finalisedAt)."""
+        d = self._base()
+        self.assertEqual(d["windowingBasis"], "finalisedAt")
+        self.assertEqual(self.rrmp(copy.deepcopy(d)), (True, []))
+        self.assertEqual(self.validate(copy.deepcopy(d)), (True, []))
+        same, replayed = self.replay(copy.deepcopy(d))
+        self.assertTrue(same)
+        self.assertIsNotNone(replayed)
+        derived = R.derive(self.v["party"], self.v["taggedBundles"], self.v["window"][0],
+                           self.v["window"][1], "finalisedAt")
+        self.assertEqual(derived["windowingBasis"], "finalisedAt")
+        if HAVE_CRYPTO:
+            self.assertEqual(self.validate(copy.deepcopy(d), self.pk), (True, []))
+            same_c, replayed_c = self.replay(copy.deepcopy(d), self.pk)
+            self.assertTrue(same_c)
+            self.assertIsNotNone(replayed_c)
+
 
 if __name__ == "__main__":
     unittest.main()

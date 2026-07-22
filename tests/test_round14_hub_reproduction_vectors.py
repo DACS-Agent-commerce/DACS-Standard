@@ -259,5 +259,108 @@ class Round14HubReproductionTests(unittest.TestCase):
         self.assertFalse(ok, "anchoredByRole-flip attack must NOT pass validation")
 
 
+class Round14PostFetchAddressGuardPins(unittest.TestCase):
+    """xm33-lens mutation-attributability pins for the closure patch's NEW `_post_fetch_address_valid`
+    guard (the pure-mapping BB-5 post-fetch equivalent). These are POST-PATCH guard-arm pins, not
+    RED-pre/GREEN-post findings (the function does not exist pre-patch — the class fails closed to a
+    skip there). Each pin mutates EXACTLY ONE field so the guard rejects at precisely that sub-check,
+    with the mutated copy's address/hash recomputed so the pin cannot pass incidentally at a later
+    arm. Arms S4 (resolvedAddress mapping), S5 (anchoredByRole), and S8 (required-signer) are already
+    mutation-pinned by @randomblocker's closure tests #5-9 and the hub T3 probe; these six close the
+    remaining arms S1/S2/S3/S6/S7/S9 (premise P4.1), plus one `_deref_role_copy` KeyError-scope
+    disclosure pin (premise P4-A residual M-D2)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rrd = json.loads(RRD_PATH.read_text(encoding="utf-8"))
+        cls.pk = _pubkeys(cls.rrd)
+        cls.privs = _privkeys(cls.rrd)
+
+    def setUp(self):
+        if not hasattr(R, "_post_fetch_address_valid"):
+            self.skipTest("pre-patch: _post_fetch_address_valid guard absent")
+        # Baseline sanity (asserted per-test, adds no test count): a well-formed copy PASSES, so every
+        # pin below fails ONLY because of its single mutation.
+        b = self._good()
+        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        self.assertTrue(ok, "baseline good copy must pass the guard; got %r" % (reason,))
+
+    def _good(self, job_id="J", role="seller", outcome="failed-perm", omit_role_holder=False):
+        """A copy that satisfies every sub-check for (job_id, role): legacy AttestationBundle,
+        anchoredByRole==role, both parties present, co-signed buyer+seller (a non-abort failure
+        outcome requires both)."""
+        parties = [{"role": "buyer", "primaryClaim": "did:demos:buyer"},
+                   {"role": "seller", "primaryClaim": "did:demos:seller"}]
+        if omit_role_holder:
+            parties = [p for p in parties if p["role"] != role]
+        b = {"jobId": job_id, "anchoredByRole": role, "outcome": outcome, "parties": parties}
+        for r in ("buyer", "seller"):
+            _add_bundle_signature(b, r, self.privs)
+        return b
+
+    def _call(self, fetched, resolved_address, expected_content_hash, expected_role="seller",
+              expected_jobid=None):
+        return R._post_fetch_address_valid(fetched, resolved_address, expected_role,
+                                           expected_content_hash, self.pk, expected_jobid=expected_jobid)
+
+    def test_s1_fetched_not_object(self):
+        ok, reason = self._call("not-a-dict", R.logical_address("J", "seller"), "0" * 64)
+        self.assertFalse(ok)
+        self.assertIn("fetched copy is not an object", reason)
+
+    def test_s2_jobid_not_string(self):
+        b = self._good()
+        b["jobId"] = 123   # non-string; refuses at the jobId-type arm before any address/hash use
+        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        self.assertFalse(ok)
+        self.assertIn("fetched.jobId must be a string", reason)
+
+    def test_s3_jobid_mismatch(self):
+        b = self._good(job_id="OTHER")   # fully valid FOR "OTHER"; refuses only vs expected_jobid="J"
+        ok, reason = self._call(b, R.logical_address("OTHER", "seller"), R.bundle_hash(b), expected_jobid="J")
+        self.assertFalse(ok)
+        self.assertIn("fetched.jobId != expected jobId", reason)
+
+    def test_s6_roster_missing_role_holder(self):
+        b = self._good(omit_role_holder=True)   # parties omits the seller holder; anchoredByRole still seller
+        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        self.assertFalse(ok)
+        self.assertIn("fetched roster has no holder for resolved role", reason)
+
+    def test_s7_fab_faulted_party_outside_permissible_set(self):
+        b = {"jobId": "J", "faultBundleVersion": "1", "anchoredByRole": "seller",
+             "outcome": "aborted-by-self", "faultedParty": "buyer",   # buyer outside implied {seller}
+             "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"},
+                         {"role": "seller", "primaryClaim": "did:demos:seller"}]}
+        for r in ("buyer", "seller"):
+            _add_bundle_signature(b, r, self.privs)
+        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        self.assertFalse(ok)
+        self.assertIn("faultedParty", reason)
+
+    def test_s9_recomputed_content_hash_mismatch(self):
+        b = self._good()   # fully valid; refuses only because the expected contentHash is wrong
+        ok, reason = self._call(b, R.logical_address("J", "seller"), "deadbeef" * 8)
+        self.assertFalse(ok)
+        self.assertIn("recomputed §10.4.1 hash != expected contentHash", reason)
+
+    def test_deref_role_copy_keyerror_scoped_by_design(self):
+        """DISCLOSURE PIN (P4-A residual M-D2): `_deref_role_copy`'s catch is `KeyError`-ONLY BY
+        DESIGN. Receipt-controlled input is handled by the post-fetch validators returning None ->
+        refusal; a MISBEHAVING CALLER resolver is a caller-contract question, and the KeyError-only
+        swallow deliberately mirrors the pre-patch bare-`deref` posture (a content-addressed miss
+        raised KeyError -> unfetchable). A resolver raising anything else PROPAGATES."""
+        if not hasattr(R, "_deref_role_copy"):
+            self.skipTest("pre-patch: _deref_role_copy absent")
+        ev = {"kind": "address", "resolvedAddress": "stor-x"}
+        # KeyError from the resolver -> swallowed to None (content-addressed-miss posture).
+        self.assertIsNone(R._deref_role_copy(lambda a: (_ for _ in ()).throw(KeyError("k")), ev))
+        # TypeError from the resolver -> PROPAGATES (KeyError-scoped by design; caller-contract).
+        with self.assertRaises(TypeError):
+            R._deref_role_copy(lambda a: (_ for _ in ()).throw(TypeError("t")), ev)
+        # No resolver at all -> fail closed to None.
+        self.assertIsNone(R._deref_role_copy(None, ev))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -70,12 +70,40 @@ class Round12ReplayCompletenessTests(unittest.TestCase):
     def _ev(self, h):
         return self.ev_map.get(h)
 
+    def _anchor(self, d):
+        by_address = {}
+        for entry in d.get("resolutionContext", []):
+            if not isinstance(entry, dict):
+                continue
+            for evidence, content_hash in (
+                (entry.get("roleEvidence"), entry.get("contentHash")),
+                (entry.get("counterpartyRoleEvidence"),
+                 (entry.get("counterpartyRef") or {}).get("contentHash")
+                 if isinstance(entry.get("counterpartyRef"), dict) else None),
+            ):
+                if not isinstance(evidence, dict):
+                    continue
+                if evidence.get("kind") == "binding" and isinstance(evidence.get("binding"), dict):
+                    binding = evidence["binding"]
+                    by_address[binding.get("nativeAddress")] = self.deref_map.get(binding.get("bundleContentHash"))
+                elif evidence.get("kind") == "address":
+                    by_address[evidence.get("resolvedAddress")] = self.deref_map.get(content_hash)
+            ctx = entry.get("bb6Context")
+            if isinstance(ctx, dict):
+                for binding in ctx.get("candidateBindings", []):
+                    if isinstance(binding, dict):
+                        by_address[binding.get("nativeAddress")] = self.deref_map.get(
+                            binding.get("bundleContentHash"))
+        return lambda address: by_address.get(address)
+
     def validate(self, d, pk=None):
-        return R.validate_resolution_context(d, self._dr(), self._ev, pk)
+        return R.validate_resolution_context(d, self._dr(), self._ev, pk,
+                                             anchor_deref=self._anchor(d))
 
     def replay(self, d, pk=None):
         return R.replay_receipt(d, self._dr(), self.v["party"], self.v["window"][0],
-                                self.v["window"][1], evidence_deref=self._ev, pubkeys=pk)
+                                self.v["window"][1], evidence_deref=self._ev, pubkeys=pk,
+                                anchor_deref=self._anchor(d))
 
     def rrmp(self, d):
         return R.receipt_required_members_present(d)
@@ -106,8 +134,10 @@ class Round12ReplayCompletenessTests(unittest.TestCase):
         # VALID role must still validate — proves the enum gate refuses the value, not the arm.
         d = self._base()
         e = d["resolutionContext"][self.present_i]
-        re_nat = e["roleEvidence"]["binding"]["nativeAddress"]
-        cre_nat = e["counterpartyRoleEvidence"]["binding"]["nativeAddress"]
+        auth = self.deref_map[e["contentHash"]]
+        cp = self.deref_map[e["counterpartyRef"]["contentHash"]]
+        re_nat = R.logical_address(auth["jobId"], e["resolvedRole"])
+        cre_nat = R.logical_address(cp["jobId"], "buyer" if e["resolvedRole"] == "seller" else "seller")
         e["roleEvidence"] = {"kind": "address", "resolvedAddress": re_nat}
         e["counterpartyRoleEvidence"] = {"kind": "address", "resolvedAddress": cre_nat}
         e.pop("bb6Context", None)

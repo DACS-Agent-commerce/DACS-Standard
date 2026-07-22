@@ -115,6 +115,26 @@ def _bindings_in_entry(e):
     return out
 
 
+def _anchor_resolver(v, derivation):
+    """Test adapter from carried role evidence to the vector's disclosed anchored copies."""
+    deref = v["derefBundles"]
+    by_address = {}
+    for entry in derivation.get("resolutionContext", []):
+        for evidence, content_hash in (
+            (entry.get("roleEvidence") or {}, entry.get("contentHash")),
+            (entry.get("counterpartyRoleEvidence") or {},
+             (entry.get("counterpartyRef") or {}).get("contentHash")),
+        ):
+            if evidence.get("kind") == "binding":
+                binding = evidence.get("binding") or {}
+                by_address[binding.get("nativeAddress")] = deref.get(binding.get("bundleContentHash"))
+            elif evidence.get("kind") == "address":
+                by_address[evidence.get("resolvedAddress")] = deref.get(content_hash)
+        for binding in (entry.get("bb6Context") or {}).get("candidateBindings", []):
+            by_address[binding.get("nativeAddress")] = deref.get(binding.get("bundleContentHash"))
+    return lambda address: by_address.get(address)
+
+
 class ReceiptRederivationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -149,12 +169,14 @@ class ReceiptRederivationTests(unittest.TestCase):
         deref = v["derefBundles"]
         d = R.derive(v["party"], v["taggedBundles"], v["window"][0], v["window"][1], "finalisedAt")
         same, _ = R.replay_receipt(d, lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
-                                   evidence_deref=_evidence_deref(v), pubkeys=_pubkeys(self.data))
+                                   evidence_deref=_evidence_deref(v), pubkeys=_pubkeys(self.data),
+                                   anchor_deref=_anchor_resolver(v, d))
         self.assertTrue(same, "receipt must replay byte-identically and pass all replay checks")
         self.assertTrue(R.receipt_required_members_present(d)[0])
         # structural-only path (pubkeys=None) must also pass — CI without cryptography still validates shape
         same_struct, _ = R.replay_receipt(d, lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
-                                          evidence_deref=_evidence_deref(v))
+                                          evidence_deref=_evidence_deref(v),
+                                          anchor_deref=_anchor_resolver(v, d))
         self.assertTrue(same_struct)
 
     def test_negative_vectors_are_refused_by_replay(self):
@@ -173,12 +195,14 @@ class ReceiptRederivationTests(unittest.TestCase):
                 # but replay refuses (structural path)
                 same, replayed = R.replay_receipt(
                     v["derivation"], lambda h: deref[h], v["party"], v["window"][0], v["window"][1],
-                    evidence_deref=_evidence_deref(v))
+                    evidence_deref=_evidence_deref(v),
+                    anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertFalse(same, "%s must be refused by replay" % name)
                 self.assertIsNone(replayed)
                 # and validate_resolution_context reports a non-empty reason
                 vok, reasons = R.validate_resolution_context(v["derivation"], lambda h: deref[h],
-                                                             _evidence_deref(v))
+                                                             _evidence_deref(v),
+                                                             anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertFalse(vok)
                 self.assertTrue(reasons)
                 self.assertFalse(v["want"]["conforming"])
@@ -197,12 +221,14 @@ class ReceiptRederivationTests(unittest.TestCase):
                 self.assertTrue(R.receipt_required_members_present(v["derivation"])[0])
                 # crypto ON: every candidate signature verifies, the poisoned copy is inert, receipt accepted
                 vok, reasons = R.validate_resolution_context(
-                    v["derivation"], lambda h: deref[h], _evidence_deref(v), _pubkeys(self.data))
+                    v["derivation"], lambda h: deref[h], _evidence_deref(v), _pubkeys(self.data),
+                    anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertTrue(vok, "%s must be accepted (poisoned competitor inert); reasons=%s" % (name, reasons))
                 self.assertEqual(reasons, [])
                 # structural path (pubkeys=None) also accepts
                 vok2, reasons2 = R.validate_resolution_context(
-                    v["derivation"], lambda h: deref[h], _evidence_deref(v))
+                    v["derivation"], lambda h: deref[h], _evidence_deref(v),
+                    anchor_deref=_anchor_resolver(v, v["derivation"]))
                 self.assertTrue(vok2, "%s must accept on the structural path too; reasons=%s" % (name, reasons2))
                 self.assertTrue(v["want"]["conforming"])
 
@@ -218,7 +244,7 @@ class ReceiptRederivationTests(unittest.TestCase):
 
         def replay(d):
             return R.replay_receipt(d, lambda h: deref.get(h), v["party"], v["window"][0], v["window"][1],
-                                    evidence_deref=ev)[0]
+                                    evidence_deref=ev, anchor_deref=_anchor_resolver(v, d))[0]
 
         # sanity: the untouched receipt replays
         self.assertTrue(replay(copy.deepcopy(base)))

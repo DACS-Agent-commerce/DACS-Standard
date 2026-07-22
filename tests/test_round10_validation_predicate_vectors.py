@@ -200,7 +200,7 @@ def build_absent(job, sign_roles=("buyer", "seller")):
     evh = evidence_hash(ev)
     bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
     entry = _absent_entry(job, h, role_bind, bb6, absb, evh, cp)
-    return {"deriv": _derivation(h, entry), "deref": {h: winner}, "ev": {evh: ev},
+    return {"deriv": _derivation(h, entry), "deref": {h: winner}, "anchors": {n: winner}, "ev": {evh: ev},
             "h": h, "n": n, "winner": winner, "role_bind": role_bind}
 
 
@@ -211,20 +211,44 @@ def build_present(job):
     role_bind = make_binding(job, "seller", "seller", n, h)
     cp_native = native_address(job, "buyer", 0)
     cp_bind = make_binding(job, "buyer", "buyer", cp_native, h)
+    cp = copy.deepcopy(W)
+    cp["anchoredByRole"] = "buyer"
     bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
     entry = {"contentHash": h, "resolvedRole": "seller",
              "roleEvidence": {"kind": "binding", "binding": role_bind}, "bb6Context": bb6,
              "counterpartyDisposition": "present",
              "counterpartyRef": {"contentHash": h},
              "counterpartyRoleEvidence": {"kind": "binding", "binding": cp_bind}}
-    return {"deriv": _derivation(h, entry), "deref": {h: W}, "ev": {}, "h": h, "W": W}
+    return {"deriv": _derivation(h, entry), "deref": {h: W},
+            "anchors": {n: W, cp_native: cp}, "ev": {}, "h": h, "W": W, "cp": cp}
+
+
+def _anchor_deref(p, address):
+    if address in p.get("anchors", {}):
+        return p["anchors"][address]
+    for entry in p["deriv"].get("resolutionContext", []):
+        evidences = [entry.get("roleEvidence"), entry.get("counterpartyRoleEvidence")]
+        evidences += [{"kind": "binding", "binding": b}
+                      for b in (entry.get("bb6Context") or {}).get("candidateBindings", [])]
+        for evidence in evidences:
+            evidence = evidence or {}
+            binding = evidence.get("binding") or {}
+            if evidence.get("kind") == "binding" and binding.get("nativeAddress") == address:
+                return p["deref"].get(binding.get("bundleContentHash"))
+    return None
+
+
+def _anchor_from_maps(derivation, deref_map):
+    p = {"deriv": derivation, "deref": deref_map, "anchors": {}}
+    return lambda address: _anchor_deref(p, address)
 
 
 def vrc(p):
     """Run validate_resolution_context over a receipt-factory dict. A raised exception here fails
     the test (that is exactly the 'no exception escapes' assertion)."""
     return R.validate_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
-                                         lambda x: p["ev"].get(x), PUBKEYS)
+                                         lambda x: p["ev"].get(x), PUBKEYS,
+                                         anchor_deref=lambda x: _anchor_deref(p, x))
 
 
 class Round10ValidationPredicateTests(unittest.TestCase):
@@ -406,20 +430,25 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         self.assertEqual(vrc(p), (False, ["%s: counterpartyRoleEvidence must be an object (got str)" % p["h"]]))
 
         d, dm, em, h = self._winner_probe("D6-WP", lambda W: W.__setitem__("parties", None))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS),
+        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+                                                       anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: winner copy parties must be an array (got NoneType)" % h]))
         d, dm, em, h = self._winner_probe("D6-WS", lambda W: W.__setitem__("signatures", ["notadict"]))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS),
+        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+                                                       anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: winner copy signatures[0] is not an object (got str)" % h]))
         d, dm, em, h = self._winner_probe("D6-WO", lambda W: W.pop("outcome"))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS),
+        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+                                                       anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: winner copy outcome must be one of %s (got None)" % (h, OUTCOMES)]))
 
         d, dm, em, h = self._cp_probe("D6-CO", lambda cp: cp.pop("outcome"))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS),
+        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+                                                       anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: counterparty copy outcome must be one of %s (got None)" % (h, OUTCOMES)]))
         d, dm, em, h = self._cp_probe("D6-CPS", lambda cp: cp.__setitem__("phaseSummary", [{"kind": "x", "outcome": "ok"}]))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS),
+        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+                                                       anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: counterparty copy phaseSummary[0].index must be an int or string (got NoneType)" % h]))
 
     def test_d6_present_and_shape_control(self):
@@ -503,7 +532,8 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         entry = _absent_entry(j, h, rb, bb6, absb, evh, cp)
         deriv = _derivation(h, entry)
         observed = R.validate_resolution_context(deriv, lambda x: {h: winner}.get(x),
-                                                 lambda x: {evh: ev}.get(x), PUBKEYS)   # MUST NOT raise
+                                                 lambda x: {evh: ev}.get(x), PUBKEYS,
+                                                 anchor_deref=_anchor_from_maps(deriv, {h: winner}))   # MUST NOT raise
         self.assertEqual(
             observed,
             (False, ["%s: winner copy parties[2].primaryClaim must be a string (got NoneType)" % h]))

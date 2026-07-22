@@ -503,6 +503,70 @@ def _post_fetch_valid(fetched, binding, pubkeys):
     return (True, "ok")
 
 
+def _post_fetch_address_valid(fetched, resolved_address, expected_role, expected_content_hash, pubkeys,
+                              expected_jobid=None, pure_mapping_resolver=None):
+    """Pure-mapping equivalent of BB-5 post-fetch validation.
+
+    The role is authenticated by recomputing its deterministic logical/native address from the
+    fetched jobId rather than by a BundleBinding. The fetched copy still has to satisfy the same
+    role, signature, fault-permissibility, and byte-recomputed content-hash checks.
+    """
+    if not isinstance(fetched, dict):
+        return (False, "fetched copy is not an object")
+    job_id = fetched.get("jobId")
+    if not isinstance(job_id, str):
+        return (False, "pure-mapping check: fetched.jobId must be a string")
+    if expected_jobid is not None and job_id != expected_jobid:
+        return (False, "pure-mapping check: fetched.jobId != expected jobId")
+    expected_address = (pure_mapping_resolver(job_id, expected_role)
+                        if pure_mapping_resolver is not None else logical_address(job_id, expected_role))
+    if resolved_address != expected_address:
+        return (False, "pure-mapping check: resolvedAddress != mapped address for fetched (jobId, role)")
+    if fetched.get("anchoredByRole") != expected_role:
+        return (False, "pure-mapping check: anchoredByRole (%r) != resolved role (%r)"
+                % (fetched.get("anchoredByRole"), expected_role))
+    parties = fetched.get("parties")
+    if not isinstance(parties, list) or not any(p.get("role") == expected_role for p in parties):
+        return (False, "pure-mapping check: fetched roster has no holder for resolved role")
+    if is_fab(fetched):
+        roster = roster_roles(fetched)
+        try:
+            fset = implied_fault_set(fetched.get("outcome"), expected_role, roster)
+        except ValueError as exc:
+            return (False, "§10.4.1 %s" % (exc,))
+        if fetched.get("faultedParty") not in fset:
+            return (False, "§10.4.1 faultedParty %r outside the permissible set %r for (%r, %r)"
+                    % (fetched.get("faultedParty"), sorted(fset), fetched.get("outcome"), expected_role))
+    ok_sig, reason = _bundle_signatures_valid(fetched, pubkeys)
+    if not ok_sig:
+        return (False, reason)
+    if bundle_hash(fetched) != expected_content_hash:
+        return (False, "pure-mapping check: recomputed §10.4.1 hash != expected contentHash")
+    return (True, "ok")
+
+
+def _role_evidence_locator(role_evidence):
+    if role_evidence.get("kind") == "binding":
+        return (role_evidence.get("binding") or {}).get("nativeAddress")
+    return role_evidence.get("resolvedAddress")
+
+
+def _deref_role_copy(anchor_deref, role_evidence):
+    """Fetch a role-authenticated copy at its anchor locator, never by content hash alone.
+
+    Signatures and anchoredByRole are outside the bundle hash, so a content-hash lookup cannot
+    distinguish role-specific or signature-standing-distinct copies. Without an anchor resolver,
+    authenticated replay therefore fails closed instead of guessing which physical copy was read.
+    """
+    locator = _role_evidence_locator(role_evidence)
+    if anchor_deref is None:
+        return None
+    try:
+        return anchor_deref(locator)
+    except KeyError:
+        return None
+
+
 def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=None):
     """§10.4.2 BB-6 authorized-candidate resolution as amended by E6.
 
@@ -585,15 +649,22 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
     forms = {}  # canonical form (bundleContentHash) -> its copies, ascending
     for b in ladder:
         forms.setdefault(b["bundleContentHash"], []).append(b)
+    full_copies = {
+        h: [cp for cp in cps
+            if anchored is not None and _full_standing(anchored.get(cp["nativeAddress"]))]
+        for h, cps in forms.items()
+    }
     if len(forms) <= 1:
-        # (b) collapse: canonically-equal copies collapse to one retrieved copy -> present.
-        return _out("present", ladder[0]["nativeAddress"])
+        # Canonically-equal copies collapse to one form. Prefer a full-standing copy within that form
+        # so the reported governing address cannot be selected by lesser-copy address ordering.
+        only_hash = next(iter(forms))
+        copies = full_copies[only_hash] or forms[only_hash]
+        return _out("present", copies[0]["nativeAddress"])
     # (c) full-signature precedence: standing computed from each form's ANCHORED bundle — FULL iff a
     #     signature is present for every party. Exactly one full-standing form takes precedence.
-    full_forms = [h for h, cps in forms.items()
-                  if anchored is not None and _full_standing(anchored.get(cps[0]["nativeAddress"]))]
+    full_forms = [h for h, copies in full_copies.items() if copies]
     if len(full_forms) == 1:
-        return _out("present", forms[full_forms[0]][0]["nativeAddress"])
+        return _out("present", full_copies[full_forms[0]][0]["nativeAddress"])
     # (d) equal standing (all lesser-signed, or 2+ full-standing) -> void -> indeterminate (BB-6/BB-7).
     return _out("indeterminate", None)
 
@@ -648,6 +719,9 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     # sr2-anchor-timestamp is a valid §10.5.3 literal but a §10.5.1 SHOULD NOT implemented here — a
     # DISTINCT not-implemented refusal; anything outside the vocab is a vocab error. Only IMPLEMENTED
     # bases proceed, and the clock is the DECLARED basis (no hardcode that would mislabel the receipt).
+    if not isinstance(basis, str):
+        raise ValueError("windowingBasis must be one of %s (got %r)"
+                         % (sorted(SUPPORTED_WINDOWING_BASES), basis))
     if basis not in IMPLEMENTED_WINDOWING_BASES:
         if basis in SUPPORTED_WINDOWING_BASES:
             raise ValueError("windowingBasis %r is not implemented (fail-closed; §10.5.1 sr2 windowing "
@@ -861,7 +935,8 @@ def receipt_required_members_present(derivation):
     #      (derive() / the replay guard), never folded into this vocab reason.
     if "windowingBasis" not in derivation:
         reasons.append("windowingBasis is REQUIRED (spec :530)")
-    elif derivation.get("windowingBasis") not in SUPPORTED_WINDOWING_BASES:
+    elif (not isinstance(derivation.get("windowingBasis"), str)
+          or derivation.get("windowingBasis") not in SUPPORTED_WINDOWING_BASES):
         reasons.append("windowingBasis must be one of %s (got %r)"
                        % (sorted(SUPPORTED_WINDOWING_BASES), derivation.get("windowingBasis")))
     # (6) per-disposition member completeness (unchanged from E5).
@@ -1073,7 +1148,8 @@ def _bundle_shape_ok(bundle):
     return (True, None)
 
 
-def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None):
+def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None, anchor_deref=None,
+                                pure_mapping_resolver=None):
     """Executable replay validation of every authenticated copy in a ReplayableReputationDerivation
     (round-6 blocker #2). For each entry: re-verify roleEvidence (BB-4/BB-5 via verify_binding);
     reproduce BB-6 selection over bb6Context; on a present disposition dereference counterpartyRef,
@@ -1081,7 +1157,12 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
     dereference the AbsenceEvidence, hash-check absenceEvidenceRef, verify absenceBinding, and require
     absenceBinding.nativeAddress == AbsenceEvidence.nativeAddress. Structural checks always run;
     binding-signature verification runs only under pubkeys+HAVE_CRYPTO. Must first pass the
-    discriminator gate. evidence_deref(contentHash) -> AbsenceEvidence. Returns (ok, [reasons])."""
+    discriminator gate. deref(contentHash) -> bundle; anchor_deref(native-or-resolved-address) ->
+    the exact anchored copy is required because unhashed role/signature fields make a content-hash
+    lookup ambiguous. pure_mapping_resolver(jobId, role) ->
+    native address supplies a substrate's deterministic logical-to-native mapping (the reference
+    default is identity on logical_address). evidence_deref(contentHash) -> AbsenceEvidence.
+    Returns (ok, [reasons])."""
     gate = require_replayable_derivation(derivation)
     if not gate["ok"]:
         return (False, ["discriminator refusal: " + gate["reason"]])
@@ -1104,7 +1185,10 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             reasons.append(reason_entry)
             continue
         ch = entry.get("contentHash")
-        auth = deref(ch)
+        role = entry.get("resolvedRole")
+        other = _other(role) if role in ("buyer", "seller") else None
+        re_ = entry.get("roleEvidence") or {}
+        auth = _deref_role_copy(anchor_deref, re_)
         if not isinstance(auth, dict):
             reasons.append("%s: authoritative copy not dereferenceable" % ch)
             continue
@@ -1121,12 +1205,10 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         if not ok_w:
             reasons.append("%s: winner copy %s" % (ch, reason_w))
             continue
-        role = entry.get("resolvedRole")
-        other = _other(role) if role in ("buyer", "seller") else None
-        re_ = entry.get("roleEvidence") or {}
         # (1) roleEvidence re-verification + (2) BB-6 reproduction.
         if re_.get("kind") == "binding":
-            vb = verify_binding(re_.get("binding") or {}, pubkeys,
+            auth_binding = re_.get("binding") or {}
+            vb = verify_binding(auth_binding, pubkeys,
                                 expected_jobid=auth.get("jobId"), expected_role=role,
                                 expected_content_hash=ch)
             if not vb["ok"]:
@@ -1196,6 +1278,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             per_signer_count = {}
             for c in survivors:
                 per_signer_count[c.get("signer")] = per_signer_count.get(c.get("signer"), 0) + 1
+            anchored = {}
             if any(n > budget for n in per_signer_count.values()):
                 res = resolve_bb6(survivors, party_map, budget, anchored={})
             else:
@@ -1211,7 +1294,6 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                     if len(bucket) < budget:
                         bucket.append(c)
                         budgeted.append(c)
-                anchored = {}
                 valid_bindings = []
                 candidate_refusal = None
                 for cand in budgeted:
@@ -1220,10 +1302,8 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                         candidate_refusal = "BB-5: candidate nativeAddress absent/null (%r)" % (nat,)
                         break
                     cb = cand.get("bundleContentHash")
-                    try:
-                        fetched = deref(cb)
-                    except KeyError:
-                        fetched = None   # content-addressed miss — deref may raise or return None; both => unfetchable
+                    fetched = _deref_role_copy(
+                        anchor_deref, {"kind": "binding", "binding": cand})
                     if not isinstance(fetched, dict):
                         candidate_refusal = "BB-6 candidate bundle not dereferenceable: %s" % (cb,)
                         break
@@ -1249,11 +1329,29 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 reasons.append("%s: BB-6 re-selection differs (got %r/%s, want present/%s)"
                                % (ch, res["disposition"], res["resolvedNativeAddress"], native))
                 continue
+            # Use the exact fully-validated copy fetched at the governing native address for all
+            # subsequent reconciliation. This matters when another role anchor carries identical
+            # canonical bytes but a different (unhashed) anchoredByRole value.
+            auth = anchored[native]
+        else:
+            pf_auth_ok, pf_auth_reason = _post_fetch_address_valid(
+                auth, re_.get("resolvedAddress"), role, ch, pubkeys,
+                pure_mapping_resolver=pure_mapping_resolver)
+            if not pf_auth_ok:
+                reasons.append("%s: authoritative copy %s" % (ch, pf_auth_reason))
+                continue
         # (3) present: re-run §10.4.3 reconciliation against the dereferenced counterparty copy.
         disp = entry.get("counterpartyDisposition")
         if disp == "present":
             cref = entry.get("counterpartyRef") or {}
-            cp = deref(cref.get("contentHash"))
+            cre = entry.get("counterpartyRoleEvidence") or {}
+            if not cref:
+                reasons.append("%s: present disposition missing counterpartyRef" % ch)
+                continue
+            if not cre:
+                reasons.append("%s: present disposition missing counterpartyRoleEvidence" % ch)
+                continue
+            cp = _deref_role_copy(anchor_deref, cre)
             if not isinstance(cp, dict):
                 reasons.append("%s: counterpartyRef not dereferenceable" % ch)
                 continue
@@ -1264,17 +1362,22 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if not ok_cp:
                 reasons.append("%s: counterparty copy %s" % (ch, reason_cp))
                 continue
-            cre = entry.get("counterpartyRoleEvidence")
-            if not cre:
-                reasons.append("%s: present disposition missing counterpartyRoleEvidence" % ch)
-                continue
             if cre.get("kind") == "binding":
-                vb2 = verify_binding(cre.get("binding") or {}, pubkeys,
+                cp_binding = cre.get("binding") or {}
+                vb2 = verify_binding(cp_binding, pubkeys,
                                      expected_jobid=auth.get("jobId"), expected_role=other,
                                      expected_content_hash=cref.get("contentHash"))
                 if not vb2["ok"]:
                     reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
                     continue
+                pf_cp_ok, pf_cp_reason = _post_fetch_valid(cp, cp_binding, pubkeys)
+            else:
+                pf_cp_ok, pf_cp_reason = _post_fetch_address_valid(
+                    cp, cre.get("resolvedAddress"), other, cref.get("contentHash"), pubkeys,
+                    expected_jobid=auth.get("jobId"), pure_mapping_resolver=pure_mapping_resolver)
+            if not pf_cp_ok:
+                reasons.append("%s: counterparty copy %s" % (ch, pf_cp_reason))
+                continue
             if divergence(auth, cp):
                 reasons.append("%s: counterparty copy canonically diverges (§10.4.3)" % ch)
                 continue
@@ -1302,7 +1405,8 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
     return (not reasons, reasons)
 
 
-def replay_receipt(derivation, deref, party, window_start, window_end, evidence_deref=None, pubkeys=None):
+def replay_receipt(derivation, deref, party, window_start, window_end, evidence_deref=None, pubkeys=None,
+                   anchor_deref=None, pure_mapping_resolver=None):
     """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
     full per-copy validation (validate_resolution_context) — roleEvidence BB-4/BB-5, BB-6
     reproduction, §10.4.3 divergence against the dereferenced counterparty, and the absence
@@ -1319,12 +1423,14 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     ok_m, _reasons_m = receipt_required_members_present(derivation)
     if not ok_m:
         return (False, None)
-    ok, _reasons = validate_resolution_context(derivation, deref, evidence_deref, pubkeys)
+    ok, _reasons = validate_resolution_context(
+        derivation, deref, evidence_deref, pubkeys, anchor_deref=anchor_deref,
+        pure_mapping_resolver=pure_mapping_resolver)
     if not ok:
         return (False, None)
     tagged = []
     for entry in derivation["resolutionContext"]:
-        b = deref(entry["contentHash"])
+        b = _deref_role_copy(anchor_deref, entry["roleEvidence"])
         tag = {"bundle": b, "resolvedRole": entry["resolvedRole"],
                "counterpartyDisposition": entry.get("counterpartyDisposition"),
                "counterpartyRef": entry.get("counterpartyRef"),

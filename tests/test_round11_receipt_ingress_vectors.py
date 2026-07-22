@@ -168,7 +168,7 @@ def build_absent(job, sign_roles=("buyer", "seller")):
     evh = evidence_hash(ev)
     bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
     entry = _absent_entry(job, h, role_bind, bb6, absb, evh, cp)
-    return {"deriv": _derivation(h, entry), "deref": {h: winner}, "ev": {evh: ev},
+    return {"deriv": _derivation(h, entry), "deref": {h: winner}, "anchors": {n: winner}, "ev": {evh: ev},
             "h": h, "n": n, "winner": winner, "role_bind": role_bind}
 
 
@@ -179,20 +179,40 @@ def build_present(job):
     role_bind = make_binding(job, "seller", "seller", n, h)
     cp_native = native_address(job, "buyer", 0)
     cp_bind = make_binding(job, "buyer", "buyer", cp_native, h)
+    cp = copy.deepcopy(W)
+    cp["anchoredByRole"] = "buyer"  # excluded from bundle_hash: distinct role anchor, same canonical form
     bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
     entry = {"contentHash": h, "resolvedRole": "seller",
              "roleEvidence": {"kind": "binding", "binding": role_bind}, "bb6Context": bb6,
              "counterpartyDisposition": "present",
              "counterpartyRef": {"contentHash": h},
              "counterpartyRoleEvidence": {"kind": "binding", "binding": cp_bind}}
-    return {"deriv": _derivation(h, entry), "deref": {h: W}, "ev": {}, "h": h, "W": W}
+    return {"deriv": _derivation(h, entry), "deref": {h: W},
+            "anchors": {n: W, cp_native: cp}, "ev": {}, "h": h, "W": W, "cp": cp}
+
+
+def _anchor_deref(p, address):
+    """Resolve an exact anchored copy, retaining a dynamic fallback for tests that add candidates."""
+    if address in p.get("anchors", {}):
+        return p["anchors"][address]
+    for entry in p["deriv"].get("resolutionContext", []):
+        evidences = [entry.get("roleEvidence"), entry.get("counterpartyRoleEvidence")]
+        evidences += [{"kind": "binding", "binding": b}
+                      for b in (entry.get("bb6Context") or {}).get("candidateBindings", [])]
+        for evidence in evidences:
+            evidence = evidence or {}
+            binding = evidence.get("binding") or {}
+            if evidence.get("kind") == "binding" and binding.get("nativeAddress") == address:
+                return p["deref"].get(binding.get("bundleContentHash"))
+    return None
 
 
 def vrc(p):
     """Run validate_resolution_context over a receipt-factory dict. A raised exception here fails
     the test (that is exactly the 'no exception escapes' assertion)."""
     return R.validate_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
-                                         lambda x: p["ev"].get(x), PUBKEYS)
+                                         lambda x: p["ev"].get(x), PUBKEYS,
+                                         anchor_deref=lambda x: _anchor_deref(p, x))
 
 
 def vrc_mode(p, pubkeys):
@@ -201,7 +221,8 @@ def vrc_mode(p, pubkeys):
     null member via SIG-6 / algorithm-dispatch / signer-mismatch, so a crypto-only predicate (the
     grid oracle, and the plain `vrc` above) could not reach the slip."""
     return R.validate_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
-                                         lambda x: p["ev"].get(x), pubkeys)
+                                         lambda x: p["ev"].get(x), pubkeys,
+                                         anchor_deref=lambda x: _anchor_deref(p, x))
 
 
 def vb_role_binding(p, pubkeys):
@@ -252,7 +273,8 @@ def build_divergence_present(job, winner_ps, cp_ps):
              "roleEvidence": {"kind": "binding", "binding": role_bind}, "bb6Context": bb6,
              "counterpartyDisposition": "present", "counterpartyRef": {"contentHash": hB},
              "counterpartyRoleEvidence": {"kind": "binding", "binding": cp_bind}}
-    return {"deriv": _derivation(hA, entry), "deref": {hA: A, hB: B}, "ev": {}, "h": hA,
+    return {"deriv": _derivation(hA, entry), "deref": {hA: A, hB: B},
+            "anchors": {role_bind["nativeAddress"]: A, cp_bind["nativeAddress"]: B}, "ev": {}, "h": hA,
             "A": A, "B": B, "hB": hB}
 
 
@@ -419,7 +441,9 @@ def _grid_base_present():
 def _grid_base_absent_addr():
     p = build_absent("GRID-ADR")
     e = p["deriv"]["resolutionContext"][0]
-    e["roleEvidence"] = {"kind": "address", "resolvedAddress": p["n"]}
+    resolved = logical_address(p["winner"]["jobId"], "seller")
+    e["roleEvidence"] = {"kind": "address", "resolvedAddress": resolved}
+    p["anchors"][resolved] = p["winner"]
     del e["bb6Context"]
     return p, e
 
@@ -430,10 +454,13 @@ def _grid_base_present_addr():
     :541), resolvedRole kept valid. Accepts unmutated; enables the counterparty address arm sweep."""
     p = build_present("GRID-PADR")
     e = p["deriv"]["resolutionContext"][0]
-    re_nat = e["roleEvidence"]["binding"]["nativeAddress"]
-    cre_nat = e["counterpartyRoleEvidence"]["binding"]["nativeAddress"]
+    job = p["W"]["jobId"]
+    re_nat = logical_address(job, "seller")
+    cre_nat = logical_address(job, "buyer")
     e["roleEvidence"] = {"kind": "address", "resolvedAddress": re_nat}
     e["counterpartyRoleEvidence"] = {"kind": "address", "resolvedAddress": cre_nat}
+    p["anchors"][re_nat] = p["W"]
+    p["anchors"][cre_nat] = p["cp"]
     del e["bb6Context"]
     return p, e
 
@@ -705,7 +732,9 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         kind!='binding' branch is skipped) AND after the fix."""
         p = build_absent("R11-ADDR-CTL")
         entry = p["deriv"]["resolutionContext"][0]
-        entry["roleEvidence"] = {"kind": "address", "resolvedAddress": p["n"]}
+        resolved = logical_address(p["winner"]["jobId"], "seller")
+        entry["roleEvidence"] = {"kind": "address", "resolvedAddress": resolved}
+        p["anchors"][resolved] = p["winner"]
         del entry["bb6Context"]
         self.assertEqual(vrc(p), (True, []))
 
@@ -864,7 +893,8 @@ class Round11ReceiptIngressTests(unittest.TestCase):
     def _replay(self, p):
         return R.replay_receipt(p["deriv"], lambda x: p["deref"].get(x), CLAIM["seller"],
                                 FINALISED_AT - 1, FINALISED_AT + 1,
-                                evidence_deref=lambda x: p["ev"].get(x), pubkeys=PUBKEYS)
+                                evidence_deref=lambda x: p["ev"].get(x), pubkeys=PUBKEYS,
+                                anchor_deref=lambda x: _anchor_deref(p, x))
 
     def test_r13_b2_bool_index_defect(self):
         """PIN (B2 Limb A): a boolean phaseSummary index refuses at the SHAPE GATE with its own exact

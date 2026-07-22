@@ -26,6 +26,15 @@ def _replayable_present(job):
     return p
 
 
+def _replayable_empty():
+    return {
+        "deriv": R.derive(
+            CLAIM["seller"], [], FINALISED_AT - 1, FINALISED_AT + 1, "finalisedAt"),
+        "deref": {},
+        "anchors": {},
+    }
+
+
 def _validate(p):
     return R.validate_resolution_context(
         p["deriv"], lambda h: p["deref"].get(h), lambda _h: None, PUBKEYS,
@@ -56,6 +65,41 @@ def _candidate(content_hash, native_address):
 
 
 class Round14ReviewClosureTests(unittest.TestCase):
+    def test_bundle_count_false_refuses_zero_bundle_receipt(self):
+        p = _replayable_empty()
+        p["deriv"]["bundleCount"] = False
+        self.assertEqual(
+            R.receipt_required_members_present(p["deriv"]),
+            (False, ["bundleCount must be present and an integer"]))
+        self.assertEqual(_replay(p), (False, None))
+
+    def test_bundle_count_true_refuses_one_bundle_receipt(self):
+        p = _replayable_present("R14-BUNDLE-COUNT-TRUE")
+        self.assertEqual(p["deriv"]["bundleCount"], 1)
+        p["deriv"]["bundleCount"] = True
+        self.assertEqual(
+            R.receipt_required_members_present(p["deriv"]),
+            (False, ["bundleCount must be present and an integer"]))
+        self.assertEqual(_replay(p), (False, None))
+
+    def test_bundle_count_integer_zero_remains_valid(self):
+        p = _replayable_empty()
+        self.assertIs(type(p["deriv"]["bundleCount"]), int)
+        self.assertEqual(p["deriv"]["bundleCount"], 0)
+        self.assertEqual(R.receipt_required_members_present(p["deriv"]), (True, []))
+        same, replayed = _replay(p)
+        self.assertTrue(same)
+        self.assertEqual(replayed["bundleCount"], 0)
+
+    def test_bundle_count_integer_one_remains_valid(self):
+        p = _replayable_present("R14-BUNDLE-COUNT-ONE")
+        self.assertIs(type(p["deriv"]["bundleCount"]), int)
+        self.assertEqual(p["deriv"]["bundleCount"], 1)
+        self.assertEqual(R.receipt_required_members_present(p["deriv"]), (True, []))
+        same, replayed = _replay(p)
+        self.assertTrue(same)
+        self.assertEqual(replayed["bundleCount"], 1)
+
     def test_replay_without_exact_anchor_resolver_fails_closed(self):
         p = _replayable_present("R14-ANCHOR-REQUIRED")
         ok, reasons = R.validate_resolution_context(

@@ -362,5 +362,123 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
         self.assertIsNone(R._deref_role_copy(None, ev))
 
 
+class Round14VerificationCompletion(unittest.TestCase):
+    """Verification-completion tests (each kill-proof-verified under its target mutation before commit):
+      A · full crypto-enabled replay regression for the counterparty anchoredByRole finding (Random's
+          explicit ask: 'crypto full replay_receipt() returned True') — address-arm, aborted-by-self
+          single-signed legacy pair, driven through R.derive + replay_receipt with pubkeys.
+      B · the multi-form BB-6 void (premise P4.1 / mutant M-G2c): TWO full-standing forms => indeterminate.
+      C · the binding-arm winner exact-copy index (premise P4.1 / mutant M-G2g): the patch fetches the
+          winner via anchor_deref(native), NOT deref(contentHash); a copy that is byte-equal but carries a
+          different unhashed anchoredByRole at the content-hash slot must NOT govern reconciliation."""
+
+    FA = 1780004000000
+
+    @classmethod
+    def setUpClass(cls):
+        cls.rrd = json.loads(RRD_PATH.read_text(encoding="utf-8"))
+        cls.pk = _pubkeys(cls.rrd)
+        cls.privs = _privkeys(cls.rrd)
+
+    # ---- builders -----------------------------------------------------------
+    def _legacy(self, job, outcome, anchor_role, sign_roles, extra=None):
+        """A legacy AttestationBundle (no faultBundleVersion) signed by `sign_roles`. `extra` merges
+        HASHED fields BEFORE signing (so the signature covers them and stays valid under crypto)."""
+        b = {"jobId": job, "outcome": outcome, "anchoredByRole": anchor_role, "finalisedAt": self.FA,
+             "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"},
+                         {"role": "seller", "primaryClaim": "did:demos:seller"}]}
+        if extra:
+            b.update(extra)
+        for r in sign_roles:
+            _add_bundle_signature(b, r, self.privs)
+        return b
+
+    def _binding(self, job, role, signer_role, native, content_hash):
+        b = {"bindingVersion": "1", "jobId": job, "role": role,
+             "logicalAddress": R.logical_address(job, role), "nativeAddress": native,
+             "bundleContentHash": content_hash, "signer": "did:demos:%s" % signer_role}
+        return _sign_binding(b, signer_role, self.privs)
+
+    # ---- A · full crypto replay of the counterparty anchoredByRole finding --------------------------
+    def test_a_counterparty_anchored_role_full_crypto_replay(self):
+        self_c = self._legacy("JA", "aborted-by-self", "seller", ["seller"])   # abort => single-sign valid
+        # cp shares the outcome (both blame self => genuine divergence); a HASHED distinguisher signed in
+        # keeps its contentHash distinct from self (anchoredByRole alone is unhashed).
+        cp = self._legacy("JA", "aborted-by-self", "buyer", ["buyer"], extra={"noteTag": "cp"})
+        h_self, h_cp = R.bundle_hash(self_c), R.bundle_hash(cp)
+        self.assertNotEqual(h_self, h_cp)
+        self.assertTrue(R.divergence(self_c, cp), "honest pair must genuinely §10.4.3-diverge (control)")
+        waddr, caddr = R.logical_address("JA", "seller"), R.logical_address("JA", "buyer")
+        tag = {"bundle": self_c, "resolvedRole": "seller", "counterpartyDisposition": "present",
+               "counterpartyRef": {"contentHash": h_cp},
+               "counterpartyRoleEvidence": {"kind": "address", "resolvedAddress": caddr},
+               "roleEvidence": {"kind": "address", "resolvedAddress": waddr}}
+        deriv = R.derive("did:demos:seller", [tag], self.FA - 1, self.FA + 1, "finalisedAt")
+
+        # HONEST pair: genuinely divergent -> full CRYPTO replay refuses, validate cites the divergence.
+        deref = {h_self: self_c, h_cp: cp}; anchor = {waddr: self_c, caddr: cp}
+        self.assertEqual(R.replay_receipt(deriv, lambda h: deref.get(h), "did:demos:seller",
+                                          self.FA - 1, self.FA + 1, None, self.pk, **_kw(anchor)),
+                         (False, None))
+        v_ok, v_reasons = R.validate_resolution_context(deriv, lambda h: deref.get(h), None, self.pk, **_kw(anchor))
+        self.assertFalse(v_ok)
+        self.assertTrue(any("diverges" in r for r in v_reasons), v_reasons)
+
+        # ATTACK: flip ONLY the counterparty's unhashed anchoredByRole buyer->seller (hash unchanged).
+        cp_mut = copy.deepcopy(cp); cp_mut["anchoredByRole"] = "seller"
+        self.assertEqual(R.bundle_hash(cp_mut), h_cp, "anchoredByRole is excluded from the bundle hash")
+        deref2 = {h_self: self_c, h_cp: cp_mut}; anchor2 = {waddr: self_c, caddr: cp_mut}
+        self.assertEqual(R.replay_receipt(deriv, lambda h: deref2.get(h), "did:demos:seller",
+                                          self.FA - 1, self.FA + 1, None, self.pk, **_kw(anchor2)),
+                         (False, None), "crypto full replay must refuse the anchoredByRole-flip attack")
+        a_ok, a_reasons = R.validate_resolution_context(deriv, lambda h: deref2.get(h), None, self.pk, **_kw(anchor2))
+        self.assertFalse(a_ok)
+        self.assertTrue(any("anchoredByRole" in r for r in a_reasons), a_reasons)
+
+    # ---- B · two full-standing forms => indeterminate (M-G2c) --------------------------------------
+    def test_b_bb6_two_full_standing_forms_are_indeterminate(self):
+        cA = self._legacy("JB", "aborted-by-self", "seller", ["buyer", "seller"])   # full standing
+        cB = self._legacy("JB", "aborted-by-other", "seller", ["buyer", "seller"])  # full standing, distinct hash
+        hA, hB = R.bundle_hash(cA), R.bundle_hash(cB)
+        self.assertNotEqual(hA, hB)
+        self.assertTrue(R._full_standing(cA) and R._full_standing(cB), "both forms must be full-standing")
+        bindings = [self._binding("JB", "seller", "seller", "stor-a", hA),
+                    self._binding("JB", "seller", "seller", "stor-b", hB)]
+        anchored = {"stor-a": cA, "stor-b": cB}
+        res = R.resolve_bb6(bindings, party_map={"did:demos:seller": "seller"}, budget=8, anchored=anchored)
+        self.assertEqual(res["disposition"], "indeterminate",
+                         "two full-standing forms => equal standing => BB-6/BB-7 void; got %r" % (res,))
+
+    # ---- C · binding-arm winner is the exact anchor copy, not the content-hash copy (M-G2g) --------
+    def test_c_binding_arm_winner_uses_exact_anchor_copy_not_content_hash(self):
+        # copy_A governs at the winner's native anchor (seller-anchored, correct role). copy_B is byte-equal
+        # (same contentHash) but seller->buyer flipped; it sits ONLY at the content-hash deref slot. On the
+        # patched tree auth = anchored[native] = copy_A, so the honest pair does NOT diverge and validates.
+        copy_a = self._legacy("JC", "aborted-by-self", "seller", ["seller"])
+        ch = R.bundle_hash(copy_a)
+        copy_b = copy.deepcopy(copy_a); copy_b["anchoredByRole"] = "buyer"
+        self.assertEqual(R.bundle_hash(copy_b), ch, "copy_B must be byte-equal (anchoredByRole is unhashed)")
+        cp = self._legacy("JC", "aborted-by-other", "buyer", ["buyer"])
+        h_cp = R.bundle_hash(cp)
+        winner_native = "stor-winner-JC"
+        caddr = R.logical_address("JC", "buyer")
+        winner_binding = self._binding("JC", "seller", "seller", winner_native, ch)
+        bb6 = {"candidateBindings": [winner_binding], "partyMap": {"did:demos:seller": "seller"}, "budget": 8}
+        entry = {"contentHash": ch, "resolvedRole": "seller",
+                 "roleEvidence": {"kind": "binding", "binding": winner_binding}, "bb6Context": bb6,
+                 "counterpartyDisposition": "present", "counterpartyRef": {"contentHash": h_cp},
+                 "counterpartyRoleEvidence": {"kind": "address", "resolvedAddress": caddr}}
+        deriv = {"replayableDerivationVersion": "1", "resolutionContext": [entry]}
+        # deref (content-hash) returns copy_B; anchor_deref returns the exact copies by address.
+        deref = {ch: copy_b, h_cp: cp}
+        anchor = {winner_native: copy_a, caddr: cp}
+        # control: divergence answers differ for the two candidate winner copies (so the index MATTERS).
+        self.assertFalse(R.divergence(copy_a, cp), "copy_A must NOT diverge from cp (honest)")
+        self.assertTrue(R.divergence(copy_b, cp), "copy_B WOULD diverge from cp (the wrong-index outcome)")
+        ok, reasons = R.validate_resolution_context(deriv, lambda h: deref.get(h), None, self.pk, **_kw(anchor))
+        self.assertEqual((ok, reasons), (True, []),
+                         "patched: winner governed by the exact anchor copy (copy_A) -> honest receipt validates")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -43,6 +43,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RT-* | Rating bounds and derivation handling | §10.6.1 | §14.5 |
 | SB-* | Session-bound settlement evidence (tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
 | SE-* | Sealed-envelope negotiation | §8.4.3 | §14.3 |
+| SEB-* | SettlementEvidence exact-set and phase-bijection validation | §10.4.3 | §14.5 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |
 | ST-* | Session state transitions | §10.3.1 | §14.5 |

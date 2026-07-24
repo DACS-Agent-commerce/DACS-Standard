@@ -28,6 +28,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.3.json`](bundle-settlement-evidence-bijection-v0.3.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 19 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 2 | `fail` / `pass` |
@@ -80,6 +81,27 @@ raw measurement to the ceiled canonical quantity, while
 `agreement-validation` carries the pinned `pricing`, signed `terms`, expected
 verdict, and exact reason or computed amount. Run the dependency-free reference
 assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
+
+### `bundle-settlement-evidence-bijection-v0.3.json` — §10.4.3 SEB-1..SEB-6
+
+19 candidate vectors bind the raw top-level `settlementEvidence[]` array to the
+authenticated DACS-4 payment/delivery phase keys that ran to a success or failure
+outcome and produced durable evidence. They cover exact
+pointerless and pointer-bearing positives; missing, equal-count duplicate,
+coverage-complete duplicate, distinct-reference alias, extra, wrong-phase, non-evidence-phase, pointer
+reuse/conflict/dangling, and structural-before-uncertainty negatives; plus all
+four ST-8 top-level representations. Resolved ST-8 lists only the success
+successor; expired ST-8 lists the standing interim failure; known-successor
+suppression rejects. Optional per-phase pointers remain optional.
+
+Each input keeps execution authority (`expectedPhaseKeys`), raw full-canonical
+reference keys, independently resolved phase keys, present optional pointers,
+ST-8 record classes/supersession edges, and unrelated authority disposition separate. Stable
+outputs use `verified`, `rejected`, or `indeterminate` plus one normative
+`reasonCode`; `reasonPrecedence` fixes cross-run code selection. The supplied
+phase/reference keys are already authenticated projections: SEB-1 authority
+ derivation and SB-1 job/index recovery remain separate pre-promotion fixtures.
+ This is a candidate set; independent cross-run and golden promotion remain pending.
 
 ### `bundle-absence-evidence-v0.3.json` — CORE §5 SR-2 + DACS-5 §10.4.3 / §10.5.1 guard (iv)
 

@@ -1,0 +1,125 @@
+{
+  "set": "bundle-settlement-evidence-bijection-v0.3",
+  "spec": "DACS-5 §10.4.3 SEB-1..SEB-6",
+  "inputModel": "expectedPhaseKeys come from authenticated evidence-bearing execution authority for invocations that ran to a success or failure outcome; topLevelRefs are raw full-canonical reference keys; resolvedReferencePhaseKeys are independently resolved job-bound phase keys; pointerMap contains only present optional pointers; recordClassByRef defaults to ordinary-terminal and distinguishes st8-resolved-success from st8-expired-interim-failure; supersedesEdges bind resolved successors even when the successor is maliciously omitted from topLevelRefs; unrelatedAuthorityDisposition is evaluated only after deterministic SEB checks",
+  "reasonCodes": ["ok", "raw-multiplicity", "exact-cardinality", "exact-phase-mapping", "exact-bijection", "pointer-agreement", "st8-raw-admissibility", "unrelated-authority-indeterminate"],
+  "reasonPrecedence": ["raw-multiplicity", "st8-raw-admissibility", "exact-phase-mapping", "exact-cardinality", "exact-bijection", "pointer-agreement", "unrelated-authority-indeterminate", "ok"],
+  "hash": "a9df4ab8e21450bce1e6d392b8375aa7879c42dafd4b9121863ebac3d59eca30",
+  "count": 19,
+  "vectors": [
+    {
+      "name": "bundle-settlement-bijection-exact-pointerless-pass",
+      "expected": "pass",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "verified", "reasonCode": "ok" }
+    },
+    {
+      "name": "bundle-settlement-bijection-exact-pointers-pass",
+      "expected": "pass",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-pay", "3:deliver-attested-payload": "ref-deliver" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "verified", "reasonCode": "ok" }
+    },
+    {
+      "name": "bundle-settlement-bijection-missing-member-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "exact-cardinality" }
+    },
+    {
+      "name": "bundle-settlement-bijection-equal-count-duplicate-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "raw-multiplicity" }
+    },
+    {
+      "name": "bundle-settlement-bijection-coverage-complete-duplicate-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver", "ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "raw-multiplicity" }
+    },
+    {
+      "name": "bundle-settlement-bijection-extra-member-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver", "ref-extra"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload", "ref-extra": "4:deliver-storage-program" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "exact-phase-mapping" }
+    },
+    {
+      "name": "bundle-settlement-bijection-pointer-reused-across-phases-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-pay", "3:deliver-attested-payload": "ref-pay" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+    },
+    {
+      "name": "bundle-settlement-bijection-equal-count-wrong-phase-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-wrong"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-wrong": "4:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "exact-phase-mapping" }
+    },
+    {
+      "name": "bundle-settlement-bijection-present-pointer-conflict-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-deliver" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+    },
+    {
+      "name": "bundle-settlement-bijection-pointer-outside-top-level-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload", "ref-dangling": "2:pay-dem" }, "pointerMap": { "2:pay-dem": "ref-dangling" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+    },
+    {
+      "name": "bundle-settlement-bijection-non-evidence-phase-substitution-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-negotiate"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-negotiate": "3:negotiate-rfq" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "exact-phase-mapping" }
+    },
+    {
+      "name": "bundle-settlement-bijection-omission-with-unrelated-uncertainty-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "indeterminate" },
+      "want": { "disposition": "rejected", "reasonCode": "exact-cardinality" }
+    },
+    {
+      "name": "bundle-settlement-bijection-exact-with-unrelated-uncertainty-indeterminate",
+      "expected": "indeterminate",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "indeterminate" },
+      "want": { "disposition": "indeterminate", "reasonCode": "unrelated-authority-indeterminate" }
+    },
+    {
+      "name": "bundle-settlement-bijection-pointer-conflict-with-unrelated-uncertainty-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-deliver" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "indeterminate" },
+      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+    },
+    {
+      "name": "bundle-settlement-bijection-distinct-reference-alias-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay-a", "ref-pay-b"], "resolvedReferencePhaseKeys": { "ref-pay-a": "2:pay-dem", "ref-pay-b": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "exact-bijection" }
+    },
+    {
+      "name": "bundle-settlement-bijection-st8-resolved-only-pass",
+      "expected": "pass",
+      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-resolved"], "resolvedReferencePhaseKeys": { "ref-resolved": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-resolved": "st8-resolved-success" }, "supersedesEdges": { "ref-resolved": "ref-interim" }, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "verified", "reasonCode": "ok" }
+    },
+    {
+      "name": "bundle-settlement-bijection-st8-expired-interim-pass",
+      "expected": "pass",
+      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-interim"], "resolvedReferencePhaseKeys": { "ref-interim": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-interim": "st8-expired-interim-failure" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "verified", "reasonCode": "ok" }
+    },
+    {
+      "name": "bundle-settlement-bijection-st8-resolved-success-suppressed-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-interim"], "resolvedReferencePhaseKeys": { "ref-interim": "2:pay-cross-chain-htlc", "ref-resolved": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-interim": "st8-expired-interim-failure", "ref-resolved": "st8-resolved-success" }, "supersedesEdges": { "ref-resolved": "ref-interim" }, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "st8-raw-admissibility" }
+    },
+    {
+      "name": "bundle-settlement-bijection-st8-interim-plus-resolved-reject",
+      "expected": "fail",
+      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-interim", "ref-resolved"], "resolvedReferencePhaseKeys": { "ref-interim": "2:pay-cross-chain-htlc", "ref-resolved": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-interim": "st8-expired-interim-failure", "ref-resolved": "st8-resolved-success" }, "supersedesEdges": { "ref-resolved": "ref-interim" }, "unrelatedAuthorityDisposition": "verified" },
+      "want": { "disposition": "rejected", "reasonCode": "st8-raw-admissibility" }
+    }
+  ]
+}

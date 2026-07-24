@@ -1852,7 +1852,7 @@
       "id": "verify-address-buyer",
       "area": "verify",
       "spec": "§10.4.2",
-      "summary": "buyer bundle address is stor-{sha256(jobId + \"-bundle-buyer\")}",
+      "summary": "buyer bundle logical address derives as stor-{sha256(jobId + \"-bundle-buyer\")} — logical-address derivation, not native resolution (§10.4.2 / BB-5)",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
       "want": "stor-c7bc689288bad9d6f448ca14c9aa949a4c9574a317f4a591c7f9486f4f7a6b8f"
@@ -1861,7 +1861,7 @@
       "id": "verify-address-role-specific",
       "area": "verify",
       "spec": "§10.4.2",
-      "summary": "buyer/seller/orchestrator addresses are role-specific",
+      "summary": "buyer/seller/orchestrator logical bundle addresses are role-specific",
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
       "want": [

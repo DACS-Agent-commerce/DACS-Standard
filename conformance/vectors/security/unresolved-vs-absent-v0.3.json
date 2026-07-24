@@ -1,0 +1,127 @@
+{
+  "set": "unresolved-vs-absent-v0.3",
+  "spec": "DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy",
+  "gaps": [
+    "#251 bundle-copy read censorship"
+  ],
+  "decisionModel": "The §10.4.3(b) one-sided classification is reachable for a missing side only when a BB-4-valid BB-5-consistent binding resolves its native address AND an SR-2 read of that address is authoritatively absent under the substrate binding's declared absence-evidence policy (CORE §5). Non-discovery of a binding, an ordinary unqualified not-found, or a binding with no declared policy is indeterminate — never absent.",
+  "vectors": [
+    {
+      "name": "no-binding-on-any-surface-is-indeterminate",
+      "rule": "BB-8; §10.4.3(b)",
+      "expected": "indeterminate",
+      "note": "no BB-4-valid binding is discovered on any consulted surface; §10.4.3(b) is unreachable.",
+      "scoredRole": "seller",
+      "binding": {
+        "resolved": false,
+        "absenceEvidencePolicy": null
+      },
+      "reads": {
+        "seller": {
+          "response": "no-binding"
+        }
+      },
+      "want": {
+        "readDisposition": "indeterminate",
+        "lookupDisposition": "indeterminate",
+        "oneSidedReachable": false,
+        "reputationEffect": "exclude",
+        "reason": "non-discovery of a binding establishes indeterminate, never absence (BB-8)"
+      }
+    },
+    {
+      "name": "binding-resolves-authoritative-absent-one-sided",
+      "rule": "BB-8 gate; CORE §5",
+      "expected": "pass",
+      "note": "a BB-4-valid binding resolves the missing side's native address and an SR-2 read is authoritatively absent under a declared absence-evidence policy; the §10.4.3(b) one-sided classification is reachable.",
+      "scoredRole": "seller",
+      "binding": {
+        "resolved": true,
+        "nativeAddress": "stor-0000000000000000000000000000000000000000",
+        "absenceEvidencePolicy": {
+          "finalityRule": "finalized-head",
+          "authentication": "signed-response",
+          "independence": "distinct-endpoints",
+          "threshold": "2-of-3",
+          "freshness": "<=finality",
+          "stateConsistency": "single-view"
+        }
+      },
+      "reads": {
+        "seller": {
+          "response": "authoritative-absent",
+          "authenticated": true,
+          "finalizedState": "finalized-head"
+        }
+      },
+      "want": {
+        "readDisposition": "absent",
+        "lookupDisposition": "one-sided",
+        "oneSidedReachable": true,
+        "reputationEffect": "include",
+        "reason": "resolved binding plus policy-qualified authoritative absence satisfies the BB-8 gate (§10.4.3(b))"
+      }
+    },
+    {
+      "name": "binding-resolves-ordinary-not-found-is-indeterminate",
+      "rule": "CORE §5; BB-8",
+      "expected": "indeterminate",
+      "note": "the binding resolves but the SR-2 read is an ordinary unqualified not-found, not an authenticated finalized non-membership result; the disposition is indeterminate.",
+      "scoredRole": "seller",
+      "binding": {
+        "resolved": true,
+        "nativeAddress": "stor-0000000000000000000000000000000000000000",
+        "absenceEvidencePolicy": {
+          "finalityRule": "finalized-head",
+          "authentication": "signed-response",
+          "independence": "distinct-endpoints",
+          "threshold": "2-of-3",
+          "freshness": "<=finality",
+          "stateConsistency": "single-view"
+        }
+      },
+      "reads": {
+        "seller": {
+          "response": "not-found",
+          "authenticated": false,
+          "finalizedState": null
+        }
+      },
+      "want": {
+        "readDisposition": "indeterminate",
+        "lookupDisposition": "indeterminate",
+        "oneSidedReachable": false,
+        "reputationEffect": "exclude",
+        "reason": "an ordinary unqualified not-found is indeterminate, not authoritative absence (CORE §5)"
+      }
+    },
+    {
+      "name": "demos-mapping-no-policy-is-indeterminate",
+      "rule": "DEMOS-MAPPING authoritative-absence",
+      "expected": "indeterminate",
+      "note": "the current Demos Storage Program mapping declares no absence-evidence policy, so any not-found has the CORE SR-2 disposition indeterminate, not absent, regardless of the read result.",
+      "scoredRole": "seller",
+      "binding": {
+        "resolved": true,
+        "nativeAddress": "stor-0000000000000000000000000000000000000000",
+        "absenceEvidencePolicy": null
+      },
+      "reads": {
+        "seller": {
+          "response": "not-found",
+          "substrate": "demos",
+          "declaredPolicy": false
+        }
+      },
+      "want": {
+        "readDisposition": "indeterminate",
+        "lookupDisposition": "indeterminate",
+        "oneSidedReachable": false,
+        "reputationEffect": "exclude",
+        "reason": "the Demos mapping does not declare an absence-evidence policy, so not-found is indeterminate, not absent"
+      }
+    }
+  ],
+  "count": 4,
+  "hash": "6118dafa95c97d6e2dade06076537e859067671b005d29093c3b809369bbea76"
+}

@@ -25,6 +25,12 @@ jobs:
         with:
           python-version: '3.x'
 
+      - name: Install crypto dependency
+        run: python3 -m pip install 'cryptography==46.0.5'
+
+      - name: crypto import gate (fail-closed)
+        run: python3 -c "import cryptography; print(cryptography.__version__)"
+
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
 
@@ -61,5 +67,18 @@ jobs:
       - name: Validate documentation links
         run: python3 scripts/validate-docs.py
 
-      - name: Run unit tests
-        run: python3 -m unittest discover tests -v
+      - name: Run unit tests (fail-closed on any skip)
+        run: |
+          python3 - <<'PY'
+          import sys, unittest
+          result = unittest.TextTestRunner(verbosity=2).run(
+              unittest.TestLoader().discover("tests"))
+          if result.skipped:
+              print("::error::%d test(s) skipped — every crypto-gated suite MUST run "
+                    "(a skipped signature suite means the crypto dependency regressed)"
+                    % len(result.skipped))
+              for test, reason in result.skipped:
+                  print("::error::SKIPPED %s: %s" % (test, reason))
+          ok = result.wasSuccessful() and not result.skipped
+          sys.exit(0 if ok else 1)
+          PY

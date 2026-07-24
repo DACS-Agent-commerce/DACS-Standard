@@ -18,7 +18,14 @@ class ImplementationReadinessArtifactTests(unittest.TestCase):
         self.assertIn("python3 scripts/validate_spec_tables.py", text)
         self.assertIn("python3 scripts/validate-docs.py", text)
         self.assertIn("concurrency:", text)
-        self.assertIn("python3 -m unittest discover tests -v", text)
+        # unit tests still run every suite over tests/ (R5: now via a fail-closed wrapper, not the bare
+        # `python3 -m unittest discover tests -v`, so a skipped crypto suite turns the build RED).
+        self.assertIn('discover("tests")', text)
+        # crypto dependency is installed and gated fail-closed (xm33 B2: CI must actually verify signatures).
+        self.assertIn("cryptography", text)
+        self.assertIn("crypto import gate (fail-closed)", text)
+        # skip-gate: any unittest skip fails the job, so skipped=6 can never silently recur.
+        self.assertIn("result.skipped", text)
 
     def test_glossary_index_links_key_terms_to_spec_sections(self):
         glossary = ROOT / "docs" / "glossary-index.md"

@@ -1,0 +1,292 @@
+{
+  "set": "fault-bundle-perspective-pair-v0.3",
+  "spec": "DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set",
+  "provenance": {
+    "generator": "scripts/generate_dacs5_reputation_vectors.py (deterministic; synthetic disclosed seeds)",
+    "canonicalisation": "RFC 8785 JCS over the artifact minus its hash-excluded fields (FaultAttestationBundle/AttestationBundle: signatures+anchoredByRole; binding: signature); attestation_bundle_hash = sha256 hex; ed25519 over the CORE §B.7 domain-separated payload (dacs-fault-bundle:v1: / dacs-bundle:v1: / dacs-bundle-binding:v1: || hash), base64url-unpadded.",
+    "note": "Concrete FAB pairs signed under dacs-fault-bundle:v1:. Verdict pass = converges/unified, fail = divergent or a rejected copy. NOTE: the §10.4.1 same-faultedParty identity rule is exercised by the faultedParty-divergent vector; a separate 'identity-violation' vector would be duplicative, so this set ships 3 vectors.",
+    "seeds": "synthetic repeated-byte ed25519 seeds; buyer a1.., seller c3.., orchestrator 0e.., outsider f0.."
+  },
+  "gaps": [
+    "#248 FaultAttestationBundle absolute fault attribution"
+  ],
+  "decisionModel": "A FaultAttestationBundle pair converges when both copies name the same absolute faultedParty and outcome class, even where the role-relative outcome spellings differ (aborted-by-self vs aborted-by-other). Diverge when faultedParty or outcome class differs. A copy whose faultedParty is outside the §10.4.1 permissible set for its (outcome, anchoredByRole) is rejected.",
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+    "did:demos:orchestrator": "C-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw",
+    "did:demos:outsider": "X2cTKUw88agU6NjKCInbI-aCO3UkuvE0n7x9n1FSlFs"
+  },
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "orchestrator": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+    "outsider": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"
+  },
+  "vectors": [
+    {
+      "name": "fab-pair-converges-same-fault",
+      "rule": "§10.4.3 FAB-pair",
+      "expected": "pass",
+      "note": "buyer copy reads aborted-by-other, seller copy reads aborted-by-self, both name faultedParty seller and the abort class — the pair converges even though canonical forms differ.",
+      "copies": {
+        "buyer": {
+          "faultBundleVersion": "1",
+          "jobId": "FPP-1",
+          "outcome": "aborted-by-other",
+          "faultedParty": "seller",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-FPP-1",
+            "version": 1,
+            "contentHash": "e44ea38ba408b5b5e504c570fe12e69edd664a75cc6df2f0e68207b103b37c18"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "MhNPGtl_Tp_rbF_TTQo3kW9AOjHgdPVYQ0VfAQWkA0pKh9E5fi9cAt-cXEq-zJ36B1h1_l2_BCEVil_YVsu0DA"
+            }
+          ]
+        },
+        "seller": {
+          "faultBundleVersion": "1",
+          "jobId": "FPP-1",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-FPP-1",
+            "version": 1,
+            "contentHash": "e44ea38ba408b5b5e504c570fe12e69edd664a75cc6df2f0e68207b103b37c18"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "0fWPmNjonPSatXKICbaNl1kNpHHC8gIU2q9VO2EnbQ-AqA0lcu2i90ygMwHDFTJYqXgcOF9MnfGUi8hMKUHrCg"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "pass",
+        "convergence": "unified",
+        "reputationEffect": "include",
+        "faultedParty": "seller",
+        "reason": "two FAB copies naming the same faultedParty and class do not diverge (§10.4.3)"
+      }
+    },
+    {
+      "name": "fab-pair-faultedparty-divergent",
+      "rule": "§10.4.3 FAB-pair; §10.4.1 identity",
+      "expected": "fail",
+      "note": "both copies are aborts but name different absolute faultedParty (seller vs buyer); the §10.4.1 same-faultedParty invariant is violated, so the pair canonically diverges.",
+      "copies": {
+        "seller": {
+          "faultBundleVersion": "1",
+          "jobId": "FPP-2",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-FPP-2",
+            "version": 1,
+            "contentHash": "3b57737e73f362b91b73da6e296e811b469cc7e1ad2902065f8b3f8146cd5840"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "xmCdTxowdMv7KqK2J6YOkFaSCe-R53jnxcxW_VIg7oARZXcQwQGwYqyVXdyYPIqgSHiqGoBXt-PIDOlk42CqBQ"
+            }
+          ]
+        },
+        "buyer": {
+          "faultBundleVersion": "1",
+          "jobId": "FPP-2",
+          "outcome": "aborted-by-self",
+          "faultedParty": "buyer",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-FPP-2",
+            "version": 1,
+            "contentHash": "3b57737e73f362b91b73da6e296e811b469cc7e1ad2902065f8b3f8146cd5840"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "KVdETWlKG5dCQGWulifproMSGx4QlNcxU7mww5BGZwV1OAkf5lrGHamfQYCT537o7mKIU7tduUnyKyPjry-FDw"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "convergence": "divergent",
+        "reputationEffect": "exclude",
+        "reason": "paired copies carry non-identical faultedParty (seller vs buyer); §10.4.3 divergence, excluded"
+      }
+    },
+    {
+      "name": "fab-copy-faultedparty-out-of-set",
+      "rule": "§10.4.1 permissible set",
+      "expected": "fail",
+      "note": "a single FAB copy declares faultedParty=seller for (outcome=aborted-by-other, anchoredByRole=seller); the permissible value is any party role other than seller (buyer), so the copy is rejected (§10.4.1).",
+      "copies": {
+        "seller": {
+          "faultBundleVersion": "1",
+          "jobId": "FPP-3",
+          "outcome": "aborted-by-other",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-FPP-3",
+            "version": 1,
+            "contentHash": "c28af6695f71655e165a855bf67af8c2399857b6b3888494ee8ed265ece0ac0d"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "wIoGO0gzSY5mO9mhtleA8maokF1vV3Ol6DihRUj55aCnqjouhtrw5zRNmEJNUxmJHJgF2QR2Pm-UGgZgQwQiAQ"
+            }
+          ]
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "copyDisposition": "rejected",
+        "reputationEffect": "exclude",
+        "faultedPartyDeclared": "seller",
+        "faultedPartyPermissible": [
+          "buyer"
+        ],
+        "reason": "faultedParty outside the §10.4.1 permissible set for (aborted-by-other, seller); copy rejected"
+      }
+    }
+  ],
+  "count": 3,
+  "hash": "b805fd2f1a677459759a1c6e796c40ee7fdf7a0b4272e50f9733f18f614e6fc3"
+}

@@ -1,0 +1,48 @@
+{
+  "set": "reputation-settlement-reference-divergence-v0.3",
+  "spec": "DACS-5 §10.4.3 settlementEvidence reference-multiset divergence + §10.5.1 guard (ii)",
+  "comparisonModel": "compare full canonical AttestationRef multisets with multiplicity, not contentHash alone; digest tokens in compact arms name distinct full references; array order alone is immaterial",
+  "hash": "702a0bb1dd5edea32f57e3cb83a7808a3921ca320d613e4a7755f207d90c42e0",
+  "count": 6,
+  "vectors": [
+    {
+      "name": "reputation-settlement-reference-reordered-unified",
+      "expected": "pass",
+      "input": { "selfRefs": ["sha256:a", "sha256:b"], "counterpartyRefs": ["sha256:b", "sha256:a"] },
+      "want": { "lookupDisposition": "unified", "bundleIncluded": true }
+    },
+    {
+      "name": "reputation-settlement-reference-added-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a", "sha256:b"], "counterpartyRefs": ["sha256:a"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-removed-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a"], "counterpartyRefs": ["sha256:a", "sha256:b"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-duplicated-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a", "sha256:a"], "counterpartyRefs": ["sha256:a"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-substituted-divergent",
+      "expected": "fail",
+      "input": { "selfRefs": ["sha256:a"], "counterpartyRefs": ["sha256:b"] },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    },
+    {
+      "name": "reputation-settlement-reference-same-content-different-anchor-divergent",
+      "expected": "fail",
+      "input": {
+        "selfRefs": [{ "kind": "storage-program", "locator": "stor-a", "contentHash": "sha256:same" }],
+        "counterpartyRefs": [{ "kind": "https", "locator": "https://example.invalid/evidence", "contentHash": "sha256:same" }]
+      },
+      "want": { "lookupDisposition": "divergent", "bundleIncluded": false }
+    }
+  ]
+}

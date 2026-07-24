@@ -234,7 +234,7 @@ Claim language is fixed:
 | `capability` | “DACS v0.1 conformance-tested for CAPABILITY” or “implements CAPABILITY” |
 | `experimental` | “experimental DACS extension x-*” |
 
-- (IM-1) A manifest MUST pin the profile revision and conformance-suite manifest by repository, commit, path, and SHA-256 hash. Every `profile.documents` version MUST equal the version declared by that document at `profile.commit`; the suite hash and case ids MUST be resolved from `conformanceSuite.manifestPath` at `conformanceSuite.commit`, not from a different checkout revision.
+- (IM-1) A manifest MUST pin the profile revision and conformance-suite manifest by repository, commit, path, and SHA-256 hash.
 - (IM-2) Each capability MUST report support, availability, and test status on their separate axes. `availability` MAY be omitted for a non-operational library capability.
 - (IM-3) A passing claim MUST name its roles, modules, capabilities, rule references, and deterministic evidence. An unqualified full-profile claim MUST cover every pinned document.
 - (IM-4) `conformance-tested` requires passing deterministic runs whose case ids exist in the pinned conformance manifest. Live tests MUST NOT substitute for deterministic evidence.

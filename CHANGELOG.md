@@ -15,6 +15,17 @@ The format used per release:
 
 ## [Unreleased]
 
+## [0.4] — 2026-07-24
+
+Interoperability and settlement-hardening release: payee-bound agreements,
+metered pricing, AP2 receipt verification, canonical x402 receipt and SB-3
+nonce binding, revocation and bundle discovery bindings, absolute fault
+attribution, replayable reputation derivation, and expanded executable
+conformance coverage. **Version note:** the release tag is the coordinated-cut
+counter, decoupled from independently versioned documents — the composition
+under this tag is **CORE 0.1; DACS-1 0.3; DACS-2 0.2; DACS-3 0.3; DACS-4 0.3;
+DACS-5 0.3**.
+
 ### Changed — DACS-5 conformance
 
 - **Legacy bundle reconciliation via `perspective_flip`** (§10.4.3 / §10.5.1; PR #248 round-5, E1–E3) — the "canonically diverge" definition and §10.5.1 guard (ii) now reconcile a legacy `AttestationBundle` pair through the `perspective_flip` mapping before comparison, aligning the consumer definition with the deriver machinery. Perspective-partner spellings (`aborted-by-self` ↔ `aborted-by-other`, `failed-perm` ↔ `failed-counterparty`) are one event and do not diverge; two copies that both blame self genuinely diverge. This corrects the prior outcome-spelling clause, which called perspective partners divergent even though the deriver reconciles them.

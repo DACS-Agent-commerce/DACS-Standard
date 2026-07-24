@@ -1,0 +1,177 @@
+{
+  "set": "claim-requirement-qualification-v0.3",
+  "spec": "DACS-2 §7.7.1 CRQ-1..CRQ-4",
+  "decisionModel": "§7.5.1 four-value; qualification precedes classification",
+  "inputModel": "resolvedResults are authenticated VerifyResult projections after §7.5.2 and recipe-authority validation",
+  "hash": "505a6d05c5082bdd4b0ba540d6c914c90bd955a038941ce00092def18dde9577",
+  "count": 15,
+  "vectors": [
+    {
+      "name": "vet-claim-requirement-exact-match-pass",
+      "expected": "pass",
+      "note": "one passing result satisfies every declared constraint",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-wrong-recipe-version-fail",
+      "expected": "fail",
+      "note": "a same-scheme pass at another recipe version is unqualified",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-optional-constraints-absent-pass",
+      "expected": "pass",
+      "note": "when recipeVersion, maxAge, and parameters are absent, a same-scheme passing result is qualified",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-max-age-exceeded-fail",
+      "expected": "fail",
+      "note": "10001 ms exceeds the listing-tightened ten-second maximum age",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1749999999999, "data": { "possessionVerified": true } }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-max-age-inclusive-boundary-pass",
+      "expected": "pass",
+      "note": "a result exactly 10000 ms old satisfies the inclusive ten-second bound",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000000000, "data": { "possessionVerified": true } }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-parameters-mismatch-fail",
+      "expected": "fail",
+      "note": "authenticated extracted data contradicts the required parameter",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-parameters-missing-fail",
+      "expected": "fail",
+      "note": "missing authenticated data for a declared parameter is unqualified",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-extra-data-pass",
+      "expected": "pass",
+      "note": "unrequested extracted data does not invalidate the required parameter-key subset",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true, "proofId": "fixture-proof-1" } }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-same-scheme-cross-satisfaction-fail",
+      "expected": "fail",
+      "note": "one key result qualifies the first requirement but not a second key requirement",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": {
+          "required": [
+            { "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } },
+            { "scheme": "key", "verificationRequired": true, "recipeVersion": 3, "maxAge": 10, "parameters": { "hardwareBacked": true } }
+          ]
+        },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-oneof-unqualified-member-fail",
+      "expected": "fail",
+      "note": "a same-scheme pass at the wrong version does not satisfy an OR member",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [], "oneOf": [[{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2 }]] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-oneof-qualified-alternative-pass",
+      "expected": "pass",
+      "note": "an unqualified key result does not mask a separately qualified domain alternative",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": {
+          "required": [],
+          "oneOf": [[
+            { "scheme": "key", "verificationRequired": true, "recipeVersion": 2 },
+            { "scheme": "domain", "verificationRequired": true, "recipeVersion": 4, "parameters": { "domainControl": true } }
+          ]]
+        },
+        "resolvedResults": [
+          { "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 },
+          { "scheme": "domain", "decision": "pass", "recipeVersion": 4, "verifiedAt": 1750000005000, "data": { "domainControl": true } }
+        ]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-qualified-error-preserved",
+      "expected": "error",
+      "note": "an applicable error remains error without extracted parameter data",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "error", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-qualified-indeterminate-preserved",
+      "expected": "indeterminate",
+      "note": "an applicable indeterminate remains indeterminate without complete parameter data",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-stale-indeterminate-fail",
+      "expected": "fail",
+      "note": "an indeterminate result older than the listing-tightened age remains indeterminate but is not applicable evidence, leaving the requirement unsatisfied",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1749999999999 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-unrelated-result-control-pass",
+      "expected": "pass",
+      "note": "an unrelated failing result does not block a qualified required result",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [
+          { "scheme": "domain", "decision": "fail", "recipeVersion": 4, "verifiedAt": 1750000005000 },
+          { "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }
+        ]
+      }
+    }
+  ]
+}

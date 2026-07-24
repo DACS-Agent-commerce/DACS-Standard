@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-2 v0.3
+
+- **Complete `ClaimRequirement` qualification — CRQ-1..CRQ-4** (§7.7.1, §14.2) — filters authenticated resolved `VerifyResult` candidates by exact pinned recipe version and governing freshness plus any additional listing-declared age bound, then requires the declared parameter-key subset for a passing result before required-claim or `oneOf` decision classification. Same-scheme results can no longer cross-satisfy requirements with different constraints; extra unrequested result data remains valid; applicable `error`/`indeterminate` decisions and existing precedence remain unchanged. Adds fifteen candidate security vectors covering positive and absent-constraint controls, wrong-version, inclusive/stale age boundaries, parameter mismatch/absence, same-scheme cross-satisfaction, `oneOf`, preserved `error`/`indeterminate`, stale-indeterminate, and unrelated-result controls. Bumps DACS-2 to v0.3.
+
 ### Changed — DACS-5 conformance
 
 - **Legacy bundle reconciliation via `perspective_flip`** (§10.4.3 / §10.5.1; PR #248 round-5, E1–E3) — the "canonically diverge" definition and §10.5.1 guard (ii) now reconcile a legacy `AttestationBundle` pair through the `perspective_flip` mapping before comparison, aligning the consumer definition with the deriver machinery. Perspective-partner spellings (`aborted-by-self` ↔ `aborted-by-other`, `failed-perm` ↔ `failed-counterparty`) are one event and do not diverge; two copies that both blame self genuinely diverge. This corrects the prior outcome-spelling clause, which called perspective partners divergent even though the deriver reconciles them.

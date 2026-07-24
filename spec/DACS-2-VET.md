@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.2** (on the common DACS v0.1 baseline; pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.3** (on the common DACS v0.1 baseline; adds complete `ClaimRequirement` qualification before §7.7.1 decision classification; pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -679,22 +679,23 @@ aggregate(record, requirement):
 
   for group in requirement.oneOf:
 
-    if not any(find_passing(record, cr.scheme) for cr in group):
+    if not any(find_qualified_pass(record, cr) for cr in group):
 
       # A oneOf group is satisfied iff ≥1 member passes (OR within the group).
       # When none pass, classify the group by whether it could STILL be satisfied.
       # Precedence WITHIN a oneOf group is error > indeterminate > fail — deliberately
       # the OPPOSITE of the required-claim/global precedence (fail > error > indeterminate):
-      # in an OR group a retryable error or a pending indeterminate alternative means the
-      # group is NOT yet conclusively unsatisfiable, so it MUST NOT be reported as a hard
-      # fail (which would terminate a vet a retry could still satisfy). Only when every
-      # member hard-fails is the group a conclusive fail.
+      # in an OR group an applicable retryable error or pending indeterminate alternative
+      # means the group is NOT yet conclusively unsatisfiable, so it MUST NOT be reported
+      # as a hard fail. A result outside the member's pinned version or age bound is not
+      # current evidence for that member and does not participate. Only when every member
+      # hard-fails or lacks a qualified current result is the group a conclusive fail.
 
-      if any(find_error(record, cr.scheme) for cr in group):
+      if any(find_applicable(record, cr, "error") for cr in group):
 
         errors.append("oneOf group: at least one claim errored")
 
-      else if any(find_indeterminate(record, cr.scheme) for cr in group):
+      else if any(find_applicable(record, cr, "indeterminate") for cr in group):
 
         indeterminates.append("oneOf group: at least one claim indeterminate")
 
@@ -716,17 +717,31 @@ aggregate(record, requirement):
 
 classify_required(record, cr, failures, errors, indeterminates):
 
-  results := find_all_results(record, cr.scheme)   // freshness ++ dealSpecific (supplementary signals NOT included); find_passing/find_error/find_indeterminate(record, scheme) each scan find_all_results(record, scheme) for a result with the named decision
+  same_scheme := find_all_results(record, cr.scheme)   // authenticated, resolved freshness ++ dealSpecific results; supplementary signals NOT included
 
-  if results is empty:
+  if same_scheme is empty:
 
     failures.append("required not present: " + cr.scheme)
 
     return
 
-  if any(r.decision == "pass" for r in results):
+  results := find_applicable_results(record, cr)
+
+  if results is empty:
+
+    failures.append("required constraints not satisfied: " + cr.scheme)
+
+    return
+
+  if any(r.decision == "pass" and parameters_match(r, cr) for r in results):
 
     return  // claim satisfied
+
+  if any(r.decision == "pass" and not parameters_match(r, cr) for r in results):
+
+    failures.append("required constraints not satisfied: " + cr.scheme)
+
+    return
 
   if any(r.decision == "fail" for r in results):
 
@@ -743,9 +758,41 @@ classify_required(record, cr, failures, errors, indeterminates):
   // remaining results are "indeterminate"
 
   indeterminates.append("required indeterminate: " + cr.scheme)
+
+find_qualified_pass(record, cr):
+
+  return any(r.decision == "pass" and parameters_match(r, cr) for r in find_applicable_results(record, cr))
+
+find_applicable(record, cr, decision):
+
+  return any(r.decision == decision for r in find_applicable_results(record, cr))
+
+find_applicable_results(record, cr):
+
+  results := find_all_results(record, cr.scheme)
+
+  return [r for r in results if ALL applicable constraints hold]:
+
+    1. if cr.recipeVersion is present, r.recipeVersion == cr.recipeVersion (§7.4.1)
+
+    2. if cr.maxAge is present, record.generatedAt <= r.verifiedAt + cr.maxAge * 1000 (the additional listing-declared VP-C3 bound; seconds converted to milliseconds; it cannot widen the governing §6.3.2 / §7.6.1 freshness window)
+
+parameters_match(r, cr):
+
+  if cr.parameters is absent: return true
+
+  return r.data contains every own key in cr.parameters and each corresponding value is equal under CORE canonical JSON (§7.6 step 7); additional r.data keys do not disqualify the result
 ```
 
-Supplementary signals MUST NOT change overallDecision from pass to fail automatically; they are informational. A listing MAY declare in terms that specific signals are gating (e.g. minimum reputation score); when so declared, the gating check is treated as a deal-specific claim and runs through the same aggregation. The four classifications carry distinct diagnostic value: "required not present" (no VerifyResult at all), "required failing" (authority said no), "required indeterminate" (authority answered ambiguously), "required errored" (verifier could not reach authority). Consumers debugging or auditing a failed session can read the failure reasons to determine which class the failure belongs to.
+(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
+
+(CRQ-2) A verifier MUST apply recipe-version and age qualification before a result participates in decision classification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; a missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced. A result outside the pinned recipe version or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
+
+(CRQ-3) Multiple requirements using the same scheme are evaluated independently. A passing result qualified for one requirement MUST NOT satisfy another requirement whose recipe-version, age, or parameter constraints it does not satisfy.
+
+(CRQ-4) Required-claim and `oneOf` aggregation MUST use applicable results and qualified passes as defined above. Qualification does not change the decision of an applicable result. If only non-applicable results exist, aggregation reports the requirement or group as unsatisfied; this is not a reclassification of those excluded results. Within the applicable set, the existing four-value semantics and both precedence orders are unchanged.
+
+Supplementary signals MUST NOT change overallDecision from pass to fail automatically; they are informational. A listing MAY declare in terms that specific signals are gating (e.g. minimum reputation score); when so declared, the gating check is treated as a deal-specific claim and runs through the same aggregation. Five required-claim diagnostic reasons carry distinct value: "required not present" (no same-scheme VerifyResult exists), "required constraints not satisfied" (same-scheme results exist but none meets the pinned version and age constraints, or a current `pass` fails parameter matching), "required failing" (an applicable authority result said no), "required indeterminate" (an applicable authority result answered ambiguously), and "required errored" (an applicable verifier result could not reach authority). Consumers debugging or auditing a failed session can read the failure reasons to determine which class the failure belongs to.
 
 #### 7.7.2 Anchoring and signature
 
@@ -829,7 +876,7 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
 | Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-4; PSP-1 through PSP-5; WN-1 through WN-4 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
-| Composite record reader | §7.7.1 aggregation; signature validation |
+| Composite record reader | §7.7.1 aggregation; CRQ-1 through CRQ-4; signature validation |
 
 ### 7.10 Rationale
 

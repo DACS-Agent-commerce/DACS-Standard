@@ -25,7 +25,7 @@
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
     "commit": "494fc1b7a0a523d2da6e630203084eb2d6020a2b",
     "manifestPath": "conformance/MANIFEST.json",
-    "manifestSha256": "185bf14ce7f1da6053b8dc0d7f208639cda6f078d9ff46f8d75a2a1767a7c408"
+    "manifestSha256": "d25d2af14adabc5ac7daa25a7c1424a5e8151d6fb08326d1f596d1204b05c30b"
   },
   "claims": [
     {

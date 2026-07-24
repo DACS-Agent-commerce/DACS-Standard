@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** (on the common DACS v0.1 baseline; adds the §6.3.2 step (6) **control gate** — a claim verified existence-only cannot serve as a controlled `presentedBy` / reputation key — honours a signed `pre-commit` `cancellationPolicy` as a reputation-neutral cancellation right §6, clarifies the listing-publisher / counterparty-role interpretation for sealed-envelope procurement listings, registers the minor-safe `commit-payee-bound-agreement` phase, and makes listing-revocation markers independently resolvable through `RevocationBinding`). **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** on the common DACS v0.1 baseline. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -660,6 +660,8 @@ type ListingIndexEntry = {
 }
 ```
 
+**Bundle-binding index (optional).** The `dacs` block MAY additionally carry a `bundleBindings` entry — `{ "indexUrl": …, "indexHash": "sha256-…" }` — pointing to a JSON document `{ "bindings": BundleBinding[] }` of signed DACS-5 `BundleBinding` records (§10.4.2) for sessions the agent participated in. Because a `BundleBinding` is self-authenticating (§10.4.2 BB-3), the index MAY carry either side's records, including a counterparty's. Consumers MUST verify each record per §10.4.2 BB-4; the index is discovery convenience, not a source of truth.
+
 The index MAY itself be anchored via SR-2; if so, the well-known block’s anchor field MUST point to it. The indexHash field in the well-known block enables clients to detect stale caches. Clients MUST cross-check each ListingIndexEntry.anchor independently before engaging with a listing; the index is for discovery convenience, not a source of truth.
 
 **Interoperability with A2A; update and revocation**
@@ -688,6 +690,8 @@ GET /api/dacs/listings
     { "listings": ListingSummary[], "cursor": <opaque>?, "total"?: <int> }
 GET /api/dacs/listings/{listingId}/{version}
   Response: Listing (canonical JSON)
+GET /api/dacs/bundles/{jobId}
+  Response: { "bindings": BundleBinding[] }   # signed DACS-5 BundleBinding records (§10.4.2) known to this catalog for the jobId
 GET /api/dacs/sellers/{primaryClaimRef}
   Response: {
     "listings": ListingSummary[],
@@ -766,7 +770,7 @@ type ReputationHint = {
 Catalogs MAY return cached ListingSummary records. Clients MUST dereference the anchor to obtain the canonical Listing before engaging. The catalog provides discovery; the chain provides binding. Catalogs SHOULD verify each indexed listing’s anchor at least every 24 hours; the catalogObservedAt timestamp surfaces the catalog’s confidence.
 
 A **catalog or rendering** consumer MAY skip or partially render a listing whose `PricingSpec.kind` (DACS-4) it does not recognize, rather than reject it — a directory should not hide a listing merely because it cannot price-render it. This tolerance is scoped to rendering only; a **transacting** reader MUST still reject an unrecognized pricing kind at commit-agreement (DACS-3 MTR-5). One value, two consumer classes, opposite verdicts: the directory shows what it cannot price, the settler refuses to pay what it cannot price.
-Read endpoints MUST NOT require authentication. Write/registration semantics are out of scope for v0.1; the canonical source of truth is always the substrate-anchored listing, not the catalog entry. For every ListingSummary returned, a DACS-aware client MUST resolve the anchor to the on-chain content and validate the contentHash. The catalog’s role is to surface candidates; binding decisions MUST follow the substrate.
+A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach a catalog is out of scope for v0.1, exactly as for listings. A catalog that carries them MUST serve every record passing §10.4.2 BB-4 regardless of which party authored it, and consumers MUST verify each record per BB-4 before use. Read endpoints MUST NOT require authentication. Write/registration semantics are out of scope for v0.1; the canonical source of truth is always the substrate-anchored listing, not the catalog entry. For every ListingSummary returned, a DACS-aware client MUST resolve the anchor to the on-chain content and validate the contentHash. The catalog’s role is to surface candidates; binding decisions MUST follow the substrate.
 
 #### 6.3.7 Conformance summary
 
@@ -778,8 +782,8 @@ Read endpoints MUST NOT require authentication. Write/registration semantics are
 | Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 distinguish successful absence from resolution failure |
 | Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 valid presentedBy; BP-4 valid presentation signature |
 | Bundle reader | BR-1 recompute hash; BR-2 reject invalid signature; BR-3 reject missing required verifiedBy; BR-4 treat unknown schemes as unverified; BR-5 reject unverified presentedBy when primaryClaimSelector set |
-| Well-known publisher | Publish dacs block; keep indexHash current |
-| Catalog operator | Open read endpoints; honour caching constraint; decline write endpoints by spec discretion |
+| Well-known publisher | Publish dacs block; keep indexHash current; optional bundleBindings index per §10.4.2 BB-2 |
+| Catalog operator | Open read endpoints; honour caching constraint; decline write endpoints by spec discretion; if carrying bundle bindings, serve every §10.4.2 BB-4-valid record regardless of authoring party |
 | Catalog client | Dereference anchors before binding |
 
 ### 6.4 Rationale

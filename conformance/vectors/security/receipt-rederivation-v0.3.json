@@ -1,0 +1,2530 @@
+{
+  "set": "receipt-rederivation-v0.3",
+  "spec": "DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2",
+  "provenance": {
+    "generator": "scripts/generate_dacs5_reputation_vectors.py (deterministic; synthetic disclosed seeds)",
+    "canonicalisation": "RFC 8785 JCS over the artifact minus its hash-excluded fields (FaultAttestationBundle/AttestationBundle: signatures+anchoredByRole; binding: signature); attestation_bundle_hash = sha256 hex; ed25519 over the CORE §B.7 domain-separated payload (dacs-fault-bundle:v1: / dacs-bundle:v1: / dacs-bundle-binding:v1: || hash), base64url-unpadded.",
+    "note": "Concrete FAB copies + BundleBindings + AbsenceEvidence objects (disclosed seeds). The pass vector replays byte-identically through the full validation; N1-N4 are published receipts each carrying one of Random's round-5 mutations (divergent counterparty, invalid counterparty role binding, misbound absence evidence, competing same-role BB-6 copy) and MUST be refused; the member-missing + refusal vectors from round-6 #1 are retained.",
+    "seeds": "synthetic repeated-byte ed25519 seeds; buyer a1.., seller c3.., orchestrator 0e.., outsider f0.."
+  },
+  "gaps": [
+    "round-3 review: receipt rederivation context (#5)",
+    "#248 round-4 blocker #1: replayable receipt",
+    "#248 round-6 blocker #1: derivation compatibility split",
+    "#248 round-6 blocker #2: replay actually validates"
+  ],
+  "decisionModel": "A published ReplayableReputationDerivation carries the replayableDerivationVersion discriminator (never derivationVersion) and one resolutionContext entry per bundleRefs member. Replay EXECUTES: roleEvidence BB-4/BB-5 re-verification; BB-6 re-selection from bb6Context (candidateBindings/partyMap/budget) that MUST reach roleEvidence.binding.nativeAddress; §10.4.3 divergence re-run against the dereferenced counterpartyRef, whose role is authenticated by counterpartyRoleEvidence; and the absence relation absenceBinding.nativeAddress == dereferenced AbsenceEvidence.nativeAddress with absenceEvidenceRef.contentHash == sha256(canonical(AbsenceEvidence)). Any failure => refusal.",
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+    "did:demos:orchestrator": "C-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw",
+    "did:demos:outsider": "X2cTKUw88agU6NjKCInbI-aCO3UkuvE0n7x9n1FSlFs"
+  },
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "orchestrator": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e",
+    "outsider": "f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0"
+  },
+  "vectors": [
+    {
+      "name": "complete-resolution-context-replays-identical",
+      "rule": "§10.5 Replay (1)-(4); §10.5.3 (3)",
+      "expected": "pass",
+      "note": "two jobIds: a two-copy present jobId (both completed FAB copies) carrying counterpartyRef + counterpartyRoleEvidence + bb6Context, and a one-copy absent jobId (seller aborted-by-self) carrying a dereferenceable AbsenceEvidence + coherent absenceBinding + bb6Context. Replay authenticates every copy AND reproduces byte-identical metrics and bundleCount.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "taggedBundles": [
+        {
+          "bundle": {
+            "faultBundleVersion": "1",
+            "jobId": "RCP-A",
+            "outcome": "completed",
+            "faultedParty": "none",
+            "anchoredByRole": "seller",
+            "listingRef": {
+              "listingId": "listing-RCP-A",
+              "version": 1,
+              "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+            },
+            "parties": [
+              {
+                "role": "buyer",
+                "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+                "primaryClaim": "did:demos:buyer"
+              },
+              {
+                "role": "seller",
+                "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+                "primaryClaim": "did:demos:seller"
+              }
+            ],
+            "phaseSummary": [
+              {
+                "index": 0,
+                "kind": "deliver-storage-program",
+                "outcome": "ok"
+              }
+            ],
+            "vetRecords": [],
+            "settlementEvidence": [],
+            "recipeRegistryVersion": 1,
+            "railRegistryVersion": 1,
+            "finalisedAt": 1780004000000,
+            "signatures": [
+              {
+                "party": "did:demos:buyer",
+                "algorithm": "ed25519",
+                "value": "n1JIsLULNy_1VSQmPRhoigwJ49yviVC-3ZyWk6W5a-L1QIEnVMaPUG35jh3MEPkQk0K-_468sQdqZa709j1-BA"
+              },
+              {
+                "party": "did:demos:seller",
+                "algorithm": "ed25519",
+                "value": "6e7SDz3aT2TDYbhd_nXJoAXpCFn2goN1Wg8AVX_CTAAcksk495nuv0VmUIVma1Ttn9J6_TyCSyxCiY1ZFenRBg"
+              }
+            ]
+          },
+          "resolvedRole": "seller",
+          "counterpartyDisposition": "present",
+          "counterpartyRef": {
+            "kind": "dacs-5-bundle",
+            "id": "RCP-A-buyer",
+            "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
+          },
+          "counterpartyRoleEvidence": {
+            "kind": "binding",
+            "binding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-A",
+              "role": "buyer",
+              "logicalAddress": "stor-be7ddb89565e8dcb6fea483a65413d6d65aa952cdf7cdd8c04864bb52fb72afc",
+              "nativeAddress": "stor-0e10779dbb75c5ae96e5db5891c2f73ed340ea1e",
+              "bundleContentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b",
+              "anchorTx": "demos-testnet:tx-0e10779dbb75c5ae",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "Oua5aWcrt-1g7Kx3-zxndROMhcFSee4s1JIPkuFCNNXvHDMJiWbmUj3VwRavGmds5fRl1ShVyTtdaG4fLIxlAA"
+              }
+            }
+          },
+          "roleEvidence": {
+            "kind": "binding",
+            "binding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-A",
+              "role": "seller",
+              "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+              "nativeAddress": "stor-20fc918da649a9cc5197135c541aaab61093e507",
+              "bundleContentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+              "anchorTx": "demos-testnet:tx-20fc918da649a9cc",
+              "signer": "did:demos:seller",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:seller",
+                "value": "I8dxZMmc4PtYLIS9RII_q73kitJHJWXSe4K7s6a28N12eOHpLTZsaJvVNDEjWMrRdOMCt3sira04_lIHOS1BDQ"
+              }
+            }
+          },
+          "bb6Context": {
+            "candidateBindings": [
+              {
+                "bindingVersion": "1",
+                "jobId": "RCP-A",
+                "role": "seller",
+                "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+                "nativeAddress": "stor-20fc918da649a9cc5197135c541aaab61093e507",
+                "bundleContentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+                "anchorTx": "demos-testnet:tx-20fc918da649a9cc",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "I8dxZMmc4PtYLIS9RII_q73kitJHJWXSe4K7s6a28N12eOHpLTZsaJvVNDEjWMrRdOMCt3sira04_lIHOS1BDQ"
+                }
+              }
+            ],
+            "partyMap": {
+              "did:demos:seller": "seller"
+            },
+            "budget": 8
+          }
+        },
+        {
+          "bundle": {
+            "faultBundleVersion": "1",
+            "jobId": "RCP-B",
+            "outcome": "aborted-by-self",
+            "faultedParty": "seller",
+            "anchoredByRole": "seller",
+            "listingRef": {
+              "listingId": "listing-RCP-B",
+              "version": 1,
+              "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+            },
+            "parties": [
+              {
+                "role": "buyer",
+                "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+                "primaryClaim": "did:demos:buyer"
+              },
+              {
+                "role": "seller",
+                "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+                "primaryClaim": "did:demos:seller"
+              }
+            ],
+            "phaseSummary": [
+              {
+                "index": 0,
+                "kind": "deliver-storage-program",
+                "outcome": "ok"
+              }
+            ],
+            "vetRecords": [],
+            "settlementEvidence": [],
+            "recipeRegistryVersion": 1,
+            "railRegistryVersion": 1,
+            "finalisedAt": 1780004000000,
+            "signatures": [
+              {
+                "party": "did:demos:seller",
+                "algorithm": "ed25519",
+                "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+              }
+            ]
+          },
+          "resolvedRole": "seller",
+          "counterpartyDisposition": "absent",
+          "absenceEvidenceRef": {
+            "kind": "non-membership-proof",
+            "locator": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+            "contentHash": "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26"
+          },
+          "absenceBinding": {
+            "bindingVersion": "1",
+            "jobId": "RCP-B",
+            "role": "buyer",
+            "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+            "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+            "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+            "signer": "did:demos:buyer",
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:buyer",
+              "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+            }
+          },
+          "roleEvidence": {
+            "kind": "binding",
+            "binding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "seller",
+              "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+              "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+              "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+              "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+              "signer": "did:demos:seller",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:seller",
+                "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+              }
+            }
+          },
+          "bb6Context": {
+            "candidateBindings": [
+              {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            ],
+            "partyMap": {
+              "did:demos:seller": "seller"
+            },
+            "budget": 8
+          }
+        }
+      ],
+      "derefBundles": {
+        "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "n1JIsLULNy_1VSQmPRhoigwJ49yviVC-3ZyWk6W5a-L1QIEnVMaPUG35jh3MEPkQk0K-_468sQdqZa709j1-BA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "6e7SDz3aT2TDYbhd_nXJoAXpCFn2goN1Wg8AVX_CTAAcksk495nuv0VmUIVma1Ttn9J6_TyCSyxCiY1ZFenRBg"
+            }
+          ]
+        },
+        "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004001000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "05p0t-hKWx6LD9UsVTp6jLZzKFt_xHZG4bwhvJA2j2i0HwvQeDGVHtbo4DXFgsqfK7W9Ewfba4mRDgBT1INKAA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "zvpXu2WvMfQqXouG0n6VNZO3zuW2UbnjE91daLV-v6p2V-YoauIdBN23fudZG8bhbvZseG9Yx-hYEjxHMESRDQ"
+            }
+          ]
+        },
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "want": {
+        "conforming": true,
+        "replayByteIdentical": true,
+        "reputationEffect": "include",
+        "bundleCount": 2,
+        "metrics": {
+          "completionRate": 0.5,
+          "counterpartyAdjustedCompletionRate": 0.5,
+          "counterpartyFaultRate": 0.0
+        },
+        "reason": "complete, authenticated resolutionContext replays byte-identical and passes all four replay checks (§10.5 Replay)"
+      }
+    },
+    {
+      "name": "receipt-missing-counterparty-ref",
+      "rule": "§10.5.3 (3)/(4); E5",
+      "expected": "fail",
+      "note": "a published receipt whose two-copy (present) entry omits counterpartyRef; a rederiver cannot re-run §10.4.3 divergence or authority selection against the counterparty copy, so the receipt is not independently reproducible and is non-conforming.",
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "present",
+            "roleEvidence": {
+              "kind": "address",
+              "resolvedAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c"
+            }
+          }
+        ],
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "reputationEffect": "exclude",
+        "reason": "present-disposition entry missing counterpartyRef; a rederiver cannot re-run §10.4.3 divergence/authority — non-conforming (E5)"
+      }
+    },
+    {
+      "name": "one-copy-without-absence-evidence-must-not-publish",
+      "rule": "§10.5.3 E3; §10.5.1 guard (iv)",
+      "expected": "fail",
+      "note": "a one-copy jobId whose resolutionContext entry is absent-disposition but lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation.",
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "absent",
+            "roleEvidence": {
+              "kind": "address",
+              "resolvedAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be"
+            }
+          }
+        ],
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "mustNotPublish": true,
+        "reputationEffect": "exclude",
+        "reason": "a one-copy jobId whose entry lacks a valid absenceEvidenceRef MUST NOT be included in a published derivation (§10.5.3/guard (iv))"
+      }
+    },
+    {
+      "name": "miskeyed-resolution-context-is-nonconforming",
+      "rule": "§10.5.3 (4)",
+      "expected": "fail",
+      "note": "the resolutionContext is missing an entry for one bundleRefs member (mis-keyed by contentHash); the derivation is not independently reproducible.",
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+          "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "present",
+            "counterpartyRef": {
+              "kind": "dacs-5-bundle",
+              "id": "RCP-A-buyer",
+              "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
+            },
+            "roleEvidence": {
+              "kind": "address",
+              "resolvedAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c"
+            }
+          }
+        ],
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "reputationEffect": "exclude",
+        "reason": "resolutionContext is missing/mis-keyed for a bundleRefs member; not independently reproducible and non-conforming (§10.5.3 (4))"
+      }
+    },
+    {
+      "name": "legacy-derivationversion-carrying-resolutioncontext-is-refused",
+      "rule": "CORE §11.1.2 new-type refusal; §10.5",
+      "expected": "fail",
+      "note": "a published object carries resolutionContext but the legacy derivationVersion \"1\" discriminator, not replayableDerivationVersion. The legacy ReputationDerivation makes no replay claim, so a replay consumer MUST refuse it as unsupported before any member check.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "derivation": {
+        "derivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-0000000000000000000000000000000000000000",
+              "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            },
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "discriminator",
+        "reputationEffect": "exclude",
+        "reason": "object carries legacy derivationVersion, not replayableDerivationVersion \"1\"; refused before member check (CORE §11.1.2)"
+      }
+    },
+    {
+      "name": "stripped-discriminator-is-refused",
+      "rule": "CORE §11.1.2 new-type refusal; §10.5",
+      "expected": "fail",
+      "note": "a well-formed replayable receipt body with its replayableDerivationVersion discriminator stripped. Stripping the (unsigned) discriminator downgrades the object to a legacy derivation making no replay claim; a replay consumer MUST refuse it.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "derivation": {
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-0000000000000000000000000000000000000000",
+              "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            },
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "discriminator",
+        "reputationEffect": "exclude",
+        "reason": "object lacks replayableDerivationVersion \"1\"; refused before member check (CORE §11.1.2)"
+      }
+    },
+    {
+      "name": "both-discriminators-is-refused",
+      "rule": "CORE §11.1.2 new-type refusal; §10.5",
+      "expected": "fail",
+      "note": "a published object carries BOTH replayableDerivationVersion \"1\" and the legacy derivationVersion \"1\". A ReplayableReputationDerivation MUST NOT carry derivationVersion; the ambiguous type identity is refused before any member check.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "derivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-0000000000000000000000000000000000000000",
+              "contentHash": "1111111111111111111111111111111111111111111111111111111111111111"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            },
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "discriminator",
+        "reputationEffect": "exclude",
+        "reason": "object carries both replayableDerivationVersion and derivationVersion; a ReplayableReputationDerivation MUST NOT carry derivationVersion (CORE §11.1.2)"
+      }
+    },
+    {
+      "name": "divergent-counterparty-refused",
+      "rule": "§10.5 Replay (3); §10.4.3 (N1)",
+      "expected": "fail",
+      "note": "a two-copy present receipt whose dereferenced counterparty copy canonically diverges from the authoritative copy (completed vs aborted). Replay re-runs §10.4.3 divergence() against the authenticated counterparty and MUST refuse.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "n1JIsLULNy_1VSQmPRhoigwJ49yviVC-3ZyWk6W5a-L1QIEnVMaPUG35jh3MEPkQk0K-_468sQdqZa709j1-BA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "6e7SDz3aT2TDYbhd_nXJoAXpCFn2goN1Wg8AVX_CTAAcksk495nuv0VmUIVma1Ttn9J6_TyCSyxCiY1ZFenRBg"
+            }
+          ]
+        },
+        "989cde62ea87d1c99ff243422cf00df41ae25402e400ef87259572f4f02cc772": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "aborted-by-self",
+          "faultedParty": "buyer",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "KssKzZPi5hVvfRAsKK2jA9UV8rRnbj7CIgMAaqznHYPJFGrWF4LhBbIAxW4bzJE2smVxLIXc9fUZUQOyjrsABg"
+            }
+          ]
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-A",
+                "role": "seller",
+                "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+                "nativeAddress": "stor-20fc918da649a9cc5197135c541aaab61093e507",
+                "bundleContentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+                "anchorTx": "demos-testnet:tx-20fc918da649a9cc",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "I8dxZMmc4PtYLIS9RII_q73kitJHJWXSe4K7s6a28N12eOHpLTZsaJvVNDEjWMrRdOMCt3sira04_lIHOS1BDQ"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-A",
+                  "role": "seller",
+                  "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+                  "nativeAddress": "stor-20fc918da649a9cc5197135c541aaab61093e507",
+                  "bundleContentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+                  "anchorTx": "demos-testnet:tx-20fc918da649a9cc",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "I8dxZMmc4PtYLIS9RII_q73kitJHJWXSe4K7s6a28N12eOHpLTZsaJvVNDEjWMrRdOMCt3sira04_lIHOS1BDQ"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "present",
+            "counterpartyRef": {
+              "kind": "dacs-5-bundle",
+              "id": "RCP-A-buyer-div",
+              "contentHash": "989cde62ea87d1c99ff243422cf00df41ae25402e400ef87259572f4f02cc772"
+            },
+            "counterpartyRoleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-A",
+                "role": "buyer",
+                "logicalAddress": "stor-be7ddb89565e8dcb6fea483a65413d6d65aa952cdf7cdd8c04864bb52fb72afc",
+                "nativeAddress": "stor-cc0b7da218be69625b36eb4be0a1caac9d409fcd",
+                "bundleContentHash": "989cde62ea87d1c99ff243422cf00df41ae25402e400ef87259572f4f02cc772",
+                "anchorTx": "demos-testnet:tx-cc0b7da218be6962",
+                "signer": "did:demos:buyer",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:buyer",
+                  "value": "DIyfZm72R1bLeWTX74HthmTEGmSj_VtkjHNrQb_zYLYNGaHuOSyXZzts5T2JfmRUj1EKW63Y4r4keytbrlMACQ"
+                }
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 1.0,
+          "counterpartyAdjustedCompletionRate": 1.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "divergence",
+        "reputationEffect": "exclude",
+        "reason": "dereferenced counterparty copy canonically diverges; §10.4.3 reconciliation refuses the receipt (N1)"
+      }
+    },
+    {
+      "name": "invalid-counterparty-role-binding-refused",
+      "rule": "§10.5 Replay (3) counterparty authentication (N2)",
+      "expected": "fail",
+      "note": "a two-copy present receipt whose counterpartyRoleEvidence binding declares the WRONG role (seller instead of the counterparty's buyer). anchoredByRole is unhashed, so the receipt must carry a role-correct binding; replay MUST refuse the mis-roled one.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "n1JIsLULNy_1VSQmPRhoigwJ49yviVC-3ZyWk6W5a-L1QIEnVMaPUG35jh3MEPkQk0K-_468sQdqZa709j1-BA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "6e7SDz3aT2TDYbhd_nXJoAXpCFn2goN1Wg8AVX_CTAAcksk495nuv0VmUIVma1Ttn9J6_TyCSyxCiY1ZFenRBg"
+            }
+          ]
+        },
+        "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-A",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "buyer",
+          "listingRef": {
+            "listingId": "listing-RCP-A",
+            "version": 1,
+            "contentHash": "1cbf9a0508aa5eb501755a36ac7b22269b7fe1bbaaeecbfd21f647aaaa3bd79b"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004001000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "05p0t-hKWx6LD9UsVTp6jLZzKFt_xHZG4bwhvJA2j2i0HwvQeDGVHtbo4DXFgsqfK7W9Ewfba4mRDgBT1INKAA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "zvpXu2WvMfQqXouG0n6VNZO3zuW2UbnjE91daLV-v6p2V-YoauIdBN23fudZG8bhbvZseG9Yx-hYEjxHMESRDQ"
+            }
+          ]
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-A",
+                "role": "seller",
+                "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+                "nativeAddress": "stor-20fc918da649a9cc5197135c541aaab61093e507",
+                "bundleContentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+                "anchorTx": "demos-testnet:tx-20fc918da649a9cc",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "I8dxZMmc4PtYLIS9RII_q73kitJHJWXSe4K7s6a28N12eOHpLTZsaJvVNDEjWMrRdOMCt3sira04_lIHOS1BDQ"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-A",
+                  "role": "seller",
+                  "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+                  "nativeAddress": "stor-20fc918da649a9cc5197135c541aaab61093e507",
+                  "bundleContentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+                  "anchorTx": "demos-testnet:tx-20fc918da649a9cc",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "I8dxZMmc4PtYLIS9RII_q73kitJHJWXSe4K7s6a28N12eOHpLTZsaJvVNDEjWMrRdOMCt3sira04_lIHOS1BDQ"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "present",
+            "counterpartyRef": {
+              "kind": "dacs-5-bundle",
+              "id": "RCP-A-buyer",
+              "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
+            },
+            "counterpartyRoleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-A",
+                "role": "seller",
+                "logicalAddress": "stor-6dcfc3314133cc78213cb3eb704c23664e9632ec98a194cf2831526f9bb53e0c",
+                "nativeAddress": "stor-0e10779dbb75c5ae96e5db5891c2f73ed340ea1e",
+                "bundleContentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b",
+                "anchorTx": "demos-testnet:tx-0e10779dbb75c5ae",
+                "signer": "did:demos:buyer",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:buyer",
+                  "value": "q_hKzwnhlXnFYc0bUzaCxiky5YHSuqlCLR8OU3Wm7UmLKvSFbBAi961SVj4ZiwPpsH6wLfnseXy0F6dJQNBNBw"
+                }
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 1.0,
+          "counterpartyAdjustedCompletionRate": 1.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "counterparty-role",
+        "reputationEffect": "exclude",
+        "reason": "counterpartyRoleEvidence.binding.role != the counterparty's role; role authentication fails (N2)"
+      }
+    },
+    {
+      "name": "misbound-absence-evidence-refused",
+      "rule": "§10.5 Replay (4) absence relation (N3)",
+      "expected": "fail",
+      "note": "a one-copy absent receipt whose absenceBinding resolves a DIFFERENT native address than the dereferenced AbsenceEvidence.nativeAddress. The absence evidence does not attach to the counterparty's actual address, so replay MUST refuse.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "seller",
+                  "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                  "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                  "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                  "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "contentHash": "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-117e9d5e52af2f3e036f58b022515403e827af6d",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-117e9d5e52af2f3e",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "sUCaY9kOED0nuLjqBP4j_9icaoa_MPuxdbPcLjTo9yWRF3g7p0aS6yZr7X8lCBEkgSs3Pg7Z2CNhgg6v1hSEDA"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "absence-relation",
+        "reputationEffect": "exclude",
+        "reason": "absenceBinding.nativeAddress != dereferenced AbsenceEvidence.nativeAddress (N3)"
+      }
+    },
+    {
+      "name": "competing-same-role-copy-changes-bb6-refused",
+      "rule": "§10.5 Replay (2) BB-6 reproduction (N4)",
+      "expected": "fail",
+      "note": "a one-copy receipt whose bb6Context candidate set contains a SECOND authorized same-signer (seller) binding whose bundleContentHash sorts below the authoritative one. Re-running BB-6 over the candidate set selects the competitor's nativeAddress, not roleEvidence.binding's, so replay MUST refuse. Bucket size 2 (<=8): no budget exhaustion, deterministic selection only.",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "seller",
+                  "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                  "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                  "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                  "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                  }
+                },
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "seller",
+                  "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                  "nativeAddress": "stor-c455b2d7af7178956f2827645be258b031df356f",
+                  "bundleContentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+                  "anchorTx": "demos-testnet:tx-c455b2d7af717895",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "EftD7tpn_0-CP3MKhAeMTQuyMX4NxruSjGUa4yLhAB5Dm398sISihLMLMGnntbe5FHxmmXkVvb-cKaGT2gMdBg"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "contentHash": "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "bb6-reselection",
+        "reputationEffect": "exclude",
+        "competingCandidateBucketSize": 2,
+        "reason": "BB-6 re-selection over bb6Context.candidateBindings yields a different nativeAddress than roleEvidence.binding (N4)"
+      }
+    },
+    {
+      "name": "forged-partymap-unauthenticated-refused",
+      "rule": "§10.5 Replay (2) partyMap authentication; BB-6 (round-7 N5)",
+      "expected": "fail",
+      "note": "a one-copy absent receipt whose bb6Context.partyMap maps the buyer's claim to role seller, contradicting the authenticated bundle roster (the buyer holds buyer). Every member and candidate is otherwise valid, so a replay that trusts the partyMap unauthenticated resolves BB-6 and reproduces the metrics; a replay that authenticates the partyMap against the roster before any authorization use MUST refuse the receipt (round-7).",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "seller",
+                  "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                  "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                  "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                  "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller",
+                "did:demos:buyer": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "contentHash": "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "partymap-authentication",
+        "reputationEffect": "exclude",
+        "reason": "bb6Context.partyMap maps the buyer's claim to role seller, contradicting the authenticated bundle roster (buyer holds buyer); replay MUST refuse before any authorization use (round-7 N5)"
+      }
+    },
+    {
+      "name": "bad-candidate-binding-in-context-refused",
+      "rule": "§10.5 Replay (2) BB-4/BB-5 candidate re-verification; round-7 N6",
+      "expected": "fail",
+      "note": "a one-copy absent receipt whose bb6Context candidate set carries a second binding that is BB-5-invalid for the requested seller side: it claims role buyer but is signed by the seller (the signature verifies over the buyer-role binding). Its bundleContentHash sorts above the honest candidate, so an unfixed replay selects the honest address and replays byte-identically without ever re-verifying the candidate; a replay that re-runs BB-4 + BB-5 checks 1-5 on EVERY carried candidate MUST refuse because the candidate's role != the requested role (round-7 N6).",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-B",
+          "outcome": "aborted-by-self",
+          "faultedParty": "seller",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-B",
+            "version": 1,
+            "contentHash": "75a871e8e271d70f4f40e0c909bd673901edc594a54f1746c2695a39dafc88e4"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Cw7z_cdhd_lurrE0oqvJpuykzHANjHjRBVpIBc6vt6BreFvPeQTibzCy6R9WCGN6YxxSk_SwXlbzwypJp9osDw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-B",
+                "role": "seller",
+                "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "seller",
+                  "logicalAddress": "stor-f3e9a7dc8084812298eca5c854fdb23d914fc8e12ea3ded899e88ce35bc9f7be",
+                  "nativeAddress": "stor-982d9ef740a09339f63a93eee155260d9409f720",
+                  "bundleContentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+                  "anchorTx": "demos-testnet:tx-982d9ef740a09339",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "BWPHwKeZ6BhCq_ENqUbec6Joo-3BGT4vPjcDODukXpIE1BiK_qSHW6oVdIMh6Ce2Y8LIO-9QzcLOyKlszcZcAw"
+                  }
+                },
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-B",
+                  "role": "buyer",
+                  "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+                  "nativeAddress": "stor-3ee1c30ef867ba91dffd28139b0139f5434e42ae",
+                  "bundleContentHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                  "anchorTx": "demos-testnet:tx-3ee1c30ef867ba91",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "bLQ4dzSz-RgSSgrFasa2ken12IhuA9Dw2jYYEoIPOaC1uzpnc5a02BrRwPMk4aXJe_fDygzHPZauFSPSTXwbDw"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "contentHash": "d2d10c8d3830b329c6c1075077b6bf0e996adccf6aae6fb2d1527ec321a0fe26"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-B",
+              "role": "buyer",
+              "logicalAddress": "stor-649b0f2fb1a0d599498d5db47e907f0e9cecb06cdd6f174ee6b06d788584fb12",
+              "nativeAddress": "stor-ddfe5f91d25a3debac7432cde4530dbae26b00b6",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-ddfe5f91d25a3deb",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "CFTsvCi_pHL20WXdUkQDHwgqm0jfF_EIHG9KSvSaMU2diBCVsXhMat-uZgZJkU53ahYzAKRl5KTyHXPkJGcfAg"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "candidate-verification",
+        "reputationEffect": "exclude",
+        "reason": "a bb6Context candidate claims role buyer on the seller side; BB-4/BB-5 re-verification of every candidate refuses the receipt (round-7 N6)"
+      }
+    },
+    {
+      "name": "equal-standing-two-full-copies-void-refused",
+      "rule": "§10.4.2 BB-6 equal-standing divergence; §10.5 Replay (2)",
+      "expected": "fail",
+      "note": "a one-copy absent receipt whose bb6Context candidate set carries TWO seller-role copies at one jobId that are BOTH full-standing (each co-signed by buyer+seller, sign_roles == [buyer, seller]) yet canonically UNEQUAL — they diverge on the material hashed outcome field (completed vs failed-substrate, faultedParty none in both), a genuine equivocation on what happened rather than a finalisedAt skew. Both are authorized under partyMap {seller->seller}. Per BB-6 two canonically-unequal authorized copies of equal signature standing select neither and the side is indeterminate. A replay that reconstructs the complete anchored map from every candidate bundle sees both full forms and MUST refuse; a replay that anchors only the claimed-winner copy (roleEvidence.binding) sees a single full form and wrongly resolves present (round-8 N7).",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "d374ae5a8da64493da5bf92131b29e34cc470c8575d3663742ee6b378274a132": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-C",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-C",
+            "version": 1,
+            "contentHash": "5fe5e777b1011d74eddafc0c36dd3daea473da11fdf88f715668b8b711877af1"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "sSTidqpEsjQ9ginCAlQ8WZQTwrN6QYCrKx55Op1YwCJpHz2nDVOtkQx2Le2vNtaOeGiN4mSpvfFUG2QQEQM9CA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "9bj4Aw_0oBv2C71GM-YHzERd_WFQM8mmfEYs64cpMj8en8t_c_CUHPQ1r3lq5UMIBPlIT8y54ln8LxGhP7q7AQ"
+            }
+          ]
+        },
+        "5471f9ed67bf4cc07ddc98fed47ce22488a92cdde171ceed740fc3f80a28e8c2": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-C",
+          "outcome": "failed-substrate",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-C",
+            "version": 1,
+            "contentHash": "5fe5e777b1011d74eddafc0c36dd3daea473da11fdf88f715668b8b711877af1"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "YEVjgCW4_cNxylKb-vJUs4XhUdLKNnBadoxCvDZ62MY2In_WBhdYLRSJvIGS200oK9ubij-WqETdHpfHcAYJAQ"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Pu58twwGRw-OLuEs3jGQvR7aFi4HhVo3l5bo5EXXcoYbfy8j2wvTDV3JRGlPDX-i8n42_c31Uiw5mlfVkNr2CA"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "d0fafa77a7e7236c9c25e0b2eed21831f9fdf61fa24bd47cbbb9da60a60d063a": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-c1391a69aed239d439c678ef6af1a1a195c155d3",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "d374ae5a8da64493da5bf92131b29e34cc470c8575d3663742ee6b378274a132"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "d374ae5a8da64493da5bf92131b29e34cc470c8575d3663742ee6b378274a132",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-C",
+                "role": "seller",
+                "logicalAddress": "stor-8bed8a59fb8898a798ae2b8588ef92d45c0b733d203aa44a4d29641063f54b87",
+                "nativeAddress": "stor-a7d82f6e204b85cece8a96d13a9ec89c01a13ea5",
+                "bundleContentHash": "d374ae5a8da64493da5bf92131b29e34cc470c8575d3663742ee6b378274a132",
+                "anchorTx": "demos-testnet:tx-a7d82f6e204b85ce",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "noEcY-LvAOH6JSwhkO_jGbNjB9ukxQ24bjmoI-IC17fEXknBP6YaJBoRMStYWFVYaNnQdPr5G38swnBxVnXcBw"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-C",
+                  "role": "seller",
+                  "logicalAddress": "stor-8bed8a59fb8898a798ae2b8588ef92d45c0b733d203aa44a4d29641063f54b87",
+                  "nativeAddress": "stor-a7d82f6e204b85cece8a96d13a9ec89c01a13ea5",
+                  "bundleContentHash": "d374ae5a8da64493da5bf92131b29e34cc470c8575d3663742ee6b378274a132",
+                  "anchorTx": "demos-testnet:tx-a7d82f6e204b85ce",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "noEcY-LvAOH6JSwhkO_jGbNjB9ukxQ24bjmoI-IC17fEXknBP6YaJBoRMStYWFVYaNnQdPr5G38swnBxVnXcBw"
+                  }
+                },
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-C",
+                  "role": "seller",
+                  "logicalAddress": "stor-8bed8a59fb8898a798ae2b8588ef92d45c0b733d203aa44a4d29641063f54b87",
+                  "nativeAddress": "stor-70e1507a62589f585603dcd89282314dc9fdd741",
+                  "bundleContentHash": "5471f9ed67bf4cc07ddc98fed47ce22488a92cdde171ceed740fc3f80a28e8c2",
+                  "anchorTx": "demos-testnet:tx-70e1507a62589f58",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "TultP1wMFs9JeGAmKIUMh641PsOAUbKIVnShUEzbut390W67CLoX4H1N3uzbqOmNMxchdGsBHZRPeVIaEsPfCw"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-c1391a69aed239d439c678ef6af1a1a195c155d3",
+              "contentHash": "d0fafa77a7e7236c9c25e0b2eed21831f9fdf61fa24bd47cbbb9da60a60d063a"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-C",
+              "role": "buyer",
+              "logicalAddress": "stor-12d0f14eb83f1130eea2f1c271a87f5bafb9b09721a94c6ef3e462fcd041422f",
+              "nativeAddress": "stor-c1391a69aed239d439c678ef6af1a1a195c155d3",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-c1391a69aed239d4",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "8cXmVsgbK1OqtxE1VH5mnp1mqIoGT_zZhFx4sR0Ckx8xxp9FD5Ep4w-SobGQ8_eP99Z-aSFbT6pqEv7wHQGEBQ"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "bb6-equal-standing-void",
+        "reputationEffect": "exclude",
+        "competingCandidateBucketSize": 2,
+        "fullStandingFormCount": 2,
+        "reason": "two divergent full-standing same-role (seller) copies of equal signature standing; BB-6 selects neither and the side is indeterminate. A replay reconstructing the COMPLETE anchored map from all candidate bundles MUST refuse; the single-winner anchored map wrongly resolves present (round-8 N7)"
+      }
+    },
+    {
+      "name": "unfetchable-competitor-candidate-refused",
+      "rule": "§10.4.2 BB-6 candidate dereference; §10.5 Replay (2)",
+      "expected": "fail",
+      "note": "a one-copy absent receipt whose bb6Context candidate set carries a second seller-role binding (uf_bind_x) whose bundleContentHash is a genuine §10.4.1 hash but whose bundle is deliberately NOT published in derefBundles. The candidate is BB-4/BB-5(checks 1-5)-valid, so the round-7 candidate re-verification passes; the complete-anchored-map reconstruction then cannot dereference the candidate bundle. This is the unfetchable => REFUSE boundary (fail-closed): a replay MUST refuse rather than silently drop the competitor and resolve present/W — the r7 single-winner disease one level out (round-8 N8).",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "7ca1e1edbc0cbe62ebd239fe81bbe4e397ff1be3d74485ae83599af90e808bd1": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-D",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-D",
+            "version": 1,
+            "contentHash": "531abc2aeeac364ed06591135a87be73ea4c60f3d73b87bc8b3067d75aa3c050"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "bRm4s9EC_hbjTmMDuWjZ173eKeo9XQIZG_aR1KNyP15xW8LMTPDVKyRGTF2jGO6iVt3eqnepHDwLhN75l6KkDA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "CNackKeagiqCkg0NSPYnNUOO5zvP30KmtLq0jPC-GHpf92z34cRJ-RaXuFaWtMhtoOynYSGinJSaIIyg-VbKAQ"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "bc7f488e3c245e189a1b3bffea11129bdc2c014e8d7a34dcdf2cc7de17193405": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-7668a107f170b897d7e43476365e5b6152002d95",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "7ca1e1edbc0cbe62ebd239fe81bbe4e397ff1be3d74485ae83599af90e808bd1"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "7ca1e1edbc0cbe62ebd239fe81bbe4e397ff1be3d74485ae83599af90e808bd1",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-D",
+                "role": "seller",
+                "logicalAddress": "stor-8e35cdccc0542cd5a77c955d001a514cb7c24487546ae3ac900e54941e03e8d8",
+                "nativeAddress": "stor-d9d4d1aa595e0881e3a98d9c98fa6aea507d14f1",
+                "bundleContentHash": "7ca1e1edbc0cbe62ebd239fe81bbe4e397ff1be3d74485ae83599af90e808bd1",
+                "anchorTx": "demos-testnet:tx-d9d4d1aa595e0881",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "W27thgI1gH8dJkoxFFmvK0ne6-IFWJkxaSsNB0QJU5Nd4HVKm8qdDTvRR7P-fFxrFBy9rBPGbg2Mv0LXb31-DA"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-D",
+                  "role": "seller",
+                  "logicalAddress": "stor-8e35cdccc0542cd5a77c955d001a514cb7c24487546ae3ac900e54941e03e8d8",
+                  "nativeAddress": "stor-d9d4d1aa595e0881e3a98d9c98fa6aea507d14f1",
+                  "bundleContentHash": "7ca1e1edbc0cbe62ebd239fe81bbe4e397ff1be3d74485ae83599af90e808bd1",
+                  "anchorTx": "demos-testnet:tx-d9d4d1aa595e0881",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "W27thgI1gH8dJkoxFFmvK0ne6-IFWJkxaSsNB0QJU5Nd4HVKm8qdDTvRR7P-fFxrFBy9rBPGbg2Mv0LXb31-DA"
+                  }
+                },
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-D",
+                  "role": "seller",
+                  "logicalAddress": "stor-8e35cdccc0542cd5a77c955d001a514cb7c24487546ae3ac900e54941e03e8d8",
+                  "nativeAddress": "stor-e487d07d83277933c50da9f531749a598cee3dd2",
+                  "bundleContentHash": "3505637d2728b55427d2e96e9b31c304ed0a09c4536a773a56f651ec9e2e971f",
+                  "anchorTx": "demos-testnet:tx-e487d07d83277933",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "wsDe6H3t7YClLUWNx69rA1cNzFTenhfKH8r9d8IetLzV72pmihY9aBdeq-592MJV1-IrDYcHUiUIYMD3G38-Dg"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-7668a107f170b897d7e43476365e5b6152002d95",
+              "contentHash": "bc7f488e3c245e189a1b3bffea11129bdc2c014e8d7a34dcdf2cc7de17193405"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-D",
+              "role": "buyer",
+              "logicalAddress": "stor-d38be2de5089617789661030a206449f599803f3c8bc7010280e3f9dd6acfea2",
+              "nativeAddress": "stor-7668a107f170b897d7e43476365e5b6152002d95",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-7668a107f170b897",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "S_uaIdbOgoGqpxZ1PppNPRvA3otBGc61hEl05hxvLnOaQ6GDXeqEXVB_-3HmfmQxxC4L3MMHpSvkYGtm9zDeCw"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": false,
+        "refused": true,
+        "refusalCategory": "bb6-candidate-unfetchable",
+        "reputationEffect": "exclude",
+        "reason": "a candidate binding carried in bb6Context has no dereferenceable bundle; replay cannot complete the validated candidate set and MUST refuse (fail-closed) rather than silently drop the competitor (round-8 N8)"
+      }
+    },
+    {
+      "name": "poisoned-candidate-bundle-inert-honest-resolves",
+      "rule": "§10.4.2 BB-6 candidate check-8; §10.5 Replay (2)",
+      "expected": "pass",
+      "note": "a one-copy absent receipt whose bb6Context carries a poisoned competitor: po_bind_p claims bundleContentHash 'b'*64, and derefBundles maps that claimed hash to bytes (po_p) whose recomputed §10.4.1 hash (bundle_hash(po_p)) differs. The complete-anchored-map reconstruction dereferences the bytes, recomputes the hash (BB-5 check 8), finds the mismatch, and treats the copy as INERT — dropped, never counted toward collapse/precedence/void. Only the honest full-standing winner po_w remains, so BB-6 resolves present/po_w and the receipt is ACCEPTED. A byte-blind claim-compare check-8 would accept po_p as a second full form and wrongly return indeterminate — this vector guards check-8 as a genuine recompute (round-8 N9).",
+      "party": "did:demos:seller",
+      "window": [
+        1780000000000,
+        1780900000000
+      ],
+      "derefBundles": {
+        "84a071f52ccd35237495538ed15270d28adcd640e7006ff5dd18e622831153b9": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-E",
+          "outcome": "completed",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-E",
+            "version": 1,
+            "contentHash": "2a898e1152bf1f8156e51c66d4e913d8fbe9d455ad874c56273c6526cca89221"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "qiP3ye3IhSun-D_iyRlSv8UpbwP6kSotCsmNjWGWR3iKAS-OIfrjiSAEXUY4npaP_XX-b0oy6SAo791DZ3HxDA"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "UZgWwwsrhLzJ0NxWnf2dwBhE6oLo49TpRKiJxJluvEEobL2vjM9SNur-cs8I7PPt95WUzcoU8CX1ObptYVJbCw"
+            }
+          ]
+        },
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {
+          "faultBundleVersion": "1",
+          "jobId": "RCP-E",
+          "outcome": "failed-substrate",
+          "faultedParty": "none",
+          "anchoredByRole": "seller",
+          "listingRef": {
+            "listingId": "listing-RCP-E",
+            "version": 1,
+            "contentHash": "2a898e1152bf1f8156e51c66d4e913d8fbe9d455ad874c56273c6526cca89221"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+              "primaryClaim": "did:demos:buyer"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+              "primaryClaim": "did:demos:seller"
+            }
+          ],
+          "phaseSummary": [
+            {
+              "index": 0,
+              "kind": "deliver-storage-program",
+              "outcome": "ok"
+            }
+          ],
+          "vetRecords": [],
+          "settlementEvidence": [],
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "finalisedAt": 1780004000000,
+          "signatures": [
+            {
+              "party": "did:demos:buyer",
+              "algorithm": "ed25519",
+              "value": "6p-88F0zkTIQwl0z78973NG-haVumiv9sHaowxi6viOuj65iPng2tiYx98UXSD3ZZIdxMWrnVsLb8nfgo3g_Cw"
+            },
+            {
+              "party": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "jkOb0yuqCCCtn4NSIg9IJnzcJMWvOmV_ZAHpaTdKQB0eoKXvXQ6SVxjxgLNDuNqQKZQz92Cfm9HIdqpzXKFqBw"
+            }
+          ]
+        }
+      },
+      "absenceEvidence": {
+        "e3720ee56e45257bc86be449286980e33588b8460c633e1842b4e48315530530": {
+          "kind": "non-membership-proof",
+          "nativeAddress": "stor-f45cf7d30e3cc2816c6152e4de182805454e7dc7",
+          "finalizedStateRef": "demos-testnet:finalized-1780004000000"
+        }
+      },
+      "derivation": {
+        "replayableDerivationVersion": "1",
+        "bundleRefs": [
+          "84a071f52ccd35237495538ed15270d28adcd640e7006ff5dd18e622831153b9"
+        ],
+        "resolutionContext": [
+          {
+            "contentHash": "84a071f52ccd35237495538ed15270d28adcd640e7006ff5dd18e622831153b9",
+            "resolvedRole": "seller",
+            "roleEvidence": {
+              "kind": "binding",
+              "binding": {
+                "bindingVersion": "1",
+                "jobId": "RCP-E",
+                "role": "seller",
+                "logicalAddress": "stor-3eeb0d1c4d99580795b7b896ccd3b5ad32d62385037abf588e9b84f0f4af20b5",
+                "nativeAddress": "stor-7744f22b6bfd78aee14c1141abf0cd1575436d4d",
+                "bundleContentHash": "84a071f52ccd35237495538ed15270d28adcd640e7006ff5dd18e622831153b9",
+                "anchorTx": "demos-testnet:tx-7744f22b6bfd78ae",
+                "signer": "did:demos:seller",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "did:demos:seller",
+                  "value": "SHtNqNHssUQb-ggz9sba_v9c4mC1dtaKcUDPkueAV8NPprQSMbt6tqi_F6jPPyZKWAWTJ14SsBPbgCQATvikDg"
+                }
+              }
+            },
+            "bb6Context": {
+              "candidateBindings": [
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-E",
+                  "role": "seller",
+                  "logicalAddress": "stor-3eeb0d1c4d99580795b7b896ccd3b5ad32d62385037abf588e9b84f0f4af20b5",
+                  "nativeAddress": "stor-7744f22b6bfd78aee14c1141abf0cd1575436d4d",
+                  "bundleContentHash": "84a071f52ccd35237495538ed15270d28adcd640e7006ff5dd18e622831153b9",
+                  "anchorTx": "demos-testnet:tx-7744f22b6bfd78ae",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "SHtNqNHssUQb-ggz9sba_v9c4mC1dtaKcUDPkueAV8NPprQSMbt6tqi_F6jPPyZKWAWTJ14SsBPbgCQATvikDg"
+                  }
+                },
+                {
+                  "bindingVersion": "1",
+                  "jobId": "RCP-E",
+                  "role": "seller",
+                  "logicalAddress": "stor-3eeb0d1c4d99580795b7b896ccd3b5ad32d62385037abf588e9b84f0f4af20b5",
+                  "nativeAddress": "stor-3d29529336068b370402b7737c58b35100de86b4",
+                  "bundleContentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  "anchorTx": "demos-testnet:tx-3d29529336068b37",
+                  "signer": "did:demos:seller",
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:demos:seller",
+                    "value": "Gl2EDMM8fkosknbXUVGwMhBhZGofLqNLU1-dlzpqZoPVBAwkFVMiKyJznkQQGH5Qd-jmVevpv6LtegV9e5b7Dw"
+                  }
+                }
+              ],
+              "partyMap": {
+                "did:demos:seller": "seller"
+              },
+              "budget": 8
+            },
+            "counterpartyDisposition": "absent",
+            "absenceEvidenceRef": {
+              "kind": "non-membership-proof",
+              "locator": "stor-f45cf7d30e3cc2816c6152e4de182805454e7dc7",
+              "contentHash": "e3720ee56e45257bc86be449286980e33588b8460c633e1842b4e48315530530"
+            },
+            "absenceBinding": {
+              "bindingVersion": "1",
+              "jobId": "RCP-E",
+              "role": "buyer",
+              "logicalAddress": "stor-59a9e1d7c81590fcb98865ef1ed2ee5269484c02e2e3babefda1cf0c22eb00dc",
+              "nativeAddress": "stor-f45cf7d30e3cc2816c6152e4de182805454e7dc7",
+              "bundleContentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+              "anchorTx": "demos-testnet:tx-f45cf7d30e3cc281",
+              "signer": "did:demos:buyer",
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:buyer",
+                "value": "YlJTlhVHumppZglcEBz1WVWxQjqm3sy7rJ5tDEb7cvkxi5FzaLMCmz6AcBh7jDMyyKaoQ4mC7h8kDxF6yubzDA"
+              }
+            }
+          }
+        ],
+        "metrics": {
+          "completionRate": 0.0,
+          "counterpartyAdjustedCompletionRate": 0.0,
+          "counterpartyFaultRate": 0.0
+        },
+        "bundleCount": 1,
+        "windowingBasis": "finalisedAt"
+      },
+      "want": {
+        "conforming": true,
+        "sideDisposition": "present",
+        "resolvedNativeAddress": "stor-7744f22b6bfd78aee14c1141abf0cd1575436d4d",
+        "reputationEffect": "include",
+        "inertCandidateBucketSize": 1,
+        "reason": "the competitor candidate's dereferenced bundle fails the BB-5 check-8 byte recompute (claimed bundleContentHash != §10.4.1 hash of the returned bytes); it is INERT (dropped, not counted toward collapse/precedence/void); the honest full-standing winner resolves present (round-8 N9)"
+      }
+    }
+  ],
+  "count": 16,
+  "hash": "da60d52c714f7ce9932cfa79dce7a2144a0874bef050afded1e215652d67ba9c"
+}

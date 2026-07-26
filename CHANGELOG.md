@@ -15,7 +15,7 @@ The format used per release:
 
 ## [Unreleased]
 
-## [0.4] — 2026-07-24
+## [0.4] — 2026-07-26
 
 Interoperability and settlement-hardening release: payee-bound agreements,
 metered pricing, AP2 receipt verification, canonical x402 receipt and SB-3

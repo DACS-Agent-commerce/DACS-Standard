@@ -13,9 +13,12 @@ release rather than imply that every module has the tag's minor version.
 - [ ] Every normative change appears under `CHANGELOG.md` `[Unreleased]`, and
       each changed module's title/status line carries its intended version.
 - [ ] `spec/PROFILE.md` lists the exact CORE and DACS-1..5 version composition.
-- [ ] Record the candidate's full `next` commit SHA. Do not add or amend
-      normative text or conformance vectors after this point; restart the freeze
-      if either changes.
+- [ ] Record the candidate's full `next` commit SHA. This freezes the normative
+      specification and the golden conformance corpus: do not add or amend
+      normative text or golden vectors after this point; restart the freeze if
+      either changes. Candidate-tier vector sets may still be added during
+      release preparation — they remain outside `conformance/MANIFEST.json` and
+      the pinned golden corpus, and must not change the pinned suite SHA-256.
 
 ## 2. Pin and validate the frozen revision
 
@@ -34,8 +37,9 @@ release rather than imply that every module has the tag's minor version.
 - [ ] Confirm the worktree is clean and `git diff --check` reports no errors.
 
 The metadata commit may follow the frozen content commit so that it can name a
-real Git revision. It must not change the normative documents or conformance
-corpus it pins.
+real Git revision. It must not change the normative documents or the pinned
+golden conformance corpus; candidate-tier vector sets added during preparation
+remain outside that pinned corpus.
 
 ## 3. Cut the release
 

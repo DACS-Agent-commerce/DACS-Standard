@@ -48,7 +48,8 @@ function domainSep(kind: string, version: "v1"): string {
   return `dacs-${kind}:${version}:`;
 }
 function signedBytes(kind: string, artifactHash: string): Uint8Array {
-  return concat(utf8(domainSep(kind, "v1")), hexBytes(artifactHash));
+  // CORE §B.7: artifactHash is the 64-character lowercase hex string, not raw digest bytes.
+  return concat(utf8(domainSep(kind, "v1")), utf8(artifactHash));
 }
 function jcs(obj: any): string { /* RFC 8785 canonical JSON */ }
 function sha256Hex(bytes: Uint8Array | string): string { /* sha256, hex-encoded */ }

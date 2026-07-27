@@ -1,6 +1,6 @@
 {
-  "set": "reputation-settlement-semantics-v0.3",
-  "spec": "DACS-5 §10.5.1 RSV-1..RSV-4; consumes existing DACS-4 rules",
+  "set": "reputation-settlement-semantics-v0.4",
+  "spec": "DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules",
   "decisionModel": "accept admits the job; reject and indeterminate both exclude it without fault",
   "inputModel": "one authoritative bundle projection after cross-copy settlementEvidence reference-multiset agreement; every case uses an authenticated Agreement price of 5 DEM; evidencePhase defaults to the DACS-4 §9.7 PaymentPhaseType pay-dem for non-empty inputs, and evidence outcome defaults to success; authorityDisposition is the independent transaction/authority resolution result; mismatch is evaluated only when authorityDisposition is verified and names the sole semantic contradiction; mismatchIndex selects the zero-based member when present; null then means all semantic checks match",
   "hash": "e527ca472ddf2b8373b3819a6dcb325af6ea1ffba32be80c84753942f58b51d8",

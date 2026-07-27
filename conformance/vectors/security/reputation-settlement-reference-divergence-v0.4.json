@@ -1,6 +1,6 @@
 {
-  "set": "reputation-settlement-reference-divergence-v0.3",
-  "spec": "DACS-5 §10.4.3 settlementEvidence reference-multiset divergence + §10.5.1 guard (ii)",
+  "set": "reputation-settlement-reference-divergence-v0.4",
+  "spec": "DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb",
   "comparisonModel": "compare full canonical AttestationRef multisets with multiplicity, not contentHash alone; digest tokens in compact arms name distinct full references; array order alone is immaterial",
   "hash": "702a0bb1dd5edea32f57e3cb83a7808a3921ca320d613e4a7755f207d90c42e0",
   "count": 6,

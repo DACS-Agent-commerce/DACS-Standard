@@ -56,6 +56,32 @@ class ImplementationManifestTests(unittest.TestCase):
         self.assertTrue(any("manifestSha256 mismatch" in error for error in errors))
         self.assertTrue(any("unknown pinned cases" in error for error in errors))
 
+    def test_profile_document_versions_match_pinned_revision(self):
+        manifest = load_example()
+        manifest["profile"]["documents"]["DACS-4"] = "999.9"
+
+        errors = self.validate(manifest)
+
+        self.assertTrue(any("DACS-4 mismatch at pinned commit" in error for error in errors))
+
+    def test_profile_and_suite_commits_must_resolve(self):
+        manifest = load_example()
+        manifest["profile"]["commit"] = "0" * 40
+        manifest["conformanceSuite"]["commit"] = "f" * 40
+
+        errors = self.validate(manifest)
+
+        self.assertTrue(any("profile cannot resolve" in error for error in errors))
+        self.assertTrue(any("conformanceSuite cannot resolve" in error for error in errors))
+
+    def test_suite_hash_is_checked_at_the_declared_commit(self):
+        manifest = load_example()
+        manifest["conformanceSuite"]["commit"] = "db9f9c0075a63d69d4464bac62cbfb2362a3f223"
+
+        errors = self.validate(manifest)
+
+        self.assertTrue(any("manifestSha256 mismatch" in error for error in errors))
+
     def test_passing_claim_requires_passing_deterministic_evidence(self):
         manifest = load_example()
         manifest["testRuns"][0]["result"] = "fail"

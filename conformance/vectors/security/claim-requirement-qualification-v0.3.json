@@ -2,13 +2,13 @@
   "set": "claim-requirement-qualification-v0.3",
   "spec": "DACS-2 §7.7.1 CRQ-1..CRQ-4",
   "decisionModel": "§7.5.1 four-value; qualification precedes classification",
-  "inputModel": "resolvedResults are authenticated VerifyResult projections after §7.5.2 and recipe-authority validation; every input is aggregated under the authenticated session-start recipeRegistry snapshot declared by this set",
+  "inputModel": "resolvedResults are authenticated VerifyResult projections after §7.5.2 and recipe-authority validation; every input binds recordJobId to an authenticated sessionContext whose recipeRegistryVersion resolves against the snapshot declared by this set",
   "recipeRegistry": {
     "recipeRegistryVersion": 7,
     "latestByScheme": { "domain": 4, "key": 2 }
   },
-  "hash": "c8356f6c9ad89d3e149da7a4d38bad712ffff592c60523c3d287e188c50bb0cf",
-  "count": 16,
+  "hash": "d994e1113d142e26f426bbb725e925d83f985d65ee3b21cec47571073df2434f",
+  "count": 19,
   "vectors": [
     {
       "name": "vet-claim-requirement-exact-match-pass",
@@ -16,6 +16,8 @@
       "note": "one passing result satisfies every declared constraint",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
       }
@@ -26,6 +28,8 @@
       "note": "a same-scheme pass at another recipe version is unqualified",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
       }
@@ -36,6 +40,8 @@
       "note": "when listing constraints are absent, the session-start registry still qualifies the current same-scheme recipe version",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
@@ -46,6 +52,8 @@
       "note": "an omitted recipeVersion selects session-start key v2; an older v1 result whose data matches cannot cross-satisfy the requirement",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [
           { "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } },
@@ -59,6 +67,8 @@
       "note": "10001 ms exceeds the listing-tightened ten-second maximum age",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1749999999999, "data": { "possessionVerified": true } }]
       }
@@ -69,6 +79,8 @@
       "note": "a result exactly 10000 ms old satisfies the inclusive ten-second bound",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000000000, "data": { "possessionVerified": true } }]
       }
@@ -79,6 +91,8 @@
       "note": "authenticated extracted data contradicts the required parameter",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }]
       }
@@ -89,6 +103,8 @@
       "note": "missing authenticated data for a declared parameter is unqualified",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
       }
@@ -99,6 +115,8 @@
       "note": "unrequested extracted data does not invalidate the required parameter-key subset",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true, "proofId": "fixture-proof-1" } }]
       }
@@ -109,6 +127,8 @@
       "note": "one key result qualifies the first requirement but not a second key requirement",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": {
           "required": [
             { "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } },
@@ -124,6 +144,8 @@
       "note": "a same-scheme pass at the wrong version does not satisfy an OR member",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [], "oneOf": [[{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2 }]] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
       }
@@ -134,6 +156,8 @@
       "note": "an unqualified key result does not mask a separately qualified domain alternative",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": {
           "required": [],
           "oneOf": [[
@@ -153,6 +177,8 @@
       "note": "an applicable error remains error without extracted parameter data",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "error", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
@@ -163,6 +189,8 @@
       "note": "an applicable indeterminate remains indeterminate without complete parameter data",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
       }
@@ -173,6 +201,8 @@
       "note": "an indeterminate result older than the listing-tightened age remains indeterminate but is not applicable evidence, leaving the requirement unsatisfied",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1749999999999 }]
       }
@@ -183,11 +213,48 @@
       "note": "an unrelated failing result does not block a qualified required result",
       "input": {
         "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [
           { "scheme": "domain", "decision": "fail", "recipeVersion": 4, "verifiedAt": 1750000005000 },
           { "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }
         ]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-missing-session-context-error",
+      "expected": "error",
+      "note": "aggregation fails closed when no authenticated session context supplies the registry pin",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-unresolvable-session-pin-error",
+      "expected": "error",
+      "note": "aggregation fails closed when the authenticated session pin names no resolvable registry snapshot",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 999 },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-mismatched-session-job-error",
+      "expected": "error",
+      "note": "aggregation fails closed when authenticated session context belongs to another job",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "sessionContext": { "jobId": "job-crq-OTHER", "recipeRegistryVersion": 7 },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     }
   ]

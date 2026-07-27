@@ -23,6 +23,25 @@ def canonical_json(value):
     return json.dumps(normalize(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
+def resolve_authenticated_registry(input_data, registries_by_version):
+    session_context = input_data.get("sessionContext")
+    if not isinstance(session_context, dict):
+        return None
+    if session_context.get("jobId") != input_data.get("recordJobId"):
+        return None
+    registry_version = session_context.get("recipeRegistryVersion")
+    if not isinstance(registry_version, int) or isinstance(registry_version, bool):
+        return None
+    registry = registries_by_version.get(registry_version)
+    if not isinstance(registry, dict):
+        return None
+    if registry.get("recipeRegistryVersion") != registry_version:
+        return None
+    if not isinstance(registry.get("latestByScheme"), dict):
+        return None
+    return registry
+
+
 def applicable_results(input_data, claim_requirement, latest_by_scheme):
     expected_version = claim_requirement.get("recipeVersion")
     if expected_version is None:
@@ -73,7 +92,12 @@ def classify_required(input_data, claim_requirement, latest_by_scheme):
     return "indeterminate"
 
 
-def evaluate(input_data, latest_by_scheme):
+def evaluate(input_data, registries_by_version):
+    registry = resolve_authenticated_registry(input_data, registries_by_version)
+    if registry is None:
+        return "error"
+    latest_by_scheme = registry["latestByScheme"]
+
     decisions = [
         classify_required(input_data, claim_requirement, latest_by_scheme)
         for claim_requirement in input_data["requirement"].get("required", [])
@@ -106,7 +130,8 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
-        cls.latest_by_scheme = cls.data["recipeRegistry"]["latestByScheme"]
+        registry = cls.data["recipeRegistry"]
+        cls.registries_by_version = {registry["recipeRegistryVersion"]: registry}
 
     def test_vector_hash_count_and_unique_names(self):
         vectors = self.data["vectors"]
@@ -118,7 +143,7 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
     def test_all_candidate_semantics(self):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
-                self.assertEqual(evaluate(vector["input"], self.latest_by_scheme), vector["expected"])
+                self.assertEqual(evaluate(vector["input"], self.registries_by_version), vector["expected"])
 
     def test_omitted_version_uses_session_start_registry(self):
         vector = next(
@@ -127,15 +152,34 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
             if vector["name"] == "vet-claim-requirement-implicit-session-pin-rejects-old-version"
         )
         claim_requirement = vector["input"]["requirement"]["required"][0]
-        applicable = applicable_results(vector["input"], claim_requirement, self.latest_by_scheme)
+        registry = resolve_authenticated_registry(vector["input"], self.registries_by_version)
+        self.assertIsNotNone(registry)
+        applicable = applicable_results(vector["input"], claim_requirement, registry["latestByScheme"])
         self.assertEqual([result["recipeVersion"] for result in applicable], [2])
-        self.assertEqual(evaluate(vector["input"], self.latest_by_scheme), "fail")
+        self.assertEqual(evaluate(vector["input"], self.registries_by_version), "fail")
         self.assertTrue(parameters_match(vector["input"]["resolvedResults"][0], claim_requirement))
 
-    def test_spec_carries_and_reuses_exact_registry_pin(self):
+    def test_session_context_pin_failures_are_executable(self):
+        expected = {
+            "vet-claim-requirement-missing-session-context-error",
+            "vet-claim-requirement-unresolvable-session-pin-error",
+            "vet-claim-requirement-mismatched-session-job-error",
+        }
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        self.assertTrue(expected.issubset(vectors))
+        for name in expected:
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(vectors[name]["input"], self.registries_by_version), "error")
+
+    def test_spec_uses_existing_authenticated_session_pin(self):
         text = SPEC.read_text(encoding="utf-8")
-        self.assertIn("recipeRegistryVersion?: number", text)
-        self.assertIn("recipeRegistryResolver.resolve_authenticated(record.recipeRegistryVersion)", text)
+        composite_type = text.split("type CompositeVerificationRecord = {", 1)[1].split("}", 1)[0]
+        self.assertNotIn("recipeRegistryVersion", composite_type)
+        self.assertIn(
+            "recipeRegistryResolver.resolve_authenticated(authenticatedSession.recipeRegistryVersion)",
+            text,
+        )
+        self.assertIn("authenticatedSession.jobId != record.jobId", text)
         self.assertIn("An omitted `ClaimRequirement.recipeVersion` therefore does not disable version qualification.", text)
 
 

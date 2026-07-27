@@ -415,7 +415,7 @@ A verifier MUST resolve a recipe by:
 2. looking up the entry for the claim’s scheme;
 3. fetching the recipe at the indicated anchor and verifying its content hash and domain-separated signature;
 4. if the matched `ClaimRequirement` pins a specific `recipeVersion` (§6.3.3), MUST use that version; otherwise MUST use the latest version for that scheme in the authenticated recipe-registry snapshot identified by `SessionContext.recipeRegistryVersion` at session start;
-5. retain that registry snapshot pin for the session and copy `recipeRegistryVersion` into the resulting `CompositeVerificationRecord`, so aggregation and later replay derive the same effective per-scheme version without consulting a newer registry state.
+5. retain that registry snapshot pin in the authenticated `SessionContext` and resulting `SessionRecord`, so live aggregation and later replay derive the same effective per-scheme version without consulting a newer registry state.
 
 This mirrors the rail-side `railVersion` pin (§9.3) and is the mechanism that protects an in-flight session from a steward shipping a recipe revision mid-session.
 
@@ -609,7 +609,6 @@ type CompositeVerificationRecord = {
   evaluatedParty: ClaimReference              // counterparty's primary identity claim
   bundleHash: string                          // sha256 of the IdentityBundle this Vet ran against
   requirementHash: string                     // sha256 of the listing's BundleRequirement
-  recipeRegistryVersion?: number              // REQUIRED on v0.3 records; exact authenticated registry snapshot pinned at session start (§7.4.3); absent legacy records fail v0.3 aggregation closed
   freshness: VerifyResultRef[]                // re-verifications of pre-attested claims
   supplementary: SupplementarySignal[]
   dealSpecific: VerifyResultRef[]
@@ -663,13 +662,20 @@ CCI-native reputation signals (cci-nomis, cci-ethos, cci-humanpassport) are firs
 A verifier MUST compute overallDecision per the following algorithm. The algorithm distinguishes four cases for each required claim: passing, indeterminate (authority answered ambiguously), errored (verifier could not reach the authority), and failing/absent. Precedence among non-pass outcomes is failures > errors > indeterminates so that the strongest evidence dominates aggregation.
 
 ```
-aggregate(record, requirement, recipeRegistryResolver):
+aggregate(record, requirement, authenticatedSession, recipeRegistryResolver):
 
-  registry := recipeRegistryResolver.resolve_authenticated(record.recipeRegistryVersion)
+  # authenticatedSession is the live SessionContext during production, or the
+  # containing authenticated SessionRecord during replay/consumption.
+
+  if authenticatedSession is missing or authenticatedSession.jobId != record.jobId:
+
+    return "error", ["authenticated session context missing or mismatched"]
+
+  registry := recipeRegistryResolver.resolve_authenticated(authenticatedSession.recipeRegistryVersion)
 
   if registry is unavailable or invalid:
 
-    return "error", ["pinned recipe registry unavailable or invalid"]
+    return "error", ["session-pinned recipe registry unavailable or invalid"]
 
   # The helpers below use this authenticated aggregation-scoped registry.
 
@@ -787,7 +793,7 @@ find_applicable_results(record, cr):
 
   return [r for r in results if ALL applicable constraints hold]:
 
-    1. r.recipeVersion == expectedVersion (§7.4.3): the explicit `cr.recipeVersion` when present, otherwise the latest version for `cr.scheme` in the exact authenticated registry snapshot named by `record.recipeRegistryVersion`
+    1. r.recipeVersion == expectedVersion (§7.4.3): the explicit `cr.recipeVersion` when present, otherwise the latest version for `cr.scheme` in the exact authenticated registry snapshot named by `authenticatedSession.recipeRegistryVersion`
 
     2. if cr.maxAge is present, record.generatedAt <= r.verifiedAt + cr.maxAge * 1000 (the additional listing-declared VP-C3 bound; seconds converted to milliseconds; it cannot widen the governing §6.3.2 / §7.6.1 freshness window)
 
@@ -798,9 +804,9 @@ parameters_match(r, cr):
   return r.data contains every own key in cr.parameters and each corresponding value is equal under CORE canonical JSON (§7.6 step 7); additional r.data keys do not disqualify the result
 ```
 
-(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST authenticate and resolve the exact recipe-registry snapshot named by `record.recipeRegistryVersion`; a missing or invalid snapshot fails aggregation closed as `error`. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
+(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST bind the record to authenticated session context with the same `jobId` and resolve the exact recipe-registry snapshot named by that context's `recipeRegistryVersion`. During production that context is the required `VetCredentialsInput.sessionContext`; during replay or later consumption it is the authenticated containing `SessionRecord`, which MUST reference the record being aggregated. A standalone record, missing or mismatched session context, or missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version from the record or from current registry state. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
 
-(CRQ-2) A verifier MUST derive one effective expected recipe version for every `ClaimRequirement`: the explicit `cr.recipeVersion` when present, otherwise the latest version for that scheme in the authenticated session-start registry snapshot identified by `record.recipeRegistryVersion`. It MUST apply exact equality with that effective version, plus age qualification, before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; a missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced. A result outside the effective recipe version or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
+(CRQ-2) A verifier MUST derive one effective expected recipe version for every `ClaimRequirement`: the explicit `cr.recipeVersion` when present, otherwise the latest version for that scheme in the authenticated session-start registry snapshot identified by `authenticatedSession.recipeRegistryVersion`. It MUST apply exact equality with that effective version, plus age qualification, before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; a missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced. A result outside the effective recipe version or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
 
 (CRQ-3) Multiple requirements using the same scheme are evaluated independently. A passing result qualified for one requirement MUST NOT satisfy another requirement whose recipe-version, age, or parameter constraints it does not satisfy.
 

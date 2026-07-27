@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — conformance
+
+- **Domain-separator registry golden regenerated** (CORE §B.7; #283) — replaces the stale `sig-registry-closed-16` assertion with a count of 23 and the exact sorted separator set published by the closed registry. The manifest validator now compares exact membership, so a future remove-one/add-one substitution cannot pass behind an unchanged cardinality. Refreshes the lifecycle manifest and trace pins. No normative protocol rule changes.
+
 ## [0.4] — 2026-07-27
 
 Interoperability and settlement-hardening release: payee-bound agreements,

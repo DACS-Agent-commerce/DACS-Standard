@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_conformance_vectors.py"
+MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 VECTORS = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
 IDENTITY_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "identity-bundle.json"
 RATING_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "rating-record.json"
@@ -46,6 +47,30 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         result = run_validator()
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("validated 2 vectors", result.stdout)
+
+    def test_registry_golden_pins_exact_spec_membership(self):
+        data = json.loads(MANIFEST.read_text())
+        registry_case = next(case for case in data["cases"] if case["id"] == "sig-registry-closed")
+        validator = load_vector_validator()
+        separators = sorted(validator.load_registered_domain_separators(ROOT))
+        self.assertEqual(
+            registry_case["want"],
+            {
+                "count": len(separators),
+                "separators": separators,
+            },
+        )
+
+    def test_registry_golden_rejects_same_count_substitution(self):
+        data = json.loads(MANIFEST.read_text())
+        registry_case = next(case for case in data["cases"] if case["id"] == "sig-registry-closed")
+        registry_case["want"]["separators"][0] = "dacs-substitute:v1:"
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "MANIFEST.json"
+            manifest.write_text(json.dumps(data), encoding="utf-8")
+            result = run_validator("--manifest", str(manifest))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("want.separators MUST equal the sorted closed §7.7 registry", result.stderr)
 
     def test_vector_covers_all_five_dacs_stages_in_order(self):
         data = json.loads(VECTORS.read_text())

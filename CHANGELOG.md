@@ -15,6 +15,20 @@ The format used per release:
 
 ## [Unreleased]
 
+### Clarified — DACS-1 identity and discovery
+
+- **Canonical Demos agent ClaimReference** (§6.3.1 / §A.1; #293) — specifies
+  `did:demos:agent:<64-lowercase-hex>` as the self-certifying Demos profile
+  under the registered `did` scheme. Clarifies that `demos:0x<64hex>` is
+  substrate-address notation, not a registered ClaimReference or reputation
+  alias, and must not be emitted in ClaimReference fields.
+- **Operational listing reachability** (§6.3.4 / §6.3.6; LP-5; #294) — active
+  publishers should maintain at least one actionable machine engagement
+  surface. Intent-scoped x402 bases may expose discovery before a job-specific
+  402 exists. Catalogs may publish time-stamped reachability hints, but dynamic
+  probes never change content/signature validity, conformance, revocation,
+  identity, or reputation.
+
 ## [0.4] — 2026-07-27
 
 Interoperability and settlement-hardening release: payee-bound agreements,

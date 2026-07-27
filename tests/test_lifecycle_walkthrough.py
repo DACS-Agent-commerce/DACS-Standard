@@ -36,6 +36,20 @@ class LifecycleWalkthroughTests(unittest.TestCase):
         )
         self.assertEqual(self.trace["result"]["artifactCount"], 11)
 
+    def test_profile_records_independent_module_versions(self):
+        self.assertEqual(self.trace["profile"]["dacsVersion"], "0.1")
+        self.assertEqual(
+            self.trace["profile"]["documents"],
+            {
+                "CORE": "0.1",
+                "DACS-1-IDENTIFY": "0.3",
+                "DACS-2-VET": "0.2",
+                "DACS-3-NEGOTIATE": "0.3",
+                "DACS-4-SETTLE": "0.3",
+                "DACS-5-VERIFY": "0.3",
+            },
+        )
+
     def test_each_artifact_exposes_bytes_hash_signature_ref_and_binding(self):
         for stage in self.trace["stages"]:
             self.assertTrue(stage["rules"])

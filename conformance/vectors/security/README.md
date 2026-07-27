@@ -34,6 +34,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4 | 4 | `fail` / `pass` |
+| [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -61,6 +62,26 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `metered-pricing-v0.3.json` — §8.5.2 MTR-1..MTR-5
+
+22 candidate vectors make the metered-pricing commit gate executable. They pin
+currency and unit agreement, the canonical unsigned-integer quantity grammar,
+ceil derivation for fractional raw usage, exact decimal multiplication and
+`minTotal` flooring, and fail-closed handling of an unknown pricing kind.
+
+The valid zero-quantity case carries a positive `minTotal`: MTR-4 permits a
+zero quantity, while the underlying `PriceTerm` contract still requires a
+positive final amount. Invalid cases cover every forbidden quantity spelling
+(leading zero, sign, decimal point, and exponent), missing or mismatched units,
+currency disagreement, non-canonical or incorrect totals, and an unexpected
+metered quantity on a non-metered price.
+
+Each entry names an executable `surface`: `quantity-derivation` maps a decimal
+raw measurement to the ceiled canonical quantity, while
+`agreement-validation` carries the pinned `pricing`, signed `terms`, expected
+verdict, and exact reason or computed amount. Run the dependency-free reference
+assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
 
 ### `bundle-absence-evidence-v0.3.json` — CORE §5 SR-2 + DACS-5 §10.4.3 / §10.5.1 guard (iv)
 

@@ -52,6 +52,11 @@ fast-forward + tag); `next` is the integration branch where spec, documentation,
 and conformance-vector changes accumulate between releases. Targeting `main`
 directly leaves it ahead of `next` and breaks the release fast-forward.
 
+Maintainers cutting a version must follow the staged
+[release checklist](./docs/release-checklist.md), including exact-revision pin
+validation, a zero-skip test run, and CI on the final `next` head before the
+fast-forward and annotated tag.
+
 ## Editing the specification
 
 The canonical specification lives in [`spec/`](./spec/). When proposing normative

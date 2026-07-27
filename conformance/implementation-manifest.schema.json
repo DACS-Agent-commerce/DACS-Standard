@@ -63,6 +63,10 @@
       "type": "string",
       "minLength": 1
     },
+    "documentVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
     "ruleRef": {
       "description": "A labelled DACS rule id or a document-scoped section reference; semantic validation resolves the identifier against the supported profile source.",
       "type": "string",
@@ -95,12 +99,12 @@
           "type": "object",
           "required": ["CORE", "DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"],
           "properties": {
-            "CORE": { "$ref": "#/$defs/nonEmptyString" },
-            "DACS-1": { "$ref": "#/$defs/nonEmptyString" },
-            "DACS-2": { "$ref": "#/$defs/nonEmptyString" },
-            "DACS-3": { "$ref": "#/$defs/nonEmptyString" },
-            "DACS-4": { "$ref": "#/$defs/nonEmptyString" },
-            "DACS-5": { "$ref": "#/$defs/nonEmptyString" }
+            "CORE": { "$ref": "#/$defs/documentVersion" },
+            "DACS-1": { "$ref": "#/$defs/documentVersion" },
+            "DACS-2": { "$ref": "#/$defs/documentVersion" },
+            "DACS-3": { "$ref": "#/$defs/documentVersion" },
+            "DACS-4": { "$ref": "#/$defs/documentVersion" },
+            "DACS-5": { "$ref": "#/$defs/documentVersion" }
           }
         }
       }

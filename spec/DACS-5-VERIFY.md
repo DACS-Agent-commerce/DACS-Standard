@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.3** on the common DACS v0.1 baseline. v0.3 adds `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.4** on the common DACS v0.1 baseline. v0.4 adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding; v0.3 added `PayeeBoundAgreementDocument` consumption, `BundleBinding` BB-1..BB-8 resolution, and absolute fault attribution through `FaultAttestationBundle`. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -140,7 +140,7 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
   - **Symmetry.** A policy-permitted cancellation is neutral for both parties — there is no `-by-self`/`-by-other` blame to split. The counterparty's copy, if any, records `aborted-by-other` per ST-3, and the same teeth check applied to it yields the same neutral result; mutual notice is what earns the mutual neutrality. Because the neutrality is symmetric, a consumer MUST resolve the `cancellation` marker across **both** non-divergent copies of the session — a marker carried on *either* copy establishes the cancellation for *both* parties' scores. A one-sided marker is **not** a §10.4.3 canonical divergence (that definition is scoped to `outcome` / `phaseSummary`), so it MUST NOT be treated as an advisory one-sided field; otherwise the neutral (and the indeterminate) verdict would collapse for the party whose own copy omits the marker (§10.5.1 resolves it at jobId reconciliation).
   - **Precedence.** A cancellation is a deliberate party action and ranks **with** abort (ST-3), above the ST-9 timeout: a party electing to cancel within an open deadline does so as a party decision, not a timeout. `with-fee` cancellation — a cancellation owing a fee after `commit-completed` — is **not defined** here; only the `pre-commit` case is honoured, and a `with-fee` value confers no neutrality.
 
-**State → bundle `outcome` mapping (normative).** Every terminal state maps to exactly one bundle `outcome` (both bundle types share the enum) (§10.4), partitioned by the terminal phase’s `errorClass` where applicable:
+**State → bundle `outcome` mapping (normative).** Every terminal state maps to exactly one bundle `outcome` (all bundle types share the enum) (§10.4), partitioned by the terminal phase’s `errorClass` where applicable:
 
 | Terminal state | errorClass | Bundle `outcome` |
 |----------------|-----------|------------------|
@@ -167,7 +167,7 @@ SessionRecord is off-chain by default. The orchestrator persists it locally. Cou
 
 The frozen end-of-session artifact. Signed by all parties; anchored via SR-2.
 
-Two bundle types share this section. The legacy **`AttestationBundle`** (`bundleVersion: "1"`) is the pre-fault-attribution class: fault is read role-relatively from its `outcome`. The **`FaultAttestationBundle`** (`faultBundleVersion: "1"`, defined after the shared component types below) is the v0.3 production type carrying absolute hashed fault attribution. Every rule in §10.4–§10.5 applies to both types alike except where it names one type.
+Three bundle types share this section. The legacy **`AttestationBundle`** (`bundleVersion: "1"`) reads fault role-relatively. **`FaultAttestationBundle`** (`faultBundleVersion: "1"`) carries absolute hashed fault attribution. DACS-5 v0.4 adds **`EvidenceBoundFaultAttestationBundle`** (`evidenceBoundFaultBundleVersion: "1"`), which preserves the fault bundle fields and additionally makes SEB-1..SEB-6 part of that distinct type's validity contract. Rules apply to all three types except where they name a narrower type.
 
 ```
 type AttestationBundle = {
@@ -246,7 +246,7 @@ type BundleSignature = {
 
   algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
 
-  value: string                               // unpadded Base64URL (CORE §B.7 SIG-6) of the ed25519/ecdsa signature over the type's §10.4.1 domain-separated payload ("dacs-bundle:v1:" or "dacs-fault-bundle:v1:") || attestation_bundle_hash, NOT the raw bundle hash
+  value: string                               // unpadded Base64URL (CORE §B.7 SIG-6) signature over the type's §10.4.1 registered domain separator || attestation_bundle_hash, NOT the raw bundle hash
 
 }
 ```
@@ -276,14 +276,44 @@ type FaultAttestationBundle = {
 }
 ```
 
+**EvidenceBoundFaultAttestationBundle (v0.4 exact-set type).** This type has every shared field and absolute-fault rule of `FaultAttestationBundle`, but replaces `faultBundleVersion` with the structural discriminator `evidenceBoundFaultBundleVersion`. Its validity additionally requires the SEB-1..SEB-6 exact-set contract in §10.4.3. It signs under the distinct `dacs-evidence-bound-fault-bundle:v1:` domain. The new discriminator and domain prevent an older reader from accepting the object while silently omitting the new action-bearing validation.
+
+```
+type EvidenceBoundFaultAttestationBundle = {
+  evidenceBoundFaultBundleVersion: "1"        // structural discriminator; carries neither bundleVersion nor faultBundleVersion
+  jobId: string
+  outcome: "completed" | "failed-perm" | "failed-counterparty" | "failed-substrate" | "aborted-by-self" | "aborted-by-other"
+  faultedParty: "buyer" | "seller" | "orchestrator" | "none"
+  anchoredByRole: "buyer" | "seller" | "orchestrator"
+  listingRef: { listingId: string; version: number; contentHash: string }
+  agreementRef?: AttestationRef
+  cancellation?: CancellationMarker
+  parties: BundleParty[]
+  phaseSummary: BundlePhaseEntry[]
+  vetRecords: AttestationRef[]
+  settlementEvidence: AttestationRef[]
+  amendments?: AttestationRef[]
+  ratingRefs?: AttestationRef[]
+  recipeRegistryVersion: number
+  railRegistryVersion: number
+  finalisedAt: number
+  signatures: BundleSignature[]
+}
+```
+
+A consumer that does not support `EvidenceBoundFaultAttestationBundle` MUST reject its discriminator as unsupported and MUST NOT strip or rename it to reinterpret the object as either older bundle type (CORE §11.1.2). Conversely, an SEB-conforming consumer MUST NOT claim SEB validation for an `AttestationBundle` or `FaultAttestationBundle`; those released types retain their v0.3 validity semantics.
+
+Except for discriminator, signature-domain, extended-pointer, and SEB-specific rules, every rule naming `FaultAttestationBundle` also applies to `EvidenceBoundFaultAttestationBundle`. For pair reconciliation both are absolute-fault types: any pair of absolute-fault copies uses the `faultedParty` plus outcome-class rule, including a mixed pair of these two types. Only an `EvidenceBoundFaultAttestationBundle` copy makes an SEB claim.
+
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
-Per the §B.2 canonical-form template, omitting the `signatures` **and `anchoredByRole`** fields — identically for both bundle types. Every other field is hashed, including the type's version literal (`bundleVersion` / `faultBundleVersion`) and, on a `FaultAttestationBundle`, `faultedParty`. The **attestation-bundle hash** (`attestation_bundle_hash`) is the content hash of that canonical form — sha256(canonical_form), hex-encoded — a computed value, not a stored field (distinct from `BundleParty.bundleHash`, which hashes a party's IdentityBundle), computed identically for both types. Each BundleSignature.value MUST be computed over the type's domain-separated payload:
+Per the §B.2 canonical-form template, omit `signatures` and `anchoredByRole` identically for all three bundle types. Every other field is hashed, including exactly one type discriminator and `faultedParty` on either absolute-fault type. The **attestation-bundle hash** (`attestation_bundle_hash`) is sha256(canonical_form), hex-encoded. Each `BundleSignature.value` MUST use the matching domain-separated payload:
 
 signed_bytes := "dacs-bundle:v1:" || attestation_bundle_hash            (AttestationBundle)
 signed_bytes := "dacs-fault-bundle:v1:" || attestation_bundle_hash      (FaultAttestationBundle)
+signed_bytes := "dacs-evidence-bound-fault-bundle:v1:" || attestation_bundle_hash (EvidenceBoundFaultAttestationBundle)
 
-The two domains are distinct §B.7 registry entries: a signature over one type MUST NOT validate as a signature over the other.
+The three domains are distinct §B.7 registry entries: a signature over one type MUST NOT validate for another.
 
 `BundleSignature.value` and each DACS-5 `ComponentSignature.value`, including a
 rating signature, MUST use CORE §B.7 SIG-6. The encoded value carries the
@@ -291,7 +321,7 @@ signature over `signed_bytes`, not over the raw bundle hash.
 
 > **Note (non-normative).** `anchoredByRole` is per-copy — buyer vs seller vs orchestrator — and is carried only for derive()'s perspective read (§10.5.1); it is excluded from the hashed canonical form exactly like `signatures` so the two-sided copies remain canonically equal in the happy path. This is a recognised, specified omission, not a SIG-5 silent strip.
 
-**Absolute fault attribution (`faultedParty`).** `faultedParty` names the party responsible for `outcome` in absolute terms, independent of which copy carries it. It is REQUIRED on a `FaultAttestationBundle` and does not exist on the legacy `AttestationBundle`. It is part of the hashed canonical form. For a copy whose `anchoredByRole` is R, the permissible values are fixed by `outcome`:
+**Absolute fault attribution (`faultedParty`).** `faultedParty` names the party responsible for `outcome` in absolute terms, independent of which copy carries it. It is REQUIRED on both absolute-fault bundle types and does not exist on legacy `AttestationBundle`. It is hashed. For a copy whose `anchoredByRole` is R, the permissible values are fixed by `outcome`:
 
 | `outcome` | permissible `faultedParty` |
 |-----------|----------------------------|
@@ -309,11 +339,11 @@ signature over `signed_bytes`, not over the raw bundle hash.
 
 *Example.* A seller aborts. The buyer anchors `{outcome: "aborted-by-other", anchoredByRole: "buyer", faultedParty: "seller"}` and the seller's own copy anchors `{outcome: "aborted-by-self", anchoredByRole: "seller", faultedParty: "seller"}`. The role-relative `outcome` spelling differs, but both name the seller, so the absolute attribution is identical and the deriver reads fault from `faultedParty` (§10.5.1).
 
-Under DACS-5 v0.3 a producer MUST anchor `FaultAttestationBundle` records. A consumer MUST classify an `AttestationBundle` as the legacy class and read its fault role-relatively from `outcome`, never from a `faultedParty` field.
+Under DACS-5 v0.4 a producer claiming SEB-1..SEB-6 exact-set conformance MUST anchor `EvidenceBoundFaultAttestationBundle` records. Existing `AttestationBundle` and `FaultAttestationBundle` records remain valid under their released semantics; neither gains the SEB contract retroactively.
 
 > **Note (non-normative).** `faultedParty` makes fault role-invariant. On the legacy `AttestationBundle`, fault is read from the role-relative `outcome` through the unhashed `anchoredByRole`, so a counterparty could re-anchor a single-signed abort under its own role and silently reverse blame. Hashing fault as an absolute party closes that rebind: it either contradicts the mapping and is rejected, or forces a re-signed divergent copy that voids the side under §10.4.3(d). Legacy `AttestationBundle` records are never rewritten and keep the pre-faultedParty residual; `FaultAttestationBundle` closes it under v0.3.
 
-The "dacs-bundle:v1:" and "dacs-fault-bundle:v1:" string prefixes prevent cross-protocol signature confusion: an attacker capturing a bundle signature MUST NOT be able to replay it as a listing signature, agreement signature, the other bundle type's signature, or any other DACS signature even if the hash bytes collide.
+The three registered bundle prefixes prevent cross-protocol and cross-type signature replay even if hash bytes collide.
 
 Verification and signer rules:
 
@@ -354,7 +384,7 @@ type BundleBinding = {
   role: "buyer" | "seller" | "orchestrator"
   logicalAddress: string          // the derived logical bundle address, carried explicitly
   nativeAddress: string           // the write-input-derived native address the copy is anchored at
-  bundleContentHash: string       // the anchored copy's §10.4.1 `attestation_bundle_hash` (computed identically for both bundle types) (sha256 hex of its canonical form), matched byte-for-byte at BB-5
+  bundleContentHash: string       // the anchored copy's §10.4.1 `attestation_bundle_hash` (sha256 hex of its canonical form), matched byte-for-byte at BB-5
   anchorTx?: string               // the SR-2 anchor transaction — the canonical pointer, when known
   signer: ClaimReference          // primary claim of the anchoring party; MUST be a party to the bundle
   signature: ComponentSignature   // over "dacs-bundle-binding:v1:" || sha256(canonical form), per §B.7; canonical form per the §B.2 template, omitting `signature`
@@ -430,7 +460,20 @@ type FaultBundleExtendedPointer = {
 }
 ```
 
-For an extended-pointer anchoring, the record at the resolved `nativeAddress` is the pointer. BB-5 check 8 and the §10.4.1 comparison apply to the **dereferenced full bundle**: `binding.bundleContentHash` MUST equal `pointer.fullBundleContentHash` MUST equal the recomputed §10.4.1 hash of the dereferenced bundle — three values, one identity. A pointer whose signature fails, or whose dereferenced content hash mismatches, is rejected content (BB-7), never absence.
+An oversized `EvidenceBoundFaultAttestationBundle` uses its own pointer type and domain:
+
+```
+type EvidenceBoundFaultBundleExtendedPointer = {
+  evidenceBoundFaultBundleVersion: "1"
+  pointerKind: "extended"
+  fullBundleUrl: string
+  fullBundleContentHash: string
+  segmentRefs?: AttestationRef[]
+  signature: ComponentSignature                 // over "dacs-evidence-bound-fault-bundle-pointer:v1:" || sha256(canonical(pointer minus signature))
+}
+```
+
+For an extended-pointer anchoring, the record at the resolved `nativeAddress` is the pointer. Its discriminator and signature domain MUST match the dereferenced bundle type. BB-5 check 8 and the §10.4.1 comparison apply to the **dereferenced full bundle**: `binding.bundleContentHash` MUST equal `pointer.fullBundleContentHash` MUST equal the recomputed §10.4.1 hash of the dereferenced bundle — three values, one identity. A pointer whose signature fails, whose type mismatches, or whose dereferenced content hash mismatches is rejected content (BB-7), never absence.
 
 #### 10.4.3 Bundle production rules
 
@@ -444,7 +487,7 @@ A bundle MUST be produced when the session reaches a terminal state. The bundle 
 
 The bundle MUST NOT include references to any record outside the session’s scope.
 
-**SettlementEvidence exact-set validation (SEB-1..SEB-6).** A bundle consumer validates the authoritative top-level `settlementEvidence[]` against the authenticated executed phase set as follows:
+**EvidenceBoundFaultAttestationBundle exact-set validation (SEB-1..SEB-6).** These rules define validity only for `EvidenceBoundFaultAttestationBundle`. Its producer and consumer validate the authoritative top-level `settlementEvidence[]` against the authenticated executed phase set as follows. The two perspective copies MUST contain the same applicable terminal members. An ST-8-resolved phase lists only its `:resolved` success record; an expired phase lists its standing interim failure record.
 
 - (SEB-1) Derive `P` from authenticated execution authority by selecting every DACS-4 §9.7 `PaymentPhaseType` or `DeliveryPhaseType` invocation that ran to an outcome and produced a durable anchored SettlementEvidence record, regardless of success or failure. `P` is keyed by `(phaseIndex, phaseKind)`. A phase merely entered and then aborted before producing evidence is not in `P`; an ST-8 expiry is in `P` because its interim failure record becomes the terminal record. `P` MUST NOT be derived from `settlementEvidence[]` or from optional `phaseSummary[].attestationRef` values.
 - (SEB-2) Inspect the raw top-level array before set formation. Its full canonical `AttestationRef` values MUST be duplicate-free. For an ST-8-resolved phase, the superseded interim failure record MUST NOT occupy a top-level slot, whether alone or beside its `:resolved` successor; only the success record is top-level and it binds the interim through `supersedesEvidenceRef`. For an ST-8-expired phase, the standing interim failure record MUST occupy that phase's single top-level slot because no resolved successor exists.
@@ -487,7 +530,7 @@ Consumers MUST:
 
 v0.1 does not specify a dispute resolution path; divergence is handled out-of-band. A future minor version (DACS-X, dispute) may specify selective transcript disclosure under signed party agreement or arbitrator order.
 
-`absent`, `indeterminate`, `one-sided`, `unified`, and `divergent` are consumer lookup dispositions, not values of the §10.4.1 bundle `outcome` enum (common to both bundle types). In particular, `indeterminate` records that the two-address observation was incomplete; it asserts neither absence nor a canonical contradiction.
+`absent`, `indeterminate`, `one-sided`, `unified`, and `divergent` are consumer lookup dispositions, not values of the §10.4.1 bundle `outcome` enum. In particular, `indeterminate` records that the two-address observation was incomplete; it asserts neither absence nor a canonical contradiction.
 
 ### 10.5 Reputation derivation
 

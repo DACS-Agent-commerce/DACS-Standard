@@ -1,10 +1,11 @@
 {
-  "set": "bundle-settlement-evidence-bijection-v0.3",
+  "set": "bundle-settlement-evidence-bijection-v0.4",
   "spec": "DACS-5 §10.4.3 SEB-1..SEB-6",
+  "artifactType": "EvidenceBoundFaultAttestationBundle",
   "inputModel": "expectedPhaseKeys come from authenticated evidence-bearing execution authority for invocations that ran to a success or failure outcome; topLevelRefs are raw full-canonical reference keys; resolvedReferencePhaseKeys are independently resolved job-bound phase keys; pointerMap contains only present optional pointers; recordClassByRef defaults to ordinary-terminal and distinguishes st8-resolved-success from st8-expired-interim-failure; supersedesEdges bind resolved successors even when the successor is maliciously omitted from topLevelRefs; unrelatedAuthorityDisposition is evaluated only after deterministic SEB checks",
   "reasonCodes": ["ok", "raw-multiplicity", "exact-cardinality", "exact-phase-mapping", "exact-bijection", "pointer-agreement", "st8-raw-admissibility", "unrelated-authority-indeterminate"],
   "reasonPrecedence": ["raw-multiplicity", "st8-raw-admissibility", "exact-phase-mapping", "exact-cardinality", "exact-bijection", "pointer-agreement", "unrelated-authority-indeterminate", "ok"],
-  "hash": "a9df4ab8e21450bce1e6d392b8375aa7879c42dafd4b9121863ebac3d59eca30",
+  "hash": "c4e41d470e5b2e751c952a80d1d364953f3098dc15f51b1f5e447f49771c0cb3",
   "count": 19,
   "vectors": [
     {

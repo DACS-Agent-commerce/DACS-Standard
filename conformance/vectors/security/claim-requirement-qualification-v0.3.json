@@ -2,9 +2,13 @@
   "set": "claim-requirement-qualification-v0.3",
   "spec": "DACS-2 §7.7.1 CRQ-1..CRQ-4",
   "decisionModel": "§7.5.1 four-value; qualification precedes classification",
-  "inputModel": "resolvedResults are authenticated VerifyResult projections after §7.5.2 and recipe-authority validation",
-  "hash": "505a6d05c5082bdd4b0ba540d6c914c90bd955a038941ce00092def18dde9577",
-  "count": 15,
+  "inputModel": "resolvedResults are authenticated VerifyResult projections after §7.5.2 and recipe-authority validation; every input is aggregated under the authenticated session-start recipeRegistry snapshot declared by this set",
+  "recipeRegistry": {
+    "recipeRegistryVersion": 7,
+    "latestByScheme": { "domain": 4, "key": 2 }
+  },
+  "hash": "c8356f6c9ad89d3e149da7a4d38bad712ffff592c60523c3d287e188c50bb0cf",
+  "count": 16,
   "vectors": [
     {
       "name": "vet-claim-requirement-exact-match-pass",
@@ -29,11 +33,24 @@
     {
       "name": "vet-claim-requirement-optional-constraints-absent-pass",
       "expected": "pass",
-      "note": "when recipeVersion, maxAge, and parameters are absent, a same-scheme passing result is qualified",
+      "note": "when listing constraints are absent, the session-start registry still qualifies the current same-scheme recipe version",
       "input": {
         "generatedAt": 1750000010000,
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-implicit-session-pin-rejects-old-version",
+      "expected": "fail",
+      "note": "an omitted recipeVersion selects session-start key v2; an older v1 result whose data matches cannot cross-satisfy the requirement",
+      "input": {
+        "generatedAt": 1750000010000,
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "parameters": { "possessionVerified": true } }] },
+        "resolvedResults": [
+          { "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } },
+          { "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }
+        ]
       }
     },
     {

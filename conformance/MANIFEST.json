@@ -163,7 +163,7 @@
     {
       "id": "sig-registry-closed",
       "area": "signing",
-      "spec": "§7.7",
+      "spec": "§B.7",
       "summary": "the domain-separator registry is exactly the published closed set of 23",
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",

@@ -53,6 +53,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         registry_case = next(case for case in data["cases"] if case["id"] == "sig-registry-closed")
         validator = load_vector_validator()
         separators = sorted(validator.load_registered_domain_separators(ROOT))
+        self.assertEqual(registry_case["spec"], "§B.7")
         self.assertEqual(
             registry_case["want"],
             {
@@ -70,7 +71,18 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             manifest.write_text(json.dumps(data), encoding="utf-8")
             result = run_validator("--manifest", str(manifest))
         self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn("want.separators MUST equal the sorted closed §7.7 registry", result.stderr)
+        self.assertIn("want.separators MUST equal the sorted closed §B.7 registry", result.stderr)
+
+    def test_registry_golden_rejects_stale_spec_reference(self):
+        data = json.loads(MANIFEST.read_text())
+        registry_case = next(case for case in data["cases"] if case["id"] == "sig-registry-closed")
+        registry_case["spec"] = "§7.7"
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest = Path(tmp) / "MANIFEST.json"
+            manifest.write_text(json.dumps(data), encoding="utf-8")
+            result = run_validator("--manifest", str(manifest))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("spec MUST identify the closed registry at §B.7", result.stderr)
 
     def test_vector_covers_all_five_dacs_stages_in_order(self):
         data = json.loads(VECTORS.read_text())

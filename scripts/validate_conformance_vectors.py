@@ -250,8 +250,10 @@ def validate_manifest(path: Path) -> list[str]:
         if case_id == REGISTRY_CASE_ID:
             registry = sorted(load_registered_domain_separators(ROOT))
             want = case.get("want")
+            if case.get("spec") != "§B.7":
+                errors.append(fail(path, f"{prefix}.spec MUST identify the closed registry at §B.7"))
             if not registry:
-                errors.append(fail(path, f"{prefix}: could not parse the closed §7.7 domain-separator registry"))
+                errors.append(fail(path, f"{prefix}: could not parse the closed §B.7 domain-separator registry"))
             elif not isinstance(want, dict):
                 errors.append(fail(path, f"{prefix}.want MUST pin the registry count and exact separator set"))
             else:
@@ -266,7 +268,7 @@ def validate_manifest(path: Path) -> list[str]:
                     errors.append(
                         fail(
                             path,
-                            f"{prefix}.want.separators MUST equal the sorted closed §7.7 registry",
+                            f"{prefix}.want.separators MUST equal the sorted closed §B.7 registry",
                         )
                     )
 

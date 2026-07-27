@@ -1308,8 +1308,12 @@ def build_trace() -> dict[str, Any]:
     ]
     if list(profile_versions) != expected_documents:
         raise ValueError("spec/PROFILE.md no longer pins the expected v0.1 document set")
-    if set(profile_versions.values()) != {"0.1"} or manifest["dacsVersion"] != "0.1":
-        raise ValueError("profile and conformance manifest versions disagree")
+    # The unqualified DACS-v0.1 profile identity remains the shared baseline,
+    # while stage modules advance independently. The current composition table
+    # therefore need not contain one common document version; the conformance
+    # manifest still declares the baseline profile it exercises.
+    if manifest["dacsVersion"] != "0.1":
+        raise ValueError("conformance manifest no longer targets the DACS-v0.1 baseline")
     validate_links(manifest)
 
     substrate = FakeSubstrate()

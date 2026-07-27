@@ -10,20 +10,20 @@
   "profile": {
     "id": "DACS-v0.1",
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
-    "commit": "494fc1b7a0a523d2da6e630203084eb2d6020a2b",
+    "commit": "9a1ca624e8cc68361cff35c85a919cd72ba25199",
     "documents": {
       "CORE": "0.1",
-      "DACS-1": "0.1",
-      "DACS-2": "0.1",
-      "DACS-3": "0.1",
-      "DACS-4": "0.1",
-      "DACS-5": "0.1"
+      "DACS-1": "0.3",
+      "DACS-2": "0.2",
+      "DACS-3": "0.3",
+      "DACS-4": "0.3",
+      "DACS-5": "0.3"
     }
   },
   "roles": ["buyer"],
   "conformanceSuite": {
     "repository": "https://github.com/DACS-Agent-commerce/DACS-Standard",
-    "commit": "db9f9c0075a63d69d4464bac62cbfb2362a3f223",
+    "commit": "9a1ca624e8cc68361cff35c85a919cd72ba25199",
     "manifestPath": "conformance/MANIFEST.json",
     "manifestSha256": "d25d2af14adabc5ac7daa25a7c1424a5e8151d6fb08326d1f596d1204b05c30b"
   },

@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -23,6 +24,8 @@ SCHEMA = ROOT / "conformance" / "implementation-manifest.schema.json"
 
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+VERSION = re.compile(r"^[0-9]+\.[0-9]+$")
+STANDARD_REPOSITORY = "https://github.com/dacs-agent-commerce/dacs-standard"
 ROLES = {"buyer", "seller", "orchestrator", "verifier", "directory-indexer"}
 MODULES = {"CORE", "DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"}
 CAPABILITY_KINDS = {
@@ -85,14 +88,56 @@ SPEC_DOCUMENTS = {
     "DACS-4": ("spec/DACS-4-SETTLE.md",),
     "DACS-5": ("spec/DACS-5-VERIFY.md",),
 }
+MODULE_VERSION_SOURCES = {
+    "CORE": ("spec/CORE.md", re.compile(r"This document is \*\*DACS v([0-9]+\.[0-9]+)\*\*")),
+    "DACS-1": ("spec/DACS-1-IDENTIFY.md", re.compile(r"\*\*DACS-1 v([0-9]+\.[0-9]+)\*\*")),
+    "DACS-2": ("spec/DACS-2-VET.md", re.compile(r"\*\*DACS-2 v([0-9]+\.[0-9]+)\*\*")),
+    "DACS-3": ("spec/DACS-3-NEGOTIATE.md", re.compile(r"\*\*DACS-3 v([0-9]+\.[0-9]+)\*\*")),
+    "DACS-4": ("spec/DACS-4-SETTLE.md", re.compile(r"\*\*DACS-4 v([0-9]+\.[0-9]+)\*\*")),
+    "DACS-5": ("spec/DACS-5-VERIFY.md", re.compile(r"\*\*DACS-5 v([0-9]+\.[0-9]+)\*\*")),
+}
 
 
 def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+def repository_key(value: Any) -> str:
+    if not isinstance(value, str):
+        return ""
+    return value.strip().lower().removesuffix(".git").rstrip("/")
+
+
+def read_pinned_file(
+    root: Path,
+    repository: Any,
+    commit: Any,
+    relative_path: str,
+    label: str,
+    errors: list[str],
+) -> bytes | None:
+    """Read authoritative Standard bytes at the revision a manifest actually pins."""
+    if repository_key(repository) != STANDARD_REPOSITORY:
+        errors.append(f"{label}.repository must identify {STANDARD_REPOSITORY}")
+        return None
+    if not HEX40.fullmatch(str(commit)):
+        return None
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "show", f"{commit}:{relative_path}"],
+            check=False,
+            capture_output=True,
+        )
+    except OSError as exc:
+        errors.append(f"{label} cannot resolve pinned commit {commit}: {exc}")
+        return None
+    if result.returncode != 0:
+        errors.append(
+            f"{label} cannot resolve {relative_path} at pinned commit {commit}; "
+            "use a full repository checkout and an existing Standard revision"
+        )
+        return None
+    return result.stdout
 
 
 def is_rfc3339(value: Any) -> bool:
@@ -127,19 +172,42 @@ def check_string_list(
     return value
 
 
-def collect_rule_reference_targets(root: Path) -> set[str]:
-    """Return labelled rule ids plus canonical document-scoped section refs."""
-    targets = set(defined_rule_ids(specsource.spec_text(root)))
+def collect_pinned_rule_reference_targets(sources: dict[str, str]) -> set[str]:
+    targets = set(defined_rule_ids("\n".join(sources.values())))
     for document, relative_paths in SPEC_DOCUMENTS.items():
         for relative_path in relative_paths:
-            path = root / relative_path
-            if not path.is_file():
-                continue
-            for line in path.read_text(encoding="utf-8").splitlines():
+            for line in sources.get(relative_path, "").splitlines():
                 match = SECTION_HEADING.match(line)
                 if match:
                     targets.add(f"{document}-{match.group(1)}")
     return targets
+
+
+def resolve_profile_sources(
+    profile: dict[str, Any],
+    label: str,
+    root: Path,
+    errors: list[str],
+) -> tuple[dict[str, str], dict[str, str]]:
+    repository = profile.get("repository")
+    commit = profile.get("commit")
+    sources: dict[str, str] = {}
+    for relative_path in specsource.SPEC_FILES:
+        raw = read_pinned_file(root, repository, commit, relative_path, label, errors)
+        if raw is not None:
+            sources[relative_path] = raw.decode("utf-8")
+
+    versions: dict[str, str] = {}
+    for module, (relative_path, pattern) in MODULE_VERSION_SOURCES.items():
+        text = sources.get(relative_path)
+        if text is None:
+            continue
+        match = pattern.search(text)
+        if match is None:
+            errors.append(f"{label} cannot locate {module} version at pinned commit {commit}")
+            continue
+        versions[module] = match.group(1)
+    return sources, versions
 
 
 def check_rule_refs(
@@ -217,7 +285,7 @@ def resolve_suite_manifest(
     label: str,
     root: Path,
     errors: list[str],
-) -> tuple[Path | None, set[str]]:
+) -> tuple[str | None, set[str]]:
     require_fields(suite, {"repository", "commit", "manifestPath", "manifestSha256"}, label, errors)
     require_nonempty_string(suite, "repository", label, errors)
     if not HEX40.fullmatch(str(suite.get("commit", ""))):
@@ -232,26 +300,32 @@ def resolve_suite_manifest(
     if rel.is_absolute() or ".." in rel.parts:
         errors.append(f"{label}.manifestPath must stay within the repository")
         return None, set()
-    path = root / rel
-    if not path.is_file():
-        errors.append(f"{label}.manifestPath does not exist: {raw_path}")
+    raw = read_pinned_file(
+        root,
+        suite.get("repository"),
+        suite.get("commit"),
+        rel.as_posix(),
+        label,
+        errors,
+    )
+    if raw is None:
         return None, set()
-    actual_hash = sha256_file(path)
+    actual_hash = hashlib.sha256(raw).hexdigest()
     if suite.get("manifestSha256") != actual_hash:
         errors.append(
             f"{label}.manifestSha256 mismatch: declared {suite.get('manifestSha256')}, actual {actual_hash}"
         )
     try:
-        manifest = read_json(path)
+        manifest = json.loads(raw.decode("utf-8"))
     except json.JSONDecodeError as exc:
         errors.append(f"{label}.manifestPath is invalid JSON: {exc}")
-        return path, set()
+        return rel.as_posix(), set()
     cases = manifest.get("cases")
     if not isinstance(cases, list):
         errors.append(f"{label}.manifestPath must contain cases[]")
-        return path, set()
+        return rel.as_posix(), set()
     case_ids = {case.get("id") for case in cases if isinstance(case, dict) and isinstance(case.get("id"), str)}
-    return path, case_ids
+    return rel.as_posix(), case_ids
 
 
 def validate_manifest(data: Any, *, root: Path = ROOT, source: str = "manifest") -> list[str]:
@@ -260,9 +334,6 @@ def validate_manifest(data: Any, *, root: Path = ROOT, source: str = "manifest")
     if not manifest:
         return errors
     require_fields(manifest, TOP_LEVEL_REQUIRED, source, errors)
-    rule_reference_targets = collect_rule_reference_targets(root)
-    if not rule_reference_targets:
-        errors.append(f"{source} cannot resolve ruleRefs because no specification rules or sections were found")
     if manifest.get("manifestVersion") != "1":
         errors.append(f"{source}.manifestVersion must be \"1\"")
     if not is_rfc3339(manifest.get("generatedAt")):
@@ -286,8 +357,23 @@ def validate_manifest(data: Any, *, root: Path = ROOT, source: str = "manifest")
     if set(documents) != MODULES:
         errors.append(f"{source}.profile.documents must pin exactly {', '.join(sorted(MODULES))}")
     for module, version in documents.items():
-        if not isinstance(version, str) or not version:
-            errors.append(f"{source}.profile.documents.{module} must be a non-empty version")
+        if not isinstance(version, str) or not VERSION.fullmatch(version):
+            errors.append(f"{source}.profile.documents.{module} must be a major.minor version")
+
+    pinned_sources, pinned_versions = resolve_profile_sources(
+        profile, f"{source}.profile", root, errors
+    )
+    for module in sorted(MODULES & set(documents) & set(pinned_versions)):
+        if documents[module] != pinned_versions[module]:
+            errors.append(
+                f"{source}.profile.documents.{module} mismatch at pinned commit "
+                f"{profile.get('commit')}: declared {documents[module]}, actual {pinned_versions[module]}"
+            )
+    rule_reference_targets = collect_pinned_rule_reference_targets(pinned_sources)
+    if not rule_reference_targets:
+        errors.append(
+            f"{source} cannot resolve ruleRefs because the pinned profile revision has no specification rules"
+        )
 
     roles = set(
         check_string_list(manifest.get("roles"), f"{source}.roles", errors, allowed=ROLES, nonempty=True)

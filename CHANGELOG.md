@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — DACS-5 v0.4
+
+- **Settlement-verified reputation derivations — RSV-1..RSV-4** (§10.5, §14.5) — adds `SettlementVerifiedReputationDerivation` and `ReplayableSettlementVerifiedReputationDerivation` with exclusive structural discriminators, preserving the released DACS-5 v0.3 `derivationVersion: "1"` and `replayableDerivationVersion: "1"` semantics. Settlement-verified derivation compares the full canonical cross-copy `settlementEvidence[]` reference multiset, requires every presented reference to pass DACS-4 content/signature and independent Agreement/session/phase/rail/transaction/finality verification, excludes rejected or indeterminate jobs without inventing fault, and admits volume only with verified successful DACS-4 payment evidence. Unsupported readers reject the new type before type-specific action; no repository-revision knowledge is needed to distinguish pre-RSV from RSV-enforced output. Adds six v0.4 reference-divergence vectors and sixteen v0.4 semantic-admission vectors; completeness and optional per-phase `attestationRef` remain separate.
+
 ### Clarified — DACS-1 identity and discovery
 
 - **Canonical Demos agent ClaimReference** (§6.3.1 / §A.1; #293) — specifies
@@ -108,10 +112,6 @@ DACS-5 0.3**.
 
 - **Demos listing address mapping and CF-4 conformance cleanup** (§6.3.4, CORE §B.1; #237) — makes `storageProgramName` explicitly implementation-defined and opaque: DACS requires a Demos-valid colon-free name but does not define a reversible logical-address encoding, because the native `stor-` handle already depends on write inputs and consumers resolve through the required published logical→native binding. Removes the unreproducible 64-hex `addressing.native` output and stale DACS-VERIFY-0003 observation from the golden set; the current substrate rule is `first40hex` and the removed vector omitted the deployer/name/nonce/salt inputs needed to reproduce it. Corrects the CF-4 listing vector to use an unencoded URL-safe `listingId`, matching the schema and fixed-segment table. Golden count: 204 → 203.
 - **Revocation-marker lookup made executable** (§6.3.4–§6.3.7; #249) — fixes the post-#238 gap where LR-3 required readers to check a marker whose write-input-derived native address was not discoverable. The additive DACS-1 v0.3 `RevocationBinding` capability below supplies the missing resolution surface.
-
-### Added — DACS-5 v0.4
-
-- **Settlement-verified reputation derivations — RSV-1..RSV-4** (§10.5, §14.5) — adds `SettlementVerifiedReputationDerivation` and `ReplayableSettlementVerifiedReputationDerivation` with exclusive structural discriminators, preserving the released DACS-5 v0.3 `derivationVersion: "1"` and `replayableDerivationVersion: "1"` semantics. Settlement-verified derivation compares the full canonical cross-copy `settlementEvidence[]` reference multiset, requires every presented reference to pass DACS-4 content/signature and independent Agreement/session/phase/rail/transaction/finality verification, excludes rejected or indeterminate jobs without inventing fault, and admits volume only with verified successful DACS-4 payment evidence. Unsupported readers reject the new type before type-specific action; no repository-revision knowledge is needed to distinguish pre-RSV from RSV-enforced output. Adds six v0.4 reference-divergence vectors and sixteen v0.4 semantic-admission vectors; completeness and optional per-phase `attestationRef` remain separate.
 
 ### Fixed — DACS-5
 

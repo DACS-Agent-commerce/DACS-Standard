@@ -107,6 +107,14 @@ key and applying the signature envelope's algorithm and domain separator. The
 Demos substrate mapping in §A.1 defines this profile; it does not register a
 second top-level claim scheme.
 
+On read, the general case-insensitive Scheme rule applies only to the leading
+`did` scheme component: for example,
+`DID:demos:agent:<64-lowercase-hex>` MUST resolve as this profile and MUST
+canonicalise to the lowercase `did:` spelling before hashing, signing, or
+comparison (CF-2). The `demos:agent:` Identifier profile and its key component
+remain case-sensitive. A reader MUST reject an uppercase key component as
+non-canonical rather than lowercase it.
+
 `demos:0x<64hex>` is a substrate-address notation, not a registered v0.x
 ClaimReference and not an alias of `did:demos:agent:<64hex>`. In ClaimReference
 grammar its Scheme would be the unregistered value `demos`, so a conforming
@@ -829,9 +837,34 @@ Catalogs MAY return cached ListingSummary records. Clients MUST dereference the 
 Catalogs MAY probe an advertised engagement surface and publish the result as
 `reachabilityHint`. They MUST timestamp the observation, MUST treat
 counterparty-supplied status as untrusted, and MUST NOT use a probe result to
-rewrite listing validity, revocation, identity tier, or reputation. Renderers
-MUST safety-validate any URL before making `surface` clickable. Consumers SHOULD
-regard a stale hint as `unknown` and MAY perform their own bounded probe.
+rewrite listing validity, revocation, identity tier, or reputation.
+
+Any catalog or consumer that performs a server-side network probe of a
+listing- or counterparty-supplied URL MUST treat the target as untrusted and
+enforce all of the following for the initial request and every subsequent
+request:
+
+- allow only explicitly supported network schemes (normally HTTPS), and reject
+  loopback, private, link-local, shared-address, unspecified, multicast,
+  reserved, and cloud-provider metadata destinations, including equivalent
+  IPv4-mapped IPv6 spellings; an operator MAY permit a non-public target only
+  through an explicit out-of-band allowlist that listing content cannot modify;
+- resolve the hostname before connecting, validate every returned address,
+  bind the connection to a validated address, and repeat resolution and
+  validation for each new connection so DNS rebinding cannot switch the request
+  to a forbidden destination after validation;
+- disable redirects or re-run the complete scheme, hostname, DNS, and address
+  validation at every redirect hop, with a finite redirect limit;
+- enforce finite connection and whole-request timeouts plus a finite response
+  byte limit, including after content decoding/decompression; and
+- avoid forwarding ambient credentials, cookies, or internal authorization
+  headers to the probed target.
+
+URL syntax validation or safe link rendering alone does not satisfy these
+server-fetch requirements. Renderers MUST separately safety-validate any URL
+before making `surface` clickable. Consumers SHOULD regard a stale hint as
+`unknown` and MAY perform their own probe only under the same bounded-fetch
+requirements.
 
 A **catalog or rendering** consumer MAY skip or partially render a listing whose `PricingSpec.kind` (DACS-4) it does not recognize, rather than reject it — a directory should not hide a listing merely because it cannot price-render it. This tolerance is scoped to rendering only; a **transacting** reader MUST still reject an unrecognized pricing kind at commit-agreement (DACS-3 MTR-5). One value, two consumer classes, opposite verdicts: the directory shows what it cannot price, the settler refuses to pay what it cannot price.
 A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach a catalog is out of scope for v0.1, exactly as for listings. A catalog that carries them MUST serve every record passing §10.4.2 BB-4 regardless of which party authored it, and consumers MUST verify each record per BB-4 before use. Read endpoints MUST NOT require authentication. Write/registration semantics are out of scope for v0.1; the canonical source of truth is always the substrate-anchored listing, not the catalog entry. For every ListingSummary returned, a DACS-aware client MUST resolve the anchor to the on-chain content and validate the contentHash. The catalog’s role is to surface candidates; binding decisions MUST follow the substrate.

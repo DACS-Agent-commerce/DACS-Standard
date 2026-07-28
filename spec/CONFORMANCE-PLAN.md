@@ -23,7 +23,7 @@ Exercise each rule at its normative home; full text is not restated (define-once
 | --- | --- | --- | --- |
 | Claim-reference parser | §6.3.1 | every scheme: valid canonical / valid non-canonical (canonicalise on read) / invalid grammar (reject) / unknown-scheme (not silently accepted) | `conformance/vectors/` |
 | BP-1..BP-4 (bundle producer) | §6.3.2 | produce → canonical form → hash → domain-separated sign → anchor round-trip | `conformance/fixtures/identity/` |
-| BR-1..BR-5 (bundle reader) | §6.3.2 | accept-conformant; reject unsigned / missing-required-`verifiedBy` / unverified-`presentedBy`-when-selector-set; unknown-scheme → unverified; SIWD `dacs:<hex>` Resource + session-`Nonce` match | `conformance/fixtures/identity/` |
+| BR-1..BR-5 (bundle reader) | §6.3.2 | accept-conformant; reject unsigned / missing-required-`verifiedBy` / unverified-`presentedBy`-when-selector-set; unknown-scheme → unverified; Demos agent DID scheme-case and identifier-canonicalisation cases; SIWD `dacs:<hex>` Resource + session-`Nonce` match | `conformance/fixtures/identity/` |
 | match() (BundleRequirement) | §6.3.3 | required missing / required failing / oneOf satisfied / oneOf unsatisfied / selector match / mismatch | `conformance/vectors/` |
 | LP-1..LP-5, LR-1..LR-3 | §6.3 | publisher: sign / anchor / version-monotonicity / revocation plus SHOULD-level operational reachability; reader: halt-on-first-failure, revoked refusal, size-cap | `conformance/vectors/` |
 | RB-1..RB-6 (revocation binding) | §6.3.4 | anchor/sign marker; retain revoked discovery entry; resolve opaque native anchor; verify hash/signature/tuple; revoked/indeterminate refusal; successful-absence boundary | `conformance/vectors/security/revocation-binding-v0.3.json` |

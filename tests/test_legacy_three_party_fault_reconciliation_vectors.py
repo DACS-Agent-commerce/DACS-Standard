@@ -1,0 +1,50 @@
+"""Execute the DACS-5 §10.4.3 legacy implied-fault-set candidate vectors."""
+import hashlib
+import json
+import unittest
+from pathlib import Path
+
+import dacs5_reference as R
+
+
+ROOT = Path(__file__).resolve().parents[1]
+VECTOR_PATH = ROOT / "conformance" / "vectors" / "security" / "legacy-three-party-fault-reconciliation-v0.3.json"
+EXPECTED_NAMES = {
+    "legacy-two-party-perspective-partners",
+    "legacy-two-party-mutual-counterparty-claim",
+    "legacy-three-party-distinct-orchestrator-fault",
+}
+
+
+class LegacyThreePartyFaultReconciliationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data = json.loads(VECTOR_PATH.read_text(encoding="utf-8"))
+
+    def test_metadata_and_hash(self):
+        vectors = self.data["vectors"]
+        self.assertEqual(self.data["set"], VECTOR_PATH.stem)
+        self.assertEqual(self.data["count"], len(vectors))
+        self.assertEqual({v["name"] for v in vectors}, EXPECTED_NAMES)
+        encoded = json.dumps(vectors, separators=(",", ":"), sort_keys=True).encode()
+        self.assertEqual(self.data["hash"], hashlib.sha256(encoded).hexdigest())
+
+    def test_implied_fault_sets_and_executed_verdicts(self):
+        for vector in self.data["vectors"]:
+            parties = set(vector["parties"])
+            copies = vector["copies"]
+            fault_sets = [
+                R.implied_fault_set(copy["outcome"], copy["anchoredByRole"], parties)
+                for copy in copies
+            ]
+            observed_sets = [sorted(values) for values in fault_sets]
+            observed_intersection = sorted(fault_sets[0] & fault_sets[1])
+            observed_divergence = R.divergence(copies[0], copies[1])
+            with self.subTest(vector=vector["name"]):
+                self.assertEqual(observed_sets, vector["want"]["impliedFaultSets"])
+                self.assertEqual(observed_intersection, vector["want"]["intersection"])
+                self.assertEqual(observed_divergence, vector["expected"] == "fail")
+
+
+if __name__ == "__main__":
+    unittest.main()

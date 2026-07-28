@@ -1,0 +1,55 @@
+{
+  "set": "legacy-three-party-fault-reconciliation-v0.3",
+  "spec": "DACS-5 §10.4.3 legacy implied-fault-set reconciliation",
+  "provenance": {
+    "generator": "hand-authored implementation-neutral candidate vectors",
+    "note": "Verdict pass means the two legacy copies are unified; fail means they canonically diverge. The copies contain only the fields consumed by the §10.4.3 reference predicate.",
+    "authority": "DACS-5 v0.3 §10.4.1 permissible-set table and §10.4.3 divergence rule"
+  },
+  "vectors": [
+    {
+      "name": "legacy-two-party-perspective-partners",
+      "expected": "pass",
+      "parties": ["buyer", "seller"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-perm", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["seller"], ["seller"]],
+        "intersection": ["seller"],
+        "convergence": "unified"
+      }
+    },
+    {
+      "name": "legacy-two-party-mutual-counterparty-claim",
+      "expected": "fail",
+      "parties": ["buyer", "seller"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["seller"], ["buyer"]],
+        "intersection": [],
+        "convergence": "divergent"
+      }
+    },
+    {
+      "name": "legacy-three-party-distinct-orchestrator-fault",
+      "expected": "pass",
+      "parties": ["buyer", "seller", "orchestrator"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["orchestrator", "seller"], ["buyer", "orchestrator"]],
+        "intersection": ["orchestrator"],
+        "convergence": "unified"
+      }
+    }
+  ],
+  "count": 3,
+  "hash": "76ae4a32466b843fb86440672d901cafb2eb6ce2bff1960d4e496d44934f6627"
+}

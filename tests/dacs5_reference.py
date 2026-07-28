@@ -1,16 +1,17 @@
 """Executable DACS-5 reference predicates for the PR #248 round-5 blocker tests.
 
 This module is a *test-support* library, NOT a conformance validator and NOT a
-TestCase. It is imported only by the four blocker vector tests:
+TestCase. It is imported by the focused DACS-5 predicate tests, including:
 
     - tests/test_receipt_rederivation_vectors.py        (B1 determinism receipt)
     - tests/test_outsider_binding_flooding_vectors.py   (B2 BB-6 flood)
     - tests/test_mixed_version_reconciliation_vectors.py (B3 reconciliation totality)
     - tests/test_fab_bundle_extended_pointer_vectors.py  (B4 extended-pointer FAB path)
+    - tests/test_legacy_three_party_fault_reconciliation_vectors.py
 
 It executes the §10.5.1/§10.4.2/§10.4.3 predicates the round-4 review found were
-only *asserted* by fixture metadata: perspective_flip reconciliation (E1-E3),
-implied-fault-SET mixed-version comparison (E4), the ResolutionContextEntry replay
+only *asserted* by fixture metadata: implied-fault-SET legacy and mixed-version
+reconciliation (E1-E4), the ResolutionContextEntry replay
 contract (E5), per-signer BB-6 budgeting (E6), and the triple-identity extended-
 pointer rule (E7).
 
@@ -262,7 +263,7 @@ def _other(role):
 # Reconciliation predicates (E1-E4)
 # --------------------------------------------------------------------------- #
 def perspective_flip(outcome):
-    """§10.5.1 legacy-only perspective mapping (E1/E2/E3). Buyer<->seller involution;
+    """§10.5.1 legacy-only single-copy scoring map. Buyer<->seller involution;
     completed/failed-substrate unchanged."""
     return {
         "aborted-by-self": "aborted-by-other",
@@ -313,8 +314,7 @@ def divergence(copy_a, copy_b):
     pair canonically diverges. Classifies the pair by type:
 
       FAB pair    -> faultedParty contradiction OR outcome-class contradiction OR phaseSummary
-      legacy pair -> perspective-reconciled: flip B to A's perspective, then compare the
-                     residual outcome + outcome-class; partner spellings do NOT diverge (E1)
+      legacy pair -> compare both implied-fault SETs; disjoint sets diverge (E1)
       mixed pair  -> the FAB.faultedParty must be a MEMBER of the legacy copy's
                      implied-fault SET; non-membership OR outcome-class OR phaseSummary (E4)
     """
@@ -330,13 +330,12 @@ def divergence(copy_a, copy_b):
         return _fab_faulted(copy_a) != _fab_faulted(copy_b)
 
     if not a_fab and not b_fab:
-        # Legacy pair (E1): reconcile B into A's perspective via perspective_flip, then
-        # the residual outcomes must agree. Partner spellings collapse to one event.
-        if copy_a["anchoredByRole"] == copy_b["anchoredByRole"]:
-            reconciled_b = copy_b["outcome"]
-        else:
-            reconciled_b = perspective_flip(copy_b["outcome"])
-        return copy_a["outcome"] != reconciled_b
+        # Legacy pair (E1): both role-relative residuals map to implied-fault sets.
+        # A non-empty intersection means the assertions can describe the same event.
+        roster = roster_roles(copy_a) | roster_roles(copy_b)
+        a_faults = implied_fault_set(copy_a["outcome"], copy_a["anchoredByRole"], roster)
+        b_faults = implied_fault_set(copy_b["outcome"], copy_b["anchoredByRole"], roster)
+        return a_faults.isdisjoint(b_faults)
 
     # Mixed pair (E4): the FAB.faultedParty must be a member of the legacy implied set.
     fab, legacy = (copy_a, copy_b) if a_fab else (copy_b, copy_a)

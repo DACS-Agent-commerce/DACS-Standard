@@ -33,6 +33,10 @@ The format used per release:
 
 - **Flow-trace signing preimage aligned with CORE §B.7** (#277) — the informative `signedBytes` helper now appends the UTF-8 bytes of the 64-character lowercase artifact-hash string instead of decoding it to 32 raw digest bytes. This matches CORE §B.7 and the published golden Ed25519 signature; an executable regression pins the 80-byte accepted preimage and rejects the former 48-byte construction. No normative protocol rule changes.
 
+### Fixed — DACS-5
+
+- **Legacy three-party fault reconciliation** (§10.4.3 / §10.5.1; #304) — compares two legacy `AttestationBundle` copies on their existing implied-fault sets and treats them as divergent only when those sets are disjoint, after the unchanged outcome-class and `phaseSummary` checks. This preserves the buyer↔seller results while allowing buyer and seller `failed-counterparty` copies to converge on a distinct orchestrator. `perspective_flip` remains the single-copy scoring rule; bundle bytes, schemas, mixed-version authority, and reputation formulas are unchanged. Adds three candidate vectors covering both two-party controls and the distinct-orchestrator case.
+
 ## [0.4] — 2026-07-27
 
 Interoperability and settlement-hardening release: payee-bound agreements,

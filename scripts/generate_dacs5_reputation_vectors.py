@@ -334,8 +334,23 @@ def build_mixed_version(keys):
     #     fault SET {seller, orchestrator}; the FAB names faultedParty=orchestrator, a MEMBER of that set,
     #     with the same failure class -> unified, FAB authoritative (E4 set-membership rule).
     v7j = j + "-7"
-    fab7 = make_fab(keys, v7j, "failed-counterparty", "orchestrator", "seller", ["buyer", "seller"], parties=_parties3())
-    leg7 = make_legacy(keys, v7j, "failed-counterparty", "buyer", ["buyer", "seller"], parties=_parties3())
+    fab7 = make_fab(
+        keys,
+        v7j,
+        "failed-counterparty",
+        "orchestrator",
+        "seller",
+        ["buyer", "seller", "orchestrator"],
+        parties=_parties3(),
+    )
+    leg7 = make_legacy(
+        keys,
+        v7j,
+        "failed-counterparty",
+        "buyer",
+        ["buyer", "seller", "orchestrator"],
+        parties=_parties3(),
+    )
     vectors.append({
         "name": "mixed-orchestrator-nondivergent",
         "rule": "§10.4.3 mixed-version implied-fault SET (3-party)",

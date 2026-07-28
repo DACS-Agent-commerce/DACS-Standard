@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — DACS-5 v0.4
+
+- **DACS-5 v0.4 evidence-bound fault bundle — `EvidenceBoundFaultAttestationBundle`, SEB-1..SEB-6** (§10.4.1, §10.4.3, §14.5, CORE §B.7) — adds a distinct signed bundle type whose authoritative top-level `settlementEvidence[]` is a duplicate-free bijection with authenticated DACS-4 payment/delivery phase keys that produced durable evidence. Consumers reject missing, extra, duplicate, aliased, reused, dangling, misbound, or inadmissible ST-8 members and contradictory optional pointers. The new `evidenceBoundFaultBundleVersion` discriminator, bundle and extended-pointer signature domains, and new-type refusal preserve the released `AttestationBundle` and `FaultAttestationBundle` semantics rather than silently imposing an action-bearing validation on old types. Adds nineteen v0.4 candidate vectors; a public Forge-produced signed fixture plus independent dacs-verify cross-run exist, while a Demos cross-run and golden promotion remain pending.
+
 ### Clarified — DACS-1 identity and discovery
 
 - **Canonical Demos agent ClaimReference** (§6.3.1 / §A.1; #293) — specifies
@@ -108,10 +112,6 @@ DACS-5 0.3**.
 
 - **Demos listing address mapping and CF-4 conformance cleanup** (§6.3.4, CORE §B.1; #237) — makes `storageProgramName` explicitly implementation-defined and opaque: DACS requires a Demos-valid colon-free name but does not define a reversible logical-address encoding, because the native `stor-` handle already depends on write inputs and consumers resolve through the required published logical→native binding. Removes the unreproducible 64-hex `addressing.native` output and stale DACS-VERIFY-0003 observation from the golden set; the current substrate rule is `first40hex` and the removed vector omitted the deployer/name/nonce/salt inputs needed to reproduce it. Corrects the CF-4 listing vector to use an unencoded URL-safe `listingId`, matching the schema and fixed-segment table. Golden count: 204 → 203.
 - **Revocation-marker lookup made executable** (§6.3.4–§6.3.7; #249) — fixes the post-#238 gap where LR-3 required readers to check a marker whose write-input-derived native address was not discoverable. The additive DACS-1 v0.3 `RevocationBinding` capability below supplies the missing resolution surface.
-
-### Added — DACS-5 v0.4
-
-- **DACS-5 v0.4 evidence-bound fault bundle — `EvidenceBoundFaultAttestationBundle`, SEB-1..SEB-6** (§10.4.1, §10.4.3, §14.5, CORE §B.7) — adds a distinct signed bundle type whose authoritative top-level `settlementEvidence[]` is a duplicate-free bijection with authenticated DACS-4 payment/delivery phase keys that produced durable evidence. Consumers reject missing, extra, duplicate, aliased, reused, dangling, misbound, or inadmissible ST-8 members and contradictory optional pointers. The new `evidenceBoundFaultBundleVersion` discriminator, bundle and extended-pointer signature domains, and new-type refusal preserve the released `AttestationBundle` and `FaultAttestationBundle` semantics rather than silently imposing an action-bearing validation on old types. Adds nineteen v0.4 candidate vectors; independent cross-run and golden promotion remain pending.
 
 ### Fixed — DACS-5
 

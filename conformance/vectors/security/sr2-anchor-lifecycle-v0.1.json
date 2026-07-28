@@ -1,0 +1,283 @@
+{
+  "set": "sr2-anchor-lifecycle-v0.1",
+  "spec": "CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11",
+  "decisionModel": "A gate passes only at its stage-specific minimum. Indeterminate is an observation disposition over a preserved established state, never a lifecycle edge. Index visibility is orthogonal; rail-final payment is never resubmitted while its SR-2 evidence catches up.",
+  "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
+  "hash": "233c2822a5c32f943bf999437795ee3c04a186ab612d274199f2bdb3b8f7a24a",
+  "count": 25,
+  "vectors": [
+    {
+      "name": "broadcast-ack-does-not-pass-vet-gate",
+      "gate": "vet-reversible",
+      "receipt": {
+        "state": "submitted",
+        "observationDisposition": "established",
+        "authenticatedEvidence": false
+      },
+      "indexed": false,
+      "expected": "fail"
+    },
+    {
+      "name": "durably-accepted-vet-may-progress",
+      "gate": "vet-reversible",
+      "receipt": {
+        "state": "accepted",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true
+      },
+      "indexed": false,
+      "expected": "pass"
+    },
+    {
+      "name": "unproved-accepted-claim-refused",
+      "gate": "vet-reversible",
+      "receipt": {
+        "state": "accepted",
+        "observationDisposition": "established",
+        "authenticatedEvidence": false
+      },
+      "indexed": true,
+      "expected": "fail"
+    },
+    {
+      "name": "included-nonfinal-commitment-cannot-authorize-payment",
+      "gate": "irreversible-effect",
+      "receipt": {
+        "state": "included",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true,
+        "blockRef": true,
+        "inclusionIsFinal": false
+      },
+      "indexed": true,
+      "expected": "fail"
+    },
+    {
+      "name": "bft-inclusion-satisfies-final-commitment-gate",
+      "gate": "irreversible-effect",
+      "receipt": {
+        "state": "included",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true,
+        "blockRef": true,
+        "inclusionIsFinal": true
+      },
+      "indexed": false,
+      "expected": "pass"
+    },
+    {
+      "name": "finalized-commitment-not-indexed-still-authorizes",
+      "gate": "irreversible-effect",
+      "receipt": {
+        "state": "finalized",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true,
+        "blockRef": true,
+        "bindingsMatch": true
+      },
+      "indexed": false,
+      "expected": "pass"
+    },
+    {
+      "name": "index-hit-cannot-promote-accepted-commitment",
+      "gate": "irreversible-effect",
+      "receipt": {
+        "state": "accepted",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true
+      },
+      "indexed": true,
+      "expected": "fail"
+    },
+    {
+      "name": "finalized-receipt-binding-mismatch-rejected",
+      "gate": "irreversible-effect",
+      "receipt": {
+        "state": "finalized",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true,
+        "blockRef": true,
+        "bindingsMatch": false
+      },
+      "indexed": true,
+      "expected": "fail"
+    },
+    {
+      "name": "reorged-anchor-cannot-pass",
+      "gate": "irreversible-effect",
+      "receipt": {
+        "state": "reorged",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true,
+        "blockRef": true
+      },
+      "indexed": true,
+      "expected": "fail"
+    },
+    {
+      "name": "verified-replacement-can-pass",
+      "gate": "irreversible-effect",
+      "receipt": {
+        "state": "replaced",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true
+      },
+      "replacementReceipt": {
+        "state": "finalized",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true,
+        "blockRef": true,
+        "bindingsMatch": true
+      },
+      "indexed": false,
+      "expected": "pass"
+    },
+    {
+      "name": "rail-final-payment-anchor-pending-remains-success",
+      "gate": "payment-result",
+      "railFinal": true,
+      "evidenceReceipt": {
+        "state": "submitted",
+        "observationDisposition": "established",
+        "authenticatedEvidence": false
+      },
+      "recoveryAction": "anchor-only",
+      "expected": "pass"
+    },
+    {
+      "name": "rail-final-payment-must-not-be-resubmitted",
+      "gate": "payment-recovery",
+      "railFinal": true,
+      "recoveryAction": "resubmit-payment",
+      "expected": "fail"
+    },
+    {
+      "name": "nonfinal-payment-does-not-report-success",
+      "gate": "payment-result",
+      "railFinal": false,
+      "evidenceReceipt": {
+        "state": "finalized",
+        "observationDisposition": "established",
+        "authenticatedEvidence": true,
+        "blockRef": true
+      },
+      "recoveryAction": "observe",
+      "expected": "fail"
+    },
+    {
+      "name": "audit-gate-waits-for-one-pending-dependency",
+      "gate": "completed-bundle",
+      "allDependenciesFinalized": false,
+      "allDependenciesResolvable": true,
+      "bundleFinalized": true,
+      "bundleResolvable": true,
+      "indexed": true,
+      "expected": "fail"
+    },
+    {
+      "name": "audit-gate-passes-with-final-resolvable-closure",
+      "gate": "completed-bundle",
+      "allDependenciesFinalized": true,
+      "allDependenciesResolvable": true,
+      "bundleFinalized": true,
+      "bundleResolvable": true,
+      "indexed": false,
+      "expected": "pass"
+    },
+    {
+      "name": "reorged-transaction-may-be-reincluded",
+      "gate": "lifecycle-transition",
+      "fromState": "reorged",
+      "toState": "included",
+      "observationDisposition": "established",
+      "authenticatedEvidence": true,
+      "expected": "pass"
+    },
+    {
+      "name": "dropped-transaction-may-be-readmitted",
+      "gate": "lifecycle-transition",
+      "fromState": "dropped",
+      "toState": "accepted",
+      "observationDisposition": "established",
+      "authenticatedEvidence": true,
+      "expected": "pass"
+    },
+    {
+      "name": "expired-transaction-may-be-readmitted",
+      "gate": "lifecycle-transition",
+      "fromState": "expired",
+      "toState": "accepted",
+      "observationDisposition": "established",
+      "authenticatedEvidence": true,
+      "expected": "pass"
+    },
+    {
+      "name": "indeterminate-observation-preserves-finalized-state",
+      "gate": "observation-disposition",
+      "priorState": "finalized",
+      "reportedState": "finalized",
+      "observationDisposition": "indeterminate",
+      "preservedReceiptHashPresent": true,
+      "preservedReceiptVerified": true,
+      "recoveryAction": "observe-same-transaction",
+      "expected": "pass"
+    },
+    {
+      "name": "indeterminate-observation-cannot-demote-finalized-state",
+      "gate": "observation-disposition",
+      "priorState": "finalized",
+      "reportedState": "included",
+      "observationDisposition": "indeterminate",
+      "preservedReceiptHashPresent": true,
+      "preservedReceiptVerified": true,
+      "recoveryAction": "observe-same-transaction",
+      "expected": "fail"
+    },
+    {
+      "name": "indeterminate-does-not-authorize-vet-resubmission",
+      "gate": "vet-recovery",
+      "fromState": "accepted",
+      "observationDisposition": "indeterminate",
+      "preservedReceiptHashPresent": true,
+      "preservedReceiptVerified": true,
+      "recoveryAction": "resubmit-identical",
+      "identicalLogicalAddressAndContent": true,
+      "authenticatedEvidence": false,
+      "expected": "fail"
+    },
+    {
+      "name": "authenticated-drop-allows-identical-vet-resubmission",
+      "gate": "vet-recovery",
+      "fromState": "dropped",
+      "observationDisposition": "established",
+      "recoveryAction": "resubmit-identical",
+      "identicalLogicalAddressAndContent": true,
+      "authenticatedEvidence": true,
+      "expected": "pass"
+    },
+    {
+      "name": "audit-pending-cannot-abort-after-payment",
+      "gate": "session-transition",
+      "fromState": "audit-pending",
+      "toState": "aborted-by-self",
+      "irreversibleEffect": true,
+      "expected": "fail"
+    },
+    {
+      "name": "audit-pending-may-pause-on-substrate-failure",
+      "gate": "session-transition",
+      "fromState": "audit-pending",
+      "toState": "substrate-failure-paused",
+      "irreversibleEffect": true,
+      "expected": "pass"
+    },
+    {
+      "name": "settle-pending-cannot-abort-after-irreversible-effect",
+      "gate": "session-transition",
+      "fromState": "settle-pending",
+      "toState": "aborted-by-other",
+      "irreversibleEffect": true,
+      "expected": "fail"
+    }
+  ]
+}

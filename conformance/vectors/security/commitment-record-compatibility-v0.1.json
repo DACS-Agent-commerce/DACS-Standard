@@ -1,0 +1,135 @@
+{
+  "set": "commitment-record-compatibility-v0.1",
+  "spec": "DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2",
+  "decisionModel": "Exactly one supported commitment-record discriminator selects a frozen shape and domain before timestamp or signature interpretation. Legacy records remain readable; coercion and cross-domain replay fail.",
+  "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
+  "hash": "4f1967f3eb500e74d5890bdb273c3e59085a60a1f69789ceb992e1d2f5f1d0d3",
+  "count": 10,
+  "fixture": {
+    "legacyRecord": {
+      "dacsVersion": "1",
+      "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7D",
+      "agreementHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "listingRef": {
+        "listingId": "compat-listing",
+        "version": 1,
+        "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "parties": [
+        "did:demos:buyer",
+        "did:demos:seller"
+      ],
+      "pattern": "fixed-price",
+      "committedAt": 1785232800000
+    },
+    "finalityRecord": {
+      "finalityCommitmentVersion": "1",
+      "jobId": "01J8ME0SXKQ4T9V2RC5HJ6WX7E",
+      "agreementHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "listingRef": {
+        "listingId": "compat-listing",
+        "version": 1,
+        "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "parties": [
+        "did:demos:buyer",
+        "did:demos:seller"
+      ],
+      "pattern": "fixed-price",
+      "createdAt": 1785232799000,
+      "signature": {
+        "algorithm": "ed25519",
+        "signer": "did:demos:orchestrator",
+        "value": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    "finalizedReceipt": {
+      "state": "finalized",
+      "observationDisposition": "established",
+      "authenticatedEvidence": true,
+      "blockTimestamp": 1785232800000
+    }
+  },
+  "vectors": [
+    {
+      "name": "legacy-record-remains-readable",
+      "record": "legacy",
+      "signatureDomain": "dacs-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "pass"
+    },
+    {
+      "name": "finality-record-uses-distinct-type-and-domain",
+      "record": "finality",
+      "signatureDomain": "dacs-finality-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "pass"
+    },
+    {
+      "name": "both-discriminators-rejected",
+      "record": "both-discriminators",
+      "signatureDomain": "dacs-finality-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "fail"
+    },
+    {
+      "name": "neither-discriminator-rejected",
+      "record": "neither-discriminator",
+      "signatureDomain": "dacs-finality-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "fail"
+    },
+    {
+      "name": "finality-record-under-legacy-domain-rejected",
+      "record": "finality",
+      "signatureDomain": "dacs-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "fail"
+    },
+    {
+      "name": "legacy-record-under-finality-domain-rejected",
+      "record": "legacy",
+      "signatureDomain": "dacs-finality-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "fail"
+    },
+    {
+      "name": "legacy-committedat-anchor-mismatch-rejected",
+      "record": "legacy",
+      "signatureDomain": "dacs-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232801000,
+      "expected": "fail"
+    },
+    {
+      "name": "finality-createdat-cannot-substitute-for-committedat",
+      "record": "finality",
+      "signatureDomain": "dacs-finality-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232799000,
+      "expected": "fail"
+    },
+    {
+      "name": "finality-record-missing-embedded-signature-rejected",
+      "record": "finality-no-signature",
+      "signatureDomain": "dacs-finality-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "fail"
+    },
+    {
+      "name": "unsupported-finality-discriminator-rejected",
+      "record": "unsupported-finality-version",
+      "signatureDomain": "dacs-finality-commitment:v1:",
+      "receipt": "finalized",
+      "usedCommittedAt": 1785232800000,
+      "expected": "fail"
+    }
+  ]
+}

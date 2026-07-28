@@ -19,6 +19,10 @@ The format used per release:
 
 - **Domain-separator registry golden regenerated** (CORE §B.7; #283) — replaces the stale `sig-registry-closed-16` assertion with a count of 23 and the exact sorted separator set published by the closed registry. The manifest validator now compares exact membership, so a future remove-one/add-one substitution cannot pass behind an unchanged cardinality. Refreshes the lifecycle manifest and trace pins. No normative protocol rule changes.
 
+### Fixed — documentation
+
+- **Flow-trace signing preimage aligned with CORE §B.7** (#277) — the informative `signedBytes` helper now appends the UTF-8 bytes of the 64-character lowercase artifact-hash string instead of decoding it to 32 raw digest bytes. This matches CORE §B.7 and the published golden Ed25519 signature; an executable regression pins the 80-byte accepted preimage and rejects the former 48-byte construction. No normative protocol rule changes.
+
 ## [0.4] — 2026-07-27
 
 Interoperability and settlement-hardening release: payee-bound agreements,

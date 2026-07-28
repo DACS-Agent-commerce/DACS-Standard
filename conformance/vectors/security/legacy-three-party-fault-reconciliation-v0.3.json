@@ -48,8 +48,22 @@
         "intersection": ["orchestrator"],
         "convergence": "unified"
       }
+    },
+    {
+      "name": "legacy-three-party-distinct-orchestrator-abort",
+      "expected": "pass",
+      "parties": ["buyer", "seller", "orchestrator"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "aborted-by-other", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "aborted-by-other", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["orchestrator", "seller"], ["buyer", "orchestrator"]],
+        "intersection": ["orchestrator"],
+        "convergence": "unified"
+      }
     }
   ],
-  "count": 3,
-  "hash": "76ae4a32466b843fb86440672d901cafb2eb6ce2bff1960d4e496d44934f6627"
+  "count": 4,
+  "hash": "be6d58a49a0444aba49dbae96aa473a43baa11e72837532e29cd5b332f0903c9"
 }

@@ -460,7 +460,7 @@ For a `FaultAttestationBundle` pair the `outcome` contradiction is read on the a
 
 Legacy `AttestationBundle` copies are compared on a common implied-fault surface. Each copy's role-relative `outcome` is mapped through its `anchoredByRole` and the §10.4.1 permissible-set table to an **implied-fault set**. After the existing outcome-class check, the pair diverges when those sets are disjoint. A non-empty intersection means the two fault assertions are compatible and does NOT diverge. The shared-index `phaseSummary` limb applies unchanged.
 
-In a two-party session each implied-fault set is a singleton, so this produces the same results as `perspective_flip`: partner spellings converge and two copies that both blame their counterparty diverge. With a distinct orchestrator, buyer and seller copies that both read `failed-counterparty` instead intersect only at `orchestrator` and converge on that attribution.
+In a two-party session each implied-fault set is a singleton, so this produces the same results as `perspective_flip`: partner spellings converge and two copies that both blame their counterparty diverge. With a distinct orchestrator, buyer and seller copies that both read `failed-counterparty` or both read `aborted-by-other` instead intersect only at `orchestrator` and converge on that attribution.
 
 `perspective_flip` remains the §10.5.1 scoring rule when a counterparty-anchored legacy copy is the authoritative copy. It is not the legacy pair comparator because it models only the buyer↔seller perspective.
 

@@ -15,6 +15,20 @@ The format used per release:
 
 ## [Unreleased]
 
+### Clarified — DACS-1 identity and discovery
+
+- **Canonical Demos agent ClaimReference** (§6.3.1 / §A.1; #293) — specifies
+  `did:demos:agent:<64-lowercase-hex>` as the self-certifying Demos profile
+  under the registered `did` scheme. Clarifies that `demos:0x<64hex>` is
+  substrate-address notation, not a registered ClaimReference or reputation
+  alias, and must not be emitted in ClaimReference fields.
+- **Operational listing reachability** (§6.3.4 / §6.3.6; LP-5; #294) — active
+  publishers should maintain at least one actionable machine engagement
+  surface. Intent-scoped x402 bases may expose discovery before a job-specific
+  402 exists. Catalogs may publish time-stamped reachability hints, but dynamic
+  probes never change content/signature validity, conformance, revocation,
+  identity, or reputation.
+
 ### Fixed — documentation
 
 - **Flow-trace signing preimage aligned with CORE §B.7** (#277) — the informative `signedBytes` helper now appends the UTF-8 bytes of the 64-character lowercase artifact-hash string instead of decoding it to 32 raw digest bytes. This matches CORE §B.7 and the published golden Ed25519 signature; an executable regression pins the 80-byte accepted preimage and rejects the former 48-byte construction. No normative protocol rule changes.

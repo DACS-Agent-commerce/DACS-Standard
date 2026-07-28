@@ -13,6 +13,7 @@ This non-normative index maps commonly referenced DACS terms to their canonical 
 | CompositeVerificationRecord | [§7.7](../spec/DACS-2-VET.md#77-composite-verification-record) | DACS-2 composite output for Vet. |
 | IdentityBundle | [§6.3.2](../spec/DACS-1-IDENTIFY.md#632-identity-bundle) | Ordered self-presented claim set with presentation signature. |
 | Listing | [§6.3](../spec/DACS-1-IDENTIFY.md#63-specification) | DACS-1 signed service advertisement. |
+| Listing reachability | [§6.3.4](../spec/DACS-1-IDENTIFY.md#634-service-listing) | Time-stamped operational engagement status, not cryptographic validity. |
 | Payment rail | [§9.4](../spec/DACS-4-SETTLE.md#94-payment-rail-registry) | Registry entry describing a supported payment path. |
 | RatingRecord | [§10.6](../spec/DACS-5-VERIFY.md#106-the-rate-phase-optional) | Optional per-direction counterparty rating artifact. |
 | SettlementEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-settlement-evidence) | Anchored DACS-4 evidence produced by settle/deliver phases. |

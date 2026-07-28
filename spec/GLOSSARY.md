@@ -51,6 +51,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **L2PS (Layer-2 Privacy Subnets).** The Demos implementation of SR-4 — identity-keyed private coordination channels.
 - **Liquidity Tank.** The Demos implementation of SR-5 — pre-funded cross-chain settlement primitive.
 - **Listing.** A signed, anchored JSON document declaring an agent’s offering. The canonical contract for a transaction. Defined in §6.3.4.
+- **Listing reachability.** A time-stamped operational observation that at least one advertised engagement surface responds. It is distinct from listing signature validity, conformance, revocation, identity, and reputation. Defined in §6.3.4/§6.3.6.
 - **ListingIndex / ListingSummary.** Discovery data structures; not the source of truth. Defined in §6.3.5–6.3.6.
 - **negotiate-fixed-price / negotiate-rfq / negotiate-sealed-envelope.** The three DACS-3 negotiation patterns. §8.4.
 - **PayeeBoundAgreementDocument.** The DACS-3 agreement artifact whose required payout bindings are signed under a distinct domain and enforced by DACS-4 PB-1 through PB-3. Defined in §8.5.

@@ -18,6 +18,14 @@ A mapping of which substrate primitives are live today, what extensions are need
 - ⚪ 6 new CCI contexts for regulatory identity: lei, finra-crd, sam-uei, fedramp, naics, cmmc. **Deferred to a later version — not part of v0.1.** Each needs a GCR routine following the pattern of the existing 8 reference implementations. Until they ship, regulatory credentials on Demos are carried via the stor-cred extensibility surface below and verified through DACS-2.
 - 🔵 ERC-8004 token references; W3C DIDs (carried via claim references; verified through DACS-2).
 
+**Demos agent DID profile.** DACS implementations use the self-certifying
+`did:demos:agent:<64-lowercase-hex>` ClaimReference for a Demos agent account
+whose 32-byte Ed25519 public key is carried in the final component. This is the
+`did` scheme with the `demos:agent:<hex>` identifier profile defined in DACS-1
+§6.3.1. `demos:0x<64hex>` remains a substrate-address notation; it is not a
+registered ClaimReference or a canonical alias, and it MUST NOT be emitted in
+identity, signer, catalog-key, or reputation-key fields.
+
 **Stor-backed credentials.** The stor-cred:<type>:<id> scheme convention is the extensibility surface for future credentials not yet promoted to native CCI contexts. **OFAC-clear is not a CCI context** — it is a per-session freshness check that lives only in DACS-2’s CompositeVerificationRecord (it is a check, not a stable identity claim).
 
 **Transaction sequencing note.** Demos account nonces are monotonic replay-protection counters in GCR_Main. Nodes enforce strict sequential nonces: a transaction with a stale or skipped nonce fails loudly. Same-signer DACS flows that depend on multiple Demos transactions in order — including settlement followed by an SR-2 evidence anchor — should not derive or sign the follow-on transaction from HTTP broadcast acceptance alone. Same-wallet batches MUST construct with explicit sequential nonces (`getAddressNonce(address)` plus `options.nonce`, demosdk ≥4.0.14) or maintain a local counter across the batch and resume read-derived nonce selection only after the on-chain account nonce catches up.

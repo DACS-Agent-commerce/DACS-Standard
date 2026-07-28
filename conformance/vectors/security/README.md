@@ -102,12 +102,13 @@ outputs use `verified`, `rejected`, or `indeterminate` plus one normative
 `reasonCode`; `reasonPrecedence` fixes cross-run code selection. The supplied
 phase/reference keys are already authenticated projections: SEB-1 authority
 derivation and SB-1 job/index recovery remain separate pre-promotion fixtures.
-The candidate set has been cross-run independently: DACS Forge produced the
-signed fixture at
+The candidate set has independent producer/consumer evidence: DACS Forge
+produced the signed fixture at
 [`4218eb93`](https://github.com/mj-deving/dacs-forge/commit/4218eb93c6c20c3f6cc7d2d4f485e454c3858de8),
 and `dacs-verify` consumed the serialized artifact and these vector bytes at
 [`03a03667`](https://github.com/mj-deving/dacs-verify/commit/03a036676fb624ab5374fd5f971267a11b2d2905).
-A Demos cross-run and golden promotion remain pending.
+This is not yet formal run-file convergence under `CROSS-RUN.md`; a Demos
+cross-run and golden promotion remain pending.
 
 ### `bundle-absence-evidence-v0.3.json` — CORE §5 SR-2 + DACS-5 §10.4.3 / §10.5.1 guard (iv)
 

@@ -19,6 +19,10 @@ The format used per release:
 
 - **Complete `ClaimRequirement` qualification — CRQ-1..CRQ-4** (§7.7.1, §14.2) — filters authenticated resolved `VerifyResult` candidates by the effective exact recipe version—an explicit requirement pin or the per-scheme latest version in the authenticated session-start registry snapshot—and governing freshness plus any additional listing-declared age bound, then requires the declared parameter-key subset for a passing result before required-claim or `oneOf` decision classification. Same-scheme results can no longer cross-satisfy requirements with different constraints; extra unrequested result data remains valid; applicable `error`/`indeterminate` decisions and existing precedence remain unchanged. The registry pin is sourced from the existing authenticated `SessionContext` or containing `SessionRecord`, leaving `CompositeVerificationRecord` v1 unchanged. Adds nineteen candidate security vectors covering positive and absent-listing-constraint controls, implicit session-pin competition, wrong-version, inclusive/stale age boundaries, parameter mismatch/absence, same-scheme cross-satisfaction, `oneOf`, preserved `error`/`indeterminate`, stale-indeterminate, unrelated-result controls, and missing/unresolvable/mismatched authenticated session contexts, plus an executable semantic regression test. Bumps DACS-2 to v0.3.
 
+### Fixed — documentation
+
+- **Flow-trace signing preimage aligned with CORE §B.7** (#277) — the informative `signedBytes` helper now appends the UTF-8 bytes of the 64-character lowercase artifact-hash string instead of decoding it to 32 raw digest bytes. This matches CORE §B.7 and the published golden Ed25519 signature; an executable regression pins the 80-byte accepted preimage and rejects the former 48-byte construction. No normative protocol rule changes.
+
 ## [0.4] — 2026-07-27
 
 Interoperability and settlement-hardening release: payee-bound agreements,

@@ -415,7 +415,7 @@ A verifier MUST resolve a recipe by:
 2. looking up the entry for the claim’s scheme;
 3. fetching the recipe at the indicated anchor and verifying its content hash and domain-separated signature;
 4. if the matched `ClaimRequirement` pins a specific `recipeVersion` (§6.3.3), MUST use that version; otherwise MUST use the latest version for that scheme in the authenticated recipe-registry snapshot identified by `SessionContext.recipeRegistryVersion` at session start;
-5. retain that registry snapshot pin in the authenticated `SessionContext` and resulting `SessionRecord`, so live aggregation and later replay derive the same effective per-scheme version without consulting a newer registry state.
+5. retain that registry snapshot pin in both `VetCredentialsInput.recipeRegistryVersion` and `VetCredentialsInput.sessionContext.recipeRegistryVersion`, require byte-for-byte numeric equality before live aggregation, and carry it into the signed `AttestationBundle` or `FaultAttestationBundle` for later replay. A `SessionRecord` MAY retain the pin operationally, but because it is off-chain, mutable, and unsigned (§10.3.2), it is not replay authority.
 
 This mirrors the rail-side `railVersion` pin (§9.3) and is the mechanism that protects an in-flight session from a steward shipping a recipe revision mid-session.
 
@@ -662,16 +662,65 @@ CCI-native reputation signals (cci-nomis, cci-ethos, cci-humanpassport) are firs
 A verifier MUST compute overallDecision per the following algorithm. The algorithm distinguishes four cases for each required claim: passing, indeterminate (authority answered ambiguously), errored (verifier could not reach the authority), and failing/absent. Precedence among non-pass outcomes is failures > errors > indeterminates so that the strongest evidence dominates aggregation.
 
 ```
-aggregate(record, requirement, authenticatedSession, recipeRegistryResolver):
+aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
-  # authenticatedSession is the live SessionContext during production, or the
-  # containing authenticated SessionRecord during replay/consumption.
+  if authority.kind == "production":
 
-  if authenticatedSession is missing or authenticatedSession.jobId != record.jobId:
+    vetInput := authority.vetInput
 
-    return "error", ["authenticated session context missing or mismatched"]
+    authenticatedSessionStart := authority.authenticatedSessionStart
 
-  registry := recipeRegistryResolver.resolve_authenticated(authenticatedSession.recipeRegistryVersion)
+    if authenticatedSessionStart is not the orchestrator-owned active `SessionContext` for record.jobId:
+
+      return "error", ["authenticated session-start authority missing or mismatched"]
+
+    if vetInput is missing or vetInput.jobId != record.jobId or vetInput.sessionContext is missing or vetInput.sessionContext.jobId != record.jobId:
+
+      return "error", ["authenticated production context missing or mismatched"]
+
+    if vetInput.sessionContext is not the authenticatedSessionStart context passed by the orchestrator:
+
+      return "error", ["production session context is not authoritative"]
+
+    if vetInput.recipeRegistryVersion != vetInput.sessionContext.recipeRegistryVersion:
+
+      return "error", ["production recipe-registry pins disagree"]
+
+    registryVersion := vetInput.sessionContext.recipeRegistryVersion
+
+  else if authority.kind == "replay":
+
+    verifiedBundle := authority.bundle
+
+    if verifiedBundle is not an `AttestationBundle` or `FaultAttestationBundle` whose canonical hash and required §10.4.1 signatures have been verified:
+
+      return "error", ["authenticated replay bundle missing or invalid"]
+
+    if verifiedBundle.jobId != record.jobId:
+
+      return "error", ["replay bundle job mismatched"]
+
+    if recordRef is missing or verifiedBundle.vetRecords does not contain recordRef:
+
+      return "error", ["replay bundle does not bind this record"]
+
+    if dereferencing recordRef does not yield record with a matching content hash and valid §7.7.2 signature:
+
+      return "error", ["replay record reference invalid"]
+
+    if sha256(CORE-canonical(requirement)) != record.requirementHash:
+
+      return "error", ["replay claim requirement does not match record"]
+
+    registryVersion := verifiedBundle.recipeRegistryVersion
+
+  else:
+
+    # In particular, the off-chain unsigned SessionRecord (§10.3.2) is not authority.
+
+    return "error", ["aggregation authority missing or invalid"]
+
+  registry := recipeRegistryResolver.resolve_authenticated(registryVersion)
 
   if registry is unavailable or invalid:
 
@@ -793,7 +842,7 @@ find_applicable_results(record, cr):
 
   return [r for r in results if ALL applicable constraints hold]:
 
-    1. r.recipeVersion == expectedVersion (§7.4.3): the explicit `cr.recipeVersion` when present, otherwise the latest version for `cr.scheme` in the exact authenticated registry snapshot named by `authenticatedSession.recipeRegistryVersion`
+    1. r.recipeVersion == expectedVersion (§7.4.3): the explicit `cr.recipeVersion` when present, otherwise the latest version for `cr.scheme` in the exact authenticated registry snapshot named by `registryVersion`
 
     2. if cr.maxAge is present, record.generatedAt <= r.verifiedAt + cr.maxAge * 1000 (the additional listing-declared VP-C3 bound; seconds converted to milliseconds; it cannot widen the governing §6.3.2 / §7.6.1 freshness window)
 
@@ -804,9 +853,9 @@ parameters_match(r, cr):
   return r.data contains every own key in cr.parameters and each corresponding value is equal under CORE canonical JSON (§7.6 step 7); additional r.data keys do not disqualify the result
 ```
 
-(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST bind the record to authenticated session context with the same `jobId` and resolve the exact recipe-registry snapshot named by that context's `recipeRegistryVersion`. During production that context is the required `VetCredentialsInput.sessionContext`; during replay or later consumption it is the authenticated containing `SessionRecord`, which MUST reference the record being aggregated. A standalone record, missing or mismatched session context, or missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version from the record or from current registry state. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
+(CRQ-1) `find_all_results` and `find_applicable_results` operate only on `VerifyResult` objects whose references, hashes, signatures, recipe authority, attestations, and governing §6.3.2 / §7.6.1 freshness windows have already passed their checks. Before classification, the verifier MUST bind the composite record and registry pin to authenticated authority for the same `jobId`. During production the authority is the orchestrator-owned active `SessionContext` supplied at the CORE §B.5 phase-handler boundary, not a caller-deserialised assertion. The required `VetCredentialsInput.sessionContext` MUST be that context; `VetCredentialsInput.jobId` and `sessionContext.jobId` MUST equal `record.jobId`; and its separate `recipeRegistryVersion` MUST exactly equal `sessionContext.recipeRegistryVersion` before registry resolution. During replay or later consumption the authority is a cryptographically verified, signed `AttestationBundle` or `FaultAttestationBundle`: its `jobId` MUST equal `record.jobId`, its `vetRecords` MUST contain the exact `AttestationRef` being aggregated, and that reference MUST dereference to the same hash- and signature-verified §7.7.2 record. The CORE-canonical hash of the `BundleRequirement` being aggregated MUST equal that signed record's `requirementHash`. Every projected result participating in aggregation MUST be obtained by dereferencing a `VerifyResultRef` committed by that record and validating its content hash and signature; caller-supplied requirements or result projections cannot substitute for those bytes. Replay derives the registry pin only from the verified bundle's `recipeRegistryVersion`. An unsigned `SessionRecord` MUST NOT supply replay authority. A standalone record, a missing or mismatched production input, a production pin mismatch, a missing/invalid/substituted replay bundle, record reference, requirement, or result projection, or a missing, invalid, or unresolvable registry snapshot fails aggregation closed as `error`. A consumer MUST NOT infer the registry version from the record, an unsigned session record, or current registry state. The `ClaimRequirement.maxAge` predicate is an additional listing-declared bound and cannot widen that baseline window. A result-resolution failure retains its existing rejected or `indeterminate` disposition and MUST NOT be converted into an applicable result.
 
-(CRQ-2) A verifier MUST derive one effective expected recipe version for every `ClaimRequirement`: the explicit `cr.recipeVersion` when present, otherwise the latest version for that scheme in the authenticated session-start registry snapshot identified by `authenticatedSession.recipeRegistryVersion`. It MUST apply exact equality with that effective version, plus age qualification, before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; a missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced. A result outside the effective recipe version or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
+(CRQ-2) A verifier MUST derive one effective expected recipe version for every `ClaimRequirement`: the explicit `cr.recipeVersion` when present, otherwise the latest version for that scheme in the authenticated registry snapshot selected by CRQ-1's production or replay authority. It MUST apply exact equality with that effective version, plus age qualification, before a result participates in decision classification. An omitted `ClaimRequirement.recipeVersion` therefore does not disable version qualification. A `pass` additionally satisfies its `ClaimRequirement` only when `parameters_match` is true; a missing authenticated parameter value therefore makes that `pass` a constraint failure. An applicable `error` or `indeterminate` retains its decision without requiring extracted data that the unsuccessful or inconclusive verification may not have produced. A result outside the effective recipe version or age bound is not current evidence for that requirement and does not participate, regardless of its decision. `verificationRequired` remains the DACS-1 policy controlling whether verification is required; it does not create a field on `VerifyResult`.
 
 (CRQ-3) Multiple requirements using the same scheme are evaluated independently. A passing result qualified for one requirement MUST NOT satisfy another requirement whose recipe-version, age, or parameter constraints it does not satisfy.
 

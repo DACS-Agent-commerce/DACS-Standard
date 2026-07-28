@@ -2,13 +2,95 @@
   "set": "claim-requirement-qualification-v0.3",
   "spec": "DACS-2 §7.7.1 CRQ-1..CRQ-4",
   "decisionModel": "§7.5.1 four-value; qualification precedes classification",
-  "inputModel": "resolvedResults are authenticated VerifyResult projections after §7.5.2 and recipe-authority validation; every input binds recordJobId to an authenticated sessionContext whose recipeRegistryVersion resolves against the snapshot declared by this set",
-  "recipeRegistry": {
-    "recipeRegistryVersion": 7,
-    "latestByScheme": { "domain": 4, "key": 2 }
+  "inputModel": "Production authority is the orchestrator-owned active SessionContext at the CORE §B.5 handler boundary; VetCredentialsInput.sessionContext must equal that authenticated state and its separate recipeRegistryVersion must match. Replay authority is a cryptographically verified signed AttestationBundle whose jobId matches the record and whose vetRecords contains the exact validated record reference. Replay records, their requirementHash, and their VerifyResults are concrete hash- and signature-bound artifacts; requirement and resolvedResults are only their checked aggregation projections. An unsigned SessionRecord is never replay authority.",
+  "recipeRegistries": [
+    {
+      "recipeRegistryVersion": 7,
+      "latestByScheme": { "domain": 4, "key": 2 }
+    },
+    {
+      "recipeRegistryVersion": 8,
+      "latestByScheme": { "domain": 4, "key": 3 }
+    }
+  ],
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8"
   },
-  "hash": "d994e1113d142e26f426bbb725e925d83f985d65ee3b21cec47571073df2434f",
-  "count": 19,
+  "authenticatedSessionStarts": {
+    "job-crq-001-v7": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+    "job-crq-001-v999": { "jobId": "job-crq-001", "recipeRegistryVersion": 999 }
+  },
+  "replayBundles": {
+    "job-crq-001-v7": {
+      "bundleVersion": "1",
+      "jobId": "job-crq-001",
+      "outcome": "completed",
+      "anchoredByRole": "buyer",
+      "listingRef": { "listingId": "listing-job-crq-001", "version": 1, "contentHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "agreementRef": { "anchor": { "kind": "storage-program", "locator": "dacs3:agreement:job-crq-001" }, "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "signer": "did:demos:buyer" },
+      "parties": [
+        { "role": "buyer", "bundleHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "primaryClaim": "did:demos:buyer" },
+        { "role": "seller", "bundleHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "primaryClaim": "did:demos:seller" }
+      ],
+      "phaseSummary": [
+        { "index": 0, "kind": "vet-credentials", "outcome": "ok", "attestationRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        { "index": 1, "kind": "commit-agreement", "outcome": "ok" }
+      ],
+      "vetRecords": [
+        { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" }
+      ],
+      "settlementEvidence": [],
+      "recipeRegistryVersion": 7,
+      "railRegistryVersion": 3,
+      "finalisedAt": 1750000020000,
+      "signatures": [
+        { "party": "did:demos:buyer", "algorithm": "ed25519", "value": "iE6fY0P3vG0avvgjgGLiv2dLoZQTTRRXBsiHZIwrF984Y57eEHNto-t7iwFqmU-MTPFlhCG1GSKkQSLx5yUOBw" },
+        { "party": "did:demos:seller", "algorithm": "ed25519", "value": "5HdwCKh17U53OkjbzjqhgiM8nHj2Tlf-VBsRELdEdHmoASUXaz60a1Xd2gZ6xhrgKu1C6Xhmk89waGeL1qi9Bw" }
+      ]
+    },
+    "job-crq-OTHER-v8": {
+      "bundleVersion": "1",
+      "jobId": "job-crq-OTHER",
+      "outcome": "completed",
+      "anchoredByRole": "buyer",
+      "listingRef": { "listingId": "listing-job-crq-OTHER", "version": 1, "contentHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "agreementRef": { "anchor": { "kind": "storage-program", "locator": "dacs3:agreement:job-crq-OTHER" }, "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "signer": "did:demos:buyer" },
+      "parties": [
+        { "role": "buyer", "bundleHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "primaryClaim": "did:demos:buyer" },
+        { "role": "seller", "bundleHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "primaryClaim": "did:demos:seller" }
+      ],
+      "phaseSummary": [
+        { "index": 0, "kind": "vet-credentials", "outcome": "ok", "attestationRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        { "index": 1, "kind": "commit-agreement", "outcome": "ok" }
+      ],
+      "vetRecords": [
+        { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" }
+      ],
+      "settlementEvidence": [],
+      "recipeRegistryVersion": 8,
+      "railRegistryVersion": 3,
+      "finalisedAt": 1750000020000,
+      "signatures": [
+        { "party": "did:demos:buyer", "algorithm": "ed25519", "value": "yBicObsPokukDzWNOiVYdegGj6UBk9nQluzYJ_hymc-RtviRe6-WmJ7D9Gjk5CnxLf2N8PDDYzol0_95SrlPCg" },
+        { "party": "did:demos:seller", "algorithm": "ed25519", "value": "_oY2cvzluouca2inLX_Kg0e3eCtnVrxzXzMx4WQ40Xhyle65AU7Imw_PUjOlx_t_AG6AzR10uRWEpjIExdJlDg" }
+      ]
+    }
+  },
+  "replayRecords": {
+    "job-crq-001-record": {
+      "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" },
+      "record": { "recordVersion": "1", "jobId": "job-crq-001", "evaluatedParty": "did:demos:seller", "bundleHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "requirementHash": "9647948e2671e9ee2b2c42e79bf266ec69105d0144bcaa505044e15128a8afc3", "freshness": [], "supplementary": [], "dealSpecific": [{ "anchor": { "kind": "storage-program", "locator": "dacs2:verify-result:job-crq-001:key" }, "contentHash": "26caa227bebf58a7d7eb113953f05609cce893ab33c9b7579c3d43c266b26a43", "recipeVersion": 2 }], "overallDecision": "pass", "generatedAt": 1750000010000, "signature": { "algorithm": "ed25519", "signer": "did:demos:buyer", "value": "xQlOgivIheS0JVowzF0doOU6pPCo7Pep8hSZiYGu2GjnMu7zcE6-qXreVVzr-eTrlVmridgE8Df0Wryt_-hcBA" } },
+      "results": [{ "ref": { "anchor": { "kind": "storage-program", "locator": "dacs2:verify-result:job-crq-001:key" }, "contentHash": "26caa227bebf58a7d7eb113953f05609cce893ab33c9b7579c3d43c266b26a43", "recipeVersion": 2 }, "result": { "resultVersion": "1", "scheme": "key", "identifier": "did:demos:seller", "recipeVersion": 2, "method": "self-signed", "decision": "pass", "reason": "synthetic possession proof verified", "attestation": { "anchor": { "kind": "storage-program", "locator": "dacs2:attestation:job-crq-001:key" }, "contentHash": "8888888888888888888888888888888888888888888888888888888888888888", "signer": "did:demos:buyer" }, "data": { "possessionVerified": true }, "fetchedAt": 1750000004000, "verifiedAt": 1750000005000, "validUntil": 1750000065000, "signature": { "algorithm": "ed25519", "signer": "did:demos:buyer", "value": "1PnOzmJzcqAbQoRuEauBsnp94Xd60ZJdP4ECbSGlTr0uunoVKTCYLjGwx6Pu43OYpXEwXDthfSdTtkAtYfL8Cg" } } }]
+    },
+    "job-crq-001-alternate-record": {
+      "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:alternate" }, "contentHash": "ec4bfd0d23a0d6809cf9ae21a1c9f20a219ce625b273cd04fcf2a2a634d4eaeb", "signer": "did:demos:buyer" },
+      "record": { "recordVersion": "1", "jobId": "job-crq-001", "evaluatedParty": "did:demos:seller", "bundleHash": "0000000000000000000000000000000000000000000000000000000000000000", "requirementHash": "9647948e2671e9ee2b2c42e79bf266ec69105d0144bcaa505044e15128a8afc3", "freshness": [], "supplementary": [], "dealSpecific": [{ "anchor": { "kind": "storage-program", "locator": "dacs2:verify-result:job-crq-001:key" }, "contentHash": "26caa227bebf58a7d7eb113953f05609cce893ab33c9b7579c3d43c266b26a43", "recipeVersion": 2 }], "overallDecision": "pass", "generatedAt": 1750000010000, "signature": { "algorithm": "ed25519", "signer": "did:demos:buyer", "value": "ZIQ2CmB1wNvQNpTPuP6qm8W7EOO8CI4wr6eTfEiVrSlrmryhCEkEZJwvfllBvNte7ITwFCQvU7fuwK5npvoICw" } },
+      "results": [{ "ref": { "anchor": { "kind": "storage-program", "locator": "dacs2:verify-result:job-crq-001:key" }, "contentHash": "26caa227bebf58a7d7eb113953f05609cce893ab33c9b7579c3d43c266b26a43", "recipeVersion": 2 }, "result": { "resultVersion": "1", "scheme": "key", "identifier": "did:demos:seller", "recipeVersion": 2, "method": "self-signed", "decision": "pass", "reason": "synthetic possession proof verified", "attestation": { "anchor": { "kind": "storage-program", "locator": "dacs2:attestation:job-crq-001:key" }, "contentHash": "8888888888888888888888888888888888888888888888888888888888888888", "signer": "did:demos:buyer" }, "data": { "possessionVerified": true }, "fetchedAt": 1750000004000, "verifiedAt": 1750000005000, "validUntil": 1750000065000, "signature": { "algorithm": "ed25519", "signer": "did:demos:buyer", "value": "1PnOzmJzcqAbQoRuEauBsnp94Xd60ZJdP4ECbSGlTr0uunoVKTCYLjGwx6Pu43OYpXEwXDthfSdTtkAtYfL8Cg" } } }]
+    }
+  },
+  "hash": "b33e69f107af5ceda23b3827fe051f8d60375fcd8dcd9bcb45bb3373698829ef",
+  "count": 26,
   "vectors": [
     {
       "name": "vet-claim-requirement-exact-match-pass",
@@ -17,7 +99,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
       }
@@ -29,7 +111,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
       }
@@ -41,7 +123,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
@@ -53,7 +135,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [
           { "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } },
@@ -68,7 +150,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1749999999999, "data": { "possessionVerified": true } }]
       }
@@ -80,7 +162,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000000000, "data": { "possessionVerified": true } }]
       }
@@ -92,7 +174,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }]
       }
@@ -104,7 +186,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
       }
@@ -116,7 +198,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true, "proofId": "fixture-proof-1" } }]
       }
@@ -128,7 +210,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": {
           "required": [
             { "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } },
@@ -145,7 +227,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [], "oneOf": [[{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2 }]] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
       }
@@ -157,7 +239,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": {
           "required": [],
           "oneOf": [[
@@ -178,7 +260,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "error", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
@@ -190,7 +272,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
       }
@@ -202,7 +284,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1749999999999 }]
       }
@@ -214,7 +296,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [
           { "scheme": "domain", "decision": "fail", "recipeVersion": 4, "verifiedAt": 1750000005000 },
@@ -229,6 +311,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
@@ -240,7 +323,7 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 999 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v999", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 999, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 999 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
@@ -252,8 +335,92 @@
       "input": {
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
-        "sessionContext": { "jobId": "job-crq-OTHER", "recipeRegistryVersion": 7 },
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-OTHER", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-production-pin-mismatch-error",
+      "expected": "error",
+      "note": "production fails before registry resolution when VetCredentialsInput.recipeRegistryVersion disagrees with its SessionContext pin",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 8, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-signed-bundle-replay-pass",
+      "expected": "pass",
+      "note": "replay derives registry v7 from a verified co-signed bundle that binds the same job and exact validated record reference",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-unsigned-session-record-replay-error",
+      "expected": "error",
+      "note": "an off-chain unsigned SessionRecord is not replay authority even when its job and registry pin look correct",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "replay", "sessionRecord": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-signed-bundle-job-substitution-error",
+      "expected": "error",
+      "note": "a genuinely signed bundle for another job cannot substitute its newer registry pin even when it contains this exact otherwise-valid signed record chain",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-OTHER-v8", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-signed-bundle-missing-record-ref-error",
+      "expected": "error",
+      "note": "a valid same-job bundle cannot authorize a different otherwise-valid signed record chain absent from its signed vetRecords set",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-alternate-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:alternate" }, "contentHash": "ec4bfd0d23a0d6809cf9ae21a1c9f20a219ce625b273cd04fcf2a2a634d4eaeb", "signer": "did:demos:buyer" } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-signed-bundle-record-projection-substitution-error",
+      "expected": "error",
+      "note": "a valid bundle and exact record reference cannot be combined with result projections not authenticated by that record's referenced VerifyResult",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 3, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-signed-bundle-requirement-substitution-error",
+      "expected": "error",
+      "note": "a valid bundle, record, and result cannot be replayed against a weaker requirement whose canonical hash differs from the signed record requirementHash",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        "requirement": { "required": [] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     }

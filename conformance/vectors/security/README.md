@@ -29,7 +29,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
-| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 19 | `error` / `fail` / `indeterminate` / `pass` |
+| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 26 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 2 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
@@ -507,7 +507,7 @@ ed25519 over the §8.3.3 signed scope). Run (reference):
 
 ### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
 
-19 candidate vectors for qualifying authenticated, resolved `VerifyResult`
+26 candidate vectors for qualifying authenticated, resolved `VerifyResult`
 objects against the complete applicable `ClaimRequirement` predicate before
 decision classification. The set covers exact positive matching, absent
 listing constraints with an implicit session-start version pin, competing old
@@ -516,7 +516,11 @@ boundaries, parameter mismatch and absence, additional unrequested result data,
 same-scheme cross-satisfaction, negative and positive `oneOf` selection,
 preservation of applicable `error` and `indeterminate`, stale-indeterminate
 exclusion, an unrelated-result control, and fail-closed missing, unresolvable,
-and wrong-job authenticated session contexts.
+wrong-job, and internally mismatched production contexts. Replay coverage uses
+genuinely signed synthetic `AttestationBundle`, `CompositeVerificationRecord`,
+and `VerifyResult` fixtures and includes the valid path, a signed wrong-job
+substitution, a same-job bundle missing the exact record reference, substituted
+requirement and result projections, and refusal of an unsigned `SessionRecord`.
 
 The inputs begin after reference, hash, signature, recipe-authority,
 attestation, and governing freshness validation. Those failures retain their
@@ -524,20 +528,24 @@ governing dispositions and are not reclassified by this set. A declared
 `ClaimRequirement.maxAge` is an additional bound and cannot widen that baseline.
 `resolvedResults` is therefore a neutral projection of already-authenticated
 DACS `VerifyResult` fields, not a new wire artifact. The set-level
-`recipeRegistry` projects the exact authenticated snapshot named by each
-input's authenticated `sessionContext.recipeRegistryVersion`; it supplies the effective
-per-scheme version when a requirement omits `recipeVersion`. Parameter matching requires
-every requested own key to be present and canonically equal; additional
-extracted-data keys remain valid.
+`recipeRegistries` project the exact snapshots selected by each authenticated
+production or replay authority; they supply the effective per-scheme version
+when a requirement omits `recipeVersion`. Parameter matching requires every
+requested own key to be present and canonically equal; additional extracted-data
+keys remain valid.
 
 #### Vector schema
 
-The set-level `recipeRegistry` contains `recipeRegistryVersion` and the
-`latestByScheme` projection needed by aggregation. Each entry in `vectors[]`
-contains `name`, `expected` (§7.5.1 four-value
-verdict), `note`, and `input`. `input.recordJobId` and
-`input.sessionContext` model the authenticated record-to-session binding;
-`input.generatedAt` is the fixed aggregation time; `input.requirement` is the canonical `BundleRequirement`; and
+Each entry in `recipeRegistries[]` contains `recipeRegistryVersion` and the
+`latestByScheme` projection needed by aggregation. `authenticatedSessionStarts`
+models the trusted in-process production boundary. `replayBundles` and
+`replayRecords` contain concrete domain-signed fixtures; `publicKeys` allows
+independent bundle, record, and result signature verification. Each entry in `vectors[]` contains `name`, `expected`
+(§7.5.1 four-value verdict), `note`, and `input`.
+`input.aggregationAuthority` selects either a production `vetInput` plus its
+authenticated session-start state or a replay bundle plus exact record reference;
+`input.generatedAt` is the fixed aggregation
+time; `input.requirement` is the canonical `BundleRequirement`; and
 `input.resolvedResults` contains the authenticated result projections available
 to §7.7.1.
 

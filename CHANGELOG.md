@@ -29,6 +29,19 @@ The format used per release:
   probes never change content/signature validity, conformance, revocation,
   identity, or reputation.
 
+### Fixed — DACS-1 / DACS-4 rail resolution
+
+- **Listing-time accepted-rail validation executes canonical resolution**
+  (§6.3.4 / §9.4.3, LRR-1..LRR-6; #298) — `acceptedRails` membership is now
+  explicitly a publisher claim, never proof that the rail exists. Every
+  pay-bearing listing must independently resolve each accepted rail through the
+  authenticated registry, match any pinned version and the signed definition,
+  and bind each `pay-*` phase to the registered `phaseHandler`. A conclusively
+  unknown or mismatched rail rejects; missing/unverifiable registry authority is
+  `indeterminate` and blocks a new session. PA-2/PA-3 readers cannot silently
+  substitute in-code constants. Session-start pinning and authoritative
+  availability checks still run separately.
+
 ### Added — CORE v0.2 / DACS-1..5 lifecycle gates
 
 - **Normative SR-2 transaction lifecycle and portable `AnchorReceipt`** (CORE §5.1, SR2-1..SR2-9) — distinguishes local submission, binding-proved durable acceptance, consensus inclusion, finality, and the rejected/dropped/replaced/expired/reorged lifecycle outcomes. `indeterminate` is a separate observation disposition over a hash-linked preserved receipt, never a lifecycle transition, demotion, or authority to resubmit. Authenticated dropped/expired/reorged transactions may re-enter acceptance/inclusion; receipt conflicts are ordered by binding-authenticated evidence, never observer time. External index visibility is orthogonal and never gates protocol progress. The evidence-carrying portable receipt binds logical/native artifact addresses, content hash, native transaction, writer, nonce, block evidence, and finality profile without recursively requiring the receipt itself to be anchored.

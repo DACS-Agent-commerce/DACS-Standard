@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.3** (on the common DACS v0.1 baseline; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.4** (on the common DACS v0.1 baseline; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-5 (required for cross-chain rails only); composes with AP2, x402, ERC-20, SPL, HTLC contracts, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -302,7 +302,7 @@ dacs4:payment:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evm-erc20%3A8453%3AUSDC:3:resolved
 
 > **Note (non-normative).** The `phaseIndex` discriminator mirrors the entitlement `renewalSeq` and amendment `amendmentIndex` discipline.
 
-**(PC-3)** return a PhaseHandlerResult with `attestationRef` pointing to the evidence (except as deferred by PC-7 for the cross-chain anchor-pending case).
+**(PC-3)** return a PhaseHandlerResult with `attestationRef` pointing to the evidence and `anchorReceipt` carrying its latest verified SR-2 lifecycle snapshot, except that both MAY be attached asynchronously under PC-7 after rail-final payment.
 
 **(PC-4)** classify the outcome as exactly one of `ok: true` (payment confirmed at the chain's finality semantics) or `ok: false` with an `errorClass`:
 
@@ -311,7 +311,7 @@ dacs4:payment:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evm-erc20%3A8453%3AUSDC:3:resolved
 | `permanent` | refused by chain, insufficient balance, invalid signature |
 | `transient` | RPC failure, mempool congestion |
 | `counterparty` | AP2 mandate revoked, x402 server refused |
-| `substrate` | SR-2 unavailable, and no irreversible on-chain value movement has occurred (see PC-7) |
+| `substrate` | SR-2 unavailable, and the payment has not yet reached its rail-defined finality (see PC-7) |
 | `settlement-atomicity` | cross-chain only; one leg reached a terminal or asymmetric state the other did not match — a timeout, or the HTLC-9 preimage-revealed-but-counterpart-unclaimed state |
 
 For the HTLC-9 asymmetric-open sub-case, the handler signals the open state and the orchestrator routes the session to the non-terminal `settle-asymmetric` state (§10.3.1, ST-8). A terminal `settlement-atomicity` outcome — the `settle-failed` state — is reached only after the ST-8 recovery window expires unresolved.
@@ -328,23 +328,24 @@ Handlers MUST NOT settle a payment whose `amount.currency` does not resolve unde
 
 **(PC-6)** when outcome is `success`, populate `settlementFinality` (the finality model and parameters actually applied) in the produced SettlementEvidence — REQUIRED on any `success`-outcome payment evidence record, and absent on delivery evidence records.
 
-**(PC-7) Cross-chain anchor/settlement decoupling.** On cross-chain rails the value moves on two foreign chains independent of the SR-2 substrate, so evidence anchoring is decoupled from settlement success. **Principle: once value has irreversibly moved on the foreign chains, anchoring is bookkeeping that must catch up — never a reason to fail or pause the payment.**
+**(PC-7) Rail-final payment / evidence-anchor decoupling.** Payment finality and SR-2 evidence finality are separate gates on **every** rail. **Principle: once payment reaches the rail's declared finality, anchoring `SettlementEvidence` is bookkeeping that must catch up — never a reason to fail the payment, submit it again, or classify the finalized payment as unpaid.**
 
-*Irreversible movement* means: an HTLC fully settled on BOTH legs — the payee's `htlc-claim` reaching source-chain finality (§9.5.4), not the HTLC-9 asymmetric state — or a liquidity-tank op reaching `completed`.
+*Rail finality* is the condition encoded by `SettlementFinalityRecord`: block depth, commitment level, verified provider receipt with the rail-defined capture semantics, completed HTLC or liquidity-tank settlement, or Demos BFT finality. For an HTLC it means BOTH legs are fully settled — the payee's `htlc-claim` reaching source-chain finality (§9.5.4), not the HTLC-9 asymmetric state.
 
-Once irreversible movement is confirmed, the handler:
+Once rail finality is confirmed, the handler:
 
-- (a) MUST return `ok: true` with the confirmed foreign-chain `txRefs` even if SR-2 anchoring is unavailable or pending;
+- (a) MUST return `ok: true` with the confirmed rail `txRefs` or provider evidence even if SR-2 anchoring is unavailable or pending;
 - (b) MUST queue a durable anchor-retry idempotent on the `dacs4:payment:{jobId}:{railId}:{phaseIndex}` address — write-once by the PC-2 discriminator, so a re-anchor cannot duplicate the record;
-- (c) MAY omit `attestationRef` until the retry confirms the anchor, then attach it. `PhaseHandlerResult.attestationRef` is OPTIONAL in §5 precisely to permit this; the PC-2/PC-3 obligations are satisfied by the retry rather than at return time;
-- (d) MUST NOT classify this as `errorClass: "substrate"` — that class is reserved for SR-2 unavailability *before* any irreversible movement, per PC-4.
+- (c) MAY omit `attestationRef` and `anchorReceipt` until the retry confirms the anchor, then attach them. The PC-2/PC-3 obligations are satisfied by the retry rather than at payment-return time;
+- (d) MUST NOT classify this as `errorClass: "substrate"` — that class is reserved for SR-2 unavailability *before* payment reaches rail finality, per PC-4; and
+- (e) MUST keep the session non-terminal until the evidence has a verified `finalized` receipt and is independently resolvable, as required by DACS-5 §10.4.3. This catch-up gate delays terminal audit publication; it does not delay or reverse the already-final payment result.
 
-PC-7 is the one carve-out from the ST-7 substrate-failure-pause (§10.3.1): because value has already moved irreversibly, the handler commits `ok: true` and anchors via the retry rather than pausing.
+PC-7 is the one carve-out from the ST-7 substrate-failure-pause (§10.3.1): because payment is already final, the handler commits `ok: true` and anchors via the retry rather than pausing or manufacturing a failed payment.
 
 Two guards:
 
 - PC-7 **EXCLUDES the HTLC-9** dest-revealed / source-claim-failed asymmetric state. That state is half-settled: it routes to `settle-asymmetric` (ST-8) and is surfaced as §9.5.4 asymmetric-settlement evidence, never as PC-7 `ok: true`.
-- Any retry of a cross-chain payment phase MUST first check foreign-chain settlement state — the HTLC lock/reveal/claim txRefs, or the tank `bridge_id` status — before re-submitting, to avoid double-settlement.
+- Any retry or recovery of a payment phase MUST first check the rail's settlement state using the original `(jobId, phaseIndex)` / idempotency binding and transaction/provider references. If the payment is final, it MUST resume only the evidence-anchor catch-up and MUST NOT resubmit settlement. If the transaction's established state is `submitted`, `accepted`, `dropped`, or `replaced`, or its current observation disposition is `indeterminate`, the handler MUST follow the rail's declared reconciliation semantics and MUST NOT infer a second payment is safe from non-observation alone.
 
 ```
 type PaymentPhaseInput = {
@@ -967,6 +968,7 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 - (PIPE-3) If a pay-* phase is followed by a deliver-* phase, the deliver-* phase MUST NOT execute until the pay-* phase returns ok: true.
 - (PIPE-4) If a deliver-* phase is followed by a pay-* phase, the pay-* phase MUST NOT execute until the deliver-* phase returns ok: true.
 - (PIPE-5) Pipelines MAY repeat a phase; each invocation produces independent SettlementEvidence. In v0.1 each repeated pay-* invocation settles the **same** agreement price (`PaymentPhaseInput.amount` = `agreement.terms.price`). The payment contract carries no per-phase amount override, fee, or split, so a **fee-split** (distinct amounts to distinct payees, e.g. buyer + platform fee) is NOT representable in v0.1 and is a roadmap item (fee-split / multi-payee settlement model). Repetition is for genuinely identical settlements, not for splitting one price across payees.
+- (PIPE-6) Before executing any pay-* phase or any delivery whose disclosure, access grant, or external side effect is irreversible, the orchestrator MUST verify the DACS-3 commitment's CORE §5.1 receipt is `finalized` and matches the session's `jobId`, agreement hash, listing reference, and logical address. `submitted`, `accepted`, index-visible, or an unverified `included` state is insufficient. A binding whose declared finality profile makes inclusion final MAY satisfy both states with one receipt.
 
 > **Note (non-normative).** PIPE-1 is deliberately aligned with §6.3.4(8): a reader of either chapter reaches the same accept decision for a pay-less pipeline.
 

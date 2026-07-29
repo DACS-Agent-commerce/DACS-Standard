@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** on the common DACS v0.1 baseline. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.4** on the common DACS v0.1 baseline. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -96,6 +96,32 @@ The Storage Program at stor-{sha256(subject_cci + ":" + credential-type + ":" + 
 | domain:<dns> | lowercase, IDNA-encoded | DNS / TLS control proof via DACS-2 domain-tls-control |
 | key:<hex-pubkey> | lowercase, no 0x | self-signed; lowest tier; signing-key only |
 | substrate-validator-set:<substrateId>:<epochOrSetId> | registered substrateId + epoch/set id | not a party identity — the signer of a consensus-backed-proxy / evm-rpc DACS-2 attestation; resolution + roster verification per §7.5 |
+
+**Demos self-certifying agent DID profile.** `did:demos:agent:<64hex>` is a
+canonical ClaimReference under the already-registered `did` scheme: its
+Scheme is `did` and its Identifier is `demos:agent:<64hex>`. The final component
+is the lowercase, 32-byte Ed25519 public key used by the Demos agent account;
+writers MUST emit exactly 64 lowercase hex characters with no `0x` prefix.
+Readers resolve this profile by decoding that component as the raw verification
+key and applying the signature envelope's algorithm and domain separator. The
+Demos substrate mapping in §A.1 defines this profile; it does not register a
+second top-level claim scheme.
+
+On read, the general case-insensitive Scheme rule applies only to the leading
+`did` scheme component: for example,
+`DID:demos:agent:<64-lowercase-hex>` MUST resolve as this profile and MUST
+canonicalise to the lowercase `did:` spelling before hashing, signing, or
+comparison (CF-2). The `demos:agent:` Identifier profile and its key component
+remain case-sensitive. A reader MUST reject an uppercase key component as
+non-canonical rather than lowercase it.
+
+`demos:0x<64hex>` is a substrate-address notation, not a registered v0.x
+ClaimReference and not an alias of `did:demos:agent:<64hex>`. In ClaimReference
+grammar its Scheme would be the unregistered value `demos`, so a conforming
+reader MUST apply the unknown-scheme rule below. Implementations MUST NOT emit
+`demos:0x<64hex>` in a ClaimReference field. A migration tool MAY establish an
+out-of-band key/address relationship, but MUST NOT silently rewrite one form to
+the other inside a signed artifact or merge their DACS-5 reputation keys.
 
 **Unknown-scheme handling**
 A reader encountering an unknown scheme MUST: preserve the reference verbatim when forwarding; treat the reference as **unverified** for evaluation purposes; NOT silently accept the reference as satisfying a bundle requirement; log or surface the unknown scheme to the calling agent. A reader MAY decline to engage with a bundle that contains an unknown scheme in a required position.
@@ -528,6 +554,37 @@ Substrates MAY use equivalent addressing schemes; the requirement is that any pa
 
 **Size cap.** The canonical JSON form of a listing MUST NOT exceed 16,384 bytes (16 KB). Listings exceeding the cap MUST use the extendedDescriptionUrl + extendedDescriptionHash pattern to host verbose offering descriptions externally with content-hash binding. The cap applies after canonicalisation; the actual on-chain payload size may differ slightly due to substrate encoding. On substrates whose SR-2 implementation has a smaller per-record cap, the substrate cap governs (the lesser of 16 KB and the substrate cap). Implementations MUST reject listings exceeding the applicable cap at the validation step (LR-2).
 
+**Operational engagement and reachability.** Cryptographic validity answers
+"who signed these terms?"; it does not establish that a buyer can contact the
+seller now. A publisher advertising an active listing through a well-known
+index or catalog SHOULD expose at least one currently actionable,
+machine-readable engagement surface. This MAY be the listing's HTTPS
+`seller.publicEndpoint`, a surface defined by an accepted rail, or a
+negotiation-transport coordinate defined by the owning registry. A
+`publicEndpoint`, when present, SHOULD answer an unauthenticated discovery
+request with enough information for an agent to start or negotiate the listed
+service; execution itself MAY require authentication, payment, or a private
+channel.
+
+Intent-scoped payment resources need not quote before an agreement exists. In
+particular, an x402 `resourceBase` MAY expose discovery metadata at its base and
+issue HTTP 402 only at a job-specific resource created from a signed agreement.
+The discovery response SHOULD explain how to create that intent and provide the
+resource template. A dead base URL and a dead `publicEndpoint` do not combine
+into an actionable surface.
+
+- (LP-5) Before publishing or refreshing an active discovery record, the
+  publisher SHOULD probe its advertised engagement surface and SHOULD withdraw,
+  revoke, or clearly mark the record unavailable when no actionable surface
+  remains.
+- Reachability is time-varying operational evidence. A failed or successful
+  network probe MUST NOT change the listing's content hash, signature validity,
+  historical conformance, or revocation result, and MUST NOT be inserted into
+  the reader validation order below.
+- A consumer MAY decline to start a session with a currently unreachable
+  listing. It SHOULD distinguish `unreachable` from `invalid` and retain the
+  verified listing for audit/history.
+
 **Versioning, immutability, revocation**
 Versioning rules:
 
@@ -606,7 +663,7 @@ Readers MUST validate listings in the following order, **halting on the first fa
 8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and non-empty and MUST reference resolvable payment rails per DACS-4; if pipeline contains no pay-* phase, `acceptedRails` MAY be absent (the intake-only listing pattern — RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band);
 9. signer resolves to a key controllable by the listing publisher (`seller.identity`).
 **Conformance — listing publishers and readers**
-A conforming publisher MUST: (LP-1) anchor each listingVersion via SR-2 before referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3.
+A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record.
 A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings failing any step in the validation order; (LR-3) refuse new sessions when the RB-4..RB-6 revocation check returns `revoked` or `indeterminate`.
 
 #### 6.3.5 Discovery — .well-known/agent.json extension
@@ -727,6 +784,14 @@ type ListingSummary = {
 
   catalogObservedAt: number
 
+  // Optional, time-stamped catalog observation. This is operational metadata,
+  // never part of the signed Listing and never a validity or trust signal.
+  reachabilityHint?: {
+    status: "reachable" | "unreachable" | "unknown"
+    checkedAt: number
+    surface?: string
+  }
+
   // Optional: catalog-computed reputation snapshot for this seller in the listing's category.
   // Derived from the seller's DACS-5 bundles scoped to offering.category using the
   // category-scoped derivation algorithm in §10.5.4. When present, consumers MAY use this
@@ -769,6 +834,38 @@ type ReputationHint = {
 
 Catalogs MAY return cached ListingSummary records. Clients MUST dereference the anchor to obtain the canonical Listing before engaging. The catalog provides discovery; the chain provides binding. Catalogs SHOULD verify each indexed listing’s anchor at least every 24 hours; the catalogObservedAt timestamp surfaces the catalog’s confidence.
 
+Catalogs MAY probe an advertised engagement surface and publish the result as
+`reachabilityHint`. They MUST timestamp the observation, MUST treat
+counterparty-supplied status as untrusted, and MUST NOT use a probe result to
+rewrite listing validity, revocation, identity tier, or reputation.
+
+Any catalog or consumer that performs a server-side network probe of a
+listing- or counterparty-supplied URL MUST treat the target as untrusted and
+enforce all of the following for the initial request and every subsequent
+request:
+
+- allow only explicitly supported network schemes (normally HTTPS), and reject
+  loopback, private, link-local, shared-address, unspecified, multicast,
+  reserved, and cloud-provider metadata destinations, including equivalent
+  IPv4-mapped IPv6 spellings; an operator MAY permit a non-public target only
+  through an explicit out-of-band allowlist that listing content cannot modify;
+- resolve the hostname before connecting, validate every returned address,
+  bind the connection to a validated address, and repeat resolution and
+  validation for each new connection so DNS rebinding cannot switch the request
+  to a forbidden destination after validation;
+- disable redirects or re-run the complete scheme, hostname, DNS, and address
+  validation at every redirect hop, with a finite redirect limit;
+- enforce finite connection and whole-request timeouts plus a finite response
+  byte limit, including after content decoding/decompression; and
+- avoid forwarding ambient credentials, cookies, or internal authorization
+  headers to the probed target.
+
+URL syntax validation or safe link rendering alone does not satisfy these
+server-fetch requirements. Renderers MUST separately safety-validate any URL
+before making `surface` clickable. Consumers SHOULD regard a stale hint as
+`unknown` and MAY perform their own probe only under the same bounded-fetch
+requirements.
+
 A **catalog or rendering** consumer MAY skip or partially render a listing whose `PricingSpec.kind` (DACS-4) it does not recognize, rather than reject it — a directory should not hide a listing merely because it cannot price-render it. This tolerance is scoped to rendering only; a **transacting** reader MUST still reject an unrecognized pricing kind at commit-agreement (DACS-3 MTR-5). One value, two consumer classes, opposite verdicts: the directory shows what it cannot price, the settler refuses to pay what it cannot price.
 A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach a catalog is out of scope for v0.1, exactly as for listings. A catalog that carries them MUST serve every record passing §10.4.2 BB-4 regardless of which party authored it, and consumers MUST verify each record per BB-4 before use. Read endpoints MUST NOT require authentication. Write/registration semantics are out of scope for v0.1; the canonical source of truth is always the substrate-anchored listing, not the catalog entry. For every ListingSummary returned, a DACS-aware client MUST resolve the anchor to the on-chain content and validate the contentHash. The catalog’s role is to surface candidates; binding decisions MUST follow the substrate.
 
@@ -776,7 +873,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 | Role | Requirements |
 | --- | --- |
-| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings |
+| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings; LP-5 maintain an actionable engagement surface (SHOULD) |
 | Listing reader | LR-1 pin tuple; LR-2 validate per validation order; LR-3 refuse revoked or indeterminate |
 | Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone |
 | Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 distinguish successful absence from resolution failure |
@@ -834,7 +931,7 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 **Index integrity in .well-known.** *Threat:* a compromised web server publishes a falsified listings.json. *Mitigation:* the indexHash in the well-known block is signed only by the TLS certificate, not by the seller’s identity. Clients SHOULD prefer the index’s anchor (substrate-anchored copy) when available; in any case, individual listings MUST be dereferenced and validated independently.
 
-**Private endpoints and impersonation.** *Threat:* seller.publicEndpoint claims a URL the seller does not control. *Mitigation:* this is a self-claim; readers MUST NOT treat the endpoint as authoritative for any cryptographic purpose. Endpoints are conveniences for off-chain reads, not trust anchors.
+**Private endpoints and impersonation.** *Threat:* seller.publicEndpoint claims a URL the seller does not control. *Mitigation:* this is a self-claim; readers MUST NOT treat the endpoint as authoritative for any cryptographic purpose. Endpoints are conveniences for off-chain reads, not trust anchors. A successful reachability probe proves only that a surface responded at `checkedAt`; it does not prove seller control, listing validity, or correct execution.
 
 **Key lifecycle.** Every spec assumes a primary key exists per ClaimReference. Implementations MUST:
 

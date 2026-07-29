@@ -100,13 +100,13 @@ class CommitmentAnchorAuthorityVectorTests(unittest.TestCase):
         self.assertEqual(buyer_case["want"]["commitmentAuthority"], seller_case["want"]["commitmentAuthority"])
         self.assertEqual(buyer_case["want"]["agreementAuthors"], seller_case["want"]["agreementAuthors"])
 
-    def test_spec_and_plan_pin_ca6_ca7(self):
+    def test_spec_and_plan_pin_commitment_authority_and_compatibility(self):
         spec = SPEC.read_text(encoding="utf-8")
         plan = PLAN.read_text(encoding="utf-8")
         self.assertIn("(CA-6) **Commitment authority.**", spec)
         self.assertIn("(CA-7) **Agreement binding.**", spec)
         self.assertIn("transaction submitter, deployer, owner, and native address MUST NOT", spec)
-        self.assertIn("CA-1..CA-7", plan)
+        self.assertIn("CA-1..CA-9", plan)
         self.assertIn(VECTORS.name, plan)
 
     @unittest.skipUnless(HAVE_CRYPTO, "cryptography package not installed")

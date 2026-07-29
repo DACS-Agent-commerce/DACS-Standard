@@ -56,6 +56,10 @@ and validation command.
 - `conformance/fixtures/identity/identity-tier-*.json` — deterministic
   `identityTier` cases for institutional, verified, and self-declared bundles
   (IT-1..IT-3).
+- `conformance/fixtures/identity/demos-agent-claim-reference.json` —
+  canonical lowercase output, case-insensitive `did` scheme parsing, strict
+  lowercase key material, and unknown `demos:0x…` handling for the Demos agent
+  DID profile (§6.3.1 / CF-2).
 
 ### Roadmap/prototype fixtures
 

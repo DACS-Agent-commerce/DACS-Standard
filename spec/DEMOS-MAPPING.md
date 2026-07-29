@@ -18,6 +18,14 @@ A mapping of which substrate primitives are live today, what extensions are need
 - ⚪ 6 new CCI contexts for regulatory identity: lei, finra-crd, sam-uei, fedramp, naics, cmmc. **Deferred to a later version — not part of v0.1.** Each needs a GCR routine following the pattern of the existing 8 reference implementations. Until they ship, regulatory credentials on Demos are carried via the stor-cred extensibility surface below and verified through DACS-2.
 - 🔵 ERC-8004 token references; W3C DIDs (carried via claim references; verified through DACS-2).
 
+**Demos agent DID profile.** DACS implementations use the self-certifying
+`did:demos:agent:<64-lowercase-hex>` ClaimReference for a Demos agent account
+whose 32-byte Ed25519 public key is carried in the final component. This is the
+`did` scheme with the `demos:agent:<hex>` identifier profile defined in DACS-1
+§6.3.1. `demos:0x<64hex>` remains a substrate-address notation; it is not a
+registered ClaimReference or a canonical alias, and it MUST NOT be emitted in
+identity, signer, catalog-key, or reputation-key fields.
+
 **Stor-backed credentials.** The stor-cred:<type>:<id> scheme convention is the extensibility surface for future credentials not yet promoted to native CCI contexts. **OFAC-clear is not a CCI context** — it is a per-session freshness check that lives only in DACS-2’s CompositeVerificationRecord (it is a check, not a stable identity claim).
 
 **Transaction sequencing note.** Demos account nonces are monotonic replay-protection counters in GCR_Main. Nodes enforce strict sequential nonces: a transaction with a stale or skipped nonce fails loudly. Same-signer DACS flows that depend on multiple Demos transactions in order — including settlement followed by an SR-2 evidence anchor — should not derive or sign the follow-on transaction from HTTP broadcast acceptance alone. Same-wallet batches MUST construct with explicit sequential nonces (`getAddressNonce(address)` plus `options.nonce`, demosdk ≥4.0.14) or maintain a local counter across the batch and resume read-derived nonce selection only after the on-chain account nonce catches up.
@@ -35,6 +43,15 @@ A mapping of which substrate primitives are live today, what extensions are need
 In both cases implementations MUST anchor at the native address, the anchor transaction is the canonical pointer, and consumers MUST verify the content hash after dereferencing.
 
 **Operational write notes (informative).** Storage Program writes have two observable completion points: broadcast acceptance and later read visibility. A DACS implementer should not publish a new SR-2 anchor to counterparties until the native address can be read back and its content hash matches the written artifact. Updates and granular writes can be stale-visible from a lagging node, so read-back checks should compare parsed canonical content (RFC 8785 / JCS for DACS JSON artifacts), not raw JSON text or byte-for-byte serialization. Because native address derivation includes the signer nonce, same-signer dependent writes and batches MUST use explicit sequential nonces or wait for observed nonce advancement before deriving and signing the next native address. An account-nonce read can lag inclusion, so deriving `nonce + 1` from a stale read can fail even after the previous transaction was accepted. Re-broadcasting an idempotent write to the same derived native address remains a safe recovery path when the failure is observable, but only when the payload and logical→native binding are unchanged; consumers still verify the content hash plus createdByTx / lastModifiedByTx provenance.
+
+**SR-2 lifecycle binding (normative).** Demos applies CORE §5.1 as follows:
+
+- SDK/HTTP broadcast acknowledgement establishes only `submitted`. It does not establish CORE `accepted`, because the current Demos binding exposes no independently verifiable durable-admission receipt before consensus.
+- A Storage Program write is `included` when an authenticated consensus result identifies the transaction in a Demos block and the resulting record binds the expected `createdByTx` / `lastModifiedByTx`, native address, writer, nonce, and content hash.
+- Demos uses deterministic BFT finality for this profile: a valid `included` write is also `finalized`. The receipt MAY be emitted directly with `state: "finalized"` and `observationDisposition: "established"`, with `finalityProfile: "demos-bft-final"`, the Demos transaction hash as `transactionRef`, and the consensus block number/timestamp in `blockRef`.
+- Storage API or indexer read-back is the independent CORE visibility observation. A matching positive read is useful for resolution checking but does not establish inclusion by itself; delayed read visibility does not undo a consensus-authenticated final receipt.
+
+Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS stage that permits reversible progression at `accepted` still waits for Demos BFT inclusion/finality.
 
 **Authoritative absence.** The current Demos Storage Program mapping specifies positive record retrieval and content-integrity verification, but it does not declare an authenticated finalized non-membership proof or an independent read-quorum policy. An ordinary Demos RPC or storage API `not found` response therefore has the CORE SR-2 disposition `indeterminate`, not `absent`, for a DACS rule whose outcome depends on authoritative absence. Positive reads and their hash/provenance checks are unaffected. A later Demos binding revision MAY declare an absence-evidence policy without changing any DACS artifact shape; until then, reputation-bearing one-copy DACS-5 lookups fail closed under §10.4.3.
 

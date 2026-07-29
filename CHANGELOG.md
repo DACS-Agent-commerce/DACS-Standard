@@ -35,7 +35,7 @@ The format used per release:
 
 ### Fixed — DACS-5
 
-- **Legacy three-party fault reconciliation** (§10.4.3 / §10.5.1; #304) — compares two legacy `AttestationBundle` copies on their existing implied-fault sets and treats them as divergent only when those sets are disjoint, after the unchanged outcome-class and `phaseSummary` checks. This preserves every buyer↔seller outcome pair while allowing buyer and seller copies that both report `failed-counterparty` or both report `aborted-by-other` to converge on a distinct orchestrator. `perspective_flip` remains the single-copy scoring rule; bundle bytes, schemas, mixed-version authority, and reputation formulas are unchanged. Adds four candidate vectors plus an exhaustive outcome-pair compatibility check.
+- **Legacy three-party fault reconciliation** (§10.4.3 / §10.5.1; #304) — compares legacy copies on implied-fault sets derived independently from each copy's authenticated roster and treats them as divergent only when those sets are disjoint, after the unchanged outcome-class and `phaseSummary` checks. This preserves every buyer↔seller outcome pair, rejects mismatched rosters that would manufacture a common role, and carries a singleton `{orchestrator}` intersection into reputation's orchestrator-neutral exclusion. Legacy/legacy, mixed, and `FaultAttestationBundle` pairs now produce the same neutral reputation for equivalent orchestrator-caused failure and abort cases. `perspective_flip` remains the one-copy scoring rule; bundle bytes, schemas, mixed-version authority, and reputation formulas are unchanged. Adds reconciliation, roster-mismatch, and derivation-parity candidate vectors plus an exhaustive outcome-pair compatibility check.
 
 ## [0.4] — 2026-07-27
 

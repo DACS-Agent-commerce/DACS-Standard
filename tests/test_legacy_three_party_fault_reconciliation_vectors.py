@@ -14,6 +14,7 @@ EXPECTED_NAMES = {
     "legacy-two-party-mutual-counterparty-claim",
     "legacy-three-party-distinct-orchestrator-fault",
     "legacy-three-party-distinct-orchestrator-abort",
+    "legacy-mismatched-rosters-do-not-manufacture-orchestrator",
 }
 
 OUTCOMES = (
@@ -63,10 +64,10 @@ class LegacyThreePartyFaultReconciliationTests(unittest.TestCase):
 
     def test_implied_fault_sets_and_executed_verdicts(self):
         for vector in self.data["vectors"]:
-            parties = set(vector["parties"])
             copies = vector["copies"]
             fault_sets = [
-                R.implied_fault_set(copy["outcome"], copy["anchoredByRole"], parties)
+                R.implied_fault_set(
+                    copy["outcome"], copy["anchoredByRole"], R.roster_roles(copy))
                 for copy in copies
             ]
             observed_sets = [sorted(values) for values in fault_sets]

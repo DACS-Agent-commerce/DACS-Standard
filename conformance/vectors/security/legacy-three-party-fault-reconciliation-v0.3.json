@@ -62,8 +62,22 @@
         "intersection": ["orchestrator"],
         "convergence": "unified"
       }
+    },
+    {
+      "name": "legacy-mismatched-rosters-do-not-manufacture-orchestrator",
+      "expected": "fail",
+      "parties": ["buyer", "seller", "orchestrator"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["seller"], ["buyer", "orchestrator"]],
+        "intersection": [],
+        "convergence": "divergent"
+      }
     }
   ],
-  "count": 4,
-  "hash": "be6d58a49a0444aba49dbae96aa473a43baa11e72837532e29cd5b332f0903c9"
+  "count": 5,
+  "hash": "6f6ceeff7b5cc84a4d8e68e239a2e4d368aece81f1bcdfae56520f5166ec324d"
 }

@@ -81,6 +81,18 @@ class MixedVersionReconciliationTests(unittest.TestCase):
                         self.assertEqual(bundle["bundleVersion"], "1")
                         self.assertNotIn("faultedParty", bundle)
 
+    def test_expected_pass_copies_have_every_required_signer(self):
+        """A reconciliation verdict is meaningful only after each accepted copy passes
+        the §10.4.1 signer-set gate. Keep this check independent of cryptography so a
+        missing required signature cannot hide when the optional crypto package is absent."""
+        for v in self.vectors:
+            if v["expected"] != "pass":
+                continue
+            for role, bundle in v["copies"].items():
+                ok, reason = R._bundle_signatures_valid(bundle, pubkeys=None)
+                with self.subTest(vector=v["name"], role=role):
+                    self.assertTrue(ok, reason)
+
     def test_executed_divergence_predicate_matches_want(self):
         """The core round-5 fix: run tests/dacs5_reference.divergence over each two-copy
         vector and require it to agree with want.convergence. This EXECUTES the E1

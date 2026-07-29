@@ -698,6 +698,11 @@
               "party": "did:demos:seller",
               "algorithm": "ed25519",
               "value": "11yTLhO_PvnDiW6OiA2A2MNSzSCXjz9zoWAVH50KH2_Fo6gH9FHhZqjZRtvbzlzxM2QM7UI_bqs6iI4QS03xDQ"
+            },
+            {
+              "party": "did:demos:orchestrator",
+              "algorithm": "ed25519",
+              "value": "87FbltIEAcocUsx9OrTauDpjuwXDTbNvNSs8HoWbyDsa8_ovAHs2_belPE4ZQwgLrUHiScqBGi1gskTzrQA9Dw"
             }
           ]
         },
@@ -750,6 +755,11 @@
               "party": "did:demos:seller",
               "algorithm": "ed25519",
               "value": "fAGe5izxlbW9Bs7JzHMhXVZ1yn9T-DyONj_Vj_LMwcYLn3y6yvn59AkYEdFRN28CFiditdELu-D3F2SOSdL-AQ"
+            },
+            {
+              "party": "did:demos:orchestrator",
+              "algorithm": "ed25519",
+              "value": "nSVK9zldA6iuNyMKQE9vVNfZ9oc80RvRdx9laJc0QlZZahArX3Die6ZI_C36Psl9w0HhBvNcJMp93XnYVv3fAw"
             }
           ]
         }
@@ -884,5 +894,5 @@
     }
   ],
   "count": 8,
-  "hash": "7c8e2908cf1c08eb679dfff93223029cfe04943e5cc63531bf4a2b685ce8efaa"
+  "hash": "92872853e30ffefa0f4e4226a1cdfea7b1fb85e3585d802011bfff6179787f44"
 }

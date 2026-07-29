@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.3** on the common DACS v0.1 baseline. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.4** on the common DACS v0.1 baseline. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -663,7 +663,7 @@ Readers MUST validate listings in the following order, **halting on the first fa
 8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and non-empty and MUST reference resolvable payment rails per DACS-4; if pipeline contains no pay-* phase, `acceptedRails` MAY be absent (the intake-only listing pattern — RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band);
 9. signer resolves to a key controllable by the listing publisher (`seller.identity`).
 **Conformance — listing publishers and readers**
-A conforming publisher MUST: (LP-1) anchor each listingVersion via SR-2 before referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record.
+A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record.
 A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings failing any step in the validation order; (LR-3) refuse new sessions when the RB-4..RB-6 revocation check returns `revoked` or `indeterminate`.
 
 #### 6.3.5 Discovery — .well-known/agent.json extension

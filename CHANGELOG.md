@@ -29,6 +29,16 @@ The format used per release:
   probes never change content/signature validity, conformance, revocation,
   identity, or reputation.
 
+### Added — CORE v0.2 / DACS-1..5 lifecycle gates
+
+- **Normative SR-2 transaction lifecycle and portable `AnchorReceipt`** (CORE §5.1, SR2-1..SR2-9) — distinguishes local submission, binding-proved durable acceptance, consensus inclusion, finality, and the rejected/dropped/replaced/expired/reorged lifecycle outcomes. `indeterminate` is a separate observation disposition over a hash-linked preserved receipt, never a lifecycle transition, demotion, or authority to resubmit. Authenticated dropped/expired/reorged transactions may re-enter acceptance/inclusion; receipt conflicts are ordered by binding-authenticated evidence, never observer time. External index visibility is orthogonal and never gates protocol progress. The evidence-carrying portable receipt binds logical/native artifact addresses, content hash, native transaction, writer, nonce, block evidence, and finality profile without recursively requiring the receipt itself to be anchored.
+- **Stage-specific anchoring gates** (DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 / §9.9 PIPE-6; DACS-5 §10.3.1 ST-3/ST-7/ST-11) — active listings require finalized, resolvable anchors; Vet may progress reversibly on binding-proved durable acceptance; payment and irreversible delivery require the agreement commitment to be finalized; and a successful session remains `audit-pending` until every required artifact and the completed bundle are finalized and independently resolvable. `audit-pending` pauses/resumes through ST-7 on SR-2 failure and can never become a post-payment abort. Bumps **DACS-1 to v0.4, DACS-2 to v0.3, DACS-3 to v0.4, DACS-4 to v0.4, and DACS-5 to v0.4**.
+
+### Fixed — DACS-3 / DACS-4
+
+- **Commitment timestamp circularity removed through a minor-safe new type** (DACS-3 §8.5.2 / §8.6, CA-8/CA-9) — new producers emit the structurally distinct `FinalityCommitmentRecord` (`finalityCommitmentVersion: "1"`, signed under `dacs-finality-commitment:v1:`) with `createdAt` and an explicit orchestrator `signature`; `committedAt` is derived only after anchoring from the finalized receipt's consensus timestamp. The v0.1-v0.3 `CommitmentRecord` and `dacs-commitment:v1:` signed shape remain unchanged and readable for historical audit, with legacy `committedAt` cross-checked against authenticated historical anchor time. Deadline and listing-expiry checks use the applicable authenticated anchor time.
+- **Post-payment evidence catch-up generalized to every rail** (DACS-4 §9.5.1 PC-7) — once payment reaches rail-defined finality, delayed SR-2 `SettlementEvidence` anchoring is idempotent asynchronous bookkeeping. It cannot fail or resubmit the payment; it keeps the session non-terminal at the DACS-5 audit gate until evidence finalizes.
+
 ### Fixed — documentation
 
 - **Flow-trace signing preimage aligned with CORE §B.7** (#277) — the informative `signedBytes` helper now appends the UTF-8 bytes of the 64-character lowercase artifact-hash string instead of decoding it to 32 raw digest bytes. This matches CORE §B.7 and the published golden Ed25519 signature; an executable regression pins the 80-byte accepted preimage and rejects the former 48-byte construction. No normative protocol rule changes.

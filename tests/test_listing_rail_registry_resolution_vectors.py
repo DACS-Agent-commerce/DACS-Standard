@@ -62,6 +62,30 @@ def verify_definition_proof(definition):
     return None
 
 
+def compose_listing_validation(
+    *,
+    ordinary_failure=False,
+    revocation="absent",
+    rail_resolution="verified",
+    signer_controls_key=True,
+):
+    """Compose the §6.3.4 ordered checks into the overall listing result."""
+
+    if ordinary_failure:
+        return "rejected"
+    if revocation in {"revoked", "indeterminate"}:
+        return revocation
+    if rail_resolution == "rejected":
+        return "rejected"
+    if not signer_controls_key:
+        return "rejected"
+    if rail_resolution == "indeterminate":
+        return "indeterminate"
+    if rail_resolution in {"verified", "not-applicable"}:
+        return "verified"
+    raise ValueError("unsupported validation input")
+
+
 def evaluate(data):
     pay_phases = data["payPhases"]
     accepted = data["acceptedRails"]
@@ -221,6 +245,42 @@ class ListingRailRegistryResolutionVectorTests(unittest.TestCase):
         self.assertEqual(
             evaluate(cases["definition-signature-invalid-indeterminate"]["input"]),
             ("indeterminate", "rail-definition-signature-invalid"),
+        )
+
+    def test_overall_listing_disposition_composition(self):
+        self.assertEqual(
+            compose_listing_validation(ordinary_failure=True),
+            "rejected",
+        )
+        self.assertEqual(
+            compose_listing_validation(revocation="revoked"),
+            "revoked",
+        )
+        self.assertEqual(
+            compose_listing_validation(revocation="indeterminate"),
+            "indeterminate",
+        )
+        self.assertEqual(
+            compose_listing_validation(rail_resolution="rejected"),
+            "rejected",
+        )
+        self.assertEqual(
+            compose_listing_validation(
+                rail_resolution="indeterminate",
+                signer_controls_key=False,
+            ),
+            "rejected",
+        )
+        self.assertEqual(
+            compose_listing_validation(
+                rail_resolution="indeterminate",
+                signer_controls_key=True,
+            ),
+            "indeterminate",
+        )
+        self.assertEqual(
+            compose_listing_validation(rail_resolution="not-applicable"),
+            "verified",
         )
 
 

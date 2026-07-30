@@ -44,6 +44,10 @@ The format used per release:
   `phaseHandler`. A conclusively unknown or mismatched rail rejects;
   missing/unverifiable registry authority or any unavailable advertised
   definition is `indeterminate` and blocks every new session from that listing.
+  The reader composes rail resolution into an explicit overall listing
+  disposition: ordinary validation failures and rail `rejected` produce
+  `rejected`; rail `indeterminate` remains non-accusatory but cannot mask a
+  later signer-control failure.
   PA-1 unpinned references select the signed snapshot's unique highest version;
   PA-2/PA-3 readers cannot silently substitute in-code constants. Selection of
   one complete rail reference, session-start pinning, and authoritative

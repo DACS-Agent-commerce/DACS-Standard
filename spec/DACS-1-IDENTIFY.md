@@ -655,6 +655,14 @@ Readers MUST validate listings in the following order, **halting on the first
 failure**, except that the `indeterminate` result described in step 8 is
 retained while the reader completes step 9:
 
+```
+type ListingValidationDisposition =
+  | "verified"
+  | "rejected"
+  | "revoked"
+  | "indeterminate"
+```
+
 1. schema conformance;
 2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
 3. `validity.notBefore ≤ now ≤ validity.notAfter` (if set);
@@ -674,6 +682,21 @@ retained while the reader completes step 9:
    procurements settled out-of-band);
 9. signer resolves to a key controllable by the listing publisher (`seller.identity`).
 
+The reader MUST compose those results into exactly one
+`ListingValidationDisposition`:
+
+- a failure at step 1–4, 6–7, or 9, and an LRR `rejected` result at step 8,
+  produce `rejected`;
+- the RB-4..RB-6 result at step 5 produces `revoked` or `indeterminate` when
+  it is not `absent`; those revocation dispositions are not relabelled as
+  `rejected`;
+- an LRR `indeterminate` at step 8 is retained while step 9 runs. If step 9
+  then fails, the terminal signer-control failure produces `rejected`; if step
+  9 succeeds, the overall result is `indeterminate`; and
+- `verified` is returned only when every ordinary validation step succeeds,
+  revocation is `absent`, and listing-time rail resolution is `verified` or is
+  not applicable to a pay-less pipeline.
+
 **Listing-time rail resolution (normative).** `acceptedRails` is the publisher's signed claim about rails it is willing to use; it is not evidence that any named rail exists. A reader evaluates step 8 with a three-way `ListingRailResolution` disposition:
 
 ```
@@ -689,7 +712,7 @@ type ListingRailResolution = "verified" | "rejected" | "indeterminate"
 
 **Conformance — listing publishers and readers**
 A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; and (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record. For a pay-bearing listing it MUST: (LP-6) obtain `verified` under LRR-1..LRR-6 at publication time rather than treating its own `acceptedRails` array as proof.
-A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings whose validation returns `rejected`; (LR-3) refuse new sessions when the RB-4..RB-6 revocation check returns `revoked` or `indeterminate`, or when listing-time rail resolution returns `indeterminate`.
+A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings whose overall `ListingValidationDisposition` is `rejected`; (LR-3) refuse new sessions unless the overall `ListingValidationDisposition` is `verified`, including when it is `revoked` or `indeterminate`.
 
 #### 6.3.5 Discovery — .well-known/agent.json extension
 

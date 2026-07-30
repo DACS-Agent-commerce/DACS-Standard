@@ -237,6 +237,10 @@ A conforming rail author MUST:
 - (RD-3) specify railVersion as monotonically increasing per railId;
 - (RD-4) specify supersedes when replacing a prior rail with the same railId;
 - (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected).
+- (RD-6) keep `phaseHandler` invariant across every version sharing a `railId`.
+  A registry update that would change that handler MUST use a new `railId`;
+  the steward and registry-index publisher MUST reject a same-`railId` handler
+  change.
 
 A consumer MUST resolve a rail by:
 
@@ -245,7 +249,17 @@ A consumer MUST resolve a rail by:
 3. fetching the rail at the indicated anchor and verifying its content hash and signature;
 4. if the agreement pins a specific railVersion, MUST use that version; otherwise MUST use the latest at session start, pinned into the session.
 
-For DACS-1 listing validation, the `PaymentRailRef` is resolved before session creation under §6.3.4 LRR-1..LRR-6. That listing-time check uses the same canonical index, definition hash/signature, version-selection, and governance authority described above, additionally binds the definition's `phaseHandler` to the listing's pay-phase kind, and returns `verified` / `rejected` / `indeterminate`. It establishes discovery eligibility only; the orchestrator still repeats resolution, pins the exact definition at session start, and applies RAV-R1..RAV-R5.
+For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
+before session creation under §6.3.4 LRR-1..LRR-6, including references not
+used by a particular pay phase. That listing-time check uses the same canonical
+index, definition hash/signature, per-reference version selection, and
+governance authority described above. For a railId-only pay-phase field it
+checks that every matching reference-resolved definition uses the RD-6 handler
+and that the handler equals the phase kind; it does not select one complete
+reference. It returns `verified` / `rejected` / `indeterminate` for the listing
+as a whole. It establishes discovery eligibility only; the orchestrator still
+selects one complete reference, repeats resolution, pins the exact definition
+at session start, and applies RAV-R1..RAV-R5.
 
 **Progressive anchoring for early deployments.** The rail registry follows the same progressive anchoring pattern as the DACS-2 recipe registry (§7.4.4):
 
@@ -978,7 +992,7 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 
 | Role | Requirements |
 | --- | --- |
-| Rail author | RD-1 through RD-5 |
+| Rail author | RD-1 through RD-6 |
 | Listing publisher / reader | DACS-1 §6.3.4 LRR-1 through LRR-6 |
 | Orchestrator (rail selection) | RAV-R1 through RAV-R5 |
 | Payment phase handler | PC-1 through PC-7; PB-1 through PB-3 for payee-bound agreements; phase-specific procedure |

@@ -35,7 +35,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4 | 4 | `fail` / `pass` |
-| [`listing-rail-registry-resolution-v0.4.json`](listing-rail-registry-resolution-v0.4.json) | DACS-1 §6.3.4 LRR-1..LRR-6; DACS-4 §9.4.3 | 19 | `fail` / `indeterminate` / `pass` |
+| [`listing-rail-registry-resolution-v0.4.json`](listing-rail-registry-resolution-v0.4.json) | DACS-1 §6.3.4 LRR-1..LRR-6; DACS-4 §9.4.3 | 28 | `fail` / `indeterminate` / `pass` |
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |

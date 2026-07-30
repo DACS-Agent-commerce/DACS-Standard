@@ -40,10 +40,13 @@ The format used per release:
   explicitly a publisher claim, never proof that the rail exists. Every
   pay-bearing listing must independently resolve each accepted rail through the
   authenticated registry, match any pinned version and the signed definition,
-  and bind each `pay-*` phase to the registered `phaseHandler`. A conclusively
-  unknown or mismatched rail rejects; missing/unverifiable registry authority is
-  `indeterminate` and blocks a new session. PA-2/PA-3 readers cannot silently
-  substitute in-code constants. Session-start pinning and authoritative
+  and bind each `pay-*` phase to the registered, same-`railId`-invariant
+  `phaseHandler`. A conclusively unknown or mismatched rail rejects;
+  missing/unverifiable registry authority or any unavailable advertised
+  definition is `indeterminate` and blocks every new session from that listing.
+  PA-1 unpinned references select the signed snapshot's unique highest version;
+  PA-2/PA-3 readers cannot silently substitute in-code constants. Selection of
+  one complete rail reference, session-start pinning, and authoritative
   availability checks still run separately.
 
 ### Added — CORE v0.2 / DACS-1..5 lifecycle gates

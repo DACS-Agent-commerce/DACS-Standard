@@ -1,19 +1,65 @@
 """Executable assertions for DACS-1 §6.3.4 LRR-1..LRR-6 candidate vectors."""
 
+import base64
 import hashlib
 import json
 import unittest
 from pathlib import Path
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
 VECTORS = ROOT / "conformance/vectors/security/listing-rail-registry-resolution-v0.4.json"
 SPEC_DACS1 = ROOT / "spec/DACS-1-IDENTIFY.md"
 SPEC_DACS4 = ROOT / "spec/DACS-4-SETTLE.md"
+RAIL_DOMAIN = "dacs-rail:v1:"
 
 
 def canonical_json(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+
+
+def decode_base64url(value):
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def verify_definition_proof(definition):
+    """Return an LRR indeterminate reason, or None for a verified proof.
+
+    Most matrix cases summarize already-authenticated SR-2 resolution in
+    ``state``. Proof-bearing cases execute the two cryptographic boundaries
+    that a registry consumer is most likely to omit: index content-hash
+    equality and the dacs-rail:v1: steward signature.
+    """
+
+    proof = definition.get("proof")
+    if proof is None:
+        return None
+    unsigned = proof.get("unsigned")
+    if not isinstance(unsigned, dict):
+        return "rail-definition-unverifiable"
+    content_hash = hashlib.sha256(canonical_json(unsigned)).hexdigest()
+    if content_hash != proof.get("indexContentHash"):
+        return "rail-definition-hash-mismatch"
+    try:
+        public_key = Ed25519PublicKey.from_public_bytes(
+            decode_base64url(proof["stewardPublicKey"])
+        )
+        public_key.verify(
+            decode_base64url(proof["signature"]),
+            (RAIL_DOMAIN + content_hash).encode("utf-8"),
+        )
+    except (InvalidSignature, KeyError, TypeError, ValueError):
+        return "rail-definition-signature-invalid"
+    if (
+        unsigned.get("railId") != definition.get("railId")
+        or unsigned.get("railVersion") != definition.get("railVersion")
+        or unsigned.get("phaseHandler") != definition.get("phaseHandler")
+    ):
+        return "rail-definition-unverifiable"
+    return None
 
 
 def evaluate(data):
@@ -46,13 +92,28 @@ def evaluate(data):
         resolved_handlers = {}
         for ref in accepted:
             version = ref.get("railVersion")
-            candidates = [
+            rail_candidates = [
                 definition for definition in definitions
                 if definition.get("railId") == ref["railId"]
-                and (version is None or definition.get("railVersion") == version)
+            ]
+            if not rail_candidates:
+                return "fail", "unknown-rail"
+            if version is None:
+                versions = [
+                    definition.get("railVersion")
+                    for definition in rail_candidates
+                    if isinstance(definition.get("railVersion"), int)
+                ]
+                if not versions:
+                    return "fail", "ambiguous-pa1-rail-version"
+                version = max(versions)
+            candidates = [
+                definition
+                for definition in rail_candidates
+                if definition.get("railVersion") == version
             ]
             if len(candidates) != 1:
-                return "fail", "unknown-rail"
+                return "fail", "ambiguous-pa1-rail-version"
             definition = candidates[0]
             if (
                 definition.get("governanceAnchoring") != "in-code"
@@ -75,10 +136,12 @@ def evaluate(data):
         return "indeterminate", "registry-unavailable"
 
     entries = {entry["railId"]: entry for entry in registry["entries"]}
-    definitions = {
-        (definition["railId"], definition["railVersion"]): definition
-        for definition in registry["definitions"]
-    }
+    definitions = {}
+    for definition in registry["definitions"]:
+        key = (definition["railId"], definition["railVersion"])
+        if key in definitions:
+            return "indeterminate", "registry-internally-inconsistent"
+        definitions[key] = definition
     rejected_reason = None
     indeterminate_reason = None
     resolved_handlers = {}
@@ -95,6 +158,10 @@ def evaluate(data):
         definition = definitions.get((ref["railId"], version))
         if definition is None or definition.get("state") != "verified-finalized":
             indeterminate_reason = indeterminate_reason or "rail-definition-unavailable"
+            continue
+        proof_error = verify_definition_proof(definition)
+        if proof_error is not None:
+            indeterminate_reason = indeterminate_reason or proof_error
             continue
         resolved_handlers.setdefault(ref["railId"], set()).add(definition["phaseHandler"])
 
@@ -138,6 +205,23 @@ class ListingRailRegistryResolutionVectorTests(unittest.TestCase):
         self.assertIn("ListingRailResolution", dacs1)
         self.assertIn("MUST NOT fall back to in-code constants", dacs1)
         self.assertIn("§6.3.4 LRR-1..LRR-6", dacs4)
+        self.assertIn("(RD-6)", dacs4)
+        self.assertIn("every advertised `PaymentRailRef`", dacs4)
+
+    def test_proof_vectors_execute_hash_and_signature_checks(self):
+        cases = {vector["name"]: vector for vector in self.data["vectors"]}
+        self.assertEqual(
+            evaluate(cases["definition-proof-valid"]["input"]),
+            ("pass", "verified"),
+        )
+        self.assertEqual(
+            evaluate(cases["definition-content-hash-mismatch-indeterminate"]["input"]),
+            ("indeterminate", "rail-definition-hash-mismatch"),
+        )
+        self.assertEqual(
+            evaluate(cases["definition-signature-invalid-indeterminate"]["input"]),
+            ("indeterminate", "rail-definition-signature-invalid"),
+        )
 
 
 if __name__ == "__main__":

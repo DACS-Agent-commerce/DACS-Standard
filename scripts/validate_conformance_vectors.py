@@ -24,6 +24,7 @@ DEFAULT_MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 EXPECTED_STAGES = ["DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"]
 MANIFEST_REQUIRED_CASE = {"id", "area", "spec", "summary", "status", "want"}
 MANIFEST_STATUSES = {"golden", "candidate"}
+REGISTRY_CASE_ID = "sig-registry-closed"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
 REQUIRED_TOP_LEVEL = {
     "vectorId",
@@ -245,6 +246,31 @@ def validate_manifest(path: Path) -> list[str]:
         reason = case.get("reason")
         if status == "golden" and (not isinstance(reason, str) or not reason):
             errors.append(fail(path, f"{prefix}.reason MUST be a non-empty string for golden cases"))
+
+        if case_id == REGISTRY_CASE_ID:
+            registry = sorted(load_registered_domain_separators(ROOT))
+            want = case.get("want")
+            if case.get("spec") != "§B.7":
+                errors.append(fail(path, f"{prefix}.spec MUST identify the closed registry at §B.7"))
+            if not registry:
+                errors.append(fail(path, f"{prefix}: could not parse the closed §B.7 domain-separator registry"))
+            elif not isinstance(want, dict):
+                errors.append(fail(path, f"{prefix}.want MUST pin the registry count and exact separator set"))
+            else:
+                if want.get("count") != len(registry):
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.count mismatch; expected {len(registry)}, got {want.get('count')!r}",
+                        )
+                    )
+                if want.get("separators") != registry:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.separators MUST equal the sorted closed §B.7 registry",
+                        )
+                    )
 
     golden_path = path.parent / "vectors" / "golden.json"
     if golden_path.exists():

@@ -17,6 +17,18 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
+  DACS-5 §10.4.1; #308) — replaces legacy `{kind,id,contentHash}`
+  `AttestationRef` objects in every shared bundle fixture position with
+  `{anchor:{kind,locator},contentHash,signer?}`, replaces legacy
+  `{rail,txHash,kind}` transaction references with the applicable
+  `ChainTxRef` arm, and deterministically re-hashes/re-signs the affected
+  bundle and settlement fixtures. Adds a 19-case exact-shape suite covering
+  all three attestation anchor kinds and all eleven transaction-reference
+  discriminators, including nested AP2 receipt attestations and negative
+  legacy forms. The manifest gains two golden executable cases but retains
+  `dacsVersion: "0.1"` because that is the full-profile baseline identifier,
+  not a fixture revision. No normative protocol rule changes.
 - **Domain-separator registry golden regenerated** (CORE §B.7; #283) — replaces the stale `sig-registry-closed-16` assertion with a count of 24 and the exact sorted separator set published by the closed registry, including the `dacs-finality-commitment:v1:` separator added by the SR-2 lifecycle work. The manifest validator now compares exact membership, so a future remove-one/add-one substitution cannot pass behind an unchanged cardinality. Refreshes the lifecycle manifest and trace pins. No normative protocol rule changes.
 
 ### Clarified — DACS-1 identity and discovery

@@ -78,8 +78,10 @@ def derive_with_guard_iv(fixture, resolution_context=None):
     refs = sorted(
         (
             {
-                "kind": "dacs-5-bundle",
-                "id": bundle["jobId"],
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": bundle["jobId"],
+                },
                 "contentHash": canonical_hash(bundle),
             }
             for bundle in selected
@@ -137,7 +139,9 @@ class LegacyReputationGoldenTests(unittest.TestCase):
         self.assertEqual(legacy["metrics"]["counterpartyFaultRate"], 0.5)
         for ref in legacy["bundleRefs"]:
             bundle = next(
-                item for item in self.fixture["bundles"] if item["jobId"] == ref["id"]
+                item
+                for item in self.fixture["bundles"]
+                if item["jobId"] == ref["anchor"]["locator"]
             )
             self.assertEqual(ref["contentHash"], canonical_hash(bundle))
 

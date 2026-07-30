@@ -181,7 +181,7 @@
     "status": "golden — reference-verifier-accepted (verifyBundle) + byte-stable",
     "fixture": "conformance/fixtures/attestation-bundle-0004.json",
     "jobId": "DACS-VERIFY-0004",
-    "bundleHash": "9e5ea58d198b459a2929d38019807c465ce9988dcb89c847cce8e80210df39ba",
+    "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847",
     "decisions": {
       "pass": "pass",
       "requiredSignerReject": "fail",
@@ -198,14 +198,14 @@
     "divergentSellerFixture": "conformance/fixtures/attestation-bundle-0004-seller.json",
     "divergentSeller": {
       "jobId": "DACS-VERIFY-0004",
-      "bundleHash": "83b180d7a2a00109e96fe099df6c1ef14271b5c0d43c24da78051238cee580bd",
+      "bundleHash": "cade43c1a19311a8e67e362f68c85c1805f926e08549653a858c833503b79d95",
       "decision": "pass",
       "outcome": "failed-counterparty"
     },
     "htlc9Fixture": "conformance/fixtures/attestation-bundle-htlc9.json",
     "htlc9": {
       "jobId": "DACS-VERIFY-HTLC9",
-      "bundleHash": "ba1889b7d86e37b98cd2f7b4a053f328ab33e7137b0edff8efb4645f24fd4096",
+      "bundleHash": "6a1fa3f4a172977c0bb6bdf00289f2003b431371ba26df0504ea42f362bc72c9",
       "decision": "pass",
       "settlementPhase": {
         "kind": "pay-cross-chain-htlc",
@@ -219,21 +219,21 @@
     "status": "golden — reference-verifier-accepted (verifyBundle) + byte-stable",
     "bundleRef": {
       "jobId": "DACS-VERIFY-0004",
-      "bundleHash": "9e5ea58d198b459a2929d38019807c465ce9988dcb89c847cce8e80210df39ba"
+      "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
     },
     "divergentBundleRefs": [
       {
         "jobId": "DACS-VERIFY-0004",
-        "bundleHash": "9e5ea58d198b459a2929d38019807c465ce9988dcb89c847cce8e80210df39ba"
+        "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
       },
       {
         "jobId": "DACS-VERIFY-0004",
-        "bundleHash": "83b180d7a2a00109e96fe099df6c1ef14271b5c0d43c24da78051238cee580bd"
+        "bundleHash": "cade43c1a19311a8e67e362f68c85c1805f926e08549653a858c833503b79d95"
       }
     ],
     "htlc9BundleRef": {
       "jobId": "DACS-VERIFY-HTLC9",
-      "bundleHash": "ba1889b7d86e37b98cd2f7b4a053f328ab33e7137b0edff8efb4645f24fd4096"
+      "bundleHash": "6a1fa3f4a172977c0bb6bdf00289f2003b431371ba26df0504ea42f362bc72c9"
     },
     "seeds": {
       "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
@@ -256,16 +256,16 @@
     "status": "golden — reference-verifier-accepted (verifyBundle) + byte-stable",
     "bundleRef": {
       "jobId": "DACS-VERIFY-0004",
-      "bundleHash": "9e5ea58d198b459a2929d38019807c465ce9988dcb89c847cce8e80210df39ba"
+      "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
     },
     "divergentBundleRefs": [
       {
         "jobId": "DACS-VERIFY-0004",
-        "bundleHash": "9e5ea58d198b459a2929d38019807c465ce9988dcb89c847cce8e80210df39ba"
+        "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
       },
       {
         "jobId": "DACS-VERIFY-0004",
-        "bundleHash": "83b180d7a2a00109e96fe099df6c1ef14271b5c0d43c24da78051238cee580bd"
+        "bundleHash": "cade43c1a19311a8e67e362f68c85c1805f926e08549653a858c833503b79d95"
       }
     ],
     "seeds": {
@@ -294,8 +294,8 @@
     "deliveryFixture": "conformance/fixtures/settlement-evidence-delivery-success.json",
     "jobId": "DACS-VERIFY-SETTLE-0001",
     "deliveryJobId": "DACS-VERIFY-DELIVER-0001",
-    "evidenceHash": "665d4604f4002a3a1f98ca4e719ecbd0deca9b67b827364cf89602f30de52ca2",
-    "deliveryEvidenceHash": "0b7e2e24b666de463059d9852a3c53558ff1ca961033072e87e516db2b0d979d",
+    "evidenceHash": "719fc5a3c3d32c5d2010ebc210ec5ea8fcbdea6cd014eefa141dab7dfda78f0b",
+    "deliveryEvidenceHash": "89b28b232c5217b3828d028c0d2c28fcdce535972e84010f75298eacee155efa",
     "decisions": {
       "paymentPass": "pass",
       "deliveryPass": "pass",
@@ -422,29 +422,39 @@
       },
       "bundleRefs": [
         {
-          "kind": "dacs-5-bundle",
-          "id": "DACS-VERIFY-L3-REP-ABORT-SELF",
-          "contentHash": "0ad30f585dbe75b3c21f8e58c25f53a40c571cf0faa2485894a14b4b48596c97"
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "DACS-VERIFY-L3-REP-ABORT-SELF"
+          },
+          "contentHash": "0dd752ed94524d010b90002eeea491fa505d365f74e2e1cd006376f225c9a71b"
         },
         {
-          "kind": "dacs-5-bundle",
-          "id": "DACS-VERIFY-L3-REP-ABORT-OTHER",
-          "contentHash": "129ac7c0fb9bb911ecde0ef4b7520603ff30d505c526c4b0f2e645580a0367d9"
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "DACS-VERIFY-L3-REP-COUNTERPARTY"
+          },
+          "contentHash": "4eebd5297c0bcaaa92988475d789f99dbadf25abbbdb495d16a4738dbe22ecaa"
         },
         {
-          "kind": "dacs-5-bundle",
-          "id": "DACS-VERIFY-L3-REP-COMPLETED",
-          "contentHash": "2837e68d32d66fe164bc1fc2606043910e8460af684f56381dc86f09ff89051c"
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "DACS-VERIFY-L3-REP-ABORT-OTHER"
+          },
+          "contentHash": "8ef7be44a7afabd9d6ff9307cd7d3996bcc17d14251c87c59de314bdaf83ea1e"
         },
         {
-          "kind": "dacs-5-bundle",
-          "id": "DACS-VERIFY-L3-REP-SUBSTRATE",
-          "contentHash": "63ac0e92f864dbe0b2a18c7719a4a21d2d365ab01f8bdd43d6910d05c259c48e"
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "DACS-VERIFY-L3-REP-COMPLETED"
+          },
+          "contentHash": "d71fbfb2ddfed93296a05c12ebf3eadd1c2b7dcb1c8519c5dffc937fc65bb59a"
         },
         {
-          "kind": "dacs-5-bundle",
-          "id": "DACS-VERIFY-L3-REP-COUNTERPARTY",
-          "contentHash": "b2b4105c96cee924a6b7aa2507cf130536d5a6074bd9ecd135ab033d580bc48b"
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "DACS-VERIFY-L3-REP-SUBSTRATE"
+          },
+          "contentHash": "e0695fd578b8cac61c3561d934e89308a4a48579f4e8bdbd82e9fc5843a18b4d"
         }
       ]
     },

@@ -4,7 +4,8 @@
   "provenance": {
     "generator": "github.com/mj-deving/dacs-verify",
     "command": "bun scripts/emit-payee-binding-vectors.ts",
-    "commit": "f32684fb19dca07df87f9346a7fde292cadf7893"
+    "commit": "f32684fb19dca07df87f9346a7fde292cadf7893",
+    "referenceShapePatch": "DACS-Standard #308: upstream f32684f generator with AgreementParty.vetRecordRef upgraded to DACS-2 §7.5.2 AttestationRef; agreement signatures re-emitted from the generator's published test JWKs and canonicalized to CORE SIG-6 unpadded Base64URL"
   },
   "gaps": [
     "#231 PB conformance row and vectors",
@@ -16,7 +17,7 @@
     "cci-lei:984500PBSELLER000010": "BuwkmF-v_71CiQrUMIDkQHwQlKiJPWch4F_Q_DmHhNY",
     "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111": "yra4qKH2-KfQGZVE9e1w-c7fVuKT50z9cHUTdYQWaEE"
   },
-  "hash": "8df3ca0023a957ace09345c7b9d2ffc8c15cd262daa275fea235819a73654046",
+  "hash": "af662645c48dcda3f9f3341afb593f6f34951d2610bd92d5ccad9a9c992ca64a",
   "count": 28,
   "vectors": [
     {
@@ -63,8 +64,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -73,8 +76,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -99,21 +104,21 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "JuzhWqJ10H_F_aCaOmW0wKUhZmgjyU86t1ukX1j-8TgwCI1l3TItHEhkhh8quHrQv_Tvx1F55MgG67yMuP2pDw"
+            "value": "tviVFjhfjV4_UDYtnsBaU3HKDZaIRz4LdLzc3rTY5nJOxXH-meE65uqMM9KaRZmweRh5qRm9vzDQdnFDnWS7BA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA"
+            "value": "M9kYIRyAusQZrJBr4DCRkjko3DhWzXZYzj8nc1bgMDd1G2v8M-lnHxGpz1z_57o8d4VmWrnpeF-pcnYkjLAbCA"
           }
         ]
       },
-      "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+      "artifactHash": "fb4f28ab61666c00920b01774f170b190751392ecfa88a80e4879622ad1ddccc",
       "signatureDomain": "dacs-agreement:v1:",
       "want": {
         "expected": "pass",
         "ok": true,
-        "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+        "artifactHash": "fb4f28ab61666c00920b01774f170b190751392ecfa88a80e4879622ad1ddccc",
         "signatureDomain": "dacs-agreement:v1:",
         "reason": "legacy AgreementDocument schema and signatures verified; PB payout coverage is not applicable"
       }
@@ -162,8 +167,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -172,8 +179,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -205,16 +214,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -267,8 +276,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -277,8 +288,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -303,21 +316,21 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "JuzhWqJ10H_F_aCaOmW0wKUhZmgjyU86t1ukX1j-8TgwCI1l3TItHEhkhh8quHrQv_Tvx1F55MgG67yMuP2pDw"
+            "value": "tviVFjhfjV4_UDYtnsBaU3HKDZaIRz4LdLzc3rTY5nJOxXH-meE65uqMM9KaRZmweRh5qRm9vzDQdnFDnWS7BA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA"
+            "value": "M9kYIRyAusQZrJBr4DCRkjko3DhWzXZYzj8nc1bgMDd1G2v8M-lnHxGpz1z_57o8d4VmWrnpeF-pcnYkjLAbCA"
           }
         ]
       },
-      "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+      "artifactHash": "fb4f28ab61666c00920b01774f170b190751392ecfa88a80e4879622ad1ddccc",
       "signatureDomain": "dacs-agreement:v1:",
       "want": {
         "expected": "pass",
         "ok": true,
-        "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+        "artifactHash": "fb4f28ab61666c00920b01774f170b190751392ecfa88a80e4879622ad1ddccc",
         "signatureDomain": "dacs-agreement:v1:",
         "reason": "legacy AgreementDocument schema and signatures verified; PB payout coverage is not applicable"
       }
@@ -366,8 +379,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -376,8 +391,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -409,21 +426,21 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "pass",
         "ok": true,
-        "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+        "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
         "signatureDomain": "dacs-payee-bound-agreement:v1:",
         "reason": "artifact schema, commit phase, signatures, and payout coverage verified"
       }
@@ -472,8 +489,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -482,8 +501,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -515,16 +536,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "cWwd90iQZG65H7eXzJYXSrw4eyl22wM5O3AxRrVNQWNBrgg3u4ArQW_zXHfUwEisbBjdGye05WrvPZUQby19DA"
+            "value": "Vw9zCsr7xPcHNqmArPacAxgY8PSHj8KC64Dan2gQRK-5ugewqYin9X92wVd7k_6Y156lAA3Rsh0PdL4zJ1IRBQ"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "ESRIC9CL6jwwJ1olBIGhuN-9J8jG98T7a8vC4OgdxrYbokYYHZR9hLtTZA12Wfyx90tW_tGuXB3zb0-tDkvyCw"
+            "value": "g7vU-Ts2a6DxkclQzBSyfjVnWDZ7MfWX65oJHKWdHjctVQnIH-qy2pG66qnZvyy1iisEiMjMEsypjbyxS3PCDA"
           }
         ]
       },
-      "artifactHash": "8546623440f37a6ea4d6ec65ac7f1783fa9655141142a757ca7d7e9ff4d7205b",
+      "artifactHash": "44aa11d697c82b414f6c657e77218e8798fd4133ea1db84f1f65c7c9575efa22",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -577,8 +598,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -587,8 +610,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -621,16 +646,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "NhVIDkci6o-lHm58jkfv0ZA96H24J8KnKVe9vpNkVz_dnzaL3H4GQMNA-Bi4Mb4I3BNberPYU9YRIjRarzMPCw"
+            "value": "MHoK9sPGqp8TleHZNYekpWdlbp-UwAgaPU-3d9z4KGjyu3xOzPwzqE-ZQz5TioQF0ldsFOSPWVYPREDFwVZcBw"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "YdXuLtvPCBPjnlBij7Gsc1XAcvJMzhRJKzFqOvBlx7qjM6YsaG9eAQtYVS41p6jt-8mDI-ouTQ69uqiCSWsmBA"
+            "value": "DPEVENisfd5gCITtRf2fj3cbN-am8ZcRq8BMZRpydmRddcqgsGs-B0zudTfB7w_gRiPcSL1qhgFkrf8d6UrJAw"
           }
         ]
       },
-      "artifactHash": "c1769be99d7a5fda40077c2b67021e3992616dd9ab355a802fe81cb2cad33aaa",
+      "artifactHash": "c2e5f75ed40e5fda01e9780bc72c5bce19527d030f45a4eeb6a576310e0f2f77",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -683,8 +708,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -693,8 +720,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -727,16 +756,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "NhVIDkci6o-lHm58jkfv0ZA96H24J8KnKVe9vpNkVz_dnzaL3H4GQMNA-Bi4Mb4I3BNberPYU9YRIjRarzMPCw"
+            "value": "MHoK9sPGqp8TleHZNYekpWdlbp-UwAgaPU-3d9z4KGjyu3xOzPwzqE-ZQz5TioQF0ldsFOSPWVYPREDFwVZcBw"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "YdXuLtvPCBPjnlBij7Gsc1XAcvJMzhRJKzFqOvBlx7qjM6YsaG9eAQtYVS41p6jt-8mDI-ouTQ69uqiCSWsmBA"
+            "value": "DPEVENisfd5gCITtRf2fj3cbN-am8ZcRq8BMZRpydmRddcqgsGs-B0zudTfB7w_gRiPcSL1qhgFkrf8d6UrJAw"
           }
         ]
       },
-      "artifactHash": "c1769be99d7a5fda40077c2b67021e3992616dd9ab355a802fe81cb2cad33aaa",
+      "artifactHash": "c2e5f75ed40e5fda01e9780bc72c5bce19527d030f45a4eeb6a576310e0f2f77",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -788,8 +817,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -798,8 +829,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -831,16 +864,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "6xdPlO3WbaMzyk9erQJP_qv23obcnWgcyCmEq9Slr-NyjCOc4g8NSpCP9nK6Jsik8IUtMZcNN-4RbrGa06yfAg"
+            "value": "wPnmRSiRcCnbfQeCR280ruxMVC_6EOoAba-_QXcsQgyhCUcsvgqPY5aH1s1hekXBLnbiUOTPwCzXb41G5n-QBg"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "Y3vliIoB5y-tdnEJvMFwheEo34KWFEZYfS4UuyzbUxZSEgGxg8zG7pCCDfRwKqEtAzDJfd_dVc_wFh-2P2UDCQ"
+            "value": "PI0JA1oQw0UzI3PcFkcG8j0z6OKAk0s69PyFy7SJ2ZZC4Cq7i2IXj-3EMmKxptfaNf3ly8v3MFr8EsSBebuUCA"
           }
         ]
       },
-      "artifactHash": "e0933ae29df266d1132daf4cd7e41b1211adb1d0039363136ba473d95472e7db",
+      "artifactHash": "1d2dd116bdf2aa18506fead47f1b9d23400347d3ef7f082b21b2e1f744c46e77",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -892,8 +925,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -902,8 +937,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -935,16 +972,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "6xdPlO3WbaMzyk9erQJP_qv23obcnWgcyCmEq9Slr-NyjCOc4g8NSpCP9nK6Jsik8IUtMZcNN-4RbrGa06yfAg"
+            "value": "wPnmRSiRcCnbfQeCR280ruxMVC_6EOoAba-_QXcsQgyhCUcsvgqPY5aH1s1hekXBLnbiUOTPwCzXb41G5n-QBg"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "Y3vliIoB5y-tdnEJvMFwheEo34KWFEZYfS4UuyzbUxZSEgGxg8zG7pCCDfRwKqEtAzDJfd_dVc_wFh-2P2UDCQ"
+            "value": "PI0JA1oQw0UzI3PcFkcG8j0z6OKAk0s69PyFy7SJ2ZZC4Cq7i2IXj-3EMmKxptfaNf3ly8v3MFr8EsSBebuUCA"
           }
         ]
       },
-      "artifactHash": "e0933ae29df266d1132daf4cd7e41b1211adb1d0039363136ba473d95472e7db",
+      "artifactHash": "1d2dd116bdf2aa18506fead47f1b9d23400347d3ef7f082b21b2e1f744c46e77",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -997,8 +1034,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1007,8 +1046,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1033,16 +1074,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "AQLnPCPl_XRCetAH0mp9pb4HQoEC3dJlcxdJGbSvsU17YtJ3eSTu38ylwqZ1cOYXXlSrQBh2TpSkIFOmMh7kBw"
+            "value": "7QXHbuOtwms9R1vA4NPi35UExXW8CpmbuozmBFk5_gxGE26vrqthGkY9rxVQh7oGm5q6xe-x4U8XcFvhfUd7Cw"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "0JwuBQj76jiNyn9pWYqru-dnHgb-G-Xt1Ektl2zU6RAlBGLsMUSMTh85W4Tz_-MBWMVdOfi1m-a8EamvcsRWAA"
+            "value": "QoZjh8F1yAamMhR8HXSRoD5bCmTPJwwM0lEw-zo7zUlVhTY1sG1l-sMUDwnJJH1D3aH3Iu39Po9kTeHjbeAOCA"
           }
         ]
       },
-      "artifactHash": "189c150a9cdf84289cbd07d4166e316d8e874c96eb8d65bb1d9b6b992431a52d",
+      "artifactHash": "f1b756a8cbef5c444c3498452c7dfd7dc79d68dce10dbb84078a838c70227746",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "fail",
@@ -1050,7 +1091,7 @@
         "failedAt": "terms.payoutBindings",
         "errorClass": "permanent",
         "reason": "PayeeBoundAgreementDocument missing payoutBindings",
-        "artifactHash": "189c150a9cdf84289cbd07d4166e316d8e874c96eb8d65bb1d9b6b992431a52d",
+        "artifactHash": "f1b756a8cbef5c444c3498452c7dfd7dc79d68dce10dbb84078a838c70227746",
         "signatureDomain": "dacs-payee-bound-agreement:v1:"
       }
     },
@@ -1098,8 +1139,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1108,8 +1151,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1141,16 +1186,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "NEd6okkYC9ORm-QLeBivVC7Oz7URAEFU7tY0dr5nSTexkYTBflt_CjPA5mZSlfCXekVxOzt2rj2slwg7ei1MBw"
+            "value": "PC7j2OiL_6_o_NFvEGZ6Fx7Fb4RF3UgKYhw-gcEifObgY8DkRxqXGiVMIoZXrXEHHKO3v18rV_YTsZiYzU6zDg"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "GabxyqFNhbM1C5CzrlhhmiVyVvGq9s6KCGVxPK-F7AFv0Yx54_1rjj9YudkF9FED2scb2s9IJ6UayJqvHC9ACw"
+            "value": "mGZUwCIEu-aoe6LYj80Dcp4DFx-ZympJRVku7TgbZRjFOYzJkdRcalFAg-K2P5pbvIhHI32nB4x34ne8lnvrCQ"
           }
         ]
       },
-      "artifactHash": "85a7708cc7b18402e542c976a465056bd226908d0d70f5c1556c5b07e003eefe",
+      "artifactHash": "b02b9fa987d30fcabf1be94fede380f0d32b1d0897a2b6ac3e3faa668dcc6b82",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -1203,8 +1248,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1213,8 +1260,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1239,16 +1288,16 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "hQvistr6TcjQmMZKv47t5lHCWE58zgnAsXCiCMaTgDVvI5AtV0raxG-F4ttrFRSiPMSsB_HR2X_8iFjbVsX4Aw"
+            "value": "i5WvGD7Fv7oNWpjHHug7YAwhK69sg3i5-RCNr_K-rtYkcKlJQMZUWc-I3aamuQFCB-l3ebYXNYEzUxkvfMM3CQ"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "u85Ke-yb8pbuXtJ1jrwJ6QC3OQujFH57UKYYbyi8vyMmBoSCJNy_4ZhNvzelYRn1Ko-l_BX69LWPYkna4y7UAA"
+            "value": "2N-pRgdveoAi4sy4KHA9P8sH1rvNFfPGiEP3R9LNQw6xbuizu-owuRx1Veuztcb-KBOSg7bU4kAUypVyfPC9Bw"
           }
         ]
       },
-      "artifactHash": "e4d48571f751cb56639e4cf25bee4ed8e2b9934383d4dfeb0062a24bb9e99b93",
+      "artifactHash": "dd4bafe725b325ec0340de1ac1b82db6de11d2cae16518815b1acbde011b4d64",
       "want": {
         "expected": "fail",
         "ok": false,
@@ -1278,8 +1327,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1288,8 +1339,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1321,22 +1374,22 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "want": {
         "expected": "fail",
         "ok": false,
         "failedAt": "signatures",
         "errorClass": "permanent",
-        "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+        "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
         "signatureDomain": "dacs-agreement:v1:",
         "reason": "Ed25519 signature did not verify against signed bytes"
       }
@@ -1362,8 +1415,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1372,8 +1427,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1398,22 +1455,22 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "JuzhWqJ10H_F_aCaOmW0wKUhZmgjyU86t1ukX1j-8TgwCI1l3TItHEhkhh8quHrQv_Tvx1F55MgG67yMuP2pDw"
+            "value": "tviVFjhfjV4_UDYtnsBaU3HKDZaIRz4LdLzc3rTY5nJOxXH-meE65uqMM9KaRZmweRh5qRm9vzDQdnFDnWS7BA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "vCVe2z5vAob11xkLYJ9EaPPKbTDH0ED5H59or47xHNEKwch7GipsPfxUt8UbC0cmg3onI3GiWWtLd7DsLwapDA"
+            "value": "M9kYIRyAusQZrJBr4DCRkjko3DhWzXZYzj8nc1bgMDd1G2v8M-lnHxGpz1z_57o8d4VmWrnpeF-pcnYkjLAbCA"
           }
         ]
       },
-      "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+      "artifactHash": "fb4f28ab61666c00920b01774f170b190751392ecfa88a80e4879622ad1ddccc",
       "want": {
         "expected": "fail",
         "ok": false,
         "failedAt": "signatures",
         "errorClass": "permanent",
-        "artifactHash": "1b500cbc55c7d41f53f3ca13eb3fe725ff9ba2af9cff2fd0eae29b4f5651b54e",
+        "artifactHash": "fb4f28ab61666c00920b01774f170b190751392ecfa88a80e4879622ad1ddccc",
         "signatureDomain": "dacs-payee-bound-agreement:v1:",
         "reason": "Ed25519 signature did not verify against signed bytes"
       }
@@ -1461,8 +1518,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1471,8 +1530,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1498,23 +1559,23 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
-      "artifactHash": "e4d48571f751cb56639e4cf25bee4ed8e2b9934383d4dfeb0062a24bb9e99b93",
+      "artifactHash": "dd4bafe725b325ec0340de1ac1b82db6de11d2cae16518815b1acbde011b4d64",
       "signatureDomain": "dacs-agreement:v1:",
       "want": {
         "expected": "fail",
         "ok": false,
         "failedAt": "signatures",
         "errorClass": "permanent",
-        "artifactHash": "e4d48571f751cb56639e4cf25bee4ed8e2b9934383d4dfeb0062a24bb9e99b93",
+        "artifactHash": "dd4bafe725b325ec0340de1ac1b82db6de11d2cae16518815b1acbde011b4d64",
         "signatureDomain": "dacs-agreement:v1:",
         "reason": "Ed25519 signature did not verify against signed bytes"
       }
@@ -1561,8 +1622,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1571,8 +1634,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1604,12 +1669,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
@@ -1629,7 +1694,7 @@
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "pass",
@@ -1682,8 +1747,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1692,8 +1759,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1725,12 +1794,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
@@ -1749,7 +1818,7 @@
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "fail",
@@ -1802,8 +1871,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1812,8 +1883,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1839,12 +1912,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "wM6ADFaU_cBlLyUQCVN_DwA7XjHJzqhCOKzzUIrB0lbe23PrW3zaojfN7sZkafNz_TE_e9MrWVbnmLCHHzsLAw"
+            "value": "WVEdCpKJlTW39_lYqQMTU_3UvpZ-kypK35vBJ_9nQkfmq1Nb0UAtLLpqUdbsBGnq5RSdMMCxIQXQnmbzoFGcDA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "oqRSQizzzZ63UDoM5gZS8hl8QHh-zCUtWhiEGdOvt5uHf_-Tr9F0yd3BnGX9FBzo-quGlksGdHYT1pib7Jk-Cw"
+            "value": "Lqo3oflEOVPxu9SnF-Qg41pkShUA72YsLMd-5yeYARGgqsOznOkLEErUo4hwgo9JEgGREj51ZiUlW62gI175Cg"
           }
         ]
       },
@@ -1863,7 +1936,7 @@
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "fe2dbada91630e4bd66583a38c3e425b33eb4a1fcd3fd910854c2105134132e0",
+      "artifactHash": "5020aef2b8a1f735dd10d823c633c9fe4cf821ef753649b8dc59bc9b81957c92",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "fail",
@@ -1916,8 +1989,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -1926,8 +2001,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -1964,12 +2041,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "wvzHcCjLc0uRbRWQDVVOCNFZdDdMIXZ6otgWP76dEsP2ppdu-muSHYJEChynle9dXEVTHUJdruD5XtFRjq5HDg"
+            "value": "KKptYUQqXamzqq5pqqtSJgX2b2SBcwDgmsOZG2sF1tTtIA6Ug7KX3UBzIiFqStpOEeW7KyaeZMdajBBNa4koDw"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "gMVFD83llkkMvNSZguObklLMWpAraaca1SS1elalnhPRtwRwiUCUvR4Se0CU_xhqIOL5oh0ZW3oy57DUcsLaCw"
+            "value": "Bkiic5ptIqdDQ-cjUrp_9TVaZNA-Zxr47o6Ab3M_FGjZGJ2CrGc7SPkm-KcfvghMRgdFIi7IV_dWd3JI4hKyBQ"
           }
         ]
       },
@@ -1988,7 +2065,7 @@
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "91e170fc9e06443d0ea31528a343f4cf0b5b867616481d95e78e31b05d4ac50f",
+      "artifactHash": "f96aa932e1595bd7aa99288e17d721b10d6af4418ed0513c66e9a8917afa6daa",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "fail",
@@ -2041,8 +2118,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2051,8 +2130,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -2084,12 +2165,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "Q0NtJQ3mjju4y5MoFycjRo_cYdmYGZ-DMbyQxaN5Ksjr4x_JLjyZ5eUOYGx31-Xf617T60WClQxj-mRikfiRBg"
+            "value": "I7FY1NfBHg9mRbHd-jXb1bKVtIyADTPjmkwKWOVcvSre1ay24xIDeuTwFS1N17bTYgoQqeDEQGbfIg-QUIP2Bw"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "BddRPOu4NaO3idwvXGwVIecSrXW78Syc6N7dE4F7JLKjv_QJbhwXsL3v-y78Ud4E2yphYoGaK0gRa_u3Oe_2BQ"
+            "value": "qn8Zixr7-sIZeXZRmoh8ODGhWPnQi9d9NwjdFUlZrgNXUO7PmvOADfVsesyewnON5tJX2G48DPK6BjEuBuVrBA"
           }
         ]
       },
@@ -2108,7 +2189,7 @@
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "8be7ce43ee8c6cf096c5a29632e16997f78e22f571a0f45df78870d1c774618b",
+      "artifactHash": "fc63351d2ddcac9d160c08ee5a2b28de5826aedce7a85c47d18b9bee8bfcd3a2",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "fail",
@@ -2161,8 +2242,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2171,8 +2254,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -2209,12 +2294,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "gnWVGyU_-rfkItPVluBO_0rI20S6hq_qWVVSwKz3xeWwMUxTwI9FR8Oi5_o5g56Cpmk9PcVmFwkaXEntdDNGCQ"
+            "value": "Di49W5kXb-r69RzIz5E7y_HN3WhC5aMrLtU5WLX7kzf9GuU5oULr4YF1BRYQsWgkcVg6fprVrppqqmZEI9j0AQ"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "j2knMceDBZrI5VldifWiMln1qsbWK0rC3i0NWWpgZosznMGQC37SD80hn0o9IBEAVSI51sjp4jGUUwqjTxlHCg"
+            "value": "ipbIfAPL38rtrJQgho5x38J9Z3ydl-1MkZSX8MQ_Kw8tSQJZ9GC3M2CRJedD24k4rspcz3BgIaTwiE56A8e1AA"
           }
         ]
       },
@@ -2233,7 +2318,7 @@
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "075e8250708a05a4c63c7dfc95e9e8576c9064fe1e255b65ac67cb41064dbaf8",
+      "artifactHash": "f90195af41840ed2a6f330488a27c5c0ea6bd2f42fb9c898dfa482bace72625d",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "fail",
@@ -2292,8 +2377,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2302,8 +2389,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -2340,12 +2429,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "uLgUtztf48-ig-lNG-a_TIwicpgJfT_Yw4Y2I_sLDSqTe0n3pNjlbg5dcwhY5ITLjsqR-CzyVQ7H8LUTmy9VBg"
+            "value": "QgrOsDRJAxayt1wRp7f6hn5HH3xEgUyfMmY5-ZA-jdjzYEktRfTIYqPvOTablk0ByRzlyKn4bWydVZ9HTVnBBA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "oE4HD6SOdd1KsQumP8HW-D82kChEhlElj85DFjQRz_KUDHpx5R6X3Fhz5xcfSFbQF4Ze2Vd-vQQ1vAnqH6w1Bg"
+            "value": "rHJBY8SkQQRjfkCP_uC2FzJ9Npq-vCj9dkiOs1AjAw1kyBxGj6wSTGobW6HaCMAoEOwCLZwjGO3VQQyDBlXkCQ"
           }
         ]
       },
@@ -2385,7 +2474,7 @@
           "tier3AgreementAssertionPresent": true
         }
       ],
-      "artifactHash": "c135ecd531c058e4bd47e8ad5351aba9f033741d68eb81f6dbd7003c8a8c0091",
+      "artifactHash": "96206416137be6b29c34e6330006fb86ac001a08d88bec51e914d0a6dac0cb83",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "results": [
@@ -2450,8 +2539,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2460,8 +2551,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -2493,12 +2586,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
@@ -2523,7 +2616,7 @@
           "reason": "controlled-linked-claim-resolved"
         }
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "fail",
@@ -2576,8 +2669,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2586,8 +2681,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -2619,12 +2716,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
@@ -2649,7 +2746,7 @@
           "reason": "controlled-linked-claim-resolved"
         }
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "pass",
@@ -2703,8 +2800,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2713,8 +2812,10 @@
             "primaryClaim": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
             "bundleHash": "sha256:92268255a207f79d786d645be912f5139d3a805479dceec7f1527c500a091822",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller-demos",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller-demos"
+              },
               "contentHash": "08b921806ccc6214618b6a515eeac1593febd4491ca92fe883332de236be0a29"
             }
           }
@@ -2746,12 +2847,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "18XL0_ayJnfGFyXkYwMnxa2jSF2mlJd2PhBx-hHjts62obs3YBc-_9raV6OkThNbIxOWyEe70_J7aCc0PyfdBQ"
+            "value": "M2KL4DTkOhT8o2zw25xf-1vdPDuRYStIKzUvjI62JiFakCNyWtpAT3nNx3-7PNTfrGUpJriB2RGEdV8y0evIBQ"
           },
           {
             "party": "cci-xm:demos:testnet:0x1111111111111111111111111111111111111111111111111111111111111111",
             "algorithm": "ed25519",
-            "value": "JklfbMs5fIikfMIJtmTc-ttJtCkdXlAFTb73OJsAsaytjspTEXDu9SldEMZ9auRknEPgf6CHFF0aPS6x2wjtAw"
+            "value": "kq-wBGdfTNywHKVpHm4KDGP8P73jsqrCrbf97QiGrKJ_R1UR9E4jJmtHJcnDp9TkC69gbQfCW0K7LrY7IBy5AQ"
           }
         ]
       },
@@ -2771,7 +2872,7 @@
         "tier2Applicable": false,
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "fc8688cea8beef34fdc46d1d5589347333f2d9c635d22727543431989379a00f",
+      "artifactHash": "8b4744d23c3e821b87eaf3b617e1440f01fcd3d54b8495c1697b050f2e65e08d",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "pass",
@@ -2824,8 +2925,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2834,8 +2937,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -2867,12 +2972,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
@@ -2897,7 +3002,7 @@
         },
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "indeterminate",
@@ -2956,8 +3061,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -2966,8 +3073,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -2999,12 +3108,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "ihNnVkoarpKXv_JgEyhXpUBMzw6zGx1lc6SHRdvLWvmw09YLkcjBJr_Re0_asPdyqnljq5a7Xj9L3IoS8Zc5Bw"
+            "value": "H43CRA_UZqoRFMIKZGS5q_zl5xGZrUoq_6UEgqRnckEQwiOF5CIIPHr_AjFaXym6raJmSavQkneAbRXlhNgwAA"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "WBre7wXAa4SgUiQ9F1o3zAyjdJJT1UFO2Zc0aPpuv1VmQRksxN1jXekyuw9AJ6ATqMMMFc0JenqYcZ2YxkW3BQ"
+            "value": "CrYxb7jRDTaLUIzhTgCIQTF4XFPMVpAjhZwipVtRogBHCZRAbTwpoU_-vNn6LIayDjlMXuhBmSEjRIKiTrYcDw"
           }
         ]
       },
@@ -3029,7 +3138,7 @@
         },
         "tier3AgreementAssertionPresent": true
       },
-      "artifactHash": "ba18e9d63c98041a279897595bab70f30d09f96b301cd3d5f136c6fcda1a0336",
+      "artifactHash": "29203c18e563b0ea4c309f11c40d865a729dc4d984ca403cc6702cf13f889d02",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "error",
@@ -3084,8 +3193,10 @@
             "primaryClaim": "cci-lei:984500PBBUYER0000010",
             "bundleHash": "sha256:72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-buyer"
+              },
               "contentHash": "73410871a10ed0bd07d9d91e6257462eadf660276068e23193e64e45425d6de3"
             }
           },
@@ -3094,8 +3205,10 @@
             "primaryClaim": "cci-lei:984500PBSELLER000010",
             "bundleHash": "sha256:5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
             "vetRecordRef": {
-              "kind": "dacs-2-composite",
-              "id": "vet-seller",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "vet-seller"
+              },
               "contentHash": "168941ac09764de1ae926973d369c0723afbe376465b92125f2285d04581d647"
             }
           }
@@ -3127,12 +3240,12 @@
           {
             "party": "cci-lei:984500PBBUYER0000010",
             "algorithm": "ed25519",
-            "value": "fiSJAgKms8rifLictUoH6rwO5c7t3FX3w8MgngFW71TPo9D-QzLmS90sIh5BMdwzIxczQopsN2TtasbtdyUoAw"
+            "value": "wwLcxrRSTTuKB-XwgBydrw6PjJWS58IJeC7Rwk_Uz0o3L-NCZNhOC_E4Q-I2k36r5_FJ_SQzKwJW-KBEOgvxCg"
           },
           {
             "party": "cci-lei:984500PBSELLER000010",
             "algorithm": "ed25519",
-            "value": "gp101MYmPDTGT96r_hVD-LTp66vWm7HdSLFOCJ7bbn6OUuinzPwQMmb5oND0KF5vI9iGeME6X8kG10bN9c0DBA"
+            "value": "sjO3Os3W2_iZSDS-wwO_U9t3LFsFGhO9HbDTYz7e2wilzIO8oTBJAyAJB9w0394koawAmbPhbGhsr46VmzY1CA"
           }
         ]
       },
@@ -3159,7 +3272,7 @@
         "sb3FallbackAvailable": true,
         "sb3JobIdBinding": "absent-or-unverifiable"
       },
-      "artifactHash": "b29839db9aa60585296ae15688249456296fb376770127f3cc4d2851422decb4",
+      "artifactHash": "0dbb3eaf80773ce7feecd93c50970fbda08a33e388ca9e89f4fcb65fab752ffd",
       "signatureDomain": "dacs-payee-bound-agreement:v1:",
       "want": {
         "expected": "indeterminate",

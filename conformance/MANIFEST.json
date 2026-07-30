@@ -161,13 +161,41 @@
       "want": false
     },
     {
-      "id": "sig-registry-closed-16",
+      "id": "sig-registry-closed",
       "area": "signing",
-      "spec": "§7.7",
-      "summary": "the domain-separator registry is the closed set of 16",
+      "spec": "§B.7",
+      "summary": "the domain-separator registry is exactly the published closed set of 24",
       "status": "golden",
-      "reason": "reference-verifier-accepted + byte-stable",
-      "want": 16
+      "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
+      "want": {
+        "count": 24,
+        "separators": [
+          "dacs-agreement:v1:",
+          "dacs-amendment:v1:",
+          "dacs-auto-accept-commitment:v1:",
+          "dacs-auto-accept-instance:v1:",
+          "dacs-bundle-binding:v1:",
+          "dacs-bundle-presentation:v1:",
+          "dacs-bundle:v1:",
+          "dacs-channelmsg:v1:",
+          "dacs-commitment:v1:",
+          "dacs-composite:v1:",
+          "dacs-entitlement:v1:",
+          "dacs-evidence:v1:",
+          "dacs-fault-bundle-pointer:v1:",
+          "dacs-fault-bundle:v1:",
+          "dacs-finality-commitment:v1:",
+          "dacs-listing:v1:",
+          "dacs-payee-bound-agreement:v1:",
+          "dacs-rail:v1:",
+          "dacs-rating:v1:",
+          "dacs-recipe:v1:",
+          "dacs-revocation:v1:",
+          "dacs-session-binding:v1:",
+          "dacs-transcript:v1:",
+          "dacs-verifyresult:v1:"
+        ]
+      }
     },
     {
       "id": "sig-sig4-dacsx-disjoint",

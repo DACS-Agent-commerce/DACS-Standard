@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — DACS-4 v0.5
+
+- **Payload-bound attested delivery — `PayloadAttestationRecord` and DPA-1..DPA-9** (§9.6.3, §9.7, §B.1/§B.3/§B.7, §A.3; #300) — closes the path where `deliver-attested-payload` could be counted from seller/orchestrator-signed `SettlementEvidence` without the declared verification method or a payload-bound proof. A distinct minor-safe artifact (`payloadAttestationVersion: "1"`, `dacs-payload-attestation:v1:`) binds the exact delivered cleartext digest to `jobId`, the committed agreement, the signed DeliverableSpec, and the selected verification method; its method evidence remains independently resolved and verified. Listings selecting the phase must declare a usable method before any payment, success evidence must carry content hash + anchor + a ref to a passing payload record, non-pass/unresolved outcomes never collapse to success, and ordinary evidence signatures cannot substitute for method proof. The Demos binding carries DAHR's `responseHash`/`responseHeadersHash`/`txHash` through the method-evidence chain, requires an authenticated resolvable `web2Request` transaction at `included` or stronger (with finalization before terminal DACS-5 production), and limits the current string-returning API to byte-exact UTF-8 payloads. Adds candidate vectors covering binding, replay, type/domain separation, DAHR transaction/hash requirements, self-signed disclosure, and fail-closed resolution.
+
 ### Fixed — conformance
 
 - **Domain-separator registry golden regenerated** (CORE §B.7; #283) — replaces the stale `sig-registry-closed-16` assertion with a count of 24 and the exact sorted separator set published by the closed registry, including the `dacs-finality-commitment:v1:` separator added by the SR-2 lifecycle work. The manifest validator now compares exact membership, so a future remove-one/add-one substitution cannot pass behind an unchanged cardinality. Refreshes the lifecycle manifest and trace pins. No normative protocol rule changes.

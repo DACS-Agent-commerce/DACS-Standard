@@ -450,7 +450,7 @@ A failed or aborted bundle MUST be produced when the session reaches its termina
 
 - all DACS-2 composite verification records;
 - the DACS-3 agreement (if any);
-- DACS-4 settlement evidence — one entry per executed phase invocation, **except** an ST-8-resolved cross-chain settle phase, which contributes exactly its `:resolved` success record. The interim `dest-revealed-source-unclaimed` failure record is NOT listed independently in `settlementEvidence[]` and is reachable only via that record's `supersedesEvidenceRef`. Both parties' `settlementEvidence[]` arrays MUST therefore contain identical entries — the resolved record, not the interim — so the two-sided copies stay canonically equal (§10.4.1);
+- DACS-4 settlement evidence — one entry per executed phase invocation, **except** an ST-8-resolved cross-chain settle phase, which contributes exactly its `:resolved` success record. The interim `dest-revealed-source-unclaimed` failure record is NOT listed independently in `settlementEvidence[]` and is reachable only via that record's `supersedesEvidenceRef`. Both parties' `settlementEvidence[]` arrays MUST therefore contain identical entries — the resolved record, not the interim — so the two-sided copies stay canonically equal (§10.4.1). A successful `deliver-attested-payload` entry is valid only after its DACS-4 §9.6.3 `attestationRef` resolves through the complete DPA-3..DPA-9 chain (`PayloadAttestationRecord` → method evidence/native transaction → exact delivered payload hash); these transitive dependencies are required referenced artifacts for CORE §5.1 SR2-9 finalization/resolution and MUST NOT be replaced by the SettlementEvidence signer's assertion;
 - DACS-4 amendments (refunds);
 - DACS-5 ratings (if the rate phase ran).
 

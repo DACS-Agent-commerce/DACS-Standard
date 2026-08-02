@@ -122,6 +122,13 @@ def evaluate(data):
             ]
             if not rail_candidates:
                 return "fail", "unknown-rail"
+            candidate_handlers = [
+                definition.get("phaseHandler") for definition in rail_candidates
+            ]
+            if any(not isinstance(handler, str) for handler in candidate_handlers):
+                return "indeterminate", "pa1-definition-unverifiable"
+            if len(set(candidate_handlers)) != 1:
+                return "fail", "pa1-handler-version-drift"
             if version is None:
                 versions = [
                     definition.get("railVersion")
@@ -245,6 +252,17 @@ class ListingRailRegistryResolutionVectorTests(unittest.TestCase):
         self.assertEqual(
             evaluate(cases["definition-signature-invalid-indeterminate"]["input"]),
             ("indeterminate", "rail-definition-signature-invalid"),
+        )
+
+    def test_pa1_unpinned_rejects_cross_version_handler_drift(self):
+        cases = {vector["name"]: vector for vector in self.data["vectors"]}
+        self.assertEqual(
+            evaluate(cases["pa1-unpinned-cross-version-handler-drift-rejected"]["input"]),
+            ("fail", "pa1-handler-version-drift"),
+        )
+        self.assertEqual(
+            evaluate(cases["pa1-unpinned-selects-unique-highest-version"]["input"]),
+            ("pass", "verified-pa1"),
         )
 
     def test_overall_listing_disposition_composition(self):

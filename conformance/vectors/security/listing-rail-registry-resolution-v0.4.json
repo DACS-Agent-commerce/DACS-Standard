@@ -3,8 +3,8 @@
   "spec": "DACS-1 §6.3.4 LRR-1..LRR-6; DACS-4 §9.4.3",
   "issue": 298,
   "inputModel": "payPhases and acceptedRails are signed listing inputs; registry is an independently read DACS-4 snapshot; registry.state and definition.state summarize authenticated SR-2/finality resolution except where a definition.proof executes index-content-hash and dacs-rail:v1: signature verification; definitions are keyed by the reference-resolved railId and railVersion; PA-1 definitions are accepted only under an explicit disclosed trust policy",
-  "count": 28,
-  "hash": "c688543ed5401bbe9377187f57c94508e4b75a9b7faf97e2511978cb75164f34",
+  "count": 29,
+  "hash": "d42f40fc6329a9fd25008364ce26de63bc82008328237e0bbdc485cdf895666c",
   "vectors": [
     {
       "name": "intake-only-no-rails",
@@ -789,6 +789,47 @@
       },
       "expected": "pass",
       "reason": "verified-pa1"
+    },
+    {
+      "name": "pa1-unpinned-cross-version-handler-drift-rejected",
+      "input": {
+        "trustPhase": "PA-1",
+        "trustPolicyAcceptsPA1": true,
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x:d"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x:d"
+          }
+        ],
+        "inCodeDefinitions": [
+          {
+            "railId": "x:d",
+            "railVersion": 1,
+            "phaseHandler": "pay-evm-erc20",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          },
+          {
+            "railId": "x:d",
+            "railVersion": 2,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          }
+        ],
+        "registry": {
+          "state": "unavailable",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "pa1-handler-version-drift"
     },
     {
       "name": "malformed-accepted-rail-rejected",

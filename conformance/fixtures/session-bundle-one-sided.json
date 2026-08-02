@@ -9,8 +9,10 @@
     "contentHash": "688d73919618186e01836b5c7af78b1c5c9078385e43fd26d12ca1a21f8d9dba"
   },
   "agreementRef": {
-    "kind": "dacs-3-agreement",
-    "id": "agreement-DACS-VERIFY-L3-ONE-SIDED",
+    "anchor": {
+      "kind": "storage-program",
+      "locator": "agreement-DACS-VERIFY-L3-ONE-SIDED"
+    },
     "contentHash": "54c89acf3f58bf46ab870cce991da5782c076f4b4a9f1818a5b4dcb8985ec0c5"
   },
   "parties": [
@@ -32,8 +34,10 @@
       "outcome": "fail",
       "errorClass": "counterparty",
       "attestationRef": {
-        "kind": "dacs-4-evidence",
-        "id": "evidence-DACS-VERIFY-L3-ONE-SIDED",
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "evidence-DACS-VERIFY-L3-ONE-SIDED"
+        },
         "contentHash": "4c3d1a68059b3a4f12e313b194c106b619a40307f93cd62e2a47c85b9a17213d"
       }
     }
@@ -41,8 +45,10 @@
   "vetRecords": [],
   "settlementEvidence": [
     {
-      "kind": "dacs-4-evidence",
-      "id": "evidence-DACS-VERIFY-L3-ONE-SIDED",
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "evidence-DACS-VERIFY-L3-ONE-SIDED"
+      },
       "contentHash": "4c3d1a68059b3a4f12e313b194c106b619a40307f93cd62e2a47c85b9a17213d"
     }
   ],
@@ -53,7 +59,7 @@
     {
       "party": "did:demos:buyer",
       "algorithm": "ed25519",
-      "value": "QbT5D15tTzL4n5yqzRZ35CEqxcOwDvDJfwZguBMRmD3wK4evM_OXE0rjU-6-d7zkpEC6SSkvSDA9y6Q_XVV6DQ"
+      "value": "wHj6ZCPotNJ-OG7hZuMlEqnbxD3wr6_BaajNaYvWIowvzzTRuiGEJ9eBIraydsLlS3uQdmBuB7Wx7i4HEl8uAQ"
     }
   ]
 }

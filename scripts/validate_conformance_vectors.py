@@ -247,6 +247,13 @@ def validate_manifest(path: Path) -> list[str]:
         if status == "golden" and (not isinstance(reason, str) or not reason):
             errors.append(fail(path, f"{prefix}.reason MUST be a non-empty string for golden cases"))
 
+        fixture = case.get("fixture")
+        if fixture is not None:
+            if not isinstance(fixture, str) or not fixture:
+                errors.append(fail(path, f"{prefix}.fixture MUST be a non-empty path string"))
+            elif not fixture_exists(path.parent, fixture):
+                errors.append(fail(path, f"{prefix}.fixture missing: {fixture}"))
+
         if case_id == REGISTRY_CASE_ID:
             registry = sorted(load_registered_domain_separators(ROOT))
             want = case.get("want")

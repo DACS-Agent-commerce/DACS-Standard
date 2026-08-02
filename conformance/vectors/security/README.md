@@ -26,6 +26,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
+| [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 19 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |

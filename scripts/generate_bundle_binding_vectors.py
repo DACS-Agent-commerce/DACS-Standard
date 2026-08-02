@@ -9,7 +9,10 @@ Reshapes every anchored bundle to the DACS-5 v0.3 ``FaultAttestationBundle`` typ
 L2 semantics to the multiplicity vectors (7 renamed to
 ``bb-equal-standing-divergence`` and 8 changed to ``indeterminate`` — budget
 exhaustion and equal-standing authorized divergence are ``indeterminate``,
-never a void or an ``error`` classification).
+never a void or an ``error`` classification). It also upgrades each nested
+agreement reference to the normative DACS-2 §7.5.2 ``AttestationRef`` wire
+shape; this changes the signed bundle bytes and is therefore part of the same
+deterministic regeneration (#308).
 
 The transform is a fixed point: applied to its own output it yields identical
 bytes, so ``--write`` then ``--check`` is a determinism proof. Buyer/seller
@@ -152,6 +155,19 @@ def reshape_bundle(bundle, keys):
             out[k] = v
     if "faultBundleVersion" not in out:  # bundle had neither key (shouldn't happen)
         out = {"faultBundleVersion": "1", **out}
+    agreement_ref = out.get("agreementRef")
+    if (
+        isinstance(agreement_ref, dict)
+        and "anchor" not in agreement_ref
+        and isinstance(agreement_ref.get("id"), str)
+    ):
+        out["agreementRef"] = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": agreement_ref["id"],
+            },
+            "contentHash": agreement_ref["contentHash"],
+        }
     return out
 
 

@@ -9,8 +9,10 @@
     "contentHash": "523fd847aa12527534937d20d2f73453d9efa65242b2302994534020a21dc3e0"
   },
   "agreementRef": {
-    "kind": "dacs-3-agreement",
-    "id": "agreement-dacs-verify-0004",
+    "anchor": {
+      "kind": "storage-program",
+      "locator": "agreement-dacs-verify-0004"
+    },
     "contentHash": "0aa1c81b07e746755bcbb496da6bcb75b9c25ecc15d7bed9e32105780001898d"
   },
   "parties": [
@@ -31,8 +33,10 @@
       "kind": "vet-counterparty",
       "outcome": "ok",
       "attestationRef": {
-        "kind": "dacs-4-evidence",
-        "id": "vet-dacs-verify-0004",
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "vet-dacs-verify-0004"
+        },
         "contentHash": "d8a683311ffd2a5e2d01fede4b7501a089758b1fea7b84066af1ed45f8d48eb8"
       }
     },
@@ -42,29 +46,34 @@
       "outcome": "ok",
       "txRefs": [
         {
-          "rail": "demos-testnet",
-          "txHash": "demos-testnet:tx-dacs-verify-0004-settle",
-          "kind": "settlement"
+          "kind": "demos",
+          "txHash": "demos-testnet:tx-dacs-verify-0004-settle"
         }
       ],
       "attestationRef": {
-        "kind": "dacs-4-evidence",
-        "id": "settlement-dacs-verify-0004",
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "settlement-dacs-verify-0004"
+        },
         "contentHash": "8d0b400b4530267381a5d2d8bdc052b0517097d132c6b3b69e9c2d6f421a758c"
       }
     }
   ],
   "vetRecords": [
     {
-      "kind": "dacs-4-evidence",
-      "id": "vet-dacs-verify-0004",
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "vet-dacs-verify-0004"
+      },
       "contentHash": "d8a683311ffd2a5e2d01fede4b7501a089758b1fea7b84066af1ed45f8d48eb8"
     }
   ],
   "settlementEvidence": [
     {
-      "kind": "dacs-4-evidence",
-      "id": "settlement-dacs-verify-0004",
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "settlement-dacs-verify-0004"
+      },
       "contentHash": "8d0b400b4530267381a5d2d8bdc052b0517097d132c6b3b69e9c2d6f421a758c"
     }
   ],
@@ -75,12 +84,12 @@
     {
       "party": "did:demos:buyer",
       "algorithm": "ed25519",
-      "value": "oYyPHgz8ehrMsCLeSDdruuHDEsLbHZrTcIearhk6K2w9aiBgx7CdGOYHbJcr3imaPr4q21YGUiE_xSh-bT9wDA"
+      "value": "UIuFixZJLjfdzdxUTUhygsUJllgVTkaKIIZQplKsUZlLjOugzb2Qm0y8vnF0iTRspQvVYQh3M-bQrN6OF5ouAg"
     },
     {
       "party": "did:demos:seller",
       "algorithm": "ed25519",
-      "value": "TiGFAa9ypWi4gMg-rDunkkipyNYe-asHLRF1m6Q6RFfptr7WnqULWDpCzWTjY-kaEjkrngAxJO7iRM4Jlga6AA"
+      "value": "e8eLmLhXAIOXQ7WpoggUvosP7jB7TyefqdDPop_boR6mF_rppY_pQ4xspKulkzcNMeoqnk7Y_j6ledkIT_tLDA"
     }
   ]
 }

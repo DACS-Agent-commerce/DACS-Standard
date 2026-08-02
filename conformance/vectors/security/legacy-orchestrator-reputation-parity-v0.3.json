@@ -1,0 +1,79 @@
+{
+  "set": "legacy-orchestrator-reputation-parity-v0.3",
+  "spec": "DACS-5 §10.5.1 orchestrator-fault neutral exclusion",
+  "provenance": {
+    "generator": "hand-authored implementation-neutral candidate vectors",
+    "note": "Each pair describes the same distinct-orchestrator fault. The executed derivation must retain one observable bundle while producing no buyer/seller fault denominator.",
+    "authority": "DACS-5 v0.3 §10.4.3 pair reconciliation and §10.5.1 neutral exclusions"
+  },
+  "vectors": [
+    {
+      "name": "legacy-legacy-orchestrator-failure-neutral",
+      "expected": "pass",
+      "window": [1779999999999, 1780000000001],
+      "partiesToScore": ["did:demos:buyer", "did:demos:seller"],
+      "copies": [
+        {"bundleVersion": "1", "jobId": "legacy-failure", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "buyer"},
+        {"bundleVersion": "1", "jobId": "legacy-failure", "anchoredByRole": "seller", "outcome": "failed-counterparty", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "seller"}
+      ],
+      "want": {"bundleCount": 1, "metrics": {"completionRate": null, "counterpartyAdjustedCompletionRate": null, "counterpartyFaultRate": null}}
+    },
+    {
+      "name": "mixed-orchestrator-failure-neutral",
+      "expected": "pass",
+      "window": [1779999999999, 1780000000001],
+      "partiesToScore": ["did:demos:buyer", "did:demos:seller"],
+      "copies": [
+        {"bundleVersion": "1", "jobId": "mixed-failure", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "buyer"},
+        {"faultBundleVersion": "1", "jobId": "mixed-failure", "anchoredByRole": "seller", "outcome": "failed-counterparty", "faultedParty": "orchestrator", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "seller"}
+      ],
+      "want": {"bundleCount": 1, "metrics": {"completionRate": null, "counterpartyAdjustedCompletionRate": null, "counterpartyFaultRate": null}}
+    },
+    {
+      "name": "fab-fab-orchestrator-failure-neutral",
+      "expected": "pass",
+      "window": [1779999999999, 1780000000001],
+      "partiesToScore": ["did:demos:buyer", "did:demos:seller"],
+      "copies": [
+        {"faultBundleVersion": "1", "jobId": "fab-failure", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "faultedParty": "orchestrator", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "buyer"},
+        {"faultBundleVersion": "1", "jobId": "fab-failure", "anchoredByRole": "seller", "outcome": "failed-counterparty", "faultedParty": "orchestrator", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "seller"}
+      ],
+      "want": {"bundleCount": 1, "metrics": {"completionRate": null, "counterpartyAdjustedCompletionRate": null, "counterpartyFaultRate": null}}
+    },
+    {
+      "name": "legacy-legacy-orchestrator-abort-neutral",
+      "expected": "pass",
+      "window": [1779999999999, 1780000000001],
+      "partiesToScore": ["did:demos:buyer", "did:demos:seller"],
+      "copies": [
+        {"bundleVersion": "1", "jobId": "legacy-abort", "anchoredByRole": "buyer", "outcome": "aborted-by-other", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "buyer"},
+        {"bundleVersion": "1", "jobId": "legacy-abort", "anchoredByRole": "seller", "outcome": "aborted-by-other", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "seller"}
+      ],
+      "want": {"bundleCount": 1, "metrics": {"completionRate": null, "counterpartyAdjustedCompletionRate": null, "counterpartyFaultRate": null}}
+    },
+    {
+      "name": "mixed-orchestrator-abort-neutral",
+      "expected": "pass",
+      "window": [1779999999999, 1780000000001],
+      "partiesToScore": ["did:demos:buyer", "did:demos:seller"],
+      "copies": [
+        {"bundleVersion": "1", "jobId": "mixed-abort", "anchoredByRole": "buyer", "outcome": "aborted-by-other", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "buyer"},
+        {"faultBundleVersion": "1", "jobId": "mixed-abort", "anchoredByRole": "seller", "outcome": "aborted-by-other", "faultedParty": "orchestrator", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "seller"}
+      ],
+      "want": {"bundleCount": 1, "metrics": {"completionRate": null, "counterpartyAdjustedCompletionRate": null, "counterpartyFaultRate": null}}
+    },
+    {
+      "name": "fab-fab-orchestrator-abort-neutral",
+      "expected": "pass",
+      "window": [1779999999999, 1780000000001],
+      "partiesToScore": ["did:demos:buyer", "did:demos:seller"],
+      "copies": [
+        {"faultBundleVersion": "1", "jobId": "fab-abort", "anchoredByRole": "buyer", "outcome": "aborted-by-other", "faultedParty": "orchestrator", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "buyer"},
+        {"faultBundleVersion": "1", "jobId": "fab-abort", "anchoredByRole": "seller", "outcome": "aborted-by-other", "faultedParty": "orchestrator", "finalisedAt": 1780000000000, "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"}, {"role": "seller", "primaryClaim": "did:demos:seller"}, {"role": "orchestrator", "primaryClaim": "did:demos:orchestrator"}], "phaseSummary": [], "copyMarker": "seller"}
+      ],
+      "want": {"bundleCount": 1, "metrics": {"completionRate": null, "counterpartyAdjustedCompletionRate": null, "counterpartyFaultRate": null}}
+    }
+  ],
+  "count": 6,
+  "hash": "6e632c8c6df47537832e364a66810b8f43cf744fb9f065be6448238446fd08be"
+}

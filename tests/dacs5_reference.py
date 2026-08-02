@@ -1,16 +1,17 @@
 """Executable DACS-5 reference predicates for the PR #248 round-5 blocker tests.
 
 This module is a *test-support* library, NOT a conformance validator and NOT a
-TestCase. It is imported only by the four blocker vector tests:
+TestCase. It is imported by the focused DACS-5 predicate tests, including:
 
     - tests/test_receipt_rederivation_vectors.py        (B1 determinism receipt)
     - tests/test_outsider_binding_flooding_vectors.py   (B2 BB-6 flood)
     - tests/test_mixed_version_reconciliation_vectors.py (B3 reconciliation totality)
     - tests/test_fab_bundle_extended_pointer_vectors.py  (B4 extended-pointer FAB path)
+    - tests/test_legacy_three_party_fault_reconciliation_vectors.py
 
 It executes the §10.5.1/§10.4.2/§10.4.3 predicates the round-4 review found were
-only *asserted* by fixture metadata: perspective_flip reconciliation (E1-E3),
-implied-fault-SET mixed-version comparison (E4), the ResolutionContextEntry replay
+only *asserted* by fixture metadata: implied-fault-SET legacy and mixed-version
+reconciliation (E1-E4), the ResolutionContextEntry replay
 contract (E5), per-signer BB-6 budgeting (E6), and the triple-identity extended-
 pointer rule (E7).
 
@@ -262,7 +263,7 @@ def _other(role):
 # Reconciliation predicates (E1-E4)
 # --------------------------------------------------------------------------- #
 def perspective_flip(outcome):
-    """§10.5.1 legacy-only perspective mapping (E1/E2/E3). Buyer<->seller involution;
+    """§10.5.1 legacy-only single-copy scoring map. Buyer<->seller involution;
     completed/failed-substrate unchanged."""
     return {
         "aborted-by-self": "aborted-by-other",
@@ -308,13 +309,34 @@ def _fab_faulted(bundle):
     return bundle["faultedParty"]
 
 
+def common_fault_set(copy_a, copy_b):
+    """Return the absolute faults both authenticated copies can describe.
+
+    Each legacy copy derives its permissible set from its own signed parties[]
+    roster. A counterparty roster must never enlarge the other copy's claim.
+    """
+    a_fab, b_fab = is_fab(copy_a), is_fab(copy_b)
+    if a_fab and b_fab:
+        a_fault, b_fault = _fab_faulted(copy_a), _fab_faulted(copy_b)
+        return {a_fault} if a_fault == b_fault else set()
+    if not a_fab and not b_fab:
+        a_faults = implied_fault_set(
+            copy_a["outcome"], copy_a["anchoredByRole"], roster_roles(copy_a))
+        b_faults = implied_fault_set(
+            copy_b["outcome"], copy_b["anchoredByRole"], roster_roles(copy_b))
+        return a_faults & b_faults
+    fab, legacy = (copy_a, copy_b) if a_fab else (copy_b, copy_a)
+    legacy_faults = implied_fault_set(
+        legacy["outcome"], legacy["anchoredByRole"], roster_roles(legacy))
+    return {_fab_faulted(fab)} & legacy_faults
+
+
 def divergence(copy_a, copy_b):
     """§10.4.3 single divergence definition as amended by E1/E4. Returns True iff the
     pair canonically diverges. Classifies the pair by type:
 
       FAB pair    -> faultedParty contradiction OR outcome-class contradiction OR phaseSummary
-      legacy pair -> perspective-reconciled: flip B to A's perspective, then compare the
-                     residual outcome + outcome-class; partner spellings do NOT diverge (E1)
+      legacy pair -> compare both implied-fault SETs; disjoint sets diverge (E1)
       mixed pair  -> the FAB.faultedParty must be a MEMBER of the legacy copy's
                      implied-fault SET; non-membership OR outcome-class OR phaseSummary (E4)
     """
@@ -327,22 +349,15 @@ def divergence(copy_a, copy_b):
 
     if a_fab and b_fab:
         # FAB pair: absolute faultedParty must agree (outcome class already checked).
-        return _fab_faulted(copy_a) != _fab_faulted(copy_b)
+        return not common_fault_set(copy_a, copy_b)
 
     if not a_fab and not b_fab:
-        # Legacy pair (E1): reconcile B into A's perspective via perspective_flip, then
-        # the residual outcomes must agree. Partner spellings collapse to one event.
-        if copy_a["anchoredByRole"] == copy_b["anchoredByRole"]:
-            reconciled_b = copy_b["outcome"]
-        else:
-            reconciled_b = perspective_flip(copy_b["outcome"])
-        return copy_a["outcome"] != reconciled_b
+        # Legacy pair (E1): both role-relative residuals map to implied-fault sets.
+        # A non-empty intersection means the assertions can describe the same event.
+        return not common_fault_set(copy_a, copy_b)
 
     # Mixed pair (E4): the FAB.faultedParty must be a member of the legacy implied set.
-    fab, legacy = (copy_a, copy_b) if a_fab else (copy_b, copy_a)
-    roster = roster_roles(fab) | roster_roles(legacy)
-    fset = implied_fault_set(legacy["outcome"], legacy["anchoredByRole"], roster)
-    return _fab_faulted(fab) not in fset
+    return not common_fault_set(copy_a, copy_b)
 
 
 def scored_outcome(bundle, role_of_party):
@@ -749,9 +764,11 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         cp = next((c for c in copies if c["bundle"]["anchoredByRole"] != role_of_party
                    and c["bundle"]["anchoredByRole"] in ("buyer", "seller")), None)
 
+        pair_faults = set()
         if self_c is not None and cp is not None:
             if divergence(self_c["bundle"], cp["bundle"]):
                 continue  # §10.4.3(d) dispute -> EXCLUDE from ALL metrics
+            pair_faults = common_fault_set(self_c["bundle"], cp["bundle"])
             # non-divergent mixed-version pair -> FAB authoritative
             if is_fab(self_c["bundle"]) != is_fab(cp["bundle"]):
                 auth = self_c if is_fab(self_c["bundle"]) else cp
@@ -769,7 +786,8 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
 
         b = auth["bundle"]
         oc = scored_outcome(b, role_of_party)
-        if is_fab(b) and b.get("faultedParty") == "orchestrator":
+        if ((is_fab(b) and b.get("faultedParty") == "orchestrator")
+                or pair_faults == {"orchestrator"}):
             orch_fault.add(job)
         reconciled.append(auth)
         outcomes.append(oc)

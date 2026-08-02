@@ -7,8 +7,8 @@
     "issue": "DACS-Agent-commerce/DACS-Standard#307",
     "generator": "hand-authored normative examples; independently recomputed by tests/test_cci_xm_rail_chain_applicability_vectors.py"
   },
-  "count": 15,
-  "hash": "ff00a2b727be740be010a4038fd22758d9866590b114499baed2ba3a9b0b755d",
+  "count": 20,
+  "hash": "c93dead49849ba2cf86827d0559c612a087ea8dee492b4a5fff62b90c1949390",
   "vectors": [
     {
       "name": "ethereum-mainnet-exact-chain-id-tier2",
@@ -87,6 +87,103 @@
         "claimChain": "eip155:84532",
         "tier2Applicable": true,
         "bindingTier": 2,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "nonempty-opaque-address-establishes-tier2",
+      "expected": "pass",
+      "claim": "cci-xm:evm:8453:not-an-evm-address",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "linkageDecision": "pass",
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:8453",
+        "claimChain": "eip155:8453",
+        "tier2Applicable": true,
+        "bindingTier": 2,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "claim-parameters-do-not-change-tier2-chain",
+      "expected": "pass",
+      "claim": "cci-xm:evm:8453:opaque-address?jurisdiction=US",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "linkageDecision": "pass",
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:8453",
+        "claimChain": "eip155:8453",
+        "tier2Applicable": true,
+        "bindingTier": 2,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "empty-address-does-not-establish-tier2",
+      "expected": "pass",
+      "claim": "cci-xm:evm:8453:",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:8453",
+        "claimChain": null,
+        "tier2Applicable": false,
+        "bindingTier": 3,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "parameter-only-address-does-not-establish-tier2",
+      "expected": "pass",
+      "claim": "cci-xm:evm:8453:?jurisdiction=US",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:8453",
+        "claimChain": null,
+        "tier2Applicable": false,
+        "bindingTier": 3,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "uppercase-family-does-not-establish-tier2",
+      "expected": "pass",
+      "claim": "cci-xm:EVM:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:8453",
+        "claimChain": null,
+        "tier2Applicable": false,
+        "bindingTier": 3,
         "maySubmitPayment": true
       }
     },

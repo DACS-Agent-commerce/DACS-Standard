@@ -391,9 +391,15 @@ The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 thr
      later receipt or provider response MUST NOT retroactively change the
      bundle-derived tier.
   2. A pinned-bundle `cci-xm` claim has an EIP-155 settlement chain iff it
-     conforms to the DACS-1 EVM settlement-chain profile:
-     `cci-xm:evm:<chainId>:<address>`. Its canonical chain identifier is the
-     corresponding `eip155:<chainId>`.
+     conforms to the DACS-1 EVM settlement-chain profile. Its scheme is
+     `cci-xm`, its family component is byte-equal to the lowercase ASCII
+     literal `evm`, its `<chainId>` is a bare positive minimal-decimal integer,
+     and the address component after `cci-xm:evm:<chainId>:` and before any
+     optional `?` parameters is non-empty. The address component is otherwise
+     opaque and does not determine the settlement chain; parameters likewise
+     do not determine it. The claim's canonical chain identifier is the
+     corresponding `eip155:<chainId>`. An empty address or a non-lowercase
+     family spelling does not establish tier-2 applicability.
   3. That claim is applicable to the rail iff the two canonical chain
      identifiers are byte-for-byte equal. A different numeric chain ID is not
      applicable. A name-style or otherwise non-profile subchain — including

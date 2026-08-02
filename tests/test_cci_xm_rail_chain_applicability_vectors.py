@@ -37,6 +37,9 @@ def claim_eip155_chain(claim):
     subchain = parts[2]
     if CHAIN_ID_RE.fullmatch(subchain) is None:
         return None
+    address = parts[3].split("?", 1)[0]
+    if not address:
+        return None
     return f"eip155:{subchain}"
 
 
@@ -182,6 +185,28 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
                 self.assertFalse(result["maySubmitPayment"])
                 self.assertTrue(result["mustNotUseTier3"])
 
+    def test_address_is_nonempty_but_otherwise_opaque_for_chain_applicability(self):
+        for name in [
+            "nonempty-opaque-address-establishes-tier2",
+            "claim-parameters-do-not-change-tier2-chain",
+        ]:
+            with self.subTest(vector=name):
+                result = evaluate(self.by_name[name])
+                self.assertEqual(result["claimChain"], "eip155:8453")
+                self.assertTrue(result["tier2Applicable"])
+                self.assertEqual(result["bindingTier"], 2)
+
+        for name in [
+            "empty-address-does-not-establish-tier2",
+            "parameter-only-address-does-not-establish-tier2",
+            "uppercase-family-does-not-establish-tier2",
+        ]:
+            with self.subTest(vector=name):
+                result = evaluate(self.by_name[name])
+                self.assertIsNone(result["claimChain"])
+                self.assertFalse(result["tier2Applicable"])
+                self.assertEqual(result["bindingTier"], 3)
+
     def test_later_x402_receipt_chain_cannot_retroactively_create_tier2(self):
         result = evaluate(self.by_name["x402-resource-without-pinned-chain-uses-tier3"])
         self.assertIsNone(result["railChain"])
@@ -198,6 +223,9 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
         dacs1 = DACS1.read_text(encoding="utf-8")
         dacs4 = DACS4.read_text(encoding="utf-8")
         self.assertIn("`cci-xm:evm:<chainId>:<address>`", dacs1)
+        self.assertIn("lowercase ASCII literal `evm`", dacs1)
+        self.assertIn("address component MUST be non-empty", dacs1)
+        self.assertIn("address component is otherwise", dacs4)
         self.assertIn("registers no legacy name-to-chain-ID", dacs1)
         self.assertIn("`eip155:<chainId>`", dacs1)
         self.assertIn("byte-for-byte equal", dacs4)

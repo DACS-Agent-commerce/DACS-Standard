@@ -83,7 +83,17 @@ continues to mirror the substrate's `<chain>:<subchain>:<address>` storage
 coordinates. When a claim is intended to establish the DACS-4 PB-2
 chain-specific payee binding for an EVM rail, producers MUST emit
 `cci-xm:evm:<chainId>:<address>`, where `<chainId>` is the EIP-155 chain ID as
-a bare positive decimal integer with no leading zeros. The pair
+a bare positive decimal integer with no leading zeros and `<address>` is
+non-empty. The family component is the lowercase ASCII literal `evm`; any
+other spelling does not conform to this profile.
+
+For PB-2 chain applicability, a reader treats the bytes after
+`cci-xm:evm:<chainId>:` and before any optional `?` parameters as the address
+component. The address component MUST be non-empty but is otherwise opaque to the
+chain-applicability predicate: its syntax, case, and normalization do not
+determine the settlement chain, and unknown ClaimReference parameters remain
+ignored as required above. An empty address, including an address represented
+only by parameters, does not conform to this profile. The pair
 `evm:<chainId>` maps one-to-one to the CAIP-2 network identifier
 `eip155:<chainId>`; for example, Ethereum mainnet is `evm:1`, Ethereum Sepolia
 is `evm:11155111`, Base mainnet is `evm:8453`, and Base Sepolia is

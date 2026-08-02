@@ -57,7 +57,7 @@ def validate_htlc9_evidence_case(path: Path) -> list[str]:
     tx_refs = evidence.get("paymentTxRefs")
     if not isinstance(tx_refs, list) or not tx_refs:
         errors.append(fail(path, "paymentTxRefs MUST be a non-empty array"))
-    elif not any(ref.get("role") == "htlc-reveal" for ref in tx_refs if isinstance(ref, dict)):
+    elif not any(ref.get("kind") == "htlc-reveal" for ref in tx_refs if isinstance(ref, dict)):
         errors.append(fail(path, "paymentTxRefs MUST include an htlc-reveal txRef proving preimage disclosure"))
     if "settlementFinality" in evidence:
         errors.append(fail(path, "HTLC-9 interim failure evidence MUST NOT carry settlementFinality"))

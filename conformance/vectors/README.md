@@ -9,7 +9,7 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
 > v0.1 artifact shapes. They pass **both** `scripts/validate_conformance_vectors.py`
 > (wrapper) and `scripts/validate_artifact_shapes.py` (deep per-`type` shape check)
 > — they are no longer quarantined. For the broader verifier-emitted conformance
-> suite see [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (204 cases).
+> suite see [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (236 cases).
 
 > **SIG-6 transition.** These two generated lifecycle chains predate the canonical
 > signature-value ruling and retain padded standard-Base64 signature spellings.
@@ -93,6 +93,10 @@ The validators are stdlib-only. The vector validator checks:
 - `§`-style spec references
 - registered §7.7 domain separators
 - deterministic `sha256:` content hashes over each artifact payload
+- exact nested §7.5.2 `AttestationRef` shapes in the reference-bearing shared
+  fixtures, including every DACS-5 bundle ref position
+- exact §9.3 `ChainTxRef` union arms, backed by all-discriminator positive
+  cases and legacy-shape negative cases
 
 ## Scope
 

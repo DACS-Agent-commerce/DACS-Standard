@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import sys
 import unittest
@@ -130,6 +131,98 @@ class ArtifactShapeTests(unittest.TestCase):
         v = load_validator()
         self.assertNotIn("dacs-v0.1-happy-path.json", v.QUARANTINE)
         self.assertNotIn("dacs-v0.1-negative-paths.json", v.QUARANTINE)
+
+    def test_attestationref_legacy_shape_is_rejected_at_nested_positions(self):
+        v = load_validator()
+        types = {
+            "Bundle": {
+                "required": {"agreementRef", "phases"},
+                "optional": set(),
+                "ftypes": {
+                    "agreementRef": "AttestationRef",
+                    "phases": "Phase[]",
+                },
+            },
+            "Phase": {
+                "required": {"attestationRef", "txRefs"},
+                "optional": set(),
+                "ftypes": {
+                    "attestationRef": "AttestationRef",
+                    "txRefs": "ChainTxRef[]",
+                },
+            },
+            "AttestationRef": {
+                "required": {"anchor", "contentHash"},
+                "optional": {"signer"},
+                "ftypes": {"signer": "ClaimReference"},
+            },
+        }
+        legacy = {
+            "kind": "dacs-4-evidence",
+            "id": "legacy-1",
+            "contentHash": "aa" * 32,
+        }
+        body = {
+            "agreementRef": legacy,
+            "phases": [{
+                "attestationRef": legacy,
+                "txRefs": [{
+                    "kind": "payment",
+                    "rail": "old-rail",
+                    "txHash": "old-tx",
+                }],
+            }],
+        }
+        errors = []
+        v.check_nested_shapes(body, "Bundle", types, "ctx", errors)
+        joined = "\n".join(errors)
+        self.assertIn("agreementRef", joined)
+        self.assertIn("phases[0].attestationRef", joined)
+        self.assertIn("not a registered ChainTxRef discriminator", joined)
+
+    def test_ap2_receipt_attestation_is_checked_recursively(self):
+        v = load_validator()
+        errors = []
+        v.check_chain_tx_ref(
+            {
+                "kind": "ap2",
+                "mandateId": "m-1",
+                "providerRef": "p-1",
+                "protocolVersion": "1",
+                "receiptAttestation": {
+                    "kind": "dacs-4-evidence",
+                    "id": "legacy",
+                    "contentHash": "bb" * 32,
+                },
+            },
+            "ctx",
+            errors,
+            "txRef",
+        )
+        self.assertTrue(any("receiptAttestation" in error for error in errors))
+
+    def test_reference_shape_set_is_complete_and_hash_pinned(self):
+        v = load_validator()
+        data = json.loads(v.REFERENCE_SHAPE_VECTOR.read_text(encoding="utf-8"))
+        cases = data["vectors"]
+        self.assertEqual(data["count"], len(cases))
+        encoded = json.dumps(
+            cases, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        self.assertEqual(data["hash"], hashlib.sha256(encoded).hexdigest())
+
+        passing_tx_kinds = {
+            case["value"]["kind"]
+            for case in cases
+            if case["type"] == "ChainTxRef" and case["expected"] == "pass"
+        }
+        self.assertEqual(passing_tx_kinds, set(v._CHAIN_TX_REF_ARMS))
+        passing_anchor_kinds = {
+            case["value"]["anchor"]["kind"]
+            for case in cases
+            if case["type"] == "AttestationRef" and case["expected"] == "pass"
+        }
+        self.assertEqual(passing_anchor_kinds, v._ATTESTATION_ANCHOR_KINDS)
 
 
 if __name__ == "__main__":

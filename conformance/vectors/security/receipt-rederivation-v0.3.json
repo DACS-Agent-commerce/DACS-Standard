@@ -90,8 +90,10 @@
           "resolvedRole": "seller",
           "counterpartyDisposition": "present",
           "counterpartyRef": {
-            "kind": "dacs-5-bundle",
-            "id": "RCP-A-buyer",
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "RCP-A-buyer"
+            },
             "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
           },
           "counterpartyRoleEvidence": {
@@ -500,8 +502,10 @@
             "resolvedRole": "seller",
             "counterpartyDisposition": "present",
             "counterpartyRef": {
-              "kind": "dacs-5-bundle",
-              "id": "RCP-A-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "RCP-A-buyer"
+              },
               "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
             },
             "roleEvidence": {
@@ -1036,8 +1040,10 @@
             },
             "counterpartyDisposition": "present",
             "counterpartyRef": {
-              "kind": "dacs-5-bundle",
-              "id": "RCP-A-buyer-div",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "RCP-A-buyer-div"
+              },
               "contentHash": "989cde62ea87d1c99ff243422cf00df41ae25402e400ef87259572f4f02cc772"
             },
             "counterpartyRoleEvidence": {
@@ -1236,8 +1242,10 @@
             },
             "counterpartyDisposition": "present",
             "counterpartyRef": {
-              "kind": "dacs-5-bundle",
-              "id": "RCP-A-buyer",
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "RCP-A-buyer"
+              },
               "contentHash": "74c7cb984a7ac2f3ba5c94ababc7090060fdc4d762a47376677952a6e0d2357b"
             },
             "counterpartyRoleEvidence": {
@@ -2526,5 +2534,5 @@
     }
   ],
   "count": 16,
-  "hash": "da60d52c714f7ce9932cfa79dce7a2144a0874bef050afded1e215652d67ba9c"
+  "hash": "15aa3c2715d95a1b2939ed60949f4833eb9f9aad55d58d98af2a941a7c0fd4a8"
 }

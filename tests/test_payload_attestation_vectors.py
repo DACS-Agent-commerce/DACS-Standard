@@ -6,7 +6,10 @@ import unittest
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.ed25519 import (
+    Ed25519PrivateKey,
+    Ed25519PublicKey,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +21,7 @@ VECTORS = (
     / "payload-attestation-binding-v0.1.json"
 )
 GENERATOR = ROOT / "scripts" / "generate_payload_attestation_vectors.py"
+HAPPY_PATH = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
 PAYLOAD_DOMAIN = "dacs-payload-attestation:v1:"
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 
@@ -215,6 +219,40 @@ class PayloadAttestationVectorTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
 
+    def test_happy_path_is_dpa1_coherent_and_transitively_resigned(self):
+        data = json.loads(HAPPY_PATH.read_text(encoding="utf-8"))
+        artifacts = {item["kind"]: item for item in data["artifacts"]}
+        listing_item = artifacts["Listing"]
+        listing = listing_item["artifact"]
+        deliverable = listing["offering"]["deliverable"]
+        self.assertEqual(deliverable["verificationMethod"], {"kind": "self-signed"})
+
+        listing_hash = listing_item["contentHash"].removeprefix("sha256:")
+        agreement_item = artifacts["AgreementDocument"]
+        agreement = agreement_item["artifact"]
+        self.assertEqual(agreement["listingRef"]["contentHash"], listing_hash)
+        self.assertEqual(agreement["terms"]["deliverable"]["hash"], hash_hex(deliverable))
+
+        bundle_item = artifacts["AttestationBundle"]
+        bundle = bundle_item["artifact"]
+        self.assertEqual(bundle["listingRef"]["contentHash"], listing_hash)
+
+        for item, omitted in [
+            (listing_item, {"signature"}),
+            (agreement_item, {"signatures"}),
+            (bundle_item, {"signatures", "anchoredByRole"}),
+        ]:
+            artifact = item["artifact"]
+            unsigned = {key: value for key, value in artifact.items() if key not in omitted}
+            payload = item["domainSeparator"].encode("utf-8") + hash_hex(unsigned).encode("ascii")
+            signatures = artifact.get("signatures", [artifact.get("signature")])
+            for signature in signatures:
+                signer = signature.get("signer") or signature.get("party")
+                with self.subTest(kind=item["kind"], signer=signer):
+                    public = bytes.fromhex(signer.removeprefix("cci:"))
+                    raw = base64.b64decode(signature["value"], validate=True)
+                    Ed25519PublicKey.from_public_bytes(public).verify(raw, payload)
+
     def test_spec_registers_distinct_type_domain_and_rules(self):
         core = (ROOT / "spec" / "CORE.md").read_text(encoding="utf-8")
         dacs4 = (ROOT / "spec" / "DACS-4-SETTLE.md").read_text(encoding="utf-8")
@@ -223,6 +261,10 @@ class PayloadAttestationVectorTests(unittest.TestCase):
         self.assertIn("type PayloadAttestationRecord = {", dacs4)
         for rule in range(1, 10):
             self.assertIn(f"(DPA-{rule})", dacs4)
+        self.assertIn("behavioural", dacs4)
+        self.assertIn("reject-timing change", dacs4)
+        self.assertNotIn("already-unfulfillable", dacs4)
+        self.assertNotIn("internally unfulfillable", dacs4)
         self.assertIn("IWeb2Result.txHash", demos)
         self.assertIn("sha256(UTF8(data)) == responseHash", demos)
 

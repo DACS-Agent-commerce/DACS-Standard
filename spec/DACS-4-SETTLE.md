@@ -881,9 +881,12 @@ method's native evidence remains separately addressable through
   `evidenceVersion`, and a DACS-2 `VerifyResult` or `SettlementEvidence` MUST
   NOT be coerced into this type. Unsupported payload-attestation versions are
   rejected as unsupported under CORE §11.1.2. The legacy optional spelling of
-  `DeliverableSpec.verificationMethod` is retained for wire readability; DPA-1
-  closes only the already-unfulfillable combination of an attested-payload
-  delivery phase with no method.
+  `DeliverableSpec.verificationMethod` is retained for wire readability. The
+  new artifact type is additive at the wire boundary, but DPA-1 is a behavioural
+  compatibility and reject-timing change: a current reader rejects an
+  attested-payload delivery phase with no method before session start and before
+  payment, whereas a pre-DPA reader could accept it and discover the missing
+  method only when delivery was attempted.
 
 **Procedure.**
 
@@ -1155,12 +1158,15 @@ new DACS-4 v0.5 artifact with its own `payloadAttestationVersion` discriminator
 and `dacs-payload-attestation:v1:` domain. It does not add a required field to
 `SettlementEvidence` or rewrite DACS-2 `VerifyResult`. The
 `DeliverableSpec.verificationMethod?` spelling remains byte-for-byte unchanged.
-DPA-1 rejects only the pre-existing internally unfulfillable combination in
-which a listing selects `deliver-attested-payload` but supplies no method for
-the already-required attestation steps. An older reader that does not support
-the new record rejects its unknown discriminator; it MUST NOT reinterpret it as
-a VerifyResult or accept the enclosing delivery without validating the target
-of `attestationRef`.
+DPA-1 nevertheless changes behaviour and reject timing for a listing that
+selects `deliver-attested-payload` but supplies no method. A current reader
+rejects that listing before session start and before payment; an older reader
+could accept the same wire-valid listing and fail only when the delivery handler
+attempted the already-required attestation. This is not a signed-shape break,
+but it is a deliberate fail-earlier compatibility change. An older reader that
+does not support the new record rejects its unknown discriminator; it MUST NOT
+reinterpret it as a VerifyResult or accept the enclosing delivery without
+validating the target of `attestationRef`.
 
 **ERC-20.** pay-evm-erc20 uses the standard ERC-20 transfer interface; any compliant ERC-20 token works. The rail registry pins specific tokens (e.g. USDC) per chain to avoid scam-token substitution.
 

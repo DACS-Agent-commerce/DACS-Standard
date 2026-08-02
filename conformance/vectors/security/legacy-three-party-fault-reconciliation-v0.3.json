@@ -1,0 +1,83 @@
+{
+  "set": "legacy-three-party-fault-reconciliation-v0.3",
+  "spec": "DACS-5 §10.4.3 legacy implied-fault-set reconciliation",
+  "provenance": {
+    "generator": "hand-authored implementation-neutral candidate vectors",
+    "note": "Verdict pass means the two legacy copies are unified; fail means they canonically diverge. The copies contain only the fields consumed by the §10.4.3 reference predicate.",
+    "authority": "DACS-5 v0.3 §10.4.1 permissible-set table and §10.4.3 divergence rule"
+  },
+  "vectors": [
+    {
+      "name": "legacy-two-party-perspective-partners",
+      "expected": "pass",
+      "parties": ["buyer", "seller"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-perm", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["seller"], ["seller"]],
+        "intersection": ["seller"],
+        "convergence": "unified"
+      }
+    },
+    {
+      "name": "legacy-two-party-mutual-counterparty-claim",
+      "expected": "fail",
+      "parties": ["buyer", "seller"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["seller"], ["buyer"]],
+        "intersection": [],
+        "convergence": "divergent"
+      }
+    },
+    {
+      "name": "legacy-three-party-distinct-orchestrator-fault",
+      "expected": "pass",
+      "parties": ["buyer", "seller", "orchestrator"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["orchestrator", "seller"], ["buyer", "orchestrator"]],
+        "intersection": ["orchestrator"],
+        "convergence": "unified"
+      }
+    },
+    {
+      "name": "legacy-three-party-distinct-orchestrator-abort",
+      "expected": "pass",
+      "parties": ["buyer", "seller", "orchestrator"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "aborted-by-other", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "aborted-by-other", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["orchestrator", "seller"], ["buyer", "orchestrator"]],
+        "intersection": ["orchestrator"],
+        "convergence": "unified"
+      }
+    },
+    {
+      "name": "legacy-mismatched-rosters-do-not-manufacture-orchestrator",
+      "expected": "fail",
+      "parties": ["buyer", "seller", "orchestrator"],
+      "copies": [
+        {"bundleVersion": "1", "anchoredByRole": "buyer", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}], "phaseSummary": []},
+        {"bundleVersion": "1", "anchoredByRole": "seller", "outcome": "failed-counterparty", "parties": [{"role": "buyer"}, {"role": "seller"}, {"role": "orchestrator"}], "phaseSummary": []}
+      ],
+      "want": {
+        "impliedFaultSets": [["seller"], ["buyer", "orchestrator"]],
+        "intersection": [],
+        "convergence": "divergent"
+      }
+    }
+  ],
+  "count": 5,
+  "hash": "6f6ceeff7b5cc84a4d8e68e239a2e4d368aece81f1bcdfae56520f5166ec324d"
+}

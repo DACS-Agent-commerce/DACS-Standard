@@ -9,8 +9,10 @@
     "contentHash": "523fd847aa12527534937d20d2f73453d9efa65242b2302994534020a21dc3e0"
   },
   "agreementRef": {
-    "kind": "dacs-3-agreement",
-    "id": "agreement-dacs-verify-0004",
+    "anchor": {
+      "kind": "storage-program",
+      "locator": "agreement-dacs-verify-0004"
+    },
     "contentHash": "0aa1c81b07e746755bcbb496da6bcb75b9c25ecc15d7bed9e32105780001898d"
   },
   "parties": [
@@ -31,8 +33,10 @@
       "kind": "vet-counterparty",
       "outcome": "ok",
       "attestationRef": {
-        "kind": "dacs-4-evidence",
-        "id": "vet-dacs-verify-0004",
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "vet-dacs-verify-0004"
+        },
         "contentHash": "d8a683311ffd2a5e2d01fede4b7501a089758b1fea7b84066af1ed45f8d48eb8"
       }
     },
@@ -43,29 +47,34 @@
       "errorClass": "counterparty",
       "txRefs": [
         {
-          "rail": "demos-testnet",
-          "txHash": "demos-testnet:tx-dacs-verify-0004-seller-fail",
-          "kind": "settlement-fail"
+          "kind": "demos",
+          "txHash": "demos-testnet:tx-dacs-verify-0004-seller-fail"
         }
       ],
       "attestationRef": {
-        "kind": "dacs-4-evidence",
-        "id": "settlement-dacs-verify-0004-seller",
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "settlement-dacs-verify-0004-seller"
+        },
         "contentHash": "2deac1e76a2943e93f1b366a99b7b8d77016bef532b21759658342f37b9bb807"
       }
     }
   ],
   "vetRecords": [
     {
-      "kind": "dacs-4-evidence",
-      "id": "vet-dacs-verify-0004",
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "vet-dacs-verify-0004"
+      },
       "contentHash": "d8a683311ffd2a5e2d01fede4b7501a089758b1fea7b84066af1ed45f8d48eb8"
     }
   ],
   "settlementEvidence": [
     {
-      "kind": "dacs-4-evidence",
-      "id": "settlement-dacs-verify-0004-seller",
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "settlement-dacs-verify-0004-seller"
+      },
       "contentHash": "2deac1e76a2943e93f1b366a99b7b8d77016bef532b21759658342f37b9bb807"
     }
   ],
@@ -76,12 +85,12 @@
     {
       "party": "did:demos:buyer",
       "algorithm": "ed25519",
-      "value": "eHScvqdkwKjT3EzShbd34fWKdq94mHqe92p6IHsCQKYyIdHWagWzmW-z0kVQEg3QhjKx3XzZqGmrRJI2IEx2CQ"
+      "value": "VQwMD-NUYS2YXC03KXyCdwbM680715xym6ldQf4QOQ9wE9QKOM4ALxL5RBKi1uV0VmuQ81zX_ZOenL6Xz0GaCg"
     },
     {
       "party": "did:demos:seller",
       "algorithm": "ed25519",
-      "value": "IdSrvKhwy6xFlyJcaQXLIDQX216LeIyvJW5XzvGcjUhFtppb7LbUMXwgejQsvOQmLm4Zv4AWZvreHLjb4YODDg"
+      "value": "QfS6OMWU1G2EBtaBdhMnv6xkC8iYzfpe9fjzYXwStk-OxnFkXkNW77nVwk7TDuqsp3HThMHuxFk6kIPtVKsNAg"
     }
   ]
 }

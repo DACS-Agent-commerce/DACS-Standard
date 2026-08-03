@@ -155,6 +155,8 @@ def resolve_authenticated_registry(
     input_data,
     vector_set,
     *,
+    enforce_session_authenticity=True,
+    enforce_bundle_signatures=True,
     enforce_bundle_job=True,
     enforce_bundle_record_membership=True,
 ):
@@ -171,14 +173,18 @@ def resolve_authenticated_registry(
         authenticated_session_start = vector_set["authenticatedSessionStarts"].get(
             authority.get("sessionStart")
         )
-        if canonical_json(session_context) != canonical_json(authenticated_session_start):
+        if enforce_session_authenticity and canonical_json(session_context) != canonical_json(
+            authenticated_session_start
+        ):
             return None
         registry_version = session_context.get("recipeRegistryVersion")
         if vet_input.get("recipeRegistryVersion") != registry_version:
             return None
     elif authority.get("kind") == "replay":
         bundle = vector_set["replayBundles"].get(authority.get("bundle"))
-        if not verify_replay_bundle(bundle, vector_set["publicKeys"]):
+        if enforce_bundle_signatures and not verify_replay_bundle(
+            bundle, vector_set["publicKeys"]
+        ):
             return None
         if enforce_bundle_job and bundle.get("jobId") != input_data.get("recordJobId"):
             return None
@@ -330,7 +336,9 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
             "vet-claim-requirement-unresolvable-session-pin-error",
             "vet-claim-requirement-mismatched-session-job-error",
             "vet-claim-requirement-production-pin-mismatch-error",
+            "vet-claim-requirement-caller-session-substitution-error",
             "vet-claim-requirement-unsigned-session-record-replay-error",
+            "vet-claim-requirement-tampered-bundle-signature-error",
             "vet-claim-requirement-signed-bundle-job-substitution-error",
             "vet-claim-requirement-signed-bundle-missing-record-ref-error",
             "vet-claim-requirement-signed-bundle-record-projection-substitution-error",
@@ -342,10 +350,13 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
             with self.subTest(vector=name):
                 self.assertEqual(evaluate(vectors[name]["input"], self.data), "error")
 
-    def test_replay_bundles_have_genuine_required_signatures(self):
+    def test_replay_bundle_signature_controls(self):
         for name, bundle in self.data["replayBundles"].items():
             with self.subTest(bundle=name):
-                self.assertTrue(verify_replay_bundle(bundle, self.data["publicKeys"]))
+                if name == "job-crq-001-v7-tampered-signature":
+                    self.assertFalse(verify_replay_bundle(bundle, self.data["publicKeys"]))
+                else:
+                    self.assertTrue(verify_replay_bundle(bundle, self.data["publicKeys"]))
 
     def test_replay_record_and_result_material_is_hash_and_signature_bound(self):
         vector = next(
@@ -386,6 +397,31 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
             ),
             "pass",
             "removing only bundle-to-record membership must make the otherwise-valid chain pass",
+        )
+
+    def test_authority_authentication_mutations_are_killed(self):
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        caller_session = vectors["vet-claim-requirement-caller-session-substitution-error"]
+        tampered_bundle = vectors["vet-claim-requirement-tampered-bundle-signature-error"]
+        self.assertEqual(evaluate(caller_session["input"], self.data), "error")
+        self.assertEqual(
+            evaluate(
+                caller_session["input"],
+                self.data,
+                enforce_session_authenticity=False,
+            ),
+            "pass",
+            "removing only active-session authenticity must admit the self-consistent caller substitution",
+        )
+        self.assertEqual(evaluate(tampered_bundle["input"], self.data), "error")
+        self.assertEqual(
+            evaluate(
+                tampered_bundle["input"],
+                self.data,
+                enforce_bundle_signatures=False,
+            ),
+            "pass",
+            "removing only bundle signature verification must admit the otherwise-valid replay chain",
         )
 
     def test_spec_uses_authenticated_production_and_replay_authority(self):

@@ -49,6 +49,33 @@
         { "party": "did:demos:seller", "algorithm": "ed25519", "value": "5HdwCKh17U53OkjbzjqhgiM8nHj2Tlf-VBsRELdEdHmoASUXaz60a1Xd2gZ6xhrgKu1C6Xhmk89waGeL1qi9Bw" }
       ]
     },
+    "job-crq-001-v7-tampered-signature": {
+      "bundleVersion": "1",
+      "jobId": "job-crq-001",
+      "outcome": "completed",
+      "anchoredByRole": "buyer",
+      "listingRef": { "listingId": "listing-job-crq-001", "version": 1, "contentHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+      "agreementRef": { "anchor": { "kind": "storage-program", "locator": "dacs3:agreement:job-crq-001" }, "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "signer": "did:demos:buyer" },
+      "parties": [
+        { "role": "buyer", "bundleHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "primaryClaim": "did:demos:buyer" },
+        { "role": "seller", "bundleHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", "primaryClaim": "did:demos:seller" }
+      ],
+      "phaseSummary": [
+        { "index": 0, "kind": "vet-credentials", "outcome": "ok", "attestationRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        { "index": 1, "kind": "commit-agreement", "outcome": "ok" }
+      ],
+      "vetRecords": [
+        { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" }
+      ],
+      "settlementEvidence": [],
+      "recipeRegistryVersion": 7,
+      "railRegistryVersion": 3,
+      "finalisedAt": 1750000020000,
+      "signatures": [
+        { "party": "did:demos:buyer", "algorithm": "ed25519", "value": "jE6fY0P3vG0avvgjgGLiv2dLoZQTTRRXBsiHZIwrF984Y57eEHNto-t7iwFqmU-MTPFlhCG1GSKkQSLx5yUOBw" },
+        { "party": "did:demos:seller", "algorithm": "ed25519", "value": "5HdwCKh17U53OkjbzjqhgiM8nHj2Tlf-VBsRELdEdHmoASUXaz60a1Xd2gZ6xhrgKu1C6Xhmk89waGeL1qi9Bw" }
+      ]
+    },
     "job-crq-OTHER-v8": {
       "bundleVersion": "1",
       "jobId": "job-crq-OTHER",
@@ -89,8 +116,8 @@
       "results": [{ "ref": { "anchor": { "kind": "storage-program", "locator": "dacs2:verify-result:job-crq-001:key" }, "contentHash": "26caa227bebf58a7d7eb113953f05609cce893ab33c9b7579c3d43c266b26a43", "recipeVersion": 2 }, "result": { "resultVersion": "1", "scheme": "key", "identifier": "did:demos:seller", "recipeVersion": 2, "method": "self-signed", "decision": "pass", "reason": "synthetic possession proof verified", "attestation": { "anchor": { "kind": "storage-program", "locator": "dacs2:attestation:job-crq-001:key" }, "contentHash": "8888888888888888888888888888888888888888888888888888888888888888", "signer": "did:demos:buyer" }, "data": { "possessionVerified": true }, "fetchedAt": 1750000004000, "verifiedAt": 1750000005000, "validUntil": 1750000065000, "signature": { "algorithm": "ed25519", "signer": "did:demos:buyer", "value": "1PnOzmJzcqAbQoRuEauBsnp94Xd60ZJdP4ECbSGlTr0uunoVKTCYLjGwx6Pu43OYpXEwXDthfSdTtkAtYfL8Cg" } } }]
     }
   },
-  "hash": "b33e69f107af5ceda23b3827fe051f8d60375fcd8dcd9bcb45bb3373698829ef",
-  "count": 26,
+  "hash": "4fc1bac76dce97a5205bf38699182f4424d8c89fb97fd40334c2a5479b7d7449",
+  "count": 28,
   "vectors": [
     {
       "name": "vet-claim-requirement-exact-match-pass",
@@ -353,6 +380,18 @@
       }
     },
     {
+      "name": "vet-claim-requirement-caller-session-substitution-error",
+      "expected": "error",
+      "note": "a self-consistent caller-supplied v8 context cannot substitute for the orchestrator-owned active v7 SessionContext",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 8, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 8 } } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 3, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
       "name": "vet-claim-requirement-signed-bundle-replay-pass",
       "expected": "pass",
       "note": "replay derives registry v7 from a verified co-signed bundle that binds the same job and exact validated record reference",
@@ -360,6 +399,18 @@
         "generatedAt": 1750000010000,
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
+        "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
+        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+      }
+    },
+    {
+      "name": "vet-claim-requirement-tampered-bundle-signature-error",
+      "expected": "error",
+      "note": "replay rejects an otherwise-valid same-job record chain when one required bundle signature is tampered",
+      "input": {
+        "generatedAt": 1750000010000,
+        "recordJobId": "job-crq-001",
+        "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7-tampered-signature", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
         "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }

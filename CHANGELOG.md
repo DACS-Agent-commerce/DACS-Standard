@@ -11,6 +11,20 @@ The format used per release:
 - **Fixed** — spec defects (rules that referenced undefined values, internal inconsistencies, addressing patterns that did not work on the named substrate).
 - **Governance** — changes to stewardship, working-group framing, or progressive-anchoring phase.
 
+## [Unreleased] — §9.5.6 pay-ap2 hardening
+
+Resolves the AP2 conformance cluster diagnosed by @norgejbb-byte (#276, #279, #280, #281, #282, #284), delivered as one coherent PR per the steward's request.
+
+### Added
+- **(AP2-7)** `transaction_id` single-use binding: a `pay-ap2` handler MUST bind each `transaction_id` to one `jobId` and reject cross-session replay or cross-`jobId` reuse — verifier-side replay defence (#281).
+- **(AP2-6)** pinned the provider idempotency-key derivation byte-for-byte (`dacs-ap2-idem:v1:` domain tag, NFC(jobId) ∥ 0x3a ∥ decimal(phaseIndex)), matching the merged SB-3 form so two implementations derive the same key (#276).
+
+### Changed
+- **(AP2-2)** trust-property wording: an SR-3 provider-receipt fetch is a consensus-anchored hash commitment (fetch-and-anchor, per DEMOS-MAPPING §A.3), not multi-validator observation of the body (#280).
+- **(AP2-3)** named both least-privilege credential scopes — the create/metadata-write credential (never relayed) and the read-only status credential (relayed) (#282).
+- **step 2** surfaced the full AP2 checkout chain (CheckoutMandate + merchant-signed checkout JWT + byte-exact `transaction_id`, derived-once) (#284).
+- **`docs/flow-trace.md`** reconciled: the AP2-3-scoped read-only provider-status fetch is a carved-out credential-bound DAHR use (#279).
+
 ---
 
 ## [Unreleased]

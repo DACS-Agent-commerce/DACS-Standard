@@ -242,8 +242,9 @@ async function vetViaDAHR(demos: Demos, claim: Claim, recipe: Recipe, jobId: str
   // GET, then co-sign a Demos transaction that asserts: "URL=X, time=T,
   // body_sha256=H." The body is returned to the caller inline. The on-chain
   // artifact is the *hash*, not the body. No private info crosses chain
-  // because the request is a public-API GET — DAHR is explicitly never used
-  // for endpoints that require buyer-side secrets.
+  // because the request is a public-API GET. DAHR's one credential-bound
+  // use is the AP2-3-scoped read-only provider-status fetch (§9.5.6 AP2-2/AP2-3);
+  // other endpoints requiring buyer-side secrets use other DACS-2 methods.
   const dahr = await demos.web2.createDahr();
   let response;
   try {
@@ -295,7 +296,7 @@ async function vetViaDAHR(demos: Demos, claim: Claim, recipe: Recipe, jobId: str
 
 Notes:
 - **The "hash triggers an operation" answer is in `dahr.startProxy(...)`.** Validators fetch, validators co-sign the anchoring tx asserting `(url, time, bodyHash)`. The body is delivered to the caller inline; the anchoring tx is what survives. A later consumer holding the VerifyResult can either trust the anchored hash or re-fetch and re-verify against the hash.
-- **"How, without private info?"** Public-API endpoint. DAHR is for attesting *public* data fetches. Anything credential-bound goes through other DACS-2 methods (`verifiable-credential` for VC issuance flows, `oauth-attested` for OAuth-scoped fetches handled by buyer-side code without validator involvement, `zktls` when underlying data is private and a TLSNotary proof is appropriate).
+- **"How, without private info?"** Public-API endpoint. DAHR is for attesting *public* data fetches. Credential-bound fetches go through other DACS-2 methods (`verifiable-credential` for VC issuance flows, `oauth-attested` for OAuth-scoped fetches handled by buyer-side code without validator involvement, `zktls` when underlying data is private and a TLSNotary proof is appropriate) — with one carve-out: the AP2-3-scoped read-only provider-status fetch for `pay-ap2` (§9.5.6 AP2-2/AP2-3) is a DAHR fetch by construction.
 - **Recipe pinning.** A `ClaimRequirement.recipeVersion` (§6.3.3, §7.4.1) pins an exact DACS-2 recipe version per claim at session start. If the steward ships a new recipe mid-session (e.g., GLEIF moved their endpoint), the session continues against the pinned version. New sessions start against the latest (when no pin is set).
 
 ---

@@ -36,7 +36,7 @@ The branch also carries narrow repository-health hardening that preserves v0.1
 semantics:
 
 - `scripts/validate_domain_separators.py` catches drift between quoted
-  `dacs...:v1:` prefixes in the spec and the closed §7.7 registry.
+  `dacs...:v1:` prefixes in the spec and the closed CORE §B.7 registry.
 - `scripts/validate_rule_ids.py` catches undefined labelled-rule references and
   keeps `docs/rule-id-index.md` aligned with rule families defined in the spec.
 - `scripts/validate_spec_tables.py` smoke-tests selected registry tables for

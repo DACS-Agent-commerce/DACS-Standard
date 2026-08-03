@@ -334,8 +334,23 @@ def build_mixed_version(keys):
     #     fault SET {seller, orchestrator}; the FAB names faultedParty=orchestrator, a MEMBER of that set,
     #     with the same failure class -> unified, FAB authoritative (E4 set-membership rule).
     v7j = j + "-7"
-    fab7 = make_fab(keys, v7j, "failed-counterparty", "orchestrator", "seller", ["buyer", "seller"], parties=_parties3())
-    leg7 = make_legacy(keys, v7j, "failed-counterparty", "buyer", ["buyer", "seller"], parties=_parties3())
+    fab7 = make_fab(
+        keys,
+        v7j,
+        "failed-counterparty",
+        "orchestrator",
+        "seller",
+        ["buyer", "seller", "orchestrator"],
+        parties=_parties3(),
+    )
+    leg7 = make_legacy(
+        keys,
+        v7j,
+        "failed-counterparty",
+        "buyer",
+        ["buyer", "seller", "orchestrator"],
+        parties=_parties3(),
+    )
     vectors.append({
         "name": "mixed-orchestrator-nondivergent",
         "rule": "§10.4.3 mixed-version implied-fault SET (3-party)",
@@ -874,6 +889,14 @@ def evidence_hash(ev):
     return hashlib.sha256(canonical(ev)).hexdigest()
 
 
+def attestation_ref(locator, content_hash):
+    """Normative DACS-2 §7.5.2 reference shape used by DACS-5 receipts (#308)."""
+    return {
+        "anchor": {"kind": "storage-program", "locator": locator},
+        "contentHash": content_hash,
+    }
+
+
 def make_absence_evidence(native, kind="non-membership-proof"):
     """AbsenceEvidence (R2): CORE §5 owns policy semantics; DACS-5 defines only the binding relation
     (absenceBinding.nativeAddress == AbsenceEvidence.nativeAddress). Address-cohering, dereferenceable."""
@@ -936,7 +959,7 @@ def build_receipt_rederivation(keys):
     bb6_b = {"candidateBindings": [b_seller_binding], "partyMap": PM, "budget": 8}
     tagged = [
         {"bundle": a_seller, "resolvedRole": "seller", "counterpartyDisposition": "present",
-         "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer", "contentHash": ha_b},
+         "counterpartyRef": attestation_ref(ja + "-buyer", ha_b),
          "counterpartyRoleEvidence": {"kind": "binding", "binding": a_buyer_binding},
          "roleEvidence": {"kind": "binding", "binding": a_seller_binding},
          "bb6Context": bb6_a},
@@ -1017,7 +1040,7 @@ def build_receipt_rederivation(keys):
             "bundleRefs": sorted([ha_s, hb_s]),
             "resolutionContext": [
                 {"contentHash": sorted([ha_s, hb_s])[0], "resolvedRole": "seller", "counterpartyDisposition": "present",
-                 "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer", "contentHash": ha_b},
+                 "counterpartyRef": attestation_ref(ja + "-buyer", ha_b),
                  "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(ja, "seller")}},
             ],
             "windowingBasis": "finalisedAt",
@@ -1116,7 +1139,7 @@ def build_receipt_rederivation(keys):
                 {"contentHash": ha_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": a_seller_binding}, "bb6Context": bb6_a,
                  "counterpartyDisposition": "present",
-                 "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer-div", "contentHash": ha_bdiv},
+                 "counterpartyRef": attestation_ref(ja + "-buyer-div", ha_bdiv),
                  "counterpartyRoleEvidence": {"kind": "binding", "binding": a_buyer_div_binding}},
             ],
             "metrics": {"completionRate": 1.0, "counterpartyAdjustedCompletionRate": 1.0, "counterpartyFaultRate": 0.0},
@@ -1144,7 +1167,7 @@ def build_receipt_rederivation(keys):
                 {"contentHash": ha_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": a_seller_binding}, "bb6Context": bb6_a,
                  "counterpartyDisposition": "present",
-                 "counterpartyRef": {"kind": "dacs-5-bundle", "id": ja + "-buyer", "contentHash": ha_b},
+                 "counterpartyRef": attestation_ref(ja + "-buyer", ha_b),
                  "counterpartyRoleEvidence": {"kind": "binding", "binding": a_buyer_wrongrole_binding}},
             ],
             "metrics": {"completionRate": 1.0, "counterpartyAdjustedCompletionRate": 1.0, "counterpartyFaultRate": 0.0},

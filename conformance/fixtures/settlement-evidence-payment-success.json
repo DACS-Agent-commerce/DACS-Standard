@@ -3,28 +3,29 @@
     "ok": true,
     "txRefs": [
       {
-        "rail": "polygon-amoy-usdc",
-        "txHash": "polygon-amoy:0xsettle0001",
-        "kind": "payment"
+        "kind": "evm",
+        "chainId": 80002,
+        "txHash": "polygon-amoy:0xsettle0001"
       }
     ],
     "attestationRef": {
-      "kind": "dacs-4-evidence",
-      "id": "dacs4:payment:DACS-VERIFY-SETTLE-0001:polygon-amoy-usdc:0",
-      "contentHash": "665d4604f4002a3a1f98ca4e719ecbd0deca9b67b827364cf89602f30de52ca2"
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "dacs4:payment:DACS-VERIFY-SETTLE-0001:polygon-amoy-usdc:0"
+      },
+      "contentHash": "719fc5a3c3d32c5d2010ebc210ec5ea8fcbdea6cd014eefa141dab7dfda78f0b"
     }
   },
   "evidence": {
     "evidenceVersion": "1",
     "jobId": "DACS-VERIFY-SETTLE-0001",
     "phase": "pay-evm-erc20",
-    "phaseIndex": 0,
     "outcome": "success",
     "paymentTxRefs": [
       {
-        "rail": "polygon-amoy-usdc",
-        "txHash": "polygon-amoy:0xsettle0001",
-        "kind": "payment"
+        "kind": "evm",
+        "chainId": 80002,
+        "txHash": "polygon-amoy:0xsettle0001"
       }
     ],
     "paymentAmount": {
@@ -40,7 +41,7 @@
     "signature": {
       "algorithm": "ed25519",
       "signer": "did:demos:orchestrator",
-      "value": "OxCi74mRsmCyy3gcJHMklxMo2mDG1eGALoSfHyj5j2pW9WuqxaD97Lv-Lcfht56LNYQg7pChsrA836FyxblEDA"
+      "value": "D9sssQLQ1qDvvAWje38ooWyUNCHsOaQztw0e5IyhehmerPH0fni7OEZplgSPZqsaZC7GIBtWm3qYxZWb38F8CA"
     }
   },
   "paymentInput": {
@@ -104,7 +105,7 @@
       "route": "dacs-verify-reference"
     }
   },
-  "evidenceHash": "665d4604f4002a3a1f98ca4e719ecbd0deca9b67b827364cf89602f30de52ca2",
+  "evidenceHash": "719fc5a3c3d32c5d2010ebc210ec5ea8fcbdea6cd014eefa141dab7dfda78f0b",
   "publicKeys": {
     "did:demos:orchestrator": "maekceCtXQ62avDhCrkykrlD64Bd6XkRY320vgwHLkI"
   },

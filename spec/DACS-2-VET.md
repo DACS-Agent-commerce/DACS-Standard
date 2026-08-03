@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.3** (on the common DACS v0.1 baseline; adds complete `ClaimRequirement` qualification before §7.7.1 decision classification; pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.3** (on the common DACS v0.1 baseline; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -905,7 +905,7 @@ The orchestrator MUST:
   - the seller’s bundle against buyer-side requirements on sellers —
 
   each invocation producing its own CompositeVerificationRecord (the input carries a single `bundleToVet` + `actor`), before Negotiate;
-- (VPC-3) anchor the composite record before returning the phase result;
+- (VPC-3) submit the composite record for anchoring and, before returning `ok: true`, obtain a verified CORE §5.1 receipt at `accepted` or later and return that receipt as `anchorReceipt`. The phase MAY therefore permit reversible progression into Negotiate on binding-defined durable admission. A submission or ordinary RPC/broadcast acknowledgement is insufficient. If the substrate binding exposes no verifiable durable `accepted` state, the handler MUST wait for `included` or `finalized`;
 - (VPC-4) on `overallDecision != "pass"` (after permitted retries), MUST fail the phase with `errorClass` derived from the overall decision:
 
   | overall decision | `errorClass` (fault attribution) |
@@ -913,6 +913,8 @@ The orchestrator MUST:
   | `fail` | counterparty |
   | `indeterminate` / `error` | permanent |
   | *except* an `error`/`indeterminate` whose sole proximate cause is a presentation the counterparty supplied that the verifier could not parse in its declared format | counterparty (§7.8.2) |
+
+- (VPC-5) when VPC-3 returns before `finalized`, retain a durable idempotent reconciliation keyed by the record's logical address and content hash. It MUST resume observation of the same transaction (or a binding-valid replacement), MUST NOT create a second logical record, and MUST surface an established `dropped`, `replaced`, `expired`, or `reorged` state—or an `indeterminate` observation disposition over the preserved state—rather than treating the record as final. After authenticated `dropped`, `expired`, or `reorged`, the handler MAY resubmit the **identical canonical record bytes** under the same logical address and content hash when the binding supports readmission; the new transaction/native binding MUST be published and verified through a new receipt. It MUST NOT resubmit merely because observation is `indeterminate`, and MUST follow a `replaced` receipt only by independently verifying the named replacement. Reconciliation never repeats credential verification or changes the composite decision. DACS-5 §10.4.3 forbids terminal bundle production until the composite record has a verified `finalized` receipt and is independently resolvable.
 
 This affects fault attribution only; the overall decision is unchanged. By the point VPC-4 is evaluated the retry budget is already exhausted (`indeterminate` MUST NOT be retried at all per VP-R4; `error` is retried only while budget remains), so the *phase-overall* outcome is terminal: the `transient` class applies to in-flight retries, never to the phase-fail result. This matches the §7.8.2 cause table (`indeterminate`/`error` after retry-budget exhaustion → permanent).
 
@@ -943,7 +945,7 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Recipe author | RA-1 through RA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
 | Recipe-availability consumer | RAV-1 through RAV-4 |
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
-| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-4; PSP-1 through PSP-5; WN-1 through WN-4 |
+| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PSP-1 through PSP-5; WN-1 through WN-4 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
 | Composite record reader | §7.7.1 aggregation; CRQ-1 through CRQ-4; signature validation |
 

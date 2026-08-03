@@ -1,0 +1,232 @@
+{
+  "set": "artifact-reference-shapes-v0.1",
+  "spec": "DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef",
+  "tier": "golden",
+  "description": "Exact positive and negative wire-shape cases for every normative AttestationRef anchor kind and every ChainTxRef discriminator.",
+  "count": 19,
+  "hash": "fa30c1173271e8ff119cc56a02966ccb4256aaef42415cda582fe16859256e68",
+  "vectors": [
+    {
+      "name": "attestation-storage-program",
+      "type": "AttestationRef",
+      "expected": "pass",
+      "value": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:evidence:job-308:rail:0"
+        },
+        "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "signer": "did:demos:orchestrator"
+      }
+    },
+    {
+      "name": "attestation-ipfs",
+      "type": "AttestationRef",
+      "expected": "pass",
+      "value": {
+        "anchor": {
+          "kind": "ipfs",
+          "locator": "bafybeigdyrzt"
+        },
+        "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "name": "attestation-https",
+      "type": "AttestationRef",
+      "expected": "pass",
+      "value": {
+        "anchor": {
+          "kind": "https",
+          "locator": "https://example.test/dacs/evidence/308"
+        },
+        "contentHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      }
+    },
+    {
+      "name": "attestation-legacy-kind-id-rejected",
+      "type": "AttestationRef",
+      "expected": "fail",
+      "value": {
+        "kind": "dacs-4-evidence",
+        "name": "evidence-job-308",
+        "contentHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      }
+    },
+    {
+      "name": "txref-evm",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "evm",
+        "chainId": 8453,
+        "txHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "name": "txref-solana",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "solana",
+        "cluster": "devnet",
+        "signature": "3Bxs4exampleSignature"
+      }
+    },
+    {
+      "name": "txref-demos",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "demos",
+        "txHash": "0xdemos308",
+        "blockNumber": 308
+      }
+    },
+    {
+      "name": "txref-storage-program",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "storage-program",
+        "address": "stor-308",
+        "writeTxHash": "0xwrite308"
+      }
+    },
+    {
+      "name": "txref-ap2",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "ap2",
+        "mandateId": "mandate-308",
+        "providerRef": "provider-receipt-308",
+        "protocolVersion": "1",
+        "receiptAttestation": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://provider.test/receipts/308"
+          },
+          "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        }
+      }
+    },
+    {
+      "name": "txref-x402",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "x402",
+        "httpResource": "https://merchant.test/resource/308",
+        "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "settlementTxHash": "0x402308",
+        "chainId": 8453,
+        "protocolVersion": "2"
+      }
+    },
+    {
+      "name": "txref-htlc-lock",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "htlc-lock",
+        "chainId": 8453,
+        "contractAddress": "0x0000000000000000000000000000000000000308",
+        "lockTxHash": "0xlock308"
+      }
+    },
+    {
+      "name": "txref-htlc-reveal",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "htlc-reveal",
+        "chainId": 8453,
+        "contractAddress": "0x0000000000000000000000000000000000000308",
+        "revealTxHash": "0xreveal308"
+      }
+    },
+    {
+      "name": "txref-htlc-claim",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "htlc-claim",
+        "chainId": 8453,
+        "contractAddress": "0x0000000000000000000000000000000000000308",
+        "claimTxHash": "0xclaim308"
+      }
+    },
+    {
+      "name": "txref-htlc-refund",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "htlc-refund",
+        "chainId": 8453,
+        "contractAddress": "0x0000000000000000000000000000000000000308",
+        "refundTxHash": "0xrefund308"
+      }
+    },
+    {
+      "name": "txref-liquidity-tank",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "liquidity-tank",
+        "bridgeId": "tank-308",
+        "sourceChainId": 8453,
+        "destChainId": 80002,
+        "lockTxHash": "0xtanklock308",
+        "releaseTxHash": "0xtankrelease308",
+        "recoveryDeadline": 1785436800000
+      }
+    },
+    {
+      "name": "txref-legacy-rail-kind-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "rail": "polygon-amoy-usdc",
+        "txHash": "0xlegacy308",
+        "kind": "payment"
+      }
+    },
+    {
+      "name": "txref-solana-missing-cluster-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "solana",
+        "signature": "3Bxs4missingCluster"
+      }
+    },
+    {
+      "name": "txref-extra-role-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "evm",
+        "chainId": 8453,
+        "txHash": "0xextra308",
+        "role": "htlc-lock"
+      }
+    },
+    {
+      "name": "txref-ap2-legacy-receipt-attestation-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "ap2",
+        "mandateId": "mandate-legacy-308",
+        "providerRef": "provider-legacy-308",
+        "protocolVersion": "1",
+        "receiptAttestation": {
+          "kind": "dacs-4-evidence",
+          "name": "provider-receipt-308",
+          "contentHash": "9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      }
+    }
+  ]
+}

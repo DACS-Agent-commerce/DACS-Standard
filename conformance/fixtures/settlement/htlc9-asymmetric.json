@@ -7,15 +7,16 @@
     "outcome": "failure",
     "paymentTxRefs": [
       {
+        "kind": "htlc-lock",
         "chainId": 84532,
-        "kind": "evm",
-        "role": "htlc-lock",
-        "txHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        "contractAddress": "0x0000000000000000000000000000000000000308",
+        "lockTxHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       },
       {
-        "kind": "solana",
-        "role": "htlc-reveal",
-        "signature": "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"
+        "kind": "htlc-reveal",
+        "chainId": 80002,
+        "contractAddress": "0x0000000000000000000000000000000000000308",
+        "revealTxHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     ],
     "phase": "pay-cross-chain-htlc",
@@ -27,8 +28,8 @@
     }
   },
   "specRefs": [
-    "\u00a79.5.4",
-    "\u00a79.7",
-    "\u00a710.3.1"
+    "§9.5.4",
+    "§9.7",
+    "§10.3.1"
   ]
 }

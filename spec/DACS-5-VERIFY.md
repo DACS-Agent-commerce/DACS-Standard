@@ -724,9 +724,12 @@ derive_settlement_verified(party, bundles, windowStart, windowEnd):
   #   failed-perm <-> failed-counterparty ; completed / failed-substrate unchanged.
   # divergence rule (self_copy, cp): per the single §10.4.3 definition incl. its mixed-version rule. For a FaultAttestationBundle pair, they diverge iff they differ in
   #   faultedParty, in outcome-class ({completed, failed-substrate, abort, failure}), or in a
-  #   phaseSummary entry, or — for this settlement-verified type — settlementEvidence reference multiset — NOT in the role-relative outcome spelling, which the absolute
+  #   phaseSummary entry — NOT in the role-relative outcome spelling, which the absolute
   #   faultedParty reconciles (the invariant: paired copies carry an identical faultedParty). For
-  #   a legacy pair, the §10.4.3 implied-fault-set definition (disjoint sets diverge); for a mixed pair, the §10.4.3 mixed-version rule (implied absolute fault vs faultedParty).
+  #   a legacy pair, use the §10.4.3 implied-fault-set definition (disjoint sets diverge); for a
+  #   mixed pair, use the §10.4.3 mixed-version rule (implied absolute fault vs faultedParty).
+  #   For this settlement-verified type, every pair kind also diverges when its copies have
+  #   different settlementEvidence reference multisets.
   # The §10.4.1 filter guarantees a non-abort outcome here is fully-signed and thus legitimately attributable.
   # All downstream metrics use `reconciled` (deduped bundles) / `outcomes`, never raw `scoped`.
 

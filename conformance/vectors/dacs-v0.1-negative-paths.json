@@ -2,6 +2,7 @@
   "vectorId": "dacs-v0.1-negative-paths",
   "title": "Negative paths (regenerated) — tampered DACS-4/5 artifacts the reference verifiers REJECT",
   "dacsVersion": "0.1",
+  "signatureValueSpelling": "legacy-padded-base64",
   "description": "DACS-1/2/3 are the valid happy-path artifacts (accepted context). DACS-5 is the valid bundle with one party signature byte flipped (verifyBundleV1 rejects it). DACS-4 is a spec §9.7 failure-outcome SettlementEvidence (newly signed) PROJECTED from an internal HTLC settlement whose reveal preimage was tampered so it no longer hashes to the lock hashlock — our verifyHtlcSettlementEvidence rejects that underlying settlement. Conformance use: a compliant verifier MUST NOT accept the tampered DACS-5 bundle nor treat the DACS-4 settlement as successful.",
   "artifacts": [
     {
@@ -106,7 +107,14 @@
           "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ=="
         }
       },
-      "contentHash": "sha256:c5685dae0d9246524e93358d52c5b13c2df0aba837755f862f1f1e7dc55d2171"
+      "contentHash": "sha256:d38c0c1d22a7fcbfe6d0158cc4b04af06464860528c04a5eb720beb229982412",
+      "signatureChecks": [
+        {
+          "path": "signature",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-composite-verify-cci",
@@ -150,7 +158,14 @@
           "value": "HlcHuKJjPKurUzMkFO1ssW0Vjb8oaNb6KMkUC1W+mHY9d2pQSpMGO8YyOTeA8KWh33A/WB60aidaSFOkjlVmBw=="
         }
       },
-      "contentHash": "sha256:f9214f4c11486b772c53a36109f2a2cf1714f8391c8217cb2e8b32e06e3f5f75"
+      "contentHash": "sha256:c2ba1a5b094b15878e2ad905b39973eff67f2a31b189293c656d3ed619ffd629",
+      "signatureChecks": [
+        {
+          "path": "signature",
+          "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-agreement-fixed-price",
@@ -225,7 +240,19 @@
           }
         ]
       },
-      "contentHash": "sha256:5f8cde1dbee73e80b636bcb361b2d762cf994570d934322607eb7bce1c43bd84"
+      "contentHash": "sha256:d336e3ac2fc266bf6f0b59b4d44f891f9c6614c28e1955a54c95f1be4a464e6e",
+      "signatureChecks": [
+        {
+          "path": "signatures[0]",
+          "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "expect": "verify"
+        },
+        {
+          "path": "signatures[1]",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-settlement-tampered-preimage",
@@ -263,7 +290,14 @@
           "value": "KK9NYX305GfIw5C06Fo7A/v+K8+bU2srvrwjZwlyjiIdnYVHern6U0zkAeCYaytFqmXPaP7EfxRPCnJxIJMcDQ=="
         }
       },
-      "contentHash": "sha256:d0eac0ec7e29e0b9cef0f2a9094ecb9792084624ace24a24319472fd1fc0e7dc"
+      "contentHash": "sha256:da3383a8ef2dc44a6a9f6b703221566c04b817aff60a34db093b3bb942d81b9b",
+      "signatureChecks": [
+        {
+          "path": "signature",
+          "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-bundle-tampered-signature",
@@ -326,7 +360,19 @@
           }
         ]
       },
-      "contentHash": "sha256:18e51de7a5f4a9fc4ab8d7777241f90c9ec7078bb104ff8b690106600e2a64b4"
+      "contentHash": "sha256:06d3cf792b9b009f7a3ac4b18d895d422ee1eb89049bd4ec3aad99d1634bef8e",
+      "signatureChecks": [
+        {
+          "path": "signatures[0]",
+          "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "expect": "fail"
+        },
+        {
+          "path": "signatures[1]",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "expect": "verify"
+        }
+      ]
     }
   ],
   "expectedResult": {
@@ -335,7 +381,7 @@
       {
         "artifactId": "neg-settlement-tampered-preimage",
         "stage": "DACS-4",
-        "reason": "verifyHtlcSettlementEvidence → fail (reveal preimage replaced; no longer hashes to hashlock, signature breaks)"
+        "reason": "verifyHtlcSettlementEvidence → fail (reveal preimage replaced; no longer hashes to hashlock). The embedded ed25519 signature over the §B.2 scope still verifies — this is an HTLC-semantics failure, not executed by this structural validator (see signatureChecks for the executed layer)."
       },
       {
         "artifactId": "neg-bundle-tampered-signature",

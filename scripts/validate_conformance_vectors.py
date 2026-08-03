@@ -9,6 +9,7 @@ This is intentionally stdlib-only so implementers can run it from a clean clone:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import re
@@ -19,6 +20,15 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import specsource  # noqa: E402
+import jcs  # noqa: E402 — stdlib-only RFC 8785 canonicaliser (this repo)
+
+try:
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+    HAVE_CRYPTO = True
+except ImportError:  # pragma: no cover — CI installs cryptography before this runs
+    HAVE_CRYPTO = False
 DEFAULT_VECTOR_DIR = ROOT / "conformance" / "vectors"
 DEFAULT_MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 EXPECTED_STAGES = ["DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"]
@@ -45,6 +55,60 @@ REQUIRED_ARTIFACT = {
 }
 DOMAIN_RE = re.compile(r'"(dacs[-a-z0-9]*:v1:)"')
 
+# Per-kind fields excluded from the §B.2 canonical form before hashing — each
+# kind's "hash-excluded field(s)" from the CORE §B.2 per-artifact template.
+HASH_EXCLUDED = {
+    "Listing": {"signature"},                              # §B.2
+    "CompositeVerificationRecord": {"signature"},          # §B.2 / §7.7
+    "AgreementDocument": {"signatures"},                   # DACS-3 §8.5 (L463: "omitting the `signatures` field")
+    "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
+    "AttestationBundle": {"signatures", "anchoredByRole"}, # DACS-5 §10.4.1 (signatures AND anchoredByRole)
+}
+
+# Kind -> §B.7 domain separator. The name is confirmed present in the closed
+# §B.7 registry at run time (load_registered_domain_separators), so the payload
+# separator is registry-validated, never trusted as supplied by the vector.
+KIND_SEPARATOR = {
+    "Listing": "dacs-listing:v1:",
+    "CompositeVerificationRecord": "dacs-composite:v1:",
+    "AgreementDocument": "dacs-agreement:v1:",
+    "SettlementEvidence": "dacs-evidence:v1:",
+    "AttestationBundle": "dacs-bundle:v1:",
+}
+
+# The two lifecycle chains predate the SIG-6 canonical signature-value ruling and
+# retain padded standard-Base64 spellings (conformance/vectors/README.md, "SIG-6
+# transition"). Padded standard Base64 is accepted only under a DUAL gate: the
+# basename is in this allowlist AND the file itself declares the legacy spelling
+# via the top-level signatureValueSpelling field below. Either alone is rejected;
+# every other file must carry canonical SIG-6 unpadded Base64URL.
+LEGACY_SIG_SPELLING_FILES = {
+    "dacs-v0.1-happy-path.json",
+    "dacs-v0.1-negative-paths.json",
+}
+LEGACY_SIG_SPELLING_VALUE = "legacy-padded-base64"
+
+# The signature-suite wire spelling this validator can execute. The normative enum
+# is `"ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"` (lowercase) — the signature
+# envelope shapes in DACS-1/3/4/5 (e.g. spec/DACS-3-NEGOTIATE.md AgreementSignature,
+# spec/DACS-5-VERIFY.md BundleSignature). This verifier implements only ed25519; a
+# signature declaring any other (or absent/misspelled) suite is recorded "fail"
+# because this verifier cannot confirm it, never crashed and never silently passed.
+ED25519_ALGORITHM = "ed25519"
+
+# A signatureChecks pin has exactly these keys. Unknown keys are rejected
+# (fail-closed): a typo'd or smuggled key must not pass unread.
+PIN_KEYS = {"path", "signer", "expect"}
+PIN_EXPECT_VALUES = {"verify", "fail"}
+
+
+def legacy_spelling_allowed(path: Path, data: dict) -> bool:
+    """Dual gate for padded standard-Base64 signature values."""
+    return (
+        path.name in LEGACY_SIG_SPELLING_FILES
+        and data.get("signatureValueSpelling") == LEGACY_SIG_SPELLING_VALUE
+    )
+
 
 def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
     spec_text = specsource.spec_text(root)
@@ -58,17 +122,118 @@ def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
 
 
 def canonical_json(value: Any) -> bytes:
-    """Return stable JSON bytes approximating RFC 8785 for these vectors.
+    """§B.2 canonical bytes of ``value``, for the JSON subset these artifacts occupy.
 
-    The vectors deliberately avoid floats and non-string map keys, so sorted-key JSON
-    with compact separators is sufficient for deterministic test fixtures.
+    Delegates to the stdlib-only ``jcs`` module (RFC 8785 over integers, strings,
+    literals, arrays, objects — see its docstring) so the artifact hash is the JCS
+    serialisation rather than ``json.dumps``. On the all-ASCII, float-free vector
+    corpus the two coincide byte-for-byte. Per CF-1 the module NFC-normalises string
+    *values* only; member names are serialised and UTF-16-sorted as received. It
+    fails closed on floats and oversized integers.
     """
 
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return jcs.canonicalize(value).encode("utf-8")
 
 
-def sha256_uri(value: Any) -> str:
-    return "sha256:" + hashlib.sha256(canonical_json(value)).hexdigest()
+def signing_scope(kind: str, artifact: dict) -> dict:
+    """Copy of ``artifact`` with the kind's §B.2 hash-excluded field(s) removed.
+
+    Removal-based, so unrecognised fields stay in the hashed scope (SIG-5
+    preserve-unknown). An unknown kind raises: a signable artifact with no declared
+    exclusion set must fail closed, never be hashed with its signature left in scope.
+    """
+
+    if kind not in HASH_EXCLUDED:
+        raise ValueError(f"unknown artifact kind for §B.2 hashing: {kind!r}")
+    excluded = HASH_EXCLUDED[kind]
+    return {key: value for key, value in artifact.items() if key not in excluded}
+
+
+def artifact_hash_hex(kind: str, artifact: dict) -> str:
+    """64-char lowercase hex sha256 of the §B.2 canonical form (§B.7 ``artifact_hash``)."""
+    return hashlib.sha256(canonical_json(signing_scope(kind, artifact))).hexdigest()
+
+
+def content_hash_uri(kind: str, artifact: dict) -> str:
+    """The published envelope form ``"sha256:" + artifact_hash_hex`` (§B.2 content hash)."""
+    return "sha256:" + artifact_hash_hex(kind, artifact)
+
+
+def _is_canonical_sig6(value: str) -> bool:
+    """True when ``value`` is canonical SIG-6 unpadded Base64URL (CORE §B.7 SIG-6)."""
+    if not value or re.fullmatch(r"[A-Za-z0-9_-]+", value) is None:
+        return False
+    try:
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    except (ValueError, TypeError):
+        return False
+    # SIG-6: compare the value against an unpadded Base64URL re-encoding of its bytes.
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") == value
+
+
+def decode_signature_value(value: Any, legacy_allowed: bool) -> bytes:
+    """Decode a signature ``value`` to raw bytes. Canonical SIG-6 first; padded
+    standard Base64 accepted only when ``legacy_allowed`` (the dual gate: an
+    allowlisted basename AND the file's own signatureValueSpelling declaration)."""
+    if not isinstance(value, str):
+        raise ValueError("signature value must be a string")
+    if _is_canonical_sig6(value):
+        return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    if legacy_allowed:
+        return base64.b64decode(value, validate=True)  # padded standard Base64 (documented legacy)
+    raise ValueError("signature value is not canonical SIG-6 unpadded Base64URL")
+
+
+def _pubkey_from_claim(claim: Any):
+    scheme, _, identifier = str(claim).partition(":")
+    if scheme != "cci" or re.fullmatch(r"[0-9a-f]{64}", identifier) is None:
+        raise ValueError(f"cannot resolve signer key from claim {claim!r}")
+    return Ed25519PublicKey.from_public_bytes(bytes.fromhex(identifier))
+
+
+def signature_entries(artifact: dict) -> list:
+    """[(path, envelope), ...] for the artifact's top-level signature field(s)."""
+    if "signature" in artifact:
+        return [("signature", artifact["signature"])]
+    return [(f"signatures[{i}]", s) for i, s in enumerate(artifact.get("signatures", []))]
+
+
+def observed_signature_checks(kind: str, artifact: dict, registry: set, legacy_allowed: bool) -> list:
+    """Verify each top-level signature; return observed pins in artifact order,
+    each ``{"path", "signer", "expect": "verify"|"fail"}``.
+
+    Payload is the registry-validated §B.7 ``separator || artifact_hash_hex`` (the
+    ASCII hex string, not raw digest bytes). This is executed verification, not a
+    claim: an ed25519 signature succeeding under exactly this separator string is
+    empirical proof the separator is byte-identical to what the signer used.
+    """
+
+    separator = KIND_SEPARATOR[kind]
+    if separator not in registry:
+        raise ValueError(f"{kind} separator {separator!r} is not in the closed §B.7 registry")
+    payload = (separator + artifact_hash_hex(kind, artifact)).encode("ascii")
+    results = []
+    for path, envelope in signature_entries(artifact):
+        envelope = envelope if isinstance(envelope, dict) else {}
+        signer = envelope.get("signer") or envelope.get("party")
+        outcome = "fail"
+        # Bind the declared suite: only ed25519 is executable here. A different,
+        # absent, or misspelled algorithm is recorded "fail" (unverifiable under
+        # this verifier), never a silent verify and never a crash.
+        if envelope.get("algorithm") == ED25519_ALGORITHM:
+            try:
+                _pubkey_from_claim(signer).verify(
+                    decode_signature_value(envelope["value"], legacy_allowed), payload
+                )
+                outcome = "verify"
+            except (InvalidSignature, ValueError, KeyError, TypeError):
+                outcome = "fail"
+        results.append({"path": path, "signer": signer, "expect": outcome})
+    return results
+
+
+def _pin_key(pin: dict) -> tuple:
+    return (pin.get("path"), pin.get("signer"), pin.get("expect"))
 
 
 def display_path(path: Path) -> str:
@@ -136,6 +301,8 @@ def validate_vector(path: Path) -> list[str]:
 
     stages = []
     artifact_ids = set()
+    signature_expectations: list[str] = []
+    legacy_allowed = legacy_spelling_allowed(path, data)
     for idx, artifact in enumerate(artifacts):
         prefix = f"artifact[{idx}]"
         if not isinstance(artifact, dict):
@@ -168,7 +335,26 @@ def validate_vector(path: Path) -> list[str]:
         elif registry and separator not in registry:
             errors.append(fail(path, f"{artifact_id}: domainSeparator is not registered in §7.7: {separator}"))
 
-        expected_hash = sha256_uri(artifact["artifact"])
+        kind = artifact["kind"]
+        if kind not in HASH_EXCLUDED:
+            errors.append(fail(path, f"{artifact_id}: unknown artifact kind {kind!r} (no §B.2 hash-exclusion rule)"))
+            continue
+
+        # Bind the declared domainSeparator to the kind's registry-validated §B.7
+        # separator — the same string the signature payload is built from. Without
+        # this, a vector could advertise one separator and be verified under another.
+        expected_separator = KIND_SEPARATOR[kind]
+        if artifact["domainSeparator"] != expected_separator:
+            errors.append(
+                fail(
+                    path,
+                    f"{artifact_id}: domainSeparator {artifact['domainSeparator']!r} does not match "
+                    f"the {kind} §B.7 separator {expected_separator!r}",
+                )
+            )
+
+        # §B.2 envelope content hash over the signature-omitted canonical form.
+        expected_hash = content_hash_uri(kind, artifact["artifact"])
         if artifact["contentHash"] != expected_hash:
             errors.append(
                 fail(
@@ -176,6 +362,42 @@ def validate_vector(path: Path) -> list[str]:
                     f"{artifact_id}: contentHash mismatch; expected {expected_hash}, got {artifact['contentHash']}",
                 )
             )
+
+        # Executed ed25519 verification of every embedded signature, pinned two-way.
+        declared = artifact.get("signatureChecks")
+        if not isinstance(declared, list) or not declared:
+            errors.append(fail(path, f"{artifact_id}: signatureChecks MUST be a non-empty array of signature pins"))
+        elif not all(isinstance(pin, dict) for pin in declared):
+            errors.append(fail(path, f"{artifact_id}: every signatureChecks entry MUST be an object"))
+        else:
+            # Validate each pin's shape BEFORE _pin_key/sort, so a malformed pin
+            # produces a clear error rather than a TypeError from sorting None keys.
+            pin_errors = []
+            for i, pin in enumerate(declared):
+                unknown = set(pin) - PIN_KEYS
+                if unknown:
+                    pin_errors.append(f"pin[{i}] has unknown keys: {sorted(unknown)}")
+                if not isinstance(pin.get("path"), str) or not pin.get("path"):
+                    pin_errors.append(f"pin[{i}].path MUST be a non-empty string")
+                if not isinstance(pin.get("signer"), str) or not pin.get("signer"):
+                    pin_errors.append(f"pin[{i}].signer MUST be a non-empty string")
+                if pin.get("expect") not in PIN_EXPECT_VALUES:
+                    pin_errors.append(f"pin[{i}].expect MUST be one of: {sorted(PIN_EXPECT_VALUES)}")
+            if pin_errors:
+                for message in pin_errors:
+                    errors.append(fail(path, f"{artifact_id}: {message}"))
+            else:
+                observed = observed_signature_checks(kind, artifact["artifact"], registry, legacy_allowed)
+                declared_ms = sorted(_pin_key(pin) for pin in declared)
+                observed_ms = sorted(_pin_key(pin) for pin in observed)
+                if declared_ms != observed_ms:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{artifact_id}: signatureChecks mismatch; declared {declared_ms} but observed {observed_ms}",
+                        )
+                    )
+                signature_expectations.extend(pin.get("expect") for pin in declared)
 
     if stages != EXPECTED_STAGES:
         errors.append(fail(path, f"artifacts MUST cover stages in order: {EXPECTED_STAGES}; got {stages}"))
@@ -187,6 +409,15 @@ def validate_vector(path: Path) -> list[str]:
         failures = expected.get("expectedFailures")
         if not isinstance(failures, list) or not failures:
             errors.append(fail(path, "negative-path vectors MUST list expectedResult.expectedFailures"))
+
+    # File coherence: a positive vector (verifies:true) MUST NOT carry a
+    # signature-failure pin. The converse deliberately does NOT hold — a negative
+    # vector may fail on purely semantic grounds (HTLC preimage, artifact shape,
+    # reference resolution) with every signature valid, so signature assertions
+    # live only in the per-artifact pins and are never inferred from expectedResult.
+    verifies = expected.get("verifies") if isinstance(expected, dict) else None
+    if verifies is True and any(exp == "fail" for exp in signature_expectations):
+        errors.append(fail(path, "expectedResult.verifies is true but a signatureChecks pin expects 'fail'"))
 
     return errors
 
@@ -347,11 +578,79 @@ def iter_vector_files(vector_dir: Path) -> list[Path]:
     return sorted(p for p in vector_dir.glob("*.json") if p.is_file())
 
 
+# The one signature that must fail in --write: the designated tampered bundle sig.
+EXPECTED_WRITE_FAIL = ("signatures[0]", "neg-bundle-tampered-signature")
+
+
+def require_crypto() -> None:
+    if not HAVE_CRYPTO:
+        raise SystemExit(
+            "cryptography is required for signature verification but is not importable; "
+            "CI installs it before this validator runs (.github/workflows/validate.yml). "
+            "Install it with: python3 -m pip install cryptography"
+        )
+
+
+def write_vectors() -> int:
+    """One-shot regeneration gate for #278: regenerate the 10 envelope contentHash
+    values AND populate signatureChecks from observed verification, then hard-assert
+    the distribution before writing.
+
+    The frozen distribution — 13 pins expecting 'verify' plus exactly ONE expecting
+    'fail' at neg-bundle-tampered-signature signatures[0] — is specific to this
+    corpus and is EXPECTED to be relaxed or replaced when the corpus legitimately
+    changes (notably the external chain regeneration tracked in the #278 follow-up).
+    Any other distribution aborts without writing (write-then-check determinism)."""
+
+    require_crypto()
+    registry = load_registered_domain_separators(ROOT)
+    files = [DEFAULT_VECTOR_DIR / name for name in sorted(LEGACY_SIG_SPELLING_FILES)]
+    staged: list[tuple[Path, dict]] = []
+    verify_count = 0
+    fail_pins: list[tuple[str, str]] = []
+    for path in files:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        legacy_allowed = legacy_spelling_allowed(path, data)
+        for artifact in data["artifacts"]:
+            kind = artifact["kind"]
+            artifact["contentHash"] = content_hash_uri(kind, artifact["artifact"])
+            observed = observed_signature_checks(kind, artifact["artifact"], registry, legacy_allowed)
+            artifact["signatureChecks"] = observed
+            for pin in observed:
+                if pin["expect"] == "verify":
+                    verify_count += 1
+                else:
+                    fail_pins.append((pin["path"], artifact["id"]))
+        staged.append((path, data))
+
+    if verify_count != 13 or fail_pins != [EXPECTED_WRITE_FAIL]:
+        print(
+            "refusing to write: unexpected signature distribution "
+            f"(verify={verify_count}, fail_pins={fail_pins}); expected 13 verify + exactly "
+            f"one fail at {list(EXPECTED_WRITE_FAIL)}",
+            file=sys.stderr,
+        )
+        return 1
+
+    for path, data in staged:
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"wrote {display_path(path)}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate DACS conformance vector JSON files")
     parser.add_argument("paths", nargs="*", help="Specific five-stage vector files to validate")
     parser.add_argument("--manifest", type=Path, help="PR117-style MANIFEST.json to validate")
+    parser.add_argument(
+        "--write",
+        action="store_true",
+        help="Regenerate the lifecycle vectors' contentHash + signatureChecks from observed §B.2 hashes and verification",
+    )
     args = parser.parse_args(argv)
+
+    if args.write:
+        return write_vectors()
 
     manifest_path = args.manifest
     if manifest_path is None and not args.paths and DEFAULT_MANIFEST.exists():
@@ -370,6 +669,9 @@ def main(argv: list[str] | None = None) -> int:
     if not paths and manifest_path is None:
         print(f"no vector files found under {DEFAULT_VECTOR_DIR.relative_to(ROOT)}", file=sys.stderr)
         return 1
+
+    if paths:
+        require_crypto()  # vector validation executes ed25519 verification
 
     all_errors: list[str] = []
     for path in paths:

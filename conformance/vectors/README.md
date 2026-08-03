@@ -18,6 +18,26 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
 > and re-signing rather than an in-place edit. They are legacy migration inputs,
 > not SIG-6 wire-encoding cases. Current encoding conformance is pinned by
 > [`security/signature-value-encoding-v0.1.json`](./security/signature-value-encoding-v0.1.json).
+> The validator accepts the padded spelling only when BOTH an explicit
+> `"signatureValueSpelling": "legacy-padded-base64"` declaration AND a recognised
+> lifecycle-vector basename are present. This is an explicit **compatibility
+> routing**, not an authenticity boundary — it decides which decoder runs, not
+> whether a file is trustworthy. Canonical SIG-6 decode is attempted first, so a
+> future SIG-6 migration simply drops the declaration and the legacy path closes.
+
+> **Internal-reference residual (#278 / #313).** Each artifact's `contentHash`
+> envelope value is the §B.2 content hash — sha256 of the RFC 8785 canonical form
+> with the signature field omitted (bundles also omit `anchoredByRole`, §10.4.1).
+> The embedded ed25519 signatures already commit to that hash, so correcting the
+> envelope values needed no re-signing. The signed **internal cross-references**,
+> however — `agreement.listingRef.contentHash`,
+> `agreement.parties[*].vetRecordRef.contentHash`, and
+> `bundle.listingRef.contentHash` — still commit to the legacy *whole-artifact*
+> envelope hashes: they sit inside the signed scope, so they cannot be corrected
+> in place without invalidating the (externally-keyed) signatures. Until the chain
+> is regenerated generator-side, **these fixtures MUST NOT be used as
+> reference-resolution vectors** — a consumer resolving an internal ref against the
+> corrected envelope hash will see a mismatch. Tracked in #313.
 
 ## Included vectors
 
@@ -92,7 +112,10 @@ The validators are stdlib-only. The vector validator checks:
 - per-artifact required fields
 - `§`-style spec references
 - registered §7.7 domain separators
-- deterministic `sha256:` content hashes over each artifact payload
+- deterministic `sha256:` content hashes over the §B.2 canonical form (RFC 8785
+  JCS with the signature field omitted; bundles also omit `anchoredByRole`)
+- executed ed25519 verification of every embedded signature over the §B.7
+  domain-separated payload, pinned two-way per artifact in `signatureChecks`
 - exact nested §7.5.2 `AttestationRef` shapes in the reference-bearing shared
   fixtures, including every DACS-5 bundle ref position
 - exact §9.3 `ChainTxRef` union arms, backed by all-discriminator positive

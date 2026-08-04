@@ -17,6 +17,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
+| DPA-* | Attested-payload listing coherence, exact-byte method proof, commerce binding, success closure, and minor-safe record typing | §9.6.3 | §14.4 |
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |

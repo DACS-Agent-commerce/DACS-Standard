@@ -84,6 +84,12 @@ also regenerate the README's set-index table (it is generated, not hand-edited):
 python3 scripts/generate_security_vector_index.py --write
 ```
 
+Generated payload-attestation vectors have an additional byte-determinism check:
+
+```sh
+python3 scripts/generate_payload_attestation_vectors.py --check
+```
+
 The vector validator checks machine-readable examples under
 [`conformance/vectors/`](./conformance/vectors/), including happy-path,
 negative-path, IdentityBundle, and RatingRecord fixtures. The domain-separator,

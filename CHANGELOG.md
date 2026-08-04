@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — DACS-4 v0.5
+
+- **Payload-bound attested delivery — `PayloadAttestationRecord` and DPA-1..DPA-9** (§9.6.3, §9.7, §B.1/§B.3/§B.7, §A.3; #300) — closes the path where `deliver-attested-payload` could be counted from seller/orchestrator-signed `SettlementEvidence` without the declared verification method or a payload-bound proof. A distinct minor-safe artifact (`payloadAttestationVersion: "1"`, `dacs-payload-attestation:v1:`) binds the exact delivered cleartext digest to `jobId`, the committed agreement, the signed DeliverableSpec, and the selected verification method; its method evidence remains independently resolved and verified. Listings selecting the phase must declare a usable method before any payment, success evidence must carry content hash + anchor + a ref to a passing payload record, non-pass/unresolved outcomes never collapse to success, and ordinary evidence signatures cannot substitute for method proof. The Demos binding carries DAHR's `responseHash`/`responseHeadersHash`/`txHash` through the method-evidence chain, requires an authenticated resolvable `web2Request` transaction at `included` or stronger (with finalization before terminal DACS-5 production), and limits the current string-returning API to byte-exact UTF-8 payloads. The legacy optional wire spelling of `verificationMethod` is unchanged, but DPA-1 deliberately changes behavior and reject timing: a missing method now rejects before session start and payment instead of potentially failing only when delivery is attempted. Adds candidate vectors covering binding, replay, type/domain separation, DAHR transaction/hash requirements, self-signed disclosure, and fail-closed resolution.
+
 ### Fixed — DACS-1 / DACS-4 chain applicability
 
 - **Byte-exact `cci-xm` → EVM rail-chain predicate** (DACS-1 §6.3.1;

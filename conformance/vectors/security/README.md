@@ -44,6 +44,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
@@ -67,6 +68,35 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `payload-attestation-binding-v0.1.json` — §9.6.3 DPA-1..DPA-9
+
+22 candidate vectors make the attested-payload success gate executable. The two
+positive cases carry genuine deterministic Ed25519 signatures over the distinct
+`dacs-payload-attestation:v1:` and `dacs-evidence:v1:` domains: one composes a
+finalized DAHR `web2Request` commitment, and one proves that `self-signed`
+remains available only as an explicitly selected minimal-trust method with a
+real payload-bound proof.
+
+Negative cases reject a listing with no method before payment, a
+seller/orchestrator evidence signature used as a substitute, VerifyResult
+coercion, an unsupported discriminator, cross-domain signature replay,
+job/agreement/DeliverableSpec/method/payload mismatch, a bad native-evidence
+hash, missing or unauthenticated DAHR transaction evidence, request/response
+substitution, a non-pass payload decision, a stale record reference, and
+cross-session replay. An otherwise well-formed but unavailable method proof
+stays `indeterminate`.
+
+Every vector carries the signed listing context, committed agreement tuple,
+exact UTF-8 payload, method-native evidence, `PayloadAttestationRecord`,
+record reference, and signed `SettlementEvidence`. Public test seeds are
+included for independent reproduction. Regenerate or verify byte determinism:
+
+```sh
+python3 scripts/generate_payload_attestation_vectors.py --write
+python3 scripts/generate_payload_attestation_vectors.py --check
+python3 -m unittest tests.test_payload_attestation_vectors -v
+```
 
 ### `cci-xm-rail-chain-applicability-v0.5.json` — §6.3.1 EVM profile + §9.4.3 RD-5 / §9.5.1 PB-2
 

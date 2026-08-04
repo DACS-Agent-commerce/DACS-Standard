@@ -117,6 +117,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | AP2 mandate replay | network observer | §9.5.6 (AP2 mandate nonce/exp — upstream evidence; DACS records the `ap2` txRef and anchors it via SR-2) | specified — pay-ap2 not yet reference-backed |
 | x402 settlement-reference forgery | malicious server | §9.5.8 SB-3 (`jobId` + `phaseIndex` bound into the byte-exact `dacs-sb3:v1:` EIP-3009 nonce, or `jobId` into the Permit2 witness; DACS confirms the on-chain settlement, never trusts `PAYMENT-RESPONSE` alone) | mitigated — DACS-side binding, not inherited |
 | x402 receipt reserialization / substitution | implementation bug or malicious server | §9.5.7 X402-1..X402-4 (versioned header selection; complete decoded-object JCS hash; transaction/network cross-check) | mitigated |
+| Attested-payload self-assertion or cross-session proof replay | malicious counterparty or orchestrator | §9.6.3 DPA-1..DPA-9 (method required before session; exact-byte method proof; job/agreement/spec/method binding; PayloadAttestationRecord required for success; settlement signature never substitutes) | mitigated subject to selected method's disclosed trust floor |
 | Refund laundering | malicious seller | §9.13 (anchored amendments) | mitigated |
 | Decimal-overflow on cross-decimal pay | implementation bug | §9.13 (string-decimal arithmetic) | mitigated |
 | Bundle forgery | malicious counterparty | §10.11 (co-signature requirement) | mitigated |

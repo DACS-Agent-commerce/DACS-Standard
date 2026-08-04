@@ -823,6 +823,7 @@ def validate_ebfab(
             return (False, "ST-8 interim record lacks authenticated resolution", None)
         interim_record = interim_resolution.get("record")
         interim_index = interim_resolution.get("phaseIndex")
+        interim_lifecycle = interim_resolution.get("lifecycle")
         interim_signature = interim_record.get("signature") if isinstance(interim_record, dict) else None
         if (
             not isinstance(interim_record, dict)
@@ -837,6 +838,7 @@ def validate_ebfab(
             or interim_signature.get("algorithm") != "ed25519"
             or interim_signature.get("signer") not in _primary_claims(bundle)
             or interim_signature.get("signer") not in pubkeys
+            or not isinstance(interim_lifecycle, dict)
         ):
             return (False, "ST-8 successor does not authenticate its same-phase interim failure", None)
         canonical_ok, canonical_reason = sig6_canonical(interim_signature.get("value", ""))
@@ -849,6 +851,16 @@ def validate_ebfab(
             interim_signature["value"],
         ):
             return (False, "ST-8 interim evidence signature does not verify", None)
+        if bundle.get("outcome") == "completed" and (
+            interim_lifecycle.get("state") != "finalized"
+            or interim_lifecycle.get("independentlyResolvable") is not True
+        ):
+            return (False, "completed ST-8 interim dependency is not finalized and independently resolvable", None)
+        if (
+            bundle.get("outcome") != "completed"
+            and interim_lifecycle.get("state") not in {"included", "finalized"}
+        ):
+            return (False, "failed ST-8 interim dependency is not included or finalized", None)
 
     completed = bundle.get("outcome") == "completed"
     for resolution in exact_resolutions:
@@ -1357,19 +1369,19 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         # resolution context. Never recover it from returned bundle content:
         # selected invalid content can omit or alter its own jobId precisely to
         # make an older copy appear eligible.
-        resolved_job = tagged.get("resolvedJobId")
-        if selected and not isinstance(resolved_job, str):
-            raise ValueError("selected role resolution lacks trusted resolvedJobId")
-
         # BB-6 role resolution precedes EBFAB admission. A raw losing EBFAB is
         # inert and MUST be discarded before any of its fields are inspected.
         if kind == "evidence-bound" and not selected:
             continue
+        resolved_job = tagged.get("resolvedJobId")
+        if not isinstance(resolved_job, str):
+            if kind is None and not selected:
+                continue
+            raise ValueError("admitted role resolution lacks trusted resolvedJobId")
         if kind is None:
-            if selected:
-                rejected_selected_jobs.add(resolved_job)
+            rejected_selected_jobs.add(resolved_job)
             continue
-        if selected and bundle.get("jobId") != resolved_job:
+        if bundle.get("jobId") != resolved_job:
             rejected_selected_jobs.add(resolved_job)
             continue
         if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
@@ -1466,7 +1478,8 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     bundle_refs = [h for h, _ in refs]
     resolution_context = []
     for h, t in refs:
-        entry = {"contentHash": h, "resolvedRole": t["resolvedRole"],
+        entry = {"contentHash": h, "resolvedJobId": t["resolvedJobId"],
+                 "resolvedRole": t["resolvedRole"],
                  "counterpartyDisposition": t.get("counterpartyDisposition")}
         if t.get("counterpartyDisposition") == "present":
             entry["counterpartyRef"] = t.get("counterpartyRef")
@@ -1678,6 +1691,9 @@ def _entry_structural_gate(entry, index):
     ch = entry.get("contentHash")
     if not isinstance(ch, str):
         return (False, "resolutionContext[%d]: contentHash must be a string (got %s)" % (index, type(ch).__name__))
+    resolved_job = entry.get("resolvedJobId")
+    if not isinstance(resolved_job, str) or not resolved_job:
+        return (False, "%s: resolvedJobId must be a non-empty string (got %r)" % (ch, resolved_job))
     # dict-typed members guarded downstream by falsy-tolerant `or {}` / `if not`: flag truthy non-dict only.
     for field in ("roleEvidence", "bb6Context", "counterpartyRef", "counterpartyRoleEvidence", "absenceEvidenceRef"):
         v = entry.get(field)
@@ -1843,6 +1859,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             reasons.append(reason_entry)
             continue
         ch = entry.get("contentHash")
+        resolved_job = entry.get("resolvedJobId")
         role = entry.get("resolvedRole")
         other = _other(role) if role in ("buyer", "seller") else None
         re_ = entry.get("roleEvidence") or {}
@@ -1863,11 +1880,14 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         if not ok_w:
             reasons.append("%s: winner copy %s" % (ch, reason_w))
             continue
+        if auth.get("jobId") != resolved_job:
+            reasons.append("%s: winner copy jobId != trusted resolvedJobId" % ch)
+            continue
         # (1) roleEvidence re-verification + (2) BB-6 reproduction.
         if re_.get("kind") == "binding":
             auth_binding = re_.get("binding") or {}
             vb = verify_binding(auth_binding, pubkeys,
-                                expected_jobid=auth.get("jobId"), expected_role=role,
+                                expected_jobid=resolved_job, expected_role=role,
                                 expected_content_hash=ch)
             if not vb["ok"]:
                 reasons.append("%s: roleEvidence %s" % (ch, vb["reason"]))
@@ -1920,7 +1940,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             #    surface resolution) is not replayable; a malformed AUTHORIZED candidate fails the receipt closed.
             bad_candidate = None
             for cand in survivors:
-                vbc = verify_binding(cand, pubkeys, expected_jobid=auth.get("jobId"), expected_role=role)
+                vbc = verify_binding(cand, pubkeys, expected_jobid=resolved_job, expected_role=role)
                 if not vbc["ok"]:
                     bad_candidate = (cand.get("nativeAddress"), vbc["reason"])
                     break
@@ -1994,6 +2014,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         else:
             pf_auth_ok, pf_auth_reason = _post_fetch_address_valid(
                 auth, re_.get("resolvedAddress"), role, ch, pubkeys,
+                expected_jobid=resolved_job,
                 pure_mapping_resolver=pure_mapping_resolver)
             if not pf_auth_ok:
                 reasons.append("%s: authoritative copy %s" % (ch, pf_auth_reason))
@@ -2023,7 +2044,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if cre.get("kind") == "binding":
                 cp_binding = cre.get("binding") or {}
                 vb2 = verify_binding(cp_binding, pubkeys,
-                                     expected_jobid=auth.get("jobId"), expected_role=other,
+                                     expected_jobid=resolved_job, expected_role=other,
                                      expected_content_hash=cref.get("contentHash"))
                 if not vb2["ok"]:
                     reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
@@ -2032,7 +2053,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             else:
                 pf_cp_ok, pf_cp_reason = _post_fetch_address_valid(
                     cp, cre.get("resolvedAddress"), other, cref.get("contentHash"), pubkeys,
-                    expected_jobid=auth.get("jobId"), pure_mapping_resolver=pure_mapping_resolver)
+                    expected_jobid=resolved_job, pure_mapping_resolver=pure_mapping_resolver)
             if not pf_cp_ok:
                 reasons.append("%s: counterparty copy %s" % (ch, pf_cp_reason))
                 continue
@@ -2053,7 +2074,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if not isinstance(ab, dict):
                 reasons.append("%s: absent disposition missing absenceBinding" % ch)
                 continue
-            vb3 = verify_binding(ab, pubkeys, expected_jobid=auth.get("jobId"), expected_role=other)
+            vb3 = verify_binding(ab, pubkeys, expected_jobid=resolved_job, expected_role=other)
             if not vb3["ok"]:
                 reasons.append("%s: absenceBinding %s" % (ch, vb3["reason"]))
                 continue
@@ -2089,7 +2110,8 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     tagged = []
     for entry in derivation["resolutionContext"]:
         b = _deref_role_copy(anchor_deref, entry["roleEvidence"])
-        tag = {"bundle": b, "resolvedRole": entry["resolvedRole"],
+        tag = {"bundle": b, "resolvedJobId": entry["resolvedJobId"],
+               "resolvedRole": entry["resolvedRole"],
                "counterpartyDisposition": entry.get("counterpartyDisposition"),
                "counterpartyRef": entry.get("counterpartyRef"),
                "counterpartyRoleEvidence": entry.get("counterpartyRoleEvidence"),

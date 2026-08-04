@@ -226,6 +226,12 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             )
         )
         self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-completed-st8-interim-lifecycle"],
+                self.pubkeys,
+            )
+        )
+        self.assertIsNone(
             derive_phase_keys(self.data["executionAuthorities"]["invalid-listing-signature"], self.pubkeys)
         )
         self.assertIsNone(

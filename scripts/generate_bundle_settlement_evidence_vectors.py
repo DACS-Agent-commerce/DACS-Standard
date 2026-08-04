@@ -78,7 +78,9 @@ def make_authority(name, definition, signing_keys):
                 reference_validation_by_canonical_ref[F.canonical(interim_ref).decode("utf-8")] = {
                     "phaseIndex": entry["index"],
                     "record": interim_record,
-                    "lifecycle": copy.deepcopy(default_lifecycle),
+                    "lifecycle": copy.deepcopy(
+                        definition.get("st8InterimLifecycle", default_lifecycle)
+                    ),
                 }
                 supersedes = interim_ref
             evidence_reason = entry.get("errorClass")
@@ -242,6 +244,13 @@ def generate(source):
     definitions["invalid-transient-not-exhausted"]["phaseSummary"][-1].pop(
         "retryExhausted"
     )
+    definitions["invalid-completed-st8-interim-lifecycle"] = copy.deepcopy(
+        definitions["single-htlc-completed"]
+    )
+    definitions["invalid-completed-st8-interim-lifecycle"]["st8InterimLifecycle"] = {
+        "state": "included",
+        "independentlyResolvable": False,
+    }
 
     for vector in data["vectors"]:
         if vector["name"] == "bundle-settlement-bijection-st8-expired-interim-pass":

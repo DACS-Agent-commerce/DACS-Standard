@@ -139,7 +139,7 @@ def evidence_hash(ev):
 
 def _absent_entry(job_id, content_hash, role_binding, bb6, absence_binding, ev_hash, cp_native):
     return {
-        "contentHash": content_hash, "resolvedRole": "seller",
+        "contentHash": content_hash, "resolvedJobId": job_id, "resolvedRole": "seller",
         "roleEvidence": {"kind": "binding", "binding": role_binding}, "bb6Context": bb6,
         "counterpartyDisposition": "absent",
         "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": cp_native, "contentHash": ev_hash},
@@ -182,7 +182,7 @@ def build_present(job):
     cp = copy.deepcopy(W)
     cp["anchoredByRole"] = "buyer"  # excluded from bundle_hash: distinct role anchor, same canonical form
     bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
-    entry = {"contentHash": h, "resolvedRole": "seller",
+    entry = {"contentHash": h, "resolvedJobId": job, "resolvedRole": "seller",
              "roleEvidence": {"kind": "binding", "binding": role_bind}, "bb6Context": bb6,
              "counterpartyDisposition": "present",
              "counterpartyRef": {"contentHash": h},
@@ -269,7 +269,7 @@ def build_divergence_present(job, winner_ps, cp_ps):
     hB = bundle_hash(B)
     cp_bind = make_binding(job, "buyer", "buyer", native_address(job, "buyer", 0), hB)
     bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
-    entry = {"contentHash": hA, "resolvedRole": "seller",
+    entry = {"contentHash": hA, "resolvedJobId": job, "resolvedRole": "seller",
              "roleEvidence": {"kind": "binding", "binding": role_bind}, "bb6Context": bb6,
              "counterpartyDisposition": "present", "counterpartyRef": {"contentHash": hB},
              "counterpartyRoleEvidence": {"kind": "binding", "binding": cp_bind}}
@@ -283,9 +283,9 @@ def _divergence_tags(job, winner_ps, cp_ps):
     A = make_fab_ps(job, "seller", ["buyer", "seller"], winner_ps)
     B = make_fab_ps(job, "buyer", ["buyer", "seller"], cp_ps)
     hA, hB = bundle_hash(A), bundle_hash(B)
-    return [{"bundle": A, "resolvedRole": "seller", "counterpartyDisposition": "present",
+    return [{"bundle": A, "resolvedJobId": job, "resolvedRole": "seller", "counterpartyDisposition": "present",
              "counterpartyRef": {"contentHash": hB}},
-            {"bundle": B, "resolvedRole": "buyer", "counterpartyDisposition": "present",
+            {"bundle": B, "resolvedJobId": job, "resolvedRole": "buyer", "counterpartyDisposition": "present",
              "counterpartyRef": {"contentHash": hA}}]
 
 
@@ -650,9 +650,9 @@ class Round11ReceiptIngressTests(unittest.TestCase):
 
     # ---- Class 3: jobId / role type-collusion (concat sites) -----------------------------------
     def test_r11_coll1_jobid_type_collusion_defect(self):
-        """DEFECT: winner.jobId AND binding.jobId both 123 — verify_binding's jobId equality (:178)
-        passes on the collusion, then logical_address(123, role) (:182) concatenates int+str ->
-        TypeError, both modes. verify_binding ingress must type jobId. Refuse."""
+        """DEFECT: winner.jobId AND binding.jobId both 123. The independent trusted
+        resolvedJobId remains the requested string, so the winner-copy equality gate refuses the
+        collusion before verify_binding or logical_address can consume either attacker value."""
         p = build_absent("R11-COLL1")
         w = p["winner"]; w["jobId"] = 123
         newch = bundle_hash(w)
@@ -661,7 +661,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         e = p["deriv"]["resolutionContext"][0]
         e["contentHash"] = newch
         e["roleEvidence"]["binding"]["jobId"] = 123
-        self.assertEqual(vrc(p), (False, ["%s: roleEvidence BB-5: binding.jobId must be a string (got int)" % newch]))
+        self.assertEqual(vrc(p), (False, ["%s: winner copy jobId != trusted resolvedJobId" % newch]))
 
     def test_r11_coll2_role_type_collusion_defect(self):
         """DEFECT: entry.resolvedRole AND binding.role both 123. As of round-12 B2 the entry's invalid

@@ -40,12 +40,14 @@ class LegacyOrchestratorReputationParityTests(unittest.TestCase):
             tags = [
                 {
                     "bundle": copies[0],
+                    "resolvedJobId": copies[0]["jobId"],
                     "resolvedRole": copies[0]["anchoredByRole"],
                     "counterpartyDisposition": "present",
                     "counterpartyRef": {"contentHash": hashes[1]},
                 },
                 {
                     "bundle": copies[1],
+                    "resolvedJobId": copies[1]["jobId"],
                     "resolvedRole": copies[1]["anchoredByRole"],
                     "counterpartyDisposition": "present",
                     "counterpartyRef": {"contentHash": hashes[0]},

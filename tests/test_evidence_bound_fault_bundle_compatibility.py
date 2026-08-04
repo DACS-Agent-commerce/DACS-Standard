@@ -158,6 +158,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 },
                 {
                     "bundle": valid_fab,
+                    "resolvedJobId": valid_fab["jobId"],
                     "resolvedRole": "seller",
                     "counterpartyDisposition": "present",
                 },
@@ -222,6 +223,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 invalid_discriminator_tag,
                 {
                     "bundle": valid_fab,
+                    "resolvedJobId": valid_fab["jobId"],
                     "resolvedRole": "seller",
                     "counterpartyDisposition": "present",
                 },
@@ -239,6 +241,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 withheld_job,
                 {
                     "bundle": valid_fab,
+                    "resolvedJobId": valid_fab["jobId"],
                     "resolvedRole": "seller",
                     "counterpartyDisposition": "present",
                 },
@@ -247,6 +250,24 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             invalid["finalisedAt"] + 1,
         )
         self.assertEqual(withheld_job_rejection["bundleCount"], 0)
+
+        wrong_job_older = dict(valid_fab)
+        wrong_job_older["jobId"] = "OLDER-COPY-WRONG-JOB"
+        wrong_job_fallback = R.derive(
+            "did:demos:buyer",
+            [
+                tag,
+                {
+                    "bundle": wrong_job_older,
+                    "resolvedJobId": invalid["jobId"],
+                    "resolvedRole": "seller",
+                    "counterpartyDisposition": "present",
+                },
+            ],
+            invalid["finalisedAt"] - 1,
+            invalid["finalisedAt"] + 1,
+        )
+        self.assertEqual(wrong_job_fallback["bundleCount"], 0)
 
         missing_resolution_context = dict(tag)
         missing_resolution_context.pop("resolvedJobId")

@@ -152,7 +152,7 @@ def evidence_hash(ev):
 def _absent_entry(job_id, content_hash, role_binding, bb6, absence_binding, ev_hash, cp_native):
     """A one-copy absent resolutionContext entry (the round-8 N-vector shape)."""
     return {
-        "contentHash": content_hash, "resolvedRole": "seller",
+        "contentHash": content_hash, "resolvedJobId": job_id, "resolvedRole": "seller",
         "roleEvidence": {"kind": "binding", "binding": role_binding}, "bb6Context": bb6,
         "counterpartyDisposition": "absent",
         "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": cp_native, "contentHash": ev_hash},

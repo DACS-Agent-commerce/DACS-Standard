@@ -171,7 +171,7 @@ def evidence_hash(ev):
 
 def _absent_entry(job_id, content_hash, role_binding, bb6, absence_binding, ev_hash, cp_native):
     return {
-        "contentHash": content_hash, "resolvedRole": "seller",
+        "contentHash": content_hash, "resolvedJobId": job_id, "resolvedRole": "seller",
         "roleEvidence": {"kind": "binding", "binding": role_binding}, "bb6Context": bb6,
         "counterpartyDisposition": "absent",
         "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": cp_native, "contentHash": ev_hash},
@@ -214,7 +214,7 @@ def build_present(job):
     cp = copy.deepcopy(W)
     cp["anchoredByRole"] = "buyer"
     bb6 = {"candidateBindings": [role_bind], "partyMap": dict(PM), "budget": 8}
-    entry = {"contentHash": h, "resolvedRole": "seller",
+    entry = {"contentHash": h, "resolvedJobId": job, "resolvedRole": "seller",
              "roleEvidence": {"kind": "binding", "binding": role_bind}, "bb6Context": bb6,
              "counterpartyDisposition": "present",
              "counterpartyRef": {"contentHash": h},

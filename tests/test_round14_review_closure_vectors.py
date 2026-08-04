@@ -17,7 +17,7 @@ def _replayable_present(job):
     entry = p["deriv"]["resolutionContext"][0]
     tag = {"bundle": p["W"]}
     for field in (
-        "resolvedRole", "counterpartyDisposition", "counterpartyRef",
+        "resolvedJobId", "resolvedRole", "counterpartyDisposition", "counterpartyRef",
         "counterpartyRoleEvidence", "roleEvidence", "bb6Context",
     ):
         tag[field] = copy.deepcopy(entry[field])

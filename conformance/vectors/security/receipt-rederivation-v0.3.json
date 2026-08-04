@@ -87,6 +87,7 @@
               }
             ]
           },
+          "resolvedJobId": "RCP-A",
           "resolvedRole": "seller",
           "counterpartyDisposition": "present",
           "counterpartyRef": {
@@ -200,6 +201,7 @@
               }
             ]
           },
+          "resolvedJobId": "RCP-B",
           "resolvedRole": "seller",
           "counterpartyDisposition": "absent",
           "absenceEvidenceRef": {
@@ -439,6 +441,7 @@
         "resolutionContext": [
           {
             "contentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+            "resolvedJobId": "RCP-A",
             "resolvedRole": "seller",
             "counterpartyDisposition": "present",
             "roleEvidence": {
@@ -468,6 +471,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "counterpartyDisposition": "absent",
             "roleEvidence": {
@@ -499,6 +503,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "counterpartyDisposition": "present",
             "counterpartyRef": {
@@ -585,6 +590,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "counterpartyDisposition": "absent",
             "absenceEvidenceRef": {
@@ -705,6 +711,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "counterpartyDisposition": "absent",
             "absenceEvidenceRef": {
@@ -827,6 +834,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "counterpartyDisposition": "absent",
             "absenceEvidenceRef": {
@@ -996,6 +1004,7 @@
         "resolutionContext": [
           {
             "contentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+            "resolvedJobId": "RCP-A",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -1198,6 +1207,7 @@
         "resolutionContext": [
           {
             "contentHash": "f931d30763bcba5d0efd3be60047efc80a6506902d4b9662b1c3e7765fa1a319",
+            "resolvedJobId": "RCP-A",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -1354,6 +1364,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -1505,6 +1516,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -1672,6 +1684,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -1824,6 +1837,7 @@
         "resolutionContext": [
           {
             "contentHash": "9fa77b7a52d0543a34c457140e8ff6e4be69d9203a4d8f7828df47cc7a19f96f",
+            "resolvedJobId": "RCP-B",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -2043,6 +2057,7 @@
         "resolutionContext": [
           {
             "contentHash": "d374ae5a8da64493da5bf92131b29e34cc470c8575d3663742ee6b378274a132",
+            "resolvedJobId": "RCP-C",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -2216,6 +2231,7 @@
         "resolutionContext": [
           {
             "contentHash": "7ca1e1edbc0cbe62ebd239fe81bbe4e397ff1be3d74485ae83599af90e808bd1",
+            "resolvedJobId": "RCP-D",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -2435,6 +2451,7 @@
         "resolutionContext": [
           {
             "contentHash": "84a071f52ccd35237495538ed15270d28adcd640e7006ff5dd18e622831153b9",
+            "resolvedJobId": "RCP-E",
             "resolvedRole": "seller",
             "roleEvidence": {
               "kind": "binding",
@@ -2534,5 +2551,5 @@
     }
   ],
   "count": 16,
-  "hash": "15aa3c2715d95a1b2939ed60949f4833eb9f9aad55d58d98af2a941a7c0fd4a8"
+  "hash": "b936360ee6c8379adabd8075342de1608af280eb4b1549947a51c41a9d8a979a"
 }

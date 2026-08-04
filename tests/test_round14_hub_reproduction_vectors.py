@@ -221,7 +221,7 @@ class Round14HubReproductionTests(unittest.TestCase):
         derivation = {
             "replayableDerivationVersion": "1",
             "resolutionContext": [{
-                "contentHash": h_self, "resolvedRole": "seller",
+                "contentHash": h_self, "resolvedJobId": "J9", "resolvedRole": "seller",
                 "roleEvidence": {"kind": "address", "resolvedAddress": waddr},
                 "counterpartyDisposition": "present",
                 "counterpartyRef": {"contentHash": h_cp},
@@ -409,7 +409,7 @@ class Round14VerificationCompletion(unittest.TestCase):
         self.assertNotEqual(h_self, h_cp)
         self.assertTrue(R.divergence(self_c, cp), "honest pair must genuinely §10.4.3-diverge (control)")
         waddr, caddr = R.logical_address("JA", "seller"), R.logical_address("JA", "buyer")
-        tag = {"bundle": self_c, "resolvedRole": "seller", "counterpartyDisposition": "present",
+        tag = {"bundle": self_c, "resolvedJobId": "JA", "resolvedRole": "seller", "counterpartyDisposition": "present",
                "counterpartyRef": {"contentHash": h_cp},
                "counterpartyRoleEvidence": {"kind": "address", "resolvedAddress": caddr},
                "roleEvidence": {"kind": "address", "resolvedAddress": waddr}}
@@ -464,7 +464,7 @@ class Round14VerificationCompletion(unittest.TestCase):
         caddr = R.logical_address("JC", "buyer")
         winner_binding = self._binding("JC", "seller", "seller", winner_native, ch)
         bb6 = {"candidateBindings": [winner_binding], "partyMap": {"did:demos:seller": "seller"}, "budget": 8}
-        entry = {"contentHash": ch, "resolvedRole": "seller",
+        entry = {"contentHash": ch, "resolvedJobId": "JC", "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": winner_binding}, "bb6Context": bb6,
                  "counterpartyDisposition": "present", "counterpartyRef": {"contentHash": h_cp},
                  "counterpartyRoleEvidence": {"kind": "address", "resolvedAddress": caddr}}

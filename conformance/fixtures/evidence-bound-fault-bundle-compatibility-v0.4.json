@@ -1421,6 +1421,168 @@
       "want": {
         "ok": false
       }
+    },
+    {
+      "name": "dual-pointer-discriminator-reject",
+      "pointer": {
+        "faultBundleVersion": "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": "https://example.invalid/fault-bundle.json",
+        "fullBundleContentHash": "2d72cceb54d29cb5276904b9cf4d7a18d034db639e6aaa18f617db3370902c61",
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "HfiRe0Iyp9ed11jo9IfX6dge46OR49IowTyekSWP-T4I9kJyq-qtu_YHGn991d-4VDJuwc6gFmZrN4lBqO1zCQ"
+        },
+        "bundleVersion": "1"
+      },
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "EBFAB-COMPAT-1",
+        "outcome": "completed",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-ebfab-compat",
+          "version": 1,
+          "contentHash": "9d1bce847bfcc625b76df96cb590e424109472e2e6b3dfc2c389aea4495f6f02"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+              },
+              "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+            },
+            "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785772800000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "yzLQ6jh9AVNJNlkHbKeo8mCgVpxEGjlFkyxckSux-LNJoWPhXK2cPisfMyYzxjBrKJk615uO6jufIfEDYEtZCg"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "RtiqeTlo-8m8v1qLOXB6MhPzay1XQnvVlye0ubg1ZbmCTD55jLCom6Vv4gesNtoGGxr2u7kgIUwvcce0e-nZDw"
+          }
+        ],
+        "faultedParty": "none"
+      },
+      "want": {
+        "ok": false
+      }
+    },
+    {
+      "name": "unsupported-extra-pointer-discriminator-reject",
+      "pointer": {
+        "faultBundleVersion": "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": "https://example.invalid/fault-bundle.json",
+        "fullBundleContentHash": "2d72cceb54d29cb5276904b9cf4d7a18d034db639e6aaa18f617db3370902c61",
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "HfiRe0Iyp9ed11jo9IfX6dge46OR49IowTyekSWP-T4I9kJyq-qtu_YHGn991d-4VDJuwc6gFmZrN4lBqO1zCQ"
+        },
+        "evidenceBoundFaultBundleVersion": "2"
+      },
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "EBFAB-COMPAT-1",
+        "outcome": "completed",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-ebfab-compat",
+          "version": 1,
+          "contentHash": "9d1bce847bfcc625b76df96cb590e424109472e2e6b3dfc2c389aea4495f6f02"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+              },
+              "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+            },
+            "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785772800000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "yzLQ6jh9AVNJNlkHbKeo8mCgVpxEGjlFkyxckSux-LNJoWPhXK2cPisfMyYzxjBrKJk615uO6jufIfEDYEtZCg"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "RtiqeTlo-8m8v1qLOXB6MhPzay1XQnvVlye0ubg1ZbmCTD55jLCom6Vv4gesNtoGGxr2u7kgIUwvcce0e-nZDw"
+          }
+        ],
+        "faultedParty": "none"
+      },
+      "want": {
+        "ok": false
+      }
     }
   ]
 }

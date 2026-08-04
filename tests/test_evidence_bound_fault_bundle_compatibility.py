@@ -191,6 +191,43 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         )
         self.assertEqual(derivation_with_losing_candidate["bundleCount"], 1)
 
+        malformed_losing_candidate = {
+            "bundle": {"evidenceBoundFaultBundleVersion": "1"},
+            "selectedByRoleResolution": False,
+        }
+        derivation_with_malformed_loser = R.derive(
+            "did:demos:buyer",
+            [valid_tag, malformed_losing_candidate],
+            valid_ebfab["finalisedAt"] - 1,
+            valid_ebfab["finalisedAt"] + 1,
+        )
+        self.assertEqual(derivation_with_malformed_loser["bundleCount"], 1)
+
+        invalid_discriminator = next(
+            case["bundle"]
+            for case in self.data["cases"]
+            if case["name"] == "known-plus-unknown-discriminator-reject"
+        )
+        invalid_discriminator_tag = {
+            "bundle": invalid_discriminator,
+            "selectedByRoleResolution": True,
+        }
+        self.assertFalse(R._tagged_copy_valid_for_derive(invalid_discriminator_tag))
+        discriminator_rejection = R.derive(
+            "did:demos:buyer",
+            [
+                invalid_discriminator_tag,
+                {
+                    "bundle": valid_fab,
+                    "resolvedRole": "seller",
+                    "counterpartyDisposition": "present",
+                },
+            ],
+            invalid_discriminator["finalisedAt"] - 1,
+            invalid_discriminator["finalisedAt"] + 1,
+        )
+        self.assertEqual(discriminator_rejection["bundleCount"], 0)
+
     def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
         for case in self.data["pointerCases"]:
             with self.subTest(case=case["name"]):

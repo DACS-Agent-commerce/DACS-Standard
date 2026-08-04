@@ -688,7 +688,10 @@ def validate_ebfab(
 def _tagged_copy_valid_for_derive(tagged):
     """Reject an EBFAB before divergence/ranking unless its authenticated SEB gate passes."""
     bundle = tagged.get("bundle")
-    if bundle_type(bundle) != "evidence-bound":
+    kind = bundle_type(bundle)
+    if kind is None:
+        return False
+    if kind != "evidence-bound":
         return True
     authority = tagged.get("ebfabAuthority")
     if not isinstance(authority, dict):
@@ -941,6 +944,14 @@ def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, p
         for key in pointer
     ):
         return {"ok": False, "reason": "unknown pointer discriminator"}
+    present_discriminators = {
+        key for key in known_pointer_discriminators if key in pointer
+    }
+    if len(present_discriminators) != 1:
+        return {"ok": False, "reason": "non-exclusive pointer discriminator"}
+    only_discriminator = next(iter(present_discriminators))
+    if only_discriminator == "bundleVersion" or pointer.get(only_discriminator) != "1":
+        return {"ok": False, "reason": "unsupported pointer discriminator"}
     pointer_candidates = []
     if pointer.get("faultBundleVersion") == "1":
         pointer_candidates.append(("fault", FAULT_POINTER_DOMAIN))
@@ -1018,22 +1029,39 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         raise ValueError("windowingBasis must be one of %s (got %r)"
                          % (sorted(SUPPORTED_WINDOWING_BASES), basis))
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
-    candidates = [t for t in tagged_bundles
-                  if party in _primary_claims(t["bundle"])
-                  and window_start <= t["bundle"][clock] <= window_end
-                  and (
-                      bundle_type(t["bundle"]) != "evidence-bound"
-                      or t.get("selectedByRoleResolution") is True
-                  )]
-    rejected_ebfab_jobs = {
-        t["bundle"]["jobId"]
-        for t in candidates
-        if bundle_type(t["bundle"]) == "evidence-bound"
-        and not _tagged_copy_valid_for_derive(t)
-    }
-    scoped = [t for t in candidates
-              if t["bundle"]["jobId"] not in rejected_ebfab_jobs
-              and _tagged_copy_valid_for_derive(t)]
+    candidates = []
+    rejected_selected_jobs = set()
+    for tagged in tagged_bundles:
+        if not isinstance(tagged, dict):
+            continue
+        bundle = tagged.get("bundle")
+        kind = bundle_type(bundle)
+        selected = tagged.get("selectedByRoleResolution") is True
+
+        # BB-6 role resolution precedes EBFAB admission. A raw losing EBFAB is
+        # inert and MUST be discarded before any of its fields are inspected.
+        if kind == "evidence-bound" and not selected:
+            continue
+        if kind is None:
+            if selected and isinstance(bundle, dict) and isinstance(bundle.get("jobId"), str):
+                rejected_selected_jobs.add(bundle["jobId"])
+            continue
+        if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
+            if isinstance(bundle.get("jobId"), str):
+                rejected_selected_jobs.add(bundle["jobId"])
+            continue
+        if party not in _primary_claims(bundle):
+            continue
+        timestamp = bundle.get(clock)
+        if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
+            continue
+        if window_start <= timestamp <= window_end:
+            candidates.append(tagged)
+
+    scoped = [
+        tagged for tagged in candidates
+        if tagged["bundle"]["jobId"] not in rejected_selected_jobs
+    ]
 
     # group by jobId
     by_job = {}

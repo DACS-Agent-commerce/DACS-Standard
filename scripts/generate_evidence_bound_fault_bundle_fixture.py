@@ -193,6 +193,10 @@ def generate():
 
     ebfab_pointer = make_pointer("evidence-bound", ebfab_buyer, signing_keys)
     fab_pointer = make_pointer("fault", fab_seller, signing_keys)
+    dual_pointer = copy.deepcopy(fab_pointer)
+    dual_pointer["bundleVersion"] = "1"
+    invalid_extra_pointer = copy.deepcopy(fab_pointer)
+    invalid_extra_pointer["evidenceBoundFaultBundleVersion"] = "2"
 
     stripped_to_fab = dict(ebfab_buyer)
     stripped_to_fab.pop("evidenceBoundFaultBundleVersion")
@@ -294,6 +298,18 @@ def generate():
             {
                 "name": "ebfab-pointer-fab-reject",
                 "pointer": ebfab_pointer,
+                "bundle": fab_seller,
+                "want": {"ok": False},
+            },
+            {
+                "name": "dual-pointer-discriminator-reject",
+                "pointer": dual_pointer,
+                "bundle": fab_seller,
+                "want": {"ok": False},
+            },
+            {
+                "name": "unsupported-extra-pointer-discriminator-reject",
+                "pointer": invalid_extra_pointer,
                 "bundle": fab_seller,
                 "want": {"ok": False},
             },

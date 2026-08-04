@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.4** on the common DACS v0.1 baseline. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.5** on the common DACS v0.1 baseline. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -52,7 +52,7 @@ Parameters       := key1=value1 [ "&" key2=value2 ]*
 - A Scheme MUST start with a lowercase ASCII letter and MAY include lowercase ASCII letters, digits, and hyphens thereafter. Underscores are reserved for future use and MUST NOT appear in v0.1 scheme names.
 - Parsers MUST treat Scheme case-insensitively on read and SHOULD emit lowercase on write.
 - Identifier is treated per-scheme; the per-scheme rules below specify canonicalisation.
-- The ?<parameters> suffix carries scheme-specific qualifiers (e.g. cci-xm:evm:mainnet:0x…?jurisdiction=US). Unknown parameters MUST be ignored by readers, MUST NOT cause rejection, and MUST NOT be silently stripped when forwarding the reference.
+- The ?<parameters> suffix carries scheme-specific qualifiers (e.g. cci-xm:evm:8453:0x…?jurisdiction=US). Unknown parameters MUST be ignored by readers, MUST NOT cause rejection, and MUST NOT be silently stripped when forwarding the reference.
 
 **Canonical form and identity (rules CF-2, CF-3).** A ClaimReference has a *canonical byte form* (the bytes embedded whenever it appears inside a hashed or signed document) and a *canonical identity* (the `(Scheme, Identifier)` pair used for matching, reputation keying, and the §7.3.2 replay defence). Both rules are defined in **CORE §B.1**; CF-2's identifier normalisation uses the per-scheme identifier rules below.
 
@@ -63,7 +63,7 @@ The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes
 
 | Scheme | CCI context | Identifier shape | Status |
 | --- | --- | --- | --- |
-| cci-xm:<chain>:<subchain>:<address> | xm | per chain (EVM hex, Solana base58, …) | Done |
+| cci-xm:<chain>:<subchain>:<address> | xm | per chain (EVM PB-2 profile: `evm:<eip155-chainId>:<address>`; Solana base58, …) | Done |
 | cci-web2:<platform>:<username> | web2 | twitter / github / discord / telegram | Done |
 | cci-pqc:<algorithm>:<pubkey> | pqc | falcon / ml-dsa | Done |
 | cci-ud:<domain> | ud | Unstoppable Domain | Done |
@@ -77,6 +77,39 @@ The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes
 | cci-fedramp:<id> | fedramp (NEW) | as-issued | Deferred — later version, not v0.1 |
 | cci-naics:<6-digit> | naics (NEW) | digits only | Deferred — later version, not v0.1 |
 | cci-cmmc:<cert-id> | cmmc (NEW) | as-issued | Deferred — later version, not v0.1 |
+
+**EVM `cci-xm` settlement-chain profile.** The general `cci-xm` identifier
+continues to mirror the substrate's `<chain>:<subchain>:<address>` storage
+coordinates. When a claim is intended to establish the DACS-4 PB-2
+chain-specific payee binding for an EVM rail, producers MUST emit
+`cci-xm:evm:<chainId>:<address>`, where `<chainId>` is the EIP-155 chain ID as
+a bare positive decimal integer with no leading zeros and `<address>` is
+non-empty. The family component is the lowercase ASCII literal `evm`; any
+other spelling does not conform to this profile.
+
+For PB-2 chain applicability, a reader treats the bytes after
+`cci-xm:evm:<chainId>:` and before any optional `?` parameters as the address
+component. The address component MUST be non-empty but is otherwise opaque to the
+chain-applicability predicate: its syntax, case, and normalization do not
+determine the settlement chain, and unknown ClaimReference parameters remain
+ignored as required above. An empty address, including an address represented
+only by parameters, does not conform to this profile. The pair
+`evm:<chainId>` maps one-to-one to the CAIP-2 network identifier
+`eip155:<chainId>`; for example, Ethereum mainnet is `evm:1`, Ethereum Sepolia
+is `evm:11155111`, Base mainnet is `evm:8453`, and Base Sepolia is
+`evm:84532`.
+
+Human-readable subchain labels such as `mainnet`, `testnet`, and `sepolia` are
+not globally unique network identifiers. Readers MUST NOT infer an EIP-155
+chain ID from such a label, from the address shape, or from a local
+provider/SDK convention. This version registers no legacy name-to-chain-ID
+aliases. A future alias can affect PB-2 only if a later Standard revision adds
+it to an explicit closed, versioned table; an implementation-specific alias
+MUST NOT affect a conforming PB-2 result. Existing name-style `cci-xm` values
+remain readable as their original generic claim references, but do not by
+themselves establish an EVM settlement-chain match. These rules do not rewrite
+or re-hash an existing ClaimReference; they define only its eligibility for
+the DACS-4 chain-applicability predicate.
 
 The six new contexts (lei, finra-crd, sam-uei, fedramp, naics, cmmc) extend the existing 8-context CCI model with regulatory identity claims. **They are deferred to a later version and are not part of v0.1.** The native CCI contexts are deferred, not the schemes — `lei`, `finra-crd`, `sam-uei`, `fedramp`, `naics`, and `cmmc` remain live DACS-2-verifiable scheme names (verified via `consensus-backed-proxy` recipes against their respective authorities, e.g. `api.gleif.org` for `lei`), so the `institutional` identity tier (§6.3.2.1) stays reachable in v0.1. Each deferred context will follow the same pattern as the existing 8 contexts: per-context GCR routine for validation; verified payload stored in GCRMain.identities; readable via the existing wallet/SDK identity surface. Until they ship, regulatory credentials are carried via the stor-cred extensibility surface below (the scheme grammar, claim tiers, and DACS-2 verification recipes are substrate-independent and unchanged).
 
@@ -548,7 +581,7 @@ Consumers resolve a listing by looking up native_address for the logical_address
 
 *Forward note.* A future SDK capability to anchor a StorageProgram at a caller-chosen address — or a Demos-native deterministic `logical → native` function that hashes only the logical address — would restore direct recomputation (the pure-mapping case) and let consumers resolve without the published binding. Until then the binding-publication requirement above governs.
 
-**Logical-address delimiter encoding (rule CF-4).** A listing's logical address `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` has a colon-bearing variable segment — `sellerPrimaryClaim`, a ClaimReference (e.g. `cci-xm:evm:mainnet:0x1234`) — that is percent-encoded before assembly per **rule CF-4 (CORE §B.1)**; `listingId` is URL-safe ASCII, so it carries no reserved delimiters. CF-4 governs only the address *string*'s reversible parseability. How it maps to a substrate's *native* address is governed by the §"Logical vs native addresses" universal rule and, for Demos, the Demos-binding block above. The CF-4 table in CORE §B.1 enumerates the variable vs fixed segments for every `dacsN:` address kind across the stack.
+**Logical-address delimiter encoding (rule CF-4).** A listing's logical address `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` has a colon-bearing variable segment — `sellerPrimaryClaim`, a ClaimReference (e.g. `cci-xm:evm:8453:0x1234`) — that is percent-encoded before assembly per **rule CF-4 (CORE §B.1)**; `listingId` is URL-safe ASCII, so it carries no reserved delimiters. CF-4 governs only the address *string*'s reversible parseability. How it maps to a substrate's *native* address is governed by the §"Logical vs native addresses" universal rule and, for Demos, the Demos-binding block above. The CF-4 table in CORE §B.1 enumerates the variable vs fixed segments for every `dacsN:` address kind across the stack.
 
 Substrates MAY use equivalent addressing schemes; the requirement is that any party with substrate access can dereference an anchor reference to the canonical content and verify the content hash.
 

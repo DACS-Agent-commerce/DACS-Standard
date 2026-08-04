@@ -15,6 +15,24 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-1 / DACS-4 chain applicability
+
+- **Byte-exact `cci-xm` → EVM rail-chain predicate** (DACS-1 §6.3.1;
+  DACS-4 §9.4.3 RD-5 / §9.5.1 PB-2; #307) — defines the PB-2 EVM claim
+  profile as `cci-xm:evm:<eip155-chainId>:<address>` and compares its CAIP-2
+  `eip155:<chainId>` value byte-for-byte with the pinned rail definition's
+  EVM network. Generic labels such as `mainnet`, `testnet`, and `sepolia`
+  remain readable but are never guessed into a security-bearing chain match;
+  this revision's legacy-alias table is empty. A numeric mismatch or
+  non-profile label leaves tier 2 inapplicable and tier 3 legal. The family is
+  the lowercase literal `evm`; the address component is required to be
+  non-empty but is otherwise opaque to chain selection, and ClaimReference
+  parameters do not change the derived chain. An exact match makes tier 2
+  applicable before SR-1 resolution and therefore preserves the existing
+  no-downgrade pause/error behavior. RD-5 now rejects conflicting EVM
+  asset/network chain IDs. Adds 20 executable candidate vectors. Bumps
+  **DACS-1 and DACS-4 to v0.5** without changing an artifact shape.
+
 ### Fixed — conformance
 
 - **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,

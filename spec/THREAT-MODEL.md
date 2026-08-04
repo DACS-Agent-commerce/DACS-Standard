@@ -109,6 +109,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Sealed-envelope procurement role inversion | malicious orchestrator / implementation bug | §8.4.3 SE-8 + §8.5.2 (pinned-mode role-direction validation at the agreement commitment phase) | mitigated |
 | Agreement-listing mismatch | malicious counterparty | §8.5.2 (validation in the agreement commitment phase) | mitigated |
 | Payee-bound terms ignored by an older payer | minor-version skew | §8.5 distinct PayeeBoundAgreementDocument + §8.6 distinct commitment phase + §9.5.1 structural artifact gate + CORE §11.1.2 new-type refusal | mitigated |
+| EVM payee-control proof applied to the wrong chain through `mainnet` / `testnet` / `sepolia` alias guessing | malicious counterparty / implementation divergence | §6.3.1 EVM `cci-xm` settlement-chain profile + §9.4.3 RD-5 + §9.5.1 PB-2 exact `eip155:<chainId>` equality | mitigated; name-style legacy claims remain readable but do not establish tier 2 |
 | Re-entrancy on EVM rails | malicious counterparty | §9.13 (phase-handler ordering) | implementation-dependent |
 | MEV front-running on payments | public-mempool observer | §9.13 (private mempool option) | parameter-driven |
 | Cross-chain atomicity failure | time / chain operator | §9.13 (HTLC timelocks) | mitigated for HTLC; SR-5 implementation-dependent for tanks |

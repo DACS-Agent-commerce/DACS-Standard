@@ -231,6 +231,17 @@ def generate(source):
     definitions["invalid-failed-outcome-error-class"]["phaseSummary"][-1]["errorClass"] = "substrate"
     definitions["invalid-st8-expired-wrong-reason"] = copy.deepcopy(definitions["single-htlc-expired"])
     definitions["invalid-st8-expired-wrong-reason"]["evidenceReasonOverride"] = "settlement-atomicity"
+    definitions["transient-retry-exhausted"] = copy.deepcopy(definitions["failed-delivery"])
+    definitions["transient-retry-exhausted"]["phaseSummary"][-1].update({
+        "errorClass": "transient",
+        "retryExhausted": True,
+    })
+    definitions["invalid-transient-not-exhausted"] = copy.deepcopy(
+        definitions["transient-retry-exhausted"]
+    )
+    definitions["invalid-transient-not-exhausted"]["phaseSummary"][-1].pop(
+        "retryExhausted"
+    )
 
     for vector in data["vectors"]:
         if vector["name"] == "bundle-settlement-bijection-st8-expired-interim-pass":

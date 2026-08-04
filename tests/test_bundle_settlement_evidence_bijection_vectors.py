@@ -180,6 +180,11 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         )
         failed = self.data["executionAuthorities"]["failed-delivery"]
         self.assertEqual(derive_phase_keys(failed, self.pubkeys), ["0:deliver-storage-program"])
+        transient = self.data["executionAuthorities"]["transient-retry-exhausted"]
+        self.assertEqual(
+            derive_phase_keys(transient, self.pubkeys),
+            ["0:deliver-storage-program"],
+        )
         failed_resolution = next(iter(failed["referenceValidationByCanonicalRef"].values()))
         self.assertFalse(failed_resolution["lifecycle"]["independentlyResolvable"])
         aborted = self.data["executionAuthorities"]["aborted-before-result"]
@@ -211,6 +216,12 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         self.assertIsNone(
             derive_phase_keys(
                 self.data["executionAuthorities"]["invalid-st8-expired-wrong-reason"],
+                self.pubkeys,
+            )
+        )
+        self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-transient-not-exhausted"],
                 self.pubkeys,
             )
         )

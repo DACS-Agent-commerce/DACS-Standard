@@ -206,6 +206,11 @@ def make_pointer(kind, bundle, signing_keys):
         "fullBundleUrl": f"https://example.invalid/{kind}-bundle.json",
         "fullBundleContentHash": bundle_hash(bundle),
     }
+    return sign_pointer(pointer, kind, signing_keys)
+
+
+def sign_pointer(pointer, kind, signing_keys):
+    pointer.pop("signature", None)
     payload = (POINTER_DOMAINS[kind] + pointer_hash(pointer)).encode("utf-8")
     pointer["signature"] = {
         "signer": CLAIMS["seller"],
@@ -247,6 +252,15 @@ def generate():
     dual_pointer["bundleVersion"] = "1"
     invalid_extra_pointer = copy.deepcopy(fab_pointer)
     invalid_extra_pointer["evidenceBoundFaultBundleVersion"] = "2"
+    missing_url_pointer = copy.deepcopy(ebfab_pointer)
+    missing_url_pointer.pop("fullBundleUrl")
+    sign_pointer(missing_url_pointer, "evidence-bound", signing_keys)
+    malformed_segments_pointer = copy.deepcopy(ebfab_pointer)
+    malformed_segments_pointer["segmentRefs"] = ["not-an-attestation-ref"]
+    sign_pointer(malformed_segments_pointer, "evidence-bound", signing_keys)
+    minimal_ebfab = {"evidenceBoundFaultBundleVersion": "1"}
+    minimal_ebfab_pointer = make_pointer("evidence-bound", minimal_ebfab, signing_keys)
+    incomplete_binding = {"bundleContentHash": bundle_hash(ebfab_buyer)}
 
     stripped_to_fab = dict(ebfab_buyer)
     stripped_to_fab.pop("evidenceBoundFaultBundleVersion")
@@ -363,6 +377,31 @@ def generate():
                 "name": "unsupported-extra-pointer-discriminator-reject",
                 "pointer": invalid_extra_pointer,
                 "bundle": fab_seller,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-missing-url-reject",
+                "pointer": missing_url_pointer,
+                "bundle": ebfab_buyer,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-malformed-segment-ref-reject",
+                "pointer": malformed_segments_pointer,
+                "bundle": ebfab_buyer,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-minimal-bundle-reject",
+                "pointer": minimal_ebfab_pointer,
+                "bundle": minimal_ebfab,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-incomplete-binding-reject",
+                "pointer": ebfab_pointer,
+                "bundle": ebfab_buyer,
+                "binding": incomplete_binding,
                 "want": {"ok": False},
             },
         ],

@@ -264,6 +264,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 result = R.resolve_absolute_fault_pointer(
                     case["pointer"],
                     case["bundle"],
+                    binding=case.get("binding"),
                     pubkeys=self.pubkeys,
                 )
                 self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])

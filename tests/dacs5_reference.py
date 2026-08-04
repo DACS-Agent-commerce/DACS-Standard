@@ -672,6 +672,11 @@ def validate_ebfab(
         }
         if summary[-1].get("errorClass") not in expected_error_classes[bundle_outcome]:
             return (False, "terminal errorClass contradicts the failed bundle outcome", None)
+        if (
+            summary[-1].get("errorClass") == "transient"
+            and summary[-1].get("retryExhausted") is not True
+        ):
+            return (False, "transient terminal failure lacks authenticated retry exhaustion", None)
     elif bundle_outcome == "failed-substrate":
         phase_failure = (
             bool(summary)
@@ -1097,6 +1102,101 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
 # --------------------------------------------------------------------------- #
 # Extended-pointer triple-identity (E7)
 # --------------------------------------------------------------------------- #
+def _sha256_hex(value):
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+def _attestation_ref_shape_valid(ref):
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    return (
+        isinstance(anchor, dict)
+        and isinstance(anchor.get("kind"), str)
+        and bool(anchor["kind"])
+        and isinstance(anchor.get("locator"), str)
+        and bool(anchor["locator"])
+        and _sha256_hex(ref.get("contentHash"))
+    )
+
+
+def _absolute_fault_bundle_shape_valid(bundle):
+    if bundle_type(bundle) not in {"fault", "evidence-bound"}:
+        return False
+    listing_ref = bundle.get("listingRef")
+    parties = bundle.get("parties")
+    phase_summary = bundle.get("phaseSummary")
+    signatures = bundle.get("signatures")
+    if (
+        not isinstance(bundle.get("jobId"), str)
+        or not bundle["jobId"]
+        or bundle.get("outcome") not in {
+            "completed", "failed-perm", "failed-counterparty", "failed-substrate",
+            "aborted-by-self", "aborted-by-other",
+        }
+        or bundle.get("faultedParty") not in {"buyer", "seller", "orchestrator", "none"}
+        or bundle.get("anchoredByRole") not in {"buyer", "seller", "orchestrator"}
+        or not isinstance(listing_ref, dict)
+        or not isinstance(listing_ref.get("listingId"), str)
+        or isinstance(listing_ref.get("version"), bool)
+        or not isinstance(listing_ref.get("version"), int)
+        or not _sha256_hex(listing_ref.get("contentHash"))
+        or not isinstance(parties, list)
+        or len(parties) < 2
+        or not isinstance(phase_summary, list)
+        or not isinstance(bundle.get("vetRecords"), list)
+        or not isinstance(bundle.get("settlementEvidence"), list)
+        or isinstance(bundle.get("recipeRegistryVersion"), bool)
+        or not isinstance(bundle.get("recipeRegistryVersion"), int)
+        or isinstance(bundle.get("railRegistryVersion"), bool)
+        or not isinstance(bundle.get("railRegistryVersion"), int)
+        or isinstance(bundle.get("finalisedAt"), bool)
+        or not isinstance(bundle.get("finalisedAt"), (int, float))
+        or not isinstance(signatures, list)
+    ):
+        return False
+    if any(
+        not isinstance(party, dict)
+        or party.get("role") not in {"buyer", "seller", "orchestrator"}
+        or not isinstance(party.get("primaryClaim"), str)
+        or not _sha256_hex(party.get("bundleHash"))
+        for party in parties
+    ):
+        return False
+    if any(
+        not isinstance(entry, dict)
+        or isinstance(entry.get("index"), bool)
+        or not isinstance(entry.get("index"), int)
+        or not isinstance(entry.get("kind"), str)
+        or entry.get("outcome") not in {"ok", "fail"}
+        for entry in phase_summary
+    ):
+        return False
+    if (
+        any(not _attestation_ref_shape_valid(ref) for ref in bundle["vetRecords"])
+        or any(not _attestation_ref_shape_valid(ref) for ref in bundle["settlementEvidence"])
+        or any(
+            entry.get("attestationRef") is not None
+            and not _attestation_ref_shape_valid(entry["attestationRef"])
+            for entry in phase_summary
+        )
+        or (
+            bundle.get("agreementRef") is not None
+            and not _attestation_ref_shape_valid(bundle["agreementRef"])
+        )
+    ):
+        return False
+    return all(
+        isinstance(signature, dict)
+        and isinstance(signature.get("party"), str)
+        and isinstance(signature.get("algorithm"), str)
+        and isinstance(signature.get("value"), str)
+        for signature in signatures
+    )
+
+
 def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
     """E7 triple-identity for a FaultBundleExtendedPointer anchoring. Returns
     {"ok": bool, "reason": str, "recomputedHash": hex}. BB-5 check 8 + §10.4.1 apply to
@@ -1154,6 +1254,22 @@ def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, p
         return {"ok": False, "reason": "pointer and dereferenced bundle types differ"}
     if pointer.get("pointerKind") != "extended":
         return {"ok": False, "reason": "unsupported pointer kind"}
+    segment_refs = pointer.get("segmentRefs")
+    if (
+        not isinstance(pointer.get("fullBundleUrl"), str)
+        or not pointer["fullBundleUrl"].strip()
+        or not _sha256_hex(pointer.get("fullBundleContentHash"))
+        or (segment_refs is not None and (
+            not isinstance(segment_refs, list)
+            or any(not _attestation_ref_shape_valid(ref) for ref in segment_refs)
+        ))
+    ):
+        return {"ok": False, "reason": "malformed extended pointer payload"}
+    if not _absolute_fault_bundle_shape_valid(dereferenced_bundle):
+        return {"ok": False, "reason": "malformed dereferenced absolute-fault bundle"}
+    bundle_ok, bundle_reason = _bundle_signatures_valid(dereferenced_bundle, pubkeys)
+    if not bundle_ok:
+        return {"ok": False, "reason": bundle_reason}
 
     signature = pointer.get("signature")
     if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
@@ -1170,8 +1286,16 @@ def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, p
     recomputed = bundle_hash(dereferenced_bundle)
     if pointer.get("fullBundleContentHash") != recomputed:
         return {"ok": False, "reason": "dereferenced content hash mismatch"}
-    if binding is not None and binding.get("bundleContentHash") != recomputed:
-        return {"ok": False, "reason": "binding content hash mismatch"}
+    if binding is not None:
+        binding_result = verify_binding(
+            binding,
+            pubkeys,
+            expected_jobid=dereferenced_bundle["jobId"],
+            expected_role=dereferenced_bundle["anchoredByRole"],
+            expected_content_hash=recomputed,
+        )
+        if not binding_result["ok"]:
+            return {"ok": False, "reason": "binding invalid: " + binding_result["reason"]}
     return {"ok": True, "reason": "pointer type, signature, and triple identity hold"}
 
 

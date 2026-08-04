@@ -666,6 +666,12 @@ def validate_ebfab(
             return (False, "failed phaseSummary lacks its terminal failed result", None)
         if any(entry.get("outcome") != "ok" for entry in summary[:-1]):
             return (False, "failed phaseSummary is not an ok-prefix plus terminal failure", None)
+        expected_error_classes = {
+            "failed-perm": {"permanent", "transient"},
+            "failed-counterparty": {"counterparty", "settlement-atomicity"},
+        }
+        if summary[-1].get("errorClass") not in expected_error_classes[bundle_outcome]:
+            return (False, "terminal errorClass contradicts the failed bundle outcome", None)
     elif bundle_outcome == "failed-substrate":
         phase_failure = (
             bool(summary)
@@ -766,9 +772,33 @@ def validate_ebfab(
     # the referenced record must itself authenticate as the same job/phase and
     # as the specific asymmetric interim failure. Caller-supplied class/edge
     # metadata has no authority here.
-    st8_reasons = {"dest-revealed-source-unclaimed", "tank-locked-unreleased"}
+    st8_reason_by_phase = {
+        "pay-cross-chain-htlc": "dest-revealed-source-unclaimed",
+        "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
+    }
+    st8_reasons = set(st8_reason_by_phase.values())
     for ref, _, record, phase_key in authenticated_records:
+        summary_entry = summary_by_key[phase_key]
         supersedes = record.get("supersedesEvidenceRef")
+        expected_st8_reason = st8_reason_by_phase.get(record.get("phase"))
+        expired_st8 = (
+            record.get("phase") == "pay-cross-chain-htlc"
+            and summary_entry.get("errorClass") == "settlement-atomicity"
+        ) or (
+            record.get("phase") == "pay-cross-chain-liquidity-tank"
+            and summary_entry.get("errorClass") == "substrate"
+            and record.get("reason") == expected_st8_reason
+        )
+        if expired_st8:
+            if (
+                record.get("outcome") != "failure"
+                or expected_st8_reason is None
+                or record.get("reason") != expected_st8_reason
+                or supersedes is not None
+            ):
+                return (False, "expired ST-8 record has the wrong authenticated terminal class", None)
+        elif record.get("reason") in st8_reasons:
+            return (False, "ST-8 interim reason contradicts the signed phase result", None)
         if supersedes is None:
             continue
         if (
@@ -796,7 +826,7 @@ def validate_ebfab(
             or interim_record.get("jobId") != bundle.get("jobId")
             or interim_record.get("phase") != record.get("phase")
             or interim_record.get("outcome") != "failure"
-            or interim_record.get("reason") not in st8_reasons
+            or interim_record.get("reason") != expected_st8_reason
             or supersedes.get("contentHash") != settlement_evidence_hash(interim_record)
             or not isinstance(interim_signature, dict)
             or interim_signature.get("algorithm") != "ed25519"
@@ -1072,6 +1102,10 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
     {"ok": bool, "reason": str, "recomputedHash": hex}. BB-5 check 8 + §10.4.1 apply to
     the DEREFERENCED full bundle: binding.bundleContentHash == pointer.fullBundleContentHash
     == recomputed §10.4.1 hash of the dereferenced bundle. A mismatch is rejected content."""
+    if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
+        return {"ok": False, "reason": "pointer and dereferenced bundle must be objects", "recomputedHash": None}
+    if binding is not None and not isinstance(binding, dict):
+        return {"ok": False, "reason": "binding must be an object", "recomputedHash": None}
     if pointer.get("faultBundleVersion") != "1" or "bundleVersion" in pointer:
         return {"ok": False, "reason": "not a FaultBundleExtendedPointer discriminator", "recomputedHash": None}
     recomputed = bundle_hash(dereferenced_bundle)
@@ -1084,6 +1118,10 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
 
 def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, pubkeys=None):
     """Validate FAB/EBFAB pointer type, domain, signature, and triple identity."""
+    if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
+        return {"ok": False, "reason": "pointer and dereferenced bundle must be objects"}
+    if binding is not None and not isinstance(binding, dict):
+        return {"ok": False, "reason": "binding must be an object"}
     known_pointer_discriminators = {
         "bundleVersion",
         "faultBundleVersion",

@@ -268,6 +268,27 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 )
                 self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])
 
+    def test_malformed_pointer_inputs_fail_closed_without_exceptions(self):
+        valid = self.data["pointerCases"][0]
+        for pointer, bundle, binding in (
+            (None, valid["bundle"], None),
+            ([], valid["bundle"], None),
+            (valid["pointer"], None, None),
+            (valid["pointer"], [], None),
+            (valid["pointer"], valid["bundle"], []),
+        ):
+            with self.subTest(pointer=type(pointer).__name__, bundle=type(bundle).__name__):
+                result = R.resolve_absolute_fault_pointer(
+                    pointer,
+                    bundle,
+                    binding=binding,
+                    pubkeys=self.pubkeys,
+                )
+                self.assertFalse(result["ok"])
+        self.assertFalse(R.resolve_fab_pointer(None, {}, None)["ok"])
+        self.assertFalse(R.resolve_fab_pointer({}, None, None)["ok"])
+        self.assertFalse(R.resolve_fab_pointer({}, {}, [])["ok"])
+
 
 if __name__ == "__main__":
     unittest.main()

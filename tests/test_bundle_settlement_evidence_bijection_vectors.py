@@ -43,6 +43,10 @@ def evaluate(vector_data, authorities, pubkeys):
     refs = vector_data["topLevelRefs"]
     records = vector_data["authenticatedRecordByRef"]
     pointers = vector_data["pointerMap"]
+    st8_reason_by_phase = {
+        "pay-cross-chain-htlc": "dest-revealed-source-unclaimed",
+        "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
+    }
 
     if len(refs) != len(set(refs)):
         return "rejected", "raw-multiplicity"
@@ -50,12 +54,29 @@ def evaluate(vector_data, authorities, pubkeys):
     for successor in refs:
         record = records.get(successor, {})
         interim = record.get("supersedesEvidenceRef")
-        if interim is not None and (interim in refs or record.get("outcome") != "success"):
-            return "rejected", "st8-raw-admissibility"
+        if interim is not None:
+            interim_record = records.get(interim, {})
+            phase_key = record.get("phaseKey")
+            phase = phase_key.split(":", 1)[-1] if isinstance(phase_key, str) else None
+            expected_reason = st8_reason_by_phase.get(phase)
+            if (
+                interim in refs
+                or record.get("outcome") != "success"
+                or interim_record.get("jobId") != record.get("jobId")
+                or interim_record.get("phaseKey") != record.get("phaseKey")
+                or interim_record.get("outcome") != "failure"
+                or interim_record.get("reason") != expected_reason
+            ):
+                return "rejected", "st8-raw-admissibility"
 
     authority = authorities[vector_data["executionAuthorityRef"]]
     expected_outcome_by_key = {
         f"{entry['index']}:{entry['kind']}": "success" if entry["outcome"] == "ok" else "failure"
+        for entry in authority["bundle"]["phaseSummary"]
+        if entry["kind"] in R.EVIDENCE_PHASES
+    }
+    expected_error_by_key = {
+        f"{entry['index']}:{entry['kind']}": entry.get("errorClass")
         for entry in authority["bundle"]["phaseSummary"]
         if entry["kind"] in R.EVIDENCE_PHASES
     }
@@ -71,6 +92,21 @@ def evaluate(vector_data, authorities, pubkeys):
         for ref in refs
     ):
         return "rejected", "st8-raw-admissibility"
+    for ref in refs:
+        record = records[ref]
+        phase_key = record["phaseKey"]
+        phase = phase_key.split(":", 1)[-1]
+        expected_reason = st8_reason_by_phase.get(phase)
+        expired_st8 = expected_error_by_key.get(phase_key) == "settlement-atomicity" or (
+            phase == "pay-cross-chain-liquidity-tank"
+            and expected_error_by_key.get(phase_key) == "substrate"
+            and record.get("reason") == expected_reason
+        )
+        if expired_st8:
+            if record.get("reason") != expected_reason:
+                return "rejected", "st8-raw-admissibility"
+        elif record.get("reason") in set(st8_reason_by_phase.values()):
+            return "rejected", "st8-raw-admissibility"
 
     lifecycle_overrides = vector_data.get("referenceLifecycleByRef", {})
     default_lifecycle = authority["defaultReferenceLifecycle"]
@@ -163,6 +199,18 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         self.assertIsNone(
             derive_phase_keys(
                 self.data["executionAuthorities"]["invalid-aborted-result-summary"],
+                self.pubkeys,
+            )
+        )
+        self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-failed-outcome-error-class"],
+                self.pubkeys,
+            )
+        )
+        self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-st8-expired-wrong-reason"],
                 self.pubkeys,
             )
         )

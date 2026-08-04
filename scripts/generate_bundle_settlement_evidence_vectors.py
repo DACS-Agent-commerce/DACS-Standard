@@ -81,13 +81,21 @@ def make_authority(name, definition, signing_keys):
                     "lifecycle": copy.deepcopy(default_lifecycle),
                 }
                 supersedes = interim_ref
+            evidence_reason = entry.get("errorClass")
+            if entry.get("errorClass") == "settlement-atomicity":
+                evidence_reason = {
+                    "pay-cross-chain-htlc": "dest-revealed-source-unclaimed",
+                    "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
+                }.get(entry["kind"], evidence_reason)
+            if definition.get("evidenceReasonOverride") is not None:
+                evidence_reason = definition["evidenceReasonOverride"]
             record, ref = F.make_evidence(
                 job_id,
                 entry["kind"],
                 entry["index"],
                 signing_keys,
                 outcome="success" if entry["outcome"] == "ok" else "failure",
-                reason=entry.get("errorClass"),
+                reason=evidence_reason,
                 supersedes=supersedes,
                 label_suffix=":resolved" if supersedes is not None else "",
             )
@@ -219,6 +227,10 @@ def generate(source):
         "outcome": "fail",
         "errorClass": "counterparty",
     }]
+    definitions["invalid-failed-outcome-error-class"] = copy.deepcopy(definitions["failed-delivery"])
+    definitions["invalid-failed-outcome-error-class"]["phaseSummary"][-1]["errorClass"] = "substrate"
+    definitions["invalid-st8-expired-wrong-reason"] = copy.deepcopy(definitions["single-htlc-expired"])
+    definitions["invalid-st8-expired-wrong-reason"]["evidenceReasonOverride"] = "settlement-atomicity"
 
     for vector in data["vectors"]:
         if vector["name"] == "bundle-settlement-bijection-st8-expired-interim-pass":
@@ -323,11 +335,6 @@ def generate(source):
     }
     for vector in data["vectors"]:
         vector_input = vector["input"]
-        if "resolvedReferencePhaseKeys" not in vector_input:
-            continue
-        resolved = vector_input.pop("resolvedReferencePhaseKeys")
-        record_classes = vector_input.pop("recordClassByRef", {})
-        supersedes = vector_input.pop("supersedesEdges", {})
         authority = data["executionAuthorities"].get(vector_input.get("executionAuthorityRef"))
         job_id = authority["bundle"]["jobId"] if authority else "unresolved-authority"
         outcome_by_key = {
@@ -336,22 +343,49 @@ def generate(source):
             )
             for entry in (authority or {}).get("bundle", {}).get("phaseSummary", [])
         }
-        authenticated_records = {}
-        for ref, phase_key in resolved.items():
-            record_class = record_classes.get(ref)
-            outcome = outcome_by_key.get(phase_key, "success")
-            if record_class == "st8-resolved-success":
-                outcome = "success"
-            elif record_class == "st8-expired-interim-failure":
-                outcome = "failure"
-            record = {
-                "jobId": job_id,
-                "phaseKey": phase_key,
-                "outcome": outcome,
-            }
-            if ref in supersedes:
-                record["supersedesEvidenceRef"] = supersedes[ref]
-            authenticated_records[ref] = record
+        if "resolvedReferencePhaseKeys" in vector_input:
+            resolved = vector_input.pop("resolvedReferencePhaseKeys")
+            record_classes = vector_input.pop("recordClassByRef", {})
+            supersedes = vector_input.pop("supersedesEdges", {})
+            authenticated_records = {}
+            for ref, phase_key in resolved.items():
+                record_class = record_classes.get(ref)
+                outcome = outcome_by_key.get(phase_key, "success")
+                if record_class == "st8-resolved-success":
+                    outcome = "success"
+                elif record_class == "st8-expired-interim-failure":
+                    outcome = "failure"
+                record = {
+                    "jobId": job_id,
+                    "phaseKey": phase_key,
+                    "outcome": outcome,
+                }
+                if ref in supersedes:
+                    record["supersedesEvidenceRef"] = supersedes[ref]
+                authenticated_records[ref] = record
+        else:
+            authenticated_records = copy.deepcopy(vector_input.get("authenticatedRecordByRef", {}))
+
+        def st8_reason(phase_key):
+            phase = phase_key.split(":", 1)[1] if isinstance(phase_key, str) and ":" in phase_key else None
+            return {
+                "pay-cross-chain-htlc": "dest-revealed-source-unclaimed",
+                "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
+            }.get(phase)
+
+        for ref, record in list(authenticated_records.items()):
+            record["jobId"] = job_id
+            reason = st8_reason(record.get("phaseKey"))
+            if record.get("outcome") == "failure" and reason and "st8" in vector["name"].lower():
+                record["reason"] = reason
+            interim_ref = record.get("supersedesEvidenceRef")
+            if interim_ref is not None and interim_ref not in authenticated_records:
+                authenticated_records[interim_ref] = {
+                    "jobId": job_id,
+                    "phaseKey": record.get("phaseKey"),
+                    "outcome": "failure",
+                    "reason": reason,
+                }
         vector_input["authenticatedRecordByRef"] = authenticated_records
     data["count"] = len(data["vectors"])
     data["hash"] = hashlib.sha256(F.canonical(data["vectors"])).hexdigest()

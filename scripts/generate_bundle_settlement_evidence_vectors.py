@@ -87,6 +87,13 @@ def make_authority(name, definition, signing_keys):
         bundle["signatures"][0]["value"] = ("A" if value[0] != "A" else "B") + value[1:]
 
     default_lifecycle = definition["defaultReferenceLifecycle"]
+    phase_key_by_content_hash = {
+        ref["contentHash"]: f"{entry['index']}:{entry['kind']}"
+        for entry, ref in zip(
+            (entry for entry in phase_summary if entry["kind"] in F.EVIDENCE_PHASES),
+            settlement_evidence,
+        )
+    }
     return {
         "listing": listing,
         "bundle": bundle,
@@ -95,6 +102,7 @@ def make_authority(name, definition, signing_keys):
             ref["contentHash"]: copy.deepcopy(default_lifecycle)
             for ref in settlement_evidence
         },
+        "referencePhaseKeyByContentHash": phase_key_by_content_hash,
     }
 
 

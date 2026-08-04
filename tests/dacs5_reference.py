@@ -538,7 +538,7 @@ def _bundle_signatures_valid(bundle, pubkeys):
     return (True, "ok")
 
 
-def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash):
+def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash, phase_key_by_content_hash):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
     This bounded reference covers the protected #290 authority path: exact type/domain
@@ -555,8 +555,9 @@ def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash):
         not isinstance(listing, dict)
         or not isinstance(pubkeys, dict)
         or not isinstance(lifecycle_by_content_hash, dict)
+        or not isinstance(phase_key_by_content_hash, dict)
     ):
-        return (False, "missing listing, key, or lifecycle authority", None)
+        return (False, "missing listing, key, lifecycle, or phase-resolution authority", None)
 
     signature = listing.get("signature")
     if not isinstance(signature, dict):
@@ -585,8 +586,8 @@ def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash):
         return (False, "pipeline or phaseSummary is not an array", None)
     pipeline_kinds = [step.get("kind") if isinstance(step, dict) else None for step in pipeline]
     seen_indices = set()
-    expected_refs = []
     expected_keys = []
+    optional_pointers = {}
     for entry in summary:
         if not isinstance(entry, dict):
             return (False, "phaseSummary entry is not an object", None)
@@ -605,20 +606,33 @@ def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash):
         seen_indices.add(index)
         if kind in EVIDENCE_PHASES:
             ref = entry.get("attestationRef")
-            if not isinstance(ref, dict) or not isinstance(ref.get("contentHash"), str):
-                return (False, "evidence phase lacks an attestationRef", None)
-            expected_refs.append(ref)
-            expected_keys.append(f"{index}:{kind}")
+            phase_key = f"{index}:{kind}"
+            expected_keys.append(phase_key)
+            if ref is not None:
+                if not isinstance(ref, dict) or not isinstance(ref.get("contentHash"), str):
+                    return (False, "optional phase attestationRef is malformed", None)
+                optional_pointers[phase_key] = ref
 
     actual_refs = bundle.get("settlementEvidence")
     if not isinstance(actual_refs, list):
         return (False, "settlementEvidence is not an array", None)
+    if any(not isinstance(ref, dict) or not isinstance(ref.get("contentHash"), str) for ref in actual_refs):
+        return (False, "settlementEvidence member is malformed", None)
     actual_ids = [canonical(ref) for ref in actual_refs]
-    expected_ids = [canonical(ref) for ref in expected_refs]
     if len(actual_ids) != len(set(actual_ids)):
         return (False, "settlementEvidence contains a raw duplicate", None)
-    if len(expected_ids) != len(set(expected_ids)) or set(actual_ids) != set(expected_ids):
+    actual_keys = [phase_key_by_content_hash.get(ref["contentHash"]) for ref in actual_refs]
+    if (
+        None in actual_keys
+        or len(actual_keys) != len(set(actual_keys))
+        or len(expected_keys) != len(set(expected_keys))
+        or set(actual_keys) != set(expected_keys)
+    ):
         return (False, "settlementEvidence is not the exact phase-result set", None)
+    actual_ref_by_key = dict(zip(actual_keys, actual_refs))
+    for phase_key, pointer in optional_pointers.items():
+        if canonical(pointer) != canonical(actual_ref_by_key[phase_key]):
+            return (False, "optional phase pointer contradicts settlementEvidence", None)
 
     completed = bundle.get("outcome") == "completed"
     for ref in actual_refs:
@@ -646,6 +660,7 @@ def _tagged_copy_valid_for_derive(tagged):
         authority.get("listing"),
         authority.get("publicKeys"),
         authority.get("referenceLifecycleByContentHash"),
+        authority.get("referencePhaseKeyByContentHash"),
     )
     return ok
 

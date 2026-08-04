@@ -157,6 +157,9 @@ def generate():
     signed_missing_member = copy.deepcopy(ebfab_buyer)
     signed_missing_member["settlementEvidence"] = []
     sign_bundle(signed_missing_member, "evidence-bound", signing_keys)
+    signed_pointerless = copy.deepcopy(ebfab_buyer)
+    signed_pointerless["phaseSummary"][0].pop("attestationRef")
+    sign_bundle(signed_pointerless, "evidence-bound", signing_keys)
 
     stripped_to_fab = dict(ebfab_buyer)
     stripped_to_fab.pop("evidenceBoundFaultBundleVersion")
@@ -182,9 +185,13 @@ def generate():
                 "independentlyResolvable": True,
             }
         },
+        "referencePhaseKeyByContentHash": {
+            ebfab_buyer["settlementEvidence"][0]["contentHash"]: "0:pay-dem"
+        },
         "validBundleHash": bundle_hash(ebfab_buyer),
         "cases": [
             {"name": "valid-ebfab", "bundle": ebfab_buyer, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": True}},
+            {"name": "valid-pointerless-ebfab", "bundle": signed_pointerless, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": True}},
             {"name": "signed-seb-missing-member-reject", "bundle": signed_missing_member, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": False}},
             {"name": "stripped-to-fab-cross-type-replay", "bundle": stripped_to_fab, "want": {"type": "fault", "signaturesValid": False, "sebValid": False}},
             {"name": "dual-discriminator-reject", "bundle": dual_discriminator, "want": {"type": None, "signaturesValid": False, "sebValid": False}},

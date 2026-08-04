@@ -158,6 +158,10 @@
           "state": "finalized",
           "independentlyResolvable": true
         }
+      },
+      "referencePhaseKeyByContentHash": {
+        "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e": "2:pay-dem",
+        "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49": "3:deliver-attested-payload"
       }
     },
     "single-htlc-completed": {
@@ -264,6 +268,9 @@
           "state": "finalized",
           "independentlyResolvable": true
         }
+      },
+      "referencePhaseKeyByContentHash": {
+        "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588": "2:pay-cross-chain-htlc"
       }
     },
     "repeated-pay-completed": {
@@ -406,6 +413,11 @@
           "state": "finalized",
           "independentlyResolvable": true
         }
+      },
+      "referencePhaseKeyByContentHash": {
+        "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb": "0:pay-dem",
+        "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770": "1:pay-dem",
+        "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962": "2:deliver-entitlement"
       }
     },
     "failed-delivery": {
@@ -497,6 +509,9 @@
           "state": "included",
           "independentlyResolvable": true
         }
+      },
+      "referencePhaseKeyByContentHash": {
+        "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3": "0:deliver-storage-program"
       }
     },
     "aborted-before-result": {
@@ -564,7 +579,8 @@
         "state": "included",
         "independentlyResolvable": true
       },
-      "referenceLifecycleByContentHash": {}
+      "referenceLifecycleByContentHash": {},
+      "referencePhaseKeyByContentHash": {}
     },
     "invalid-listing-signature": {
       "listing": {
@@ -654,6 +670,9 @@
           "state": "finalized",
           "independentlyResolvable": true
         }
+      },
+      "referencePhaseKeyByContentHash": {
+        "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d": "0:pay-dem"
       }
     },
     "invalid-bundle-signature": {
@@ -786,6 +805,10 @@
           "state": "finalized",
           "independentlyResolvable": true
         }
+      },
+      "referencePhaseKeyByContentHash": {
+        "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383": "2:pay-dem",
+        "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55": "3:deliver-attested-payload"
       }
     }
   },

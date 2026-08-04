@@ -29,6 +29,7 @@ def derive_phase_keys(authority, pubkeys):
         authority.get("listing"),
         pubkeys,
         authority.get("referenceLifecycleByContentHash"),
+        authority.get("referencePhaseKeyByContentHash"),
     )
     return phase_keys if ok else None
 

@@ -1,9 +1,12 @@
 """Executable assertions for DACS-5 v0.4 SEB-1..SEB-6 candidate vectors."""
 
+import base64
 import hashlib
 import json
 import unittest
 from pathlib import Path
+
+import dacs5_reference as R
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -16,12 +19,30 @@ def canonical_json(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
-def evaluate(data):
-    expected = data["expectedPhaseKeys"]
-    refs = data["topLevelRefs"]
-    resolved = data["resolvedReferencePhaseKeys"]
-    pointers = data["pointerMap"]
-    supersedes = data.get("supersedesEdges", {})
+def decode(value):
+    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def derive_phase_keys(authority, pubkeys):
+    ok, _, phase_keys = R.validate_ebfab(
+        authority.get("bundle"),
+        authority.get("listing"),
+        pubkeys,
+        authority.get("referenceLifecycleByContentHash"),
+    )
+    return phase_keys if ok else None
+
+
+def evaluate(vector_data, authorities, pubkeys):
+    authority = authorities.get(vector_data.get("executionAuthorityRef"))
+    expected = derive_phase_keys(authority or {}, pubkeys)
+    if expected is None:
+        return "rejected", "execution-authority"
+
+    refs = vector_data["topLevelRefs"]
+    resolved = vector_data["resolvedReferencePhaseKeys"]
+    pointers = vector_data["pointerMap"]
+    supersedes = vector_data.get("supersedesEdges", {})
 
     if len(refs) != len(set(refs)):
         return "rejected", "raw-multiplicity"
@@ -32,6 +53,18 @@ def evaluate(data):
 
     if any(ref not in resolved or resolved[ref] not in expected for ref in refs):
         return "rejected", "exact-phase-mapping"
+
+    lifecycle_overrides = vector_data.get("referenceLifecycleByRef", {})
+    default_lifecycle = authority["defaultReferenceLifecycle"]
+    for ref in refs:
+        lifecycle = lifecycle_overrides.get(ref, default_lifecycle)
+        if lifecycle.get("independentlyResolvable") is not True:
+            return "rejected", "lifecycle-gate"
+        if authority["bundle"]["outcome"] == "completed":
+            if lifecycle.get("state") != "finalized":
+                return "rejected", "lifecycle-gate"
+        elif lifecycle.get("state") not in {"included", "finalized"}:
+            return "rejected", "lifecycle-gate"
 
     if len(refs) != len(expected):
         return "rejected", "exact-cardinality"
@@ -46,7 +79,7 @@ def evaluate(data):
         if ref not in refs or resolved.get(ref) != phase_key:
             return "rejected", "pointer-agreement"
 
-    if data["unrelatedAuthorityDisposition"] == "indeterminate":
+    if vector_data["unrelatedAuthorityDisposition"] == "indeterminate":
         return "indeterminate", "unrelated-authority-indeterminate"
     return "verified", "ok"
 
@@ -55,6 +88,10 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
+        cls.pubkeys = {
+            claim: decode(value)
+            for claim, value in cls.data["publicKeys"].items()
+        }
 
     def test_vector_hash_count_and_names(self):
         vectors = self.data["vectors"]
@@ -66,7 +103,33 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     def test_all_expected_dispositions_and_reason_codes(self):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
-                self.assertEqual(evaluate(vector["input"]), (vector["want"]["disposition"], vector["want"]["reasonCode"]))
+                self.assertEqual(
+                    evaluate(vector["input"], self.data["executionAuthorities"], self.pubkeys),
+                    (vector["want"]["disposition"], vector["want"]["reasonCode"]),
+                )
+
+    def test_phase_authority_is_derived_not_caller_supplied(self):
+        for vector in self.data["vectors"]:
+            self.assertNotIn("expectedPhaseKeys", vector["input"])
+        for definition in self.data["executionAuthorityDefinitions"].values():
+            self.assertNotIn("listingSignatureVerified", definition)
+            self.assertNotIn("bundleSignaturesVerified", definition)
+
+        repeated = self.data["executionAuthorities"]["repeated-pay-completed"]
+        self.assertEqual(
+            derive_phase_keys(repeated, self.pubkeys),
+            ["0:pay-dem", "1:pay-dem", "2:deliver-entitlement"],
+        )
+        failed = self.data["executionAuthorities"]["failed-delivery"]
+        self.assertEqual(derive_phase_keys(failed, self.pubkeys), ["0:deliver-storage-program"])
+        aborted = self.data["executionAuthorities"]["aborted-before-result"]
+        self.assertEqual(derive_phase_keys(aborted, self.pubkeys), [])
+        self.assertIsNone(
+            derive_phase_keys(self.data["executionAuthorities"]["invalid-listing-signature"], self.pubkeys)
+        )
+        self.assertIsNone(
+            derive_phase_keys(self.data["executionAuthorities"]["invalid-bundle-signature"], self.pubkeys)
+        )
 
     def test_minor_safe_type_boundary_and_domains(self):
         spec = SPEC.read_text(encoding="utf-8")

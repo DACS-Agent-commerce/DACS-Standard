@@ -65,6 +65,15 @@ jobs:
       - name: Validate conformance artifact shapes
         run: python3 scripts/validate_artifact_shapes.py
 
+      - name: Verify reference-bearing fixtures are deterministic
+        run: python3 scripts/generate_artifact_reference_fixtures.py --check
+
+      - name: Verify signed SEB authority vectors are deterministic
+        run: python3 scripts/generate_bundle_settlement_evidence_vectors.py --check
+
+      - name: Verify signed EBFAB compatibility fixture is deterministic
+        run: python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --check
+
       - name: Validate selected spec tables
         run: python3 scripts/validate_spec_tables.py
 

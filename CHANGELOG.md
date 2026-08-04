@@ -17,7 +17,23 @@ The format used per release:
 
 ### Added — DACS-5 v0.4
 
-- **DACS-5 v0.4 evidence-bound fault bundle — `EvidenceBoundFaultAttestationBundle`, SEB-1..SEB-6** (§10.4.1, §10.4.3, §14.5, CORE §B.7) — adds a distinct signed bundle type whose authoritative top-level `settlementEvidence[]` is a duplicate-free bijection with authenticated DACS-4 payment/delivery phase keys that produced durable evidence. Consumers reject missing, extra, duplicate, aliased, reused, dangling, misbound, or inadmissible ST-8 members and contradictory optional pointers. The new `evidenceBoundFaultBundleVersion` discriminator, bundle and extended-pointer signature domains, and new-type refusal preserve the released `AttestationBundle` and `FaultAttestationBundle` semantics rather than silently imposing an action-bearing validation on old types. Adds nineteen v0.4 candidate vectors; a public Forge-produced signed fixture plus independent `dacs-verify` validation exist, while formal run-file convergence under `CROSS-RUN.md`, a Demos cross-run, and golden promotion remain pending.
+- **DACS-5 v0.4 evidence-bound fault bundle — `EvidenceBoundFaultAttestationBundle`, SEB-1..SEB-6** (§10.4.1, §10.4.3, §14.5, CORE §B.7) — adds a distinct signed bundle type whose authoritative top-level `settlementEvidence[]` is a duplicate-free bijection with the DACS-4 payment/delivery results authenticated by the signed listing and signed bundle `phaseSummary`. Consumers derive repeated, failed, aborted-before-result, and ST-8 membership deterministically; preserve a validated SEB result across EBFAB/EBFAB, EBFAB/FAB, and EBFAB/legacy reconciliation; and reject missing, extra, duplicate, aliased, reused, dangling, misbound, or inadmissible members. The exact SR-2 gate is `included` or `finalized` for failed/aborted evidence, and `finalized` plus independent resolution for every successful completed-bundle dependency under ST-11. The new discriminator, bundle and extended-pointer signature domains, and signed compatibility fixture preserve the released bundle types and reject unknown/stripped discriminators and cross-type signature replay. Candidate vectors remain non-golden; formal run-file convergence under `CROSS-RUN.md`, a Demos cross-run, and golden promotion remain pending.
+
+### Fixed — conformance
+
+- **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
+  DACS-5 §10.4.1; #308) — replaces legacy `{kind,id,contentHash}`
+  `AttestationRef` objects in every shared bundle fixture position with
+  `{anchor:{kind,locator},contentHash,signer?}`, replaces legacy
+  `{rail,txHash,kind}` transaction references with the applicable
+  `ChainTxRef` arm, and deterministically re-hashes/re-signs the affected
+  bundle and settlement fixtures. Adds a 19-case exact-shape suite covering
+  all three attestation anchor kinds and all eleven transaction-reference
+  discriminators, including nested AP2 receipt attestations and negative
+  legacy forms. The manifest gains two golden executable cases but retains
+  `dacsVersion: "0.1"` because that is the full-profile baseline identifier,
+  not a fixture revision. No normative protocol rule changes.
+- **Domain-separator registry golden regenerated** (CORE §B.7; #283) — replaces the stale `sig-registry-closed-16` assertion with a count of 24 and the exact sorted separator set published by the closed registry, including the `dacs-finality-commitment:v1:` separator added by the SR-2 lifecycle work. The manifest validator now compares exact membership, so a future remove-one/add-one substitution cannot pass behind an unchanged cardinality. Refreshes the lifecycle manifest and trace pins. No normative protocol rule changes.
 
 ### Clarified — DACS-1 identity and discovery
 
@@ -33,9 +49,23 @@ The format used per release:
   probes never change content/signature validity, conformance, revocation,
   identity, or reputation.
 
+### Added — CORE v0.2 / DACS-1..5 lifecycle gates
+
+- **Normative SR-2 transaction lifecycle and portable `AnchorReceipt`** (CORE §5.1, SR2-1..SR2-9) — distinguishes local submission, binding-proved durable acceptance, consensus inclusion, finality, and the rejected/dropped/replaced/expired/reorged lifecycle outcomes. `indeterminate` is a separate observation disposition over a hash-linked preserved receipt, never a lifecycle transition, demotion, or authority to resubmit. Authenticated dropped/expired/reorged transactions may re-enter acceptance/inclusion; receipt conflicts are ordered by binding-authenticated evidence, never observer time. External index visibility is orthogonal and never gates protocol progress. The evidence-carrying portable receipt binds logical/native artifact addresses, content hash, native transaction, writer, nonce, block evidence, and finality profile without recursively requiring the receipt itself to be anchored.
+- **Stage-specific anchoring gates** (DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 / §9.9 PIPE-6; DACS-5 §10.3.1 ST-3/ST-7/ST-11) — active listings require finalized, resolvable anchors; Vet may progress reversibly on binding-proved durable acceptance; payment and irreversible delivery require the agreement commitment to be finalized; and a successful session remains `audit-pending` until every required artifact and the completed bundle are finalized and independently resolvable. `audit-pending` pauses/resumes through ST-7 on SR-2 failure and can never become a post-payment abort. Bumps **DACS-1 to v0.4, DACS-2 to v0.3, DACS-3 to v0.4, DACS-4 to v0.4, and DACS-5 to v0.4**.
+
+### Fixed — DACS-3 / DACS-4
+
+- **Commitment timestamp circularity removed through a minor-safe new type** (DACS-3 §8.5.2 / §8.6, CA-8/CA-9) — new producers emit the structurally distinct `FinalityCommitmentRecord` (`finalityCommitmentVersion: "1"`, signed under `dacs-finality-commitment:v1:`) with `createdAt` and an explicit orchestrator `signature`; `committedAt` is derived only after anchoring from the finalized receipt's consensus timestamp. The v0.1-v0.3 `CommitmentRecord` and `dacs-commitment:v1:` signed shape remain unchanged and readable for historical audit, with legacy `committedAt` cross-checked against authenticated historical anchor time. Deadline and listing-expiry checks use the applicable authenticated anchor time.
+- **Post-payment evidence catch-up generalized to every rail** (DACS-4 §9.5.1 PC-7) — once payment reaches rail-defined finality, delayed SR-2 `SettlementEvidence` anchoring is idempotent asynchronous bookkeeping. It cannot fail or resubmit the payment; it keeps the session non-terminal at the DACS-5 audit gate until evidence finalizes.
+
 ### Fixed — documentation
 
 - **Flow-trace signing preimage aligned with CORE §B.7** (#277) — the informative `signedBytes` helper now appends the UTF-8 bytes of the 64-character lowercase artifact-hash string instead of decoding it to 32 raw digest bytes. This matches CORE §B.7 and the published golden Ed25519 signature; an executable regression pins the 80-byte accepted preimage and rejects the former 48-byte construction. No normative protocol rule changes.
+
+### Fixed — DACS-5
+
+- **Legacy three-party fault reconciliation** (§10.4.3 / §10.5.1; #304) — compares legacy copies on implied-fault sets derived independently from each copy's authenticated roster and treats them as divergent only when those sets are disjoint, after the unchanged outcome-class and `phaseSummary` checks. This preserves every buyer↔seller outcome pair, rejects mismatched rosters that would manufacture a common role, and carries a singleton `{orchestrator}` intersection into reputation's orchestrator-neutral exclusion. Legacy/legacy, mixed, and `FaultAttestationBundle` pairs now produce the same neutral reputation for equivalent orchestrator-caused failure and abort cases. `perspective_flip` remains the one-copy scoring rule; bundle bytes, schemas, mixed-version authority, and reputation formulas are unchanged. Adds reconciliation, roster-mismatch, and derivation-parity candidate vectors plus an exhaustive outcome-pair compatibility check.
 
 ## [0.4] — 2026-07-27
 

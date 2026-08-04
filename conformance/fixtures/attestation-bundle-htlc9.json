@@ -9,8 +9,10 @@
     "contentHash": "f39fe1c789e4c32ee9a9635730192b84b4f1aa90398c5b61351acaf6262d5449"
   },
   "agreementRef": {
-    "kind": "dacs-3-agreement",
-    "id": "agreement-dacs-verify-htlc9",
+    "anchor": {
+      "kind": "storage-program",
+      "locator": "agreement-dacs-verify-htlc9"
+    },
     "contentHash": "a942e22b9aa8cae92c72cd647daa2467c7af8b6f67293d355efbb156aee8a01b"
   },
   "parties": [
@@ -31,8 +33,10 @@
       "kind": "vet-counterparty",
       "outcome": "ok",
       "attestationRef": {
-        "kind": "dacs-4-evidence",
-        "id": "vet-dacs-verify-htlc9",
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "vet-dacs-verify-htlc9"
+        },
         "contentHash": "8262a5b6929de6374182eb409a59a1ae5816ab5d9f411b2e2de98e8ca302b3a3"
       }
     },
@@ -43,34 +47,36 @@
       "errorClass": "settlement-atomicity",
       "txRefs": [
         {
-          "rail": "polygon-amoy",
-          "txHash": "polygon-amoy:0xreveal9c1a-htlc-reveal",
-          "kind": "htlc-reveal"
-        },
-        {
-          "rail": "ethereum-sepolia",
-          "txHash": "ethereum-sepolia:0xsource-unclaimed-htlc9",
-          "kind": "source-claim-unclaimed"
+          "kind": "htlc-reveal",
+          "chainId": 80002,
+          "contractAddress": "0x0000000000000000000000000000000000000308",
+          "revealTxHash": "polygon-amoy:0xreveal9c1a-htlc-reveal"
         }
       ],
       "attestationRef": {
-        "kind": "dacs-4-evidence",
-        "id": "settlement-dacs-verify-htlc9",
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "settlement-dacs-verify-htlc9"
+        },
         "contentHash": "55636c35a423e47876dab0732d6ecfab20c350a13ab851303047100d7c0205d1"
       }
     }
   ],
   "vetRecords": [
     {
-      "kind": "dacs-4-evidence",
-      "id": "vet-dacs-verify-htlc9",
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "vet-dacs-verify-htlc9"
+      },
       "contentHash": "8262a5b6929de6374182eb409a59a1ae5816ab5d9f411b2e2de98e8ca302b3a3"
     }
   ],
   "settlementEvidence": [
     {
-      "kind": "dacs-4-evidence",
-      "id": "settlement-dacs-verify-htlc9",
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "settlement-dacs-verify-htlc9"
+      },
       "contentHash": "55636c35a423e47876dab0732d6ecfab20c350a13ab851303047100d7c0205d1"
     }
   ],
@@ -81,12 +87,12 @@
     {
       "party": "did:demos:buyer",
       "algorithm": "ed25519",
-      "value": "pErKCIjrDUTrc3PAHlEhDb7dSLoK1EBMwMfChi3IWyjzzUkQA01fjesuhYyxboXaorSH8lhHFJJFSeP9w5_yAw"
+      "value": "zDNAM_34cTBqpXpaRQHNo7UxpvEQhmMHpTjGx7iV3pAgMylK4TNvrrVSFIrPJlDwqYAZeWa3rsuhNdUogYGqBQ"
     },
     {
       "party": "did:demos:seller",
       "algorithm": "ed25519",
-      "value": "IHigNueNTQLmegunQl2X3uYezm3aD_Ma--_b16AkbXGCM2_zcmNv4O9TlNHgovz6tGVOgu_GmPCYwnAWwFrTCQ"
+      "value": "2yOQE2-45hw1WiUDQfQg5-xPTHMVtQ-5gNiDS_f4F7LReQiGxhRGMZv9cS34UAtixgswBiX-_h6eywcnmarNCA"
     }
   ]
 }

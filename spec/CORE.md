@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Published as DACS **v0.1** — the first publicly released version. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -102,6 +102,93 @@ Every DACS standard names the substrate capability it depends on. The capabiliti
 
 A substrate shipping all five can host a full DACS implementation. A substrate that ships some subset can host DACS partially: listings whose pipelines require unsupported capabilities are unfulfillable there, but the rest of the stack still works.
 
+### 5.1 SR-2 write lifecycle and anchor receipts
+
+An SR-2 write is not complete merely because a client submitted bytes or an RPC endpoint acknowledged them. Every SR-2 binding MUST expose the following portable lifecycle semantics, even when its native API uses different names:
+
+```
+submitted → accepted | rejected
+accepted  → included | dropped | replaced | expired
+included  → finalized | reorged
+dropped | expired | reorged → accepted | included | replaced
+```
+
+- `submitted` is a local fact: the writer attempted to send the transaction. It carries no substrate guarantee.
+- `accepted` means the binding has authenticated evidence that the substrate validated and **durably admitted** the transaction under its declared admission policy. An ordinary RPC, HTTP, relay, or mempool acknowledgement is not durable acceptance unless the binding proves that acknowledgement has this property.
+- `included` means consensus recorded the transaction in a block or equivalent ordered state.
+- `finalized` means the included transaction satisfies the binding's declared finality profile.
+- `rejected`, `dropped`, `replaced`, `expired`, and `reorged` are non-success outcomes with their ordinary meanings. `replaced` MUST identify the replacing transaction when known.
+
+**Indeterminate is an observation disposition, not a lifecycle state.** An observer that cannot establish a newer lifecycle state reports `observationDisposition: "indeterminate"` over the last established state. This is permitted after **any** lifecycle state, including `included`, `finalized`, and `rejected`, without adding an edge to the graph. It MUST NOT erase, demote, or promote the preserved state and MUST NOT itself authorize resubmission or satisfy a new protocol gate. A later established observation is validated as a graph transition from that preserved state.
+
+The graph is not a promise that every substrate exposes every intermediate state. A deterministic-BFT binding MAY declare that valid inclusion is final, in which case one authenticated observation establishes both `included` and `finalized`. A binding that cannot prove durable admission MUST omit `accepted` as a usable gate and wait for `included` or `finalized`. `finalized` and `rejected` are terminal for that native transaction. `replaced` is terminal for the replaced transaction; the replacement has its own receipt sequence. `dropped`, `expired`, and `reorged` are recoverable lifecycle outcomes: the same native transaction MAY be durably readmitted or re-included, as the re-entry edges show.
+
+**Indexer visibility is orthogonal.** `indexed` is an observation that an external read/index service currently returns the artifact; it is not an SR-2 transaction state and has no state-transition edge. An implementation MAY report visibility as `indexed`, `not-indexed`, or `indeterminate`, but:
+
+- (SR2-1) indexer visibility MUST NOT gate DACS protocol progress;
+- (SR2-2) visibility MUST NOT promote a transaction to `accepted`, `included`, or `finalized`; and
+- (SR2-3) lack of visibility MUST NOT demote an otherwise authenticated lifecycle state.
+
+**Portable receipt.** A lifecycle observation is represented by an immutable `AnchorReceipt` snapshot:
+
+```
+type AnchorReceipt = {
+  receiptVersion: "1"
+  substrate: string                    // stable substrate/network identifier
+  finalityProfile: string              // binding-defined profile applied by the observer
+  logicalAddress: string               // canonical DACS logical artifact address
+  nativeAddress: string                // substrate-native content address
+  contentHash: string                  // sha256 of the artifact's canonical content
+  transactionRef: {
+    kind: string                       // binding-defined transaction-reference kind
+    value: string                      // canonical native transaction identifier
+  }
+  writer: string                       // canonical native writer/account identifier
+  nonce?: string                       // REQUIRED when the substrate uses a writer nonce
+  state: "submitted" | "accepted" | "included" | "finalized"
+       | "rejected" | "dropped" | "replaced" | "expired"
+       | "reorged"
+  observationDisposition: "established" | "indeterminate"
+  preservedReceiptHash?: string        // REQUIRED when disposition is indeterminate;
+                                       // sha256(canonical_JCS(prior established receipt))
+  observedAt: number                   // unix ms; observer time, not consensus time
+  blockRef?: {
+    id: string                         // canonical block/state identifier
+    height?: string                    // decimal string; avoids JSON safe-integer ambiguity
+    timestamp?: number                 // consensus timestamp, unix ms
+  }
+  replacementTransactionRef?: {              // REQUIRED for state == "replaced" when known
+    kind: string
+    value: string
+  }
+  evidence: {
+    kind: string                       // binding-defined proof/receipt kind
+    value: string                      // canonical encoded evidence or evidence locator
+  }
+}
+```
+
+`AnchorReceipt` is evidence *about* an artifact anchor; it is not itself required to be anchored, avoiding an infinite receipt-about-receipt regress. A later observation produces another immutable snapshot for the same `(substrate, logicalAddress, nativeAddress, contentHash, transactionRef)` tuple. It MUST NOT mutate or silently replace an earlier snapshot. An `established` snapshot claims the lifecycle state shown in `state`. An `indeterminate` snapshot MUST repeat the prior established receipt's state and carry its canonical hash in `preservedReceiptHash`; a consumer MUST verify that referenced prior receipt before relying on the preserved state. If no established receipt newer than local submission exists, the writer first retains the `submitted` receipt and an indeterminate observation preserves that baseline.
+
+- (SR2-4) Every receipt MUST carry binding-defined evidence for its claimed observation. An `established` receipt claiming `accepted`, `included`, or `finalized` MUST carry enough authenticated evidence for an independent consumer to verify that state. An `indeterminate` receipt MUST carry evidence of the observation failure or unorderable conflict and MUST satisfy the preserved-receipt rules above; it cannot establish a lifecycle state on its own. The receipt fields alone are assertions, not proof.
+- (SR2-5) Every receipt MUST bind one canonical logical address, its actual native address, the artifact content hash, transaction reference, writer, and applicable nonce. On a mismatch in any available binding, a consumer MUST reject the receipt as invalid; the mismatch is not an `indeterminate` observation and does not identify a different artifact.
+- (SR2-6) An `included` or `finalized` receipt MUST carry `blockRef`. A `finalized` receipt MUST identify the finality profile under which finality was established. Consensus time for an anchor is `blockRef.timestamp`; `observedAt` MUST NOT substitute for it.
+- (SR2-7) Consumers MUST validate each `established` lifecycle transition against the graph above. In particular, `dropped`, `expired`, or `reorged` cannot themselves satisfy a success gate, but a later authenticated `accepted`/`included`/`finalized` snapshot MAY do so through the defined re-entry path. A `replaced` transaction cannot satisfy a gate unless the consumer separately verifies a qualifying receipt for the replacement. Each SR-2 binding MUST define how authenticated native evidence orders and reconciles snapshots for one transaction; `observedAt` MUST NOT determine precedence. Conflicting snapshots that the binding cannot order produce an `indeterminate` observation disposition over the unchanged last established state, including when that state is `included` or `finalized`.
+
+**Cross-stage gates.** DACS distinguishes reversible progression, irreversible effects, and terminal audit publication:
+
+| DACS point | Minimum SR-2 requirement |
+| --- | --- |
+| DACS-1 active listing publication/discovery | `finalized`, and independently resolvable |
+| DACS-2 Vet result | verified durable `accepted` MAY permit reversible progression; `finalized` required by terminal bundle production |
+| DACS-3 agreement signature | valid required party signatures permit commitment submission; no SR-2 state is implied |
+| DACS-3 commitment | `finalized` before any payment or irreversible delivery |
+| DACS-4 payment | payment rail's declared finality; its SR-2 evidence anchor MAY catch up asynchronously |
+| DACS-5 completed terminal bundle | every required referenced artifact `finalized` and independently resolvable; bundle anchor itself `finalized` |
+
+- (SR2-8) A reversible step MAY progress on verified durable `accepted` when its stage rule permits it. Every payment, release of value, or irreversible delivery MUST wait for the agreement commitment's `finalized` receipt. A binding MAY satisfy this at `included` only when its declared finality profile makes inclusion final.
+- (SR2-9) A `completed` bundle MAY be constructed and signed in preparation for anchoring, but it MUST NOT be treated as terminal or published as a completed audit artifact until every required referenced SR-2 artifact and the bundle itself meet the `finalized` and independent-resolution requirements. Rail-final payment success is not reversed while its evidence anchor catches up; the session remains non-terminal until the audit prerequisites are met.
+
 **SR-2 read outcomes and authoritative absence (normative).** An SR-2 read has one of three dispositions: `present`, `absent`, or `indeterminate`. `present` means content was returned for the requested native address; the consuming rule still verifies its canonical hash, signatures, and artifact-specific bindings. `absent` means the applicable substrate binding's declared absence-evidence policy established that no record exists at that address in the policy's referenced finalized state. Every other no-content result is `indeterminate`, including a transport error, an ordinary unqualified `not found`, a stale response, or mutually inconsistent state views.
 
 An SR-2 binding MAY omit authoritative absence support. A binding that supports a DACS decision whose outcome depends on absence MUST declare an absence-evidence policy specifying:
@@ -173,6 +260,7 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
 | `dacs2:composite:{jobId}:{evaluatedParty}` (§7.7.2) | `evaluatedParty` (a ClaimReference) | `jobId` |
+| `dacs3:commit:{jobId}` (agreement commitment, §8.6) | none | `jobId` |
 | `dacs5:rating:{jobId}:{rater}` (§10.6.1) | `rater` (a ClaimReference) | `jobId` |
 | `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.2) | none — hash-based, no colon-bearing segment | — |
 
@@ -180,7 +268,7 @@ In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a rese
 
 ### B.2 Anchoring and signing
 
-- **Anchored.** Stored on the substrate such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve the canonical content and verify integrity. Realized by SR-2.
+- **Anchored.** Stored on the substrate with authenticated `included` or stronger evidence such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve the canonical content and verify integrity. A consuming rule MAY explicitly require `finalized`, or explicitly permit durable `accepted` before retrieval; the bare term does neither. Realized by SR-2.
 - **Signed.** Carrying an Ed25519 (or equivalent) signature over the RFC 8785 canonical-JSON serialisation of the document’s signed scope, where the signed scope is all fields except the signature field itself.
 - **Canonical form.** RFC 8785 JSON Canonicalization Scheme (JCS) serialisation of the document with the signature(s) field omitted.
 - **Content hash.** sha256 hex of the canonical form.
@@ -238,6 +326,7 @@ type PhaseHandlerResult = {
   explorerUrls?: string[]                   // human-readable handles, parallel to txRefs
   contextDelta?: Record<string, unknown>    // merged into SessionRecord.PhaseEntry.contextDelta
   attestationRef?: AttestationRef           // anchored evidence reference
+  anchorReceipt?: AnchorReceipt             // latest verified SR-2 lifecycle snapshot, when this invocation writes an anchor
   errorClass?: "permanent" | "transient" | "counterparty" | "substrate" | "settlement-atomicity"
 }
 ```
@@ -279,6 +368,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |
 | DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
+| DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |

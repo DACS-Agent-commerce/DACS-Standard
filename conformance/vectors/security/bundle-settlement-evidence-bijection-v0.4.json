@@ -2,125 +2,1587 @@
   "set": "bundle-settlement-evidence-bijection-v0.4",
   "spec": "DACS-5 §10.4.3 SEB-1..SEB-6",
   "artifactType": "EvidenceBoundFaultAttestationBundle",
-  "inputModel": "expectedPhaseKeys come from authenticated evidence-bearing execution authority for invocations that ran to a success or failure outcome; topLevelRefs are raw full-canonical reference keys; resolvedReferencePhaseKeys are independently resolved job-bound phase keys; pointerMap contains only present optional pointers; recordClassByRef defaults to ordinary-terminal and distinguishes st8-resolved-success from st8-expired-interim-failure; supersedesEdges bind resolved successors even when the successor is maliciously omitted from topLevelRefs; unrelatedAuthorityDisposition is evaluated only after deterministic SEB checks",
-  "reasonCodes": ["ok", "raw-multiplicity", "exact-cardinality", "exact-phase-mapping", "exact-bijection", "pointer-agreement", "st8-raw-admissibility", "unrelated-authority-indeterminate"],
-  "reasonPrecedence": ["raw-multiplicity", "st8-raw-admissibility", "exact-phase-mapping", "exact-cardinality", "exact-bijection", "pointer-agreement", "unrelated-authority-indeterminate", "ok"],
-  "hash": "c4e41d470e5b2e751c952a80d1d364953f3098dc15f51b1f5e447f49771c0cb3",
-  "count": 19,
+  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator derives phase keys locally and never accepts a caller-supplied expected set. Repeated kinds remain distinct by index, success and failure results are included, aborted-before-result invocations are absent, and ST-8 contributes one terminal record. resolvedReferencePhaseKeys are independently resolved job-bound phase keys. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
+  "reasonCodes": [
+    "ok",
+    "execution-authority",
+    "lifecycle-gate",
+    "raw-multiplicity",
+    "exact-cardinality",
+    "exact-phase-mapping",
+    "exact-bijection",
+    "pointer-agreement",
+    "st8-raw-admissibility",
+    "unrelated-authority-indeterminate"
+  ],
+  "reasonPrecedence": [
+    "execution-authority",
+    "raw-multiplicity",
+    "st8-raw-admissibility",
+    "exact-phase-mapping",
+    "lifecycle-gate",
+    "exact-cardinality",
+    "exact-bijection",
+    "pointer-agreement",
+    "unrelated-authority-indeterminate",
+    "ok"
+  ],
+  "executionAuthorities": {
+    "standard-completed": {
+      "listing": {
+        "listingId": "listing-seb-standard-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "OlJFxpDt_uypLc9AX54LYo-P6DfuYz_010Ag36U8foR_H87ZiENgZ3yf-DZxNokB-vAObp7sfdk9qW_OBhh6Dw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-standard-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-standard-completed",
+          "version": 1,
+          "contentHash": "801122f6ac163ad371d89b39bc893925359c100233bd6328414b674486da68e4"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-9384fb33b521147afea4919d1a8a469d4c7e8a94b17929b26e74394ec3122485"
+              },
+              "contentHash": "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-a2fc9354c8b1e075e142e079ac1dbb4271997f2c560204e4bac51abf1e32b764"
+              },
+              "contentHash": "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-9384fb33b521147afea4919d1a8a469d4c7e8a94b17929b26e74394ec3122485"
+            },
+            "contentHash": "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-a2fc9354c8b1e075e142e079ac1dbb4271997f2c560204e4bac51abf1e32b764"
+            },
+            "contentHash": "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "WqFbo75zDH7p671bNT4cMLX6oEP3JmRWl0b6ZFdmJpYaHToLr3bSsUuYzypFjzlHDYGAtIg4e_XyR-TbWoVGAA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "TleFb-ogYDp7xDJXj3CzZ_XKNBUGhmYjHWeJjhHk8pEZq12GmUJ_ztHEtMyLIQFaD9nlU0jS96TchVPQPKXxAw"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceLifecycleByContentHash": {
+        "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        },
+        "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        }
+      }
+    },
+    "single-htlc-completed": {
+      "listing": {
+        "listingId": "listing-seb-single-htlc-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-cross-chain-htlc"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "EkLE1pPl4et_D01VGyAIrJ0IXGERbQxRuXvSjKUwqYPqNlcqgOO1qX4FXEi8ShoXCDjnEWsCGEku7dvpBgMJBw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-single-htlc-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-single-htlc-completed",
+          "version": 1,
+          "contentHash": "2c125393176e841a236eb0d2b49ac1e8e2e53e9b48423355b5fd1034169532bd"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-cross-chain-htlc",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-17b68f77f06c20088f38a201bed4cb262f3716d8776d432717ab53c70ea025a4"
+              },
+              "contentHash": "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-17b68f77f06c20088f38a201bed4cb262f3716d8776d432717ab53c70ea025a4"
+            },
+            "contentHash": "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "iNOky9I3seEWibCsqysAIVfQgBnzZamKt9JWGjjrPUpuh0UGd-rcxUa4fCyrkV3DwZA5zyy1b6DrwFkuFccTDw"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "VZH2wZsn4FcqOYd6PW1aGDZY-WZ8701MIMoeO9JA0XfEfP67IFxLQWNO5vTqcbbktsXXEVxO-Bk2dMNyoMT2Bg"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceLifecycleByContentHash": {
+        "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        }
+      }
+    },
+    "repeated-pay-completed": {
+      "listing": {
+        "listingId": "listing-seb-repeated-pay-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-entitlement"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "lGMmj2nIe2weNBhx4CkrhpM8q9ZZIFqoKH-QyDi2HDGjrvUT-n_ByZhMpxO0xllQo_yOyvCAv1fFufDSMEQQDA"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-repeated-pay-completed",
+          "version": 1,
+          "contentHash": "e114a01e7e37c35a4984d126f66d0c80ce395d547ec11b72caa45d04865c0df3"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-bcd24b8d4c1973f00f9c1019f0cc7b0bad66fad8f70ad1f9417b80d3c95f7cde"
+              },
+              "contentHash": "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb"
+            }
+          },
+          {
+            "index": 1,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-bee97787caa54706617e4652d52c471153962d4efde61af1c6d66356f2ea740c"
+              },
+              "contentHash": "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "deliver-entitlement",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-3f510aa9473cbc91e9a751e91f6cf05283dec6db40bba96c54a9219c263b430e"
+              },
+              "contentHash": "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-bcd24b8d4c1973f00f9c1019f0cc7b0bad66fad8f70ad1f9417b80d3c95f7cde"
+            },
+            "contentHash": "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-bee97787caa54706617e4652d52c471153962d4efde61af1c6d66356f2ea740c"
+            },
+            "contentHash": "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-3f510aa9473cbc91e9a751e91f6cf05283dec6db40bba96c54a9219c263b430e"
+            },
+            "contentHash": "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "DzHefCw1kNCFmZveQsCwSX7PZ5RaSVcRzodia7-NSMiQ4ed2Nqtn12Tnq3zp428CyBYk7iJe3bEi3FilO2_vAA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "kh1e-ZT-x6hkWNc8txFgSqg1q6KvnwZ6JZBZaAXinACx_ipmLfLzM6IHbnGkFUz4iHel_1tDDf5nX0nUjCjeCA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceLifecycleByContentHash": {
+        "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        },
+        "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        },
+        "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        }
+      }
+    },
+    "failed-delivery": {
+      "listing": {
+        "listingId": "listing-seb-failed-delivery",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-storage-program"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "Mij7FKTH1GIyKtwNY2rCeyyZ9EE8aET5RY-rC0EvkhC6CSz2Veyo-j86NTp12lq9ILm4SUDsCq_koYZEzKIZBw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-failed-delivery",
+        "outcome": "failed-perm",
+        "faultedParty": "seller",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-failed-delivery",
+          "version": 1,
+          "contentHash": "63ae4cda20891fe4f8eb0fedb3175d6e15e1678dc58b5ef82ea38fc9effbba2c"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "fail",
+            "errorClass": "permanent",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-73dfa6ff381970a1e369219f0f7df017a82514ff0788247d1416b6ee30616d2c"
+              },
+              "contentHash": "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-73dfa6ff381970a1e369219f0f7df017a82514ff0788247d1416b6ee30616d2c"
+            },
+            "contentHash": "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "_ydv6e2x3CgvxhOrGZBjME38Oqd5lpA8ne5kGvcOSpGd7PzOowA78WDW03zo0MBtmKMGEVKIU2w-2WIHgECmCQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "LNOiOBkpdUfYLNeQCHY4hRaoNYy8w3-NT-qic1Oa-p6J0zvkMPNhoudO38ynBQtQBCTPYBv_9OV8bd-1hymoCQ"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": true
+      },
+      "referenceLifecycleByContentHash": {
+        "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3": {
+          "state": "included",
+          "independentlyResolvable": true
+        }
+      }
+    },
+    "aborted-before-result": {
+      "listing": {
+        "listingId": "listing-seb-aborted-before-result",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-entitlement"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "mRvhfukJ8hov7ewi9DDs9NkK_Z_AsLvLJ002FHpNLWlgtPkc_eUe0IPrbidXaRRK2vAPduA-fCjIO9_lX95LCg"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-aborted-before-result",
+        "outcome": "aborted-by-self",
+        "faultedParty": "seller",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-aborted-before-result",
+          "version": 1,
+          "contentHash": "728051c6a95d40fa607ef2e8ba840b8d131f5d9c5f1e740df17c2bda7ab1b990"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "JHl11HMjf0EN_BKjHad_mnyZmlGeXa9OOnhZ1gL_r-cOlWY5l3VwgV8l8fMyw1lDVzfp1zwzWahRKwlDPxKbAA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "0iKibMk-28cc-V8Qz-vjBqgjZab7A27jFF_Yj-Gpey2yB9pzscPEjWnoNBaC92184-6YatDPMGBVyWbOCeGrBA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": true
+      },
+      "referenceLifecycleByContentHash": {}
+    },
+    "invalid-listing-signature": {
+      "listing": {
+        "listingId": "listing-seb-invalid-listing-signature",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "pay-dem"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "A3g0hKf6XmgsiVlTydRJHwucfhzzfaWJn84NvquaRhKQzNccG4IIYe1jdZg2jq_Xp4n72aYfiwtQQyA1JV4GBg"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-invalid-listing-signature",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-invalid-listing-signature",
+          "version": 1,
+          "contentHash": "663ed28f5b80bd2f6844474b63174608d4d9e1e5d8169f5d2f9f683c6a0db2a0"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-02a5837c9ed0eb506958fe0755e1b8abb8fdd254d4cb3ee1155103bfbffa7166"
+              },
+              "contentHash": "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-02a5837c9ed0eb506958fe0755e1b8abb8fdd254d4cb3ee1155103bfbffa7166"
+            },
+            "contentHash": "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "9VWxlyS1-YOo4pXZclWnKiCbbLpZSYUwcL4K-BFm9AINbKC8Jh8Vbw8vgEqKfj1dAqYTMMW7Fm6XW-gdH-FvCg"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "WzsDuEKi3zPb9sdXQxIOiULfpZZr4amHF2In6DAAD3mc7FHv2GRa7PBNyRCyt7pHhYjSkIea_GgNe7MPK5y8BA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceLifecycleByContentHash": {
+        "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        }
+      }
+    },
+    "invalid-bundle-signature": {
+      "listing": {
+        "listingId": "listing-seb-invalid-bundle-signature",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "YRiRDKgguNRP7JGkcKI_d1FEqYy09DJSSupthRdleoIdWGVkNtCJnQJrGPzKyfG3FluUB0vUNYMpbxdIrpBSAw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-invalid-bundle-signature",
+          "version": 1,
+          "contentHash": "514497034350f28b33141c3a3e3b80b0895f2245a9dd2899564f4e1cfd4b4ba9"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-cf9136fceb3ff9039b20e1573415e3d76a49714d5707c14ded295ad686790cf4"
+              },
+              "contentHash": "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-b5ac6adfda535ba6a27f61a4b21aebf69084d0763b30ab9c737abaf2324b717c"
+              },
+              "contentHash": "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-cf9136fceb3ff9039b20e1573415e3d76a49714d5707c14ded295ad686790cf4"
+            },
+            "contentHash": "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-b5ac6adfda535ba6a27f61a4b21aebf69084d0763b30ab9c737abaf2324b717c"
+            },
+            "contentHash": "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "Als3aWpTmEQCStpp9ZrA8hznZ_TzjTyAHL5Gc9T4k3KJCvAiiaT15CCMi181f3GOUynYulQ32GmsAmxB5SjjBQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "vLNXEaYqflp3mDtnbuOAnywqStELPpxZCnMNfhCPWReI7lfEVLBLxjIwpWoF3_zFIGvUQj9QFLbL7MxVAzVRDA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceLifecycleByContentHash": {
+        "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        },
+        "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55": {
+          "state": "finalized",
+          "independentlyResolvable": true
+        }
+      }
+    }
+  },
+  "hash": "4f2ea345ff37c0fe30fafe8364510d88c6f42ebd93ca0732e1c928352a7f432d",
+  "count": 26,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
       "expected": "pass",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "verified", "reasonCode": "ok" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
     },
     {
       "name": "bundle-settlement-bijection-exact-pointers-pass",
       "expected": "pass",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-pay", "3:deliver-attested-payload": "ref-deliver" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "verified", "reasonCode": "ok" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {
+          "2:pay-dem": "ref-pay",
+          "3:deliver-attested-payload": "ref-deliver"
+        },
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
     },
     {
       "name": "bundle-settlement-bijection-missing-member-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "exact-cardinality" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "exact-cardinality"
+      }
     },
     {
       "name": "bundle-settlement-bijection-equal-count-duplicate-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "raw-multiplicity" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-pay"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "raw-multiplicity"
+      }
     },
     {
       "name": "bundle-settlement-bijection-coverage-complete-duplicate-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver", "ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "raw-multiplicity" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver",
+          "ref-pay"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "raw-multiplicity"
+      }
     },
     {
       "name": "bundle-settlement-bijection-extra-member-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver", "ref-extra"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload", "ref-extra": "4:deliver-storage-program" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "exact-phase-mapping" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver",
+          "ref-extra"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload",
+          "ref-extra": "4:deliver-storage-program"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "exact-phase-mapping"
+      }
     },
     {
       "name": "bundle-settlement-bijection-pointer-reused-across-phases-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-pay", "3:deliver-attested-payload": "ref-pay" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {
+          "2:pay-dem": "ref-pay",
+          "3:deliver-attested-payload": "ref-pay"
+        },
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "pointer-agreement"
+      }
     },
     {
       "name": "bundle-settlement-bijection-equal-count-wrong-phase-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-wrong"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-wrong": "4:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "exact-phase-mapping" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-wrong"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-wrong": "4:deliver-attested-payload"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "exact-phase-mapping"
+      }
     },
     {
       "name": "bundle-settlement-bijection-present-pointer-conflict-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-deliver" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {
+          "2:pay-dem": "ref-deliver"
+        },
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "pointer-agreement"
+      }
     },
     {
       "name": "bundle-settlement-bijection-pointer-outside-top-level-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload", "ref-dangling": "2:pay-dem" }, "pointerMap": { "2:pay-dem": "ref-dangling" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload",
+          "ref-dangling": "2:pay-dem"
+        },
+        "pointerMap": {
+          "2:pay-dem": "ref-dangling"
+        },
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "pointer-agreement"
+      }
     },
     {
       "name": "bundle-settlement-bijection-non-evidence-phase-substitution-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-negotiate"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-negotiate": "3:negotiate-rfq" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "exact-phase-mapping" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-negotiate"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-negotiate": "3:negotiate-rfq"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "exact-phase-mapping"
+      }
     },
     {
       "name": "bundle-settlement-bijection-omission-with-unrelated-uncertainty-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "indeterminate" },
-      "want": { "disposition": "rejected", "reasonCode": "exact-cardinality" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "indeterminate"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "exact-cardinality"
+      }
     },
     {
       "name": "bundle-settlement-bijection-exact-with-unrelated-uncertainty-indeterminate",
       "expected": "indeterminate",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "indeterminate" },
-      "want": { "disposition": "indeterminate", "reasonCode": "unrelated-authority-indeterminate" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "indeterminate"
+      },
+      "want": {
+        "disposition": "indeterminate",
+        "reasonCode": "unrelated-authority-indeterminate"
+      }
     },
     {
       "name": "bundle-settlement-bijection-pointer-conflict-with-unrelated-uncertainty-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay", "ref-deliver"], "resolvedReferencePhaseKeys": { "ref-pay": "2:pay-dem", "ref-deliver": "3:deliver-attested-payload" }, "pointerMap": { "2:pay-dem": "ref-deliver" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "indeterminate" },
-      "want": { "disposition": "rejected", "reasonCode": "pointer-agreement" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {
+          "2:pay-dem": "ref-deliver"
+        },
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "indeterminate"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "pointer-agreement"
+      }
     },
     {
       "name": "bundle-settlement-bijection-distinct-reference-alias-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-dem", "3:deliver-attested-payload"], "topLevelRefs": ["ref-pay-a", "ref-pay-b"], "resolvedReferencePhaseKeys": { "ref-pay-a": "2:pay-dem", "ref-pay-b": "2:pay-dem" }, "pointerMap": {}, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "exact-bijection" }
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay-a",
+          "ref-pay-b"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay-a": "2:pay-dem",
+          "ref-pay-b": "2:pay-dem"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "exact-bijection"
+      }
     },
     {
       "name": "bundle-settlement-bijection-st8-resolved-only-pass",
       "expected": "pass",
-      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-resolved"], "resolvedReferencePhaseKeys": { "ref-resolved": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-resolved": "st8-resolved-success" }, "supersedesEdges": { "ref-resolved": "ref-interim" }, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "verified", "reasonCode": "ok" }
+      "input": {
+        "executionAuthorityRef": "single-htlc-completed",
+        "topLevelRefs": [
+          "ref-resolved"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-resolved": "2:pay-cross-chain-htlc"
+        },
+        "pointerMap": {},
+        "recordClassByRef": {
+          "ref-resolved": "st8-resolved-success"
+        },
+        "supersedesEdges": {
+          "ref-resolved": "ref-interim"
+        },
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
     },
     {
       "name": "bundle-settlement-bijection-st8-expired-interim-pass",
       "expected": "pass",
-      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-interim"], "resolvedReferencePhaseKeys": { "ref-interim": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-interim": "st8-expired-interim-failure" }, "supersedesEdges": {}, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "verified", "reasonCode": "ok" }
+      "input": {
+        "executionAuthorityRef": "single-htlc-completed",
+        "topLevelRefs": [
+          "ref-interim"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-interim": "2:pay-cross-chain-htlc"
+        },
+        "pointerMap": {},
+        "recordClassByRef": {
+          "ref-interim": "st8-expired-interim-failure"
+        },
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
     },
     {
       "name": "bundle-settlement-bijection-st8-resolved-success-suppressed-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-interim"], "resolvedReferencePhaseKeys": { "ref-interim": "2:pay-cross-chain-htlc", "ref-resolved": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-interim": "st8-expired-interim-failure", "ref-resolved": "st8-resolved-success" }, "supersedesEdges": { "ref-resolved": "ref-interim" }, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "st8-raw-admissibility" }
+      "input": {
+        "executionAuthorityRef": "single-htlc-completed",
+        "topLevelRefs": [
+          "ref-interim"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-interim": "2:pay-cross-chain-htlc",
+          "ref-resolved": "2:pay-cross-chain-htlc"
+        },
+        "pointerMap": {},
+        "recordClassByRef": {
+          "ref-interim": "st8-expired-interim-failure",
+          "ref-resolved": "st8-resolved-success"
+        },
+        "supersedesEdges": {
+          "ref-resolved": "ref-interim"
+        },
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "st8-raw-admissibility"
+      }
     },
     {
       "name": "bundle-settlement-bijection-st8-interim-plus-resolved-reject",
       "expected": "fail",
-      "input": { "expectedPhaseKeys": ["2:pay-cross-chain-htlc"], "topLevelRefs": ["ref-interim", "ref-resolved"], "resolvedReferencePhaseKeys": { "ref-interim": "2:pay-cross-chain-htlc", "ref-resolved": "2:pay-cross-chain-htlc" }, "pointerMap": {}, "recordClassByRef": { "ref-interim": "st8-expired-interim-failure", "ref-resolved": "st8-resolved-success" }, "supersedesEdges": { "ref-resolved": "ref-interim" }, "unrelatedAuthorityDisposition": "verified" },
-      "want": { "disposition": "rejected", "reasonCode": "st8-raw-admissibility" }
+      "input": {
+        "executionAuthorityRef": "single-htlc-completed",
+        "topLevelRefs": [
+          "ref-interim",
+          "ref-resolved"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-interim": "2:pay-cross-chain-htlc",
+          "ref-resolved": "2:pay-cross-chain-htlc"
+        },
+        "pointerMap": {},
+        "recordClassByRef": {
+          "ref-interim": "st8-expired-interim-failure",
+          "ref-resolved": "st8-resolved-success"
+        },
+        "supersedesEdges": {
+          "ref-resolved": "ref-interim"
+        },
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "st8-raw-admissibility"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-repeated-kind-distinct-indices-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "repeated-pay-completed",
+        "topLevelRefs": [
+          "ref-pay-0",
+          "ref-pay-1",
+          "ref-deliver-2"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay-0": "0:pay-dem",
+          "ref-pay-1": "1:pay-dem",
+          "ref-deliver-2": "2:deliver-entitlement"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-failed-phase-included-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "failed-delivery",
+        "topLevelRefs": [
+          "ref-failed-delivery"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-failed-delivery": "0:deliver-storage-program"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-aborted-before-result-empty-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "aborted-before-result",
+        "topLevelRefs": [],
+        "resolvedReferencePhaseKeys": {},
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-invalid-listing-authority-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "invalid-listing-signature",
+        "topLevelRefs": [
+          "ref-pay"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "0:pay-dem"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-completed-accepted-not-finalized-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "standard-completed",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "referenceLifecycleByRef": {
+          "ref-pay": {
+            "state": "accepted",
+            "independentlyResolvable": true
+          }
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "lifecycle-gate"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-failed-accepted-not-included-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "failed-delivery",
+        "topLevelRefs": [
+          "ref-failed-delivery"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-failed-delivery": "0:deliver-storage-program"
+        },
+        "referenceLifecycleByRef": {
+          "ref-failed-delivery": {
+            "state": "accepted",
+            "independentlyResolvable": true
+          }
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "lifecycle-gate"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-invalid-bundle-authority-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "invalid-bundle-signature",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
     }
-  ]
+  ],
+  "generator": "scripts/generate_bundle_settlement_evidence_vectors.py",
+  "seeds": {
+    "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+  },
+  "publicKeys": {
+    "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8"
+  },
+  "domains": {
+    "listing": "dacs-listing:v1:",
+    "evidenceBoundBundle": "dacs-evidence-bound-fault-bundle:v1:"
+  },
+  "executionAuthorityDefinitions": {
+    "standard-completed": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-dem",
+        "deliver-attested-payload"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-dem",
+          "outcome": "ok"
+        },
+        {
+          "index": 3,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "single-htlc-completed": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-cross-chain-htlc"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-cross-chain-htlc",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "repeated-pay-completed": {
+      "listingPipeline": [
+        "pay-dem",
+        "pay-dem",
+        "deliver-entitlement"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "pay-dem",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "pay-dem",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "deliver-entitlement",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "failed-delivery": {
+      "listingPipeline": [
+        "deliver-storage-program"
+      ],
+      "bundleOutcome": "failed-perm",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-storage-program",
+          "outcome": "fail",
+          "errorClass": "permanent"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": true
+      }
+    },
+    "aborted-before-result": {
+      "listingPipeline": [
+        "pay-dem",
+        "deliver-entitlement"
+      ],
+      "bundleOutcome": "aborted-by-self",
+      "phaseSummary": [],
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": true
+      }
+    },
+    "invalid-listing-signature": {
+      "listingPipeline": [
+        "pay-dem"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "pay-dem",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "corruptListingSignature": true
+    },
+    "invalid-bundle-signature": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-dem",
+        "deliver-attested-payload"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-dem",
+          "outcome": "ok"
+        },
+        {
+          "index": 3,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "corruptBundleSignature": true
+    }
+  }
 }

@@ -1,16 +1,17 @@
 """Executable DACS-5 reference predicates for the PR #248 round-5 blocker tests.
 
 This module is a *test-support* library, NOT a conformance validator and NOT a
-TestCase. It is imported only by the four blocker vector tests:
+TestCase. It is imported by the focused DACS-5 predicate tests, including:
 
     - tests/test_receipt_rederivation_vectors.py        (B1 determinism receipt)
     - tests/test_outsider_binding_flooding_vectors.py   (B2 BB-6 flood)
     - tests/test_mixed_version_reconciliation_vectors.py (B3 reconciliation totality)
     - tests/test_fab_bundle_extended_pointer_vectors.py  (B4 extended-pointer FAB path)
+    - tests/test_legacy_three_party_fault_reconciliation_vectors.py
 
 It executes the §10.5.1/§10.4.2/§10.4.3 predicates the round-4 review found were
-only *asserted* by fixture metadata: perspective_flip reconciliation (E1-E3),
-implied-fault-SET mixed-version comparison (E4), the ResolutionContextEntry replay
+only *asserted* by fixture metadata: implied-fault-SET legacy and mixed-version
+reconciliation (E1-E4), the ResolutionContextEntry replay
 contract (E5), per-signer BB-6 budgeting (E6), and the triple-identity extended-
 pointer rule (E7).
 
@@ -36,6 +37,8 @@ except ImportError:  # pragma: no cover - environment-dependent
 
 BUNDLE_DOMAIN = "dacs-bundle:v1:"
 FAULT_BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
+EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
+LISTING_DOMAIN = "dacs-listing:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 
@@ -57,6 +60,19 @@ _FAILURE = {"failed-perm", "failed-counterparty"}
 # algorithm is unsupported-by-this-verifier or absent has a payload this verifier cannot reproduce and
 # MUST be rejected (SIG-3). Dispatch is on this label, never assumed.
 SUPPORTED_SIGNATURE_ALGORITHMS = frozenset({"ed25519"})
+
+EVIDENCE_PHASES = frozenset({
+    "pay-evm-erc20",
+    "pay-solana-spl",
+    "pay-cross-chain-htlc",
+    "pay-cross-chain-liquidity-tank",
+    "pay-ap2",
+    "pay-x402",
+    "pay-dem",
+    "deliver-storage-program",
+    "deliver-entitlement",
+    "deliver-attested-payload",
+})
 
 # §10.5.3 windowingBasis (spec DACS-5-VERIFY.md :530): a REQUIRED closed two-literal union naming
 # which clock the §10.5.1 window was applied against; re-derivation MUST use the recorded basis
@@ -129,6 +145,12 @@ def bundle_hash(bundle):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
+def listing_hash(listing):
+    """§6.3.4 listing hash: canonical form minus the signature envelope."""
+    unsigned = {k: v for k, v in listing.items() if k != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
 def binding_hash(binding):
     unsigned = {k: v for k, v in binding.items() if k != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
@@ -148,8 +170,44 @@ def b64url_decode(value):
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
+def bundle_type(bundle):
+    """Return the exact supported §10.4 discriminator class or None.
+
+    Discriminators are exclusive. Unknown, stripped, or multiply-labelled objects do not
+    inherit a legacy type merely because one verifier happens to recognize fewer fields.
+    """
+    if not isinstance(bundle, dict):
+        return None
+    candidates = []
+    if bundle.get("bundleVersion") == "1":
+        candidates.append("legacy")
+    if bundle.get("faultBundleVersion") == "1":
+        candidates.append("fault")
+    if bundle.get("evidenceBoundFaultBundleVersion") == "1":
+        candidates.append("evidence-bound")
+    known_keys = {
+        "bundleVersion",
+        "faultBundleVersion",
+        "evidenceBoundFaultBundleVersion",
+    }
+    if any(key in bundle and bundle.get(key) != "1" for key in known_keys):
+        return None
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def bundle_type_rank(bundle):
+    return {"legacy": 0, "fault": 1, "evidence-bound": 2}.get(bundle_type(bundle), -1)
+
+
 def bundle_domain(bundle):
-    return FAULT_BUNDLE_DOMAIN if "faultBundleVersion" in bundle else BUNDLE_DOMAIN
+    kind = bundle_type(bundle)
+    if kind == "legacy":
+        return BUNDLE_DOMAIN
+    if kind == "fault":
+        return FAULT_BUNDLE_DOMAIN
+    if kind == "evidence-bound":
+        return EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN
+    raise ValueError("unsupported, missing, or non-exclusive bundle discriminator")
 
 
 def verify_sig(pubkey_bytes, domain, content_hash, sig_value):
@@ -239,7 +297,8 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
 
 
 def is_fab(bundle):
-    return "faultBundleVersion" in bundle
+    """True for either absolute-fault type (FAB or EBFAB)."""
+    return bundle_type(bundle) in {"fault", "evidence-bound"}
 
 
 def _outcome_class(outcome):
@@ -262,7 +321,7 @@ def _other(role):
 # Reconciliation predicates (E1-E4)
 # --------------------------------------------------------------------------- #
 def perspective_flip(outcome):
-    """§10.5.1 legacy-only perspective mapping (E1/E2/E3). Buyer<->seller involution;
+    """§10.5.1 legacy-only single-copy scoring map. Buyer<->seller involution;
     completed/failed-substrate unchanged."""
     return {
         "aborted-by-self": "aborted-by-other",
@@ -308,13 +367,34 @@ def _fab_faulted(bundle):
     return bundle["faultedParty"]
 
 
+def common_fault_set(copy_a, copy_b):
+    """Return the absolute faults both authenticated copies can describe.
+
+    Each legacy copy derives its permissible set from its own signed parties[]
+    roster. A counterparty roster must never enlarge the other copy's claim.
+    """
+    a_fab, b_fab = is_fab(copy_a), is_fab(copy_b)
+    if a_fab and b_fab:
+        a_fault, b_fault = _fab_faulted(copy_a), _fab_faulted(copy_b)
+        return {a_fault} if a_fault == b_fault else set()
+    if not a_fab and not b_fab:
+        a_faults = implied_fault_set(
+            copy_a["outcome"], copy_a["anchoredByRole"], roster_roles(copy_a))
+        b_faults = implied_fault_set(
+            copy_b["outcome"], copy_b["anchoredByRole"], roster_roles(copy_b))
+        return a_faults & b_faults
+    fab, legacy = (copy_a, copy_b) if a_fab else (copy_b, copy_a)
+    legacy_faults = implied_fault_set(
+        legacy["outcome"], legacy["anchoredByRole"], roster_roles(legacy))
+    return {_fab_faulted(fab)} & legacy_faults
+
+
 def divergence(copy_a, copy_b):
     """§10.4.3 single divergence definition as amended by E1/E4. Returns True iff the
     pair canonically diverges. Classifies the pair by type:
 
       FAB pair    -> faultedParty contradiction OR outcome-class contradiction OR phaseSummary
-      legacy pair -> perspective-reconciled: flip B to A's perspective, then compare the
-                     residual outcome + outcome-class; partner spellings do NOT diverge (E1)
+      legacy pair -> compare both implied-fault SETs; disjoint sets diverge (E1)
       mixed pair  -> the FAB.faultedParty must be a MEMBER of the legacy copy's
                      implied-fault SET; non-membership OR outcome-class OR phaseSummary (E4)
     """
@@ -327,22 +407,15 @@ def divergence(copy_a, copy_b):
 
     if a_fab and b_fab:
         # FAB pair: absolute faultedParty must agree (outcome class already checked).
-        return _fab_faulted(copy_a) != _fab_faulted(copy_b)
+        return not common_fault_set(copy_a, copy_b)
 
     if not a_fab and not b_fab:
-        # Legacy pair (E1): reconcile B into A's perspective via perspective_flip, then
-        # the residual outcomes must agree. Partner spellings collapse to one event.
-        if copy_a["anchoredByRole"] == copy_b["anchoredByRole"]:
-            reconciled_b = copy_b["outcome"]
-        else:
-            reconciled_b = perspective_flip(copy_b["outcome"])
-        return copy_a["outcome"] != reconciled_b
+        # Legacy pair (E1): both role-relative residuals map to implied-fault sets.
+        # A non-empty intersection means the assertions can describe the same event.
+        return not common_fault_set(copy_a, copy_b)
 
     # Mixed pair (E4): the FAB.faultedParty must be a member of the legacy implied set.
-    fab, legacy = (copy_a, copy_b) if a_fab else (copy_b, copy_a)
-    roster = roster_roles(fab) | roster_roles(legacy)
-    fset = implied_fault_set(legacy["outcome"], legacy["anchoredByRole"], roster)
-    return _fab_faulted(fab) not in fset
+    return not common_fault_set(copy_a, copy_b)
 
 
 def scored_outcome(bundle, role_of_party):
@@ -411,6 +484,8 @@ def _bundle_signatures_valid(bundle, pubkeys):
     idiom). Returns (ok, reason)."""
     if not isinstance(bundle, dict):
         return (False, "bundle is not an object")
+    if bundle_type(bundle) is None:
+        return (False, "unsupported, missing, or non-exclusive bundle discriminator")
     anchor_role = bundle.get("anchoredByRole")
     role_holder = {p.get("role"): p.get("primaryClaim") for p in bundle.get("parties", [])}
     raw_sigs = bundle.get("signatures", [])                # RAW list — NEVER a party-keyed dict (F2: a
@@ -461,6 +536,118 @@ def _bundle_signatures_valid(bundle, pubkeys):
             if not verify_sig(pk, dom, h, s.get("value", "")):    # F2: every entry must verify
                 return (False, "§10.4.1 bundle signature does not verify for signer %r" % (party,))
     return (True, "ok")
+
+
+def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash):
+    """Execute the authenticated SEB gate needed before EBFAB reconciliation.
+
+    This bounded reference covers the protected #290 authority path: exact type/domain
+    signatures, content-bound signed listing pipeline, phase-key derivation, the
+    settlementEvidence bijection, and the SR-2 lifecycle threshold. It intentionally
+    remains test support rather than a general DACS validator.
+    """
+    if bundle_type(bundle) != "evidence-bound":
+        return (False, "not an EvidenceBoundFaultAttestationBundle", None)
+    ok, reason = _bundle_signatures_valid(bundle, pubkeys)
+    if not ok:
+        return (False, reason, None)
+    if (
+        not isinstance(listing, dict)
+        or not isinstance(pubkeys, dict)
+        or not isinstance(lifecycle_by_content_hash, dict)
+    ):
+        return (False, "missing listing, key, or lifecycle authority", None)
+
+    signature = listing.get("signature")
+    if not isinstance(signature, dict):
+        return (False, "listing signature missing", None)
+    signer = signature.get("signer")
+    if signature.get("algorithm") != "ed25519" or signer not in pubkeys:
+        return (False, "listing signer or algorithm unsupported", None)
+    canonical_ok, canonical_reason = sig6_canonical(signature.get("value", ""))
+    if not canonical_ok:
+        return (False, canonical_reason, None)
+    content_hash = listing_hash(listing)
+    if not verify_sig(pubkeys[signer], LISTING_DOMAIN, content_hash, signature["value"]):
+        return (False, "listing signature does not verify", None)
+
+    listing_ref = bundle.get("listingRef")
+    if not isinstance(listing_ref, dict) or (
+        listing_ref.get("listingId") != listing.get("listingId")
+        or listing_ref.get("version") != listing.get("listingVersion")
+        or listing_ref.get("contentHash") != content_hash
+    ):
+        return (False, "listingRef does not bind the signed listing", None)
+
+    pipeline = listing.get("pipeline")
+    summary = bundle.get("phaseSummary")
+    if not isinstance(pipeline, list) or not isinstance(summary, list):
+        return (False, "pipeline or phaseSummary is not an array", None)
+    pipeline_kinds = [step.get("kind") if isinstance(step, dict) else None for step in pipeline]
+    seen_indices = set()
+    expected_refs = []
+    expected_keys = []
+    for entry in summary:
+        if not isinstance(entry, dict):
+            return (False, "phaseSummary entry is not an object", None)
+        index = entry.get("index")
+        kind = entry.get("kind")
+        if (
+            isinstance(index, bool)
+            or not isinstance(index, int)
+            or index < 0
+            or index >= len(pipeline_kinds)
+            or index in seen_indices
+            or kind != pipeline_kinds[index]
+            or entry.get("outcome") not in {"ok", "fail"}
+        ):
+            return (False, "phaseSummary contradicts the signed listing pipeline", None)
+        seen_indices.add(index)
+        if kind in EVIDENCE_PHASES:
+            ref = entry.get("attestationRef")
+            if not isinstance(ref, dict) or not isinstance(ref.get("contentHash"), str):
+                return (False, "evidence phase lacks an attestationRef", None)
+            expected_refs.append(ref)
+            expected_keys.append(f"{index}:{kind}")
+
+    actual_refs = bundle.get("settlementEvidence")
+    if not isinstance(actual_refs, list):
+        return (False, "settlementEvidence is not an array", None)
+    actual_ids = [canonical(ref) for ref in actual_refs]
+    expected_ids = [canonical(ref) for ref in expected_refs]
+    if len(actual_ids) != len(set(actual_ids)):
+        return (False, "settlementEvidence contains a raw duplicate", None)
+    if len(expected_ids) != len(set(expected_ids)) or set(actual_ids) != set(expected_ids):
+        return (False, "settlementEvidence is not the exact phase-result set", None)
+
+    completed = bundle.get("outcome") == "completed"
+    for ref in actual_refs:
+        lifecycle = lifecycle_by_content_hash.get(ref.get("contentHash"))
+        if not isinstance(lifecycle, dict) or lifecycle.get("independentlyResolvable") is not True:
+            return (False, "settlement evidence is not independently resolvable", None)
+        state = lifecycle.get("state")
+        if completed and state != "finalized":
+            return (False, "completed evidence is not finalized", None)
+        if not completed and state not in {"included", "finalized"}:
+            return (False, "failed or aborted evidence is not included or finalized", None)
+    return (True, "ok", expected_keys)
+
+
+def _tagged_copy_valid_for_derive(tagged):
+    """Reject an EBFAB before divergence/ranking unless its authenticated SEB gate passes."""
+    bundle = tagged.get("bundle")
+    if bundle_type(bundle) != "evidence-bound":
+        return True
+    authority = tagged.get("ebfabAuthority")
+    if not isinstance(authority, dict):
+        return False
+    ok, _, _ = validate_ebfab(
+        bundle,
+        authority.get("listing"),
+        authority.get("publicKeys"),
+        authority.get("referenceLifecycleByContentHash"),
+    )
+    return ok
 
 
 def _post_fetch_valid(fetched, binding, pubkeys):
@@ -730,7 +917,8 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
                          % (sorted(SUPPORTED_WINDOWING_BASES), basis))
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
     scoped = [t for t in tagged_bundles
-              if party in _primary_claims(t["bundle"])
+              if _tagged_copy_valid_for_derive(t)
+              and party in _primary_claims(t["bundle"])
               and window_start <= t["bundle"][clock] <= window_end]
 
     # group by jobId
@@ -749,12 +937,14 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         cp = next((c for c in copies if c["bundle"]["anchoredByRole"] != role_of_party
                    and c["bundle"]["anchoredByRole"] in ("buyer", "seller")), None)
 
+        pair_faults = set()
         if self_c is not None and cp is not None:
             if divergence(self_c["bundle"], cp["bundle"]):
                 continue  # §10.4.3(d) dispute -> EXCLUDE from ALL metrics
-            # non-divergent mixed-version pair -> FAB authoritative
-            if is_fab(self_c["bundle"]) != is_fab(cp["bundle"]):
-                auth = self_c if is_fab(self_c["bundle"]) else cp
+            pair_faults = common_fault_set(self_c["bundle"], cp["bundle"])
+            # §10.4.3 exhaustive authority: EBFAB > FAB > legacy after both copies validate.
+            if bundle_type_rank(self_c["bundle"]) != bundle_type_rank(cp["bundle"]):
+                auth = max((self_c, cp), key=lambda tagged: bundle_type_rank(tagged["bundle"]))
             else:
                 auth = self_c
         elif self_c is not None:
@@ -769,7 +959,8 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
 
         b = auth["bundle"]
         oc = scored_outcome(b, role_of_party)
-        if is_fab(b) and b.get("faultedParty") == "orchestrator":
+        if ((is_fab(b) and b.get("faultedParty") == "orchestrator")
+                or pair_faults == {"orchestrator"}):
             orch_fault.add(job)
         reconciled.append(auth)
         outcomes.append(oc)

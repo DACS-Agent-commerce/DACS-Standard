@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.3** (on the common DACS v0.1 baseline; adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.4** (on the common DACS v0.1 baseline; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -129,7 +129,7 @@ A listing MAY declare terms.acceptanceModel: "auto-accept", in which case the se
 - The seller publishes, at listing-anchor time, a separate AutoAcceptCommitment record: { listingRef, listingContentHash, acceptanceModel: "auto-accept", validUntil, sellerSignature } where sellerSignature is the seller’s signature over the domain-separated payload "dacs-auto-accept-commitment:v1:" || sha256(canonical(commitment)). This commits the seller to auto-accepting any buyer signature against the listed terms within validUntil.
 - At orchestrator time, the orchestrator: (1) **verifies** the AutoAcceptCommitment is anchored, unrevoked, and still valid (see *Two-phase validity* below); (2) **constructs** the per-session AgreementArtifact selected by the listing's commitment phase with `derivedFromPattern: "fixed-price"`; (3) **computes** the agreement hash; (4) **constructs an auto-accept seller signature** — an Ed25519 signature by the seller’s primary key over `"dacs-auto-accept-instance:v1:" || agreementHash || autoAcceptCommitmentHash`.
 
-  *Two-phase validity (step 1).* `validUntil` is checked twice because the per-session `committedAt` does not exist until the commitment is anchored, so it cannot gate the signature pre-anchor: **provisionally** against the current clock at signing time (an already-expired commitment MUST NOT produce an instance signature), then **authoritatively** re-checking `committedAt ≤ validUntil` against the anchored commitment timestamp (`committedAt`, defined in the §8.6 CommitmentRecord) at the agreement commitment phase, per the §8.5.2 ordering note.
+  *Two-phase validity (step 1).* `validUntil` is checked twice because the per-session `committedAt` does not exist until the commitment is finalized, so it cannot gate the signature pre-anchor: **provisionally** against the current clock at signing time (an already-expired commitment MUST NOT produce an instance signature), then **authoritatively** re-checking `committedAt ≤ validUntil` against the commitment's finalized CORE §5.1 receipt timestamp at the agreement commitment phase, per the §8.5.2 ordering note.
 
   *Instance signature (step 4).* This signature is **NOT pre-issued** — it MUST be produced live by the seller’s keyholder or by an authorised auto-signer the seller has explicitly delegated to. The pre-issued AutoAcceptCommitment authorises the auto-signer to produce instance signatures within its scope.
 
@@ -500,7 +500,7 @@ A verifier MUST validate the agreement against its referenced listing — checke
    - *Metered pricing* — `terms.meteredQuantity` MUST be present, `terms.meteredQuantity.unit` MUST equal the metered variant's `unit`, and `terms.price` MUST equal `max(minTotal ?? 0, unitPrice.amount × quantity)` in CD-1 canonical form, where `quantity = terms.meteredQuantity.quantity` (rules MTR-1..4). If `terms.meteredQuantity` is absent or its `unit` mismatches, commit-agreement MUST reject.
 3. **Rail** — `terms.rail` MUST be present if and only if the listing pipeline contains a `pay-*` phase (PIPE-1, §9.5). When present, it MUST appear in `listing.acceptedRails`. For a zero-pay (intake-only / settled-out-of-band) pipeline — one with no `pay-*` phase — `terms.rail` MUST be absent.
 4. **Deliverable** — `terms.deliverable` MUST conform to the listing’s `offering.deliverable`: `terms.deliverable.deliverableType` MUST equal the listing `offering.deliverable` kind; `terms.deliverable.hash` MUST equal the canonical `DeliverableRef.hash` of the listing’s `offering.deliverable` (per §9.3); `terms.deliverable.schemaUrl` MUST equal the listing `offering.deliverable.schemaUrl` (both absent, or both present and equal).
-5. **Deadline** — `terms.deadline` MUST be ≤ `committedAt + listing.terms.deadlineSecAfterCommit`, where `committedAt` is the SR-2 anchor timestamp of the commitment record (§8.6) — the same objective, substrate-determined clock SE-2 uses — NOT the self-reported `generatedAt`, which a party could backdate to widen the settle window.
+5. **Deadline** — `terms.deadline` MUST be ≤ `committedAt + listing.terms.deadlineSecAfterCommit`. For a new `FinalityCommitmentRecord`, `committedAt` is the consensus timestamp in its finalized CORE §5.1 `AnchorReceipt` (§8.6); for a legacy `CommitmentRecord`, it is the signed legacy field after CA-8 cross-checks it against authenticated historical anchor time. This is the same objective, substrate-determined clock SE-2 uses — NOT the finality record's signed `createdAt` or the agreement's self-reported `generatedAt`, either of which a party could backdate to widen the settle window.
 6. **Not expired** — the listing's `validity.notAfter` (if set) MUST be ≥ `committedAt`; the listing MUST NOT have expired between read and its agreement commitment phase (the §6.3.4 step-3 read-time check governs discovery; this re-check governs commit, closing the read-to-commit interval).
 7. **Pattern** — `derivedFromPattern` MUST match the listing's pipeline-declared negotiation phase after mapping phase kind to agreement pattern: `negotiate-fixed-price` → `"fixed-price"`, `negotiate-rfq` → `"rfq"`, and both `negotiate-sealed-envelope` and `negotiate-sealed-envelope-procurement` → `"sealed-envelope"`.
 8. **Sealed-envelope role direction** — for `derivedFromPattern == "sealed-envelope"`, the agreement party roles and `terms.price` direction MUST match the pinned listing's sealed-envelope phase kind per SE-8. If `auctionMode` is required but missing, or present but unresolvable/malformed, validation MUST reject with a recorded `unresolvable-auctionMode` reason. If the roles are inverted relative to the pinned mode, validation MUST reject before Settle.
@@ -516,14 +516,14 @@ Checks 5 and 6 are the two `committedAt`-relative checks — see the ordering no
 - **(MTR-4)** for a metered listing, `terms.price` MUST equal `max(minTotal ?? 0, unitPrice.amount × quantity)` in CD-1 canonical form, where `quantity = terms.meteredQuantity.quantity` is a **non-negative integer** count of whole `unit`s. The quantity string MUST use the canonical unsigned-decimal form `"0"` or `[1-9][0-9]*`; a sign, leading zero, decimal point, or exponent MUST be rejected. Where the raw job measurement is not a whole number of units, `quantity` MUST be rounded **up** (ceil) to the next whole unit, so two implementations derive the same quantity from the same job. `unitPrice.amount × quantity` is exact (a CD-1 decimal times a non-negative integer; no rounding in the product). To avoid an agreement that passes commit-agreement but cannot settle because its exact total exceeds a selected rail's asset precision (§9.13), a metered listing SHOULD express `unitPrice.amount` and `minTotal.amount` (when present) at a precision supported by every rail in `acceptedRails`. MTR-4 binds `terms.price` to the *declared* quantity; the binding of the declared quantity to the *actual* job is the buyer's computation co-signed by the seller — a co-signed assertion, dispute-visible via the deliverable, **not** a measurement-correctness proof.
 - **(MTR-5)** a transacting reader MUST reject an agreement at commit-agreement whose pinned listing carries an unrecognized `PricingSpec.kind`, with a recorded `unrecognized-pricing-kind` reason (check 2). A pre-metered reader already refuses `kind: "metered"` at the DACS-1 §6.3.4 schema-conformance step because `PricingSpec` is a closed discriminated union. MTR-5 independently prevents commit-agreement from treating an unrecognized kind as a vacuous pass and supplies the executable fail-closed guard for later pricing-kind additions. Together, the listing gate and commit gate ensure that a reader refuses a kind it cannot price rather than accepting an amount it validated against nothing (§11.1.2).
 
-**Ordering of the `committedAt`-relative checks.** Checks 5 and 6 reference `committedAt` — the commitment record's SR-2 anchor timestamp (§8.6) — which only exists *after* the commitment is anchored (§8.6 step 5). The checks therefore run in two phases:
+**Ordering of the `committedAt`-relative checks.** For a newly produced `FinalityCommitmentRecord`, checks 5 and 6 reference the consensus timestamp in its finalized SR-2 receipt (§8.6), which only exists *after* the signed record is submitted. The checks therefore run in two phases:
 
 - **Pre-anchor (§8.6 step 3).** The value-independent checks — currency, price-band, rail, deliverable, pattern, sealed-envelope role direction, and artifact/commit-phase match — gate here. The orchestrator also runs a *provisional* check of the deadline and `notAfter` against the current clock.
-- **Post-anchor (authoritative).** Once the commitment is anchored, the orchestrator MUST re-evaluate checks 5 and 6 against the actual anchored `committedAt`. Any consumer/verifier reading the anchored commitment MUST likewise re-check them against `committedAt`.
+- **Post-finality (authoritative).** Once the finality commitment is finalized, the orchestrator MUST derive `committedAt` from `AnchorReceipt.blockRef.timestamp` and re-evaluate checks 5 and 6. Any consumer/verifier reading that type MUST likewise derive and check the value from the verified receipt; it MUST NOT accept a party- or orchestrator-supplied timestamp as `committedAt`. Historical legacy records follow the CA-8 legacy arm instead.
 
-A commitment whose anchored `committedAt` violates either check is invalid.
+A finality commitment whose receipt-derived `committedAt`, or a legacy commitment whose CA-8-verified signed `committedAt`, violates either check is invalid.
 
-> **Note (non-normative).** The two-phase discipline keeps `committedAt` the objective anti-backdating clock without a circular dependency on an as-yet-unanchored value. The §6.3.4 read-time check still governs discovery.
+> **Note (non-normative).** The new type's separation of signed `createdAt` from receipt-derived `committedAt` removes the former circularity without mutating the frozen legacy type. The §6.3.4 read-time check still governs discovery.
 
 #### 8.5.3 Fee disclosure (`feeSchedule`)
 
@@ -577,6 +577,7 @@ type CommitAgreementOutput = PhaseHandlerResult & {
     "commit-agreement": {
       agreementHash: string
       anchorTxRef: TxRef
+      anchorReceipt: AnchorReceipt
       committedAt: number
     }
   }
@@ -593,6 +594,7 @@ type CommitPayeeBoundAgreementOutput = PhaseHandlerResult & {
     "commit-payee-bound-agreement": {
       agreementHash: string
       anchorTxRef: TxRef
+      anchorReceipt: AnchorReceipt
       committedAt: number
     }
   }
@@ -603,10 +605,11 @@ type CommitPayeeBoundAgreementOutput = PhaseHandlerResult & {
 
 1. require the artifact selected by the phase kind (`AgreementDocument` for `commit-agreement`; `PayeeBoundAgreementDocument` for `commit-payee-bound-agreement`), then compute `agreementHash = sha256(canonical_JCS(agreement))` with signatures omitted;
 2. verify all required signatures are present and valid;
-3. validate the agreement against the listing per §8.5.2. The **value checks** (currency / band / rail / deliverable / pattern) gate **here**; the two **`committedAt`-relative checks** (deadline, `notAfter`) are re-evaluated against the anchored `committedAt` after step 5, per the §8.5.2 ordering note. Any validation failure MUST cause the phase to fail with class `permanent`;
-4. construct the on-chain commitment record:
+3. validate the agreement against the listing per §8.5.2. The **value checks** (currency / band / rail / deliverable / pattern) gate **here**; the two **`committedAt`-relative checks** (deadline, `notAfter`) are re-evaluated against the finalized receipt timestamp after step 6, per the §8.5.2 ordering note. Any validation failure MUST cause the phase to fail with class `permanent`;
+4. construct a `FinalityCommitmentRecord`. The earlier `CommitmentRecord` remains a read-only legacy artifact so historical sessions stay verifiable:
 
 ```
+// Legacy artifact produced by DACS-3 v0.1-v0.3. New producers MUST NOT emit it.
 type CommitmentRecord = {
   dacsVersion: "1"
   jobId: string
@@ -614,22 +617,43 @@ type CommitmentRecord = {
   listingRef: { listingId: string; version: number; contentHash: string }
   parties: ClaimReference[]          // primary claims of signing parties
   pattern: "fixed-price" | "rfq" | "sealed-envelope"
-  committedAt: number
+  committedAt: number                // legacy signed field; validated against the historical anchor
 }
+
+// Additive new artifact introduced by DACS-3 v0.4.
+type FinalityCommitmentRecord = {
+  finalityCommitmentVersion: "1"     // structural discriminator; mutually exclusive with dacsVersion
+  jobId: string
+  agreementHash: string
+  listingRef: { listingId: string; version: number; contentHash: string }
+  parties: ClaimReference[]          // primary claims of signing parties
+  pattern: "fixed-price" | "rfq" | "sealed-envelope"
+  createdAt: number                  // unix ms; record-construction time, inside the signed scope
+  signature: {
+    algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
+    signer: ClaimReference            // authenticated session orchestrator
+    value: string                     // unpadded Base64URL, CORE §B.7 SIG-6
+  }
+}
+
+type AgreementCommitmentRecord = CommitmentRecord | FinalityCommitmentRecord
 ```
 
-5. anchor the commitment record via SR-2 at address `dacs3:commit:{jobId}` (or substrate-equivalent), with the orchestrator signature over the domain-separated payload `"dacs-commitment:v1:" || sha256(canonical_JCS(commitmentRecord_without_signature))`;
-6. return agreementHash and anchorTxRef under the executing phase's context-delta key.
+5. set `createdAt`, sign the new record over the domain-separated payload `"dacs-finality-commitment:v1:" || sha256(canonical_JCS(finalityCommitmentRecord_without_signature))`, and submit it via SR-2 at logical address `dacs3:commit:{jobId}`;
+6. wait for and verify a CORE §5.1 `finalized` `AnchorReceipt` binding that logical address, the native address, record content hash, transaction, writer, and nonce; derive `committedAt` exclusively from `anchorReceipt.blockRef.timestamp`; then run the authoritative §8.5.2 checks 5 and 6. If the binding's finality profile declares inclusion final, one receipt MAY establish `included` and `finalized`;
+7. return `agreementHash`, `anchorTxRef`, `anchorReceipt`, and receipt-derived `committedAt` under the executing phase's context-delta key. A handler MUST NOT return `ok: true` when finality or the authoritative checks remain pending.
 
 **Conformance.**
 
-- (CA-1) The orchestrator MUST NOT advance to DACS-4 (Settle) until the listing's declared agreement commitment phase returns ok: true.
+- (CA-1) The orchestrator MUST NOT advance to any DACS-4 payment, value release, or irreversible delivery until the listing's declared agreement commitment phase returns `ok: true` with a verified `finalized` `anchorReceipt`. Signatures alone permit commitment submission, not irreversible effects.
 - (CA-2) Commitment records MUST be anchored on the public chain (not in a private channel).
-- (CA-3) Once anchored, the commitment is immutable. Re-commitments for the same jobId MUST be rejected.
+- (CA-3) Once either commitment-record type is anchored, its canonical record content is immutable for that `jobId`. A re-commitment that changes that content—including an attempt to replace a legacy record with a finality record or vice versa—MUST be rejected. This does not prohibit CORE §5.1 replacement of the **carrying native transaction** when the replacement carries byte-identical canonical record content at the same logical address and the replacement receipt is independently verified.
 - (CA-4) The agreement artifact itself MAY be anchored separately (publicly or privately). For institutional flows, the agreement artifact is typically NOT anchored on the public chain — only its hash is. Parties retain the agreement artifact off-chain (or encrypted-anchored).
 - (CA-5) A commitment handler MUST reject the other phase's artifact type before signature or listing-term interpretation. It MUST NOT coerce a `PayeeBoundAgreementDocument` into an `AgreementDocument`, or vice versa, by dropping an unknown version discriminator or `terms.payoutBindings`.
-- (CA-6) **Commitment authority.** The authenticated session orchestrator is the protocol authority for the commitment phase. A consumer MUST verify the step 5 commitment signature against that orchestrator's primary claim. The SR-2 transaction submitter, deployer, owner, and native address MUST NOT establish agreement authority or a buyer/seller role.
-- (CA-7) **Agreement binding.** A consumer MUST verify the agreement's required party signatures, recompute `agreementHash`, and match it to the `CommitmentRecord`. When CA-4 is used, the separate agreement anchor's deployer, owner, and native address MUST NOT affect acceptance.
+- (CA-6) **Commitment authority.** The authenticated session orchestrator is the protocol authority for the commitment phase. For a `FinalityCommitmentRecord`, a consumer MUST verify the embedded step 5 signature under `"dacs-finality-commitment:v1:"` against that orchestrator's primary claim. For a legacy `CommitmentRecord`, it MUST verify the historical external/carried signature under `"dacs-commitment:v1:"`. The SR-2 transaction submitter, deployer, owner, and native address MUST NOT establish agreement authority or a buyer/seller role.
+- (CA-7) **Agreement binding.** A consumer MUST verify the agreement's required party signatures, recompute `agreementHash`, and match it to the applicable `AgreementCommitmentRecord`. When CA-4 is used, the separate agreement anchor's deployer, owner, and native address MUST NOT affect acceptance.
+- (CA-8) **Timestamp separation.** `FinalityCommitmentRecord.createdAt` is signed construction metadata. Its authoritative `committedAt` is not a record field: it is the consensus timestamp of the verified finalized receipt. A consumer MUST reject a finality-commitment flow that substitutes `createdAt`, `observedAt`, an RPC response time, or an indexer timestamp for `committedAt`. When consuming a legacy `CommitmentRecord`, a new reader MUST verify that its signed `committedAt` equals the authenticated historical anchor timestamp; mismatch is rejected.
+- (CA-9) **Minor-safe type distinction.** A producer conforming to DACS-3 v0.4 or later MUST emit `FinalityCommitmentRecord`, never the legacy type. A reader MUST select the type before signature or timestamp interpretation: exactly one of `dacsVersion: "1"` or `finalityCommitmentVersion: "1"` MUST be present. Both, neither, or an unsupported discriminator MUST be rejected. A reader MUST NOT coerce one type into the other by dropping `committedAt`, `createdAt`, `signature`, or either discriminator. A reader that supports only the legacy type safely rejects the structurally distinct finality type as unsupported under CORE §11.1.2.
 
 > **Note (non-normative).** The orchestrator is accountable for causing the commitment phase to anchor successfully. It need not be the raw substrate key recorded as a StorageProgram deployer or owner. A buyer- or seller-submitted transaction therefore does not change which parties authored the agreement; their agreement signatures and the committed hash establish that fact.
 
@@ -678,7 +702,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 | negotiate-fixed-price | §8.4.1 procedure; signature collection; SR-2 anchoring |
 | negotiate-rfq | §8.4.2 procedure; RFQ-1 through RFQ-4; channel turn timeouts |
 | negotiate-sealed-envelope / negotiate-sealed-envelope-procurement | §8.4.3 procedure; SE-1 through SE-9; deterministic selection; rule-ref content-hash binding; mode-bound role assignment; same-bidder commit authority |
-| commit-agreement / commit-payee-bound-agreement | CA-1 through CA-5; artifact-specific signature and conformance validation |
+| commit-agreement / commit-payee-bound-agreement | CA-1 through CA-9; artifact-specific signature, finalized receipt, timestamp separation, minor-safe type distinction, and conformance validation |
 | Listing publisher | PS-1 through PS-3 |
 | Substrate without SR-4 | MUST support negotiate-fixed-price; MUST refuse negotiate-rfq, negotiate-sealed-envelope, and negotiate-sealed-envelope-procurement with a clear substrate-capability-missing error |
 
@@ -699,6 +723,8 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 **Sealed-envelope: commit anchored, reveal in channel.** The on-chain commit hash prevents back-dating/repudiation; the in-channel reveal avoids leaking losing bids — matching government sealed-bid practice.
 
 ### 8.11 Backwards compatibility
+
+**Commitment records.** DACS-3 v0.4 adds `FinalityCommitmentRecord` as a distinct artifact type; it does not mutate the v0.1-v0.3 `CommitmentRecord`. New producers emit only the finality type. New readers retain the legacy validation arm for historical audit, including the `"dacs-commitment:v1:"` signature and the cross-check between its signed `committedAt` and authenticated historical anchor time. Legacy readers encounter `finalityCommitmentVersion` instead of `dacsVersion` and reject the unsupported type before acting, as required by CA-9 and CORE §11.1.2.
 
 **Institutional RFQ workflows.** A negotiate-rfq run maps to existing bilateral RFQ as a Bloomberg-chat RFQ maps to a Symphony RFQ: same semantic shape, different transport (the SR-4 channel). Existing desks wrap their negotiation logic as a DACS-3 phase without changing it.
 

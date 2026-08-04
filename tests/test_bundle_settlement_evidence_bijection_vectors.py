@@ -28,8 +28,7 @@ def derive_phase_keys(authority, pubkeys):
         authority.get("bundle"),
         authority.get("listing"),
         pubkeys,
-        authority.get("referenceLifecycleByContentHash"),
-        authority.get("referencePhaseKeyByContentHash"),
+        authority.get("referenceValidationByCanonicalRef"),
     )
     return phase_keys if ok else None
 
@@ -59,10 +58,11 @@ def evaluate(vector_data, authorities, pubkeys):
     default_lifecycle = authority["defaultReferenceLifecycle"]
     for ref in refs:
         lifecycle = lifecycle_overrides.get(ref, default_lifecycle)
-        if lifecycle.get("independentlyResolvable") is not True:
-            return "rejected", "lifecycle-gate"
         if authority["bundle"]["outcome"] == "completed":
-            if lifecycle.get("state") != "finalized":
+            if (
+                lifecycle.get("state") != "finalized"
+                or lifecycle.get("independentlyResolvable") is not True
+            ):
                 return "rejected", "lifecycle-gate"
         elif lifecycle.get("state") not in {"included", "finalized"}:
             return "rejected", "lifecycle-gate"
@@ -123,6 +123,8 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         )
         failed = self.data["executionAuthorities"]["failed-delivery"]
         self.assertEqual(derive_phase_keys(failed, self.pubkeys), ["0:deliver-storage-program"])
+        failed_resolution = next(iter(failed["referenceValidationByCanonicalRef"].values()))
+        self.assertFalse(failed_resolution["lifecycle"]["independentlyResolvable"])
         aborted = self.data["executionAuthorities"]["aborted-before-result"]
         self.assertEqual(derive_phase_keys(aborted, self.pubkeys), [])
         self.assertIsNone(
@@ -130,6 +132,9 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         )
         self.assertIsNone(
             derive_phase_keys(self.data["executionAuthorities"]["invalid-bundle-signature"], self.pubkeys)
+        )
+        self.assertIsNone(
+            derive_phase_keys(self.data["executionAuthorities"]["mismatched-listing-signer"], self.pubkeys)
         )
 
     def test_minor_safe_type_boundary_and_domains(self):

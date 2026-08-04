@@ -59,8 +59,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     bundle,
                     self.data["listing"],
                     self.pubkeys,
-                    self.data["referenceLifecycleByContentHash"],
-                    self.data["referencePhaseKeyByContentHash"],
+                    self.data["referenceValidationByCanonicalRef"],
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"])
 
@@ -98,8 +97,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     authoritative,
                     self.data["listing"],
                     self.pubkeys,
-                    self.data["referenceLifecycleByContentHash"],
-                    self.data["referencePhaseKeyByContentHash"],
+                    self.data["referenceValidationByCanonicalRef"],
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"], reason)
                 self.assertEqual(phase_keys, ["0:pay-dem"])
@@ -120,8 +118,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "ebfabAuthority": {
                 "listing": self.data["listing"],
                 "publicKeys": self.pubkeys,
-                "referenceLifecycleByContentHash": self.data["referenceLifecycleByContentHash"],
-                "referencePhaseKeyByContentHash": self.data["referencePhaseKeyByContentHash"],
+                "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
             },
         }
         self.assertFalse(R._tagged_copy_valid_for_derive(tag))

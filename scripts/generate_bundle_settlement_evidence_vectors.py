@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "conformance" / "vectors" / "security" / "bundle-settlement-evidence-bijection-v0.4.json"
 
 
-def make_listing(name, pipeline, signing_keys):
+def make_listing(name, pipeline, signing_keys, signer_role="seller"):
     listing = {
         "listingId": f"listing-seb-{name}",
         "listingVersion": 1,
@@ -24,9 +24,9 @@ def make_listing(name, pipeline, signing_keys):
     }
     payload = (F.LISTING_DOMAIN + F.listing_hash(listing)).encode("utf-8")
     listing["signature"] = {
-        "signer": F.CLAIMS["seller"],
+        "signer": F.CLAIMS[signer_role],
         "algorithm": "ed25519",
-        "value": F.b64u(signing_keys["seller"].sign(payload)),
+        "value": F.b64u(signing_keys[signer_role].sign(payload)),
     }
     return listing
 
@@ -43,7 +43,12 @@ def authority_reference(name, phase_key):
 
 
 def make_authority(name, definition, signing_keys):
-    listing = make_listing(name, definition["listingPipeline"], signing_keys)
+    listing = make_listing(
+        name,
+        definition["listingPipeline"],
+        signing_keys,
+        definition.get("listingSignerRole", "seller"),
+    )
     phase_summary = []
     settlement_evidence = []
     for source in definition["phaseSummary"]:
@@ -87,8 +92,11 @@ def make_authority(name, definition, signing_keys):
         bundle["signatures"][0]["value"] = ("A" if value[0] != "A" else "B") + value[1:]
 
     default_lifecycle = definition["defaultReferenceLifecycle"]
-    phase_key_by_content_hash = {
-        ref["contentHash"]: f"{entry['index']}:{entry['kind']}"
+    reference_validation_by_canonical_ref = {
+        F.canonical(ref).decode("utf-8"): {
+            "phaseKey": f"{entry['index']}:{entry['kind']}",
+            "lifecycle": copy.deepcopy(default_lifecycle),
+        }
         for entry, ref in zip(
             (entry for entry in phase_summary if entry["kind"] in F.EVIDENCE_PHASES),
             settlement_evidence,
@@ -98,11 +106,7 @@ def make_authority(name, definition, signing_keys):
         "listing": listing,
         "bundle": bundle,
         "defaultReferenceLifecycle": copy.deepcopy(default_lifecycle),
-        "referenceLifecycleByContentHash": {
-            ref["contentHash"]: copy.deepcopy(default_lifecycle)
-            for ref in settlement_evidence
-        },
-        "referencePhaseKeyByContentHash": phase_key_by_content_hash,
+        "referenceValidationByCanonicalRef": reference_validation_by_canonical_ref,
     }
 
 
@@ -125,6 +129,10 @@ def generate(source):
     if "invalid-bundle-signature" not in definitions:
         definitions["invalid-bundle-signature"] = copy.deepcopy(definitions["standard-completed"])
         definitions["invalid-bundle-signature"]["corruptBundleSignature"] = True
+    if "mismatched-listing-signer" not in definitions:
+        definitions["mismatched-listing-signer"] = copy.deepcopy(definitions["standard-completed"])
+        definitions["mismatched-listing-signer"]["listingSignerRole"] = "buyer"
+    definitions["failed-delivery"]["defaultReferenceLifecycle"]["independentlyResolvable"] = False
 
     vector_name = "bundle-settlement-bijection-invalid-bundle-authority-reject"
     if not any(vector["name"] == vector_name for vector in data["vectors"]):
@@ -144,6 +152,34 @@ def generate(source):
             },
             "want": {"disposition": "rejected", "reasonCode": "execution-authority"},
         })
+    signer_vector_name = "bundle-settlement-bijection-mismatched-listing-signer-reject"
+    if not any(vector["name"] == signer_vector_name for vector in data["vectors"]):
+        data["vectors"].append({
+            "name": signer_vector_name,
+            "expected": "fail",
+            "input": {
+                "executionAuthorityRef": "mismatched-listing-signer",
+                "topLevelRefs": ["ref-pay", "ref-deliver"],
+                "resolvedReferencePhaseKeys": {
+                    "ref-pay": "2:pay-dem",
+                    "ref-deliver": "3:deliver-attested-payload",
+                },
+                "pointerMap": {},
+                "supersedesEdges": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {"disposition": "rejected", "reasonCode": "execution-authority"},
+        })
+    failed_positive = next(
+        vector for vector in data["vectors"]
+        if vector["name"] == "bundle-settlement-bijection-failed-phase-included-pass"
+    )
+    failed_positive["input"]["referenceLifecycleByRef"] = {
+        "ref-failed-delivery": {
+            "state": "included",
+            "independentlyResolvable": False,
+        }
+    }
 
     signing_keys = F.keys()
     data["generator"] = "scripts/generate_bundle_settlement_evidence_vectors.py"

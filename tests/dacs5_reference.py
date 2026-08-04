@@ -538,7 +538,7 @@ def _bundle_signatures_valid(bundle, pubkeys):
     return (True, "ok")
 
 
-def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash, phase_key_by_content_hash):
+def validate_ebfab(bundle, listing, pubkeys, reference_validation_by_canonical_ref):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
     This bounded reference covers the protected #290 authority path: exact type/domain
@@ -554,16 +554,19 @@ def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash, phase_ke
     if (
         not isinstance(listing, dict)
         or not isinstance(pubkeys, dict)
-        or not isinstance(lifecycle_by_content_hash, dict)
-        or not isinstance(phase_key_by_content_hash, dict)
+        or not isinstance(reference_validation_by_canonical_ref, dict)
     ):
-        return (False, "missing listing, key, lifecycle, or phase-resolution authority", None)
+        return (False, "missing listing, key, or exact reference-validation authority", None)
 
     signature = listing.get("signature")
     if not isinstance(signature, dict):
         return (False, "listing signature missing", None)
     signer = signature.get("signer")
-    if signature.get("algorithm") != "ed25519" or signer not in pubkeys:
+    if (
+        signature.get("algorithm") != "ed25519"
+        or signer != listing.get("sellerPrimaryClaim")
+        or signer not in pubkeys
+    ):
         return (False, "listing signer or algorithm unsupported", None)
     canonical_ok, canonical_reason = sig6_canonical(signature.get("value", ""))
     if not canonical_ok:
@@ -621,7 +624,13 @@ def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash, phase_ke
     actual_ids = [canonical(ref) for ref in actual_refs]
     if len(actual_ids) != len(set(actual_ids)):
         return (False, "settlementEvidence contains a raw duplicate", None)
-    actual_keys = [phase_key_by_content_hash.get(ref["contentHash"]) for ref in actual_refs]
+    exact_resolutions = [
+        reference_validation_by_canonical_ref.get(canonical(ref).decode("utf-8"))
+        for ref in actual_refs
+    ]
+    if any(not isinstance(resolution, dict) for resolution in exact_resolutions):
+        return (False, "settlementEvidence member lacks exact authenticated resolution", None)
+    actual_keys = [resolution.get("phaseKey") for resolution in exact_resolutions]
     if (
         None in actual_keys
         or len(actual_keys) != len(set(actual_keys))
@@ -635,13 +644,15 @@ def validate_ebfab(bundle, listing, pubkeys, lifecycle_by_content_hash, phase_ke
             return (False, "optional phase pointer contradicts settlementEvidence", None)
 
     completed = bundle.get("outcome") == "completed"
-    for ref in actual_refs:
-        lifecycle = lifecycle_by_content_hash.get(ref.get("contentHash"))
-        if not isinstance(lifecycle, dict) or lifecycle.get("independentlyResolvable") is not True:
-            return (False, "settlement evidence is not independently resolvable", None)
+    for resolution in exact_resolutions:
+        lifecycle = resolution.get("lifecycle")
+        if not isinstance(lifecycle, dict):
+            return (False, "settlement evidence lacks authenticated lifecycle", None)
         state = lifecycle.get("state")
-        if completed and state != "finalized":
-            return (False, "completed evidence is not finalized", None)
+        if completed and (
+            state != "finalized" or lifecycle.get("independentlyResolvable") is not True
+        ):
+            return (False, "completed evidence is not finalized and independently resolvable", None)
         if not completed and state not in {"included", "finalized"}:
             return (False, "failed or aborted evidence is not included or finalized", None)
     return (True, "ok", expected_keys)
@@ -659,8 +670,7 @@ def _tagged_copy_valid_for_derive(tagged):
         bundle,
         authority.get("listing"),
         authority.get("publicKeys"),
-        authority.get("referenceLifecycleByContentHash"),
-        authority.get("referencePhaseKeyByContentHash"),
+        authority.get("referenceValidationByCanonicalRef"),
     )
     return ok
 

@@ -149,19 +149,21 @@
         "state": "finalized",
         "independentlyResolvable": true
       },
-      "referenceLifecycleByContentHash": {
-        "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e": {
-          "state": "finalized",
-          "independentlyResolvable": true
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9384fb33b521147afea4919d1a8a469d4c7e8a94b17929b26e74394ec3122485\"},\"contentHash\":\"75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e\"}": {
+          "phaseKey": "2:pay-dem",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         },
-        "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49": {
-          "state": "finalized",
-          "independentlyResolvable": true
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-a2fc9354c8b1e075e142e079ac1dbb4271997f2c560204e4bac51abf1e32b764\"},\"contentHash\":\"be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49\"}": {
+          "phaseKey": "3:deliver-attested-payload",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         }
-      },
-      "referencePhaseKeyByContentHash": {
-        "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e": "2:pay-dem",
-        "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49": "3:deliver-attested-payload"
       }
     },
     "single-htlc-completed": {
@@ -263,14 +265,14 @@
         "state": "finalized",
         "independentlyResolvable": true
       },
-      "referenceLifecycleByContentHash": {
-        "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588": {
-          "state": "finalized",
-          "independentlyResolvable": true
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-17b68f77f06c20088f38a201bed4cb262f3716d8776d432717ab53c70ea025a4\"},\"contentHash\":\"8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588\"}": {
+          "phaseKey": "2:pay-cross-chain-htlc",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         }
-      },
-      "referencePhaseKeyByContentHash": {
-        "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588": "2:pay-cross-chain-htlc"
       }
     },
     "repeated-pay-completed": {
@@ -400,24 +402,28 @@
         "state": "finalized",
         "independentlyResolvable": true
       },
-      "referenceLifecycleByContentHash": {
-        "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb": {
-          "state": "finalized",
-          "independentlyResolvable": true
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bcd24b8d4c1973f00f9c1019f0cc7b0bad66fad8f70ad1f9417b80d3c95f7cde\"},\"contentHash\":\"19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb\"}": {
+          "phaseKey": "0:pay-dem",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         },
-        "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770": {
-          "state": "finalized",
-          "independentlyResolvable": true
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bee97787caa54706617e4652d52c471153962d4efde61af1c6d66356f2ea740c\"},\"contentHash\":\"1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770\"}": {
+          "phaseKey": "1:pay-dem",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         },
-        "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962": {
-          "state": "finalized",
-          "independentlyResolvable": true
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3f510aa9473cbc91e9a751e91f6cf05283dec6db40bba96c54a9219c263b430e\"},\"contentHash\":\"0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962\"}": {
+          "phaseKey": "2:deliver-entitlement",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         }
-      },
-      "referencePhaseKeyByContentHash": {
-        "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb": "0:pay-dem",
-        "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770": "1:pay-dem",
-        "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962": "2:deliver-entitlement"
       }
     },
     "failed-delivery": {
@@ -502,16 +508,16 @@
       },
       "defaultReferenceLifecycle": {
         "state": "included",
-        "independentlyResolvable": true
+        "independentlyResolvable": false
       },
-      "referenceLifecycleByContentHash": {
-        "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3": {
-          "state": "included",
-          "independentlyResolvable": true
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-73dfa6ff381970a1e369219f0f7df017a82514ff0788247d1416b6ee30616d2c\"},\"contentHash\":\"8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3\"}": {
+          "phaseKey": "0:deliver-storage-program",
+          "lifecycle": {
+            "state": "included",
+            "independentlyResolvable": false
+          }
         }
-      },
-      "referencePhaseKeyByContentHash": {
-        "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3": "0:deliver-storage-program"
       }
     },
     "aborted-before-result": {
@@ -579,8 +585,7 @@
         "state": "included",
         "independentlyResolvable": true
       },
-      "referenceLifecycleByContentHash": {},
-      "referencePhaseKeyByContentHash": {}
+      "referenceValidationByCanonicalRef": {}
     },
     "invalid-listing-signature": {
       "listing": {
@@ -665,14 +670,14 @@
         "state": "finalized",
         "independentlyResolvable": true
       },
-      "referenceLifecycleByContentHash": {
-        "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d": {
-          "state": "finalized",
-          "independentlyResolvable": true
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-02a5837c9ed0eb506958fe0755e1b8abb8fdd254d4cb3ee1155103bfbffa7166\"},\"contentHash\":\"e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d\"}": {
+          "phaseKey": "0:pay-dem",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         }
-      },
-      "referencePhaseKeyByContentHash": {
-        "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d": "0:pay-dem"
       }
     },
     "invalid-bundle-signature": {
@@ -796,24 +801,164 @@
         "state": "finalized",
         "independentlyResolvable": true
       },
-      "referenceLifecycleByContentHash": {
-        "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383": {
-          "state": "finalized",
-          "independentlyResolvable": true
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cf9136fceb3ff9039b20e1573415e3d76a49714d5707c14ded295ad686790cf4\"},\"contentHash\":\"3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383\"}": {
+          "phaseKey": "2:pay-dem",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
         },
-        "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55": {
-          "state": "finalized",
-          "independentlyResolvable": true
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-b5ac6adfda535ba6a27f61a4b21aebf69084d0763b30ab9c737abaf2324b717c\"},\"contentHash\":\"35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55\"}": {
+          "phaseKey": "3:deliver-attested-payload",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      }
+    },
+    "mismatched-listing-signer": {
+      "listing": {
+        "listingId": "listing-seb-mismatched-listing-signer",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:buyer",
+          "algorithm": "ed25519",
+          "value": "qMsoZauN3pMv8aPQiKuFvdiIAWhI4nuL6NwHLvV5IJdfwHSNvkI2OBwVgUROT1fiKLXJ47-iEiOq0lSyzxgjBw"
         }
       },
-      "referencePhaseKeyByContentHash": {
-        "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383": "2:pay-dem",
-        "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55": "3:deliver-attested-payload"
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-mismatched-listing-signer",
+          "version": 1,
+          "contentHash": "1f09253d4afbd609a0d0517a8b2b0fc29b0e4c4528fd5f0212a18293cd2a7a14"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-2ff594d6eaa16192794352537ba5a3b21880bbc2c9789d18429bde482d9cd5a2"
+              },
+              "contentHash": "141e0f74dc3a04237795611692202643505a71509f145aa71c640d533ab9eff3"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-ec61b5eb74efdf4e94ae6146e56a389e29b34a9d388bdf59d3c311103c689fe8"
+              },
+              "contentHash": "fce1747efb423ee410df54df298bdee1224f2780255f81e22a895566069eafd7"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-2ff594d6eaa16192794352537ba5a3b21880bbc2c9789d18429bde482d9cd5a2"
+            },
+            "contentHash": "141e0f74dc3a04237795611692202643505a71509f145aa71c640d533ab9eff3"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ec61b5eb74efdf4e94ae6146e56a389e29b34a9d388bdf59d3c311103c689fe8"
+            },
+            "contentHash": "fce1747efb423ee410df54df298bdee1224f2780255f81e22a895566069eafd7"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "CPtTi_yQnBCIO4Jn36kbz5i1XAFE4FB-ZtxOh_SqcIxQTbRIeWy5MYGGxiR6AVNQpjFcvkhFmEnYGcB386AhDA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "-vo908OnIC62LqBJGRUPL3qRx8rmS8mzS10zdBOpb07HJndXknDZwzjBwUupD2M8IgqANTqc1t3wPwlwuzVuDw"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2ff594d6eaa16192794352537ba5a3b21880bbc2c9789d18429bde482d9cd5a2\"},\"contentHash\":\"141e0f74dc3a04237795611692202643505a71509f145aa71c640d533ab9eff3\"}": {
+          "phaseKey": "2:pay-dem",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ec61b5eb74efdf4e94ae6146e56a389e29b34a9d388bdf59d3c311103c689fe8\"},\"contentHash\":\"fce1747efb423ee410df54df298bdee1224f2780255f81e22a895566069eafd7\"}": {
+          "phaseKey": "3:deliver-attested-payload",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
       }
     }
   },
-  "hash": "4f2ea345ff37c0fe30fafe8364510d88c6f42ebd93ca0732e1c928352a7f432d",
-  "count": 26,
+  "hash": "7f6ee7c4ee0936b02e69656682f53fbb871f81a6ba6d8e19747218d6d091dd12",
+  "count": 27,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
@@ -1296,7 +1441,13 @@
         },
         "pointerMap": {},
         "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "referenceLifecycleByRef": {
+          "ref-failed-delivery": {
+            "state": "included",
+            "independentlyResolvable": false
+          }
+        }
       },
       "want": {
         "disposition": "verified",
@@ -1398,6 +1549,28 @@
       "expected": "fail",
       "input": {
         "executionAuthorityRef": "invalid-bundle-signature",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-mismatched-listing-signer-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "mismatched-listing-signer",
         "topLevelRefs": [
           "ref-pay",
           "ref-deliver"
@@ -1538,7 +1711,7 @@
       ],
       "defaultReferenceLifecycle": {
         "state": "included",
-        "independentlyResolvable": true
+        "independentlyResolvable": false
       }
     },
     "aborted-before-result": {
@@ -1606,6 +1779,42 @@
         "independentlyResolvable": true
       },
       "corruptBundleSignature": true
+    },
+    "mismatched-listing-signer": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-dem",
+        "deliver-attested-payload"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-dem",
+          "outcome": "ok"
+        },
+        {
+          "index": 3,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "listingSignerRole": "buyer"
     }
   }
 }

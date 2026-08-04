@@ -179,14 +179,14 @@ def generate():
         "domains": DOMAINS,
         "listingDomain": LISTING_DOMAIN,
         "listing": listing,
-        "referenceLifecycleByContentHash": {
-            ebfab_buyer["settlementEvidence"][0]["contentHash"]: {
+        "referenceValidationByCanonicalRef": {
+            canonical(ebfab_buyer["settlementEvidence"][0]).decode("utf-8"): {
+                "phaseKey": "0:pay-dem",
+                "lifecycle": {
                 "state": "finalized",
                 "independentlyResolvable": True,
+                },
             }
-        },
-        "referencePhaseKeyByContentHash": {
-            ebfab_buyer["settlementEvidence"][0]["contentHash"]: "0:pay-dem"
         },
         "validBundleHash": bundle_hash(ebfab_buyer),
         "cases": [

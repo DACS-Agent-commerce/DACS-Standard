@@ -29,7 +29,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 19 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
-| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 26 | `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 27 | `fail` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
@@ -89,7 +89,7 @@ assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
 
 ### `bundle-settlement-evidence-bijection-v0.4.json` — §10.4.3 SEB-1..SEB-6
 
-26 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
+27 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
 `settlementEvidence[]` array to the
 phase keys derived from a signature-verified DACS-1 listing pipeline and the
 domain-verified EBFAB `phaseSummary`; no caller-supplied expected set is trusted.
@@ -107,7 +107,8 @@ Optional per-phase pointers remain optional.
 Each input selects a named execution authority carrying a real Ed25519-signed
 listing and EBFAB, bound by the EBFAB `listingRef`. The evaluator cryptographically
 verifies both canonical hashes and domains before deriving `P`; corrupted listing
-or bundle signatures reject. Inputs keep raw
+or bundle signatures and a listing signer not authorized by the declared publisher
+reject. Inputs keep raw
 full-canonical reference keys, independently resolved phase keys, present optional
 pointers, SR-2 lifecycle overrides, ST-8 record classes/supersession edges, and
 unrelated authority disposition separate. Stable
@@ -115,7 +116,8 @@ outputs use `verified`, `rejected`, or `indeterminate` plus one normative
 `reasonCode`; `reasonPrecedence` fixes cross-run code selection. The evaluator
 derives `P` from those authenticated artifacts and tests the exact SR-2 vocabulary:
 completed evidence is `finalized` and independently resolvable; failed/aborted
-evidence is `included` or `finalized`.
+evidence is `included` or `finalized` without importing that stricter ST-11
+resolution requirement.
 
 The deterministic signed compatibility fixture
 [`evidence-bound-fault-bundle-compatibility-v0.4.json`](../../fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json)

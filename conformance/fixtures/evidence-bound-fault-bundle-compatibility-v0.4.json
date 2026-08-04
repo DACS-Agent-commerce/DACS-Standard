@@ -31,14 +31,14 @@
       "value": "Hoxo8bFlTCRr5OtOdtRoKKJyb-ZKjIdpoz1CUeeaizrqwaxL6U2UwV9135zbS7lCQE_k_sNuvjHyGDdyirE9Ag"
     }
   },
-  "referenceLifecycleByContentHash": {
-    "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042": {
-      "state": "finalized",
-      "independentlyResolvable": true
+  "referenceValidationByCanonicalRef": {
+    "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563\"},\"contentHash\":\"c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042\"}": {
+      "phaseKey": "0:pay-dem",
+      "lifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
     }
-  },
-  "referencePhaseKeyByContentHash": {
-    "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042": "0:pay-dem"
   },
   "validBundleHash": "87d22d2438e3b0d6411305e14de638436b0393dad6b31d964eb5be6198b9331b",
   "cases": [

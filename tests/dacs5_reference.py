@@ -41,6 +41,7 @@ EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
+EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
 
 BB6_DEFAULT_BUDGET = 8
 
@@ -402,6 +403,12 @@ def divergence(copy_a, copy_b):
         return True
     if _outcome_class(copy_a["outcome"]) != _outcome_class(copy_b["outcome"]):
         return True
+
+    if bundle_type(copy_a) == bundle_type(copy_b) == "evidence-bound":
+        refs_a = {canonical(ref) for ref in copy_a.get("settlementEvidence", [])}
+        refs_b = {canonical(ref) for ref in copy_b.get("settlementEvidence", [])}
+        if refs_a != refs_b:
+            return True
 
     a_fab, b_fab = is_fab(copy_a), is_fab(copy_b)
 
@@ -899,6 +906,41 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
     return {"ok": True, "reason": "triple-identity holds", "recomputedHash": recomputed}
 
 
+def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, pubkeys=None):
+    """Validate FAB/EBFAB pointer type, domain, signature, and triple identity."""
+    pointer_candidates = []
+    if pointer.get("faultBundleVersion") == "1":
+        pointer_candidates.append(("fault", FAULT_POINTER_DOMAIN))
+    if pointer.get("evidenceBoundFaultBundleVersion") == "1":
+        pointer_candidates.append(("evidence-bound", EVIDENCE_BOUND_FAULT_POINTER_DOMAIN))
+    if len(pointer_candidates) != 1:
+        return {"ok": False, "reason": "unsupported or non-exclusive pointer discriminator"}
+    pointer_kind, domain = pointer_candidates[0]
+    if bundle_type(dereferenced_bundle) != pointer_kind:
+        return {"ok": False, "reason": "pointer and dereferenced bundle types differ"}
+    if pointer.get("pointerKind") != "extended":
+        return {"ok": False, "reason": "unsupported pointer kind"}
+
+    signature = pointer.get("signature")
+    if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
+        return {"ok": False, "reason": "pointer signature missing or unsupported"}
+    signer = signature.get("signer")
+    if not isinstance(pubkeys, dict) or signer not in pubkeys:
+        return {"ok": False, "reason": "pointer signer key unavailable"}
+    canonical_ok, _ = sig6_canonical(signature.get("value", ""))
+    if not canonical_ok or not verify_sig(
+        pubkeys[signer], domain, pointer_hash(pointer), signature.get("value", "")
+    ):
+        return {"ok": False, "reason": "pointer signature does not verify"}
+
+    recomputed = bundle_hash(dereferenced_bundle)
+    if pointer.get("fullBundleContentHash") != recomputed:
+        return {"ok": False, "reason": "dereferenced content hash mismatch"}
+    if binding is not None and binding.get("bundleContentHash") != recomputed:
+        return {"ok": False, "reason": "binding content hash mismatch"}
+    return {"ok": True, "reason": "pointer type, signature, and triple identity hold"}
+
+
 # --------------------------------------------------------------------------- #
 # derive() executes the named §10.5.1 484-698 predicates as amended (E1-E5) — selected
 # derivation fields, not a complete ReplayableReputationDerivation implementation
@@ -941,10 +983,18 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         raise ValueError("windowingBasis must be one of %s (got %r)"
                          % (sorted(SUPPORTED_WINDOWING_BASES), basis))
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
-    scoped = [t for t in tagged_bundles
-              if _tagged_copy_valid_for_derive(t)
-              and party in _primary_claims(t["bundle"])
-              and window_start <= t["bundle"][clock] <= window_end]
+    candidates = [t for t in tagged_bundles
+                  if party in _primary_claims(t["bundle"])
+                  and window_start <= t["bundle"][clock] <= window_end]
+    rejected_ebfab_jobs = {
+        t["bundle"]["jobId"]
+        for t in candidates
+        if bundle_type(t["bundle"]) == "evidence-bound"
+        and not _tagged_copy_valid_for_derive(t)
+    }
+    scoped = [t for t in candidates
+              if t["bundle"]["jobId"] not in rejected_ebfab_jobs
+              and _tagged_copy_valid_for_derive(t)]
 
     # group by jobId
     by_job = {}

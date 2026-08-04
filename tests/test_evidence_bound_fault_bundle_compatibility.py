@@ -78,6 +78,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             names,
             {
                 "ebfab-ebfab",
+                "ebfab-ebfab-member-skew-diverges",
                 "ebfab-fab-older-cannot-erase-seb",
                 "ebfab-legacy-older-cannot-erase-seb",
             },
@@ -88,7 +89,17 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 for bundle in copies:
                     ok, reason = R._bundle_signatures_valid(bundle, self.pubkeys)
                     self.assertTrue(ok, reason)
+                    if R.bundle_type(bundle) == "evidence-bound":
+                        seb_ok, seb_reason, _ = R.validate_ebfab(
+                            bundle,
+                            self.data["listing"],
+                            self.pubkeys,
+                            self.data["referenceValidationByCanonicalRef"],
+                        )
+                        self.assertTrue(seb_ok, seb_reason)
                 self.assertEqual(R.divergence(copies[0], copies[1]), case["want"]["divergent"])
+                if case["want"]["divergent"]:
+                    continue
                 authoritative = max(copies, key=R.bundle_type_rank)
                 self.assertEqual(R.bundle_type(authoritative), case["want"]["authoritativeType"])
                 self.assertEqual(R.bundle_hash(authoritative), case["want"]["authoritativeBundleHash"])
@@ -122,6 +133,40 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             },
         }
         self.assertFalse(R._tagged_copy_valid_for_derive(tag))
+
+        valid_fab = next(
+            case["copies"]["seller"]
+            for case in self.data["pairCases"]
+            if case["name"] == "ebfab-fab-older-cannot-erase-seb"
+        )
+        derivation = R.derive(
+            "did:demos:buyer",
+            [
+                {
+                    **tag,
+                    "resolvedRole": "buyer",
+                    "counterpartyDisposition": "present",
+                },
+                {
+                    "bundle": valid_fab,
+                    "resolvedRole": "seller",
+                    "counterpartyDisposition": "present",
+                },
+            ],
+            invalid["finalisedAt"] - 1,
+            invalid["finalisedAt"] + 1,
+        )
+        self.assertEqual(derivation["bundleCount"], 0)
+
+    def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
+        for case in self.data["pointerCases"]:
+            with self.subTest(case=case["name"]):
+                result = R.resolve_absolute_fault_pointer(
+                    case["pointer"],
+                    case["bundle"],
+                    pubkeys=self.pubkeys,
+                )
+                self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])
 
 
 if __name__ == "__main__":

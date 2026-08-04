@@ -125,7 +125,10 @@ verifies real Ed25519 signatures under the EBFAB domain, discriminator exclusivi
 unknown/stripped-discriminator refusal, cross-type replay failure, rejection of a
 correctly signed but SEB-invalid EBFAB, and non-divergent EBFAB/EBFAB, EBFAB/FAB,
 and EBFAB/legacy authority. The authoritative EBFAB hash and validated phase set
-are pinned even though the otherwise-valid older type carries no SEB claim.
+are pinned even though the otherwise-valid older type carries no SEB claim. A
+second independently SEB-valid EBFAB with a different canonical record for the
+same phase key diverges, and FAB/EBFAB extended-pointer type swaps reject under
+their distinct signed pointer domains.
 
 The candidate set has independent producer/consumer evidence: DACS Forge
 produced the signed fixture at

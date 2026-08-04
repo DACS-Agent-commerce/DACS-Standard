@@ -28,6 +28,10 @@ DOMAINS = {
     "evidence-bound": "dacs-evidence-bound-fault-bundle:v1:",
 }
 LISTING_DOMAIN = "dacs-listing:v1:"
+POINTER_DOMAINS = {
+    "fault": "dacs-fault-bundle-pointer:v1:",
+    "evidence-bound": "dacs-evidence-bound-fault-bundle-pointer:v1:",
+}
 DISCRIMINATORS = {
     "legacy": "bundleVersion",
     "fault": "faultBundleVersion",
@@ -62,6 +66,11 @@ def bundle_hash(bundle):
 
 def listing_hash(listing):
     unsigned = {key: value for key, value in listing.items() if key != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def pointer_hash(pointer):
+    unsigned = {key: value for key, value in pointer.items() if key != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
@@ -142,6 +151,22 @@ def make_bundle(kind, anchored_by_role, signing_keys, listing):
     return sign_bundle(bundle, kind, signing_keys)
 
 
+def make_pointer(kind, bundle, signing_keys):
+    pointer = {
+        DISCRIMINATORS[kind]: "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": f"https://example.invalid/{kind}-bundle.json",
+        "fullBundleContentHash": bundle_hash(bundle),
+    }
+    payload = (POINTER_DOMAINS[kind] + pointer_hash(pointer)).encode("utf-8")
+    pointer["signature"] = {
+        "signer": CLAIMS["seller"],
+        "algorithm": "ed25519",
+        "value": b64u(signing_keys["seller"].sign(payload)),
+    }
+    return pointer
+
+
 def generate():
     signing_keys = keys()
     public_keys = {
@@ -160,6 +185,14 @@ def generate():
     signed_pointerless = copy.deepcopy(ebfab_buyer)
     signed_pointerless["phaseSummary"][0].pop("attestationRef")
     sign_bundle(signed_pointerless, "evidence-bound", signing_keys)
+    alternate_ref = reference("EBFAB-COMPAT-1:0:pay-dem:alternate")
+    ebfab_alternate = copy.deepcopy(ebfab_seller)
+    ebfab_alternate["phaseSummary"][0]["attestationRef"] = alternate_ref
+    ebfab_alternate["settlementEvidence"] = [alternate_ref]
+    sign_bundle(ebfab_alternate, "evidence-bound", signing_keys)
+
+    ebfab_pointer = make_pointer("evidence-bound", ebfab_buyer, signing_keys)
+    fab_pointer = make_pointer("fault", fab_seller, signing_keys)
 
     stripped_to_fab = dict(ebfab_buyer)
     stripped_to_fab.pop("evidenceBoundFaultBundleVersion")
@@ -177,14 +210,22 @@ def generate():
         "seeds": SEEDS,
         "publicKeys": public_keys,
         "domains": DOMAINS,
+        "pointerDomains": POINTER_DOMAINS,
         "listingDomain": LISTING_DOMAIN,
         "listing": listing,
         "referenceValidationByCanonicalRef": {
             canonical(ebfab_buyer["settlementEvidence"][0]).decode("utf-8"): {
                 "phaseKey": "0:pay-dem",
                 "lifecycle": {
-                "state": "finalized",
-                "independentlyResolvable": True,
+                    "state": "finalized",
+                    "independentlyResolvable": True,
+                },
+            },
+            canonical(alternate_ref).decode("utf-8"): {
+                "phaseKey": "0:pay-dem",
+                "lifecycle": {
+                    "state": "finalized",
+                    "independentlyResolvable": True,
                 },
             }
         },
@@ -204,6 +245,11 @@ def generate():
                 "want": {"divergent": False, "authoritativeType": "evidence-bound", "authoritativeBundleHash": bundle_hash(ebfab_buyer), "sebValid": True},
             },
             {
+                "name": "ebfab-ebfab-member-skew-diverges",
+                "copies": {"buyer": ebfab_buyer, "seller": ebfab_alternate},
+                "want": {"divergent": True},
+            },
+            {
                 "name": "ebfab-fab-older-cannot-erase-seb",
                 "copies": {"buyer": ebfab_buyer, "seller": fab_seller},
                 "want": {"divergent": False, "authoritativeType": "evidence-bound", "authoritativeBundleHash": bundle_hash(ebfab_buyer), "sebValid": True},
@@ -212,6 +258,26 @@ def generate():
                 "name": "ebfab-legacy-older-cannot-erase-seb",
                 "copies": {"buyer": ebfab_buyer, "seller": legacy_seller},
                 "want": {"divergent": False, "authoritativeType": "evidence-bound", "authoritativeBundleHash": bundle_hash(ebfab_buyer), "sebValid": True},
+            },
+        ],
+        "pointerCases": [
+            {
+                "name": "ebfab-pointer-ebfab-pass",
+                "pointer": ebfab_pointer,
+                "bundle": ebfab_buyer,
+                "want": {"ok": True},
+            },
+            {
+                "name": "fab-pointer-ebfab-reject",
+                "pointer": fab_pointer,
+                "bundle": ebfab_buyer,
+                "want": {"ok": False},
+            },
+            {
+                "name": "ebfab-pointer-fab-reject",
+                "pointer": ebfab_pointer,
+                "bundle": fab_seller,
+                "want": {"ok": False},
             },
         ],
     }

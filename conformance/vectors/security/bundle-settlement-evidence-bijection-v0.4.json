@@ -305,6 +305,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3e787dc0b0cc2fb82850392155972f3b80a1574aebf8cda0edbfd1bf83d8f01e\"},\"contentHash\":\"fd2bce8f80d4b0051a5feaaef680edb837f0299c984981d38cd020c1a37e2b77\"}": {
           "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-single-htlc-completed:test-rail:2",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-single-htlc-completed",
@@ -325,6 +326,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-8ab3b49b752bfd1cab8cbe68b7100e6a6aa756706ddf537152dd6ca99dbb804f\"},\"contentHash\":\"fa0441f57e749713850b5550c49ec690e05485868e0e3706b31c3c844cb6b9c0\"}": {
           "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-single-htlc-completed:test-rail:2:resolved",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-single-htlc-completed",
@@ -1498,6 +1500,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e44093ac12ba1672817f1226d1dd2e69916bf0e7baa94354e12ffeebbb331d9d\"},\"contentHash\":\"0ecb9f9ed65c9c6df1e95cef03631651f544dfa5e867878d59c7a5eb48885e03\"}": {
           "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-single-htlc-expired:test-rail:2",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-single-htlc-expired",
@@ -2052,6 +2055,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2d3cbc9069720521c2b364a3f587dc0585a2f4512c1b21b8e98ba6c049e0c3fb\"},\"contentHash\":\"ef0061cca5782ba48bc01d93c74b871e75217c8ffc0ed2a04e177cc44bd787ee\"}": {
           "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-st8-expired-wrong-reason:test-rail:2",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-st8-expired-wrong-reason",
@@ -2401,6 +2405,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9235eade7ccf602f1d13cbcfbdffb06132ec1fe68267852eb06fbbc804c3eea9\"},\"contentHash\":\"972b54137ba66a8f185139f80b04611c41d147cb00607ffcde2ff36b8fb5e48d\"}": {
           "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-interim-lifecycle:test-rail:2",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-completed-st8-interim-lifecycle",
@@ -2421,6 +2426,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ea76911ff2eceaf2be2a2c3fd439c058632faa0bf8444381a19648e45ce90e8b\"},\"contentHash\":\"ffc826fdb58c937cabef01c1c61d1d0e9896fc671d4f2cdf59d7ebe602e4b1ba\"}": {
           "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-interim-lifecycle:test-rail:2:resolved",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-completed-st8-interim-lifecycle",
@@ -2446,6 +2452,161 @@
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
               "value": "noBRtsxWKoRmzzRpbfZw_csKQ4ZRXVeegG6lBbyxsyt0n0bVNsz1gt4XboKdaejv_CQ_LT0bNLYMk9OzB3-qAw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "invalid-completed-st8-missing-supersedes": {
+      "listing": {
+        "listingId": "listing-seb-invalid-completed-st8-missing-supersedes",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-cross-chain-htlc"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "VM87U4urEqHrJKq-7eAkuSCghAFMJiDhppcJfmQnBgkF9b-3nXiu4VW6-4aUbGChJ54ATKQlF39975_roa_YBg"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-invalid-completed-st8-missing-supersedes",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-invalid-completed-st8-missing-supersedes",
+          "version": 1,
+          "contentHash": "85716b99fbc6ca559e6537675d909b5edabab503c3a7655404332dd41c7a0fff"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-cross-chain-htlc",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-656585e04158fa7a9472b422071ee8b1375bab7a1b9827c1236b51bbd115f2de"
+              },
+              "contentHash": "964badef40de80edb8d94d49a1b8a4b14f65b624e86cb2c70f38e77cb7b04b32"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-656585e04158fa7a9472b422071ee8b1375bab7a1b9827c1236b51bbd115f2de"
+            },
+            "contentHash": "964badef40de80edb8d94d49a1b8a4b14f65b624e86cb2c70f38e77cb7b04b32"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "0cjJMoJDTE9vn0AWF_KX2oWx9XrOMEqLubZmhdB6KmIiIqDWw06ZLjk2mi2Hv0t9HRBTCm6doqZHj87d7GCZCA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "qvNXgQocJYB-0LVvSU0WrH5FAzTlzFE9k39kjYx3I1jxIZelHiXztjMGG1ZYeSsiywN7xNv5E9F-veuQzj29DA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ef38472fa227d423e2ed4d58500ef66a4c522566632d537628328f7f50b1c3fb\"},\"contentHash\":\"e5eec4148e0ec1825e181edfaeec7027feeb541efd47cc70befdd862d4491fcd\"}": {
+          "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-missing-supersedes:test-rail:2",
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-completed-st8-missing-supersedes",
+            "phase": "pay-cross-chain-htlc",
+            "outcome": "failure",
+            "observedAt": 1785772799002,
+            "reason": "dest-revealed-source-unclaimed",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "h2WpUaZHMIAKTlUFCaGP_Vvcz2g1t8tI3vNyNJiul2liV_diaPQfbj3Xi5mJlOEUffVVG5iffi-hrWbL0t6sDw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-656585e04158fa7a9472b422071ee8b1375bab7a1b9827c1236b51bbd115f2de\"},\"contentHash\":\"964badef40de80edb8d94d49a1b8a4b14f65b624e86cb2c70f38e77cb7b04b32\"}": {
+          "phaseIndex": 2,
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-missing-supersedes:test-rail:2:resolved",
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-completed-st8-missing-supersedes",
+            "phase": "pay-cross-chain-htlc",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799002
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "-MMhi3z3JBiTDhHfgvaSrFlWx4fL0NffRjmVH7SK1L_FyTjmERTyxmemyPi7X-JVwePPkDBOj9X1P4nHDky9Dg"
             }
           },
           "lifecycle": {
@@ -3764,6 +3925,37 @@
         "state": "included",
         "independentlyResolvable": false
       }
+    },
+    "invalid-completed-st8-missing-supersedes": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-cross-chain-htlc"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-cross-chain-htlc",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "st8Resolved": true,
+      "omitSt8Supersedes": true
     }
   }
 }

@@ -782,10 +782,14 @@ def validate_ebfab(
         "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
     }
     st8_reasons = set(st8_reason_by_phase.values())
-    for ref, _, record, phase_key in authenticated_records:
+    for ref, resolution, record, phase_key in authenticated_records:
         summary_entry = summary_by_key[phase_key]
         supersedes = record.get("supersedesEvidenceRef")
         expected_st8_reason = st8_reason_by_phase.get(record.get("phase"))
+        logical_address = resolution.get("logicalAddress")
+        st8_resolved_anchor = (
+            isinstance(logical_address, str) and logical_address.endswith(":resolved")
+        )
         expired_st8 = (
             record.get("phase") == "pay-cross-chain-htlc"
             and summary_entry.get("errorClass") == "settlement-atomicity"
@@ -804,6 +808,18 @@ def validate_ebfab(
                 return (False, "expired ST-8 record has the wrong authenticated terminal class", None)
         elif record.get("reason") in st8_reasons:
             return (False, "ST-8 interim reason contradicts the signed phase result", None)
+        # The binding-verified PC-2 logical address, not the optional edge,
+        # classifies an ST-8 resolution. A :resolved record must therefore
+        # carry the signed edge; an edge at the ordinary phase address is not
+        # a valid way to self-classify as ST-8.
+        if st8_resolved_anchor and (
+            record.get("outcome") != "success"
+            or expected_st8_reason is None
+            or supersedes is None
+        ):
+            return (False, "ST-8 resolved anchor lacks its signed supersession edge", None)
+        if supersedes is not None and not st8_resolved_anchor:
+            return (False, "ST-8 supersession edge is not bound to a resolved anchor", None)
         if supersedes is None:
             continue
         if (

@@ -58,10 +58,12 @@ def make_authority(name, definition, signing_keys):
         entry = copy.deepcopy(source)
         if entry["kind"] in F.EVIDENCE_PHASES:
             supersedes = None
+            st8_resolved = False
             if definition.get("st8Resolved") and entry["kind"] in {
                 "pay-cross-chain-htlc",
                 "pay-cross-chain-liquidity-tank",
             }:
+                st8_resolved = True
                 interim_record, interim_ref = F.make_evidence(
                     job_id,
                     entry["kind"],
@@ -77,6 +79,9 @@ def make_authority(name, definition, signing_keys):
                 )
                 reference_validation_by_canonical_ref[F.canonical(interim_ref).decode("utf-8")] = {
                     "phaseIndex": entry["index"],
+                    "logicalAddress": (
+                        f"dacs4:payment:{job_id}:test-rail:{entry['index']}"
+                    ),
                     "record": interim_record,
                     "lifecycle": copy.deepcopy(
                         definition.get("st8InterimLifecycle", default_lifecycle)
@@ -98,13 +103,28 @@ def make_authority(name, definition, signing_keys):
                 signing_keys,
                 outcome="success" if entry["outcome"] == "ok" else "failure",
                 reason=evidence_reason,
-                supersedes=supersedes,
-                label_suffix=":resolved" if supersedes is not None else "",
+                supersedes=(
+                    None if definition.get("omitSt8Supersedes") else supersedes
+                ),
+                label_suffix=":resolved" if st8_resolved else "",
             )
             entry["attestationRef"] = ref
             settlement_evidence.append(ref)
             reference_validation_by_canonical_ref[F.canonical(ref).decode("utf-8")] = {
                 "phaseIndex": entry["index"],
+                **(
+                    {
+                        "logicalAddress": (
+                            f"dacs4:payment:{job_id}:test-rail:{entry['index']}"
+                            + (":resolved" if st8_resolved else "")
+                        )
+                    }
+                    if entry["kind"] in {
+                        "pay-cross-chain-htlc",
+                        "pay-cross-chain-liquidity-tank",
+                    }
+                    else {}
+                ),
                 "record": record,
                 "lifecycle": copy.deepcopy(default_lifecycle),
             }
@@ -251,6 +271,10 @@ def generate(source):
         "state": "included",
         "independentlyResolvable": False,
     }
+    definitions["invalid-completed-st8-missing-supersedes"] = copy.deepcopy(
+        definitions["single-htlc-completed"]
+    )
+    definitions["invalid-completed-st8-missing-supersedes"]["omitSt8Supersedes"] = True
 
     for vector in data["vectors"]:
         if vector["name"] == "bundle-settlement-bijection-st8-expired-interim-pass":

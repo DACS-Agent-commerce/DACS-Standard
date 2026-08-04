@@ -28,6 +28,7 @@ DOMAINS = {
     "evidence-bound": "dacs-evidence-bound-fault-bundle:v1:",
 }
 LISTING_DOMAIN = "dacs-listing:v1:"
+SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 POINTER_DOMAINS = {
     "fault": "dacs-fault-bundle-pointer:v1:",
     "evidence-bound": "dacs-evidence-bound-fault-bundle-pointer:v1:",
@@ -69,6 +70,11 @@ def listing_hash(listing):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
+def evidence_hash(record):
+    unsigned = {key: value for key, value in record.items() if key != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
 def pointer_hash(pointer):
     unsigned = {key: value for key, value in pointer.items() if key != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
@@ -88,6 +94,46 @@ def reference(label):
         "anchor": {"kind": "storage-program", "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}"},
         "contentHash": hashlib.sha256(("content:" + label).encode()).hexdigest(),
     }
+
+
+def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success", reason=None,
+                  supersedes=None, label_suffix=""):
+    record = {
+        "evidenceVersion": "1",
+        "jobId": job_id,
+        "phase": phase,
+        "outcome": outcome,
+        "observedAt": 1785772799000 + phase_index,
+    }
+    if outcome == "failure":
+        record["reason"] = reason or "permanent"
+    elif phase.startswith("pay-"):
+        record["paymentAmount"] = {"amount": "1", "currency": "DEM"}
+        record["settlementFinality"] = {
+            "model": "bft-final",
+            "finalityObservedAt": record["observedAt"],
+        }
+    else:
+        record["deliverableContentHash"] = hashlib.sha256(
+            f"deliverable:{job_id}:{phase_index}".encode()
+        ).hexdigest()
+    if supersedes is not None:
+        record["supersedesEvidenceRef"] = copy.deepcopy(supersedes)
+    payload = (SETTLEMENT_EVIDENCE_DOMAIN + evidence_hash(record)).encode("utf-8")
+    record["signature"] = {
+        "signer": CLAIMS["seller"],
+        "algorithm": "ed25519",
+        "value": b64u(signing_keys["seller"].sign(payload)),
+    }
+    label = f"{job_id}:{phase_index}:{phase}{label_suffix}"
+    ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}",
+        },
+        "contentHash": evidence_hash(record),
+    }
+    return record, ref
 
 
 def make_listing(signing_keys):
@@ -121,7 +167,9 @@ def sign_bundle(bundle, kind, signing_keys):
 
 
 def make_bundle(kind, anchored_by_role, signing_keys, listing):
-    evidence_ref = reference("EBFAB-COMPAT-1:0:pay-dem")
+    evidence_record, evidence_ref = make_evidence(
+        "EBFAB-COMPAT-1", "pay-dem", 0, signing_keys
+    )
     bundle = {
         DISCRIMINATORS[kind]: "1",
         "jobId": "EBFAB-COMPAT-1",
@@ -148,7 +196,7 @@ def make_bundle(kind, anchored_by_role, signing_keys, listing):
     }
     if kind != "legacy":
         bundle["faultedParty"] = "none"
-    return sign_bundle(bundle, kind, signing_keys)
+    return sign_bundle(bundle, kind, signing_keys), evidence_record
 
 
 def make_pointer(kind, bundle, signing_keys):
@@ -174,10 +222,10 @@ def generate():
         for role, key in signing_keys.items()
     }
     listing = make_listing(signing_keys)
-    ebfab_buyer = make_bundle("evidence-bound", "buyer", signing_keys, listing)
-    ebfab_seller = make_bundle("evidence-bound", "seller", signing_keys, listing)
-    fab_seller = make_bundle("fault", "seller", signing_keys, listing)
-    legacy_seller = make_bundle("legacy", "seller", signing_keys, listing)
+    ebfab_buyer, evidence_record = make_bundle("evidence-bound", "buyer", signing_keys, listing)
+    ebfab_seller, _ = make_bundle("evidence-bound", "seller", signing_keys, listing)
+    fab_seller, _ = make_bundle("fault", "seller", signing_keys, listing)
+    legacy_seller, _ = make_bundle("legacy", "seller", signing_keys, listing)
 
     signed_missing_member = copy.deepcopy(ebfab_buyer)
     signed_missing_member["settlementEvidence"] = []
@@ -185,7 +233,9 @@ def generate():
     signed_pointerless = copy.deepcopy(ebfab_buyer)
     signed_pointerless["phaseSummary"][0].pop("attestationRef")
     sign_bundle(signed_pointerless, "evidence-bound", signing_keys)
-    alternate_ref = reference("EBFAB-COMPAT-1:0:pay-dem:alternate")
+    alternate_record, alternate_ref = make_evidence(
+        "EBFAB-COMPAT-1", "pay-dem", 0, signing_keys, label_suffix=":alternate"
+    )
     ebfab_alternate = copy.deepcopy(ebfab_seller)
     ebfab_alternate["phaseSummary"][0]["attestationRef"] = alternate_ref
     ebfab_alternate["settlementEvidence"] = [alternate_ref]
@@ -224,14 +274,16 @@ def generate():
         "listing": listing,
         "referenceValidationByCanonicalRef": {
             canonical(ebfab_buyer["settlementEvidence"][0]).decode("utf-8"): {
-                "phaseKey": "0:pay-dem",
+                "phaseIndex": 0,
+                "record": evidence_record,
                 "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": True,
                 },
             },
             canonical(alternate_ref).decode("utf-8"): {
-                "phaseKey": "0:pay-dem",
+                "phaseIndex": 0,
+                "record": alternate_record,
                 "lifecycle": {
                     "state": "finalized",
                     "independentlyResolvable": True,

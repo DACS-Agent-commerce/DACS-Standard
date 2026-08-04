@@ -39,6 +39,7 @@ BUNDLE_DOMAIN = "dacs-bundle:v1:"
 FAULT_BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
 EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
+SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
@@ -149,6 +150,12 @@ def bundle_hash(bundle):
 def listing_hash(listing):
     """§6.3.4 listing hash: canonical form minus the signature envelope."""
     unsigned = {k: v for k, v in listing.items() if k != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def settlement_evidence_hash(record):
+    """DACS-4 §9.7 evidence hash: canonical form minus its signature envelope."""
+    unsigned = {k: v for k, v in record.items() if k != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
@@ -611,6 +618,7 @@ def validate_ebfab(
     seen_indices = set()
     expected_keys = []
     optional_pointers = {}
+    summary_by_key = {}
     for entry in summary:
         if not isinstance(entry, dict):
             return (False, "phaseSummary entry is not an object", None)
@@ -627,6 +635,7 @@ def validate_ebfab(
         ):
             return (False, "phaseSummary contradicts the signed listing pipeline", None)
         seen_indices.add(index)
+        summary_by_key[f"{index}:{kind}"] = entry
         if kind in EVIDENCE_PHASES:
             ref = entry.get("attestationRef")
             phase_key = f"{index}:{kind}"
@@ -635,6 +644,50 @@ def validate_ebfab(
                 if not isinstance(ref, dict) or not isinstance(ref.get("contentHash"), str):
                     return (False, "optional phase attestationRef is malformed", None)
                 optional_pointers[phase_key] = ref
+
+    # The signed phaseSummary is execution-result authority only when it is a
+    # complete, outcome-consistent trace of the deterministic listing pipeline.
+    # Otherwise an author could remove the same phase from phaseSummary and
+    # settlementEvidence and make the supposed exact set circular.
+    ordered_indices = [entry["index"] for entry in summary]
+    if ordered_indices != list(range(len(summary))):
+        return (False, "phaseSummary is not a contiguous execution prefix", None)
+    bundle_outcome = bundle.get("outcome")
+    if bundle_outcome == "completed":
+        if len(summary) != len(pipeline):
+            return (False, "completed phaseSummary does not cover the full pipeline", None)
+        if any(
+            entry.get("outcome") == "fail" and entry.get("kind") != "rate"
+            for entry in summary
+        ):
+            return (False, "completed phaseSummary contains a fatal phase failure", None)
+    elif bundle_outcome in {"failed-perm", "failed-counterparty"}:
+        if not summary or summary[-1].get("outcome") != "fail":
+            return (False, "failed phaseSummary lacks its terminal failed result", None)
+        if any(entry.get("outcome") != "ok" for entry in summary[:-1]):
+            return (False, "failed phaseSummary is not an ok-prefix plus terminal failure", None)
+    elif bundle_outcome == "failed-substrate":
+        phase_failure = (
+            bool(summary)
+            and summary[-1].get("outcome") == "fail"
+            and summary[-1].get("errorClass") == "substrate"
+            and all(entry.get("outcome") == "ok" for entry in summary[:-1])
+        )
+        completed_before_audit_failure = (
+            len(summary) == len(pipeline)
+            and all(
+                entry.get("outcome") == "ok"
+                or (entry.get("kind") == "rate" and entry.get("outcome") == "fail")
+                for entry in summary
+            )
+        )
+        if not (phase_failure or completed_before_audit_failure):
+            return (False, "failed-substrate phaseSummary is not outcome-consistent", None)
+    elif bundle_outcome in _ABORT:
+        if len(summary) >= len(pipeline) or any(entry.get("outcome") != "ok" for entry in summary):
+            return (False, "aborted phaseSummary is not the completed prefix before no-result abort", None)
+    else:
+        return (False, "unsupported EBFAB outcome", None)
 
     actual_refs = bundle.get("settlementEvidence")
     if not isinstance(actual_refs, list):
@@ -650,7 +703,52 @@ def validate_ebfab(
     ]
     if any(not isinstance(resolution, dict) for resolution in exact_resolutions):
         return (False, "settlementEvidence member lacks exact authenticated resolution", None)
-    actual_keys = [resolution.get("phaseKey") for resolution in exact_resolutions]
+    authenticated_records = []
+    actual_keys = []
+    for ref, resolution in zip(actual_refs, exact_resolutions):
+        phase_index = resolution.get("phaseIndex")
+        record = resolution.get("record")
+        if (
+            isinstance(phase_index, bool)
+            or not isinstance(phase_index, int)
+            or phase_index < 0
+            or phase_index >= len(pipeline_kinds)
+            or not isinstance(record, dict)
+        ):
+            return (False, "settlement evidence lacks authenticated record or phase index", None)
+        signature = record.get("signature")
+        if (
+            record.get("evidenceVersion") != "1"
+            or record.get("jobId") != bundle.get("jobId")
+            or record.get("phase") != pipeline_kinds[phase_index]
+            or record.get("outcome") not in {"success", "failure"}
+            or not isinstance(signature, dict)
+            or signature.get("algorithm") != "ed25519"
+            or signature.get("signer") not in _primary_claims(bundle)
+            or signature.get("signer") not in pubkeys
+            or ref.get("contentHash") != settlement_evidence_hash(record)
+        ):
+            return (False, "settlement evidence record does not bind this job, phase, signer, or hash", None)
+        canonical_ok, canonical_reason = sig6_canonical(signature.get("value", ""))
+        if not canonical_ok:
+            return (False, canonical_reason, None)
+        if not verify_sig(
+            pubkeys[signature["signer"]],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(record),
+            signature["value"],
+        ):
+            return (False, "settlement evidence signature does not verify", None)
+        phase_key = f"{phase_index}:{record['phase']}"
+        summary_entry = summary_by_key.get(phase_key)
+        expected_record_outcome = (
+            "success" if isinstance(summary_entry, dict) and summary_entry.get("outcome") == "ok"
+            else "failure"
+        )
+        if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
+            return (False, "settlement evidence record contradicts the signed phase result", None)
+        actual_keys.append(phase_key)
+        authenticated_records.append((ref, resolution, record, phase_key))
     if (
         None in actual_keys
         or len(actual_keys) != len(set(actual_keys))
@@ -662,6 +760,60 @@ def validate_ebfab(
     for phase_key, pointer in optional_pointers.items():
         if canonical(pointer) != canonical(actual_ref_by_key[phase_key]):
             return (False, "optional phase pointer contradicts settlementEvidence", None)
+
+    # ST-8 terminal selection is derived from authenticated SettlementEvidence
+    # content. A signed success record binds the superseded interim reference;
+    # the referenced record must itself authenticate as the same job/phase and
+    # as the specific asymmetric interim failure. Caller-supplied class/edge
+    # metadata has no authority here.
+    st8_reasons = {"dest-revealed-source-unclaimed", "tank-locked-unreleased"}
+    for ref, _, record, phase_key in authenticated_records:
+        supersedes = record.get("supersedesEvidenceRef")
+        if supersedes is None:
+            continue
+        if (
+            record.get("outcome") != "success"
+            or record.get("phase") not in {
+                "pay-cross-chain-htlc",
+                "pay-cross-chain-liquidity-tank",
+            }
+            or not isinstance(supersedes, dict)
+            or canonical(supersedes) in {canonical(item) for item in actual_refs}
+        ):
+            return (False, "invalid ST-8 supersession shape", None)
+        interim_resolution = reference_validation_by_canonical_ref.get(
+            canonical(supersedes).decode("utf-8")
+        )
+        if not isinstance(interim_resolution, dict):
+            return (False, "ST-8 interim record lacks authenticated resolution", None)
+        interim_record = interim_resolution.get("record")
+        interim_index = interim_resolution.get("phaseIndex")
+        interim_signature = interim_record.get("signature") if isinstance(interim_record, dict) else None
+        if (
+            not isinstance(interim_record, dict)
+            or interim_index != int(phase_key.split(":", 1)[0])
+            or interim_record.get("evidenceVersion") != "1"
+            or interim_record.get("jobId") != bundle.get("jobId")
+            or interim_record.get("phase") != record.get("phase")
+            or interim_record.get("outcome") != "failure"
+            or interim_record.get("reason") not in st8_reasons
+            or supersedes.get("contentHash") != settlement_evidence_hash(interim_record)
+            or not isinstance(interim_signature, dict)
+            or interim_signature.get("algorithm") != "ed25519"
+            or interim_signature.get("signer") not in _primary_claims(bundle)
+            or interim_signature.get("signer") not in pubkeys
+        ):
+            return (False, "ST-8 successor does not authenticate its same-phase interim failure", None)
+        canonical_ok, canonical_reason = sig6_canonical(interim_signature.get("value", ""))
+        if not canonical_ok:
+            return (False, canonical_reason, None)
+        if not verify_sig(
+            pubkeys[interim_signature["signer"]],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(interim_record),
+            interim_signature["value"],
+        ):
+            return (False, "ST-8 interim evidence signature does not verify", None)
 
     completed = bundle.get("outcome") == "completed"
     for resolution in exact_resolutions:
@@ -1004,7 +1156,8 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
     complete ReplayableReputationDerivation implementation.
 
-    tagged_bundles: list of {"bundle": <dict>, "resolvedRole": "buyer"|"seller",
+    tagged_bundles: list of {"bundle": <dict>, "resolvedJobId": <trusted requested jobId>,
+      "resolvedRole": "buyer"|"seller",
       "counterpartyDisposition": "present"|"absent"|None, "counterpartyRef": ...?,
       "absenceEvidenceRef": ...?, "selectedByRoleResolution": true?} — each input copy
       carries its §10.5.1 resolution tag. EBFAB inputs require the true marker because
@@ -1038,17 +1191,27 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         kind = bundle_type(bundle)
         selected = tagged.get("selectedByRoleResolution") is True
 
+        # The requested jobId belongs to authenticated address/binding
+        # resolution context. Never recover it from returned bundle content:
+        # selected invalid content can omit or alter its own jobId precisely to
+        # make an older copy appear eligible.
+        resolved_job = tagged.get("resolvedJobId")
+        if selected and not isinstance(resolved_job, str):
+            raise ValueError("selected role resolution lacks trusted resolvedJobId")
+
         # BB-6 role resolution precedes EBFAB admission. A raw losing EBFAB is
         # inert and MUST be discarded before any of its fields are inspected.
         if kind == "evidence-bound" and not selected:
             continue
         if kind is None:
-            if selected and isinstance(bundle, dict) and isinstance(bundle.get("jobId"), str):
-                rejected_selected_jobs.add(bundle["jobId"])
+            if selected:
+                rejected_selected_jobs.add(resolved_job)
+            continue
+        if selected and bundle.get("jobId") != resolved_job:
+            rejected_selected_jobs.add(resolved_job)
             continue
         if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
-            if isinstance(bundle.get("jobId"), str):
-                rejected_selected_jobs.add(bundle["jobId"])
+            rejected_selected_jobs.add(resolved_job)
             continue
         if party not in _primary_claims(bundle):
             continue

@@ -2,7 +2,7 @@
   "set": "bundle-settlement-evidence-bijection-v0.4",
   "spec": "DACS-5 §10.4.3 SEB-1..SEB-6",
   "artifactType": "EvidenceBoundFaultAttestationBundle",
-  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator derives phase keys locally and never accepts a caller-supplied expected set. Repeated kinds remain distinct by index, success and failure results are included, aborted-before-result invocations are absent, and ST-8 contributes one terminal record. resolvedReferencePhaseKeys are independently resolved job-bound phase keys. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
+  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator requires an ordered, outcome-consistent execution prefix and derives phase keys locally. authenticatedRecordByRef represents independently resolved, job-bound SettlementEvidence content; record outcome and hashed supersedesEvidenceRef, not caller-supplied class or edge labels, determine ST-8 terminal selection. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
   "reasonCodes": [
     "ok",
     "execution-authority",
@@ -94,9 +94,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-9384fb33b521147afea4919d1a8a469d4c7e8a94b17929b26e74394ec3122485"
+                "locator": "stor-cfc9df69aef15ba2dfc8bd5f56fdf7a9db06afb88071dffa3462c67dcae631b8"
               },
-              "contentHash": "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e"
+              "contentHash": "b082f339fb5bcda46b804a61114c5b17f825d5fbb9c7c021d6799f649ea2d1c8"
             }
           },
           {
@@ -106,9 +106,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-a2fc9354c8b1e075e142e079ac1dbb4271997f2c560204e4bac51abf1e32b764"
+                "locator": "stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d"
               },
-              "contentHash": "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49"
+              "contentHash": "5b0043c24fa9b7b63e3f92a8a8cc0542191bad8e8e6a1d7bc7fd790d2c37e0aa"
             }
           }
         ],
@@ -117,16 +117,16 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-9384fb33b521147afea4919d1a8a469d4c7e8a94b17929b26e74394ec3122485"
+              "locator": "stor-cfc9df69aef15ba2dfc8bd5f56fdf7a9db06afb88071dffa3462c67dcae631b8"
             },
-            "contentHash": "75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e"
+            "contentHash": "b082f339fb5bcda46b804a61114c5b17f825d5fbb9c7c021d6799f649ea2d1c8"
           },
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-a2fc9354c8b1e075e142e079ac1dbb4271997f2c560204e4bac51abf1e32b764"
+              "locator": "stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d"
             },
-            "contentHash": "be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49"
+            "contentHash": "5b0043c24fa9b7b63e3f92a8a8cc0542191bad8e8e6a1d7bc7fd790d2c37e0aa"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -136,12 +136,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "WqFbo75zDH7p671bNT4cMLX6oEP3JmRWl0b6ZFdmJpYaHToLr3bSsUuYzypFjzlHDYGAtIg4e_XyR-TbWoVGAA"
+            "value": "jSmNHc1aSJQ-qwcSoyM55xWiNNfSfQAooQvoWkS0IxllAZGsKAlvVDsrSxdITueKvRRvMxaC9N3JNRe_dwYyAA"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "TleFb-ogYDp7xDJXj3CzZ_XKNBUGhmYjHWeJjhHk8pEZq12GmUJ_ztHEtMyLIQFaD9nlU0jS96TchVPQPKXxAw"
+            "value": "3ruVN1Js4cYMXysI1d7S_oTYkFFv-Rmhbz4nstrKG-JD33mgI35k6Q4aixUAPA0BZanXSlmNdW3In9BrcrkJAg"
           }
         ]
       },
@@ -150,15 +150,48 @@
         "independentlyResolvable": true
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9384fb33b521147afea4919d1a8a469d4c7e8a94b17929b26e74394ec3122485\"},\"contentHash\":\"75c8069c14fc4e7196622155e7085058da3bbefd409322c330987b0ef20fa08e\"}": {
-          "phaseKey": "2:pay-dem",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cfc9df69aef15ba2dfc8bd5f56fdf7a9db06afb88071dffa3462c67dcae631b8\"},\"contentHash\":\"b082f339fb5bcda46b804a61114c5b17f825d5fbb9c7c021d6799f649ea2d1c8\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phase": "pay-dem",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799002
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "Ft7126EcMbLb0n9a69eU01DswKu8mep3jlF-sQImlpBjtPP_RntbazpWLEYKXEEWChcLG4DoRlsnNJrVs5V4Dg"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-a2fc9354c8b1e075e142e079ac1dbb4271997f2c560204e4bac51abf1e32b764\"},\"contentHash\":\"be2b272116c99924f655566b893112f18e12f1a38c36f5c909562215a78c8e49\"}": {
-          "phaseKey": "3:deliver-attested-payload",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d\"},\"contentHash\":\"5b0043c24fa9b7b63e3f92a8a8cc0542191bad8e8e6a1d7bc7fd790d2c37e0aa\"}": {
+          "phaseIndex": 3,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "observedAt": 1785772799003,
+            "deliverableContentHash": "d69848e8ceef8567545b7f77df4e155600a74904c998674d9f4550f15a49b233",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "SKiM0s5mOFBy8_s1dgr5wF3FqmEXtoI7EpL-q2hHbA6CKobtHHZ2AC-7OJkWT1PEh-AmkjyNae_dpfDBglQfAQ"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
@@ -233,9 +266,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-17b68f77f06c20088f38a201bed4cb262f3716d8776d432717ab53c70ea025a4"
+                "locator": "stor-8ab3b49b752bfd1cab8cbe68b7100e6a6aa756706ddf537152dd6ca99dbb804f"
               },
-              "contentHash": "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588"
+              "contentHash": "fa0441f57e749713850b5550c49ec690e05485868e0e3706b31c3c844cb6b9c0"
             }
           }
         ],
@@ -244,9 +277,9 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-17b68f77f06c20088f38a201bed4cb262f3716d8776d432717ab53c70ea025a4"
+              "locator": "stor-8ab3b49b752bfd1cab8cbe68b7100e6a6aa756706ddf537152dd6ca99dbb804f"
             },
-            "contentHash": "8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588"
+            "contentHash": "fa0441f57e749713850b5550c49ec690e05485868e0e3706b31c3c844cb6b9c0"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -256,12 +289,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "iNOky9I3seEWibCsqysAIVfQgBnzZamKt9JWGjjrPUpuh0UGd-rcxUa4fCyrkV3DwZA5zyy1b6DrwFkuFccTDw"
+            "value": "MjcBdg9pqCLlOuJUuEXJJOjDUIBngK73Ih3gJzq2a-SyqSS1HOfoHKWvZLit_ADRsHk942WjEWdL0_ht5bwqDQ"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "VZH2wZsn4FcqOYd6PW1aGDZY-WZ8701MIMoeO9JA0XfEfP67IFxLQWNO5vTqcbbktsXXEVxO-Bk2dMNyoMT2Bg"
+            "value": "MRCyHIeCFSsxKBNdeuU7Rxo9bd2nvyGrc3pnGpm7l_yBPpwyNlK-_aZtzecCVXq7DAoAl4gg1dywJSJWXic5AQ"
           }
         ]
       },
@@ -270,8 +303,55 @@
         "independentlyResolvable": true
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-17b68f77f06c20088f38a201bed4cb262f3716d8776d432717ab53c70ea025a4\"},\"contentHash\":\"8b6a1b829ea0d0f7016fa9fa9fd374921baeffa7c6da9c5c0ed40922152ff588\"}": {
-          "phaseKey": "2:pay-cross-chain-htlc",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3e787dc0b0cc2fb82850392155972f3b80a1574aebf8cda0edbfd1bf83d8f01e\"},\"contentHash\":\"fd2bce8f80d4b0051a5feaaef680edb837f0299c984981d38cd020c1a37e2b77\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-single-htlc-completed",
+            "phase": "pay-cross-chain-htlc",
+            "outcome": "failure",
+            "observedAt": 1785772799002,
+            "reason": "dest-revealed-source-unclaimed",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "D86_JDI0fFO8LrsefPAX2cLrVcH5uvZVXPDSwpPslXjD08NfQhzzZ3Uf6ik46d2ZhOrAkeV3aSD3xoBq_UjSCA"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-8ab3b49b752bfd1cab8cbe68b7100e6a6aa756706ddf537152dd6ca99dbb804f\"},\"contentHash\":\"fa0441f57e749713850b5550c49ec690e05485868e0e3706b31c3c844cb6b9c0\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-single-htlc-completed",
+            "phase": "pay-cross-chain-htlc",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799002
+            },
+            "supersedesEvidenceRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-3e787dc0b0cc2fb82850392155972f3b80a1574aebf8cda0edbfd1bf83d8f01e"
+              },
+              "contentHash": "fd2bce8f80d4b0051a5feaaef680edb837f0299c984981d38cd020c1a37e2b77"
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "zKaGlcG8brRJ1Dl7jwoVjgk3OLRhKn39Tn0F3qpefMeoB2XR9fKj9EY44EVxZBAEVNwQtc1gHoM8Hc7U_zelAA"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
@@ -336,9 +416,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-bcd24b8d4c1973f00f9c1019f0cc7b0bad66fad8f70ad1f9417b80d3c95f7cde"
+                "locator": "stor-c8f7d18f174ae60a6cf0373f2f68218d925ed36b133d582456ca237e3e46630c"
               },
-              "contentHash": "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb"
+              "contentHash": "d1e483aeab16b5038448ef02e185c8948dd8ff2be6a68beae6abf42737455488"
             }
           },
           {
@@ -348,9 +428,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-bee97787caa54706617e4652d52c471153962d4efde61af1c6d66356f2ea740c"
+                "locator": "stor-e032ca7d3a59a2a5a03d47e330a3e60b0684a1648908975c8e7f9cc809e86c15"
               },
-              "contentHash": "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770"
+              "contentHash": "a061c47cde9c16051223292f262ba543840a35188dc51fbedee47225b28dc668"
             }
           },
           {
@@ -360,9 +440,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-3f510aa9473cbc91e9a751e91f6cf05283dec6db40bba96c54a9219c263b430e"
+                "locator": "stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3"
               },
-              "contentHash": "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962"
+              "contentHash": "42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a"
             }
           }
         ],
@@ -371,23 +451,23 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-bcd24b8d4c1973f00f9c1019f0cc7b0bad66fad8f70ad1f9417b80d3c95f7cde"
+              "locator": "stor-c8f7d18f174ae60a6cf0373f2f68218d925ed36b133d582456ca237e3e46630c"
             },
-            "contentHash": "19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb"
+            "contentHash": "d1e483aeab16b5038448ef02e185c8948dd8ff2be6a68beae6abf42737455488"
           },
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-bee97787caa54706617e4652d52c471153962d4efde61af1c6d66356f2ea740c"
+              "locator": "stor-e032ca7d3a59a2a5a03d47e330a3e60b0684a1648908975c8e7f9cc809e86c15"
             },
-            "contentHash": "1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770"
+            "contentHash": "a061c47cde9c16051223292f262ba543840a35188dc51fbedee47225b28dc668"
           },
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-3f510aa9473cbc91e9a751e91f6cf05283dec6db40bba96c54a9219c263b430e"
+              "locator": "stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3"
             },
-            "contentHash": "0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962"
+            "contentHash": "42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -397,12 +477,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "DzHefCw1kNCFmZveQsCwSX7PZ5RaSVcRzodia7-NSMiQ4ed2Nqtn12Tnq3zp428CyBYk7iJe3bEi3FilO2_vAA"
+            "value": "B5VFjgVs4tHnpCWi68m5xZZjD1WJg2eTabs6cttUsWqhdV44jaDfELcuqMBQkZKewCBVIHrX1oZe9-y0ttM-AQ"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "kh1e-ZT-x6hkWNc8txFgSqg1q6KvnwZ6JZBZaAXinACx_ipmLfLzM6IHbnGkFUz4iHel_1tDDf5nX0nUjCjeCA"
+            "value": "d0sDpCrAp1oW3ce9hXNBF5xHBLE_Vfv7LHr06cYdSeDPQBL2RfYrJI-ulSVmnzNbu-hdPZZlK9V8yIUAwrBqBQ"
           }
         ]
       },
@@ -411,22 +491,75 @@
         "independentlyResolvable": true
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bcd24b8d4c1973f00f9c1019f0cc7b0bad66fad8f70ad1f9417b80d3c95f7cde\"},\"contentHash\":\"19ed54f7be90a1d751913b6003ffa7da44cc8647e08469de691d8c74d55575bb\"}": {
-          "phaseKey": "0:pay-dem",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c8f7d18f174ae60a6cf0373f2f68218d925ed36b133d582456ca237e3e46630c\"},\"contentHash\":\"d1e483aeab16b5038448ef02e185c8948dd8ff2be6a68beae6abf42737455488\"}": {
+          "phaseIndex": 0,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+            "phase": "pay-dem",
+            "outcome": "success",
+            "observedAt": 1785772799000,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799000
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "UN7mBzJOr3tyoiYyb_gbCpxgQn-jaBgqG5B6sEacc8dfC0bIjV6oIw7XKwVv-rQWGGrK2GdS5IlvW1HprbMPCg"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-bee97787caa54706617e4652d52c471153962d4efde61af1c6d66356f2ea740c\"},\"contentHash\":\"1c63ddd85a3db46e4a514ea1f4fcdc071abc13feb87159d6ca61f600952ce770\"}": {
-          "phaseKey": "1:pay-dem",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e032ca7d3a59a2a5a03d47e330a3e60b0684a1648908975c8e7f9cc809e86c15\"},\"contentHash\":\"a061c47cde9c16051223292f262ba543840a35188dc51fbedee47225b28dc668\"}": {
+          "phaseIndex": 1,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+            "phase": "pay-dem",
+            "outcome": "success",
+            "observedAt": 1785772799001,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799001
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "hr14VaH09f9v1m_2RYRpJVerIDo3NN6B09MUZ1Qd3D1YsgFgDyAASq7F3B8vsLNVQcUM3gJuo3pOTHSXmzowAQ"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3f510aa9473cbc91e9a751e91f6cf05283dec6db40bba96c54a9219c263b430e\"},\"contentHash\":\"0df9b02e7de6e191f98cc38400a31a11b3d39b20f0978f05d5ecee096397a962\"}": {
-          "phaseKey": "2:deliver-entitlement",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3\"},\"contentHash\":\"42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+            "phase": "deliver-entitlement",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "deliverableContentHash": "ece31ec3efd7e51099599bfa3f1dec5aaf0c98bfb2a532f23fa5a86f059ac3c3",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "OeJU1QtxJt4_iVRvcA4-6oqPtWgtlbo_NZFeRxSlxno6qC4NQpVxnj-CPNVRVqb0hCk-nBaETSA53Od13QOGDw"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
@@ -486,9 +619,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-73dfa6ff381970a1e369219f0f7df017a82514ff0788247d1416b6ee30616d2c"
+                "locator": "stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62"
               },
-              "contentHash": "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3"
+              "contentHash": "a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5"
             }
           }
         ],
@@ -497,9 +630,9 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-73dfa6ff381970a1e369219f0f7df017a82514ff0788247d1416b6ee30616d2c"
+              "locator": "stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62"
             },
-            "contentHash": "8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3"
+            "contentHash": "a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -509,12 +642,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "_ydv6e2x3CgvxhOrGZBjME38Oqd5lpA8ne5kGvcOSpGd7PzOowA78WDW03zo0MBtmKMGEVKIU2w-2WIHgECmCQ"
+            "value": "nSAOzht-JQw-eJ7pvHe6EL-An3ZZBGO4oJnp-aJqIO4MBZAWM0T2HsMk19nRn-G0-iE4jFfoP8yQGxMMkKg-AA"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "LNOiOBkpdUfYLNeQCHY4hRaoNYy8w3-NT-qic1Oa-p6J0zvkMPNhoudO38ynBQtQBCTPYBv_9OV8bd-1hymoCQ"
+            "value": "_EisEf93AIBrY5zysRwZYjMzn1N7sXtzGdUOvpgaMm-JnzXPKj94h24p8-620d92Pcr8RMjbGDHKsGdowhtaAw"
           }
         ]
       },
@@ -523,8 +656,21 @@
         "independentlyResolvable": false
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-73dfa6ff381970a1e369219f0f7df017a82514ff0788247d1416b6ee30616d2c\"},\"contentHash\":\"8d6a508e210f262e08644fd13dcc97a21ebe45a579e7f7750fef858144f0a1b3\"}": {
-          "phaseKey": "0:deliver-storage-program",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62\"},\"contentHash\":\"a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5\"}": {
+          "phaseIndex": 0,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-failed-delivery",
+            "phase": "deliver-storage-program",
+            "outcome": "failure",
+            "observedAt": 1785772799000,
+            "reason": "permanent",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "zSydBlvhT6gu9N5qO9PjWRftLX4hJm4WE4mdjz5PsHLV1aNhYqxIW_ymBl45722h2jHABjOYKneKjXjxod6RCQ"
+            }
+          },
           "lifecycle": {
             "state": "included",
             "independentlyResolvable": false
@@ -654,9 +800,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-02a5837c9ed0eb506958fe0755e1b8abb8fdd254d4cb3ee1155103bfbffa7166"
+                "locator": "stor-5dda0d76ef6dc616d6d9d16bbc05a02d2acba7010c04451ab08a4b97678beb50"
               },
-              "contentHash": "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d"
+              "contentHash": "23d1fc498ba44039b37e68faeca4f7b9c15e33f96c36ee202e930533ecf513dc"
             }
           }
         ],
@@ -665,9 +811,9 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-02a5837c9ed0eb506958fe0755e1b8abb8fdd254d4cb3ee1155103bfbffa7166"
+              "locator": "stor-5dda0d76ef6dc616d6d9d16bbc05a02d2acba7010c04451ab08a4b97678beb50"
             },
-            "contentHash": "e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d"
+            "contentHash": "23d1fc498ba44039b37e68faeca4f7b9c15e33f96c36ee202e930533ecf513dc"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -677,12 +823,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "9VWxlyS1-YOo4pXZclWnKiCbbLpZSYUwcL4K-BFm9AINbKC8Jh8Vbw8vgEqKfj1dAqYTMMW7Fm6XW-gdH-FvCg"
+            "value": "gTOM8I9YnI6njG4zNHTJSZtO6hvhzZp_YO_scBKcSEFLi3uHL7OpQF8w2kUGeS81n_oYKZmRgdX1YsBsYEjTBw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "WzsDuEKi3zPb9sdXQxIOiULfpZZr4amHF2In6DAAD3mc7FHv2GRa7PBNyRCyt7pHhYjSkIea_GgNe7MPK5y8BA"
+            "value": "gJdl_ONPI6-w7W6-4Bnv_8L5xNN1tMG7mKsBORivxFfVZ4n_Jp9xZABxRArzauyMArtz7ojN7gMfHRV2U2xSCA"
           }
         ]
       },
@@ -691,8 +837,28 @@
         "independentlyResolvable": true
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-02a5837c9ed0eb506958fe0755e1b8abb8fdd254d4cb3ee1155103bfbffa7166\"},\"contentHash\":\"e82b847aab75ee3783924d239b558cce0cdfd0c22ed3dc8c595f77f8e548df4d\"}": {
-          "phaseKey": "0:pay-dem",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5dda0d76ef6dc616d6d9d16bbc05a02d2acba7010c04451ab08a4b97678beb50\"},\"contentHash\":\"23d1fc498ba44039b37e68faeca4f7b9c15e33f96c36ee202e930533ecf513dc\"}": {
+          "phaseIndex": 0,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-listing-signature",
+            "phase": "pay-dem",
+            "outcome": "success",
+            "observedAt": 1785772799000,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799000
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "usk3JjfpsScm6mz7-xHf63Jk7dl-DCOiY29S5E4o8CuvOMfDYo3Yf9ExBPGY5vckvamUq6FjxkXC5wxmOSSbCQ"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
@@ -770,9 +936,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-cf9136fceb3ff9039b20e1573415e3d76a49714d5707c14ded295ad686790cf4"
+                "locator": "stor-f6f1e60d1eeb80653edd86d917d180abbde37e1f716d9f23dfb42dd9bc852aeb"
               },
-              "contentHash": "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383"
+              "contentHash": "bf994a97ef626283e798686ccf463e4ab9a5683db67479c374696dff3dd9ddcd"
             }
           },
           {
@@ -782,9 +948,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-b5ac6adfda535ba6a27f61a4b21aebf69084d0763b30ab9c737abaf2324b717c"
+                "locator": "stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86"
               },
-              "contentHash": "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55"
+              "contentHash": "972bfaab80a21dbc9db4828aefe2cf0120dee89e9163507bb977d7cb072ffade"
             }
           }
         ],
@@ -793,16 +959,16 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-cf9136fceb3ff9039b20e1573415e3d76a49714d5707c14ded295ad686790cf4"
+              "locator": "stor-f6f1e60d1eeb80653edd86d917d180abbde37e1f716d9f23dfb42dd9bc852aeb"
             },
-            "contentHash": "3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383"
+            "contentHash": "bf994a97ef626283e798686ccf463e4ab9a5683db67479c374696dff3dd9ddcd"
           },
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-b5ac6adfda535ba6a27f61a4b21aebf69084d0763b30ab9c737abaf2324b717c"
+              "locator": "stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86"
             },
-            "contentHash": "35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55"
+            "contentHash": "972bfaab80a21dbc9db4828aefe2cf0120dee89e9163507bb977d7cb072ffade"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -812,12 +978,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "Als3aWpTmEQCStpp9ZrA8hznZ_TzjTyAHL5Gc9T4k3KJCvAiiaT15CCMi181f3GOUynYulQ32GmsAmxB5SjjBQ"
+            "value": "ACAXE8wyYED66wjT10ahvaXu6XgmXvcMJ9eccOIlX3H8lNKExpKFYkqzFNLHx3k-kojpvFj-FVd5LQk6H1tdAg"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "vLNXEaYqflp3mDtnbuOAnywqStELPpxZCnMNfhCPWReI7lfEVLBLxjIwpWoF3_zFIGvUQj9QFLbL7MxVAzVRDA"
+            "value": "Vx8pPey_a_kNvFE4SAcuX5dUtV_35imN-HfnTHKVm2SKPPIKkycmxVJQ3Sz2BxL8Go6P_caLEzYYJE8oq2pFBQ"
           }
         ]
       },
@@ -826,15 +992,48 @@
         "independentlyResolvable": true
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cf9136fceb3ff9039b20e1573415e3d76a49714d5707c14ded295ad686790cf4\"},\"contentHash\":\"3894c3d6c0214d8875b1b7e187e59be4616567616859b7e0ca8a0b3deee8f383\"}": {
-          "phaseKey": "2:pay-dem",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-f6f1e60d1eeb80653edd86d917d180abbde37e1f716d9f23dfb42dd9bc852aeb\"},\"contentHash\":\"bf994a97ef626283e798686ccf463e4ab9a5683db67479c374696dff3dd9ddcd\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
+            "phase": "pay-dem",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799002
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "LyHTEHIYFy_uo0GiRO3IgMOJSZloL9xUeeWh9AbCEUf2VNUIuJrqa-jhsuRX5__fQi_B3LdU4ZqIJeR3Na5-Bw"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-b5ac6adfda535ba6a27f61a4b21aebf69084d0763b30ab9c737abaf2324b717c\"},\"contentHash\":\"35dd86bbb6a866a3b2188e7e709b56662157d7502e548df7873c275b4856fd55\"}": {
-          "phaseKey": "3:deliver-attested-payload",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86\"},\"contentHash\":\"972bfaab80a21dbc9db4828aefe2cf0120dee89e9163507bb977d7cb072ffade\"}": {
+          "phaseIndex": 3,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "observedAt": 1785772799003,
+            "deliverableContentHash": "edad9e061fa4182fbb5440bddc4fa9c110a694e07db318b80fe5fb4fa9f7c8c1",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "NE94oGpssjwWQ1GU69bK5zQXGXv6xCdomnyKGG6FRZLBcpV_8rGfAvStjnCcWSOT1T11oOrm0sCtcjBSYVH5DQ"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
@@ -912,9 +1111,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-2ff594d6eaa16192794352537ba5a3b21880bbc2c9789d18429bde482d9cd5a2"
+                "locator": "stor-5d9a165fd6e2f08ad486a29acb428c3c7636fe189999876100aef2bad7cc4216"
               },
-              "contentHash": "141e0f74dc3a04237795611692202643505a71509f145aa71c640d533ab9eff3"
+              "contentHash": "5719ca5aada4b95ee1756541f92d16da8b9526922c1cda7d60967c61fcd8c68c"
             }
           },
           {
@@ -924,9 +1123,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-ec61b5eb74efdf4e94ae6146e56a389e29b34a9d388bdf59d3c311103c689fe8"
+                "locator": "stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f"
               },
-              "contentHash": "fce1747efb423ee410df54df298bdee1224f2780255f81e22a895566069eafd7"
+              "contentHash": "1676e33f934f4031360239aa5bd0f97c001bba0dc4e9a82ac7e40c969e7d0497"
             }
           }
         ],
@@ -935,16 +1134,16 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-2ff594d6eaa16192794352537ba5a3b21880bbc2c9789d18429bde482d9cd5a2"
+              "locator": "stor-5d9a165fd6e2f08ad486a29acb428c3c7636fe189999876100aef2bad7cc4216"
             },
-            "contentHash": "141e0f74dc3a04237795611692202643505a71509f145aa71c640d533ab9eff3"
+            "contentHash": "5719ca5aada4b95ee1756541f92d16da8b9526922c1cda7d60967c61fcd8c68c"
           },
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-ec61b5eb74efdf4e94ae6146e56a389e29b34a9d388bdf59d3c311103c689fe8"
+              "locator": "stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f"
             },
-            "contentHash": "fce1747efb423ee410df54df298bdee1224f2780255f81e22a895566069eafd7"
+            "contentHash": "1676e33f934f4031360239aa5bd0f97c001bba0dc4e9a82ac7e40c969e7d0497"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -954,12 +1153,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "CPtTi_yQnBCIO4Jn36kbz5i1XAFE4FB-ZtxOh_SqcIxQTbRIeWy5MYGGxiR6AVNQpjFcvkhFmEnYGcB386AhDA"
+            "value": "x0JCPtSjjqGmfT74yDiYZF2m1YDujv93jhFVoRJcviMaQrNEgm47ZqC11NljjIcCYhM_GgOVhiU0Y5ymheulBg"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "-vo908OnIC62LqBJGRUPL3qRx8rmS8mzS10zdBOpb07HJndXknDZwzjBwUupD2M8IgqANTqc1t3wPwlwuzVuDw"
+            "value": "UdUhWYYzZB1hCZXhUmLjvZUQpFg4_xnXbDEFfv9gjjgACJeV-UBH_QG_ZAgHh_X9DLmwvsZKMLuT-vzhFebWAw"
           }
         ]
       },
@@ -968,15 +1167,48 @@
         "independentlyResolvable": true
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2ff594d6eaa16192794352537ba5a3b21880bbc2c9789d18429bde482d9cd5a2\"},\"contentHash\":\"141e0f74dc3a04237795611692202643505a71509f145aa71c640d533ab9eff3\"}": {
-          "phaseKey": "2:pay-dem",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5d9a165fd6e2f08ad486a29acb428c3c7636fe189999876100aef2bad7cc4216\"},\"contentHash\":\"5719ca5aada4b95ee1756541f92d16da8b9526922c1cda7d60967c61fcd8c68c\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
+            "phase": "pay-dem",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799002
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "7Q6uDevA0g3CEJixBTMFGwepXrD2gGLT_JBJ6oaJ9w6QqGqUcOuOGzWpUt0WgFnVJy1UwEl7Y39nf0u1t90lBg"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ec61b5eb74efdf4e94ae6146e56a389e29b34a9d388bdf59d3c311103c689fe8\"},\"contentHash\":\"fce1747efb423ee410df54df298bdee1224f2780255f81e22a895566069eafd7\"}": {
-          "phaseKey": "3:deliver-attested-payload",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f\"},\"contentHash\":\"1676e33f934f4031360239aa5bd0f97c001bba0dc4e9a82ac7e40c969e7d0497\"}": {
+          "phaseIndex": 3,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "observedAt": 1785772799003,
+            "deliverableContentHash": "77bd404269efb67022d9d65e4ffd89b4358d1fdcda6406ac94bb3f26725646f1",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "FeBoBgw4Fe1d0Tfd3OSIA7dzggTG2e_lUe7HXOniSFnyrDvjZI7P44_LvsEvgqaKs-3CLhATqtq4oa8ji9mhAg"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
@@ -1054,9 +1286,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-6982b533ba417576fa1af3ebad670d8f9c17948df87060368fe613434e5b8fce"
+                "locator": "stor-7831fa6ded704b926430ba071e11f66e5af6e824510e38b6f376c9a1250eb5d0"
               },
-              "contentHash": "abf484abab60d492bb5416441d3912a54fa81b4b40b8acdc59d679f71983e8bc"
+              "contentHash": "f5ada86e4b9eafaaa239991283d446c8a4a7a757d1de4dfbbf4490ed1e58a78a"
             }
           },
           {
@@ -1066,9 +1298,9 @@
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-2cce1bac07dd25affd322daac7eb4722658e447b8a405cee341b043bf7853125"
+                "locator": "stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc"
               },
-              "contentHash": "fed93f416c9d5c8653c19769d28a083c59c9d223476811e7be6f08c6d2a3477f"
+              "contentHash": "ab9f1658ff5b372212c62de8c1fd812c3524822c92a68b93f3c78cc1634d87e0"
             }
           }
         ],
@@ -1077,16 +1309,16 @@
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-6982b533ba417576fa1af3ebad670d8f9c17948df87060368fe613434e5b8fce"
+              "locator": "stor-7831fa6ded704b926430ba071e11f66e5af6e824510e38b6f376c9a1250eb5d0"
             },
-            "contentHash": "abf484abab60d492bb5416441d3912a54fa81b4b40b8acdc59d679f71983e8bc"
+            "contentHash": "f5ada86e4b9eafaaa239991283d446c8a4a7a757d1de4dfbbf4490ed1e58a78a"
           },
           {
             "anchor": {
               "kind": "storage-program",
-              "locator": "stor-2cce1bac07dd25affd322daac7eb4722658e447b8a405cee341b043bf7853125"
+              "locator": "stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc"
             },
-            "contentHash": "fed93f416c9d5c8653c19769d28a083c59c9d223476811e7be6f08c6d2a3477f"
+            "contentHash": "ab9f1658ff5b372212c62de8c1fd812c3524822c92a68b93f3c78cc1634d87e0"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -1096,12 +1328,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "n0IJZHvUGX0Cr8DZLWtB7oTK95ay3TQEnY7segeD5OBddSl-43cQ2bynkxfcUYtAy3sx61UnXErMYQKa-jZABg"
+            "value": "buUT1FLPRmQ0QlnRtfgJr_MQKoE8bQD1C-MYGin5YoR7-ftwXo5_my9WhTCsjzZLlVAdPgV1WxUR7yUJArh0Cw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "7w1HzKul6K2h26AZ_ysjPgotduj0-HLomUAV8e_IQf0jfIFcEhr7dysECrx0hdpCZZIi_uv2Ycx7wTA6hrUNBg"
+            "value": "q_HDG4SxnPQJA7PPS9j6QrPdtliUl7G_2dGfogdzJibpXl9z_c-e2gompq1j9rE5ICkwbt47-3TZSh3Y9SYjDA"
           }
         ]
       },
@@ -1110,15 +1342,48 @@
         "independentlyResolvable": true
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-6982b533ba417576fa1af3ebad670d8f9c17948df87060368fe613434e5b8fce\"},\"contentHash\":\"abf484abab60d492bb5416441d3912a54fa81b4b40b8acdc59d679f71983e8bc\"}": {
-          "phaseKey": "2:pay-dem",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-7831fa6ded704b926430ba071e11f66e5af6e824510e38b6f376c9a1250eb5d0\"},\"contentHash\":\"f5ada86e4b9eafaaa239991283d446c8a4a7a757d1de4dfbbf4490ed1e58a78a\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
+            "phase": "pay-dem",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799002
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "6mUfWl5-Og-ghHqJqs92G72NKCGSLS6IsiGrDBR95fvFC1RqQKoOOGZ8w1G5RTzZtP9ZPkmfVBIHowgidOCQAQ"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2cce1bac07dd25affd322daac7eb4722658e447b8a405cee341b043bf7853125\"},\"contentHash\":\"fed93f416c9d5c8653c19769d28a083c59c9d223476811e7be6f08c6d2a3477f\"}": {
-          "phaseKey": "3:deliver-attested-payload",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc\"},\"contentHash\":\"ab9f1658ff5b372212c62de8c1fd812c3524822c92a68b93f3c78cc1634d87e0\"}": {
+          "phaseIndex": 3,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "observedAt": 1785772799003,
+            "deliverableContentHash": "f13c63b3d0d65e6276ebc6fcf277ffba41f96520ece55cdc7f7ac047ec4086de",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "vdSltOno8jifLrYKDeE4r7wJlY3_zVSLpeiHSxcQDSfFqmj6xiQf4CCZFuU52WxQQ7GE0rc2amTACR-1_nS4Aw"
+            }
+          },
           "lifecycle": {
             "state": "finalized",
             "independentlyResolvable": true
@@ -1129,10 +1394,453 @@
         "state": "accepted",
         "independentlyResolvable": false
       }
+    },
+    "single-htlc-expired": {
+      "listing": {
+        "listingId": "listing-seb-single-htlc-expired",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-cross-chain-htlc"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "kFIeLdakqz_wqzDLPfytQE2mh-P6zaGnGLVz94GuFJOnxK2pmaDEx30gjEBCxA8wwWrWK384QI64pFU17ksVBw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-single-htlc-expired",
+        "outcome": "failed-counterparty",
+        "faultedParty": "seller",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-single-htlc-expired",
+          "version": 1,
+          "contentHash": "1018646d1322ca93f772ada8f8d07cf80dc0ff38de790a29e28321d0d994b643"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-cross-chain-htlc",
+            "outcome": "fail",
+            "errorClass": "settlement-atomicity",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-e44093ac12ba1672817f1226d1dd2e69916bf0e7baa94354e12ffeebbb331d9d"
+              },
+              "contentHash": "4d56ac05162fcf40224625b9243f7e65e3e7b4fbcdb09483976a7614891c0ce3"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-e44093ac12ba1672817f1226d1dd2e69916bf0e7baa94354e12ffeebbb331d9d"
+            },
+            "contentHash": "4d56ac05162fcf40224625b9243f7e65e3e7b4fbcdb09483976a7614891c0ce3"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "WPF7wm2XOdtCAkPpN9u2aKy42yopGoirZVSw2qpjm8HPHp0NiqrHnRdVEMkVPoW395N3LFxyZacrNa4tqDl6Cg"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "d_HhYpK04ymS3WHCGU5cuviyE7__I0qlVND_TmqcshGC52dWh8fp_8A8BjhBJAz6DfHEnqSgaOD4aXDLFiwmDw"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": false
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e44093ac12ba1672817f1226d1dd2e69916bf0e7baa94354e12ffeebbb331d9d\"},\"contentHash\":\"4d56ac05162fcf40224625b9243f7e65e3e7b4fbcdb09483976a7614891c0ce3\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-single-htlc-expired",
+            "phase": "pay-cross-chain-htlc",
+            "outcome": "failure",
+            "observedAt": 1785772799002,
+            "reason": "settlement-atomicity",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "4Gjg4fW_RqCGv-ae2m34IUdTFtYRyoJmWjBLKPzVAGSehRGmMfCxBXaLXtniIBZWTMGvUAefyTLOvJ6oWHx8DA"
+            }
+          },
+          "lifecycle": {
+            "state": "included",
+            "independentlyResolvable": false
+          }
+        }
+      },
+      "bundleLifecycle": {
+        "state": "included",
+        "independentlyResolvable": false
+      }
+    },
+    "invalid-completed-incomplete-summary": {
+      "listing": {
+        "listingId": "listing-seb-invalid-completed-incomplete-summary",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "SP0D2sFRp79xy4YRefi_nl5JSnejqm5YIE9w2f75Aax3ckbLAe6P082JYgGRZkWpS742uLAPnzgAy1YlrQhWAQ"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-invalid-completed-incomplete-summary",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-invalid-completed-incomplete-summary",
+          "version": 1,
+          "contentHash": "5f3b0350877bca3d363aa00ef2e07218e686aa1186825bdb76cf8b12d1290cf1"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "yKC-PuTcw1NcNBx6Vrr3Pa7ouClDty_fnsJwTvPsFX7neqtxpEZvlacEe5NLdz7h7SLdFJuP1ajH9m6uqG-WAA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "uAFTZ7l5mI1qyqcL9zwQhK8Ol9QDTx847zvEovCbJR6XMOpmXRejAq-Xv0wnuA4fTdO-XL7YQvQISg3dGSVLDA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "invalid-failed-gapped-summary": {
+      "listing": {
+        "listingId": "listing-seb-invalid-failed-gapped-summary",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "hUoyV9VnTyYQ-vyXOfxLaS4bptLMsqe3rAldzNMtZ5C-a2M0zYhjwzvRWmW8xmQCN8OxMBvO7fJtvAshEF_2Bw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-invalid-failed-gapped-summary",
+        "outcome": "failed-perm",
+        "faultedParty": "seller",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-invalid-failed-gapped-summary",
+          "version": 1,
+          "contentHash": "21f26d0178f3440431332aadc5c2b32232530c06542a5b31b6070492c262938d"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-dem",
+            "outcome": "fail",
+            "errorClass": "permanent",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-78a4ad2e32e3e9d95269c09dac98da825a67df3f2f0d41c914ef02b711b9a5ba"
+              },
+              "contentHash": "46de0beff45c2c77ddbc087b4fbb61db67447bd5f59c74d0afb985cef7f00f18"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-78a4ad2e32e3e9d95269c09dac98da825a67df3f2f0d41c914ef02b711b9a5ba"
+            },
+            "contentHash": "46de0beff45c2c77ddbc087b4fbb61db67447bd5f59c74d0afb985cef7f00f18"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "DgQenQT4DLDZNJLRtr1cXFLo9jPrHwsbywFOmn59TT47ca7HWW111RxQ8-vjVYfeGzSDmZbQznQGyR8dSvtkAQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "P_hYtOGonQozup2A1v3dHawveOfDo8yB01_BFcpNCzl_bO0PWXBNqemeUEW6u5RVvWQISjcOmhdtxHrpN_8JAg"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-78a4ad2e32e3e9d95269c09dac98da825a67df3f2f0d41c914ef02b711b9a5ba\"},\"contentHash\":\"46de0beff45c2c77ddbc087b4fbb61db67447bd5f59c74d0afb985cef7f00f18\"}": {
+          "phaseIndex": 2,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-failed-gapped-summary",
+            "phase": "pay-dem",
+            "outcome": "failure",
+            "observedAt": 1785772799002,
+            "reason": "permanent",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "LmM1FS1z7ncc-ps6pB3gXVh150vIfIT-XfhWND0lobA9Ed0Xt6_NXfKo6erOBZ_dAN-gpv15UgtVcvt0KhOaBQ"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "bundleLifecycle": {
+        "state": "included",
+        "independentlyResolvable": false
+      }
+    },
+    "invalid-aborted-result-summary": {
+      "listing": {
+        "listingId": "listing-seb-invalid-aborted-result-summary",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-entitlement"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "IZgr13IBOwlLxKlssEZtD4ViVKsY6ZW-CHL68_pI2YfCD4BeVJamK9LrUbl4C2vecHtZmA6IthyM-P4klJthCg"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-invalid-aborted-result-summary",
+        "outcome": "aborted-by-self",
+        "faultedParty": "seller",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-invalid-aborted-result-summary",
+          "version": 1,
+          "contentHash": "5c88b39775f620dcc95c73790afc7fa2d0d16384c244aad4c7080c96e2c1fd4e"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "fail",
+            "errorClass": "counterparty",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-b3696e686ab59123ea0c7fe219635a990a03199c5eb8faa49c2ba63e3b42b790"
+              },
+              "contentHash": "1c7cd110e5f19ed1659b8add0b224c3460e12015337f620ee37415b223649d19"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-b3696e686ab59123ea0c7fe219635a990a03199c5eb8faa49c2ba63e3b42b790"
+            },
+            "contentHash": "1c7cd110e5f19ed1659b8add0b224c3460e12015337f620ee37415b223649d19"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "a0oOTFHUHDYYaSJVZB-x8DQhOabtZA7kpg38g8bPVTpybfDRYXK031ff5sUeiwrPLW9JVuKPlNMhIwBSDVb1DQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "ybDm1PwRSTNRp3jZ7l8upi8cWFN3Cle5e-2FEDQ3SjlsYHiI8QEc4BqcBg1bFSTwAKAIiJmYsyvsz7JME2ItAA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-b3696e686ab59123ea0c7fe219635a990a03199c5eb8faa49c2ba63e3b42b790\"},\"contentHash\":\"1c7cd110e5f19ed1659b8add0b224c3460e12015337f620ee37415b223649d19\"}": {
+          "phaseIndex": 0,
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-invalid-aborted-result-summary",
+            "phase": "pay-dem",
+            "outcome": "failure",
+            "observedAt": 1785772799000,
+            "reason": "counterparty",
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "desc01HqLQ_uU5-CZxC06rR3GNoPfmSCT-K1nMWQvKQIyMHhgGFme37WPlVchdn749ZNGGnetYYwDkduCnF2Cw"
+            }
+          },
+          "lifecycle": {
+            "state": "included",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "bundleLifecycle": {
+        "state": "included",
+        "independentlyResolvable": false
+      }
     }
   },
-  "hash": "c33022304c25319990c7cda77e07867f7f5f3d4c6730aecdd852e68019bf54c1",
-  "count": 28,
+  "hash": "570a4f4d08f2781c649011f2ce09931bd156710fbb8e1f9274ccf0b7221f491e",
+  "count": 29,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
@@ -1143,13 +1851,20 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "verified",
@@ -1165,16 +1880,23 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {
           "2:pay-dem": "ref-pay",
           "3:deliver-attested-payload": "ref-deliver"
         },
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "verified",
@@ -1189,12 +1911,15 @@
         "topLevelRefs": [
           "ref-pay"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1210,12 +1935,15 @@
           "ref-pay",
           "ref-pay"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1232,13 +1960,20 @@
           "ref-deliver",
           "ref-pay"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1255,14 +1990,25 @@
           "ref-deliver",
           "ref-extra"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload",
-          "ref-extra": "4:deliver-storage-program"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          },
+          "ref-extra": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "4:deliver-storage-program",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1278,16 +2024,23 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {
           "2:pay-dem": "ref-pay",
           "3:deliver-attested-payload": "ref-pay"
         },
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1303,13 +2056,20 @@
           "ref-pay",
           "ref-wrong"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-wrong": "4:deliver-attested-payload"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-wrong": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "4:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1325,15 +2085,22 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {
           "2:pay-dem": "ref-deliver"
         },
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1349,16 +2116,27 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload",
-          "ref-dangling": "2:pay-dem"
-        },
         "pointerMap": {
           "2:pay-dem": "ref-dangling"
         },
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          },
+          "ref-dangling": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1374,13 +2152,20 @@
           "ref-pay",
           "ref-negotiate"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-negotiate": "3:negotiate-rfq"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-negotiate": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:negotiate-rfq",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1395,12 +2180,15 @@
         "topLevelRefs": [
           "ref-pay"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "indeterminate"
+        "unrelatedAuthorityDisposition": "indeterminate",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1416,13 +2204,20 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "indeterminate"
+        "unrelatedAuthorityDisposition": "indeterminate",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "indeterminate",
@@ -1438,15 +2233,22 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {
           "2:pay-dem": "ref-deliver"
         },
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "indeterminate"
+        "unrelatedAuthorityDisposition": "indeterminate",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1462,13 +2264,20 @@
           "ref-pay-a",
           "ref-pay-b"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay-a": "2:pay-dem",
-          "ref-pay-b": "2:pay-dem"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay-a": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-pay-b": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1483,17 +2292,16 @@
         "topLevelRefs": [
           "ref-resolved"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-resolved": "2:pay-cross-chain-htlc"
-        },
         "pointerMap": {},
-        "recordClassByRef": {
-          "ref-resolved": "st8-resolved-success"
-        },
-        "supersedesEdges": {
-          "ref-resolved": "ref-interim"
-        },
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-resolved": {
+            "jobId": "SEB-AUTHORITY-single-htlc-completed",
+            "phaseKey": "2:pay-cross-chain-htlc",
+            "outcome": "success",
+            "supersedesEvidenceRef": "ref-interim"
+          }
+        }
       },
       "want": {
         "disposition": "verified",
@@ -1504,19 +2312,19 @@
       "name": "bundle-settlement-bijection-st8-expired-interim-pass",
       "expected": "pass",
       "input": {
-        "executionAuthorityRef": "single-htlc-completed",
+        "executionAuthorityRef": "single-htlc-expired",
         "topLevelRefs": [
           "ref-interim"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-interim": "2:pay-cross-chain-htlc"
-        },
         "pointerMap": {},
-        "recordClassByRef": {
-          "ref-interim": "st8-expired-interim-failure"
-        },
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-interim": {
+            "jobId": "SEB-AUTHORITY-single-htlc-expired",
+            "phaseKey": "2:pay-cross-chain-htlc",
+            "outcome": "failure"
+          }
+        }
       },
       "want": {
         "disposition": "verified",
@@ -1531,19 +2339,21 @@
         "topLevelRefs": [
           "ref-interim"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-interim": "2:pay-cross-chain-htlc",
-          "ref-resolved": "2:pay-cross-chain-htlc"
-        },
         "pointerMap": {},
-        "recordClassByRef": {
-          "ref-interim": "st8-expired-interim-failure",
-          "ref-resolved": "st8-resolved-success"
-        },
-        "supersedesEdges": {
-          "ref-resolved": "ref-interim"
-        },
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-interim": {
+            "jobId": "SEB-AUTHORITY-single-htlc-completed",
+            "phaseKey": "2:pay-cross-chain-htlc",
+            "outcome": "failure"
+          },
+          "ref-resolved": {
+            "jobId": "SEB-AUTHORITY-single-htlc-completed",
+            "phaseKey": "2:pay-cross-chain-htlc",
+            "outcome": "success",
+            "supersedesEvidenceRef": "ref-interim"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1559,19 +2369,21 @@
           "ref-interim",
           "ref-resolved"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-interim": "2:pay-cross-chain-htlc",
-          "ref-resolved": "2:pay-cross-chain-htlc"
-        },
         "pointerMap": {},
-        "recordClassByRef": {
-          "ref-interim": "st8-expired-interim-failure",
-          "ref-resolved": "st8-resolved-success"
-        },
-        "supersedesEdges": {
-          "ref-resolved": "ref-interim"
-        },
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-interim": {
+            "jobId": "SEB-AUTHORITY-single-htlc-completed",
+            "phaseKey": "2:pay-cross-chain-htlc",
+            "outcome": "failure"
+          },
+          "ref-resolved": {
+            "jobId": "SEB-AUTHORITY-single-htlc-completed",
+            "phaseKey": "2:pay-cross-chain-htlc",
+            "outcome": "success",
+            "supersedesEvidenceRef": "ref-interim"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1588,14 +2400,25 @@
           "ref-pay-1",
           "ref-deliver-2"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay-0": "0:pay-dem",
-          "ref-pay-1": "1:pay-dem",
-          "ref-deliver-2": "2:deliver-entitlement"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay-0": {
+            "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+            "phaseKey": "0:pay-dem",
+            "outcome": "success"
+          },
+          "ref-pay-1": {
+            "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+            "phaseKey": "1:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver-2": {
+            "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+            "phaseKey": "2:deliver-entitlement",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "verified",
@@ -1610,16 +2433,19 @@
         "topLevelRefs": [
           "ref-failed-delivery"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-failed-delivery": "0:deliver-storage-program"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
         "unrelatedAuthorityDisposition": "verified",
         "referenceLifecycleByRef": {
           "ref-failed-delivery": {
             "state": "included",
             "independentlyResolvable": false
+          }
+        },
+        "authenticatedRecordByRef": {
+          "ref-failed-delivery": {
+            "jobId": "SEB-AUTHORITY-failed-delivery",
+            "phaseKey": "0:deliver-storage-program",
+            "outcome": "failure"
           }
         }
       },
@@ -1634,10 +2460,9 @@
       "input": {
         "executionAuthorityRef": "aborted-before-result",
         "topLevelRefs": [],
-        "resolvedReferencePhaseKeys": {},
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {}
       },
       "want": {
         "disposition": "verified",
@@ -1652,12 +2477,15 @@
         "topLevelRefs": [
           "ref-pay"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "0:pay-dem"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-invalid-listing-signature",
+            "phaseKey": "0:pay-dem",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1673,10 +2501,6 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "referenceLifecycleByRef": {
           "ref-pay": {
             "state": "accepted",
@@ -1684,8 +2508,19 @@
           }
         },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1700,9 +2535,6 @@
         "topLevelRefs": [
           "ref-failed-delivery"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-failed-delivery": "0:deliver-storage-program"
-        },
         "referenceLifecycleByRef": {
           "ref-failed-delivery": {
             "state": "accepted",
@@ -1710,8 +2542,14 @@
           }
         },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-failed-delivery": {
+            "jobId": "SEB-AUTHORITY-failed-delivery",
+            "phaseKey": "0:deliver-storage-program",
+            "outcome": "failure"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1727,13 +2565,20 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1749,13 +2594,20 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
       },
       "want": {
         "disposition": "rejected",
@@ -1771,13 +2623,35 @@
           "ref-pay",
           "ref-deliver"
         ],
-        "resolvedReferencePhaseKeys": {
-          "ref-pay": "2:pay-dem",
-          "ref-deliver": "3:deliver-attested-payload"
-        },
         "pointerMap": {},
-        "supersedesEdges": {},
-        "unrelatedAuthorityDisposition": "verified"
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-pay": {
+            "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
+            "phaseKey": "2:pay-dem",
+            "outcome": "success"
+          },
+          "ref-deliver": {
+            "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
+            "phaseKey": "3:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-incomplete-completed-summary-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "invalid-completed-incomplete-summary",
+        "topLevelRefs": [],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {}
       },
       "want": {
         "disposition": "rejected",
@@ -1861,7 +2735,8 @@
       "defaultReferenceLifecycle": {
         "state": "finalized",
         "independentlyResolvable": true
-      }
+      },
+      "st8Resolved": true
     },
     "repeated-pay-completed": {
       "listingPipeline": [
@@ -2049,6 +2924,95 @@
       "bundleLifecycle": {
         "state": "accepted",
         "independentlyResolvable": false
+      }
+    },
+    "single-htlc-expired": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-cross-chain-htlc"
+      ],
+      "bundleOutcome": "failed-counterparty",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-cross-chain-htlc",
+          "outcome": "fail",
+          "errorClass": "settlement-atomicity"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": false
+      }
+    },
+    "invalid-completed-incomplete-summary": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-dem",
+        "deliver-attested-payload"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "invalid-failed-gapped-summary": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-dem",
+        "deliver-attested-payload"
+      ],
+      "bundleOutcome": "failed-perm",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-dem",
+          "outcome": "fail",
+          "errorClass": "permanent"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "invalid-aborted-result-summary": {
+      "listingPipeline": [
+        "pay-dem",
+        "deliver-entitlement"
+      ],
+      "bundleOutcome": "aborted-by-self",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "pay-dem",
+          "outcome": "fail",
+          "errorClass": "counterparty"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "included",
+        "independentlyResolvable": true
       }
     }
   }

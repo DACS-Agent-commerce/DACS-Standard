@@ -41,19 +41,36 @@ def evaluate(vector_data, authorities, pubkeys):
         return "rejected", "execution-authority"
 
     refs = vector_data["topLevelRefs"]
-    resolved = vector_data["resolvedReferencePhaseKeys"]
+    records = vector_data["authenticatedRecordByRef"]
     pointers = vector_data["pointerMap"]
-    supersedes = vector_data.get("supersedesEdges", {})
 
     if len(refs) != len(set(refs)):
         return "rejected", "raw-multiplicity"
 
-    for successor, interim in supersedes.items():
-        if interim in refs or successor not in refs:
+    for successor in refs:
+        record = records.get(successor, {})
+        interim = record.get("supersedesEvidenceRef")
+        if interim is not None and (interim in refs or record.get("outcome") != "success"):
             return "rejected", "st8-raw-admissibility"
 
-    if any(ref not in resolved or resolved[ref] not in expected for ref in refs):
+    authority = authorities[vector_data["executionAuthorityRef"]]
+    expected_outcome_by_key = {
+        f"{entry['index']}:{entry['kind']}": "success" if entry["outcome"] == "ok" else "failure"
+        for entry in authority["bundle"]["phaseSummary"]
+        if entry["kind"] in R.EVIDENCE_PHASES
+    }
+    if any(
+        ref not in records
+        or records[ref].get("jobId") != authority["bundle"]["jobId"]
+        or records[ref].get("phaseKey") not in expected
+        for ref in refs
+    ):
         return "rejected", "exact-phase-mapping"
+    if any(
+        records[ref].get("outcome") != expected_outcome_by_key[records[ref]["phaseKey"]]
+        for ref in refs
+    ):
+        return "rejected", "st8-raw-admissibility"
 
     lifecycle_overrides = vector_data.get("referenceLifecycleByRef", {})
     default_lifecycle = authority["defaultReferenceLifecycle"]
@@ -71,14 +88,14 @@ def evaluate(vector_data, authorities, pubkeys):
     if len(refs) != len(expected):
         return "rejected", "exact-cardinality"
 
-    mapped = [resolved[ref] for ref in refs]
+    mapped = [records[ref]["phaseKey"] for ref in refs]
     if len(set(mapped)) != len(mapped) or set(mapped) != set(expected):
         return "rejected", "exact-bijection"
 
     if len(set(pointers.values())) != len(pointers):
         return "rejected", "pointer-agreement"
     for phase_key, ref in pointers.items():
-        if ref not in refs or resolved.get(ref) != phase_key:
+        if ref not in refs or records.get(ref, {}).get("phaseKey") != phase_key:
             return "rejected", "pointer-agreement"
 
     if vector_data["unrelatedAuthorityDisposition"] == "indeterminate":
@@ -113,6 +130,9 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
     def test_phase_authority_is_derived_not_caller_supplied(self):
         for vector in self.data["vectors"]:
             self.assertNotIn("expectedPhaseKeys", vector["input"])
+            self.assertNotIn("recordClassByRef", vector["input"])
+            self.assertNotIn("supersedesEdges", vector["input"])
+            self.assertNotIn("resolvedReferencePhaseKeys", vector["input"])
         for definition in self.data["executionAuthorityDefinitions"].values():
             self.assertNotIn("listingSignatureVerified", definition)
             self.assertNotIn("bundleSignaturesVerified", definition)
@@ -128,6 +148,24 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         self.assertFalse(failed_resolution["lifecycle"]["independentlyResolvable"])
         aborted = self.data["executionAuthorities"]["aborted-before-result"]
         self.assertEqual(derive_phase_keys(aborted, self.pubkeys), [])
+        self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-completed-incomplete-summary"],
+                self.pubkeys,
+            )
+        )
+        self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-failed-gapped-summary"],
+                self.pubkeys,
+            )
+        )
+        self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-aborted-result-summary"],
+                self.pubkeys,
+            )
+        )
         self.assertIsNone(
             derive_phase_keys(self.data["executionAuthorities"]["invalid-listing-signature"], self.pubkeys)
         )

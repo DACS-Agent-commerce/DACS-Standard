@@ -51,17 +51,58 @@ def make_authority(name, definition, signing_keys):
     )
     phase_summary = []
     settlement_evidence = []
+    reference_validation_by_canonical_ref = {}
+    job_id = f"SEB-AUTHORITY-{name}"
+    default_lifecycle = definition["defaultReferenceLifecycle"]
     for source in definition["phaseSummary"]:
         entry = copy.deepcopy(source)
         if entry["kind"] in F.EVIDENCE_PHASES:
-            ref = authority_reference(name, f"{entry['index']}:{entry['kind']}")
+            supersedes = None
+            if definition.get("st8Resolved") and entry["kind"] in {
+                "pay-cross-chain-htlc",
+                "pay-cross-chain-liquidity-tank",
+            }:
+                interim_record, interim_ref = F.make_evidence(
+                    job_id,
+                    entry["kind"],
+                    entry["index"],
+                    signing_keys,
+                    outcome="failure",
+                    reason=(
+                        "dest-revealed-source-unclaimed"
+                        if entry["kind"] == "pay-cross-chain-htlc"
+                        else "tank-locked-unreleased"
+                    ),
+                    label_suffix=":interim",
+                )
+                reference_validation_by_canonical_ref[F.canonical(interim_ref).decode("utf-8")] = {
+                    "phaseIndex": entry["index"],
+                    "record": interim_record,
+                    "lifecycle": copy.deepcopy(default_lifecycle),
+                }
+                supersedes = interim_ref
+            record, ref = F.make_evidence(
+                job_id,
+                entry["kind"],
+                entry["index"],
+                signing_keys,
+                outcome="success" if entry["outcome"] == "ok" else "failure",
+                reason=entry.get("errorClass"),
+                supersedes=supersedes,
+                label_suffix=":resolved" if supersedes is not None else "",
+            )
             entry["attestationRef"] = ref
             settlement_evidence.append(ref)
+            reference_validation_by_canonical_ref[F.canonical(ref).decode("utf-8")] = {
+                "phaseIndex": entry["index"],
+                "record": record,
+                "lifecycle": copy.deepcopy(default_lifecycle),
+            }
         phase_summary.append(entry)
 
     bundle = {
         "evidenceBoundFaultBundleVersion": "1",
-        "jobId": f"SEB-AUTHORITY-{name}",
+        "jobId": job_id,
         "outcome": definition["bundleOutcome"],
         "faultedParty": "none" if definition["bundleOutcome"] == "completed" else "seller",
         "anchoredByRole": "seller",
@@ -91,22 +132,11 @@ def make_authority(name, definition, signing_keys):
         value = bundle["signatures"][0]["value"]
         bundle["signatures"][0]["value"] = ("A" if value[0] != "A" else "B") + value[1:]
 
-    default_lifecycle = definition["defaultReferenceLifecycle"]
     bundle_lifecycle = copy.deepcopy(definition.get("bundleLifecycle") or (
         {"state": "finalized", "independentlyResolvable": True}
         if definition["bundleOutcome"] == "completed"
         else {"state": "included", "independentlyResolvable": False}
     ))
-    reference_validation_by_canonical_ref = {
-        F.canonical(ref).decode("utf-8"): {
-            "phaseKey": f"{entry['index']}:{entry['kind']}",
-            "lifecycle": copy.deepcopy(default_lifecycle),
-        }
-        for entry, ref in zip(
-            (entry for entry in phase_summary if entry["kind"] in F.EVIDENCE_PHASES),
-            settlement_evidence,
-        )
-    }
     return {
         "listing": listing,
         "bundle": bundle,
@@ -131,6 +161,17 @@ def semantic_definitions(data):
 
 def generate(source):
     data = copy.deepcopy(source)
+    data["inputModel"] = (
+        "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its "
+        "content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator "
+        "requires an ordered, outcome-consistent execution prefix and derives phase keys "
+        "locally. authenticatedRecordByRef represents independently resolved, job-bound "
+        "SettlementEvidence content; record outcome and hashed supersedesEvidenceRef, not "
+        "caller-supplied class or edge labels, determine ST-8 terminal selection. Completed "
+        "authorities require finalized and independently resolvable evidence; failed or "
+        "aborted authorities require included or finalized evidence. Optional pointers never "
+        "create phase authority."
+    )
     definitions = semantic_definitions(data)
     if "invalid-bundle-signature" not in definitions:
         definitions["invalid-bundle-signature"] = copy.deepcopy(definitions["standard-completed"])
@@ -145,6 +186,43 @@ def generate(source):
             "independentlyResolvable": False,
         }
     definitions["failed-delivery"]["defaultReferenceLifecycle"]["independentlyResolvable"] = False
+    definitions["single-htlc-completed"]["st8Resolved"] = True
+    definitions["single-htlc-expired"] = copy.deepcopy(definitions["single-htlc-completed"])
+    definitions["single-htlc-expired"].pop("st8Resolved", None)
+    definitions["single-htlc-expired"]["bundleOutcome"] = "failed-counterparty"
+    definitions["single-htlc-expired"]["phaseSummary"][-1].update({
+        "outcome": "fail",
+        "errorClass": "settlement-atomicity",
+    })
+    definitions["single-htlc-expired"]["defaultReferenceLifecycle"] = {
+        "state": "included",
+        "independentlyResolvable": False,
+    }
+    definitions["invalid-completed-incomplete-summary"] = copy.deepcopy(
+        definitions["standard-completed"]
+    )
+    definitions["invalid-completed-incomplete-summary"]["phaseSummary"] = []
+    definitions["invalid-failed-gapped-summary"] = copy.deepcopy(definitions["standard-completed"])
+    definitions["invalid-failed-gapped-summary"]["bundleOutcome"] = "failed-perm"
+    definitions["invalid-failed-gapped-summary"]["phaseSummary"] = [
+        copy.deepcopy(definitions["standard-completed"]["phaseSummary"][0]),
+        {
+            **copy.deepcopy(definitions["standard-completed"]["phaseSummary"][2]),
+            "outcome": "fail",
+            "errorClass": "permanent",
+        },
+    ]
+    definitions["invalid-aborted-result-summary"] = copy.deepcopy(definitions["aborted-before-result"])
+    definitions["invalid-aborted-result-summary"]["phaseSummary"] = [{
+        "index": 0,
+        "kind": definitions["aborted-before-result"]["listingPipeline"][0],
+        "outcome": "fail",
+        "errorClass": "counterparty",
+    }]
+
+    for vector in data["vectors"]:
+        if vector["name"] == "bundle-settlement-bijection-st8-expired-interim-pass":
+            vector["input"]["executionAuthorityRef"] = "single-htlc-expired"
 
     vector_name = "bundle-settlement-bijection-invalid-bundle-authority-reject"
     if not any(vector["name"] == vector_name for vector in data["vectors"]):
@@ -200,6 +278,22 @@ def generate(source):
             },
             "want": {"disposition": "rejected", "reasonCode": "execution-authority"},
         })
+    incomplete_trace_name = "bundle-settlement-bijection-incomplete-completed-summary-reject"
+    if not any(vector["name"] == incomplete_trace_name for vector in data["vectors"]):
+        data["vectors"].append({
+            "name": incomplete_trace_name,
+            "expected": "fail",
+            "input": {
+                "executionAuthorityRef": "invalid-completed-incomplete-summary",
+                "topLevelRefs": [],
+                "resolvedReferencePhaseKeys": {},
+                "pointerMap": {},
+                "recordClassByRef": {},
+                "supersedesEdges": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {"disposition": "rejected", "reasonCode": "execution-authority"},
+        })
     failed_positive = next(
         vector for vector in data["vectors"]
         if vector["name"] == "bundle-settlement-bijection-failed-phase-included-pass"
@@ -227,6 +321,38 @@ def generate(source):
         name: make_authority(name, definition, signing_keys)
         for name, definition in definitions.items()
     }
+    for vector in data["vectors"]:
+        vector_input = vector["input"]
+        if "resolvedReferencePhaseKeys" not in vector_input:
+            continue
+        resolved = vector_input.pop("resolvedReferencePhaseKeys")
+        record_classes = vector_input.pop("recordClassByRef", {})
+        supersedes = vector_input.pop("supersedesEdges", {})
+        authority = data["executionAuthorities"].get(vector_input.get("executionAuthorityRef"))
+        job_id = authority["bundle"]["jobId"] if authority else "unresolved-authority"
+        outcome_by_key = {
+            f"{entry['index']}:{entry['kind']}": (
+                "success" if entry["outcome"] == "ok" else "failure"
+            )
+            for entry in (authority or {}).get("bundle", {}).get("phaseSummary", [])
+        }
+        authenticated_records = {}
+        for ref, phase_key in resolved.items():
+            record_class = record_classes.get(ref)
+            outcome = outcome_by_key.get(phase_key, "success")
+            if record_class == "st8-resolved-success":
+                outcome = "success"
+            elif record_class == "st8-expired-interim-failure":
+                outcome = "failure"
+            record = {
+                "jobId": job_id,
+                "phaseKey": phase_key,
+                "outcome": outcome,
+            }
+            if ref in supersedes:
+                record["supersedesEvidenceRef"] = supersedes[ref]
+            authenticated_records[ref] = record
+        vector_input["authenticatedRecordByRef"] = authenticated_records
     data["count"] = len(data["vectors"])
     data["hash"] = hashlib.sha256(F.canonical(data["vectors"])).hexdigest()
     return data

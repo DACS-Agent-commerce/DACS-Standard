@@ -139,6 +139,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(invalid)],
             },
             "selectedByRoleResolution": True,
+            "resolvedJobId": invalid["jobId"],
         }
         self.assertFalse(R._tagged_copy_valid_for_derive(tag))
 
@@ -174,6 +175,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         valid_tag = {
             "bundle": valid_ebfab,
             "selectedByRoleResolution": True,
+            "resolvedJobId": valid_ebfab["jobId"],
             "resolvedRole": "buyer",
             "counterpartyDisposition": "present",
             "ebfabAuthority": {
@@ -211,6 +213,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         invalid_discriminator_tag = {
             "bundle": invalid_discriminator,
             "selectedByRoleResolution": True,
+            "resolvedJobId": invalid_discriminator["jobId"],
         }
         self.assertFalse(R._tagged_copy_valid_for_derive(invalid_discriminator_tag))
         discriminator_rejection = R.derive(
@@ -227,6 +230,33 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             invalid_discriminator["finalisedAt"] + 1,
         )
         self.assertEqual(discriminator_rejection["bundleCount"], 0)
+
+        withheld_job = {**tag, "bundle": dict(invalid)}
+        withheld_job["bundle"].pop("jobId")
+        withheld_job_rejection = R.derive(
+            "did:demos:buyer",
+            [
+                withheld_job,
+                {
+                    "bundle": valid_fab,
+                    "resolvedRole": "seller",
+                    "counterpartyDisposition": "present",
+                },
+            ],
+            invalid["finalisedAt"] - 1,
+            invalid["finalisedAt"] + 1,
+        )
+        self.assertEqual(withheld_job_rejection["bundleCount"], 0)
+
+        missing_resolution_context = dict(tag)
+        missing_resolution_context.pop("resolvedJobId")
+        with self.assertRaisesRegex(ValueError, "trusted resolvedJobId"):
+            R.derive(
+                "did:demos:buyer",
+                [missing_resolution_context],
+                invalid["finalisedAt"] - 1,
+                invalid["finalisedAt"] + 1,
+            )
 
     def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
         for case in self.data["pointerCases"]:

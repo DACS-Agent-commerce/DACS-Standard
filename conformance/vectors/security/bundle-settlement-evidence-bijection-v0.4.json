@@ -164,6 +164,10 @@
             "independentlyResolvable": true
           }
         }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
       }
     },
     "single-htlc-completed": {
@@ -273,6 +277,10 @@
             "independentlyResolvable": true
           }
         }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
       }
     },
     "repeated-pay-completed": {
@@ -424,6 +432,10 @@
             "independentlyResolvable": true
           }
         }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
       }
     },
     "failed-delivery": {
@@ -518,6 +530,10 @@
             "independentlyResolvable": false
           }
         }
+      },
+      "bundleLifecycle": {
+        "state": "included",
+        "independentlyResolvable": false
       }
     },
     "aborted-before-result": {
@@ -585,7 +601,11 @@
         "state": "included",
         "independentlyResolvable": true
       },
-      "referenceValidationByCanonicalRef": {}
+      "referenceValidationByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "included",
+        "independentlyResolvable": false
+      }
     },
     "invalid-listing-signature": {
       "listing": {
@@ -678,6 +698,10 @@
             "independentlyResolvable": true
           }
         }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
       }
     },
     "invalid-bundle-signature": {
@@ -816,6 +840,10 @@
             "independentlyResolvable": true
           }
         }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
       }
     },
     "mismatched-listing-signer": {
@@ -954,11 +982,157 @@
             "independentlyResolvable": true
           }
         }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "invalid-completed-bundle-lifecycle": {
+      "listing": {
+        "listingId": "listing-seb-invalid-completed-bundle-lifecycle",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-dem"
+          },
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "qhkIsNzTreTQBUZgSwxDkT-Z7vwbFivd5tOuHwo2jGpAzMvXEI6irjMAtNAZYk3ecRsr3YPZVrmtR2JCD6tDDA"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-invalid-completed-bundle-lifecycle",
+          "version": 1,
+          "contentHash": "76d2d4881ce93ba988110eed2af7ecd233e83de9503766f3d064d50fc444f808"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-6982b533ba417576fa1af3ebad670d8f9c17948df87060368fe613434e5b8fce"
+              },
+              "contentHash": "abf484abab60d492bb5416441d3912a54fa81b4b40b8acdc59d679f71983e8bc"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-2cce1bac07dd25affd322daac7eb4722658e447b8a405cee341b043bf7853125"
+              },
+              "contentHash": "fed93f416c9d5c8653c19769d28a083c59c9d223476811e7be6f08c6d2a3477f"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-6982b533ba417576fa1af3ebad670d8f9c17948df87060368fe613434e5b8fce"
+            },
+            "contentHash": "abf484abab60d492bb5416441d3912a54fa81b4b40b8acdc59d679f71983e8bc"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-2cce1bac07dd25affd322daac7eb4722658e447b8a405cee341b043bf7853125"
+            },
+            "contentHash": "fed93f416c9d5c8653c19769d28a083c59c9d223476811e7be6f08c6d2a3477f"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "n0IJZHvUGX0Cr8DZLWtB7oTK95ay3TQEnY7segeD5OBddSl-43cQ2bynkxfcUYtAy3sx61UnXErMYQKa-jZABg"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "7w1HzKul6K2h26AZ_ysjPgotduj0-HLomUAV8e_IQf0jfIFcEhr7dysECrx0hdpCZZIi_uv2Ycx7wTA6hrUNBg"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-6982b533ba417576fa1af3ebad670d8f9c17948df87060368fe613434e5b8fce\"},\"contentHash\":\"abf484abab60d492bb5416441d3912a54fa81b4b40b8acdc59d679f71983e8bc\"}": {
+          "phaseKey": "2:pay-dem",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2cce1bac07dd25affd322daac7eb4722658e447b8a405cee341b043bf7853125\"},\"contentHash\":\"fed93f416c9d5c8653c19769d28a083c59c9d223476811e7be6f08c6d2a3477f\"}": {
+          "phaseKey": "3:deliver-attested-payload",
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "bundleLifecycle": {
+        "state": "accepted",
+        "independentlyResolvable": false
       }
     }
   },
-  "hash": "7f6ee7c4ee0936b02e69656682f53fbb871f81a6ba6d8e19747218d6d091dd12",
-  "count": 27,
+  "hash": "c33022304c25319990c7cda77e07867f7f5f3d4c6730aecdd852e68019bf54c1",
+  "count": 28,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
@@ -1587,6 +1761,28 @@
         "disposition": "rejected",
         "reasonCode": "execution-authority"
       }
+    },
+    {
+      "name": "bundle-settlement-bijection-completed-bundle-not-finalized-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "invalid-completed-bundle-lifecycle",
+        "topLevelRefs": [
+          "ref-pay",
+          "ref-deliver"
+        ],
+        "resolvedReferencePhaseKeys": {
+          "ref-pay": "2:pay-dem",
+          "ref-deliver": "3:deliver-attested-payload"
+        },
+        "pointerMap": {},
+        "supersedesEdges": {},
+        "unrelatedAuthorityDisposition": "verified"
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
     }
   ],
   "generator": "scripts/generate_bundle_settlement_evidence_vectors.py",
@@ -1815,6 +2011,45 @@
         "independentlyResolvable": true
       },
       "listingSignerRole": "buyer"
+    },
+    "invalid-completed-bundle-lifecycle": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-dem",
+        "deliver-attested-payload"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-dem",
+          "outcome": "ok"
+        },
+        {
+          "index": 3,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "bundleLifecycle": {
+        "state": "accepted",
+        "independentlyResolvable": false
+      }
     }
   }
 }

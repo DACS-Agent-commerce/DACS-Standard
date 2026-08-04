@@ -29,6 +29,7 @@ def derive_phase_keys(authority, pubkeys):
         authority.get("listing"),
         pubkeys,
         authority.get("referenceValidationByCanonicalRef"),
+        authority.get("bundleLifecycle"),
     )
     return phase_keys if ok else None
 
@@ -135,6 +136,12 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         )
         self.assertIsNone(
             derive_phase_keys(self.data["executionAuthorities"]["mismatched-listing-signer"], self.pubkeys)
+        )
+        self.assertIsNone(
+            derive_phase_keys(
+                self.data["executionAuthorities"]["invalid-completed-bundle-lifecycle"],
+                self.pubkeys,
+            )
         )
 
     def test_minor_safe_type_boundary_and_domains(self):

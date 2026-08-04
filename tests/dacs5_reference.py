@@ -191,6 +191,12 @@ def bundle_type(bundle):
         "faultBundleVersion",
         "evidenceBoundFaultBundleVersion",
     }
+    unknown_discriminators = {
+        key for key in bundle
+        if isinstance(key, str) and key.endswith("BundleVersion") and key not in known_keys
+    }
+    if unknown_discriminators:
+        return None
     if any(key in bundle and bundle.get(key) != "1" for key in known_keys):
         return None
     return candidates[0] if len(candidates) == 1 else None
@@ -545,7 +551,13 @@ def _bundle_signatures_valid(bundle, pubkeys):
     return (True, "ok")
 
 
-def validate_ebfab(bundle, listing, pubkeys, reference_validation_by_canonical_ref):
+def validate_ebfab(
+    bundle,
+    listing,
+    pubkeys,
+    reference_validation_by_canonical_ref,
+    bundle_lifecycle,
+):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
     This bounded reference covers the protected #290 authority path: exact type/domain
@@ -562,8 +574,9 @@ def validate_ebfab(bundle, listing, pubkeys, reference_validation_by_canonical_r
         not isinstance(listing, dict)
         or not isinstance(pubkeys, dict)
         or not isinstance(reference_validation_by_canonical_ref, dict)
+        or not isinstance(bundle_lifecycle, dict)
     ):
-        return (False, "missing listing, key, or exact reference-validation authority", None)
+        return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
 
     signature = listing.get("signature")
     if not isinstance(signature, dict):
@@ -662,6 +675,13 @@ def validate_ebfab(bundle, listing, pubkeys, reference_validation_by_canonical_r
             return (False, "completed evidence is not finalized and independently resolvable", None)
         if not completed and state not in {"included", "finalized"}:
             return (False, "failed or aborted evidence is not included or finalized", None)
+    if completed and (
+        bundle_lifecycle.get("state") != "finalized"
+        or bundle_lifecycle.get("independentlyResolvable") is not True
+    ):
+        return (False, "completed EBFAB is not finalized and independently resolvable", None)
+    if not completed and bundle_lifecycle.get("state") not in {"included", "finalized"}:
+        return (False, "failed or aborted EBFAB is not included or finalized", None)
     return (True, "ok", expected_keys)
 
 
@@ -678,6 +698,7 @@ def _tagged_copy_valid_for_derive(tagged):
         authority.get("listing"),
         authority.get("publicKeys"),
         authority.get("referenceValidationByCanonicalRef"),
+        authority.get("bundleLifecycle"),
     )
     return ok
 
@@ -908,6 +929,18 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
 
 def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, pubkeys=None):
     """Validate FAB/EBFAB pointer type, domain, signature, and triple identity."""
+    known_pointer_discriminators = {
+        "bundleVersion",
+        "faultBundleVersion",
+        "evidenceBoundFaultBundleVersion",
+    }
+    if any(
+        isinstance(key, str)
+        and key.endswith("BundleVersion")
+        and key not in known_pointer_discriminators
+        for key in pointer
+    ):
+        return {"ok": False, "reason": "unknown pointer discriminator"}
     pointer_candidates = []
     if pointer.get("faultBundleVersion") == "1":
         pointer_candidates.append(("fault", FAULT_POINTER_DOMAIN))
@@ -962,7 +995,9 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
 
     tagged_bundles: list of {"bundle": <dict>, "resolvedRole": "buyer"|"seller",
       "counterpartyDisposition": "present"|"absent"|None, "counterpartyRef": ...?,
-      "absenceEvidenceRef": ...?} — each input copy carries its §10.5.1 resolution tag.
+      "absenceEvidenceRef": ...?, "selectedByRoleResolution": true?} — each input copy
+      carries its §10.5.1 resolution tag. EBFAB inputs require the true marker because
+      BB-6 role-candidate resolution precedes SEB admission; raw losing candidates are inert.
 
     Returns a ReputationDerivation dict (bundleCount, metrics, resolutionContext,
     bundleRefs, windowingBasis). Metrics reproduce byte-identically across runs given
@@ -985,7 +1020,11 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
     candidates = [t for t in tagged_bundles
                   if party in _primary_claims(t["bundle"])
-                  and window_start <= t["bundle"][clock] <= window_end]
+                  and window_start <= t["bundle"][clock] <= window_end
+                  and (
+                      bundle_type(t["bundle"]) != "evidence-bound"
+                      or t.get("selectedByRoleResolution") is True
+                  )]
     rejected_ebfab_jobs = {
         t["bundle"]["jobId"]
         for t in candidates

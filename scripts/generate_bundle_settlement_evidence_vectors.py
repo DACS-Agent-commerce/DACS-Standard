@@ -92,6 +92,11 @@ def make_authority(name, definition, signing_keys):
         bundle["signatures"][0]["value"] = ("A" if value[0] != "A" else "B") + value[1:]
 
     default_lifecycle = definition["defaultReferenceLifecycle"]
+    bundle_lifecycle = copy.deepcopy(definition.get("bundleLifecycle") or (
+        {"state": "finalized", "independentlyResolvable": True}
+        if definition["bundleOutcome"] == "completed"
+        else {"state": "included", "independentlyResolvable": False}
+    ))
     reference_validation_by_canonical_ref = {
         F.canonical(ref).decode("utf-8"): {
             "phaseKey": f"{entry['index']}:{entry['kind']}",
@@ -107,6 +112,7 @@ def make_authority(name, definition, signing_keys):
         "bundle": bundle,
         "defaultReferenceLifecycle": copy.deepcopy(default_lifecycle),
         "referenceValidationByCanonicalRef": reference_validation_by_canonical_ref,
+        "bundleLifecycle": bundle_lifecycle,
     }
 
 
@@ -132,6 +138,12 @@ def generate(source):
     if "mismatched-listing-signer" not in definitions:
         definitions["mismatched-listing-signer"] = copy.deepcopy(definitions["standard-completed"])
         definitions["mismatched-listing-signer"]["listingSignerRole"] = "buyer"
+    if "invalid-completed-bundle-lifecycle" not in definitions:
+        definitions["invalid-completed-bundle-lifecycle"] = copy.deepcopy(definitions["standard-completed"])
+        definitions["invalid-completed-bundle-lifecycle"]["bundleLifecycle"] = {
+            "state": "accepted",
+            "independentlyResolvable": False,
+        }
     definitions["failed-delivery"]["defaultReferenceLifecycle"]["independentlyResolvable"] = False
 
     vector_name = "bundle-settlement-bijection-invalid-bundle-authority-reject"
@@ -159,6 +171,24 @@ def generate(source):
             "expected": "fail",
             "input": {
                 "executionAuthorityRef": "mismatched-listing-signer",
+                "topLevelRefs": ["ref-pay", "ref-deliver"],
+                "resolvedReferencePhaseKeys": {
+                    "ref-pay": "2:pay-dem",
+                    "ref-deliver": "3:deliver-attested-payload",
+                },
+                "pointerMap": {},
+                "supersedesEdges": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {"disposition": "rejected", "reasonCode": "execution-authority"},
+        })
+    lifecycle_vector_name = "bundle-settlement-bijection-completed-bundle-not-finalized-reject"
+    if not any(vector["name"] == lifecycle_vector_name for vector in data["vectors"]):
+        data["vectors"].append({
+            "name": lifecycle_vector_name,
+            "expected": "fail",
+            "input": {
+                "executionAuthorityRef": "invalid-completed-bundle-lifecycle",
                 "topLevelRefs": ["ref-pay", "ref-deliver"],
                 "resolvedReferencePhaseKeys": {
                     "ref-pay": "2:pay-dem",

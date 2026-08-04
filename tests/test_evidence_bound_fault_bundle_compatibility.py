@@ -60,6 +60,10 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     self.data["listing"],
                     self.pubkeys,
                     self.data["referenceValidationByCanonicalRef"],
+                    case.get(
+                        "bundleLifecycle",
+                        self.data["bundleLifecycleByHash"].get(R.bundle_hash(bundle), {}),
+                    ),
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"])
 
@@ -95,6 +99,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                             self.data["listing"],
                             self.pubkeys,
                             self.data["referenceValidationByCanonicalRef"],
+                            self.data["bundleLifecycleByHash"][R.bundle_hash(bundle)],
                         )
                         self.assertTrue(seb_ok, seb_reason)
                 self.assertEqual(R.divergence(copies[0], copies[1]), case["want"]["divergent"])
@@ -109,6 +114,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     self.data["listing"],
                     self.pubkeys,
                     self.data["referenceValidationByCanonicalRef"],
+                    self.data["bundleLifecycleByHash"][R.bundle_hash(authoritative)],
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"], reason)
                 self.assertEqual(phase_keys, ["0:pay-dem"])
@@ -130,7 +136,9 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "listing": self.data["listing"],
                 "publicKeys": self.pubkeys,
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+                "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(invalid)],
             },
+            "selectedByRoleResolution": True,
         }
         self.assertFalse(R._tagged_copy_valid_for_derive(tag))
 
@@ -157,6 +165,31 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             invalid["finalisedAt"] + 1,
         )
         self.assertEqual(derivation["bundleCount"], 0)
+
+        valid_ebfab = next(
+            case["bundle"]
+            for case in self.data["cases"]
+            if case["name"] == "valid-ebfab"
+        )
+        valid_tag = {
+            "bundle": valid_ebfab,
+            "selectedByRoleResolution": True,
+            "resolvedRole": "buyer",
+            "counterpartyDisposition": "present",
+            "ebfabAuthority": {
+                "listing": self.data["listing"],
+                "publicKeys": self.pubkeys,
+                "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+                "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid_ebfab)],
+            },
+        }
+        derivation_with_losing_candidate = R.derive(
+            "did:demos:buyer",
+            [valid_tag, {**tag, "selectedByRoleResolution": False}],
+            valid_ebfab["finalisedAt"] - 1,
+            valid_ebfab["finalisedAt"] + 1,
+        )
+        self.assertEqual(derivation_with_losing_candidate["bundleCount"], 1)
 
     def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
         for case in self.data["pointerCases"]:

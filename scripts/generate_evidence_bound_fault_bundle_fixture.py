@@ -202,6 +202,11 @@ def generate():
     unknown_discriminator = dict(ebfab_buyer)
     unknown_discriminator.pop("evidenceBoundFaultBundleVersion")
     unknown_discriminator["futureBundleVersion"] = "1"
+    known_plus_unknown = copy.deepcopy(ebfab_buyer)
+    known_plus_unknown["futureBundleVersion"] = "1"
+    sign_bundle(known_plus_unknown, "evidence-bound", signing_keys)
+
+    completed_lifecycle = {"state": "finalized", "independentlyResolvable": True}
 
     return {
         "fixture": "evidence-bound-fault-bundle-compatibility-v0.4",
@@ -230,6 +235,17 @@ def generate():
             }
         },
         "validBundleHash": bundle_hash(ebfab_buyer),
+        "bundleLifecycleByHash": {
+            bundle_hash(bundle): completed_lifecycle
+            for bundle in (
+                ebfab_buyer,
+                ebfab_seller,
+                ebfab_alternate,
+                signed_pointerless,
+                signed_missing_member,
+                known_plus_unknown,
+            )
+        },
         "cases": [
             {"name": "valid-ebfab", "bundle": ebfab_buyer, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": True}},
             {"name": "valid-pointerless-ebfab", "bundle": signed_pointerless, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": True}},
@@ -237,6 +253,8 @@ def generate():
             {"name": "stripped-to-fab-cross-type-replay", "bundle": stripped_to_fab, "want": {"type": "fault", "signaturesValid": False, "sebValid": False}},
             {"name": "dual-discriminator-reject", "bundle": dual_discriminator, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
             {"name": "unknown-discriminator-reject", "bundle": unknown_discriminator, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
+            {"name": "known-plus-unknown-discriminator-reject", "bundle": known_plus_unknown, "want": {"type": None, "signaturesValid": False, "sebValid": False}},
+            {"name": "completed-bundle-accepted-lifecycle-reject", "bundle": ebfab_buyer, "bundleLifecycle": {"state": "accepted", "independentlyResolvable": False}, "want": {"type": "evidence-bound", "signaturesValid": True, "sebValid": False}},
         ],
         "pairCases": [
             {

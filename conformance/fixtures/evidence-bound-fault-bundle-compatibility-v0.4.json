@@ -52,6 +52,28 @@
     }
   },
   "validBundleHash": "87d22d2438e3b0d6411305e14de638436b0393dad6b31d964eb5be6198b9331b",
+  "bundleLifecycleByHash": {
+    "87d22d2438e3b0d6411305e14de638436b0393dad6b31d964eb5be6198b9331b": {
+      "state": "finalized",
+      "independentlyResolvable": true
+    },
+    "d2c7c47218e765a7d54aea41ea9c3394749b2de25ccb65f00da580b4f7f5ee34": {
+      "state": "finalized",
+      "independentlyResolvable": true
+    },
+    "3ede807e575e50b10b1027d763d5c246e800eafc96193c8fca1c1a918fa96216": {
+      "state": "finalized",
+      "independentlyResolvable": true
+    },
+    "d71220fae94ead5c9b23c00296208b2a6effd375b08c449b22f823480c8d65eb": {
+      "state": "finalized",
+      "independentlyResolvable": true
+    },
+    "7510b21432e84c9d7317a7def878187c1cb52aa75acfc55acb7dcd40eddbd447": {
+      "state": "finalized",
+      "independentlyResolvable": true
+    }
+  },
   "cases": [
     {
       "name": "valid-ebfab",
@@ -462,6 +484,153 @@
       "want": {
         "type": null,
         "signaturesValid": false,
+        "sebValid": false
+      }
+    },
+    {
+      "name": "known-plus-unknown-discriminator-reject",
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "EBFAB-COMPAT-1",
+        "outcome": "completed",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "listing-ebfab-compat",
+          "version": 1,
+          "contentHash": "9d1bce847bfcc625b76df96cb590e424109472e2e6b3dfc2c389aea4495f6f02"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+              },
+              "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+            },
+            "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785772800000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "6l6gw74H1x6g7WR3dClHCzjBN7HZwk1zmCy__rXmsZg6YdCIpPxbsgXP7CYUJQ4Hcu7xviOeDRAedrQAhFSEAg"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "e_v1wx2tnkxnOk48TopGbuSgcGPQqyyg2kndYaAqrtRo4vlxx_7LWGS2g-MSP9pc3HO_mCf_kg2_DmjnYXWTDw"
+          }
+        ],
+        "faultedParty": "none",
+        "futureBundleVersion": "1"
+      },
+      "want": {
+        "type": null,
+        "signaturesValid": false,
+        "sebValid": false
+      }
+    },
+    {
+      "name": "completed-bundle-accepted-lifecycle-reject",
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "EBFAB-COMPAT-1",
+        "outcome": "completed",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "listing-ebfab-compat",
+          "version": 1,
+          "contentHash": "9d1bce847bfcc625b76df96cb590e424109472e2e6b3dfc2c389aea4495f6f02"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+              },
+              "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+            },
+            "contentHash": "c5f22ac909cafb96125377e766aef8874a9ec5f998a8696881bd21b2630be042"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785772800000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "c9El6fJ9qfLB4DI9iLq8-G_h8QQtzdzJ-VeRE98qQYo07lnrYSVf44E7v0BcTlVKHTJ1_k7T5vNDTJKMZxsbAA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "UBeR1f0oW1lHeK2Ag0PJyLV2q6FGqsLn9HoVj-Tf13JVnqnyMDziFwS6Yfg5K2AXS6DivMhsBOVcsaImCcFNBA"
+          }
+        ],
+        "faultedParty": "none"
+      },
+      "bundleLifecycle": {
+        "state": "accepted",
+        "independentlyResolvable": false
+      },
+      "want": {
+        "type": "evidence-bound",
+        "signaturesValid": true,
         "sebValid": false
       }
     }

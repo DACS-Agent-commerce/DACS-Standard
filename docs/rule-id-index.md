@@ -26,6 +26,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
+| LRR-* | Listing-time canonical payment-rail resolution and pay-phase binding | §6.3.4 | §14.1 |
 | MA-* | Bundle-requirement matching | §6.3.3 | §14.1 |
 | MTR-* | Metered pricing (per-unit total recompute + unrecognized-kind fail-closed) | §8.5.2 | §14.3 |
 | PA-* | Progressive-anchoring phases | §7.4.4 | §14.7 |

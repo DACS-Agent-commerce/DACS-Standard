@@ -1,0 +1,1128 @@
+{
+  "set": "listing-rail-registry-resolution-v0.4",
+  "spec": "DACS-1 §6.3.4 LRR-1..LRR-6; DACS-4 §9.4.3",
+  "issue": 298,
+  "inputModel": "payPhases and acceptedRails are signed listing inputs; registry is an independently read DACS-4 snapshot; registry.state and definition.state summarize authenticated SR-2/finality resolution except where a definition.proof executes index-content-hash and dacs-rail:v1: signature verification; definitions are keyed by the reference-resolved railId and railVersion; PA-1 definitions are accepted only under an explicit disclosed trust policy",
+  "count": 29,
+  "hash": "d42f40fc6329a9fd25008364ce26de63bc82008328237e0bbdc485cdf895666c",
+  "vectors": [
+    {
+      "name": "intake-only-no-rails",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [],
+        "acceptedRails": [],
+        "registry": {
+          "state": "unavailable",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "pass",
+      "reason": "not-applicable"
+    },
+    {
+      "name": "pa2-unpinned-latest-resolves",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 2,
+              "versions": [
+                1,
+                2
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 2,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized"
+            }
+          ]
+        }
+      },
+      "expected": "pass",
+      "reason": "verified"
+    },
+    {
+      "name": "pa2-pinned-historical-version-resolves",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-evm-erc20",
+            "rail": "evm-erc20:8453:USDC"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "evm-erc20:8453:USDC",
+            "railVersion": 1
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "latestVersion": 2,
+              "versions": [
+                1,
+                2
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "railVersion": 1,
+              "phaseHandler": "pay-evm-erc20",
+              "state": "verified-finalized"
+            }
+          ]
+        }
+      },
+      "expected": "pass",
+      "reason": "verified"
+    },
+    {
+      "name": "self-referential-unknown-rail-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:84532:USDC"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:84532:USDC"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            }
+          ],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "unknown-rail"
+    },
+    {
+      "name": "pinned-version-not-indexed-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default",
+            "railVersion": 9
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 2,
+              "versions": [
+                1,
+                2
+              ]
+            }
+          ],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "unknown-rail-version"
+    },
+    {
+      "name": "pay-phase-without-accepted-rails-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "missing-accepted-rails"
+    },
+    {
+      "name": "pay-phase-rail-not-in-accepted-set-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "evm-erc20:8453:USDC"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "pay-rail-not-accepted"
+    },
+    {
+      "name": "duplicate-canonical-accepted-ref-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default",
+            "railVersion": 2
+          },
+          {
+            "railId": "x402:default",
+            "railVersion": 2
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "duplicate-accepted-rail-ref"
+    },
+    {
+      "name": "distinct-same-id-rail-references-resolve",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1,
+            "parameters": {
+              "resource": "https://seller.example/a"
+            }
+          },
+          {
+            "railId": "x402:default",
+            "railVersion": 2,
+            "parameters": {
+              "resource": "https://seller.example/b"
+            }
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 2,
+              "versions": [
+                1,
+                2
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 1,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized"
+            },
+            {
+              "railId": "x402:default",
+              "railVersion": 2,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized"
+            }
+          ]
+        }
+      },
+      "expected": "pass",
+      "reason": "verified"
+    },
+    {
+      "name": "registered-handler-mismatch-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "evm-erc20:8453:USDC"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "evm-erc20:8453:USDC"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "evm-erc20:8453:USDC",
+              "railVersion": 1,
+              "phaseHandler": "pay-evm-erc20",
+              "state": "verified-finalized"
+            }
+          ]
+        }
+      },
+      "expected": "fail",
+      "reason": "phase-handler-mismatch"
+    },
+    {
+      "name": "registry-transport-unavailable-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "unavailable",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "registry-unavailable"
+    },
+    {
+      "name": "registry-absent-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "absent",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "registry-unavailable"
+    },
+    {
+      "name": "registry-included-not-finalized-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-included",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            }
+          ],
+          "definitions": []
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "registry-not-finalized"
+    },
+    {
+      "name": "rail-definition-unavailable-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 1,
+              "phaseHandler": "pay-x402",
+              "state": "unavailable"
+            }
+          ]
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "rail-definition-unavailable"
+    },
+    {
+      "name": "pa2-invalid-registry-with-local-fallback-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "invalid-authority",
+          "entries": [],
+          "definitions": []
+        },
+        "inCodeDefinitions": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          }
+        ]
+      },
+      "expected": "indeterminate",
+      "reason": "registry-unverifiable-no-fallback"
+    },
+    {
+      "name": "disclosed-pa1-in-code-resolution",
+      "input": {
+        "trustPhase": "PA-1",
+        "trustPolicyAcceptsPA1": true,
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1
+          }
+        ],
+        "registry": {
+          "state": "not-used",
+          "entries": [],
+          "definitions": []
+        },
+        "inCodeDefinitions": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          }
+        ]
+      },
+      "expected": "pass",
+      "reason": "verified-pa1"
+    },
+    {
+      "name": "pa1-not-accepted-by-trust-policy",
+      "input": {
+        "trustPhase": "PA-1",
+        "trustPolicyAcceptsPA1": false,
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1
+          }
+        ],
+        "registry": {
+          "state": "not-used",
+          "entries": [],
+          "definitions": []
+        },
+        "inCodeDefinitions": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          }
+        ]
+      },
+      "expected": "indeterminate",
+      "reason": "pa1-not-accepted"
+    },
+    {
+      "name": "unknown-rail-rejection-precedes-other-unavailability",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "unknown:rail"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "unknown:rail"
+          },
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 1,
+              "phaseHandler": "pay-x402",
+              "state": "unavailable"
+            }
+          ]
+        }
+      },
+      "expected": "fail",
+      "reason": "unknown-rail"
+    },
+    {
+      "name": "unused-accepted-rail-must-also-resolve",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          },
+          {
+            "railId": "made-up:rail"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 1,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized"
+            }
+          ]
+        }
+      },
+      "expected": "fail",
+      "reason": "unknown-rail"
+    },
+    {
+      "name": "same-rail-id-handler-version-drift-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x:d"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x:d",
+            "railVersion": 1
+          },
+          {
+            "railId": "x:d",
+            "railVersion": 2
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x:d",
+              "latestVersion": 2,
+              "versions": [
+                1,
+                2
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x:d",
+              "railVersion": 1,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized"
+            },
+            {
+              "railId": "x:d",
+              "railVersion": 2,
+              "phaseHandler": "pay-evm-erc20",
+              "state": "verified-finalized"
+            }
+          ]
+        }
+      },
+      "expected": "fail",
+      "reason": "phase-handler-mismatch"
+    },
+    {
+      "name": "unused-accepted-rail-unavailable-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x:d"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x:d"
+          },
+          {
+            "railId": "other:rail"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x:d",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            },
+            {
+              "railId": "other:rail",
+              "latestVersion": 1,
+              "versions": [
+                1
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x:d",
+              "railVersion": 1,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized"
+            },
+            {
+              "railId": "other:rail",
+              "railVersion": 1,
+              "phaseHandler": "pay-evm-erc20",
+              "state": "unavailable"
+            }
+          ]
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "rail-definition-unavailable"
+    },
+    {
+      "name": "pa1-unpinned-selects-unique-highest-version",
+      "input": {
+        "trustPhase": "PA-1",
+        "trustPolicyAcceptsPA1": true,
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x:d"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x:d"
+          }
+        ],
+        "inCodeDefinitions": [
+          {
+            "railId": "x:d",
+            "railVersion": 1,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          },
+          {
+            "railId": "x:d",
+            "railVersion": 2,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          }
+        ],
+        "registry": {
+          "state": "unavailable",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "pass",
+      "reason": "verified-pa1"
+    },
+    {
+      "name": "pa1-unpinned-cross-version-handler-drift-rejected",
+      "input": {
+        "trustPhase": "PA-1",
+        "trustPolicyAcceptsPA1": true,
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x:d"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x:d"
+          }
+        ],
+        "inCodeDefinitions": [
+          {
+            "railId": "x:d",
+            "railVersion": 1,
+            "phaseHandler": "pay-evm-erc20",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          },
+          {
+            "railId": "x:d",
+            "railVersion": 2,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": true
+          }
+        ],
+        "registry": {
+          "state": "unavailable",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "pa1-handler-version-drift"
+    },
+    {
+      "name": "malformed-accepted-rail-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": 7
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "malformed-accepted-rail"
+    },
+    {
+      "name": "malformed-pay-rail-rejected",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": null
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "fail",
+      "reason": "malformed-pay-rail"
+    },
+    {
+      "name": "pa1-definition-unverifiable-indeterminate",
+      "input": {
+        "trustPhase": "PA-1",
+        "trustPolicyAcceptsPA1": true,
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1
+          }
+        ],
+        "inCodeDefinitions": [
+          {
+            "railId": "x402:default",
+            "railVersion": 1,
+            "phaseHandler": "pay-x402",
+            "governanceAnchoring": "in-code",
+            "signatureValid": false
+          }
+        ],
+        "registry": {
+          "state": "unavailable",
+          "entries": [],
+          "definitions": []
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "pa1-definition-unverifiable"
+    },
+    {
+      "name": "definition-proof-valid",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 2,
+              "versions": [
+                2
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 2,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized",
+              "proof": {
+                "unsigned": {
+                  "railVersion": 2,
+                  "railId": "x402:default",
+                  "railType": "x402",
+                  "asset": {
+                    "kind": "erc20",
+                    "chainId": 8453,
+                    "contract": "0x0000000000000000000000000000000000000001",
+                    "symbol": "USDC",
+                    "decimals": 6
+                  },
+                  "network": {
+                    "kind": "x402-resource",
+                    "resourceBaseUrl": "https://seller.example"
+                  },
+                  "phaseHandler": "pay-x402",
+                  "parameters": {
+                    "authorization": "eip-3009"
+                  },
+                  "availability": "live",
+                  "governance": {
+                    "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                    "acceptedAt": 1,
+                    "anchoring": "single-signer"
+                  }
+                },
+                "indexContentHash": "024cd9289fe85810a321117ef613b1d24ea5eee8a8b5370745336828a70a35f7",
+                "stewardPublicKey": "t-X07lLJs1wMudZuN2uiuuwNiglbV48elivtAu5i8d8",
+                "signature": "3Wm8Bgh369YTBHjFEPiTPATlwsQ2qKflzMW_DC4I4hEAYuUcmmx4HOHEWby2k5cDTxkb-wwRYrVUNQmSzSy1AA"
+              }
+            }
+          ]
+        }
+      },
+      "expected": "pass",
+      "reason": "verified"
+    },
+    {
+      "name": "definition-content-hash-mismatch-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 2,
+              "versions": [
+                2
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 2,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized",
+              "proof": {
+                "unsigned": {
+                  "railVersion": 2,
+                  "railId": "x402:default",
+                  "railType": "x402",
+                  "asset": {
+                    "kind": "erc20",
+                    "chainId": 8453,
+                    "contract": "0x0000000000000000000000000000000000000001",
+                    "symbol": "USDC",
+                    "decimals": 6
+                  },
+                  "network": {
+                    "kind": "x402-resource",
+                    "resourceBaseUrl": "https://seller.example"
+                  },
+                  "phaseHandler": "pay-x402",
+                  "parameters": {
+                    "authorization": "eip-3009"
+                  },
+                  "availability": "live",
+                  "governance": {
+                    "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                    "acceptedAt": 1,
+                    "anchoring": "single-signer"
+                  }
+                },
+                "indexContentHash": "124cd9289fe85810a321117ef613b1d24ea5eee8a8b5370745336828a70a35f7",
+                "stewardPublicKey": "t-X07lLJs1wMudZuN2uiuuwNiglbV48elivtAu5i8d8",
+                "signature": "3Wm8Bgh369YTBHjFEPiTPATlwsQ2qKflzMW_DC4I4hEAYuUcmmx4HOHEWby2k5cDTxkb-wwRYrVUNQmSzSy1AA"
+              }
+            }
+          ]
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "rail-definition-hash-mismatch"
+    },
+    {
+      "name": "definition-signature-invalid-indeterminate",
+      "input": {
+        "trustPhase": "PA-2",
+        "payPhases": [
+          {
+            "kind": "pay-x402",
+            "rail": "x402:default"
+          }
+        ],
+        "acceptedRails": [
+          {
+            "railId": "x402:default"
+          }
+        ],
+        "registry": {
+          "state": "verified-finalized",
+          "entries": [
+            {
+              "railId": "x402:default",
+              "latestVersion": 2,
+              "versions": [
+                2
+              ]
+            }
+          ],
+          "definitions": [
+            {
+              "railId": "x402:default",
+              "railVersion": 2,
+              "phaseHandler": "pay-x402",
+              "state": "verified-finalized",
+              "proof": {
+                "unsigned": {
+                  "railVersion": 2,
+                  "railId": "x402:default",
+                  "railType": "x402",
+                  "asset": {
+                    "kind": "erc20",
+                    "chainId": 8453,
+                    "contract": "0x0000000000000000000000000000000000000001",
+                    "symbol": "USDC",
+                    "decimals": 6
+                  },
+                  "network": {
+                    "kind": "x402-resource",
+                    "resourceBaseUrl": "https://seller.example"
+                  },
+                  "phaseHandler": "pay-x402",
+                  "parameters": {
+                    "authorization": "eip-3009"
+                  },
+                  "availability": "live",
+                  "governance": {
+                    "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                    "acceptedAt": 1,
+                    "anchoring": "single-signer"
+                  }
+                },
+                "indexContentHash": "024cd9289fe85810a321117ef613b1d24ea5eee8a8b5370745336828a70a35f7",
+                "stewardPublicKey": "t-X07lLJs1wMudZuN2uiuuwNiglbV48elivtAu5i8d8",
+                "signature": "3Gm8Bgh369YTBHjFEPiTPATlwsQ2qKflzMW_DC4I4hEAYuUcmmx4HOHEWby2k5cDTxkb-wwRYrVUNQmSzSy1AA"
+              }
+            }
+          ]
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "rail-definition-signature-invalid"
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.5** on the common DACS v0.1 baseline. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.5** on the common DACS v0.1 baseline. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -684,7 +684,17 @@ A seller MAY revoke one listing version by completing RB-1..RB-3.
 > **Note (non-normative).** RB-6 distinguishes a completed discovery read from a resolution failure. It does not claim that one transport's successful “not found” response proves global absence across censored views.
 
 **Validation order for readers**
-Readers MUST validate listings in the following order, **halting on the first failure**:
+Readers MUST validate listings in the following order, **halting on the first
+failure**, except that the `indeterminate` result described in step 8 is
+retained while the reader completes step 9:
+
+```
+type ListingValidationDisposition =
+  | "verified"
+  | "rejected"
+  | "revoked"
+  | "indeterminate"
+```
 
 1. schema conformance;
 2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
@@ -693,11 +703,49 @@ Readers MUST validate listings in the following order, **halting on the first fa
 5. revocation check per RB-4..RB-6 returns `absent`;
 6. `seller.identity` bundle conformant per §6.3.2;
 7. pipeline references valid phase types per DACS-3/4/5;
-8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and non-empty and MUST reference resolvable payment rails per DACS-4; if pipeline contains no pay-* phase, `acceptedRails` MAY be absent (the intake-only listing pattern — RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band);
+8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and
+   non-empty and the reader MUST run listing-time rail resolution under
+   LRR-1..LRR-6. A `rejected` result is a validation failure and halts. An
+   `indeterminate` result is retained, MUST NOT be relabelled as `rejected`,
+   and MUST NOT suppress step 9; after step 9 succeeds the listing remains
+   discovery-ineligible and session-ineligible until re-resolution returns
+   `verified`. If pipeline contains no pay-* phase, `acceptedRails` MAY be
+   absent (the intake-only listing pattern — RFP intake, reverse auctions where
+   the bid is the commitment, free services gated by reputation, sealed-bid
+   procurements settled out-of-band);
 9. signer resolves to a key controllable by the listing publisher (`seller.identity`).
+
+The reader MUST compose those results into exactly one
+`ListingValidationDisposition`:
+
+- a failure at step 1–4, 6–7, or 9, and an LRR `rejected` result at step 8,
+  produce `rejected`;
+- the RB-4..RB-6 result at step 5 produces `revoked` or `indeterminate` when
+  it is not `absent`; those revocation dispositions are not relabelled as
+  `rejected`;
+- an LRR `indeterminate` at step 8 is retained while step 9 runs. If step 9
+  then fails, the terminal signer-control failure produces `rejected`; if step
+  9 succeeds, the overall result is `indeterminate`; and
+- `verified` is returned only when every ordinary validation step succeeds,
+  revocation is `absent`, and listing-time rail resolution is `verified` or is
+  not applicable to a pay-less pipeline.
+
+**Listing-time rail resolution (normative).** `acceptedRails` is the publisher's signed claim about rails it is willing to use; it is not evidence that any named rail exists. A reader evaluates step 8 with a three-way `ListingRailResolution` disposition:
+
+```
+type ListingRailResolution = "verified" | "rejected" | "indeterminate"
+```
+
+- (LRR-1) **Unambiguous listing binding.** Every `pay-*` phase MUST carry a string `parameters.rail`, and every such value MUST equal the `railId` of at least one `acceptedRails` entry. The raw `acceptedRails` array MUST NOT contain duplicate full-canonical `PaymentRailRef` values, where equality is over the CORE §B.2 RFC 8785 canonical bytes. Canonically distinct references MAY share a `railId`: at listing time the `railId` dispatches to the one handler fixed by DACS-4 RD-6, while the complete reference carries a selectable version/parameter requirement for agreement and session start. No one complete reference is selected merely by a listing phase's `parameters.rail`. Every reference is validated independently, and every entry in `acceptedRails`, including an entry whose `railId` is not used by a particular pay phase, is subject to LRR-2 through LRR-5. Mere membership in the listing's own array never establishes resolution.
+- (LRR-2) **Authoritative source.** The reader MUST resolve one internally consistent rail-registry snapshot through DACS-4 §9.4.3. Under PA-2 or PA-3 this means reading `dacs4:registry:v0.1`, verifying the applicable steward/governance authority, and obtaining verified CORE §5.1 `finalized` receipts plus independent content resolution for the index and the definition resolved for every advertised `PaymentRailRef`. The reader MUST NOT use a catalog row, listing field, counterparty copy, or unauthenticated cache as registry authority.
+- (LRR-3) **Reference-to-definition match.** For every `PaymentRailRef`, the authenticated index MUST contain that exact `railId`. If `railVersion` is present, the indexed and resolved definition MUST carry that exact version; otherwise the reader uses the index's latest version in the snapshot for this validation attempt. That result is the reference-resolved definition. It MUST match the index's anchor/content hash, verify under `dacs-rail:v1:`, repeat the reference's `railId` and the selected `railVersion`, and satisfy its schema plus RD-1..RD-6.
+- (LRR-4) **Phase-handler binding.** For every `pay-*` phase, every reference-resolved definition whose `railId` equals the phase's `parameters.rail` MUST carry the same `phaseHandler`, as required across versions by DACS-4 RD-6, and that handler MUST equal the phase's `kind`. Two phases with different kinds therefore cannot dispatch through the same `railId`. Selection of one complete `PaymentRailRef` and its parameters is deferred to the agreement and session-start pin; it is not inferred from the listing's railId-only phase field. A listing cannot route `pay-x402`, for example, through a definition registered for `pay-evm-erc20`.
+- (LRR-5) **Disposition and precedence.** Failure to authenticate the registry authority under LRR-2 returns `indeterminate`; an unauthenticated snapshot MUST NOT establish a contradiction. Once registry authority is authenticated, aggregate the checks over every advertised reference with flat precedence `rejected`, then `indeterminate`, then `verified`. Return `rejected` when the listing binding is malformed or ambiguous under LRR-1, when the authenticated snapshot conclusively lacks a named rail/version, or when an otherwise valid resolved definition contradicts the listing or phase handler under LRR-3/LRR-4. Return `indeterminate` when a required definition, finality receipt, independent content, or steward/governance key is absent, unavailable, internally inconsistent, not yet finalized, or cannot be authenticated. Return `verified` only after every applicable check succeeds. Consequently, an unavailable definition for an advertised but currently unused rail makes the whole signed listing `indeterminate` and LR-3 blocks every new session from that listing until all advertised claims resolve; a publisher can remove the unavailable claim only by issuing a new signed listing version.
+- (LRR-6) **Progressive-anchoring and session boundary.** PA-1, PA-2, and PA-3 name the authority basis a reader accepts for this check, not a lifecycle state of the listing. A reader explicitly operating and disclosing PA-1 MAY resolve against its disclosed, signed in-code registry snapshot only when its trust policy accepts `governance.anchoring: "in-code"`; it MUST retain and surface `pa1-in-code` as the authority basis and MUST NOT describe that result as canonically anchored. For an unpinned PA-1 reference, the unique highest `railVersion` for that `railId` in the signed snapshot is used; duplicate definitions at that version or handler drift under RD-6 are `rejected`. A PA-2 or PA-3 reader MUST NOT fall back to in-code constants when the canonical index or a definition is unavailable. Listing-time `verified` establishes discovery eligibility only: at session start the orchestrator MUST select one complete `PaymentRailRef`, resolve and pin its exact definition under DACS-4 §9.4.3, and apply RAV-R1..RAV-R5. A discovery mirror MAY surface availability as an informational hint, but it cannot satisfy that authoritative read.
+
 **Conformance — listing publishers and readers**
-A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record.
-A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings failing any step in the validation order; (LR-3) refuse new sessions when the RB-4..RB-6 revocation check returns `revoked` or `indeterminate`.
+A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; and (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record. For a pay-bearing listing it MUST: (LP-6) obtain `verified` under LRR-1..LRR-6 at publication time rather than treating its own `acceptedRails` array as proof.
+A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings whose overall `ListingValidationDisposition` is `rejected`; (LR-3) refuse new sessions unless the overall `ListingValidationDisposition` is `verified`, including when it is `revoked` or `indeterminate`.
 
 #### 6.3.5 Discovery — .well-known/agent.json extension
 
@@ -906,8 +954,8 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 | Role | Requirements |
 | --- | --- |
-| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings; LP-5 maintain an actionable engagement surface (SHOULD) |
-| Listing reader | LR-1 pin tuple; LR-2 validate per validation order; LR-3 refuse revoked or indeterminate |
+| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings; LP-5 maintain an actionable engagement surface (SHOULD); LP-6 resolve every advertised pay rail before publication |
+| Listing reader | LR-1 pin tuple; LR-2 reject `rejected`; LR-3 refuse new sessions for revocation- or rail-resolution `indeterminate`; LRR-1..LRR-6 resolve every advertised rail |
 | Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone |
 | Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 distinguish successful absence from resolution failure |
 | Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 valid presentedBy; BP-4 valid presentation signature |
@@ -953,6 +1001,8 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 **Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one session and replays it in another. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates fresh per session and which is bound to the session-binding nonce when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). Verifiers in a session context MUST validate the nonce; bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
 **Catalog poisoning.** *Threat:* a catalog returns false listings or omits real ones. *Mitigation:* ListingSummary includes the anchor and contentHash; clients dereference and verify. A poisoned catalog causes UX confusion (a listing that does not exist on chain, or a missing listing) but cannot produce a verifiable false transaction.
+
+**Self-declared or unregistered payment rail.** *Threat:* a signed listing names a rail in `acceptedRails` and its pipeline, but the rail is absent from the canonical registry, changes handler across versions, has a different registered phase handler, or is available only through an undisclosed local fallback. *Mitigation:* LRR-1..LRR-6 treat the listing fields only as claims, resolve every accepted rail independently through the authenticated registry, enforce the RD-6 same-`railId` handler invariant, bind each pay phase to that handler, and keep unavailable authority `indeterminate`. PA-2/PA-3 readers never fall back silently to in-code constants.
 
 **Claim-scheme spoofing.** *Threat:* a bundle includes a claim with a scheme the reader does not understand. *Mitigation:* unknown schemes MUST be treated as unverified. The reader cannot accept the claim as satisfying a required-and-verified bundle requirement.
 

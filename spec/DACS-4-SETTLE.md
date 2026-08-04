@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.5** (on the common DACS v0.1 baseline; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.5** (on the common DACS v0.1 baseline; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -237,7 +237,11 @@ A conforming rail author MUST:
 - (RD-2) anchor the rail via SR-2 at the canonical address;
 - (RD-3) specify railVersion as monotonically increasing per railId;
 - (RD-4) specify supersedes when replacing a prior rail with the same railId;
-- (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected).
+- (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected). For an `erc20` or `native-evm` asset on an `evm` network, `asset.chainId` and `network.chainId` MUST be the same positive integer; a mismatch MUST be rejected before the rail can participate in PB-2.
+- (RD-6) keep `phaseHandler` invariant across every version sharing a `railId`.
+  A registry update that would change that handler MUST use a new `railId`;
+  the steward and registry-index publisher MUST reject a same-`railId` handler
+  change.
 
 A consumer MUST resolve a rail by:
 
@@ -245,6 +249,18 @@ A consumer MUST resolve a rail by:
 2. looking up the entry for the agreement’s terms.rail.railId;
 3. fetching the rail at the indicated anchor and verifying its content hash and signature;
 4. if the agreement pins a specific railVersion, MUST use that version; otherwise MUST use the latest at session start, pinned into the session.
+
+For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
+before session creation under §6.3.4 LRR-1..LRR-6, including references not
+used by a particular pay phase. That listing-time check uses the same canonical
+index, definition hash/signature, per-reference version selection, and
+governance authority described above. For a railId-only pay-phase field it
+checks that every matching reference-resolved definition uses the RD-6 handler
+and that the handler equals the phase kind; it does not select one complete
+reference. It returns `verified` / `rejected` / `indeterminate` for the listing
+as a whole. It establishes discovery eligibility only; the orchestrator still
+selects one complete reference, repeats resolution, pins the exact definition
+at session start, and applies RAV-R1..RAV-R5.
 
 **Progressive anchoring for early deployments.** The rail registry follows the same progressive anchoring pattern as the DACS-2 recipe registry (§7.4.4):
 
@@ -375,10 +391,41 @@ The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 thr
 **Payee-destination binding (PB-1..PB-3).** The rules below apply only when `agreement` is a `PayeeBoundAgreementDocument`. `payingKey` already binds the payer side to the bundle (`MUST appear in payer's bundle.claims`); PB restores the missing symmetry on the destination.
 
 - (PB-1) **Agreement carriage.** The pinned agreement MUST carry exactly one `terms.payoutBindings` entry (§8.5) for this phase's `(railId, phaseIndex)`. `PaymentPhaseInput.payee.payeeAddress` MUST equal that entry's `payeeAddress`, and the handler MUST NOT submit payment to any other destination. A missing entry, duplicate key, wrong railId, or extra entry makes the payee-bound artifact invalid and MUST fail before payment. The lookup key is the same anchor tuple PC-2 already derives (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so the equality check is a direct anchor-tuple lookup.
-- (PB-2) **Destination-identity binding.** Before submitting, the payer MUST verify the destination is bound to `payee.primaryClaim` by the strongest **applicable** tier. Tier *applicability* is decided by the pinned payee bundle (`payee.bundleHash`), not by pay-time resolution:
+- (PB-2) **Destination-identity binding.** Before submitting, the payer MUST verify the destination is bound to `payee.primaryClaim` by the strongest **applicable** tier. Tier *applicability* is decided by the pinned payee bundle (`payee.bundleHash`) together with the pinned `RailDefinition`, not by whether pay-time linkage resolution succeeds:
   - **Tier 1 — intrinsic.** The rail's destination is definitionally the primary claim's address (e.g. `pay-dem`, §9.5.9): the binding holds by construction.
-  - **Tier 2 — controlled linked claim.** Applicable iff the pinned bundle carries a `cci-xm:<chain>:…` claim whose SR-1 anchored linkage resolves control-proven per §6.3.2 step (6) for the pay rail's chain — the same gate, applied settle-side. Applicable and resolving to the phase's `payeeAddress` → bound. Applicable but unresolvable → `substrate` (ST-7 pause); the payer MUST NOT fall through to tier 3 and MUST NOT pay. The pause record MUST carry (or reference) the gate's VerifyResult `decision` and `reason`, so a consumer can distinguish a could-not-verify-the-stronger-binding pause from any other substrate pause; a resolver `error` stays `error` (§7.3.2), never a silent downgrade.
+  - **Tier 2 — controlled linked claim.** Applicable iff the pinned bundle carries a `cci-xm:<chain>:<subchain>:…` claim whose SR-1 anchored linkage resolves control-proven per §6.3.2 step (6) for the pay rail's chain — the same gate, applied settle-side. Applicable and resolving to the phase's `payeeAddress` → bound. Applicable but unresolvable → `substrate` (ST-7 pause); the payer MUST NOT fall through to tier 3 and MUST NOT pay. The pause record MUST carry (or reference) the gate's VerifyResult `decision` and `reason`, so a consumer can distinguish a could-not-verify-the-stronger-binding pause from any other substrate pause; a resolver `error` stays `error` (§7.3.2), never a silent downgrade.
   - **Tier 3 — agreement-signed destination assertion.** Legal only when no stronger tier is applicable (the pinned bundle establishes no intrinsic or controlled binding for the rail's chain). The payee's co-signature over `terms.payoutBindings` is the binding — an assertion, not a control proof; the residual (a payee asserting an address it does not control) is a payee-side risk, not a substitution surface. A tier-3 settlement SHOULD record the binding tier used in its evidence, so downstream consumers can see the destination was bound by assertion.
+
+  For an EVM rail, implementations MUST derive tier-2 chain applicability as
+  follows:
+
+  1. The pinned `RailDefinition` has an EIP-155 settlement chain iff its
+     `network` is `{ kind: "evm", chainId }` and the definition has passed
+     RD-5. Its canonical chain identifier is
+     `eip155:` followed by the minimal decimal spelling of `chainId`.
+     A rail whose pinned definition exposes no single EIP-155 chain has no EVM
+     tier-2 claim applicable under this predicate. A chain learned only from a
+     later receipt or provider response MUST NOT retroactively change the
+     bundle-derived tier.
+  2. A pinned-bundle `cci-xm` claim has an EIP-155 settlement chain iff it
+     conforms to the DACS-1 EVM settlement-chain profile. Its scheme is
+     `cci-xm`, its family component is byte-equal to the lowercase ASCII
+     literal `evm`, its `<chainId>` is a bare positive minimal-decimal integer,
+     and the address component after `cci-xm:evm:<chainId>:` and before any
+     optional `?` parameters is non-empty. The address component is otherwise
+     opaque and does not determine the settlement chain; parameters likewise
+     do not determine it. The claim's canonical chain identifier is the
+     corresponding `eip155:<chainId>`. An empty address or a non-lowercase
+     family spelling does not establish tier-2 applicability.
+  3. That claim is applicable to the rail iff the two canonical chain
+     identifiers are byte-for-byte equal. A different numeric chain ID is not
+     applicable. A name-style or otherwise non-profile subchain — including
+     `mainnet`, `testnet`, or `sepolia` — is also not applicable and MUST NOT be
+     guessed through a local alias.
+  4. If no pinned claim matches, tier 2 is not applicable and tier 3 remains
+     legal. If a claim matches, tier 2 is applicable before its SR-1 linkage is
+     resolved; a linkage `indeterminate` or `error` therefore follows the
+     existing pause/error arms above and MUST NOT fall through to tier 3.
 - (PB-3) **No downgrade.** SB-3 (§9.5.8) grades what a past, recoverable record proves and resolves absent-or-unverifiable by falling back to the unbound posture. PB-2 gates an irreversible pre-pay decision, and the pinned `bundleHash` makes *absent* (tier 3 legal) and *applicable-but-unresolvable* (pause) distinct, replayable states. An implementation MUST NOT apply SB-3's fallback arm to the PB-2 decision.
 
 Where no tier is satisfiable for a payee-bound phase, the payer MUST refuse to pay. A missing `payoutBindings` entry is an invalid `PayeeBoundAgreementDocument`, not a legacy agreement and not permission to infer a destination.
@@ -1117,7 +1164,8 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 
 | Role | Requirements |
 | --- | --- |
-| Rail author | RD-1 through RD-5 |
+| Rail author | RD-1 through RD-6 |
+| Listing publisher / reader | DACS-1 §6.3.4 LRR-1 through LRR-6 |
 | Orchestrator (rail selection) | RAV-R1 through RAV-R5 |
 | Payment phase handler | PC-1 through PC-7; PB-1 through PB-3 for payee-bound agreements; phase-specific procedure |
 | Delivery phase handler | §9.6 per-kind procedure; DPA-1 through DPA-9 for attested payloads; SettlementEvidence emission |

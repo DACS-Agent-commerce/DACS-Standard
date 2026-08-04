@@ -90,6 +90,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Verifiable-presentation replay (verified VC re-presented by a non-holder) | malicious counterparty | §7.3.2 (VP holder-binding to session nonce) | mitigated |
 | HTLC preimage-reveal front-running | network observer / MEV | §9.5.4 (claims are beneficiary-bound — a front-runner cannot redirect funds; ordering/MEV is a chain-level concern, not a DACS theft vector) | mitigated (theft) / residual (ordering) |
 | Rail availability-field poisoning (read before pin) | malicious infrastructure | §9.4.4 (availability pinned from the authoritative rail definition at session start, not a cached/untrusted read) | mitigated |
+| Self-declared, handler-drifting, or unregistered listing rail | malicious counterparty / malicious infrastructure | §6.3.4 LRR-1..LRR-6 + §9.4.3 RD-6 (canonical registry resolution, exact version/signature binding, same-railId handler invariance, unavailable authority indeterminate, no silent PA-2 fallback) | mitigated |
 | Cross-session offer replay (channelId reuse) | malicious counterparty | §8.12 CH-6 (channelId unique per session) | mitigated |
 | Counterparty-graph reconstruction (cleartext primary claims at derivable anchor addresses) | network observer | §12.1 (accepted by design — public audit trail; requires no crypto; encrypted-to-parties anchoring is roadmap) | accepted by design |
 | Vet-attestation disclosure (anchored VerifyResult reveals "party X screened against authority Y → outcome Z") | network observer | §7.5 (public-anchor data minimisation — predicate outcomes only, no raw PII) + §12.1 (scheme:identifier:decision accepted by design) | partial — raw PII minimised; relationship/decision accepted by design |
@@ -108,6 +109,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Sealed-envelope procurement role inversion | malicious orchestrator / implementation bug | §8.4.3 SE-8 + §8.5.2 (pinned-mode role-direction validation at the agreement commitment phase) | mitigated |
 | Agreement-listing mismatch | malicious counterparty | §8.5.2 (validation in the agreement commitment phase) | mitigated |
 | Payee-bound terms ignored by an older payer | minor-version skew | §8.5 distinct PayeeBoundAgreementDocument + §8.6 distinct commitment phase + §9.5.1 structural artifact gate + CORE §11.1.2 new-type refusal | mitigated |
+| EVM payee-control proof applied to the wrong chain through `mainnet` / `testnet` / `sepolia` alias guessing | malicious counterparty / implementation divergence | §6.3.1 EVM `cci-xm` settlement-chain profile + §9.4.3 RD-5 + §9.5.1 PB-2 exact `eip155:<chainId>` equality | mitigated; name-style legacy claims remain readable but do not establish tier 2 |
 | Re-entrancy on EVM rails | malicious counterparty | §9.13 (phase-handler ordering) | implementation-dependent |
 | MEV front-running on payments | public-mempool observer | §9.13 (private mempool option) | parameter-driven |
 | Cross-chain atomicity failure | time / chain operator | §9.13 (HTLC timelocks) | mitigated for HTLC; SR-5 implementation-dependent for tanks |

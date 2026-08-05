@@ -26,7 +26,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
-| [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 19 | `fail` / `pass` |
+| [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
@@ -54,6 +54,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
+| [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -318,6 +319,26 @@ binding comparisons, and retry reuse:
 
 Candidate set; independent implementation cross-run pending.
 
+### `settlement-event-identity-v0.6.json` — §9.5.8 SB-1/SB-2 signed projection
+
+Fifteen genuinely signed `SettlementEvidence` vectors exercise the DACS-4 v0.6
+event-identity boundary before SB-2 consumes a key. Current EVM, Solana, and
+x402 evidence carries its log/instruction coordinate in the signed transaction
+reference; authenticated ledger data must select the same asset, payer, payee,
+and amount. Legacy envelope-only evidence is projected only when exactly one
+ledger event matches. Multiple matches or unavailable ledger data remain
+`indeterminate`, and an unsigned caller/indexer coordinate is ignored.
+
+The set includes batched transfers with distinct keys, cross-job reuse, missing
+and malformed coordinates, a signed-index/ledger mismatch, legacy unambiguous
+and ambiguous replay, discriminator stripping, and cross-type signature replay.
+Regenerate and execute it with:
+
+```bash
+python3 scripts/generate_settlement_event_identity_vectors.py --check
+python3 -m unittest tests.test_settlement_event_identity_vectors -v
+```
+
 ### `sb2-settlement-uniqueness-v0.1.json` — §9.5.8 SB-2 (settlement-tx uniqueness)
 
 20 vectors for the cross-session / cross-phase double-count defence: a single
@@ -342,6 +363,10 @@ were cross-run case-for-case and agreed on **6/6** decisions (#159,
 `issuecomment-4797534308`).
 
 #### Vector schema
+
+This earlier set starts at the already-projected `settlementRef` boundary and
+remains the consumer-ledger/key-canonicalisation suite. The v0.6 set above is
+the signed-evidence projection prerequisite that feeds it.
 
 Each entry in `vectors[]`:
 

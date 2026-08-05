@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — DACS-4 v0.6
+
+- **Signed settlement-event identity — SB-1/SB-2 repair** (§9.3, §9.5.2, §9.5.3, §9.5.7, §9.5.8; #315) — adds distinct `evm-event`, `solana-instruction`, and `x402-event` `ChainTxRef` arms so the event/instruction coordinate that produces the SB-1 uniqueness key is inside the signed `SettlementEvidence` scope. Current producers must emit the applicable event-level arm and verifiers independently match its asset, payer, agreement-authorized payee, amount, and receipt context against authenticated ledger data before projection. The legacy `evm`, `solana`, and `x402` arms remain byte-stable read/replay shapes: exactly one independently matching event permits projection, no match fails, and unavailable or multiple matches remain `indeterminate`; unsigned caller/indexer coordinates never disambiguate them. Adds deterministic, genuinely signed vectors for EVM, Solana, x402, batched transfers, cross-job reuse, malformed/missing indexes, ledger mismatch/unavailability, legacy ambiguity, discriminator stripping, and cross-type signature replay.
+
 ### Added — DACS-4 v0.5
 
 - **Payload-bound attested delivery — `PayloadAttestationRecord` and DPA-1..DPA-9** (§9.6.3, §9.7, §B.1/§B.3/§B.7, §A.3; #300) — closes the path where `deliver-attested-payload` could be counted from seller/orchestrator-signed `SettlementEvidence` without the declared verification method or a payload-bound proof. A distinct minor-safe artifact (`payloadAttestationVersion: "1"`, `dacs-payload-attestation:v1:`) binds the exact delivered cleartext digest to `jobId`, the committed agreement, the signed DeliverableSpec, and the selected verification method; its method evidence remains independently resolved and verified. Listings selecting the phase must declare a usable method before any payment, success evidence must carry content hash + anchor + a ref to a passing payload record, non-pass/unresolved outcomes never collapse to success, and ordinary evidence signatures cannot substitute for method proof. The Demos binding carries DAHR's `responseHash`/`responseHeadersHash`/`txHash` through the method-evidence chain, requires an authenticated resolvable `web2Request` transaction at `included` or stronger (with finalization before terminal DACS-5 production), and limits the current string-returning API to byte-exact UTF-8 payloads. The legacy optional wire spelling of `verificationMethod` is unchanged, but DPA-1 deliberately changes behavior and reject timing: a missing method now rejects before session start and payment instead of potentially failing only when delivery is attempted. Adds candidate vectors covering binding, replay, type/domain separation, DAHR transaction/hash requirements, self-signed disclosure, and fail-closed resolution.
@@ -45,8 +49,9 @@ The format used per release:
   `{anchor:{kind,locator},contentHash,signer?}`, replaces legacy
   `{rail,txHash,kind}` transaction references with the applicable
   `ChainTxRef` arm, and deterministically re-hashes/re-signs the affected
-  bundle and settlement fixtures. Adds a 19-case exact-shape suite covering
-  all three attestation anchor kinds and all eleven transaction-reference
+  bundle and settlement fixtures. Adds an exact-shape suite, extended by #315
+  to 23 cases, covering all three attestation anchor kinds and all fourteen
+  transaction-reference
   discriminators, including nested AP2 receipt attestations and negative
   legacy forms. The manifest gains two golden executable cases but retains
   `dacsVersion: "0.1"` because that is the full-profile baseline identifier,

@@ -2,6 +2,7 @@ import hashlib
 import ipaddress
 import json
 import re
+import unicodedata
 import unittest
 from pathlib import Path
 
@@ -24,10 +25,11 @@ def compact(value):
 def canonical_host(value):
     if not isinstance(value, str) or value != value.strip() or value.endswith("."):
         raise ValueError("not a hostname")
-    if any(c in value for c in ":/@?#*[]"):
+    normalized = unicodedata.normalize("NFC", value)
+    if any(c in normalized for c in ":/@?#*[]"):
         raise ValueError("not a hostname")
     try:
-        ascii_host = idna.encode(value, uts46=False, std3_rules=True).decode("ascii").lower()
+        ascii_host = idna.encode(normalized, uts46=False, std3_rules=True).decode("ascii").lower()
     except idna.IDNAError as exc:
         raise ValueError("bad IDNA") from exc
     if len(ascii_host.encode()) > 253:

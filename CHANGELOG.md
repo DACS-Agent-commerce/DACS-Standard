@@ -31,7 +31,7 @@ The format used per release:
   authority remains `indeterminate`; and inclusion time, not query time,
   governs the effective window. The persistent record cannot satisfy a fresh
   `domain-tls-control` requirement and controls a domain only when the bundle
-  presentation verifies under the same GCR-bound account. Adds 30 genuine
+  presentation verifies under the same GCR-bound account. Adds 31 genuine
   deterministic Ed25519 vectors and changes the example producer output to
   canonical `domain:`. The steward's signed registry publication remains a
   separate post-review operation.

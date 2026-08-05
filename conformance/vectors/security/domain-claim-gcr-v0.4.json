@@ -7,8 +7,8 @@
     "issue": "DACS-Agent-commerce/DACS-Standard#275",
     "generator": "scripts/generate_domain_gcr_vectors.py"
   },
-  "count": 30,
-  "hash": "7e60a8a19b547fc67123f262d473f8c833bf40b859b027f59d0e27b581d286fb",
+  "count": 31,
+  "hash": "26a8207d78dd82601dc0212443093924f2e4d6009da8c7f895ef54dcb99d1146",
   "vectors": [
     {
       "name": "canonical-production",
@@ -130,6 +130,68 @@
         "semanticClaims": [
           "domain:xn--fa-hia.example"
         ]
+      }
+    },
+    {
+      "name": "legacy-decomposed-unicode-nfc-idna-read",
+      "expected": "pass",
+      "artifact": {
+        "unsigned": {
+          "bundleVersion": "1",
+          "producerDacs1Version": "0.5",
+          "subject": "domain compatibility vector",
+          "claims": [
+            {
+              "ref": "web2:domain:éxample.example",
+              "metadata": {
+                "demosGcrDomain": {
+                  "context": "web2.domain",
+                  "hostname": "xn--xample-9ua.example",
+                  "account": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+                  "proofUrl": "https://xn--xample-9ua.example/.well-known/demos-cci.txt",
+                  "sourceTransaction": {
+                    "txHash": "2383d6070615c2fd9f6d01b0d6887dde8384304c91819567529c0913154cd9af",
+                    "blockNumber": 424242
+                  },
+                  "recordedAt": 1799913600000
+                }
+              }
+            }
+          ],
+          "presentedBy": "web2:domain:éxample.example",
+          "presentedAt": 1799999999000
+        },
+        "canonicalHex": "7b2262756e646c6556657273696f6e223a2231222c22636c61696d73223a5b7b226d65746164617461223a7b2264656d6f73476372446f6d61696e223a7b226163636f756e74223a2235663832356331363764626432663934353866383637623137663762303664383137336532373462346463343130623337393634646662303537356630313537222c22636f6e74657874223a22776562322e646f6d61696e222c22686f73746e616d65223a22786e2d2d78616d706c652d3975612e6578616d706c65222c2270726f6f6655726c223a2268747470733a2f2f786e2d2d78616d706c652d3975612e6578616d706c652f2e77656c6c2d6b6e6f776e2f64656d6f732d6363692e747874222c227265636f726465644174223a313739393931333630303030302c22736f757263655472616e73616374696f6e223a7b22626c6f636b4e756d626572223a3432343234322c22747848617368223a2232333833643630373036313563326664396636643031623064363838376464653833383433303463393138313935363735323963303931333135346364396166227d7d7d2c22726566223a22776562323a646f6d61696e3a65cc8178616d706c652e6578616d706c65227d5d2c2270726573656e7465644174223a313739393939393939393030302c2270726573656e7465644279223a22776562323a646f6d61696e3a65cc8178616d706c652e6578616d706c65222c2270726f6475636572446163733156657273696f6e223a22302e35222c227375626a656374223a22646f6d61696e20636f6d7061746962696c69747920766563746f72227d",
+        "contentHash": "2c088ec560bc7a5684090c07f8fae01af88e9539992fd90a62f2b5c87be0a2be",
+        "signingPublicKey": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "signature": "daacf0fb12cb411a265b572c476a0ca8939b1c8dd437546ae4801337de46c153ab7042f37159c93fc45d01cafef29c0bd69f6ef3295cdf2bc2e1ae7a21ef3306"
+      },
+      "authoritativeGcr": {
+        "context": "web2.domain",
+        "hostname": "xn--xample-9ua.example",
+        "account": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "proofUrl": "https://xn--xample-9ua.example/.well-known/demos-cci.txt",
+        "sourceTransaction": {
+          "txHash": "2383d6070615c2fd9f6d01b0d6887dde8384304c91819567529c0913154cd9af",
+          "blockNumber": 424242
+        },
+        "recordedAt": 1799913600000
+      },
+      "registrationValidation": {
+        "profile": "demos-web2-domain-v1",
+        "proofPayload": "demos:dw2p:ed25519:2b81f581c6551bcb797d13c17fdd685d1e8ddbb0bc95badfc383b666c0c937f43a7c10e67aa62ba0a73d45946fefa7cc37313614a9b16807cdd9d0ab068e0e03"
+      },
+      "sourceAvailable": true,
+      "validationProfileAvailable": true,
+      "requiredMethod": "demos-gcr-domain",
+      "evaluatedAt": 1800000000000,
+      "recipeDefaultMaxAgeSec": 31536000,
+      "unicodeInput": "éxample.example",
+      "want": {
+        "semanticClaims": [
+          "domain:xn--xample-9ua.example"
+        ],
+        "originalBytesPreserved": true
       }
     },
     {

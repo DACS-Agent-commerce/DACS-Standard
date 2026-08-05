@@ -118,6 +118,15 @@ def main() -> None:
                         idna_md, owner, unicodeInput="faß.example",
                         want={"semanticClaims": [f"domain:{idna_host}"]}))
 
+    decomposed_input = "e\u0301xample.example"
+    decomposed_host = "xn--xample-9ua.example"
+    decomposed_md = metadata(decomposed_host, owner)
+    vectors.append(case("legacy-decomposed-unicode-nfc-idna-read", "pass",
+                        [f"web2:domain:{decomposed_input}"], decomposed_md, decomposed_md,
+                        owner, producerDacs1Version="0.5", unicodeInput=decomposed_input,
+                        want={"semanticClaims": [f"domain:{decomposed_host}"],
+                              "originalBytesPreserved": True}))
+
     legacy = case("legacy-alias-original-byte-preservation", "pass",
                   [f"web2:domain:{host}"], md, record, owner,
                   producerDacs1Version="0.5",

@@ -30,8 +30,8 @@ identity, signer, catalog-key, or reputation-key fields.
 `web2.domain`; it is not a DACS ClaimReference scheme. A conforming adapter
 resolves the consensus-recorded GCR identity entry and emits
 `domain:<DCR-1-canonical-host>` while preserving the native context, host,
-Demos Ed25519 account, proof URL and payload, carrying transaction hash and
-block number, and inclusion timestamp as DACS-1 DCR-6 metadata. The adapter
+Demos Ed25519 account, proof URL, source transaction hash and block number,
+and inclusion timestamp as DACS-1 DCR-6 metadata. The adapter
 MUST authenticate those values against the carrying Demos transaction and
 finalized GCR state; an Indexer projection alone is insufficient.
 

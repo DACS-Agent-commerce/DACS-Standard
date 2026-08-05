@@ -1,8 +1,8 @@
 {
   "set": "settlement-event-identity-v0.6",
   "spec": "DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay",
-  "hash": "c60e4e4c343a12b4b81b35eb6b6cba8631b95b28fa63c65ed5ec48b0e4a51d53",
-  "count": 15,
+  "hash": "345b7a92b1d43af82f1c3a744f1ae74fc1b628a7efc4ff6ad276189632990335",
+  "count": 24,
   "publicKey": "2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
   "vectors": [
     {
@@ -776,6 +776,624 @@
         }
       },
       "expectedSettlementTxId": "evm:8453:abababababababababababababababababababababababababababababababab:0"
+    },
+    {
+      "name": "signed-evidence-amount-ledger-mismatch",
+      "expected": "fail",
+      "note": "a valid evidence signature over 5 USDC cannot validate a 6 USDC ledger event",
+      "anchorAddress": "dacs4:payment:job-315-a:base-usdc:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "6",
+          "currency": "USDC"
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "6"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "evm-event",
+            "chainId": 8453,
+            "txHash": "abababababababababababababababababababababababababababababababab",
+            "logIndex": 0
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "N1H6vFRD1dHuy3ZIh2kzRJajEK3NISq4K1QF-fTCKM1K0qbKNG9PtuSJWFIaXkZvVggLAvtDv9RPCrJFxELsCQ"
+        }
+      }
+    },
+    {
+      "name": "legacy-x402-unambiguous-replay",
+      "expected": "pass",
+      "note": "one authenticated receipt-bound transfer permits a legacy x402 event projection",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+          "chainId": 8453
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        },
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 3,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000a1",
+          "amount": "5"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      },
+      "expectedSettlementTxId": "evm:8453:abababababababababababababababababababababababababababababababab:0"
+    },
+    {
+      "name": "legacy-x402-no-matching-event",
+      "expected": "fail",
+      "note": "a resolved legacy x402 transaction with no matching transfer fails",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+          "chainId": 8453
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000a1",
+          "amount": "5"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      }
+    },
+    {
+      "name": "legacy-x402-ambiguous-replay",
+      "expected": "indeterminate",
+      "note": "multiple authenticated matching transfers leave legacy x402 event identity indeterminate",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+          "chainId": 8453
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        },
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 1,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      }
+    },
+    {
+      "name": "legacy-x402-ledger-unavailable",
+      "expected": "indeterminate",
+      "note": "unavailable authenticated ledger data leaves legacy x402 replay indeterminate",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+          "chainId": 8453
+        }
+      },
+      "ledgerEvents": null,
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      }
+    },
+    {
+      "name": "legacy-x402-receipt-hash-mismatch",
+      "expected": "fail",
+      "note": "the independently verified receipt hash must match the signed legacy x402 reference",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "5555555555555555555555555555555555555555555555555555555555555555",
+          "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+          "chainId": 8453
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      }
+    },
+    {
+      "name": "legacy-x402-transaction-mismatch",
+      "expected": "fail",
+      "note": "the verified receipt transaction must match the signed legacy x402 transaction",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "settlementTxHash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+          "chainId": 8453
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      }
+    },
+    {
+      "name": "legacy-x402-network-mismatch",
+      "expected": "fail",
+      "note": "the verified receipt network must match the signed legacy x402 chain",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+          "chainId": 1
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      }
+    },
+    {
+      "name": "legacy-x402-out-of-band-index-not-authority",
+      "expected": "indeterminate",
+      "note": "an unsigned index cannot disambiguate multiple legacy x402 transfers",
+      "anchorAddress": "dacs4:payment:job-315-a:x402-default:0",
+      "phaseIndex": 0,
+      "verificationContext": {
+        "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+        "payer": "0x00000000000000000000000000000000000000a1",
+        "payee": "0x00000000000000000000000000000000000000b2",
+        "amount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "x402Receipt": {
+          "verified": true,
+          "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+          "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+          "chainId": 8453
+        }
+      },
+      "ledgerEvents": [
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 0,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        },
+        {
+          "ledger": "evm",
+          "chainId": 8453,
+          "txHash": "abababababababababababababababababababababababababababababababab",
+          "logIndex": 1,
+          "standard": "erc20-transfer",
+          "asset": "eip155:8453/erc20:0x00000000000000000000000000000000000000cc",
+          "payer": "0x00000000000000000000000000000000000000a1",
+          "payee": "0x00000000000000000000000000000000000000b2",
+          "amount": "5"
+        }
+      ],
+      "priorClaims": {},
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "job-315-a",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402",
+            "httpResource": "https://merchant.example/resource/315",
+            "paymentReceiptHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxHash": "abababababababababababababababababababababababababababababababab",
+            "chainId": 8453,
+            "protocolVersion": "2"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "5",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "block-depth",
+          "finalityBlocks": 12,
+          "finalityObservedAt": 1785866400000
+        },
+        "observedAt": 1785866400000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4242424242424242424242424242424242424242424242424242424242424242",
+          "value": "LTcYRMrfQmG6ITKJ1lKjDiCaesR2Nr9oYqF6j1HjpygqWhp9MTmqzmcWIyPmGFxD-82hYn_4bwPVIoZf1nD6Dg"
+        }
+      },
+      "outOfBandEventIndex": 0
     },
     {
       "name": "event-discriminator-stripping",

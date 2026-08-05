@@ -28,6 +28,7 @@ SEED = bytes.fromhex("42" * 32)
 SIGNER = "did:demos:agent:" + "42" * 32
 EVM_TX = "ab" * 32
 EVM_TX_2 = "cd" * 32
+X402_RECEIPT_HASH = "44" * 32
 SOLANA_SIGNATURE = (
     "6pc4LiB8KHAPvbUbkozrTcPL5zXspYBdATv5raNDyVbhiKjrKokLb9o111kxTD5Kk"
     "PVd7UBSCcFcnWFkrJ82Hu6"
@@ -109,6 +110,23 @@ def context(kind: str = "evm") -> dict:
     }
 
 
+def x402_context(
+    *,
+    payment_receipt_hash: str = X402_RECEIPT_HASH,
+    settlement_tx_hash: str = EVM_TX,
+    chain_id: int = 8453,
+) -> dict:
+    return {
+        **context("evm"),
+        "x402Receipt": {
+            "verified": True,
+            "paymentReceiptHash": payment_receipt_hash,
+            "settlementTxHash": settlement_tx_hash,
+            "chainId": chain_id,
+        },
+    }
+
+
 def evidence(job_id: str, phase: str, tx_ref: dict) -> dict:
     record = {
         "evidenceVersion": "1",
@@ -180,6 +198,14 @@ def build_vectors() -> list[dict]:
         "instructionIndex": 2,
     }
     legacy_evm_ref = {"kind": "evm", "chainId": 8453, "txHash": EVM_TX}
+    legacy_x402_ref = {
+        "kind": "x402",
+        "httpResource": "https://merchant.example/resource/315",
+        "paymentReceiptHash": X402_RECEIPT_HASH,
+        "settlementTxHash": EVM_TX,
+        "chainId": 8453,
+        "protocolVersion": "2",
+    }
     vectors = [
         vector(
             "current-evm-log-index",
@@ -280,7 +306,7 @@ def build_vectors() -> list[dict]:
             {
                 "kind": "x402-event",
                 "httpResource": "https://merchant.example/resource/315",
-                "paymentReceiptHash": "44" * 32,
+                "paymentReceiptHash": X402_RECEIPT_HASH,
                 "settlementTxHash": EVM_TX,
                 "chainId": 8453,
                 "logIndex": 0,
@@ -289,19 +315,111 @@ def build_vectors() -> list[dict]:
             [event("evm", 0)],
             phase="pay-x402",
             rail_id="x402-default",
-            verification_context={
-                **context("evm"),
-                "x402Receipt": {
-                    "verified": True,
-                    "paymentReceiptHash": "44" * 32,
-                    "settlementTxHash": EVM_TX,
-                    "chainId": 8453,
-                },
-            },
+            verification_context=x402_context(),
             expected_settlement_tx_id=f"evm:8453:{EVM_TX}:0",
             note="the signed x402 receipt fields and EVM event resolve to one event identity",
         ),
     ]
+
+    amount_mismatch_event = event("evm", 0)
+    amount_mismatch_event["amount"] = "6"
+    amount_mismatch_context = context("evm")
+    amount_mismatch_context["amount"] = {"amount": "6", "currency": "USDC"}
+    vectors.append(vector(
+        "signed-evidence-amount-ledger-mismatch",
+        "fail",
+        evm_ref,
+        [amount_mismatch_event],
+        verification_context=amount_mismatch_context,
+        note="a valid evidence signature over 5 USDC cannot validate a 6 USDC ledger event",
+    ))
+
+    vectors.extend([
+        vector(
+            "legacy-x402-unambiguous-replay",
+            "pass",
+            legacy_x402_ref,
+            [event("evm", 0), event("evm", 3, matches=False)],
+            phase="pay-x402",
+            rail_id="x402-default",
+            verification_context=x402_context(),
+            expected_settlement_tx_id=f"evm:8453:{EVM_TX}:0",
+            note="one authenticated receipt-bound transfer permits a legacy x402 event projection",
+        ),
+        vector(
+            "legacy-x402-no-matching-event",
+            "fail",
+            legacy_x402_ref,
+            [event("evm", 0, matches=False)],
+            phase="pay-x402",
+            rail_id="x402-default",
+            verification_context=x402_context(),
+            note="a resolved legacy x402 transaction with no matching transfer fails",
+        ),
+        vector(
+            "legacy-x402-ambiguous-replay",
+            "indeterminate",
+            legacy_x402_ref,
+            [event("evm", 0), event("evm", 1)],
+            phase="pay-x402",
+            rail_id="x402-default",
+            verification_context=x402_context(),
+            note="multiple authenticated matching transfers leave legacy x402 event identity indeterminate",
+        ),
+        vector(
+            "legacy-x402-ledger-unavailable",
+            "indeterminate",
+            legacy_x402_ref,
+            None,
+            phase="pay-x402",
+            rail_id="x402-default",
+            verification_context=x402_context(),
+            note="unavailable authenticated ledger data leaves legacy x402 replay indeterminate",
+        ),
+        vector(
+            "legacy-x402-receipt-hash-mismatch",
+            "fail",
+            legacy_x402_ref,
+            [event("evm", 0)],
+            phase="pay-x402",
+            rail_id="x402-default",
+            verification_context=x402_context(payment_receipt_hash="55" * 32),
+            note="the independently verified receipt hash must match the signed legacy x402 reference",
+        ),
+        vector(
+            "legacy-x402-transaction-mismatch",
+            "fail",
+            legacy_x402_ref,
+            [event("evm", 0)],
+            phase="pay-x402",
+            rail_id="x402-default",
+            verification_context=x402_context(settlement_tx_hash=EVM_TX_2),
+            note="the verified receipt transaction must match the signed legacy x402 transaction",
+        ),
+        vector(
+            "legacy-x402-network-mismatch",
+            "fail",
+            legacy_x402_ref,
+            [event("evm", 0)],
+            phase="pay-x402",
+            rail_id="x402-default",
+            verification_context=x402_context(chain_id=1),
+            note="the verified receipt network must match the signed legacy x402 chain",
+        ),
+    ])
+
+    legacy_x402_out_of_band = vector(
+        "legacy-x402-out-of-band-index-not-authority",
+        "indeterminate",
+        legacy_x402_ref,
+        [event("evm", 0), event("evm", 1)],
+        phase="pay-x402",
+        rail_id="x402-default",
+        verification_context=x402_context(),
+        note="an unsigned index cannot disambiguate multiple legacy x402 transfers",
+    )
+    legacy_x402_out_of_band["outOfBandEventIndex"] = 0
+    vectors.append(legacy_x402_out_of_band)
 
     stripped = vector(
         "event-discriminator-stripping",

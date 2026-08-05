@@ -89,13 +89,19 @@ def canonical_evm_hash(value):
     return normalized.lower()
 
 
-def semantic_match(event, context):
+def semantic_match(event, context, evidence):
+    context_amount = context.get("amount")
+    evidence_amount = evidence.get("paymentAmount")
     return (
         isinstance(event, dict)
+        and isinstance(context_amount, dict)
+        and isinstance(evidence_amount, dict)
         and event.get("asset") == context.get("asset")
         and event.get("payer") == context.get("payer")
         and event.get("payee") == context.get("payee")
-        and event.get("amount") == context.get("amount", {}).get("amount")
+        and event.get("amount") == context_amount.get("amount")
+        and event.get("amount") == evidence_amount.get("amount")
+        and evidence_amount.get("currency") == context_amount.get("currency")
     )
 
 
@@ -184,11 +190,45 @@ def parse_ref(ref):
         return "legacy-solana", {
             "cluster": ref["cluster"], "signature": ref["signature"]
         }
+    if kind == "x402":
+        required = {"kind", "httpResource", "paymentReceiptHash", "protocolVersion"}
+        optional = {"settlementTxHash", "chainId"}
+        if not required <= set(ref) or not set(ref) <= required | optional:
+            return "error", None
+        receipt_hash = ref.get("paymentReceiptHash")
+        if not isinstance(ref.get("httpResource"), str) or not ref["httpResource"]:
+            return "error", None
+        if not isinstance(receipt_hash, str) or len(receipt_hash) != 64:
+            return "error", None
+        try:
+            bytes.fromhex(receipt_hash)
+        except ValueError:
+            return "error", None
+        if receipt_hash.lower() != receipt_hash:
+            return "error", None
+        protocol_version = ref.get("protocolVersion")
+        if (
+            not isinstance(protocol_version, str)
+            or not protocol_version.isdecimal()
+            or str(int(protocol_version)) != protocol_version
+        ):
+            return "error", None
+        parsed = {"paymentReceiptHash": receipt_hash}
+        if "settlementTxHash" in ref:
+            try:
+                parsed["signedTxHash"] = canonical_evm_hash(ref["settlementTxHash"])
+            except ValueError:
+                return "error", None
+        if "chainId" in ref:
+            if not safe_nonnegative_int(ref["chainId"], positive=True):
+                return "error", None
+            parsed["signedChainId"] = ref["chainId"]
+        return "legacy-x402", parsed
     return "error", None
 
 
 def event_in_envelope(event, mode, parsed):
-    if mode in {"current-evm", "current-x402", "legacy-evm"}:
+    if mode in {"current-evm", "current-x402", "legacy-evm", "legacy-x402"}:
         return (
             event.get("ledger") == "evm"
             and event.get("chainId") == parsed["chainId"]
@@ -210,7 +250,7 @@ def event_index(event, mode):
 
 
 def settlement_key(mode, parsed, index):
-    if mode in {"current-evm", "current-x402", "legacy-evm"}:
+    if mode in {"current-evm", "current-x402", "legacy-evm", "legacy-x402"}:
         return f"evm:{parsed['chainId']}:{parsed['txHash']}:{index}"
     return f"solana:{parsed['cluster']}:{parsed['signature']}:{index}"
 
@@ -245,17 +285,34 @@ def evaluate(vector, public_key):
     if not isinstance(context, dict):
         return "error"
 
-    if mode == "current-x402":
+    if mode in {"current-x402", "legacy-x402"}:
         receipt = context.get("x402Receipt")
         ref = refs[0]
         if not isinstance(receipt, dict) or receipt.get("verified") is not True:
             return "indeterminate"
-        if (
-            receipt.get("paymentReceiptHash") != ref.get("paymentReceiptHash")
-            or receipt.get("settlementTxHash") != ref.get("settlementTxHash")
-            or receipt.get("chainId") != ref.get("chainId")
-        ):
+        if receipt.get("paymentReceiptHash") != ref.get("paymentReceiptHash"):
             return "fail"
+        try:
+            receipt_tx_hash = canonical_evm_hash(receipt.get("settlementTxHash"))
+        except ValueError:
+            return "fail"
+        receipt_chain_id = receipt.get("chainId")
+        if not safe_nonnegative_int(receipt_chain_id, positive=True):
+            return "fail"
+        if mode == "current-x402":
+            if (
+                receipt_tx_hash != ref.get("settlementTxHash")
+                or receipt_chain_id != ref.get("chainId")
+            ):
+                return "fail"
+        else:
+            if (
+                ("signedTxHash" in parsed and parsed["signedTxHash"] != receipt_tx_hash)
+                or ("signedChainId" in parsed and parsed["signedChainId"] != receipt_chain_id)
+            ):
+                return "fail"
+            parsed["txHash"] = receipt_tx_hash
+            parsed["chainId"] = receipt_chain_id
 
     envelope_events = [
         item for item in ledger_events
@@ -263,11 +320,14 @@ def evaluate(vector, public_key):
     ]
     if mode.startswith("current-"):
         selected = [item for item in envelope_events if event_index(item, mode) == parsed["index"]]
-        if len(selected) != 1 or not semantic_match(selected[0], context):
+        if len(selected) != 1 or not semantic_match(selected[0], context, evidence):
             return "fail"
         index = parsed["index"]
     else:
-        matching = [item for item in envelope_events if semantic_match(item, context)]
+        matching = [
+            item for item in envelope_events
+            if semantic_match(item, context, evidence)
+        ]
         if not matching:
             return "fail"
         if len(matching) != 1:
@@ -323,6 +383,16 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
                 valid = signature_valid(vector["settlementEvidence"], self.public_key)
                 self.assertEqual(valid, vector["name"] not in tampered)
 
+    def test_signed_amount_mismatch_rejection_preserves_valid_signature(self):
+        vector = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "signed-evidence-amount-ledger-mismatch"
+        )
+        self.assertTrue(signature_valid(vector["settlementEvidence"], self.public_key))
+        self.assertEqual(vector["settlementEvidence"]["paymentAmount"]["amount"], "5")
+        self.assertEqual(vector["ledgerEvents"][0]["amount"], "6")
+        self.assertEqual(evaluate(vector, self.public_key), "fail")
+
     def test_required_issue_315_cases_are_present(self):
         names = {vector["name"] for vector in self.document["vectors"]}
         required = {
@@ -337,6 +407,15 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
             "legacy-ambiguous-replay",
             "event-discriminator-stripping",
             "cross-type-signature-replay",
+            "signed-evidence-amount-ledger-mismatch",
+            "legacy-x402-unambiguous-replay",
+            "legacy-x402-no-matching-event",
+            "legacy-x402-ambiguous-replay",
+            "legacy-x402-ledger-unavailable",
+            "legacy-x402-receipt-hash-mismatch",
+            "legacy-x402-transaction-mismatch",
+            "legacy-x402-network-mismatch",
+            "legacy-x402-out-of-band-index-not-authority",
         }
         self.assertTrue(required <= names)
 
@@ -348,6 +427,7 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
             "batched-evm-transfer-distinct-key",
             "legacy-unambiguous-replay",
             "current-x402-event",
+            "legacy-x402-unambiguous-replay",
         ):
             with self.subTest(vector=name):
                 key = by_name[name].get("expectedSettlementTxId")

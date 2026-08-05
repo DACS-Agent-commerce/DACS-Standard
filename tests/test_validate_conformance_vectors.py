@@ -1,3 +1,4 @@
+import base64
 import json
 import shutil
 import subprocess
@@ -239,6 +240,30 @@ class B2ConformanceHashTests(unittest.TestCase):
 
     HAPPY = "dacs-v0.1-happy-path.json"
     NEG = "dacs-v0.1-negative-paths.json"
+    # Synthetic basename in validate_conformance_vectors.LEGACY_SIG_SPELLING_FILES. No such
+    # file is committed; it is the allowlisted name the dual-gate specimen is written under,
+    # so the legacy padded-Base64 gate stays exercised now the lifecycle files are SIG-6.
+    SYNTHETIC_LEGACY_NAME = "legacy-padded-spelling-fixture.json"
+
+    def _respell_to_padded_base64(self, data):
+        """Re-spell every canonical SIG-6 signature value in-place to padded standard
+        Base64 (byte-preserving) and declare the legacy spelling — turning the migrated
+        SIG-6 HAPPY structure into a self-contained legacy padded-Base64 specimen."""
+        data["signatureValueSpelling"] = "legacy-padded-base64"
+
+        def walk(node):
+            if isinstance(node, dict):
+                if isinstance(node.get("algorithm"), str) and isinstance(node.get("value"), str):
+                    value = node["value"]
+                    raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+                    node["value"] = base64.b64encode(raw).decode("ascii")
+                for child in node.values():
+                    walk(child)
+            elif isinstance(node, list):
+                for child in node:
+                    walk(child)
+
+        walk(data["artifacts"])
 
     def _temp_vector(self, source_name, mutate=None, dest_name=None):
         data = json.loads((ROOT / "conformance" / "vectors" / source_name).read_text())
@@ -325,22 +350,30 @@ class B2ConformanceHashTests(unittest.TestCase):
         self.assertIn("unknown artifact kind", result.stderr)
 
     def test_legacy_base64_dual_gate(self):
-        # Padded standard Base64 is accepted only when BOTH the basename is
-        # allowlisted AND the file declares signatureValueSpelling.
-        # (1) allowlisted name + flag -> pass
-        ok = run_validator(str(self._temp_vector(self.HAPPY, dest_name=self.HAPPY)))
+        # Padded standard Base64 is accepted only when BOTH the basename is allowlisted
+        # AND the file declares signatureValueSpelling. The lifecycle fixtures are now
+        # canonical SIG-6, so this exercises the gate against a SELF-CONTAINED synthetic
+        # specimen constructed at test time — the migrated HAPPY structure re-spelled to
+        # padded standard Base64 under the allowlisted synthetic basename. No repository
+        # fixture carries legacy spelling.
+        # (1) allowlisted name + flag + padded values -> pass
+        ok = run_validator(str(self._temp_vector(
+            self.HAPPY, self._respell_to_padded_base64, dest_name=self.SYNTHETIC_LEGACY_NAME)))
         self.assertEqual(ok.returncode, 0, ok.stderr + ok.stdout)
 
-        # (2) allowlisted name, flag stripped -> red
-        def strip_flag(data):
+        # (2) allowlisted name, flag stripped -> padded no longer permitted -> red
+        def padded_without_flag(data):
+            self._respell_to_padded_base64(data)
             data.pop("signatureValueSpelling", None)
 
-        no_flag = run_validator(str(self._temp_vector(self.HAPPY, strip_flag, dest_name=self.HAPPY)))
+        no_flag = run_validator(str(self._temp_vector(
+            self.HAPPY, padded_without_flag, dest_name=self.SYNTHETIC_LEGACY_NAME)))
         self.assertNotEqual(no_flag.returncode, 0, no_flag.stdout)
         self.assertIn("signatureChecks mismatch", no_flag.stderr)
 
-        # (3) non-allowlisted name + flag -> red
-        renamed = run_validator(str(self._temp_vector(self.HAPPY, dest_name="not-allowlisted.json")))
+        # (3) non-allowlisted name + flag + padded values -> red
+        renamed = run_validator(str(self._temp_vector(
+            self.HAPPY, self._respell_to_padded_base64, dest_name="not-allowlisted.json")))
         self.assertNotEqual(renamed.returncode, 0, renamed.stdout)
         self.assertIn("signatureChecks mismatch", renamed.stderr)
 

@@ -11,33 +11,46 @@ small, repeatable check against the DACS v0.1 artifact lifecycle.
 > — they are no longer quarantined. For the broader verifier-emitted conformance
 > suite see [`golden.json`](./golden.json) + [`../MANIFEST.json`](../MANIFEST.json) (236 cases).
 
-> **SIG-6 transition.** These two generated lifecycle chains predate the canonical
-> signature-value ruling and retain padded standard-Base64 signature spellings.
-> Each downstream artifact binds the complete serialized content hash of earlier
-> artifacts, so changing a spelling requires generator-side chain regeneration
-> and re-signing rather than an in-place edit. They are legacy migration inputs,
-> not SIG-6 wire-encoding cases. Current encoding conformance is pinned by
+> **SIG-6 spelling (migrated).** Both lifecycle chains now carry canonical SIG-6
+> signature values (unpadded Base64URL) and no longer declare
+> `signatureValueSpelling`, matching every other SIG-6 vector (e.g.
+> [`security/bundle-binding-v0.1.json`](./security/bundle-binding-v0.1.json)). The
+> re-spelling changed only the wire encoding — the underlying signature bytes are
+> byte-identical to the prior padded spelling. Because each downstream artifact binds
+> the serialized content hash of earlier artifacts, the re-spelling was done
+> generator-side (`scripts/generate_lifecycle_vectors.py`), never by hand. Encoding
+> conformance itself is pinned by
 > [`security/signature-value-encoding-v0.1.json`](./security/signature-value-encoding-v0.1.json).
-> The validator accepts the padded spelling only when BOTH an explicit
-> `"signatureValueSpelling": "legacy-padded-base64"` declaration AND a recognised
-> lifecycle-vector basename are present. This is an explicit **compatibility
-> routing**, not an authenticity boundary — it decides which decoder runs, not
-> whether a file is trustworthy. Canonical SIG-6 decode is attempted first, so a
-> future SIG-6 migration simply drops the declaration and the legacy path closes.
+>
+> The validator still supports a legacy padded-Base64 **dual gate** — padded standard
+> Base64 is accepted only when BOTH an explicit
+> `"signatureValueSpelling": "legacy-padded-base64"` declaration AND an allowlisted
+> basename are present — for any genuine legacy vector that might yet appear. Canonical
+> SIG-6 is attempted first, so a SIG-6 file never requests that permit; these lifecycle
+> files therefore no longer sit on the allowlist. The gate's load-bearing behaviour is
+> exercised by a self-contained synthetic specimen in
+> `tests/test_validate_conformance_vectors.py::test_legacy_base64_dual_gate`, not by any
+> committed fixture. This is **compatibility routing**, not an authenticity boundary —
+> it decides which decoder runs, not whether a file is trustworthy.
 
-> **Internal-reference residual (#278 / #313).** Each artifact's `contentHash`
+> **Internal-reference coherence (#278 / #313).** Each artifact's `contentHash`
 > envelope value is the §B.2 content hash — sha256 of the RFC 8785 canonical form
 > with the signature field omitted (bundles also omit `anchoredByRole`, §10.4.1).
 > The embedded ed25519 signatures already commit to that hash, so correcting the
-> envelope values needed no re-signing. The signed **internal cross-references**,
-> however — `agreement.listingRef.contentHash`,
+> envelope values needed no re-signing. The signed **internal cross-references** —
+> `agreement.listingRef.contentHash`,
 > `agreement.parties[*].vetRecordRef.contentHash`, and
-> `bundle.listingRef.contentHash` — still commit to the legacy *whole-artifact*
-> envelope hashes: they sit inside the signed scope, so they cannot be corrected
-> in place without invalidating the (externally-keyed) signatures. Until the chain
-> is regenerated generator-side, **these fixtures MUST NOT be used as
-> reference-resolution vectors** — a consumer resolving an internal ref against the
-> corrected envelope hash will see a mismatch. Tracked in #313.
+> `bundle.listingRef.contentHash` — sit inside the signed scope, so they could not
+> be corrected in place; the chains were instead regenerated generator-side
+> (`scripts/generate_lifecycle_vectors.py`) and re-signed with the disclosed
+> repeated-byte ed25519 keys. Those references now resolve to the referent's §B.2
+> signature-omitted envelope hash in **both** lifecycle chains. The coherence
+> relationship is executable and pinned by
+> `tests/test_payload_attestation_vectors.py::test_happy_path_is_dpa1_coherent_and_transitively_resigned`
+> (positive chain, including the Vet-record references) and
+> `::test_negative_chain_is_internally_coherent` (negative chain). This is the
+> generator-side regeneration #313 anticipated, carried out here for #278; #313
+> remains its tracking issue.
 
 ## Included vectors
 

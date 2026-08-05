@@ -76,15 +76,26 @@ KIND_SEPARATOR = {
     "AttestationBundle": "dacs-bundle:v1:",
 }
 
-# The two lifecycle chains predate the SIG-6 canonical signature-value ruling and
-# retain padded standard-Base64 spellings (conformance/vectors/README.md, "SIG-6
-# transition"). Padded standard Base64 is accepted only under a DUAL gate: the
-# basename is in this allowlist AND the file itself declares the legacy spelling
-# via the top-level signatureValueSpelling field below. Either alone is rejected;
-# every other file must carry canonical SIG-6 unpadded Base64URL.
-LEGACY_SIG_SPELLING_FILES = {
+# The two lifecycle chains the generator (and write_vectors) regenerate end-to-end.
+# This is a FILE-SET for regeneration — deliberately distinct from the padded-Base64
+# allowlist below, which they used to share (a conflation removed in the SIG-6 migration).
+LIFECYCLE_VECTOR_FILES = {
     "dacs-v0.1-happy-path.json",
     "dacs-v0.1-negative-paths.json",
+}
+
+# Padded standard Base64 is accepted only under a DUAL gate: the basename is in this
+# allowlist AND the file itself declares the legacy spelling via the top-level
+# signatureValueSpelling field below. Either alone is rejected; every other file must
+# carry canonical SIG-6 unpadded Base64URL. Canonical SIG-6 is attempted FIRST, so a
+# SIG-6 file never requests this permit — which is why the lifecycle chains, now migrated
+# to SIG-6, are NO LONGER listed here. The mechanism stays live for any genuine legacy
+# padded-Base64 vector; its load-bearing behaviour is exercised by
+# tests/test_validate_conformance_vectors.py::test_legacy_base64_dual_gate against a
+# constructed specimen carrying the synthetic basename below (no such file is committed —
+# an allowlist is a set of permitted names, not a claim that the files exist).
+LEGACY_SIG_SPELLING_FILES = {
+    "legacy-padded-spelling-fixture.json",
 }
 LEGACY_SIG_SPELLING_VALUE = "legacy-padded-base64"
 
@@ -578,8 +589,16 @@ def iter_vector_files(vector_dir: Path) -> list[Path]:
     return sorted(p for p in vector_dir.glob("*.json") if p.is_file())
 
 
-# The one signature that must fail in --write: the designated tampered bundle sig.
-EXPECTED_WRITE_FAIL = ("signatures[0]", "neg-bundle-tampered-signature")
+# The intentional signature tampers in the lifecycle corpus, declared once as a
+# structural set of (signaturePath, artifactId) pairs. Every OTHER stored signature
+# must verify; the --write gate derives its expected verify-count from the corpus size
+# minus this set, so the count is never a magic number and the set is asserted exactly.
+# (The tampered HTLC preimage in neg-settlement-tampered-preimage is a payload-semantics
+# defect, NOT a signature tamper — its ed25519 signature over the §B.2 scope still
+# verifies — so it is deliberately NOT listed here.)
+INTENTIONAL_SIGNATURE_TAMPERS = frozenset({
+    ("signatures[0]", "neg-bundle-tampered-signature"),
+})
 
 
 def require_crypto() -> None:
@@ -604,10 +623,10 @@ def write_vectors() -> int:
 
     require_crypto()
     registry = load_registered_domain_separators(ROOT)
-    files = [DEFAULT_VECTOR_DIR / name for name in sorted(LEGACY_SIG_SPELLING_FILES)]
+    files = [DEFAULT_VECTOR_DIR / name for name in sorted(LIFECYCLE_VECTOR_FILES)]
     staged: list[tuple[Path, dict]] = []
-    verify_count = 0
-    fail_pins: list[tuple[str, str]] = []
+    total_signatures = 0
+    observed_fail_pins: set[tuple[str, str]] = set()
     for path in files:
         data = json.loads(path.read_text(encoding="utf-8"))
         legacy_allowed = legacy_spelling_allowed(path, data)
@@ -617,17 +636,24 @@ def write_vectors() -> int:
             observed = observed_signature_checks(kind, artifact["artifact"], registry, legacy_allowed)
             artifact["signatureChecks"] = observed
             for pin in observed:
-                if pin["expect"] == "verify":
-                    verify_count += 1
-                else:
-                    fail_pins.append((pin["path"], artifact["id"]))
+                total_signatures += 1
+                if pin["expect"] != "verify":
+                    observed_fail_pins.add((pin["path"], artifact["id"]))
         staged.append((path, data))
 
-    if verify_count != 13 or fail_pins != [EXPECTED_WRITE_FAIL]:
+    # Expectation DERIVED from the corpus, not a literal: every stored signature must
+    # verify except exactly the declared intentional-tamper set. This survives Step-5's
+    # negative-chain regeneration unchanged, as long as that regeneration keeps the same
+    # signature cardinality and the same single tampered bundle signature.
+    verify_count = total_signatures - len(observed_fail_pins)
+    expected_verify = total_signatures - len(INTENTIONAL_SIGNATURE_TAMPERS)
+    if observed_fail_pins != set(INTENTIONAL_SIGNATURE_TAMPERS) or verify_count != expected_verify:
         print(
             "refusing to write: unexpected signature distribution "
-            f"(verify={verify_count}, fail_pins={fail_pins}); expected 13 verify + exactly "
-            f"one fail at {list(EXPECTED_WRITE_FAIL)}",
+            f"(total={total_signatures}, verify={verify_count}, "
+            f"observed_fail_pins={sorted(observed_fail_pins)}); expected "
+            f"{expected_verify} verify + failures exactly "
+            f"{sorted(INTENTIONAL_SIGNATURE_TAMPERS)}",
             file=sys.stderr,
         )
         return 1

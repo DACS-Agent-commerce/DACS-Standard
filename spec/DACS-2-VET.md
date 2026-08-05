@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.4** (on the common DACS v0.1 baseline; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.5** (on the common DACS v0.1 baseline; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -36,9 +36,9 @@ Two further design failures DACS-2 avoids:
 - Treating each method as its own protocol. The uniform `VerifyResult` is the lingua franca — methods produce it, the stack consumes it.
 - Forcing one method onto all credentials. Public-registry credentials fit consensus-backed proxy/SR-3; private-data fit TLSNotary/zkTLS; cooperative-issuer fit W3C VC. The recipe registry routes each scheme; the stack stays method-agnostic.
 
-### 7.3 Verification methods (v0.4 closed registry)
+### 7.3 Verification methods (v0.5 closed registry)
 
-The v0.4 method set is closed. New methods are added in subsequent versions of DACS-2 by the governance process in chapter 11.
+The v0.5 method set is closed. New methods are added in subsequent versions of DACS-2 by the governance process in chapter 11.
 
 #### 7.3.1 Common contract
 
@@ -230,7 +230,7 @@ On successful checks the method anchors the VerifyResult under CM-2 and returns 
 
 ### 7.4 Recipe registry
 
-A recipe binds a DACS-1 claim scheme to one verification-method family plus parsing rules and defaults. A scheme MAY have multiple recipe families when the methods prove materially different properties; the family identity is `(scheme, defaultMethod.kind)`.
+A recipe binds a DACS-1 claim scheme to one verification-method family plus method-applicable evaluation rules and defaults. A scheme MAY have multiple recipe families when the methods prove materially different properties; the family identity is `(scheme, defaultMethod.kind)`.
 
 #### 7.4.1 Recipe schema
 
@@ -247,7 +247,7 @@ type Recipe = {
 
   defaultMaxAgeSec: number                    // when a verifiedBy reference becomes stale
 
-  parserRules: ParserSpec
+  parserRules?: ParserSpec                    // presence and execution governed by PRA-1..PRA-5
 
   negativeMatch?: boolean                     // true => presence in source means fail
 
@@ -340,9 +340,47 @@ type ParserSpec =
   | { format: "raw"; matcher: string; indeterminateOn?: IndeterminatePredicate[] }
 ```
 
+**Parser applicability (normative).** `ParserSpec` consumes structured or raw
+content disclosed by a verification method. It is not a generic second verdict
+layer and MUST NOT be applied to a method whose own authenticated procedure
+already produces the decision and output data.
+
+- **(PRA-1) Closed method classification.** In DACS-2 v0.5 the
+  parser-consuming methods are `verifiable-credential`, `tlsnotary`, `zktls`,
+  `consensus-backed-proxy`, and `evm-rpc`. The method-native methods are
+  `oauth-attested`, `domain-tls-control`, `self-signed`, and
+  `demos-gcr-domain`. A later method registration MUST declare exactly one of
+  these evaluation modes as part of that method's normative definition.
+- **(PRA-2) Recipe-shape validity and compatibility.** If `defaultMethod` or
+  any member of `alternatives` is parser-consuming, `parserRules` is REQUIRED
+  and MUST be a valid `ParserSpec`. A native-only recipe produced under
+  DACS-2 v0.5 or later MUST omit `parserRules`. A signed native-only recipe
+  already published under a DACS-2 v0.4-or-earlier registry snapshot MAY
+  retain the formerly required field for read/replay compatibility; a current
+  consumer MUST ignore it and MUST NOT reject that historical recipe solely
+  because the field is present. A `null` value was never a valid `ParserSpec`:
+  it is not absence and receives no compatibility exception.
+- **(PRA-3) Selected-method execution.** The verifier first selects the exact
+  method from `defaultMethod` or `alternatives`. It applies `parserRules` only
+  when that selected method is parser-consuming. In a mixed recipe, selecting
+  a method-native alternative MUST skip parser execution even though the
+  recipe necessarily carries `parserRules` for its parser-consuming member.
+- **(PRA-4) Method-native authority.** A method-native path derives its
+  `decision` and any `VerifyResult.data` only from that method's authenticated
+  procedure and inputs. Parser output, an inert matcher, or a parser-produced
+  value MUST NOT override, supplement, or relabel the method-native result.
+- **(PRA-5) Fail before invocation.** A recipe that violates PRA-1 or the
+  applicable PRA-2 production/shape rule is invalid and MUST NOT be activated
+  by the registry steward. A verifier that encounters a missing or invalid
+  required ParserSpec, an unclassified method, or a non-historical native-only
+  recipe carrying `parserRules` MUST return `error` before invoking the method,
+  fetching an authority, anchoring an attestation, or producing any external
+  side effect. The explicit historical-read exception in PRA-2 is not an
+  invalid recipe and follows PRA-3/PRA-4 instead.
+
 **Existence/validity, never control (normative).** A DACS-2 `VerifyResult` establishes that the identifier is **real and currently valid at its authority** — it does **not**, and a `decision: "pass"` MUST NOT be read to, establish that the presenter *controls* the identifier. Control is a **DACS-1** property (DACS-1 §6.3.2 step (6)): proven by the bundle presentation signature (`key:`), the anchored address-key linkage (`cci-xm:`), or a credential **holder-binding** proof (§7.3.2) for VC/vLEI claims. A bare-registry method (`consensus-backed-proxy`, e.g. `lei` at GLEIF) resolves a *public* identifier with no key-binding, so it can only ever establish existence — never control — whatever it resolves and wherever the result is stored.
 
-**ParserSpec semantics (normative).** Given the attested response body, a verifier applies the recipe’s ParserSpec to produce a decision and an optional extracted-data map:
+**ParserSpec semantics (normative).** When PRA-3 selects a parser-consuming method, the verifier applies the recipe's ParserSpec to that method's authenticated disclosed content to produce a decision and an optional extracted-data map:
 
 - (PSP-1) **successJsonPath / successSelector / successXPath / matcher** is the *match predicate*. For `json`, it is a JSONPath that MUST select at least one node for a match; for `html`, a CSS selector that MUST select at least one element; for `xml`, an XPath that MUST select at least one node; for `raw`, `matcher` is a regular expression (RE2 syntax, no backreferences) that MUST find at least one match in the body.
 - (PSP-2) **Decision mapping.** Schemes have a *match polarity*: for a **positive-match** scheme (e.g. `lei`) a match means the claim holds; for a **negative-match** scheme (e.g. `ofac-clear`, where a match means "listed") the recipe’s `negativeMatch: true` flag inverts the outcome. The `indeterminateOn` predicates, when present, are evaluated against the parsed body BEFORE the match predicate; if any matches, the decision is `indeterminate` and the match predicate is not applied. Otherwise:
@@ -521,7 +559,7 @@ type VerifyResult = {
 
   attestation: AttestationRef
 
-  data?: Record<string, unknown>              // structured extraction per recipe.parserRules
+  data?: Record<string, unknown>              // authenticated method-native output or ParserSpec extraction
 
   fetchedAt: number                           // unix ms when the authority was queried
 
@@ -562,7 +600,7 @@ verification rules in CORE §B.7 (SIG-6).
 
 - `data` in a publicly-anchored VerifyResult MUST carry **only predicate outcomes** — the booleans / derived facts the recipe's match needs (e.g. `{ overEighteen: true }`, `{ sanctioned: false }`, `{ kycTier: "enhanced" }`).
 - `data` in a publicly-anchored VerifyResult MUST NOT carry raw extracted **private** personal or financial fields (date of birth, account balance, document/government-ID numbers) or any value a privacy-preserving method was used specifically to avoid disclosing. Carrying the raw fields is only permissible under the encrypted-to-parties anchoring mode that is roadmap work (§12.1).
-- A recipe whose `parserRules` would extract such sensitive raw fields MUST reduce them to predicate outcomes before they enter an unencrypted anchored `data`.
+- A recipe whose `parserRules`, when present, would extract such sensitive raw fields MUST reduce them to predicate outcomes before they enter an unencrypted anchored `data`.
 - Fields that are **already public at the authority** — e.g. a public registry's published company name / jurisdiction, such as GLEIF LEI data — are NOT subject to this minimisation, since anchoring already-public registry data leaks nothing.
 
 > **Note (non-normative).** This is load-bearing for privacy-preserving methods: a `tlsnotary` or `zktls` recipe exists precisely to prove a fact without revealing the underlying value, and copying that value into a cleartext public anchor would defeat the method. The exposure of `scheme`, `identifier`, and `decision` themselves is accepted by design per §12.1.
@@ -598,13 +636,13 @@ A consumer of a VerifyResult MUST validate the attestation by:
 
 The verifier MUST execute each claim verification by:
 
-1. resolving the recipe and pinning recipeVersion to the session record;
+1. resolving the recipe, validating its PRA-1/PRA-2 parser applicability, and pinning recipeVersion to the session record;
 2. rendering method inputs by substituting the claim’s identifier into the method’s template;
 3. invoking the method (calling the appropriate substrate primitive for SR-3 methods, or external service);
 4. receiving the attestation (raw bytes or a reference if too large for inline transport);
 5. anchoring the attestation via SR-2 at the derived address;
-6. parsing the response by applying recipe.parserRules to extract structured data into VerifyResult.data;
-7. applying parameters — checking the listing’s ClaimRequirement.parameters against extracted data (failure to match MUST set decision = "fail");
+6. when the selected method is parser-consuming under PRA-1, applying the required `recipe.parserRules` to the method's authenticated disclosed content and extracting structured data into `VerifyResult.data`; when the selected method is method-native, skipping parser execution and accepting only the decision/data produced by that method's normative procedure (PRA-3/PRA-4);
+7. applying parameters — checking the listing’s ClaimRequirement.parameters against authenticated method-native or parser-extracted data (failure to match MUST set decision = "fail");
 8. signing and emitting the VerifyResult.
 
 #### 7.6.1 Retry and caching semantics
@@ -853,10 +891,10 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Role | Requirements |
 | --- | --- |
 | Method implementer | CM-1 through CM-5 |
-| Recipe author | RA-1 through RA-6; PSP field semantics (§7.4.1) when declaring a ParserSpec |
+| Recipe author | RA-1 through RA-6; PRA-1 through PRA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
 | Recipe-availability consumer | RAV-1 through RAV-4 |
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
-| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PSP-1 through PSP-5; WN-1 through WN-4 |
+| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
 | Composite record reader | §7.7.1 aggregation; signature validation |
 
@@ -864,7 +902,7 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 
 **Method-pluggable registry vs single method.** No single approach fits every credential (cooperative-issuer → W3C VC; private-data → zkTLS; public-registry → consensus-backed proxy). The registry routes by type; the stack consumes a uniform `VerifyResult`.
 
-**Closed method set vs open.** An open registry makes conformance untestable (a verifier could declare an arbitrary method producing unvalidatable results). v0.4 ships nine methods covering the established attestation patterns; new ones come via the steward's acceptance process, as in DACS-1.
+**Closed method set vs open.** An open registry makes conformance untestable (a verifier could declare an arbitrary method producing unvalidatable results). v0.5 ships nine methods covering the established attestation patterns; new ones come via the steward's acceptance process, as in DACS-1.
 
 **Recipe-family-per-scheme vs general-purpose protocol.** A general-purpose fetch endpoint would lose the structured parser rules, success-criterion semantics, and negative-match pattern recipes encode. Recipes are small, family-scoped within a scheme, and capture each authority's messy response format.
 

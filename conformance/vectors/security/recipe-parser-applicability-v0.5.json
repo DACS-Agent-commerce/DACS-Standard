@@ -1,0 +1,500 @@
+{
+  "set": "recipe-parser-applicability-v0.5",
+  "spec": "DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability",
+  "count": 18,
+  "hash": "65b4a29c77223b774fc43d0267df7b23d20ac4798f806dd6238f899adaa753fa",
+  "vectors": [
+    {
+      "name": "verifiable-credential-applies-parser",
+      "expected": "pass",
+      "note": "PRA-1 classifies verifiable-credential as parser-consuming",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "verifiable-credential"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "verifiable-credential",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "tlsnotary-applies-parser",
+      "expected": "pass",
+      "note": "PRA-1 classifies tlsnotary as parser-consuming",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "tlsnotary",
+          "endpoint": "https://notary.example"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "tlsnotary",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "zktls-applies-parser",
+      "expected": "pass",
+      "note": "PRA-1 classifies zktls as parser-consuming",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "zktls",
+          "provider": "reclaim",
+          "programId": "domain-control-v1"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "zktls",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "consensus-backed-proxy-applies-parser",
+      "expected": "pass",
+      "note": "PRA-1 classifies consensus-backed-proxy as parser-consuming",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "consensus-backed-proxy",
+          "endpoint": {
+            "method": "GET",
+            "urlTemplate": "https://authority.example/{identifier}"
+          }
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "consensus-backed-proxy",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "evm-rpc-applies-parser",
+      "expected": "pass",
+      "note": "PRA-1 classifies evm-rpc as parser-consuming",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "evm-rpc",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "method": "ownerOf"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "evm-rpc",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "oauth-attested-is-parser-free",
+      "expected": "pass",
+      "note": "PRA-1 classifies oauth-attested as method-native",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "oauth-attested",
+          "provider": "github",
+          "scopes": [
+            "read:user"
+          ],
+          "maxTokenAgeSec": 300
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live"
+      },
+      "selectedMethod": "oauth-attested",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "domain-tls-control-is-parser-free",
+      "expected": "pass",
+      "note": "PRA-1 classifies domain-tls-control as method-native",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "domain-tls-control",
+          "challengeType": "http-01"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live"
+      },
+      "selectedMethod": "domain-tls-control",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "self-signed-is-parser-free",
+      "expected": "pass",
+      "note": "PRA-1 classifies self-signed as method-native",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "self-signed"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live"
+      },
+      "selectedMethod": "self-signed",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "demos-gcr-domain-is-parser-free",
+      "expected": "pass",
+      "note": "PRA-1 classifies demos-gcr-domain as method-native",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "demos-gcr-domain"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live"
+      },
+      "selectedMethod": "demos-gcr-domain",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "parser-consuming-recipe-missing-parser",
+      "expected": "error",
+      "note": "PRA-2/PRA-5 reject a missing required ParserSpec before invocation",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "consensus-backed-proxy",
+          "endpoint": {
+            "method": "GET",
+            "urlTemplate": "https://authority.example/{identifier}"
+          }
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live"
+      },
+      "selectedMethod": "consensus-backed-proxy",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": false
+      }
+    },
+    {
+      "name": "historical-native-only-inert-parser-is-ignored",
+      "expected": "pass",
+      "note": "PRA-2 preserves a historical signed native recipe while PRA-3/PRA-4 ignore its inert parser",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "self-signed"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "self-signed",
+      "producerDacs2Version": "0.4",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "current-native-only-inert-parser-rejected",
+      "expected": "error",
+      "note": "PRA-2/PRA-5 reject inert parserRules from a new native-only recipe",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "self-signed"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "self-signed",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": false
+      }
+    },
+    {
+      "name": "native-only-null-is-not-absence",
+      "expected": "error",
+      "note": "PRA-2 treats a present null as an invalid ParserSpec, not omission",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "demos-gcr-domain"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": null
+      },
+      "selectedMethod": "demos-gcr-domain",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": false
+      }
+    },
+    {
+      "name": "mixed-recipe-parser-selection",
+      "expected": "pass",
+      "note": "PRA-3 applies the shared ParserSpec when the parsing member is selected",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "domain-tls-control",
+          "challengeType": "http-01"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "alternatives": [
+          {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://authority.example/{identifier}"
+            }
+          }
+        ],
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "consensus-backed-proxy",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "mixed-recipe-native-selection-skips-parser",
+      "expected": "pass",
+      "note": "PRA-3/PRA-4 skip parserRules when the native member is selected",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "domain-tls-control",
+          "challengeType": "http-01"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "alternatives": [
+          {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://authority.example/{identifier}"
+            }
+          }
+        ],
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "domain-tls-control",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "mixed-recipe-missing-parser",
+      "expected": "error",
+      "note": "one parser-consuming alternative makes ParserSpec required for the recipe",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "domain-tls-control",
+          "challengeType": "http-01"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "alternatives": [
+          {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://authority.example/{identifier}"
+            }
+          }
+        ]
+      },
+      "selectedMethod": "domain-tls-control",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": false
+      }
+    },
+    {
+      "name": "selected-method-not-declared",
+      "expected": "error",
+      "note": "selection must resolve to the recipe default or an explicit alternative",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "self-signed"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live"
+      },
+      "selectedMethod": "domain-tls-control",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": false
+      }
+    },
+    {
+      "name": "unclassified-method-rejected",
+      "expected": "error",
+      "note": "PRA-1 requires every registered method to have one closed classification",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "future-unclassified"
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live"
+      },
+      "selectedMethod": "future-unclassified",
+      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": false
+      }
+    }
+  ]
+}

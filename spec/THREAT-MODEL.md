@@ -89,6 +89,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Substrate validator capture (SR-3) | substrate validator-set majority | §7.12 (multi-method alternatives) | partial — v0.2 strengthening planned |
 | Authority-endpoint TLS MITM (forged authority response) | network active attacker (PKI compromise) | §7.3.5 (v0.2 validator-body-signed) + §7.4 (multi-method alternatives) | partial — v0.2 strengthening planned, residual in v0.1 |
 | Negative-match fail-open (truncated sanctions list clears a listed party) | malicious infrastructure / lossy fetch | §7.4.1 PSP-5 (completeness floor before a negative `pass`) | mitigated |
+| Parser/method confusion overrides a method-native verdict or forces an inert parser contract | malicious verifier / implementation divergence | §7.4.1 PRA-1..PRA-5 + §7.6 (closed method classification; conditional presence and execution; invalid recipes rejected before invocation) | mitigated |
 | Verifiable-presentation replay (verified VC re-presented by a non-holder) | malicious counterparty | §7.3.2 (VP holder-binding to session nonce) | mitigated |
 | HTLC preimage-reveal front-running | network observer / MEV | §9.5.4 (claims are beneficiary-bound — a front-runner cannot redirect funds; ordering/MEV is a chain-level concern, not a DACS theft vector) | mitigated (theft) / residual (ordering) |
 | Rail availability-field poisoning (read before pin) | malicious infrastructure | §9.4.4 (availability pinned from the authoritative rail definition at session start, not a cached/untrusted read) | mitigated |

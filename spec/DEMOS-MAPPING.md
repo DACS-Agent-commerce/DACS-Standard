@@ -26,6 +26,20 @@ whose 32-byte Ed25519 public key is carried in the final component. This is the
 registered ClaimReference or a canonical alias, and it MUST NOT be emitted in
 identity, signer, catalog-key, or reputation-key fields.
 
+**`web2.domain` domain identities.** The Demos node records native DNS-domain
+ownership as a `web2.domain` entry in GCRMain.identities: it fetches and verifies
+a signed `/.well-known/demos-cci.txt` proof before writing the entry, binding the
+host to the owner's ed25519 account (the SDK's `Identities.addDomainIdentity`
+flow). This is a substrate-native **source representation**, not a registered DACS
+ClaimReference: the string `web2:domain:<host>` MUST NOT be emitted as a DACS claim
+reference. The DACS adapter maps a `web2.domain` GCR entry to the canonical
+`domain:<canonical-host>` reference (DACS-1 §6.3.1), retaining the GCR record, the
+proof URL, the account binding, and the source transaction as DACS-2 verification
+metadata (the `demos-gcr-domain` recipe, DACS-2 §7.3.10 / §7.4.2). A historical
+`web2:domain:<host>` reference already in a signed artifact remains readable as the
+permanent alias defined in DACS-1 §6.3.2, resolved to the same canonical
+`domain:<host>` before matching.
+
 **Stor-backed credentials.** The stor-cred:<type>:<id> scheme convention is the extensibility surface for future credentials not yet promoted to native CCI contexts. **OFAC-clear is not a CCI context** — it is a per-session freshness check that lives only in DACS-2’s CompositeVerificationRecord (it is a check, not a stable identity claim).
 
 **Transaction sequencing note.** Demos account nonces are monotonic replay-protection counters in GCR_Main. Nodes enforce strict sequential nonces: a transaction with a stale or skipped nonce fails loudly. Same-signer DACS flows that depend on multiple Demos transactions in order — including settlement followed by an SR-2 evidence anchor — should not derive or sign the follow-on transaction from HTTP broadcast acceptance alone. Same-wallet batches MUST construct with explicit sequential nonces (`getAddressNonce(address)` plus `options.nonce`, demosdk ≥4.0.14) or maintain a local counter across the batch and resume read-derived nonce selection only after the on-chain account nonce catches up.

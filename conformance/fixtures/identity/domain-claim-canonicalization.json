@@ -1,0 +1,50 @@
+{
+  "kind": "DomainClaimCanonicalizationCases",
+  "specRefs": [
+    "§6.3.1",
+    "§6.3.2"
+  ],
+  "note": "Canonical DNS-domain identifier validation (DACS-1 domain form) and the web2:domain: legacy read-alias resolution. op=validate-host strictly validates a domain: identifier (uppercase rejected); op=resolve-ref applies the ordered Layer-2 resolution (a web2:domain: alias lowercases then validates). Nine grammar guards (C1,C3,C4,C6,C7,C8,C10,C11,C12) are each individually mutation-pinned by exactly one reject case; combo cases carry two independent defects for coverage without disturbing the pins.",
+  "validateHostGuardPins": {
+    "C1": "reject-oversize-label",
+    "C3": "reject-leading-hyphen",
+    "C4": "reject-trailing-dot",
+    "C6": "reject-underscore",
+    "C7": "reject-uppercase",
+    "C8": "reject-non-ascii",
+    "C10": "reject-malformed-xn--",
+    "C11": "reject-ipv4-literal",
+    "C12": "reject-all-numeric-labels"
+  },
+  "cases": [
+    { "id": "accept-canonical-lowercase-ldh", "op": "validate-host", "input": "api.example.com", "expected": { "accepted": true, "canonical": "api.example.com" } },
+    { "id": "accept-a-label-round-trip", "op": "validate-host", "input": "xn--nxasmq6b.example", "expected": { "accepted": true, "canonical": "xn--nxasmq6b.example" } },
+    { "id": "accept-numeric-final-label", "op": "validate-host", "input": "example.192.0.2.1", "expected": { "accepted": true, "canonical": "example.192.0.2.1" } },
+    { "id": "accept-interior-hyphen", "op": "validate-host", "input": "a-b.example", "expected": { "accepted": true, "canonical": "a-b.example" } },
+    { "id": "accept-single-label", "op": "validate-host", "input": "localhost", "expected": { "accepted": true, "canonical": "localhost" } },
+
+    { "id": "reject-oversize-label", "op": "validate-host", "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-leading-hyphen", "op": "validate-host", "input": "-example.com", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-trailing-dot", "op": "validate-host", "input": "example.com.", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-underscore", "op": "validate-host", "input": "ex_ample.com", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-uppercase", "op": "validate-host", "input": "Example.com", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-non-ascii", "op": "validate-host", "input": "exämple.com", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-malformed-xn--", "op": "validate-host", "input": "xn--0.example", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-ipv4-literal", "op": "validate-host", "input": "192.0.2.1", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-all-numeric-labels", "op": "validate-host", "input": "1.2.3.4.5", "expected": { "accepted": false, "canonical": null } },
+
+    { "id": "reject-combo-uppercase-port", "op": "validate-host", "input": "Example.com:8080", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-combo-uppercase-path-query-fragment", "op": "validate-host", "input": "Example.com/agents?x=1#f", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-combo-uppercase-credentials", "op": "validate-host", "input": "User:Pass@example.com", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-combo-uppercase-ipv6-brackets", "op": "validate-host", "input": "[2001:DB8::1]", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-interior-empty-label", "op": "validate-host", "input": "a..example", "expected": { "accepted": false, "canonical": null } },
+    { "id": "reject-empty-host", "op": "validate-host", "input": "", "expected": { "accepted": false, "canonical": null } },
+
+    { "id": "resolve-canonical-domain-ref", "op": "resolve-ref", "input": "domain:api.example.com", "expected": { "effectiveRef": "domain:api.example.com" } },
+    { "id": "legacy-web2domain-maps-to-canonical", "op": "resolve-ref", "input": "web2:domain:alice.example", "expected": { "effectiveRef": "domain:alice.example" } },
+    { "id": "legacy-web2domain-uppercase-lowercased", "op": "resolve-ref", "input": "web2:domain:Alice.Example", "expected": { "effectiveRef": "domain:alice.example" } },
+    { "id": "legacy-noncanonical-host-yields-nothing", "op": "resolve-ref", "input": "web2:domain:a..b", "expected": { "effectiveRef": null } },
+    { "id": "canonical-noncanonical-host-yields-nothing", "op": "resolve-ref", "input": "domain:ex_ample.com", "expected": { "effectiveRef": null } },
+    { "id": "non-domain-ref-yields-nothing", "op": "resolve-ref", "input": "key:aaaa", "expected": { "effectiveRef": null } }
+  ]
+}

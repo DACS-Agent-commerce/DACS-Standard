@@ -1,0 +1,191 @@
+{
+  "kind": "DomainClaimBundleSemanticsCases",
+  "specRefs": [
+    "§6.3.2",
+    "§6.3.3",
+    "§7.3.10",
+    "§7.5.1"
+  ],
+  "note": "Bundle-level semantics for the domain claim: original-byte signature/hash preservation across Layer-2 resolution (V3), semantic-claim dedup + ordered oneOf consumption (V4), and the demos-gcr-domain method result shape — host/account mismatch (V6), unavailable authority split into indeterminate vs error (V7), proof metadata (V8), and the persistent-not-fresh boundary (V9). Signatures are precomputed from a public seed and verified with the runner's self-contained RFC-8032 code; no cryptography import.",
+  "proofPathTemplate": "/.well-known/demos-cci.txt",
+  "publicKeys": {
+    "key:80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea": "gO26gb5yCZSv9UbnJXxJVUIca1CAHPwstSGU76i9V-o"
+  },
+  "signedBundle": {
+    "id": "v3-original-byte-preservation",
+    "bundlePresentationDomain": "dacs-bundle-presentation:v1:",
+    "expectedBundleHash": "fdbf606b7472ee91bb9fd6289642bc6c6bfae558326dcd8891f85eb5fe6507c1",
+    "expectedEffectiveRefs": [
+      "key:80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "domain:alice.example"
+    ],
+    "bundle": {
+      "bundleVersion": "1",
+      "presentedBy": "key:80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "presentedAt": 1780000000000,
+      "claims": [
+        { "ref": "key:80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea" },
+        {
+          "ref": "web2:domain:alice.example",
+          "verifiedBy": {
+            "anchor": { "kind": "storage-program", "locator": "stor-demos-gcr-domain-alice" },
+            "contentHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "recipeVersion": 2
+          }
+        }
+      ],
+      "presentation": {
+        "kind": "session-key",
+        "signatures": [
+          {
+            "ref": "key:80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+            "signature": "6g3CZ4tXLYuwZWUzEO+v956MTwt64eo1oz4CpGmD2fUU3lU1yxGqI7MsbwPxFXt7738OVxRsCrn3K1ha0airDQ=="
+          }
+        ]
+      }
+    }
+  },
+  "dedupCases": [
+    {
+      "id": "dual-alias-single-effective-claim",
+      "claims": [
+        { "ref": "domain:alice.example", "verified": true },
+        { "ref": "web2:domain:alice.example", "verified": false }
+      ],
+      "expected": { "semanticClaimCount": 1, "verifiedByIdentity": { "domain:alice.example": true } }
+    },
+    {
+      "id": "distinct-hosts-not-collapsed",
+      "claims": [
+        { "ref": "domain:a.example", "verified": true },
+        { "ref": "domain:b.example", "verified": true }
+      ],
+      "expected": { "semanticClaimCount": 2, "verifiedByIdentity": { "domain:a.example": true, "domain:b.example": true } }
+    },
+    {
+      "id": "conflict-fails-closed",
+      "claims": [
+        { "ref": "domain:alice.example", "verified": true, "decision": "pass" },
+        { "ref": "web2:domain:alice.example", "verified": true, "decision": "fail" }
+      ],
+      "expected": { "semanticClaimCount": 1, "verifiedByIdentity": { "domain:alice.example": false } }
+    },
+    {
+      "id": "evidence-independent-alias-not-elevated",
+      "claims": [
+        { "ref": "domain:alice.example", "verified": true, "decision": "pass" },
+        { "ref": "web2:domain:alice.example", "verified": false }
+      ],
+      "expected": { "semanticClaimCount": 1, "verifiedByIdentity": { "domain:alice.example": true } }
+    }
+  ],
+  "oneOfCases": [
+    {
+      "id": "dual-alias-single-oneOf-group",
+      "claims": [
+        { "ref": "domain:alice.example" },
+        { "ref": "web2:domain:alice.example" }
+      ],
+      "oneOf": [
+        ["domain:alice.example"],
+        ["domain:alice.example"]
+      ],
+      "expected": { "groupSatisfied": [true, false], "accepted": false }
+    },
+    {
+      "id": "distinct-hosts-both-groups",
+      "claims": [
+        { "ref": "domain:a.example" },
+        { "ref": "domain:b.example" }
+      ],
+      "oneOf": [
+        ["domain:a.example"],
+        ["domain:b.example"]
+      ],
+      "expected": { "groupSatisfied": [true, true], "accepted": true }
+    }
+  ],
+  "methodCases": [
+    {
+      "id": "v-pass-baseline",
+      "identifier": "alice.example",
+      "claimAccount": "0xaaaa000000000000000000000000000000000000",
+      "gcrResult": {
+        "availability": "resolved",
+        "boundHost": "alice.example",
+        "boundAccount": "0xaaaa000000000000000000000000000000000000",
+        "sourceTx": "0xtx0",
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+      },
+      "expected": { "decision": "pass" }
+    },
+    {
+      "id": "v6-host-account-mismatch",
+      "identifier": "alice.example",
+      "claimAccount": "0xaaaa000000000000000000000000000000000000",
+      "gcrResult": {
+        "availability": "resolved",
+        "boundHost": "alice.example",
+        "boundAccount": "0xbbbb000000000000000000000000000000000000",
+        "sourceTx": "0xtx6",
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
+      },
+      "expected": { "decision": "fail", "dataBoundAccount": "0xbbbb000000000000000000000000000000000000" }
+    },
+    {
+      "id": "v7-gcr-inconclusive-indeterminate",
+      "identifier": "alice.example",
+      "claimAccount": "0xaaaa000000000000000000000000000000000000",
+      "gcrResult": { "availability": "not-found" },
+      "expected": { "decision": "indeterminate" }
+    },
+    {
+      "id": "v7-transport-error",
+      "identifier": "alice.example",
+      "claimAccount": "0xaaaa000000000000000000000000000000000000",
+      "gcrResult": { "availability": "transport-error" },
+      "expected": { "decision": "error" }
+    },
+    {
+      "id": "v8-proof-metadata",
+      "identifier": "alice.example",
+      "claimAccount": "0xaaaa000000000000000000000000000000000000",
+      "gcrResult": {
+        "availability": "resolved",
+        "boundHost": "alice.example",
+        "boundAccount": "0xaaaa000000000000000000000000000000000000",
+        "sourceTx": "0xtx8",
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice-8" }, "contentHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }
+      },
+      "expected": {
+        "decision": "pass",
+        "dataProofUrl": "https://alice.example/.well-known/demos-cci.txt",
+        "dataBoundAccount": "0xaaaa000000000000000000000000000000000000",
+        "dataSourceTx": "0xtx8"
+      }
+    }
+  ],
+  "persistenceCases": {
+    "id": "v9-persistent-not-fresh",
+    "identifier": "alice.example",
+    "claimAccount": "0xaaaa000000000000000000000000000000000000",
+    "gcrResult": {
+      "availability": "resolved",
+      "boundHost": "alice.example",
+      "boundAccount": "0xaaaa000000000000000000000000000000000000",
+      "sourceTx": "0xtx9",
+      "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice-9" }, "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }
+    },
+    "sessionNonceA": "nonce-aaaa",
+    "sessionNonceB": "nonce-bbbb",
+    "freshness": { "verifiedAt": 1780000000000, "validUntil": 1780604800000 },
+    "nowInWindow": 1780300000000,
+    "nowPastWindow": 1780700000000,
+    "expected": {
+      "hasNonceField": false,
+      "nonceInvariant": true,
+      "freshInWindow": true,
+      "freshPastWindow": false
+    }
+  }
+}

@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.3** (on the common DACS v0.1 baseline; v0.3 binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.4** (on the common DACS v0.1 baseline; v0.4 registers the `demos-gcr-domain` verification method and advances the `domain` scheme's default recipe to it — a substrate-native Demos-GCR `web2.domain` binding — superseding the prior `domain-tls-control` recipeVersion, which stays pinnable; v0.3 binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -207,6 +207,39 @@ type SelfSignedMethodInput = {
 
 **Procedure.** Validates the signature against the key in identifier; anchors the signed assertion via SR-2; returns VerifyResult with pass on valid signature, fail on invalid. This method provides minimal trust — it proves possession of the key, nothing more. Recipes targeting authority-issued schemes MUST NOT use self-signed. **Trust model:** cryptographic signature. **Substrate:** SR-2.
 
+#### 7.3.10 demos-gcr-domain
+
+The Demos substrate records a DNS-domain ownership proof natively: the node fetches and verifies a signed `/.well-known/demos-cci.txt` file over HTTPS and writes a `web2.domain` entry into the counterparty's Global Context Record (GCR / CCI). This method **consumes that consensus-recorded GCR result** — it does **not** refetch the well-known file. It verifies persistent ownership-and-key binding for the `domain` scheme; it is not a fresh per-session domain-control challenge.
+
+```
+type DemosGCRResultRef = {
+  substrate: string                    // e.g. "demos-mainnet" / "demos-testnet"
+  context: "web2.domain"               // the Demos GCR context this method reads
+  account: string                      // ed25519 address the binding is asserted for
+  sourceTx: string                     // consensus transaction proving the GCR write
+  recordRef?: AttestationRef           // optional anchored snapshot of the GCR record
+}
+
+type DemosGCRDomainMethodInput = {
+  recipe: Recipe
+  identifier: string                   // the canonical A-label host (DACS-1 §6.3.1 domain form)
+  gcrResult: DemosGCRResultRef         // the consensus-recorded web2.domain GCR entry
+}
+```
+
+**Procedure.** The host is read from `identifier` and the account from `gcrResult.account`, so the dereference target is deterministic. The verifier recomputes the expected domain-separated signed message `dacs-domain:v1:<identifier>:<account>` (the same message the Demos node verified before writing the entry; the `dacs-domain:v1:` tag is the Demos SDK's own separator, not a DACS §B.7 signature separator) and confirms the consensus-recorded `gcrResult` `web2.domain` entry binds that host to that account. It does **not** refetch the well-known file. Returning, per the §7.5.1 decision values:
+
+- **`pass`** (§7.5.1) — the GCR entry confirms the `identifier`↔`account` binding.
+- **`fail`** (§7.5.1) — the GCR entry conclusively contradicts the asserted binding (it binds a different account, or a different host). The authority (the consensus record) ran to completion and its answer contradicts the claim.
+- **`indeterminate`** (§7.5.1) — the GCR authority's answer is parseable but does not confirm the binding: the record is present but insufficient, **or** the GCR reports no such record. Per DEMOS-MAPPING §A.2 (authoritative absence), a Demos `not found` carries the SR-2 disposition `indeterminate`, not `absent` — there is no authenticated non-membership proof — so an unresolved-authority answer is `indeterminate`, never `fail`.
+- **`error`** (§7.5.1) — the verifier could not complete: transport failure, SR-3/read timeout, or a record it cannot consume at all. This is the verifier's failure to obtain an answer, distinct from the authority's `indeterminate`.
+
+**Metadata.** The result's `data` carries the binding's public context for downstream inspection: `proofUrl` (derived from `identifier` and the recipe's `proofPathTemplate`, e.g. `https://<identifier>/.well-known/demos-cci.txt` — a derivation, not a presenter-supplied value), `boundAccount` (= `gcrResult.account`), `gcrRecordRef`, and `sourceTx`. These are **already-public authority fields** under the §7.5 public-anchor minimisation rule (a domain name, an on-chain account, a well-known URL, and a public transaction hash leak nothing beyond what is already public), so they are minimisation-clean and MAY be carried in cleartext `data`. *Caveat:* a deployment that exposes private GCR slots as `web2.domain` MUST NOT copy those private values into a publicly-anchored `data` — the same reduction-to-predicate rule that governs any private extracted field applies.
+
+**parserRules.** This procedure does **not** consume `recipe.parserRules` — like `domain-tls-control` (§7.3.8) and `self-signed` (§7.3.9), it reaches its decision without applying a `ParserSpec` to an HTTP response body. (The §7.5.2 attestation-resolution step 6 and the §7.4.1 required `parserRules` field are written as though every method parses an authority body; `domain-tls-control` and `self-signed` already do not, and this method is the third such non-parser method. That the field is required of methods that never apply it is a pre-existing DACS-2 inconsistency this method surfaces but does **not** resolve — making `parserRules` conditional on method kind is out of scope for a domain-scheme change.)
+
+**Persistence (no session nonce).** The GCR entry is persistent ownership-and-key-binding evidence, not a fresh per-session challenge: the result carries **no nonce or challenge-binding field**, and its acceptance is governed by the existing DACS-1 §6.3.2 effective-window freshness gate like any other `verifiedBy`. A fresh per-session domain-control check (nonce-bound) is a distinct capability tracked upstream as DEM-767 and MUST NOT be inferred from this record. **Trust model:** DNS + Web PKI at the node's write time; Demos consensus for the recorded result; ed25519 for the host↔account binding. **Substrate:** SR-2.
+
 ### 7.4 Recipe registry
 
 A recipe binds a DACS-1 claim scheme to a verification method (or set of acceptable methods) plus parsing rules and defaults.
@@ -302,6 +335,8 @@ type VerificationMethod =
 
   | { kind: "self-signed" }
 
+  | { kind: "demos-gcr-domain"; gcrContext: "web2.domain"; proofPathTemplate: string }
+
 type IndeterminatePredicate =
 
   | { jsonPath: string } | { selector: string } | { xPath: string } | { matcher: string }
@@ -393,11 +428,13 @@ The v0.1 registry contains one recipe per scheme registered in chapter 6. Each r
 | fedramp | consensus-backed-proxy against marketplace.fedramp.gov/api/v1/products/{identifier} | JSON; FedRAMP Marketplace API |
 | naics | consensus-backed-proxy against api.census.gov/data/2017/cbp?get=NAICS2017&NAICS2017={identifier} | JSON; US Census API for NAICS validation |
 | cmmc | verifiable-credential preferred; consensus-backed-proxy fallback against cmmcab.org public registry endpoint | CMMC AB publishes both VC issuance and a registry |
-| domain | domain-tls-control | ACME-style |
+| domain | demos-gcr-domain | Demos GCR `web2.domain` binding; supersedes the prior `domain-tls-control` recipeVersion (still pinnable) |
 | platform:<provider> | oauth-attested | Provider-specific |
 | stripe-connect | oauth-attested (provider="stripe") | Stripe-specific scopes |
 
 **Authority API stability.** The endpoints above are the canonical structured-data endpoints offered by each authority as of v0.1 publication. Authority APIs change; recipes MUST be re-anchored when endpoint URLs or response formats change materially. See §7.4.4 for the recipe-track governance that makes this operational.
+
+**`domain` recipe supersession (v0.4).** The `domain` scheme's default method advances from `domain-tls-control` to `demos-gcr-domain`. The existing v0.1-registry `domain` recipe — the unversioned default whose `defaultMethod` is `domain-tls-control` — is hereby **designated `recipeVersion` 1** (recipe versions are monotonic per scheme and start at 1, §7.4.1). The new default is **`recipeVersion` 2**: a `domain` recipe whose `defaultMethod` is the `demos-gcr-domain` method and whose `governance.supersedes` is **1** (RA-4). This mirrors the DACS-4 rail supersession pattern — a `RailDefinition`'s `governance.supersedes` (§9.4.1) set per RD-4 when a new `railVersion` replaces a prior one for the same `railId` (§9.4.3) — with `recipeVersion` playing the `railVersion` role per scheme (RA-3). **`recipeVersion` 1 remains anchored and independently re-verifiable** under the §7.4.4 append-only re-anchoring rule, so a `ClaimRequirement` MAY still pin `recipeVersion` 1 (§6.3.3, §7.4.3 step 4) to obtain substrate-neutral ACME `domain-tls-control` verification. This is the **first in-document recipe supersession** in the standard; no prior recipe sets `supersedes`, so the rail supersession is the only structural precedent. This paragraph is the in-document **designation** of the baseline version and the normative content of `recipeVersion` 2; it is **not** itself the signed, anchored Recipe artifact. That artifact — including its `parserRules` and `signature` — is resolved from the steward-controlled `dacs2:registry:v0.1` index and is signed and published by the registry steward (§7.4.4); this document defines the method and the recipe's normative content but does not write or publish the registry entry.
 
 #### 7.4.3 Recipe authoring and resolution
 

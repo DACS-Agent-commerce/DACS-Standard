@@ -15,6 +15,27 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — DACS-1 v0.6 / DACS-2 v0.4
+
+- **Canonical domain identity and persistent Demos GCR verification**
+  (DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6; §A.1;
+  #275) — makes `domain:<lowercase-IDNA-hostname>` the only producer form and
+  keeps historical `web2:domain:<host>` as a permanent read/replay alias.
+  Readers verify original signed bytes before semantic normalization and
+  collapse both aliases before matching, tier derivation, `oneOf`, and
+  reputation. Registers the separate `demos-gcr-domain` recipe family for
+  authenticated, finalized `web2.domain` GCR records: exact host/account,
+  proof URL, source transaction, and inclusion time are checked; the
+  consensus transition authenticates registration-time Ed25519 verification
+  of `dacs-domain:v1:<host>:<account>` without re-fetching the proof; unavailable GCR
+  authority remains `indeterminate`; and inclusion time, not query time,
+  governs the effective window. The persistent record cannot satisfy a fresh
+  `domain-tls-control` requirement and controls a domain only when the bundle
+  presentation verifies under the same GCR-bound account. Adds 30 genuine
+  deterministic Ed25519 vectors and changes the example producer output to
+  canonical `domain:`. The steward's signed registry publication remains a
+  separate post-review operation.
+
 ### Added — DACS-4 v0.5
 
 - **Payload-bound attested delivery — `PayloadAttestationRecord` and DPA-1..DPA-9** (§9.6.3, §9.7, §B.1/§B.3/§B.7, §A.3; #300) — closes the path where `deliver-attested-payload` could be counted from seller/orchestrator-signed `SettlementEvidence` without the declared verification method or a payload-bound proof. A distinct minor-safe artifact (`payloadAttestationVersion: "1"`, `dacs-payload-attestation:v1:`) binds the exact delivered cleartext digest to `jobId`, the committed agreement, the signed DeliverableSpec, and the selected verification method; its method evidence remains independently resolved and verified. Listings selecting the phase must declare a usable method before any payment, success evidence must carry content hash + anchor + a ref to a passing payload record, non-pass/unresolved outcomes never collapse to success, and ordinary evidence signatures cannot substitute for method proof. The Demos binding carries DAHR's `responseHash`/`responseHeadersHash`/`txHash` through the method-evidence chain, requires an authenticated resolvable `web2Request` transaction at `included` or stronger (with finalization before terminal DACS-5 production), and limits the current string-returning API to byte-exact UTF-8 payloads. The legacy optional wire spelling of `verificationMethod` is unchanged, but DPA-1 deliberately changes behavior and reject timing: a missing method now rejects before session start and payment instead of potentially failing only when delivery is attempted. Adds candidate vectors covering binding, replay, type/domain separation, DAHR transaction/hash requirements, self-signed disclosure, and fail-closed resolution.

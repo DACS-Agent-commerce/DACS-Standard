@@ -27,7 +27,7 @@ hashing, the reconciliation/BB-6/pointer predicates) always run.
 import base64
 import hashlib
 import json
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -559,12 +559,91 @@ def _bundle_signatures_valid(bundle, pubkeys):
     return (True, "ok")
 
 
+def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase_index,
+                                          phase_kind, signer, *, resolved=False):
+    """Validate independently authenticated execution authority against a verified receipt."""
+    if not isinstance(execution, dict) or not isinstance(receipt, dict):
+        return (False, "missing executionAuthority or anchorReceipt binding")
+    if (
+        execution.get("jobId") != bundle.get("jobId")
+        or execution.get("phaseIndex") != phase_index
+        or execution.get("phaseKind") != phase_kind
+        or execution.get("phaseOrchestrator") != signer
+    ):
+        return (False, "execution authority does not bind job, phase, or orchestrator")
+    if phase_kind.startswith("pay-"):
+        rail_id = execution.get("railId")
+        if not isinstance(rail_id, str) or not rail_id:
+            return (False, "payment execution authority lacks railId")
+        expected_logical = "dacs4:payment:%s:%s:%d%s" % (
+            bundle.get("jobId"), quote(rail_id, safe="-._~"), phase_index,
+            ":resolved" if resolved else "",
+        )
+    else:
+        expected_logical = execution.get("evidenceLogicalAddress")
+        if not isinstance(expected_logical, str) or not expected_logical:
+            return (False, "delivery execution authority lacks evidenceLogicalAddress")
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    nonce = receipt.get("nonce")
+    if (
+        receipt.get("logicalAddress") != expected_logical
+        or not isinstance(anchor, dict)
+        or receipt.get("nativeAddress") != anchor.get("locator")
+        or receipt.get("contentHash") != ref.get("contentHash")
+        or not isinstance(receipt.get("transaction"), str)
+        or not receipt["transaction"]
+        or receipt.get("writer") != signer
+        or isinstance(nonce, bool)
+        or not isinstance(nonce, int)
+        or nonce < 0
+    ):
+        return (False, "anchor receipt does not bind address, content, transaction, writer, or nonce")
+    return (True, expected_logical)
+
+
+def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
+                                            session_execution_authority_by_phase_key,
+                                            verified_receipt_by_canonical_ref, *, resolved=False):
+    """Resolve one exact phase from trusted SB-1 authority plus verified SR-2 receipt evidence."""
+    ref_key = canonical(ref).decode("utf-8")
+    receipt = verified_receipt_by_canonical_ref.get(ref_key)
+    if not isinstance(receipt, dict):
+        return (False, "settlement evidence lacks a verified SR-2 receipt", None)
+    matches = []
+    for phase_key, execution in session_execution_authority_by_phase_key.items():
+        if not isinstance(execution, dict):
+            continue
+        phase_index = execution.get("phaseIndex")
+        phase_kind = execution.get("phaseKind")
+        if (
+            isinstance(phase_index, bool)
+            or not isinstance(phase_index, int)
+            or phase_index < 0
+            or phase_key != f"{phase_index}:{phase_kind}"
+            or execution.get("jobId") != bundle.get("jobId")
+            or phase_kind != record.get("phase")
+            or execution.get("phaseOrchestrator") != signer
+        ):
+            continue
+        ok, _ = _validate_evidence_resolution_binding(
+            ref, execution, receipt, bundle, phase_index, phase_kind, signer,
+            resolved=resolved,
+        )
+        if ok:
+            matches.append((phase_key, execution))
+    if len(matches) != 1:
+        return (False, "evidence does not resolve to exactly one authenticated phase receipt", None)
+    return (True, matches[0][0], receipt)
+
+
 def validate_ebfab(
     bundle,
     listing,
     pubkeys,
     reference_validation_by_canonical_ref,
     bundle_lifecycle,
+    session_execution_authority_by_phase_key,
+    verified_receipt_by_canonical_ref,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
@@ -590,6 +669,8 @@ def validate_ebfab(
         or not isinstance(pubkeys, dict)
         or not isinstance(reference_validation_by_canonical_ref, dict)
         or not isinstance(bundle_lifecycle, dict)
+        or not isinstance(session_execution_authority_by_phase_key, dict)
+        or not isinstance(verified_receipt_by_canonical_ref, dict)
     ):
         return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
 
@@ -649,7 +730,7 @@ def validate_ebfab(
             phase_key = f"{index}:{kind}"
             expected_keys.append(phase_key)
             if ref is not None:
-                if not isinstance(ref, dict) or not isinstance(ref.get("contentHash"), str):
+                if not _attestation_ref_shape_valid(ref):
                     return (False, "optional phase attestationRef is malformed", None)
                 optional_pointers[phase_key] = ref
 
@@ -711,7 +792,7 @@ def validate_ebfab(
     actual_refs = bundle.get("settlementEvidence")
     if not isinstance(actual_refs, list):
         return (False, "settlementEvidence is not an array", None)
-    if any(not isinstance(ref, dict) or not isinstance(ref.get("contentHash"), str) for ref in actual_refs):
+    if any(not _attestation_ref_shape_valid(ref) for ref in actual_refs):
         return (False, "settlementEvidence member is malformed", None)
     actual_ids = [canonical(ref) for ref in actual_refs]
     if len(actual_ids) != len(set(actual_ids)):
@@ -725,27 +806,16 @@ def validate_ebfab(
     authenticated_records = []
     actual_keys = []
     for ref, resolution in zip(actual_refs, exact_resolutions):
-        phase_index = resolution.get("phaseIndex")
         record = resolution.get("record")
-        if (
-            isinstance(phase_index, bool)
-            or not isinstance(phase_index, int)
-            or phase_index < 0
-            or phase_index >= len(pipeline_kinds)
-            or not isinstance(record, dict)
-        ):
-            return (False, "settlement evidence lacks authenticated record or phase index", None)
+        if not isinstance(record, dict):
+            return (False, "settlement evidence lacks authenticated record", None)
         signature = record.get("signature")
-        authorized_signer = resolution.get("authorizedSigner")
         if (
             record.get("evidenceVersion") != "1"
             or record.get("jobId") != bundle.get("jobId")
-            or record.get("phase") != pipeline_kinds[phase_index]
             or record.get("outcome") not in {"success", "failure"}
             or not isinstance(signature, dict)
             or signature.get("algorithm") != "ed25519"
-            or not isinstance(authorized_signer, str)
-            or signature.get("signer") != authorized_signer
             or signature.get("signer") not in pubkeys
             or ref.get("contentHash") != settlement_evidence_hash(record)
         ):
@@ -760,7 +830,27 @@ def validate_ebfab(
             signature["value"],
         ):
             return (False, "settlement evidence signature does not verify", None)
-        phase_key = f"{phase_index}:{record['phase']}"
+        resolved_record = (
+            record.get("phase") in {
+                "pay-cross-chain-htlc", "pay-cross-chain-liquidity-tank"
+            }
+            and record.get("outcome") == "success"
+        )
+        binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
+            ref,
+            record,
+            signature["signer"],
+            bundle,
+            session_execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref,
+            resolved=resolved_record,
+        )
+        if not binding_ok:
+            return (False, binding_result, None)
+        phase_key = binding_result
+        phase_index = int(phase_key.split(":", 1)[0])
+        if phase_index >= len(pipeline_kinds) or record.get("phase") != pipeline_kinds[phase_index]:
+            return (False, "authenticated phase is outside the signed listing pipeline", None)
         summary_entry = summary_by_key.get(phase_key)
         expected_record_outcome = (
             "success" if isinstance(summary_entry, dict) and summary_entry.get("outcome") == "ok"
@@ -769,7 +859,7 @@ def validate_ebfab(
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
             return (False, "settlement evidence record contradicts the signed phase result", None)
         actual_keys.append(phase_key)
-        authenticated_records.append((ref, resolution, record, phase_key))
+        authenticated_records.append((ref, resolution, record, phase_key, resolved_record))
     if (
         None in actual_keys
         or len(actual_keys) != len(set(actual_keys))
@@ -792,14 +882,10 @@ def validate_ebfab(
         "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
     }
     st8_reasons = set(st8_reason_by_phase.values())
-    for ref, resolution, record, phase_key in authenticated_records:
+    for ref, resolution, record, phase_key, st8_resolved_anchor in authenticated_records:
         summary_entry = summary_by_key[phase_key]
         supersedes = record.get("supersedesEvidenceRef")
         expected_st8_reason = st8_reason_by_phase.get(record.get("phase"))
-        logical_address = resolution.get("logicalAddress")
-        st8_resolved_anchor = (
-            isinstance(logical_address, str) and logical_address.endswith(":resolved")
-        )
         expired_st8 = (
             record.get("phase") == "pay-cross-chain-htlc"
             and summary_entry.get("errorClass") == "settlement-atomicity"
@@ -848,17 +934,10 @@ def validate_ebfab(
         if not isinstance(interim_resolution, dict):
             return (False, "ST-8 interim record lacks authenticated resolution", None)
         interim_record = interim_resolution.get("record")
-        interim_index = interim_resolution.get("phaseIndex")
         interim_lifecycle = interim_resolution.get("lifecycle")
         interim_signature = interim_record.get("signature") if isinstance(interim_record, dict) else None
-        interim_authorized_signer = (
-            interim_resolution.get("authorizedSigner")
-            if isinstance(interim_resolution, dict)
-            else None
-        )
         if (
             not isinstance(interim_record, dict)
-            or interim_index != int(phase_key.split(":", 1)[0])
             or interim_record.get("evidenceVersion") != "1"
             or interim_record.get("jobId") != bundle.get("jobId")
             or interim_record.get("phase") != record.get("phase")
@@ -867,8 +946,6 @@ def validate_ebfab(
             or supersedes.get("contentHash") != settlement_evidence_hash(interim_record)
             or not isinstance(interim_signature, dict)
             or interim_signature.get("algorithm") != "ed25519"
-            or not isinstance(interim_authorized_signer, str)
-            or interim_signature.get("signer") != interim_authorized_signer
             or interim_signature.get("signer") not in pubkeys
             or not isinstance(interim_lifecycle, dict)
         ):
@@ -883,6 +960,19 @@ def validate_ebfab(
             interim_signature["value"],
         ):
             return (False, "ST-8 interim evidence signature does not verify", None)
+        interim_binding_ok, interim_binding_result, _ = _resolve_authenticated_evidence_binding(
+            supersedes,
+            interim_record,
+            interim_signature["signer"],
+            bundle,
+            session_execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref,
+            resolved=False,
+        )
+        if not interim_binding_ok:
+            return (False, interim_binding_result, None)
+        if interim_binding_result != phase_key:
+            return (False, "ST-8 interim receipt resolves to a different authenticated phase", None)
         if bundle.get("outcome") == "completed" and (
             interim_lifecycle.get("state") != "finalized"
             or interim_lifecycle.get("independentlyResolvable") is not True
@@ -933,6 +1023,8 @@ def _tagged_copy_valid_for_derive(tagged):
         authority.get("publicKeys"),
         authority.get("referenceValidationByCanonicalRef"),
         authority.get("bundleLifecycle"),
+        authority.get("sessionExecutionAuthorityByPhaseKey"),
+        authority.get("verifiedReceiptByCanonicalRef"),
     )
     return ok
 
@@ -1349,6 +1441,8 @@ def resolve_absolute_fault_pointer(
             pubkeys,
             ebfab_authority.get("referenceValidationByCanonicalRef"),
             ebfab_authority.get("bundleLifecycle"),
+            ebfab_authority.get("sessionExecutionAuthorityByPhaseKey"),
+            ebfab_authority.get("verifiedReceiptByCanonicalRef"),
         )
         if not seb_ok:
             return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}

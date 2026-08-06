@@ -37,10 +37,35 @@
       "value": "Hoxo8bFlTCRr5OtOdtRoKKJyb-ZKjIdpoz1CUeeaizrqwaxL6U2UwV9135zbS7lCQE_k_sNuvjHyGDdyirE9Ag"
     }
   },
+  "sessionExecutionAuthorityByPhaseKey": {
+    "0:pay-dem": {
+      "jobId": "EBFAB-COMPAT-1",
+      "phaseIndex": 0,
+      "phaseKind": "pay-dem",
+      "phaseOrchestrator": "did:demos:seller",
+      "railId": "test-rail"
+    }
+  },
+  "verifiedReceiptByCanonicalRef": {
+    "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563\"},\"contentHash\":\"4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5\"}": {
+      "logicalAddress": "dacs4:payment:EBFAB-COMPAT-1:test-rail:0",
+      "nativeAddress": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563",
+      "contentHash": "4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5",
+      "transaction": "demos-testnet:tx-279ca024fba32331a504f25bfced24f4",
+      "writer": "did:demos:seller",
+      "nonce": 0
+    },
+    "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-45116d485e0f413dcab5421c6f88e0aa8d80e65f55cb578948f47d540bc534d3\"},\"contentHash\":\"4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5\"}": {
+      "logicalAddress": "dacs4:payment:EBFAB-COMPAT-1:test-rail:0",
+      "nativeAddress": "stor-45116d485e0f413dcab5421c6f88e0aa8d80e65f55cb578948f47d540bc534d3",
+      "contentHash": "4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5",
+      "transaction": "demos-testnet:tx-279ca024fba32331a504f25bfced24f4",
+      "writer": "did:demos:seller",
+      "nonce": 0
+    }
+  },
   "referenceValidationByCanonicalRef": {
     "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563\"},\"contentHash\":\"4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5\"}": {
-      "phaseIndex": 0,
-      "authorizedSigner": "did:demos:seller",
       "record": {
         "evidenceVersion": "1",
         "jobId": "EBFAB-COMPAT-1",
@@ -67,8 +92,6 @@
       }
     },
     "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-45116d485e0f413dcab5421c6f88e0aa8d80e65f55cb578948f47d540bc534d3\"},\"contentHash\":\"4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5\"}": {
-      "phaseIndex": 0,
-      "authorizedSigner": "did:demos:seller",
       "record": {
         "evidenceVersion": "1",
         "jobId": "EBFAB-COMPAT-1",

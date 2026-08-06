@@ -52,6 +52,8 @@ def make_authority(name, definition, signing_keys):
     phase_summary = []
     settlement_evidence = []
     reference_validation_by_canonical_ref = {}
+    session_execution_authority_by_phase_key = {}
+    verified_receipt_by_canonical_ref = {}
     job_id = f"SEB-AUTHORITY-{name}"
     default_lifecycle = definition["defaultReferenceLifecycle"]
     for source in definition["phaseSummary"]:
@@ -78,16 +80,15 @@ def make_authority(name, definition, signing_keys):
                     label_suffix=":interim",
                 )
                 reference_validation_by_canonical_ref[F.canonical(interim_ref).decode("utf-8")] = {
-                    "phaseIndex": entry["index"],
-                    "authorizedSigner": F.CLAIMS["seller"],
-                    "logicalAddress": (
-                        f"dacs4:payment:{job_id}:test-rail:{entry['index']}"
-                    ),
                     "record": interim_record,
                     "lifecycle": copy.deepcopy(
                         definition.get("st8InterimLifecycle", default_lifecycle)
                     ),
                 }
+                verified_receipt_by_canonical_ref[F.canonical(interim_ref).decode("utf-8")] = (
+                    F.make_verified_anchor_receipt(
+                        interim_ref, job_id, entry["kind"], entry["index"], resolved=False)
+                )
                 supersedes = interim_ref
             evidence_reason = entry.get("errorClass")
             if entry.get("errorClass") == "settlement-atomicity":
@@ -111,22 +112,15 @@ def make_authority(name, definition, signing_keys):
             )
             entry["attestationRef"] = ref
             settlement_evidence.append(ref)
+            phase_key = f"{entry['index']}:{entry['kind']}"
+            session_execution_authority_by_phase_key[phase_key] = (
+                F.make_session_execution_authority(job_id, entry["kind"], entry["index"])
+            )
+            verified_receipt_by_canonical_ref[F.canonical(ref).decode("utf-8")] = (
+                F.make_verified_anchor_receipt(
+                    ref, job_id, entry["kind"], entry["index"], resolved=st8_resolved)
+            )
             reference_validation_by_canonical_ref[F.canonical(ref).decode("utf-8")] = {
-                "phaseIndex": entry["index"],
-                "authorizedSigner": F.CLAIMS["seller"],
-                **(
-                    {
-                        "logicalAddress": (
-                            f"dacs4:payment:{job_id}:test-rail:{entry['index']}"
-                            + (":resolved" if st8_resolved else "")
-                        )
-                    }
-                    if entry["kind"] in {
-                        "pay-cross-chain-htlc",
-                        "pay-cross-chain-liquidity-tank",
-                    }
-                    else {}
-                ),
                 "record": record,
                 "lifecycle": copy.deepcopy(default_lifecycle),
             }
@@ -181,6 +175,8 @@ def make_authority(name, definition, signing_keys):
         "bundle": bundle,
         "defaultReferenceLifecycle": copy.deepcopy(default_lifecycle),
         "referenceValidationByCanonicalRef": reference_validation_by_canonical_ref,
+        "sessionExecutionAuthorityByPhaseKey": session_execution_authority_by_phase_key,
+        "verifiedReceiptByCanonicalRef": verified_receipt_by_canonical_ref,
         "bundleLifecycle": bundle_lifecycle,
     }
 
@@ -204,8 +200,10 @@ def generate(source):
         "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its "
         "content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator "
         "requires an ordered, outcome-consistent execution prefix and derives phase keys "
-        "locally. authenticatedRecordByRef represents independently resolved, job-bound "
-        "SettlementEvidence content; record outcome and hashed supersedesEvidenceRef, not "
+        "locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are "
+        "independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. "
+        "authenticatedRecordByRef represents independently resolved, job-bound SettlementEvidence "
+        "content; record outcome and hashed supersedesEvidenceRef, not "
         "caller-supplied class or edge labels, determine ST-8 terminal selection. Completed "
         "authorities require finalized and independently resolvable evidence; failed or "
         "aborted authorities require included or finalized evidence. Optional pointers never "

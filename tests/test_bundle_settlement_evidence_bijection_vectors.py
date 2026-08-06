@@ -1,6 +1,7 @@
 """Executable assertions for DACS-5 v0.4 SEB-1..SEB-6 candidate vectors."""
 
 import base64
+import copy
 import hashlib
 import json
 import unittest
@@ -30,6 +31,8 @@ def derive_phase_keys(authority, pubkeys):
         pubkeys,
         authority.get("referenceValidationByCanonicalRef"),
         authority.get("bundleLifecycle"),
+        authority.get("sessionExecutionAuthorityByPhaseKey"),
+        authority.get("verifiedReceiptByCanonicalRef"),
     )
     return phase_keys if ok else None
 
@@ -252,6 +255,57 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.pubkeys,
             )
         )
+
+    def test_resolution_binding_rejects_every_unauthenticated_dimension(self):
+        mutations = {
+            "execution-job": ("sessionExecutionAuthorityByPhaseKey", "jobId", "other-job"),
+            "execution-index": ("sessionExecutionAuthorityByPhaseKey", "phaseIndex", 99),
+            "execution-kind": ("sessionExecutionAuthorityByPhaseKey", "phaseKind", "pay-other"),
+            "execution-orchestrator": (
+                "sessionExecutionAuthorityByPhaseKey",
+                "phaseOrchestrator",
+                "did:demos:buyer",
+            ),
+            "execution-rail": ("sessionExecutionAuthorityByPhaseKey", "railId", "other-rail"),
+            "receipt-logical": (
+                "verifiedReceiptByCanonicalRef", "logicalAddress", "dacs4:payment:forged"),
+            "receipt-native": ("verifiedReceiptByCanonicalRef", "nativeAddress", "stor-forged"),
+            "receipt-content": ("verifiedReceiptByCanonicalRef", "contentHash", "00" * 32),
+            "receipt-transaction": ("verifiedReceiptByCanonicalRef", "transaction", ""),
+            "receipt-writer": (
+                "verifiedReceiptByCanonicalRef", "writer", "did:demos:buyer"),
+            "receipt-nonce": ("verifiedReceiptByCanonicalRef", "nonce", -1),
+        }
+        for name, (authority_map, field, value) in mutations.items():
+            authority = copy.deepcopy(self.data["executionAuthorities"]["standard-completed"])
+            entry = next(iter(authority[authority_map].values()))
+            entry[field] = value
+            with self.subTest(mutation=name):
+                self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
+
+        authority = copy.deepcopy(self.data["executionAuthorities"]["standard-completed"])
+        resolution = next(iter(authority["referenceValidationByCanonicalRef"].values()))
+        resolution["executionAuthority"] = {"railId": "forged-rail"}
+        resolution["anchorReceipt"] = {"logicalAddress": "dacs4:payment:forged"}
+        self.assertIsNotNone(derive_phase_keys(authority, self.pubkeys))
+
+    def test_attestation_ref_shape_and_resolved_address_are_exact(self):
+        malformed_ref = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]["bundle"]
+            ["settlementEvidence"][0]
+        )
+        del malformed_ref["anchor"]
+        self.assertFalse(R._attestation_ref_shape_valid(malformed_ref))
+
+        authority = copy.deepcopy(self.data["executionAuthorities"]["single-htlc-completed"])
+        receipt = next(
+            value
+            for ref, value in authority["verifiedReceiptByCanonicalRef"].items()
+            if authority["referenceValidationByCanonicalRef"][ref]["record"].get(
+                "supersedesEvidenceRef") is not None
+        )
+        receipt["logicalAddress"] = "dacs4:payment:forged:resolved"
+        self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
 
     def test_minor_safe_type_boundary_and_domains(self):
         spec = SPEC.read_text(encoding="utf-8")

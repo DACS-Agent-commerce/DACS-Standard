@@ -88,30 +88,37 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             }
             for role in ("buyer", "seller")
         ]
-        authority = {
-            R.canonical(ref).decode("utf-8"): {
-                "phaseIndex": 0,
-                "authorizedSigner": "did:demos:orchestrator",
-                "record": record,
-                "lifecycle": {"state": "finalized", "independentlyResolvable": True},
-            }
+        resolution = {
+            "record": record,
+            "lifecycle": {"state": "finalized", "independentlyResolvable": True},
         }
+        authority = {R.canonical(ref).decode("utf-8"): resolution}
+        session_authority = copy.deepcopy(self.data["sessionExecutionAuthorityByPhaseKey"])
+        session_authority["0:pay-dem"]["phaseOrchestrator"] = "did:demos:orchestrator"
+        receipt = copy.deepcopy(next(iter(self.data["verifiedReceiptByCanonicalRef"].values())))
+        receipt["contentHash"] = ref["contentHash"]
+        receipt["writer"] = "did:demos:orchestrator"
+        receipts = {R.canonical(ref).decode("utf-8"): receipt}
         ok, reason, _ = R.validate_ebfab(
             bundle,
             self.data["listing"],
             self.pubkeys,
             authority,
             {"state": "finalized", "independentlyResolvable": True},
+            session_authority,
+            receipts,
         )
         self.assertTrue(ok, reason)
 
-        authority[R.canonical(ref).decode("utf-8")]["authorizedSigner"] = "did:demos:buyer"
+        session_authority["0:pay-dem"]["phaseOrchestrator"] = "did:demos:buyer"
         ok, _, _ = R.validate_ebfab(
             bundle,
             self.data["listing"],
             self.pubkeys,
             authority,
             {"state": "finalized", "independentlyResolvable": True},
+            session_authority,
+            receipts,
         )
         self.assertFalse(ok)
 
@@ -131,6 +138,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                         "bundleLifecycle",
                         self.data["bundleLifecycleByHash"].get(R.bundle_hash(bundle), {}),
                     ),
+                    self.data["sessionExecutionAuthorityByPhaseKey"],
+                    self.data["verifiedReceiptByCanonicalRef"],
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"])
 
@@ -167,6 +176,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                             self.pubkeys,
                             self.data["referenceValidationByCanonicalRef"],
                             self.data["bundleLifecycleByHash"][R.bundle_hash(bundle)],
+                            self.data["sessionExecutionAuthorityByPhaseKey"],
+                            self.data["verifiedReceiptByCanonicalRef"],
                         )
                         self.assertTrue(seb_ok, seb_reason)
                 self.assertEqual(R.divergence(copies[0], copies[1]), case["want"]["divergent"])
@@ -182,6 +193,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     self.pubkeys,
                     self.data["referenceValidationByCanonicalRef"],
                     self.data["bundleLifecycleByHash"][R.bundle_hash(authoritative)],
+                    self.data["sessionExecutionAuthorityByPhaseKey"],
+                    self.data["verifiedReceiptByCanonicalRef"],
                 )
                 self.assertEqual(seb_ok, case["want"]["sebValid"], reason)
                 self.assertEqual(phase_keys, ["0:pay-dem"])
@@ -203,6 +216,9 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "listing": self.data["listing"],
                 "publicKeys": self.pubkeys,
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+                "sessionExecutionAuthorityByPhaseKey": self.data[
+                    "sessionExecutionAuthorityByPhaseKey"],
+                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(invalid)],
             },
             "selectedByRoleResolution": True,
@@ -250,6 +266,9 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "listing": self.data["listing"],
                 "publicKeys": self.pubkeys,
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+                "sessionExecutionAuthorityByPhaseKey": self.data[
+                    "sessionExecutionAuthorityByPhaseKey"],
+                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid_ebfab)],
             },
         }
@@ -390,6 +409,9 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "listing": self.data["listing"],
                 "publicKeys": self.pubkeys,
                 "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+                "sessionExecutionAuthorityByPhaseKey": self.data[
+                    "sessionExecutionAuthorityByPhaseKey"],
+                "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid)],
             },
         }
@@ -444,6 +466,9 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "listing": self.data["listing"],
             "publicKeys": self.pubkeys,
             "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+            "sessionExecutionAuthorityByPhaseKey": self.data[
+                "sessionExecutionAuthorityByPhaseKey"],
+            "verifiedReceiptByCanonicalRef": self.data["verifiedReceiptByCanonicalRef"],
             "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(ebfab)],
         }
         receipt = R.derive_job_bound(
@@ -506,6 +531,10 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                         "listing": self.data["listing"],
                         "referenceValidationByCanonicalRef": self.data[
                             "referenceValidationByCanonicalRef"],
+                        "sessionExecutionAuthorityByPhaseKey": self.data[
+                            "sessionExecutionAuthorityByPhaseKey"],
+                        "verifiedReceiptByCanonicalRef": self.data[
+                            "verifiedReceiptByCanonicalRef"],
                         "bundleLifecycle": self.data["bundleLifecycleByHash"][
                             R.bundle_hash(case["bundle"])],
                     }

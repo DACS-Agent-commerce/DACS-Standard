@@ -13,6 +13,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -135,6 +136,48 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
         "contentHash": evidence_hash(record),
     }
     return record, ref
+
+
+def make_session_execution_authority(job_id, phase, phase_index, *, signer_role="seller",
+                                     rail_id="test-rail"):
+    signer = CLAIMS[signer_role]
+    if phase.startswith("pay-"):
+        execution_address = {}
+    else:
+        execution_address = {"evidenceLogicalAddress": f"dacs4:evidence:{job_id}:{phase_index}"}
+    return {
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "phaseKind": phase,
+        "phaseOrchestrator": signer,
+        **({"railId": rail_id} if phase.startswith("pay-") else execution_address),
+    }
+
+
+def make_verified_anchor_receipt(ref, job_id, phase, phase_index, *, signer_role="seller",
+                                 resolved=False, rail_id="test-rail"):
+    signer = CLAIMS[signer_role]
+    logical_address = (
+        "dacs4:payment:%s:%s:%d%s" % (
+            job_id,
+            quote(rail_id, safe="-._~"),
+            phase_index,
+            ":resolved" if resolved else "",
+        )
+        if phase.startswith("pay-")
+        else f"dacs4:evidence:{job_id}:{phase_index}"
+    )
+    transaction = "demos-testnet:tx-" + hashlib.sha256(
+        f"{job_id}:{phase_index}:{phase}:{'resolved' if resolved else 'ordinary'}".encode()
+    ).hexdigest()[:32]
+    return {
+        "logicalAddress": logical_address,
+        "nativeAddress": ref["anchor"]["locator"],
+        "contentHash": ref["contentHash"],
+        "transaction": transaction,
+        "writer": signer,
+        "nonce": phase_index,
+    }
 
 
 def make_listing(signing_keys):
@@ -297,10 +340,19 @@ def generate():
         "pointerDomains": POINTER_DOMAINS,
         "listingDomain": LISTING_DOMAIN,
         "listing": listing,
+        "sessionExecutionAuthorityByPhaseKey": {
+            "0:pay-dem": make_session_execution_authority(
+                "EBFAB-COMPAT-1", "pay-dem", 0),
+        },
+        "verifiedReceiptByCanonicalRef": {
+            canonical(ebfab_buyer["settlementEvidence"][0]).decode("utf-8"):
+                make_verified_anchor_receipt(
+                    ebfab_buyer["settlementEvidence"][0], "EBFAB-COMPAT-1", "pay-dem", 0),
+            canonical(alternate_ref).decode("utf-8"): make_verified_anchor_receipt(
+                alternate_ref, "EBFAB-COMPAT-1", "pay-dem", 0),
+        },
         "referenceValidationByCanonicalRef": {
             canonical(ebfab_buyer["settlementEvidence"][0]).decode("utf-8"): {
-                "phaseIndex": 0,
-                "authorizedSigner": CLAIMS["seller"],
                 "record": evidence_record,
                 "lifecycle": {
                     "state": "finalized",
@@ -308,8 +360,6 @@ def generate():
                 },
             },
             canonical(alternate_ref).decode("utf-8"): {
-                "phaseIndex": 0,
-                "authorizedSigner": CLAIMS["seller"],
                 "record": alternate_record,
                 "lifecycle": {
                     "state": "finalized",

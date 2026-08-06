@@ -222,6 +222,18 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         )
         self.assertEqual(derivation_with_malformed_loser["bundleCount"], 1)
 
+        tagged_malformed_loser = {
+            **malformed_losing_candidate,
+            "resolvedJobId": valid_ebfab["jobId"],
+        }
+        derivation_with_tagged_malformed_loser = R.derive_job_bound(
+            "did:demos:buyer",
+            [valid_tag, tagged_malformed_loser],
+            valid_ebfab["finalisedAt"] - 1,
+            valid_ebfab["finalisedAt"] + 1,
+        )
+        self.assertEqual(derivation_with_tagged_malformed_loser["bundleCount"], 1)
+
         invalid_discriminator = next(
             case["bundle"]
             for case in self.data["cases"]

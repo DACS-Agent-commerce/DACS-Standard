@@ -27,6 +27,7 @@ hashing, the reconciliation/BB-6/pointer predicates) always run.
 import base64
 import hashlib
 import json
+from urllib.parse import urlsplit
 
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -1245,7 +1246,10 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
 
 
 def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, pubkeys=None):
-    """Validate FAB/EBFAB pointer type, domain, signature, and triple identity."""
+    """Validate FAB/EBFAB pointer type, domain, signature, and triple identity.
+
+    The caller supplies already-dereferenced content; this function performs no network I/O.
+    """
     if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
         return {"ok": False, "reason": "pointer and dereferenced bundle must be objects"}
     if binding is not None and not isinstance(binding, dict):
@@ -1283,9 +1287,20 @@ def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, p
     if pointer.get("pointerKind") != "extended":
         return {"ok": False, "reason": "unsupported pointer kind"}
     segment_refs = pointer.get("segmentRefs")
+    full_bundle_url = pointer.get("fullBundleUrl")
+    try:
+        parsed_url = urlsplit(full_bundle_url) if isinstance(full_bundle_url, str) else None
+        url_ok = (
+            parsed_url is not None
+            and parsed_url.scheme == "https"
+            and bool(parsed_url.hostname)
+            and parsed_url.username is None
+            and parsed_url.password is None
+        )
+    except (TypeError, ValueError):
+        url_ok = False
     if (
-        not isinstance(pointer.get("fullBundleUrl"), str)
-        or not pointer["fullBundleUrl"].strip()
+        not url_ok
         or not _sha256_hex(pointer.get("fullBundleContentHash"))
         or (segment_refs is not None and (
             not isinstance(segment_refs, list)
@@ -1305,6 +1320,14 @@ def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, p
     signer = signature.get("signer")
     if not isinstance(pubkeys, dict) or signer not in pubkeys:
         return {"ok": False, "reason": "pointer signer key unavailable"}
+    role_claims = [
+        party.get("primaryClaim")
+        for party in dereferenced_bundle.get("parties", [])
+        if isinstance(party, dict)
+        and party.get("role") == dereferenced_bundle.get("anchoredByRole")
+    ]
+    if len(role_claims) != 1 or signer != role_claims[0]:
+        return {"ok": False, "reason": "pointer signer is not authorized for anchoredByRole"}
     canonical_ok, _ = sig6_canonical(signature.get("value", ""))
     if not canonical_ok or not verify_sig(
         pubkeys[signer], domain, pointer_hash(pointer), signature.get("value", "")
@@ -1399,6 +1422,8 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
                 if kind is None and not selected:
                     continue
                 raise ValueError("admitted role resolution lacks trusted resolvedJobId")
+            if kind is None and not selected:
+                continue
             if kind is None:
                 rejected_selected_jobs.add(resolved_job)
                 continue

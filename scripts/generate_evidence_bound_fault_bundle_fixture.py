@@ -206,16 +206,16 @@ def make_pointer(kind, bundle, signing_keys):
         "fullBundleUrl": f"https://example.invalid/{kind}-bundle.json",
         "fullBundleContentHash": bundle_hash(bundle),
     }
-    return sign_pointer(pointer, kind, signing_keys)
+    return sign_pointer(pointer, kind, signing_keys, bundle.get("anchoredByRole", "seller"))
 
 
-def sign_pointer(pointer, kind, signing_keys):
+def sign_pointer(pointer, kind, signing_keys, signer_role):
     pointer.pop("signature", None)
     payload = (POINTER_DOMAINS[kind] + pointer_hash(pointer)).encode("utf-8")
     pointer["signature"] = {
-        "signer": CLAIMS["seller"],
+        "signer": CLAIMS[signer_role],
         "algorithm": "ed25519",
-        "value": b64u(signing_keys["seller"].sign(payload)),
+        "value": b64u(signing_keys[signer_role].sign(payload)),
     }
     return pointer
 
@@ -254,10 +254,15 @@ def generate():
     invalid_extra_pointer["evidenceBoundFaultBundleVersion"] = "2"
     missing_url_pointer = copy.deepcopy(ebfab_pointer)
     missing_url_pointer.pop("fullBundleUrl")
-    sign_pointer(missing_url_pointer, "evidence-bound", signing_keys)
+    sign_pointer(missing_url_pointer, "evidence-bound", signing_keys, "buyer")
     malformed_segments_pointer = copy.deepcopy(ebfab_pointer)
     malformed_segments_pointer["segmentRefs"] = ["not-an-attestation-ref"]
-    sign_pointer(malformed_segments_pointer, "evidence-bound", signing_keys)
+    sign_pointer(malformed_segments_pointer, "evidence-bound", signing_keys, "buyer")
+    unsafe_url_pointer = copy.deepcopy(ebfab_pointer)
+    unsafe_url_pointer["fullBundleUrl"] = "file:///etc/passwd"
+    sign_pointer(unsafe_url_pointer, "evidence-bound", signing_keys, "buyer")
+    unauthorized_pointer = copy.deepcopy(ebfab_pointer)
+    sign_pointer(unauthorized_pointer, "evidence-bound", signing_keys, "seller")
     minimal_ebfab = {"evidenceBoundFaultBundleVersion": "1"}
     minimal_ebfab_pointer = make_pointer("evidence-bound", minimal_ebfab, signing_keys)
     incomplete_binding = {"bundleContentHash": bundle_hash(ebfab_buyer)}
@@ -388,6 +393,18 @@ def generate():
             {
                 "name": "signed-pointer-malformed-segment-ref-reject",
                 "pointer": malformed_segments_pointer,
+                "bundle": ebfab_buyer,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-unsafe-url-reject",
+                "pointer": unsafe_url_pointer,
+                "bundle": ebfab_buyer,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-unauthorized-role-reject",
+                "pointer": unauthorized_pointer,
                 "bundle": ebfab_buyer,
                 "want": {"ok": False},
             },

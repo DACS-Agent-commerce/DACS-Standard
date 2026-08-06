@@ -452,7 +452,7 @@ Bundles MUST fit within the substrate’s storage-cap soft limit (128 KB on Demo
 type BundleExtendedPointer = {
   bundleVersion: "1"
   pointerKind: "extended"
-  fullBundleUrl: string
+  fullBundleUrl: string                       // absolute HTTPS URL without userinfo
   fullBundleContentHash: string
   segmentRefs?: AttestationRef[]              // optional segmented anchoring
   signature: ComponentSignature
@@ -467,7 +467,7 @@ Under DACS-5 v0.3 a producer anchoring a `FaultAttestationBundle` too large for 
 type FaultBundleExtendedPointer = {
   faultBundleVersion: "1"                       // discriminator: a FAB pointer carries faultBundleVersion and never bundleVersion (mirrors §10.4.1)
   pointerKind: "extended"
-  fullBundleUrl: string
+  fullBundleUrl: string                       // absolute HTTPS URL without userinfo
   fullBundleContentHash: string                 // the dereferenced full FaultAttestationBundle's §10.4.1 attestation_bundle_hash
   segmentRefs?: AttestationRef[]
   signature: ComponentSignature                 // over "dacs-fault-bundle-pointer:v1:" || sha256(canonical(pointer minus signature))
@@ -480,14 +480,14 @@ An oversized `EvidenceBoundFaultAttestationBundle` uses its own pointer type and
 type EvidenceBoundFaultBundleExtendedPointer = {
   evidenceBoundFaultBundleVersion: "1"
   pointerKind: "extended"
-  fullBundleUrl: string
+  fullBundleUrl: string                       // absolute HTTPS URL without userinfo
   fullBundleContentHash: string
   segmentRefs?: AttestationRef[]
   signature: ComponentSignature                 // over "dacs-evidence-bound-fault-bundle-pointer:v1:" || sha256(canonical(pointer minus signature))
 }
 ```
 
-For an extended-pointer anchoring, the record at the resolved `nativeAddress` is the pointer. Its discriminator and signature domain MUST match the dereferenced bundle type. Before hashing or admission, a consumer MUST validate the complete pointer shape (including non-empty `fullBundleUrl`, sha256 `fullBundleContentHash`, and every optional `segmentRefs` member), the dereferenced bundle under its full type schema and signature rules, and any supplied `BundleBinding` under BB-4/BB-5; an object containing only a discriminator or matching hash is not valid content. BB-5 check 8 and the §10.4.1 comparison apply to the **dereferenced full bundle**: `binding.bundleContentHash` MUST equal `pointer.fullBundleContentHash` MUST equal the recomputed §10.4.1 hash of the dereferenced bundle — three values, one identity. A pointer whose shape or signature fails, whose type mismatches, whose binding is unverified, or whose dereferenced content hash mismatches is rejected content (BB-7), never absence.
+For an extended-pointer anchoring, the record at the resolved `nativeAddress` is the pointer. Its discriminator and signature domain MUST match the dereferenced bundle type. The pointer signature's `signer` MUST equal the unique `parties[].primaryClaim` for the dereferenced bundle's `anchoredByRole`; another party or merely known key is unauthorized. Before hashing or admission, a consumer MUST validate the complete pointer shape (including an absolute HTTPS `fullBundleUrl` with a host and no userinfo, sha256 `fullBundleContentHash`, and every optional `segmentRefs` member), the dereferenced bundle under its full type schema and signature rules, and any supplied `BundleBinding` under BB-4/BB-5; an object containing only a discriminator or matching hash is not valid content. Before fetching, the consumer MUST additionally apply its deployment's egress policy, resolve DNS safely, and reject loopback, link-local, private, metadata-service, and otherwise forbidden destinations after every redirect; URL shape validation alone is not an SSRF boundary. BB-5 check 8 and the §10.4.1 comparison apply to the **dereferenced full bundle**: `binding.bundleContentHash` MUST equal `pointer.fullBundleContentHash` MUST equal the recomputed §10.4.1 hash of the dereferenced bundle — three values, one identity. A pointer whose shape or signature fails, whose type mismatches, whose binding is unverified, or whose dereferenced content hash mismatches is rejected content (BB-7), never absence.
 
 #### 10.4.3 Bundle production rules
 

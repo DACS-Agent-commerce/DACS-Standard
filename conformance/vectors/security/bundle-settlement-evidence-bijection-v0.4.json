@@ -152,6 +152,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-cfc9df69aef15ba2dfc8bd5f56fdf7a9db06afb88071dffa3462c67dcae631b8\"},\"contentHash\":\"b082f339fb5bcda46b804a61114c5b17f825d5fbb9c7c021d6799f649ea2d1c8\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-standard-completed",
@@ -179,6 +180,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d\"},\"contentHash\":\"5b0043c24fa9b7b63e3f92a8a8cc0542191bad8e8e6a1d7bc7fd790d2c37e0aa\"}": {
           "phaseIndex": 3,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-standard-completed",
@@ -305,6 +307,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3e787dc0b0cc2fb82850392155972f3b80a1574aebf8cda0edbfd1bf83d8f01e\"},\"contentHash\":\"fd2bce8f80d4b0051a5feaaef680edb837f0299c984981d38cd020c1a37e2b77\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-single-htlc-completed:test-rail:2",
           "record": {
             "evidenceVersion": "1",
@@ -326,6 +329,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-8ab3b49b752bfd1cab8cbe68b7100e6a6aa756706ddf537152dd6ca99dbb804f\"},\"contentHash\":\"fa0441f57e749713850b5550c49ec690e05485868e0e3706b31c3c844cb6b9c0\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-single-htlc-completed:test-rail:2:resolved",
           "record": {
             "evidenceVersion": "1",
@@ -495,6 +499,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c8f7d18f174ae60a6cf0373f2f68218d925ed36b133d582456ca237e3e46630c\"},\"contentHash\":\"d1e483aeab16b5038448ef02e185c8948dd8ff2be6a68beae6abf42737455488\"}": {
           "phaseIndex": 0,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-repeated-pay-completed",
@@ -522,6 +527,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e032ca7d3a59a2a5a03d47e330a3e60b0684a1648908975c8e7f9cc809e86c15\"},\"contentHash\":\"a061c47cde9c16051223292f262ba543840a35188dc51fbedee47225b28dc668\"}": {
           "phaseIndex": 1,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-repeated-pay-completed",
@@ -549,6 +555,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3\"},\"contentHash\":\"42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-repeated-pay-completed",
@@ -660,6 +667,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62\"},\"contentHash\":\"a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5\"}": {
           "phaseIndex": 0,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-failed-delivery",
@@ -841,6 +849,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5dda0d76ef6dc616d6d9d16bbc05a02d2acba7010c04451ab08a4b97678beb50\"},\"contentHash\":\"23d1fc498ba44039b37e68faeca4f7b9c15e33f96c36ee202e930533ecf513dc\"}": {
           "phaseIndex": 0,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-listing-signature",
@@ -996,6 +1005,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-f6f1e60d1eeb80653edd86d917d180abbde37e1f716d9f23dfb42dd9bc852aeb\"},\"contentHash\":\"bf994a97ef626283e798686ccf463e4ab9a5683db67479c374696dff3dd9ddcd\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
@@ -1023,6 +1033,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86\"},\"contentHash\":\"972bfaab80a21dbc9db4828aefe2cf0120dee89e9163507bb977d7cb072ffade\"}": {
           "phaseIndex": 3,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
@@ -1171,6 +1182,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5d9a165fd6e2f08ad486a29acb428c3c7636fe189999876100aef2bad7cc4216\"},\"contentHash\":\"5719ca5aada4b95ee1756541f92d16da8b9526922c1cda7d60967c61fcd8c68c\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
@@ -1198,6 +1210,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f\"},\"contentHash\":\"1676e33f934f4031360239aa5bd0f97c001bba0dc4e9a82ac7e40c969e7d0497\"}": {
           "phaseIndex": 3,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
@@ -1346,6 +1359,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-7831fa6ded704b926430ba071e11f66e5af6e824510e38b6f376c9a1250eb5d0\"},\"contentHash\":\"f5ada86e4b9eafaaa239991283d446c8a4a7a757d1de4dfbbf4490ed1e58a78a\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
@@ -1373,6 +1387,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc\"},\"contentHash\":\"ab9f1658ff5b372212c62de8c1fd812c3524822c92a68b93f3c78cc1634d87e0\"}": {
           "phaseIndex": 3,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
@@ -1423,7 +1438,7 @@
         "evidenceBoundFaultBundleVersion": "1",
         "jobId": "SEB-AUTHORITY-single-htlc-expired",
         "outcome": "failed-counterparty",
-        "faultedParty": "seller",
+        "faultedParty": "buyer",
         "anchoredByRole": "seller",
         "listingRef": {
           "listingId": "listing-seb-single-htlc-expired",
@@ -1484,12 +1499,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "mhKVb6oTg2gnzC-4rVSEaybj6Lq7cHX4tHESC0k3eNn0RZ2jAd_QhmpcTCjbZa_hRIfCXk0RvwSY3wLfUr6sBQ"
+            "value": "anmuVPr-TZCi8ILtEOe3yeG1FZ3u0WrA57cKEZHdgazQ3l6YElJw4sOuL5yaP84TB4sNdmilKy8yPDkZyIb0Bw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "8KHvHpzxiqX9oyQLHkkQYghO9LbQRHbbaPqs266WQYQNMfkLYb6qYJLCV27EyEt4RiE2KWWoUXPnW2Ldh1sTCA"
+            "value": "23iNhCvGvOaKmgGIZ4rJipp2AoMe9W0VYk6d6jFXGuF4xXNS4mG5joUw6wqb8Tw6qPuoe3foY0WJptY38Bw5CQ"
           }
         ]
       },
@@ -1500,6 +1515,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-e44093ac12ba1672817f1226d1dd2e69916bf0e7baa94354e12ffeebbb331d9d\"},\"contentHash\":\"0ecb9f9ed65c9c6df1e95cef03631651f544dfa5e867878d59c7a5eb48885e03\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-single-htlc-expired:test-rail:2",
           "record": {
             "evidenceVersion": "1",
@@ -1703,6 +1719,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-78a4ad2e32e3e9d95269c09dac98da825a67df3f2f0d41c914ef02b711b9a5ba\"},\"contentHash\":\"46de0beff45c2c77ddbc087b4fbb61db67447bd5f59c74d0afb985cef7f00f18\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-failed-gapped-summary",
@@ -1817,6 +1834,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-b3696e686ab59123ea0c7fe219635a990a03199c5eb8faa49c2ba63e3b42b790\"},\"contentHash\":\"1c7cd110e5f19ed1659b8add0b224c3460e12015337f620ee37415b223649d19\"}": {
           "phaseIndex": 0,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-aborted-result-summary",
@@ -1928,6 +1946,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7\"},\"contentHash\":\"d6e3f113618f367b251f5912e847c29ddd8bd42f2a17c3afc63f3b04d65de344\"}": {
           "phaseIndex": 0,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-failed-outcome-error-class",
@@ -1978,7 +1997,7 @@
         "evidenceBoundFaultBundleVersion": "1",
         "jobId": "SEB-AUTHORITY-invalid-st8-expired-wrong-reason",
         "outcome": "failed-counterparty",
-        "faultedParty": "seller",
+        "faultedParty": "buyer",
         "anchoredByRole": "seller",
         "listingRef": {
           "listingId": "listing-seb-invalid-st8-expired-wrong-reason",
@@ -2039,12 +2058,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "Z51lB0hKkSgCB-XcYw5H20tdlSk5zJ0sEQyyb6mVZYe53alwS6pBHe8YrZZK-1b2jb0WKcfWrZhSCKcu979lBg"
+            "value": "Lfh51CTG_PzQ5N2_PEH9v8WREGu2BSVDMRitHiS6gOalmjl9SWBX4B8FH9AtiuTsjmM_nc4VL_bkTxjooR_4Bw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "lhgnK20tsMVapk3A7zQGjagBg_mMEFS2ekAdJPLZ0Ac4eoCcBXQ8Q8ZgR-FpMJUMrVW_B-149GktaJdPb-pYAw"
+            "value": "O8eh92xY5X3TkNPt83srBa2U-JlFFdRUwOYF9jZ6aRE1N0FceFG_CXdnkMk3Ce9wkloowoLZOEDw64r6kFHmAg"
           }
         ]
       },
@@ -2055,6 +2074,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2d3cbc9069720521c2b364a3f587dc0585a2f4512c1b21b8e98ba6c049e0c3fb\"},\"contentHash\":\"ef0061cca5782ba48bc01d93c74b871e75217c8ffc0ed2a04e177cc44bd787ee\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-st8-expired-wrong-reason:test-rail:2",
           "record": {
             "evidenceVersion": "1",
@@ -2168,6 +2188,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe\"},\"contentHash\":\"73a31347dde6d2199d7accdd8ba0ece767daff1daa2b7ae214e8f64c41d78246\"}": {
           "phaseIndex": 0,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-transient-retry-exhausted",
@@ -2279,6 +2300,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474\"},\"contentHash\":\"203b74ab5e83efafc3b0b600861b9cc2a7081ac6f9e58c8469c2580e77460a55\"}": {
           "phaseIndex": 0,
+          "authorizedSigner": "did:demos:seller",
           "record": {
             "evidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-transient-not-exhausted",
@@ -2405,6 +2427,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9235eade7ccf602f1d13cbcfbdffb06132ec1fe68267852eb06fbbc804c3eea9\"},\"contentHash\":\"972b54137ba66a8f185139f80b04611c41d147cb00607ffcde2ff36b8fb5e48d\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-interim-lifecycle:test-rail:2",
           "record": {
             "evidenceVersion": "1",
@@ -2426,6 +2449,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ea76911ff2eceaf2be2a2c3fd439c058632faa0bf8444381a19648e45ce90e8b\"},\"contentHash\":\"ffc826fdb58c937cabef01c1c61d1d0e9896fc671d4f2cdf59d7ebe602e4b1ba\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-interim-lifecycle:test-rail:2:resolved",
           "record": {
             "evidenceVersion": "1",
@@ -2567,6 +2591,7 @@
       "referenceValidationByCanonicalRef": {
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ef38472fa227d423e2ed4d58500ef66a4c522566632d537628328f7f50b1c3fb\"},\"contentHash\":\"e5eec4148e0ec1825e181edfaeec7027feeb541efd47cc70befdd862d4491fcd\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-missing-supersedes:test-rail:2",
           "record": {
             "evidenceVersion": "1",
@@ -2588,6 +2613,7 @@
         },
         "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-656585e04158fa7a9472b422071ee8b1375bab7a1b9827c1236b51bbd115f2de\"},\"contentHash\":\"964badef40de80edb8d94d49a1b8a4b14f65b624e86cb2c70f38e77cb7b04b32\"}": {
           "phaseIndex": 2,
+          "authorizedSigner": "did:demos:seller",
           "logicalAddress": "dacs4:payment:SEB-AUTHORITY-invalid-completed-st8-missing-supersedes:test-rail:2:resolved",
           "record": {
             "evidenceVersion": "1",
@@ -3453,11 +3479,13 @@
   "generator": "scripts/generate_bundle_settlement_evidence_vectors.py",
   "seeds": {
     "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
-    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "orchestrator": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e"
   },
   "publicKeys": {
     "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
-    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8"
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+    "did:demos:orchestrator": "C-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw"
   },
   "domains": {
     "listing": "dacs-listing:v1:",

@@ -49,6 +49,72 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 decode(signature["value"]), payload
             )
 
+    def test_orchestrator_signed_evidence_uses_authenticated_phase_authority(self):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+        def encode(value):
+            return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+        private = {
+            role: Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed))
+            for role, seed in self.data["seeds"].items()
+        }
+        bundle = copy.deepcopy(next(
+            case["bundle"] for case in self.data["cases"] if case["name"] == "valid-ebfab"))
+        old_ref = bundle["settlementEvidence"][0]
+        old_resolution = self.data["referenceValidationByCanonicalRef"][
+            R.canonical(old_ref).decode("utf-8")]
+        record = copy.deepcopy(old_resolution["record"])
+        record["signature"] = {
+            "signer": "did:demos:orchestrator",
+            "algorithm": "ed25519",
+            "value": "",
+        }
+        evidence_payload = (
+            R.SETTLEMENT_EVIDENCE_DOMAIN + R.settlement_evidence_hash(record)).encode("utf-8")
+        record["signature"]["value"] = encode(private["orchestrator"].sign(evidence_payload))
+        ref = copy.deepcopy(old_ref)
+        ref["contentHash"] = R.settlement_evidence_hash(record)
+        bundle["settlementEvidence"] = [ref]
+        bundle["phaseSummary"][0]["attestationRef"] = ref
+        bundle["signatures"] = []
+        bundle_payload = (
+            R.EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN + R.bundle_hash(bundle)).encode("utf-8")
+        bundle["signatures"] = [
+            {
+                "party": f"did:demos:{role}",
+                "algorithm": "ed25519",
+                "value": encode(private[role].sign(bundle_payload)),
+            }
+            for role in ("buyer", "seller")
+        ]
+        authority = {
+            R.canonical(ref).decode("utf-8"): {
+                "phaseIndex": 0,
+                "authorizedSigner": "did:demos:orchestrator",
+                "record": record,
+                "lifecycle": {"state": "finalized", "independentlyResolvable": True},
+            }
+        }
+        ok, reason, _ = R.validate_ebfab(
+            bundle,
+            self.data["listing"],
+            self.pubkeys,
+            authority,
+            {"state": "finalized", "independentlyResolvable": True},
+        )
+        self.assertTrue(ok, reason)
+
+        authority[R.canonical(ref).decode("utf-8")]["authorizedSigner"] = "did:demos:buyer"
+        ok, _, _ = R.validate_ebfab(
+            bundle,
+            self.data["listing"],
+            self.pubkeys,
+            authority,
+            {"state": "finalized", "independentlyResolvable": True},
+        )
+        self.assertFalse(ok)
+
     def test_discriminator_exclusivity_unknown_and_cross_type_replay(self):
         for case in self.data["cases"]:
             bundle = case["bundle"]

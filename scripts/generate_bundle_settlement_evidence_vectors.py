@@ -79,6 +79,7 @@ def make_authority(name, definition, signing_keys):
                 )
                 reference_validation_by_canonical_ref[F.canonical(interim_ref).decode("utf-8")] = {
                     "phaseIndex": entry["index"],
+                    "authorizedSigner": F.CLAIMS["seller"],
                     "logicalAddress": (
                         f"dacs4:payment:{job_id}:test-rail:{entry['index']}"
                     ),
@@ -112,6 +113,7 @@ def make_authority(name, definition, signing_keys):
             settlement_evidence.append(ref)
             reference_validation_by_canonical_ref[F.canonical(ref).decode("utf-8")] = {
                 "phaseIndex": entry["index"],
+                "authorizedSigner": F.CLAIMS["seller"],
                 **(
                     {
                         "logicalAddress": (
@@ -134,7 +136,14 @@ def make_authority(name, definition, signing_keys):
         "evidenceBoundFaultBundleVersion": "1",
         "jobId": job_id,
         "outcome": definition["bundleOutcome"],
-        "faultedParty": "none" if definition["bundleOutcome"] == "completed" else "seller",
+        "faultedParty": {
+            "completed": "none",
+            "failed-substrate": "none",
+            "failed-perm": "seller",
+            "aborted-by-self": "seller",
+            "failed-counterparty": "buyer",
+            "aborted-by-other": "buyer",
+        }[definition["bundleOutcome"]],
         "anchoredByRole": "seller",
         "listingRef": {
             "listingId": listing["listingId"],

@@ -20,6 +20,7 @@ FIXTURE = ROOT / "conformance" / "fixtures" / "evidence-bound-fault-bundle-compa
 SEEDS = {
     "buyer": "a1" * 32,
     "seller": "c3" * 32,
+    "orchestrator": "0e" * 32,
 }
 CLAIMS = {role: f"did:demos:{role}" for role in SEEDS}
 DOMAINS = {
@@ -294,6 +295,7 @@ def generate():
         "referenceValidationByCanonicalRef": {
             canonical(ebfab_buyer["settlementEvidence"][0]).decode("utf-8"): {
                 "phaseIndex": 0,
+                "authorizedSigner": CLAIMS["seller"],
                 "record": evidence_record,
                 "lifecycle": {
                     "state": "finalized",
@@ -302,6 +304,7 @@ def generate():
             },
             canonical(alternate_ref).decode("utf-8"): {
                 "phaseIndex": 0,
+                "authorizedSigner": CLAIMS["seller"],
                 "record": alternate_record,
                 "lifecycle": {
                     "state": "finalized",

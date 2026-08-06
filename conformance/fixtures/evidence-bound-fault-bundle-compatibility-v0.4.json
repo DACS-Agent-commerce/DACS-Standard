@@ -4,11 +4,13 @@
   "generator": "scripts/generate_evidence_bound_fault_bundle_fixture.py",
   "seeds": {
     "buyer": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
-    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+    "seller": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "orchestrator": "0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e"
   },
   "publicKeys": {
     "did:demos:buyer": "vHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
-    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8"
+    "did:demos:seller": "1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+    "did:demos:orchestrator": "C-71qeZ55qPhNP4ng3v_MsfLX11E6gm8sOVCutakwMw"
   },
   "domains": {
     "legacy": "dacs-bundle:v1:",
@@ -38,6 +40,7 @@
   "referenceValidationByCanonicalRef": {
     "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563\"},\"contentHash\":\"4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5\"}": {
       "phaseIndex": 0,
+      "authorizedSigner": "did:demos:seller",
       "record": {
         "evidenceVersion": "1",
         "jobId": "EBFAB-COMPAT-1",
@@ -65,6 +68,7 @@
     },
     "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-45116d485e0f413dcab5421c6f88e0aa8d80e65f55cb578948f47d540bc534d3\"},\"contentHash\":\"4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5\"}": {
       "phaseIndex": 0,
+      "authorizedSigner": "did:demos:seller",
       "record": {
         "evidenceVersion": "1",
         "jobId": "EBFAB-COMPAT-1",

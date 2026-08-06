@@ -578,6 +578,13 @@ def validate_ebfab(
     ok, reason = _bundle_signatures_valid(bundle, pubkeys)
     if not ok:
         return (False, reason, None)
+    try:
+        permissible_faults = implied_fault_set(
+            bundle.get("outcome"), bundle.get("anchoredByRole"), roster_roles(bundle))
+    except (KeyError, TypeError, ValueError) as exc:
+        return (False, "invalid absolute fault attribution context: %s" % exc, None)
+    if bundle.get("faultedParty") not in permissible_faults:
+        return (False, "faultedParty is outside the §10.4.1 permissible set", None)
     if (
         not isinstance(listing, dict)
         or not isinstance(pubkeys, dict)
@@ -729,6 +736,7 @@ def validate_ebfab(
         ):
             return (False, "settlement evidence lacks authenticated record or phase index", None)
         signature = record.get("signature")
+        authorized_signer = resolution.get("authorizedSigner")
         if (
             record.get("evidenceVersion") != "1"
             or record.get("jobId") != bundle.get("jobId")
@@ -736,7 +744,8 @@ def validate_ebfab(
             or record.get("outcome") not in {"success", "failure"}
             or not isinstance(signature, dict)
             or signature.get("algorithm") != "ed25519"
-            or signature.get("signer") not in _primary_claims(bundle)
+            or not isinstance(authorized_signer, str)
+            or signature.get("signer") != authorized_signer
             or signature.get("signer") not in pubkeys
             or ref.get("contentHash") != settlement_evidence_hash(record)
         ):
@@ -842,6 +851,11 @@ def validate_ebfab(
         interim_index = interim_resolution.get("phaseIndex")
         interim_lifecycle = interim_resolution.get("lifecycle")
         interim_signature = interim_record.get("signature") if isinstance(interim_record, dict) else None
+        interim_authorized_signer = (
+            interim_resolution.get("authorizedSigner")
+            if isinstance(interim_resolution, dict)
+            else None
+        )
         if (
             not isinstance(interim_record, dict)
             or interim_index != int(phase_key.split(":", 1)[0])
@@ -853,7 +867,8 @@ def validate_ebfab(
             or supersedes.get("contentHash") != settlement_evidence_hash(interim_record)
             or not isinstance(interim_signature, dict)
             or interim_signature.get("algorithm") != "ed25519"
-            or interim_signature.get("signer") not in _primary_claims(bundle)
+            or not isinstance(interim_authorized_signer, str)
+            or interim_signature.get("signer") != interim_authorized_signer
             or interim_signature.get("signer") not in pubkeys
             or not isinstance(interim_lifecycle, dict)
         ):

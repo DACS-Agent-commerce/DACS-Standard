@@ -92,6 +92,20 @@ class SettlementVerifiedReputationVectorTests(unittest.TestCase):
                 self.assertEqual(result["expected"], vector["expected"])
                 self.assertEqual(result["want"], vector["want"])
 
+    def test_full_reference_arm_uses_attestationref_shape(self):
+        vector = next(
+            vector
+            for vector in self.reference["vectors"]
+            if vector["name"]
+            == "reputation-settlement-reference-same-content-different-anchor-divergent"
+        )
+        for side in ("selfRefs", "counterpartyRefs"):
+            reference = vector["input"][side][0]
+            self.assertEqual(set(reference), {"anchor", "contentHash"})
+            self.assertEqual(set(reference["anchor"]), {"kind", "locator"})
+            self.assertIn(reference["anchor"]["kind"], {"storage-program", "ipfs", "https"})
+            self.assertEqual(len(reference["contentHash"]), 64)
+
     def test_settlement_admission_and_volume_semantics(self):
         for vector in self.semantic["vectors"]:
             with self.subTest(vector=vector["name"]):

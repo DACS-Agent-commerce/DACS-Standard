@@ -18,6 +18,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
+| DPA-* | Attested-payload listing coherence, exact-byte method proof, commerce binding, success closure, and minor-safe record typing | §9.6.3 | §14.4 |
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |
@@ -27,10 +28,11 @@ This non-normative index helps implementers locate labelled conformance rules in
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
+| LRR-* | Listing-time canonical payment-rail resolution and pay-phase binding | §6.3.4 | §14.1 |
 | MA-* | Bundle-requirement matching | §6.3.3 | §14.1 |
 | MTR-* | Metered pricing (per-unit total recompute + unrecognized-kind fail-closed) | §8.5.2 | §14.3 |
 | PA-* | Progressive-anchoring phases | §7.4.4 | §14.7 |
-| PB-* | Payee-destination binding (agreement carriage + identity-binding ladder) | §9.5.1 | §14.4 |
+| PB-* | Payee-destination binding (agreement carriage + identity-binding ladder + exact EIP-155 `cci-xm` rail applicability) | §9.5.1 | §14.4 |
 | PC-* | Payment phase common contract | §9.5 | §14.4 |
 | PIPE-* | Pipeline shape and phase ordering | §9.9 | §14.4 |
 | PS-* | Negotiation pattern selection | §8.8 | §14.3 |

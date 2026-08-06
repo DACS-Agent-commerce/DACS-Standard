@@ -117,14 +117,16 @@ class SignatureValueEncodingVectorTests(unittest.TestCase):
         raw = bytes.fromhex(self.data["signatureBytesHex"])
         self.assertEqual(len(raw), 64)
         self.assertEqual(encode_base64url(raw), self.data["canonicalValue"])
-        self.assertIn("-", self.data["canonicalValue"])
-        self.assertIn("_", self.data["canonicalValue"])
+        self.assertRegex(self.data["canonicalValue"], r"^[A-Za-z0-9_-]+$")
+        self.assertNotIn("=", self.data["canonicalValue"])
+        self.assertTrue(any(char in self.data["canonicalValue"] for char in "-_"))
         standard = next(
             vector["value"]
             for vector in self.data["vectors"]
             if vector["name"] == "standard-base64-same-bytes-rejected"
         )
         self.assertEqual(base64.b64decode(standard), raw)
+        self.assertTrue(any(char in standard for char in "+/"))
 
     def test_every_vector_reaches_its_pinned_result_and_failure_stage(self):
         for vector in self.data["vectors"]:

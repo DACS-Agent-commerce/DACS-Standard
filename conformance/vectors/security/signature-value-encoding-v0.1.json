@@ -6,16 +6,16 @@
     "validationScope": "signature-value wire encoding; cryptographic validity is independently pinned by the source fixture",
     "algorithm": "ed25519"
   },
-  "signatureBytesHex": "436f7b1e403a964f7b23c121c47b16cbf1ce9a60fd1f4b709998991cb8cd682939cd2c3e94446a33839515e83d45a37a32f378fbc51a9b30ad084acac5cf8405",
-  "canonicalValue": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ",
+  "signatureBytesHex": "797c3c5e92026541e27ab606db377216eaeee8b534cdbb5b09fed5f6e0a97e17ca35bdc9c1bad52b6f03671067e51272de88ccebf3e06f160340d116d821b604",
+  "canonicalValue": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2BA",
   "count": 10,
-  "hash": "5bacef9a3568cc1307d1be4838ed0f71886c4fe588d180b320076e880b2d82be",
+  "hash": "a48da5059f67e5267e15fcbc2fb6794c63734d2ad1fe375091d2df4f5d686eea",
   "vectors": [
     {
       "name": "canonical-base64url-unpadded",
       "mode": "conforming-verifier",
       "algorithm": "ed25519",
-      "value": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ",
+      "value": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2BA",
       "expected": "accept",
       "want": {
         "failureStage": null,
@@ -26,7 +26,7 @@
       "name": "standard-base64-same-bytes-rejected",
       "mode": "conforming-verifier",
       "algorithm": "ed25519",
-      "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ==",
+      "value": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6/PgbxYDQNEW2CG2BA==",
       "expected": "reject",
       "want": {
         "failureStage": "wire",
@@ -37,7 +37,7 @@
       "name": "padded-base64url-same-bytes-rejected",
       "mode": "conforming-verifier",
       "algorithm": "ed25519",
-      "value": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ==",
+      "value": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2BA==",
       "expected": "reject",
       "want": {
         "failureStage": "wire",
@@ -48,7 +48,7 @@
       "name": "embedded-whitespace-rejected",
       "mode": "conforming-verifier",
       "algorithm": "ed25519",
-      "value": "Q297HkA6lk97I8EhxHsW y_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ",
+      "value": "eXw8XpICZUHierYG2zdy Furu6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2BA",
       "expected": "reject",
       "want": {
         "failureStage": "wire",
@@ -81,7 +81,7 @@
       "name": "canonical-wire-wrong-ed25519-length-rejected",
       "mode": "conforming-verifier",
       "algorithm": "ed25519",
-      "value": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-E",
+      "value": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2",
       "expected": "reject",
       "want": {
         "failureStage": "algorithm",
@@ -92,26 +92,26 @@
       "name": "declared-standard-base64-legacy-import",
       "mode": "legacy-import",
       "declaredEncoding": "standard-base64-padded",
-      "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ==",
+      "value": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6/PgbxYDQNEW2CG2BA==",
       "expected": "accept",
       "want": {
-        "canonicalValue": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ"
+        "canonicalValue": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2BA"
       }
     },
     {
       "name": "declared-lowercase-hex-legacy-import",
       "mode": "legacy-import",
       "declaredEncoding": "lowercase-hex",
-      "value": "436f7b1e403a964f7b23c121c47b16cbf1ce9a60fd1f4b709998991cb8cd682939cd2c3e94446a33839515e83d45a37a32f378fbc51a9b30ad084acac5cf8405",
+      "value": "797c3c5e92026541e27ab606db377216eaeee8b534cdbb5b09fed5f6e0a97e17ca35bdc9c1bad52b6f03671067e51272de88ccebf3e06f160340d116d821b604",
       "expected": "accept",
       "want": {
-        "canonicalValue": "Q297HkA6lk97I8EhxHsWy_HOmmD9H0twmZiZHLjNaCk5zSw-lERqM4OVFeg9RaN6MvN4-8UamzCtCErKxc-EBQ"
+        "canonicalValue": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2BA"
       }
     },
     {
       "name": "undeclared-legacy-encoding-rejected",
       "mode": "legacy-import",
-      "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ==",
+      "value": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6/PgbxYDQNEW2CG2BA==",
       "expected": "reject",
       "want": {
         "failureStage": "legacy-import",

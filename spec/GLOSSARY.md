@@ -55,6 +55,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **ListingIndex / ListingSummary.** Discovery data structures; not the source of truth. Defined in §6.3.5–6.3.6.
 - **negotiate-fixed-price / negotiate-rfq / negotiate-sealed-envelope.** The three DACS-3 negotiation patterns. §8.4.
 - **PayeeBoundAgreementDocument.** The DACS-3 agreement artifact whose required payout bindings are signed under a distinct domain and enforced by DACS-4 PB-1 through PB-3. Defined in §8.5.
+- **PayloadAttestationRecord.** The DACS-4 record binding method-native verification evidence to exact delivered payload bytes, a job, its committed agreement, and the signed DeliverableSpec. It is distinct from a claim-oriented DACS-2 VerifyResult. §9.6.3.
 - **PaymentRailRef / RailDefinition.** Reference to and full definition of a DACS-4 payment rail. §9.3, §9.4.
 - **Per-claim keying.** DACS-5 rule that reputation is keyed against the bundle’s primary identity claim, not a wallet or signing key. §10.5.2.
 - **perspective_flip.** The DACS-5 reconciliation mapping that re-interprets a counterparty-anchored bundle's `outcome` relative to the scored party (aborted-by-self ↔ aborted-by-other; failed-perm ↔ failed-counterparty). Buyer↔seller only. §10.5.1.

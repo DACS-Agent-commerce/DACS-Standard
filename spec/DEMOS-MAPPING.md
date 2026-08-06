@@ -63,6 +63,42 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 - 🟡 oauth-attested method depends on a Demos-side OAuth attester. If not built, the method is 🔵 third-party.
 - 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native context), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
+**DAHR-backed payload attestation (normative Demos binding).** DAHR supplies
+the method-native evidence for a DACS-4 §9.6.3
+`PayloadAttestationRecord`; it does not itself supply the DACS commerce
+binding. For
+`verificationMethod.kind == "consensus-backed-proxy"` on Demos:
+
+- (a) the verifier MUST require the `IWeb2Result.txHash` even though the SDK
+  interface types it as optional for generic callers, carry it as
+  `methodTransactionRef = { kind: "demos-web2-request", value: txHash }`, and
+  resolve the corresponding on-chain `web2Request` transaction;
+- (b) it MUST authenticate Demos consensus inclusion at `included` or stronger,
+  with finalization required before terminal DACS-5 bundle production, verify that the
+  transaction commits to the requested canonical URL, HTTP method, request
+  body hash when present, response status, `responseHash`, and
+  `responseHeadersHash`, and require those request inputs to equal the signed
+  listing's complete `verificationMethod` configuration;
+- (c) it MUST obtain the returned `data` string, encode it as UTF-8 without
+  reserialisation, require `sha256(UTF8(data)) == responseHash`, and deliver
+  those exact bytes so
+  `PayloadAttestationRecord.payloadContentHash == responseHash ==
+  SettlementEvidence.deliverableContentHash`; and
+- (d) it MUST retain a resolvable canonical evidence envelope through
+  `methodEvidenceRef`, containing or resolving the authenticated transaction
+  and response commitment needed to repeat checks (a)–(c).
+
+A missing `txHash`, an unresolvable transaction, an unauthenticated
+broadcast/RPC acknowledgement, or a response/request/hash mismatch MUST NOT
+produce `decision: "pass"`. The current DAHR implementation converts the HTTP
+body to a string and hashes its UTF-8 bytes; this profile therefore supports
+UTF-8 textual payloads only. An arbitrary binary response is unsupported until
+DAHR exposes a byte-preserving result, and an implementation MUST fail or
+surface that case as unsupported rather than claim a byte-exact attestation.
+DAHR's v0.1 trust statement remains a consensus-anchored hash commitment — the
+body is verified against the committed hash, not represented as directly
+validator-body-signed.
+
 ### A.4 SR-4 — L2PS (Layer-2 Privacy Subnets)
 
 - 🟢 new l2ps.L2PS() / new l2ps.L2PS(rsaPrivateKey). DemosWork orchestration with WorkStep (id, context, content, output, depends_on, critical), BaseOperation, ConditionalOperation (SDK module @kynesyslabs/demosdk/demoswork). Storage Programs for agreement-hash anchoring and sealed-envelope commitments.

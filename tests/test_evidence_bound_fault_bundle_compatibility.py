@@ -1,6 +1,7 @@
 """Signed compatibility and mixed-pair checks for DACS-5 v0.4 EBFAB."""
 
 import base64
+import copy
 import json
 import unittest
 from pathlib import Path
@@ -148,7 +149,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             for case in self.data["pairCases"]
             if case["name"] == "ebfab-fab-older-cannot-erase-seb"
         )
-        derivation = R.derive(
+        derivation = R.derive_job_bound(
             "did:demos:buyer",
             [
                 {
@@ -186,19 +187,34 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid_ebfab)],
             },
         }
-        derivation_with_losing_candidate = R.derive(
+        derivation_with_losing_candidate = R.derive_job_bound(
             "did:demos:buyer",
             [valid_tag, {**tag, "selectedByRoleResolution": False}],
             valid_ebfab["finalisedAt"] - 1,
             valid_ebfab["finalisedAt"] + 1,
         )
         self.assertEqual(derivation_with_losing_candidate["bundleCount"], 1)
+        self.assertTrue(R.is_job_bound_replayable_derivation(derivation_with_losing_candidate))
+        self.assertFalse(R.is_replayable_derivation(derivation_with_losing_candidate))
+        self.assertEqual(
+            derivation_with_losing_candidate["resolutionContext"][0]["resolvedJobId"],
+            valid_ebfab["jobId"],
+        )
+
+        legacy_receipt = R.derive(
+            "did:demos:buyer",
+            [valid_tag],
+            valid_ebfab["finalisedAt"] - 1,
+            valid_ebfab["finalisedAt"] + 1,
+        )
+        self.assertTrue(R.is_replayable_derivation(legacy_receipt))
+        self.assertEqual(legacy_receipt["bundleCount"], 0)
 
         malformed_losing_candidate = {
             "bundle": {"evidenceBoundFaultBundleVersion": "1"},
             "selectedByRoleResolution": False,
         }
-        derivation_with_malformed_loser = R.derive(
+        derivation_with_malformed_loser = R.derive_job_bound(
             "did:demos:buyer",
             [valid_tag, malformed_losing_candidate],
             valid_ebfab["finalisedAt"] - 1,
@@ -217,7 +233,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "resolvedJobId": invalid_discriminator["jobId"],
         }
         self.assertFalse(R._tagged_copy_valid_for_derive(invalid_discriminator_tag))
-        discriminator_rejection = R.derive(
+        discriminator_rejection = R.derive_job_bound(
             "did:demos:buyer",
             [
                 invalid_discriminator_tag,
@@ -235,7 +251,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
 
         withheld_job = {**tag, "bundle": dict(invalid)}
         withheld_job["bundle"].pop("jobId")
-        withheld_job_rejection = R.derive(
+        withheld_job_rejection = R.derive_job_bound(
             "did:demos:buyer",
             [
                 withheld_job,
@@ -253,7 +269,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
 
         wrong_job_older = dict(valid_fab)
         wrong_job_older["jobId"] = "OLDER-COPY-WRONG-JOB"
-        wrong_job_fallback = R.derive(
+        wrong_job_fallback = R.derive_job_bound(
             "did:demos:buyer",
             [
                 tag,
@@ -272,12 +288,69 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         missing_resolution_context = dict(tag)
         missing_resolution_context.pop("resolvedJobId")
         with self.assertRaisesRegex(ValueError, "trusted resolvedJobId"):
-            R.derive(
+            R.derive_job_bound(
                 "did:demos:buyer",
                 [missing_resolution_context],
                 invalid["finalisedAt"] - 1,
                 invalid["finalisedAt"] + 1,
             )
+
+    def test_job_bound_receipt_discriminator_and_job_binding_fail_closed(self):
+        valid = next(
+            case["bundle"]
+            for case in self.data["cases"]
+            if case["name"] == "valid-ebfab"
+        )
+        tag = {
+            "bundle": valid,
+            "selectedByRoleResolution": True,
+            "resolvedJobId": valid["jobId"],
+            "resolvedRole": "buyer",
+            "counterpartyDisposition": "present",
+            "roleEvidence": {"kind": "address", "resolvedAddress": "buyer-address"},
+            "ebfabAuthority": {
+                "listing": self.data["listing"],
+                "publicKeys": self.pubkeys,
+                "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+                "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(valid)],
+            },
+        }
+        receipt = R.derive_job_bound(
+            "did:demos:buyer", [tag], valid["finalisedAt"] - 1, valid["finalisedAt"] + 1)
+        self.assertTrue(R.require_job_bound_replayable_derivation(receipt)["ok"])
+
+        missing = copy.deepcopy(receipt)
+        missing["resolutionContext"][0].pop("resolvedJobId")
+        ok, reasons = R.validate_resolution_context(
+            missing, lambda _h: valid, anchor_deref=lambda _address: valid)
+        self.assertFalse(ok)
+        self.assertTrue(any("resolvedJobId must be a non-empty string" in reason for reason in reasons))
+
+        mismatch = copy.deepcopy(receipt)
+        mismatch["resolutionContext"][0]["resolvedJobId"] = "another-job"
+        ok, reasons = R.validate_resolution_context(
+            mismatch, lambda _h: valid, anchor_deref=lambda _address: valid)
+        self.assertFalse(ok)
+        self.assertTrue(any("winner copy jobId != trusted resolvedJobId" in reason for reason in reasons))
+
+        for mutation in (
+            {**receipt, "replayableDerivationVersion": "1"},
+            {key: value for key, value in receipt.items()
+             if key != "jobBoundReplayableDerivationVersion"},
+            {**receipt, "jobBoundReplayableDerivationVersion": "2"},
+        ):
+            with self.subTest(keys=sorted(mutation)):
+                self.assertFalse(R._require_supported_replay_derivation(mutation)["ok"])
+                self.assertEqual(
+                    R.replay_receipt(
+                        mutation,
+                        lambda _h: valid,
+                        "did:demos:buyer",
+                        valid["finalisedAt"] - 1,
+                        valid["finalisedAt"] + 1,
+                    ),
+                    (False, None),
+                )
 
     def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
         for case in self.data["pointerCases"]:

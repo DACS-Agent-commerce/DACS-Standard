@@ -179,6 +179,35 @@ class ReceiptRederivationTests(unittest.TestCase):
                                           anchor_deref=_anchor_resolver(v, d))
         self.assertTrue(same_struct)
 
+    def test_released_v1_has_no_job_binding_and_ignores_that_extension(self):
+        """The released discriminator keeps its historical bytes and semantics. A field named
+        resolvedJobId is not action-bearing under v1; strengthened job binding uses a new type."""
+        import copy
+
+        v = self._pass_vector()
+        deref = v["derefBundles"]
+        receipt = R.derive(
+            v["party"], v["taggedBundles"], v["window"][0], v["window"][1], "finalisedAt")
+        self.assertTrue(R.is_replayable_derivation(receipt))
+        self.assertNotIn("jobBoundReplayableDerivationVersion", receipt)
+        self.assertTrue(all("resolvedJobId" not in entry for entry in receipt["resolutionContext"]))
+
+        extended = copy.deepcopy(receipt)
+        for entry in extended["resolutionContext"]:
+            entry["resolvedJobId"] = "ignored-by-released-v1"
+        same, replayed = R.replay_receipt(
+            extended,
+            lambda h: deref[h],
+            v["party"],
+            v["window"][0],
+            v["window"][1],
+            evidence_deref=_evidence_deref(v),
+            pubkeys=_pubkeys(self.data),
+            anchor_deref=_anchor_resolver(v, extended),
+        )
+        self.assertTrue(same)
+        self.assertTrue(all("resolvedJobId" not in entry for entry in replayed["resolutionContext"]))
+
     def test_negative_vectors_are_refused_by_replay(self):
         """Round-6 blocker #2: N1-N4 are published receipts that pass the discriminator gate and the
         member-presence check, but replay REFUSES each because an authenticated per-copy check fails

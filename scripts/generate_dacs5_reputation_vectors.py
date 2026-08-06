@@ -958,12 +958,12 @@ def build_receipt_rederivation(keys):
     bb6_a = {"candidateBindings": [a_seller_binding], "partyMap": PM, "budget": 8}
     bb6_b = {"candidateBindings": [b_seller_binding], "partyMap": PM, "budget": 8}
     tagged = [
-        {"bundle": a_seller, "resolvedJobId": ja, "resolvedRole": "seller", "counterpartyDisposition": "present",
+        {"bundle": a_seller, "resolvedRole": "seller", "counterpartyDisposition": "present",
          "counterpartyRef": attestation_ref(ja + "-buyer", ha_b),
          "counterpartyRoleEvidence": {"kind": "binding", "binding": a_buyer_binding},
          "roleEvidence": {"kind": "binding", "binding": a_seller_binding},
          "bb6Context": bb6_a},
-        {"bundle": b_seller, "resolvedJobId": jb, "resolvedRole": "seller", "counterpartyDisposition": "absent",
+        {"bundle": b_seller, "resolvedRole": "seller", "counterpartyDisposition": "absent",
          "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
          "absenceBinding": absence_binding,
          "roleEvidence": {"kind": "binding", "binding": b_seller_binding},
@@ -1001,7 +1001,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [ha_s],
             "resolutionContext": [
-                {"contentHash": ha_s, "resolvedJobId": ja, "resolvedRole": "seller", "counterpartyDisposition": "present",
+                {"contentHash": ha_s, "resolvedRole": "seller", "counterpartyDisposition": "present",
                  "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(ja, "seller")}},
             ],
             "windowingBasis": "finalisedAt",
@@ -1020,7 +1020,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [hb_s],
             "resolutionContext": [
-                {"contentHash": hb_s, "resolvedJobId": jb, "resolvedRole": "seller", "counterpartyDisposition": "absent",
+                {"contentHash": hb_s, "resolvedRole": "seller", "counterpartyDisposition": "absent",
                  "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(jb, "seller")}},
             ],
             "windowingBasis": "finalisedAt",
@@ -1039,9 +1039,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": sorted([ha_s, hb_s]),
             "resolutionContext": [
-                {"contentHash": sorted([ha_s, hb_s])[0],
-                 "resolvedJobId": ja if sorted([ha_s, hb_s])[0] == ha_s else jb,
-                 "resolvedRole": "seller", "counterpartyDisposition": "present",
+                {"contentHash": sorted([ha_s, hb_s])[0], "resolvedRole": "seller", "counterpartyDisposition": "present",
                  "counterpartyRef": attestation_ref(ja + "-buyer", ha_b),
                  "roleEvidence": {"kind": "address", "resolvedAddress": logical_address(ja, "seller")}},
             ],
@@ -1057,7 +1055,7 @@ def build_receipt_rederivation(keys):
     # (bundleRefs + resolutionContext + derefBundles) so that a mutant which DELETES the refusal
     # gate would proceed and produce a non-None replay, failing the refusal assertion.
     refusal_rc = [
-        {"contentHash": hb_s, "resolvedJobId": jb, "resolvedRole": "seller", "counterpartyDisposition": "absent",
+        {"contentHash": hb_s, "resolvedRole": "seller", "counterpartyDisposition": "absent",
          "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": "stor-" + "0" * 40, "contentHash": PLACEHOLDER},
          "absenceBinding": absence_binding,
          "roleEvidence": {"kind": "binding", "binding": b_seller_binding}},
@@ -1138,7 +1136,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [ha_s],
             "resolutionContext": [
-                {"contentHash": ha_s, "resolvedJobId": ja, "resolvedRole": "seller",
+                {"contentHash": ha_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": a_seller_binding}, "bb6Context": bb6_a,
                  "counterpartyDisposition": "present",
                  "counterpartyRef": attestation_ref(ja + "-buyer-div", ha_bdiv),
@@ -1166,7 +1164,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [ha_s],
             "resolutionContext": [
-                {"contentHash": ha_s, "resolvedJobId": ja, "resolvedRole": "seller",
+                {"contentHash": ha_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": a_seller_binding}, "bb6Context": bb6_a,
                  "counterpartyDisposition": "present",
                  "counterpartyRef": attestation_ref(ja + "-buyer", ha_b),
@@ -1196,7 +1194,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [hb_s],
             "resolutionContext": [
-                {"contentHash": hb_s, "resolvedJobId": jb, "resolvedRole": "seller",
+                {"contentHash": hb_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_b,
                  "counterpartyDisposition": "absent",
                  "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
@@ -1229,7 +1227,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [hb_s],
             "resolutionContext": [
-                {"contentHash": hb_s, "resolvedJobId": jb, "resolvedRole": "seller",
+                {"contentHash": hb_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_n4,
                  "counterpartyDisposition": "absent",
                  "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
@@ -1266,7 +1264,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [hb_s],
             "resolutionContext": [
-                {"contentHash": hb_s, "resolvedJobId": jb, "resolvedRole": "seller",
+                {"contentHash": hb_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_forged,
                  "counterpartyDisposition": "absent",
                  "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
@@ -1303,7 +1301,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [hb_s],
             "resolutionContext": [
-                {"contentHash": hb_s, "resolvedJobId": jb, "resolvedRole": "seller",
+                {"contentHash": hb_s, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": b_seller_binding}, "bb6Context": bb6_badcand,
                  "counterpartyDisposition": "absent",
                  "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": na_b_b, "contentHash": ev_b_hash},
@@ -1356,7 +1354,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [eq_ha],
             "resolutionContext": [
-                {"contentHash": eq_ha, "resolvedJobId": "RCP-C", "resolvedRole": "seller",
+                {"contentHash": eq_ha, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": eq_bind_a}, "bb6Context": eq_bb6,
                  "counterpartyDisposition": "absent",
                  "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": eq_nc_b, "contentHash": eq_ev_hash},
@@ -1407,7 +1405,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [uf_hw],
             "resolutionContext": [
-                {"contentHash": uf_hw, "resolvedJobId": "RCP-D", "resolvedRole": "seller",
+                {"contentHash": uf_hw, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": uf_bind_w}, "bb6Context": uf_bb6,
                  "counterpartyDisposition": "absent",
                  "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": uf_nc_b, "contentHash": uf_ev_hash},
@@ -1462,7 +1460,7 @@ def build_receipt_rederivation(keys):
             "replayableDerivationVersion": "1",
             "bundleRefs": [po_hw],
             "resolutionContext": [
-                {"contentHash": po_hw, "resolvedJobId": "RCP-E", "resolvedRole": "seller",
+                {"contentHash": po_hw, "resolvedRole": "seller",
                  "roleEvidence": {"kind": "binding", "binding": po_bind_w}, "bb6Context": po_bb6,
                  "counterpartyDisposition": "absent",
                  "absenceEvidenceRef": {"kind": "non-membership-proof", "locator": po_nc_b, "contentHash": po_ev_hash},

@@ -1342,16 +1342,16 @@ def _role_of_party(bundle, party):
     return None
 
 
-def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt", *, job_bound=False):
     """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
     complete ReplayableReputationDerivation implementation.
 
-    tagged_bundles: list of {"bundle": <dict>, "resolvedJobId": <trusted requested jobId>,
-      "resolvedRole": "buyer"|"seller",
+    tagged_bundles: list of {"bundle": <dict>, "resolvedRole": "buyer"|"seller",
       "counterpartyDisposition": "present"|"absent"|None, "counterpartyRef": ...?,
       "absenceEvidenceRef": ...?, "selectedByRoleResolution": true?} — each input copy
-      carries its §10.5.1 resolution tag. EBFAB inputs require the true marker because
-      BB-6 role-candidate resolution precedes SEB admission; raw losing candidates are inert.
+      carries its §10.5.1 resolution tag. The job-bound variant additionally requires a
+      trusted requested `resolvedJobId`. EBFAB inputs are admitted only by that variant and
+      require the true marker because BB-6 resolution precedes SEB admission.
 
     Returns a ReputationDerivation dict (bundleCount, metrics, resolutionContext,
     bundleRefs, windowingBasis). Metrics reproduce byte-identically across runs given
@@ -1372,49 +1372,54 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         raise ValueError("windowingBasis must be one of %s (got %r)"
                          % (sorted(SUPPORTED_WINDOWING_BASES), basis))
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
-    candidates = []
-    rejected_selected_jobs = set()
-    for tagged in tagged_bundles:
-        if not isinstance(tagged, dict):
-            continue
-        bundle = tagged.get("bundle")
-        kind = bundle_type(bundle)
-        selected = tagged.get("selectedByRoleResolution") is True
-
-        # The requested jobId belongs to authenticated address/binding
-        # resolution context. Never recover it from returned bundle content:
-        # selected invalid content can omit or alter its own jobId precisely to
-        # make an older copy appear eligible.
-        # BB-6 role resolution precedes EBFAB admission. A raw losing EBFAB is
-        # inert and MUST be discarded before any of its fields are inspected.
-        if kind == "evidence-bound" and not selected:
-            continue
-        resolved_job = tagged.get("resolvedJobId")
-        if not isinstance(resolved_job, str):
-            if kind is None and not selected:
+    if not job_bound:
+        # Historical replayableDerivationVersion "1" semantics: no trusted requested jobId
+        # member and no EBFAB admission. Keep this path byte-compatible with released v1.
+        scoped = [t for t in tagged_bundles
+                  if isinstance(t, dict)
+                  and bundle_type(t.get("bundle")) in {"legacy", "fault"}
+                  and party in _primary_claims(t["bundle"])
+                  and window_start <= t["bundle"][clock] <= window_end]
+    else:
+        candidates = []
+        rejected_selected_jobs = set()
+        for tagged in tagged_bundles:
+            if not isinstance(tagged, dict):
                 continue
-            raise ValueError("admitted role resolution lacks trusted resolvedJobId")
-        if kind is None:
-            rejected_selected_jobs.add(resolved_job)
-            continue
-        if bundle.get("jobId") != resolved_job:
-            rejected_selected_jobs.add(resolved_job)
-            continue
-        if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
-            rejected_selected_jobs.add(resolved_job)
-            continue
-        if party not in _primary_claims(bundle):
-            continue
-        timestamp = bundle.get(clock)
-        if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
-            continue
-        if window_start <= timestamp <= window_end:
-            candidates.append(tagged)
+            bundle = tagged.get("bundle")
+            kind = bundle_type(bundle)
+            selected = tagged.get("selectedByRoleResolution") is True
 
-    scoped = [
-        tagged for tagged in candidates
-        if tagged["bundle"]["jobId"] not in rejected_selected_jobs
-    ]
+            # The requested jobId belongs to authenticated address/binding resolution
+            # context. Never recover it from returned bundle content.
+            if kind == "evidence-bound" and not selected:
+                continue
+            resolved_job = tagged.get("resolvedJobId")
+            if not isinstance(resolved_job, str) or not resolved_job:
+                if kind is None and not selected:
+                    continue
+                raise ValueError("admitted role resolution lacks trusted resolvedJobId")
+            if kind is None:
+                rejected_selected_jobs.add(resolved_job)
+                continue
+            if bundle.get("jobId") != resolved_job:
+                rejected_selected_jobs.add(resolved_job)
+                continue
+            if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
+                rejected_selected_jobs.add(resolved_job)
+                continue
+            if party not in _primary_claims(bundle):
+                continue
+            timestamp = bundle.get(clock)
+            if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
+                continue
+            if window_start <= timestamp <= window_end:
+                candidates.append(tagged)
+
+        scoped = [
+            tagged for tagged in candidates
+            if tagged["bundle"]["jobId"] not in rejected_selected_jobs
+        ]
 
     # group by jobId
     by_job = {}
@@ -1494,9 +1499,10 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     bundle_refs = [h for h, _ in refs]
     resolution_context = []
     for h, t in refs:
-        entry = {"contentHash": h, "resolvedJobId": t["resolvedJobId"],
-                 "resolvedRole": t["resolvedRole"],
+        entry = {"contentHash": h, "resolvedRole": t["resolvedRole"],
                  "counterpartyDisposition": t.get("counterpartyDisposition")}
+        if job_bound:
+            entry["resolvedJobId"] = t["resolvedJobId"]
         if t.get("counterpartyDisposition") == "present":
             entry["counterpartyRef"] = t.get("counterpartyRef")
             if t.get("counterpartyRoleEvidence") is not None:
@@ -1516,7 +1522,7 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         # structural discriminator, never the legacy `derivationVersion` (CORE §11.1.2 new-type
         # refusal; mirrors the AttestationBundle/FaultAttestationBundle split). derive() emits the
         # ReplayableReputationDerivation; the legacy ReputationDerivation has no `resolutionContext`.
-        "replayableDerivationVersion": REPLAYABLE_DERIVATION_VERSION,
+        ("jobBoundReplayableDerivationVersion" if job_bound else "replayableDerivationVersion"): "1",
         "bundleCount": len(reconciled),
         "metrics": {
             "completionRate": completion_rate,
@@ -1530,6 +1536,17 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
 
 
 REPLAYABLE_DERIVATION_VERSION = "1"
+JOB_BOUND_REPLAYABLE_DERIVATION_VERSION = "1"
+
+
+def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+    """Emit the released ReplayableReputationDerivation v1 shape and semantics."""
+    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=False)
+
+
+def derive_job_bound(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+    """Emit the distinct job-bound replay receipt used by strengthened EBFAB replay."""
+    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=True)
 
 
 def is_replayable_derivation(d):
@@ -1537,7 +1554,15 @@ def is_replayable_derivation(d):
     replayableDerivationVersion discriminator and NOT the legacy derivationVersion (§10.5)."""
     return (isinstance(d, dict)
             and d.get("replayableDerivationVersion") == REPLAYABLE_DERIVATION_VERSION
-            and "derivationVersion" not in d)
+            and "derivationVersion" not in d
+            and "jobBoundReplayableDerivationVersion" not in d)
+
+
+def is_job_bound_replayable_derivation(d):
+    return (isinstance(d, dict)
+            and d.get("jobBoundReplayableDerivationVersion") == JOB_BOUND_REPLAYABLE_DERIVATION_VERSION
+            and "derivationVersion" not in d
+            and "replayableDerivationVersion" not in d)
 
 
 def require_replayable_derivation(d):
@@ -1547,9 +1572,26 @@ def require_replayable_derivation(d):
     replay claim exists on the legacy ReputationDerivation. Returns {"ok": bool, "reason": str}."""
     if not isinstance(d, dict) or d.get("replayableDerivationVersion") != REPLAYABLE_DERIVATION_VERSION:
         return {"ok": False, "reason": "not a ReplayableReputationDerivation discriminator (replayableDerivationVersion != \"1\")"}
-    if "derivationVersion" in d:
+    if "derivationVersion" in d or "jobBoundReplayableDerivationVersion" in d:
         return {"ok": False, "reason": "carries legacy derivationVersion; a ReplayableReputationDerivation MUST NOT carry derivationVersion"}
     return {"ok": True, "reason": "replayable-derivation discriminator holds"}
+
+
+def require_job_bound_replayable_derivation(d):
+    if (not isinstance(d, dict)
+            or d.get("jobBoundReplayableDerivationVersion") != JOB_BOUND_REPLAYABLE_DERIVATION_VERSION):
+        return {"ok": False, "reason": "not a JobBoundReplayableReputationDerivation discriminator"}
+    if "derivationVersion" in d or "replayableDerivationVersion" in d:
+        return {"ok": False, "reason": "job-bound replay receipt carries another derivation discriminator"}
+    return {"ok": True, "reason": "job-bound replay discriminator holds"}
+
+
+def _require_supported_replay_derivation(d):
+    if is_replayable_derivation(d):
+        return {"ok": True, "kind": "legacy"}
+    if is_job_bound_replayable_derivation(d):
+        return {"ok": True, "kind": "job-bound"}
+    return {"ok": False, "kind": None, "reason": "unsupported or non-exclusive replay derivation discriminator"}
 
 
 def receipt_required_members_present(derivation):
@@ -1573,7 +1615,7 @@ def receipt_required_members_present(derivation):
          carries counterpartyRef + counterpartyRoleEvidence; an absent entry carries absenceEvidenceRef,
          and a write-input substrate carries absenceBinding).
     Returns (ok, [reasons])."""
-    gate = require_replayable_derivation(derivation)
+    gate = _require_supported_replay_derivation(derivation)
     if not gate["ok"]:
         return (False, ["discriminator refusal: " + gate["reason"]])
     # (2) resolutionContext REQUIRED array. Missing refuses even with empty bundleRefs (round-12
@@ -1689,7 +1731,7 @@ def _role_evidence_grammar(re_, ch, label):
     return (True, None)
 
 
-def _entry_structural_gate(entry, index):
+def _entry_structural_gate(entry, index, *, require_resolved_job=False):
     """Round-10 D6 + round-11 per-entry gate (step-5 1b). NO LONGER pure type-when-present: it now
     enforces PRESENCE + VOCABULARY + member types for the §10.5.3 ResolutionContextEntry grammar
     (spec DACS-5-VERIFY.md lines 535-552), so a malformed untrusted entry refuses DETERMINISTICALLY —
@@ -1707,9 +1749,10 @@ def _entry_structural_gate(entry, index):
     ch = entry.get("contentHash")
     if not isinstance(ch, str):
         return (False, "resolutionContext[%d]: contentHash must be a string (got %s)" % (index, type(ch).__name__))
-    resolved_job = entry.get("resolvedJobId")
-    if not isinstance(resolved_job, str) or not resolved_job:
-        return (False, "%s: resolvedJobId must be a non-empty string (got %r)" % (ch, resolved_job))
+    if require_resolved_job:
+        resolved_job = entry.get("resolvedJobId")
+        if not isinstance(resolved_job, str) or not resolved_job:
+            return (False, "%s: resolvedJobId must be a non-empty string (got %r)" % (ch, resolved_job))
     # dict-typed members guarded downstream by falsy-tolerant `or {}` / `if not`: flag truthy non-dict only.
     for field in ("roleEvidence", "bb6Context", "counterpartyRef", "counterpartyRoleEvidence", "absenceEvidenceRef"):
         v = entry.get(field)
@@ -1853,9 +1896,10 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
     native address supplies a substrate's deterministic logical-to-native mapping (the reference
     default is identity on logical_address). evidence_deref(contentHash) -> AbsenceEvidence.
     Returns (ok, [reasons])."""
-    gate = require_replayable_derivation(derivation)
+    gate = _require_supported_replay_derivation(derivation)
     if not gate["ok"]:
         return (False, ["discriminator refusal: " + gate["reason"]])
+    job_bound = gate["kind"] == "job-bound"
     reasons = []
     ev_get = evidence_deref if evidence_deref is not None else (lambda h: None)
     # (1a) PRE-LOOP: resolutionContext is REQUIRED (spec :532). Missing now refuses with its own
@@ -1870,12 +1914,15 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
     for index, entry in enumerate(rc):
         # (1b) PER-ENTRY STRUCTURAL GATE: type-when-present for every receipt-supplied member the loop
         # reads by attr/iteration/index, BEFORE any of the falsy-only `or {}` idioms below run.
-        ok_entry, reason_entry = _entry_structural_gate(entry, index)
+        ok_entry, reason_entry = _entry_structural_gate(
+            entry, index, require_resolved_job=job_bound)
         if not ok_entry:
             reasons.append(reason_entry)
             continue
         ch = entry.get("contentHash")
-        resolved_job = entry.get("resolvedJobId")
+        # Released v1 derives the expected jobId from the authenticated copy. Only the
+        # structurally distinct job-bound type treats resolvedJobId as trusted/action-bearing.
+        resolved_job = entry.get("resolvedJobId") if job_bound else None
         role = entry.get("resolvedRole")
         other = _other(role) if role in ("buyer", "seller") else None
         re_ = entry.get("roleEvidence") or {}
@@ -1896,14 +1943,15 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         if not ok_w:
             reasons.append("%s: winner copy %s" % (ch, reason_w))
             continue
-        if auth.get("jobId") != resolved_job:
+        if job_bound and auth.get("jobId") != resolved_job:
             reasons.append("%s: winner copy jobId != trusted resolvedJobId" % ch)
             continue
+        expected_job = resolved_job if job_bound else auth.get("jobId")
         # (1) roleEvidence re-verification + (2) BB-6 reproduction.
         if re_.get("kind") == "binding":
             auth_binding = re_.get("binding") or {}
             vb = verify_binding(auth_binding, pubkeys,
-                                expected_jobid=resolved_job, expected_role=role,
+                                expected_jobid=expected_job, expected_role=role,
                                 expected_content_hash=ch)
             if not vb["ok"]:
                 reasons.append("%s: roleEvidence %s" % (ch, vb["reason"]))
@@ -1956,7 +2004,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             #    surface resolution) is not replayable; a malformed AUTHORIZED candidate fails the receipt closed.
             bad_candidate = None
             for cand in survivors:
-                vbc = verify_binding(cand, pubkeys, expected_jobid=resolved_job, expected_role=role)
+                vbc = verify_binding(cand, pubkeys, expected_jobid=expected_job, expected_role=role)
                 if not vbc["ok"]:
                     bad_candidate = (cand.get("nativeAddress"), vbc["reason"])
                     break
@@ -2030,7 +2078,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         else:
             pf_auth_ok, pf_auth_reason = _post_fetch_address_valid(
                 auth, re_.get("resolvedAddress"), role, ch, pubkeys,
-                expected_jobid=resolved_job,
+                expected_jobid=expected_job,
                 pure_mapping_resolver=pure_mapping_resolver)
             if not pf_auth_ok:
                 reasons.append("%s: authoritative copy %s" % (ch, pf_auth_reason))
@@ -2060,7 +2108,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if cre.get("kind") == "binding":
                 cp_binding = cre.get("binding") or {}
                 vb2 = verify_binding(cp_binding, pubkeys,
-                                     expected_jobid=resolved_job, expected_role=other,
+                                     expected_jobid=expected_job, expected_role=other,
                                      expected_content_hash=cref.get("contentHash"))
                 if not vb2["ok"]:
                     reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
@@ -2069,7 +2117,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             else:
                 pf_cp_ok, pf_cp_reason = _post_fetch_address_valid(
                     cp, cre.get("resolvedAddress"), other, cref.get("contentHash"), pubkeys,
-                    expected_jobid=resolved_job, pure_mapping_resolver=pure_mapping_resolver)
+                    expected_jobid=expected_job, pure_mapping_resolver=pure_mapping_resolver)
             if not pf_cp_ok:
                 reasons.append("%s: counterparty copy %s" % (ch, pf_cp_reason))
                 continue
@@ -2090,7 +2138,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if not isinstance(ab, dict):
                 reasons.append("%s: absent disposition missing absenceBinding" % ch)
                 continue
-            vb3 = verify_binding(ab, pubkeys, expected_jobid=resolved_job, expected_role=other)
+            vb3 = verify_binding(ab, pubkeys, expected_jobid=expected_job, expected_role=other)
             if not vb3["ok"]:
                 reasons.append("%s: absenceBinding %s" % (ch, vb3["reason"]))
                 continue
@@ -2110,8 +2158,10 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     invalid object carries no replay claim. evidence_deref(contentHash) -> AbsenceEvidence;
     pubkeys enables crypto binding-signature verification (None => structural only).
     Returns (byte_identical, replayed_derivation) — (False, None) on refusal."""
-    if not require_replayable_derivation(derivation)["ok"]:
+    gate = _require_supported_replay_derivation(derivation)
+    if not gate["ok"]:
         return (False, None)
+    job_bound = gate["kind"] == "job-bound"
     # (round-12) integrated-replay completeness gate BEFORE per-copy validation: an object missing the
     # required resolutionContext / metrics / bundleCount members, or whose context is not keyed 1:1 to
     # bundleRefs in order, carries no replay claim and must refuse deterministically (never raise).
@@ -2126,8 +2176,7 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     tagged = []
     for entry in derivation["resolutionContext"]:
         b = _deref_role_copy(anchor_deref, entry["roleEvidence"])
-        tag = {"bundle": b, "resolvedJobId": entry["resolvedJobId"],
-               "resolvedRole": entry["resolvedRole"],
+        tag = {"bundle": b, "resolvedRole": entry["resolvedRole"],
                "counterpartyDisposition": entry.get("counterpartyDisposition"),
                "counterpartyRef": entry.get("counterpartyRef"),
                "counterpartyRoleEvidence": entry.get("counterpartyRoleEvidence"),
@@ -2135,6 +2184,9 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
                "absenceBinding": entry.get("absenceBinding"),
                "roleEvidence": entry.get("roleEvidence"),
                "bb6Context": entry.get("bb6Context")}
+        if job_bound:
+            tag["resolvedJobId"] = entry["resolvedJobId"]
+            tag["selectedByRoleResolution"] = True
         tagged.append(tag)
     # (round-13 B3) read the now-REQUIRED, vocab-checked windowingBasis WITHOUT a silent default —
     # rrmp above guarantees it is present and in the vocab. Fail closed BEFORE the (bare) derive echo
@@ -2144,7 +2196,8 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     basis = derivation["windowingBasis"]
     if basis not in IMPLEMENTED_WINDOWING_BASES:
         return (False, None)   # declared basis valid but unimplemented -> no honest replay claim
-    replayed = derive(party, tagged, window_start, window_end, basis)
+    replayed = (derive_job_bound if job_bound else derive)(
+        party, tagged, window_start, window_end, basis)
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])
             and replayed["bundleCount"] == derivation["bundleCount"])
     return (same, replayed)

@@ -588,7 +588,7 @@ type ReputationDerivation = {
 }
 ```
 
-**`ReplayableReputationDerivation` (replayable receipt).** The independently-replayable variant of the reputation derivation, defined after the legacy type in the `AttestationBundle`/`FaultAttestationBundle` two-type pattern (§10.4.1). It is identical to `ReputationDerivation` in every shared field's meaning, and differs in exactly two ways. Its version literal is `replayableDerivationVersion`, its structural discriminator per CORE §11.1.2 new-type refusal. And it carries the REQUIRED `resolutionContext` — the per-jobId resolution facts (§10.5.1) a rederiver needs that neither bundle copy can carry. Like the legacy `ReputationDerivation` it is unsigned and has no CORE §B.7 domain: it is derivation-record data, not an anchored artifact.
+**`ReplayableReputationDerivation` (released replayable receipt).** This historical v1 type remains byte- and meaning-compatible: `replayableDerivationVersion: "1"` does not require a `resolvedJobId` member and a consumer MUST NOT treat an extension with that name as action-bearing. It carries the previously released `resolutionContext` needed to reproduce legacy/FAB reconciliation. Like `ReputationDerivation`, it is unsigned derivation-record data and has no CORE §B.7 domain.
 
 A consumer that does not support this type MUST reject an object carrying `replayableDerivationVersion` as unsupported, and MUST NOT reinterpret it as a `ReputationDerivation` by discarding the discriminator (CORE §11.1.2 new-type refusal). Conversely a replay consumer MUST reject an object lacking `replayableDerivationVersion: "1"` or carrying `derivationVersion`: no replay claim exists on the legacy type.
 
@@ -616,7 +616,6 @@ type ReplayableReputationDerivation = {
 
 type ResolutionContextEntry = {
   contentHash: string                           // keys the entry to its bundleRefs member (ascending-contentHash order, §10.5.3)
-  resolvedJobId: string                         // REQUIRED trusted requested session identity established from the role address or verified BundleBinding; MUST equal the dereferenced copy's jobId
   resolvedRole: "buyer" | "seller"              // the §10.5.1 input-precondition role under which the authoritative copy was resolved
   roleEvidence:                                   // exactly ONE of (XOR — the authenticated backing for resolvedRole):
     | { kind: "binding"; binding: BundleBinding }  // write-input substrate: the verified BB-4/BB-5 binding; binding.bundleContentHash MUST equal contentHash and binding.role MUST equal resolvedRole
@@ -642,7 +641,23 @@ type AbsenceEvidence = {
 }
 ```
 
-A `ReplayableReputationDerivation`'s `resolutionContext`:
+**`JobBoundReplayableReputationDerivation` (strengthened replayable receipt).** EBFAB replay and any producer claiming that returned content was bound to the trusted requested session identity MUST use this distinct type. It carries `jobBoundReplayableDerivationVersion: "1"`, never `replayableDerivationVersion` or `derivationVersion`, and uses `JobBoundResolutionContextEntry`. Unknown, stripped, relabelled, unsupported, or multiply-present derivation discriminators are rejected before any replay action.
+
+```
+type JobBoundReplayableReputationDerivation = Omit<ReplayableReputationDerivation,
+  "replayableDerivationVersion" | "resolutionContext"> & {
+  jobBoundReplayableDerivationVersion: "1"
+  resolutionContext: JobBoundResolutionContextEntry[]
+}
+
+type JobBoundResolutionContextEntry = ResolutionContextEntry & {
+  resolvedJobId: string                         // REQUIRED trusted requested session identity from the role address or verified BundleBinding; MUST equal the dereferenced copy's jobId
+}
+```
+
+The released v1 path neither requires nor acts on `resolvedJobId`; adding, removing, or changing such an unknown extension cannot strengthen or alter its semantics. A job-bound consumer instead verifies `resolvedJobId` against the dereferenced authoritative copy and uses it for every role, counterparty, candidate-binding, and absence-binding job relation before reconciliation. EBFAB is not admissible to the released v1 derivation path.
+
+A supported replay receipt's `resolutionContext`:
 
 - MUST contain exactly one `ResolutionContextEntry` per `bundleRefs` member, keyed by `contentHash`;
 - MUST NOT, in a published receipt, include a one-copy jobId whose entry lacks a valid `absenceEvidenceRef`. §10.5.1 guard (iv) already excludes it from the metrics, so publication likewise requires the evidence that qualified the inclusion;
@@ -656,9 +671,9 @@ Three relations make each authenticated copy independently checkable at replay:
 - **BB-6 reproduction.** A binding-backed entry MUST carry the `bb6Context` multiplicity inputs that reproduce why the authoritative copy won BB-6 selection. A replay that re-runs BB-6 over `candidateBindings` under `partyMap` and `budget` and reaches a `resolvedNativeAddress` other than `roleEvidence.binding.nativeAddress` is non-conforming.
 - **Absence relation.** `absenceBinding.nativeAddress` MUST equal the dereferenced `AbsenceEvidence.nativeAddress`. `absenceBinding` MUST itself be BB-4-valid, with `role` equal to the missing side's role and `jobId` equal to the entry's jobId. BB-5 check 8 (`bundleContentHash` byte-equality with fetched content) is inapplicable to `absenceBinding` — the missing side's bundle never anchored, so no fetched content exists to match; the binding is verified per BB-4 with `jobId` and `role` equality and the `nativeAddress` relation above.
 
-A deriver publishing a replayable receipt emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. It sets `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`. The legacy ReputationDerivation output shape remains unchanged; replayability is introduced through the distinct ReplayableReputationDerivation type.
+A deriver retaining the released contract emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. A deriver making the stronger requested-session binding claim emits `jobBoundReplayableDerivationVersion: "1"` and includes `resolvedJobId` in every context entry. Both set `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`.
 
-**Replay (normative, extends the §10.5.3 determinism receipt).** A `ReplayableReputationDerivation` MUST be replayable as below, and is non-conforming if it is missing, mis-keyed, lacks any member REQUIRED for an entry's disposition, or fails any check:
+**Replay (normative, extends the §10.5.3 determinism receipt).** Either supported replay type MUST be replayable as below, and is non-conforming if it is missing, mis-keyed, lacks any member REQUIRED for its type or an entry's disposition, or fails any check:
 
 - it MUST satisfy the §10.5.3 (1)–(3) determinism-receipt contract;
 - re-running `derive(partyPrimaryClaim, deref(bundleRefs), windowStart, windowEnd)` under the recorded `windowingBasis`, each copy's `resolutionContext` entry supplied as its §10.5.1 tag, MUST reproduce byte-identical `metrics` and `bundleCount`;
@@ -666,6 +681,7 @@ A deriver publishing a replayable receipt emits `replayableDerivationVersion: "1
 - **reproduce BB-6 selection** — re-run BB-6 over `bb6Context.candidateBindings` under `partyMap` and `budget`, requiring disposition `present` with `resolvedNativeAddress` equal to `roleEvidence.binding.nativeAddress`;
 - **re-run §10.4.3 reconciliation** — dereference `counterpartyRef`, verify `counterpartyRoleEvidence` per the counterparty-authentication relation, and require `divergence()` against the authoritative copy to be false;
 - **re-check absence** — dereference `AbsenceEvidence`, require `absenceEvidenceRef.contentHash` to equal its `sha256(canonical)`, verify `absenceBinding` per the absence relation, and require `absenceBinding.nativeAddress` to equal `AbsenceEvidence.nativeAddress`.
+- **job-bound type only** — require each non-empty `resolvedJobId` to equal the dereferenced authoritative copy's `jobId` and use that trusted value, rather than returned content, in every job-binding check. The released v1 type performs its historical checks against the authenticated copy's `jobId` and makes no stronger claim.
 
 The discriminator is unsigned. Stripping `replayableDerivationVersion` from a published receipt downgrades it to a legacy `ReputationDerivation` making no replay claim — a loss of claims, not a forgery, since the surviving metrics remain auditable under §10.5.3 (1)–(3).
 
@@ -673,7 +689,7 @@ The discriminator is unsigned. Stripping `replayableDerivationVersion` from a pu
 
 #### 10.5.1 Derivation algorithm
 
-*Input precondition: each admitted input copy is resolution-context-tagged with the trusted requested `jobId` and the role under which it was resolved (from the anchor address on a pure-mapping substrate or the verified `BundleBinding` per BB-4/BB-5 on a write-input substrate). Both MUST equal the dereferenced copy's fields before any bundle type, including FAB or legacy, may enter grouping or fallback; neither bundle type's self-asserted `jobId` or unhashed role is resolution authority.*
+*Input precondition: each admitted input copy is tagged with the role under which it resolved. A job-bound derivation additionally carries the trusted requested `jobId` from the role address or verified `BundleBinding`; it MUST equal the dereferenced copy before that copy may enter grouping or fallback. EBFAB requires this job-bound path. The released replayable v1 path retains its historical input contract and does not consume `resolvedJobId`.*
 
 *Settlement uniqueness (SB-2, §9.5.8): across the bundles reconciled below, a `settlement-tx-id` bound to more than one `(jobId, phaseIndex)` is counted once (earliest `observedAt`), so a reused settlement transaction cannot inflate `observedTransactionalVolume` or completion across jobs.*
 
@@ -890,7 +906,7 @@ Three normative guards apply during reconciliation:
 
 A fourth normative guard applies to any one-copy jobId:
 
-- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. Each resolution tag MUST carry the trusted requested `jobId` established from the role address or verified `BundleBinding`; a consumer MUST bind returned content and every rejection to that requested identity, never to the returned bundle's self-asserted `jobId`. Returned content that is an invalid EBFAB — including content that omits or alters its `jobId` — is rejected for the requested session, not absent; an older copy on the other side therefore cannot become authoritative through this guard. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context — published, when a replayable receipt is emitted, as the `ReplayableReputationDerivation`'s `resolutionContext` (§10.5) — and MUST NOT add them to any signed bundle type. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
+- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. In the job-bound path, each resolution tag MUST carry the trusted requested `jobId` established from the role address or verified `BundleBinding`; a consumer binds returned content and every rejection to that requested identity, never to returned content's self-asserted `jobId`. Returned content that is an invalid EBFAB — including content that omits or alters its `jobId` — is rejected for the requested session, not absent; an older copy on the other side therefore cannot become authoritative through this guard. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to any signed bundle type. EBFAB or any stronger job-binding claim is published only as `JobBoundReplayableReputationDerivation`; the released `ReplayableReputationDerivation` v1 remains unchanged and makes no such claim. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 

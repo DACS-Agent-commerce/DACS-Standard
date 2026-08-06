@@ -491,7 +491,8 @@ def generate():
                 "pointer": ebfab_pointer,
                 "bundle": ebfab_buyer,
                 "binding": incomplete_binding,
-                "want": {"ok": False},
+                "useEbfabAuthority": True,
+                "want": {"ok": False, "reasonContains": "binding invalid"},
             },
         ],
     }

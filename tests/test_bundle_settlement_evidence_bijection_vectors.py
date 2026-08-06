@@ -83,21 +83,13 @@ def evaluate(vector_data, authorities, pubkeys):
         for entry in authority["bundle"]["phaseSummary"]
         if entry["kind"] in R.EVIDENCE_PHASES
     }
-    if any(
-        ref not in records
-        or records[ref].get("jobId") != authority["bundle"]["jobId"]
-        or records[ref].get("phaseKey") not in expected
-        for ref in refs
-    ):
-        return "rejected", "exact-phase-mapping"
-    if any(
-        records[ref].get("outcome") != expected_outcome_by_key[records[ref]["phaseKey"]]
-        for ref in refs
-    ):
-        return "rejected", "st8-raw-admissibility"
     for ref in refs:
-        record = records[ref]
-        phase_key = record["phaseKey"]
+        record = records.get(ref)
+        phase_key = record.get("phaseKey") if isinstance(record, dict) else None
+        if phase_key not in expected_outcome_by_key:
+            continue
+        if record.get("outcome") != expected_outcome_by_key[phase_key]:
+            return "rejected", "st8-raw-admissibility"
         phase = phase_key.split(":", 1)[-1]
         expected_reason = st8_reason_by_phase.get(phase)
         expired_st8 = expected_error_by_key.get(phase_key) == "settlement-atomicity" or (
@@ -110,6 +102,14 @@ def evaluate(vector_data, authorities, pubkeys):
                 return "rejected", "st8-raw-admissibility"
         elif record.get("reason") in set(st8_reason_by_phase.values()):
             return "rejected", "st8-raw-admissibility"
+
+    if any(
+        ref not in records
+        or records[ref].get("jobId") != authority["bundle"]["jobId"]
+        or records[ref].get("phaseKey") not in expected
+        for ref in refs
+    ):
+        return "rejected", "exact-phase-mapping"
 
     lifecycle_overrides = vector_data.get("referenceLifecycleByRef", {})
     default_lifecycle = authority["defaultReferenceLifecycle"]
@@ -188,6 +188,17 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             derive_phase_keys(transient, self.pubkeys),
             ["0:deliver-storage-program"],
         )
+        direct_cross_chain = self.data["executionAuthorities"]["single-htlc-direct-completed"]
+        self.assertEqual(
+            derive_phase_keys(direct_cross_chain, self.pubkeys),
+            ["2:pay-cross-chain-htlc"],
+        )
+        direct_resolution = next(
+            iter(direct_cross_chain["referenceValidationByCanonicalRef"].values())
+        )
+        self.assertNotIn("supersedesEvidenceRef", direct_resolution["record"])
+        direct_receipt = next(iter(direct_cross_chain["verifiedReceiptByCanonicalRef"].values()))
+        self.assertFalse(direct_receipt["logicalAddress"].endswith(":resolved"))
         failed_resolution = next(iter(failed["referenceValidationByCanonicalRef"].values()))
         self.assertFalse(failed_resolution["lifecycle"]["independentlyResolvable"])
         aborted = self.data["executionAuthorities"]["aborted-before-result"]
@@ -306,6 +317,30 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         )
         receipt["logicalAddress"] = "dacs4:payment:forged:resolved"
         self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
+
+    def test_declared_reason_precedence_matches_reference_evaluator(self):
+        vector_input = {
+            "executionAuthorityRef": "standard-completed",
+            "topLevelRefs": ["wrong-phase", "wrong-outcome"],
+            "authenticatedRecordByRef": {
+                "wrong-phase": {
+                    "jobId": "SEB-AUTHORITY-standard-completed",
+                    "phaseKey": "99:pay-dem",
+                    "outcome": "success",
+                },
+                "wrong-outcome": {
+                    "jobId": "SEB-AUTHORITY-standard-completed",
+                    "phaseKey": "3:deliver-attested-payload",
+                    "outcome": "failure",
+                },
+            },
+            "pointerMap": {},
+            "unrelatedAuthorityDisposition": "verified",
+        }
+        self.assertEqual(
+            evaluate(vector_input, self.data["executionAuthorities"], self.pubkeys),
+            ("rejected", "st8-raw-admissibility"),
+        )
 
     def test_minor_safe_type_boundary_and_domains(self):
         spec = SPEC.read_text(encoding="utf-8")

@@ -224,6 +224,10 @@ def generate(source):
         }
     definitions["failed-delivery"]["defaultReferenceLifecycle"]["independentlyResolvable"] = False
     definitions["single-htlc-completed"]["st8Resolved"] = True
+    definitions["single-htlc-direct-completed"] = copy.deepcopy(
+        definitions["single-htlc-completed"]
+    )
+    definitions["single-htlc-direct-completed"].pop("st8Resolved", None)
     definitions["single-htlc-expired"] = copy.deepcopy(definitions["single-htlc-completed"])
     definitions["single-htlc-expired"].pop("st8Resolved", None)
     definitions["single-htlc-expired"]["bundleOutcome"] = "failed-counterparty"
@@ -282,6 +286,23 @@ def generate(source):
         definitions["single-htlc-completed"]
     )
     definitions["invalid-completed-st8-missing-supersedes"]["omitSt8Supersedes"] = True
+
+    direct_success_name = "bundle-settlement-bijection-cross-chain-direct-success-pass"
+    if not any(vector["name"] == direct_success_name for vector in data["vectors"]):
+        data["vectors"].append({
+            "name": direct_success_name,
+            "expected": "pass",
+            "input": {
+                "executionAuthorityRef": "single-htlc-direct-completed",
+                "topLevelRefs": ["ref-direct-success"],
+                "resolvedReferencePhaseKeys": {
+                    "ref-direct-success": "2:pay-cross-chain-htlc",
+                },
+                "pointerMap": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {"disposition": "verified", "reasonCode": "ok"},
+        })
 
     for vector in data["vectors"]:
         if vector["name"] == "bundle-settlement-bijection-st8-expired-interim-pass":

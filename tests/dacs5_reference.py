@@ -603,7 +603,7 @@ def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase
 
 def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
                                             session_execution_authority_by_phase_key,
-                                            verified_receipt_by_canonical_ref, *, resolved=False):
+                                            verified_receipt_by_canonical_ref):
     """Resolve one exact phase from trusted SB-1 authority plus verified SR-2 receipt evidence."""
     ref_key = canonical(ref).decode("utf-8")
     receipt = verified_receipt_by_canonical_ref.get(ref_key)
@@ -625,15 +625,22 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
             or execution.get("phaseOrchestrator") != signer
         ):
             continue
-        ok, _ = _validate_evidence_resolution_binding(
-            ref, execution, receipt, bundle, phase_index, phase_kind, signer,
-            resolved=resolved,
-        )
-        if ok:
-            matches.append((phase_key, execution))
+        resolution_classes = [False]
+        if (
+            phase_kind in {"pay-cross-chain-htlc", "pay-cross-chain-liquidity-tank"}
+            and record.get("outcome") == "success"
+        ):
+            resolution_classes.append(True)
+        for resolved in resolution_classes:
+            ok, _ = _validate_evidence_resolution_binding(
+                ref, execution, receipt, bundle, phase_index, phase_kind, signer,
+                resolved=resolved,
+            )
+            if ok:
+                matches.append((phase_key, resolved))
     if len(matches) != 1:
         return (False, "evidence does not resolve to exactly one authenticated phase receipt", None)
-    return (True, matches[0][0], receipt)
+    return (True, matches[0], receipt)
 
 
 def validate_ebfab(
@@ -830,12 +837,6 @@ def validate_ebfab(
             signature["value"],
         ):
             return (False, "settlement evidence signature does not verify", None)
-        resolved_record = (
-            record.get("phase") in {
-                "pay-cross-chain-htlc", "pay-cross-chain-liquidity-tank"
-            }
-            and record.get("outcome") == "success"
-        )
         binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
             ref,
             record,
@@ -843,11 +844,10 @@ def validate_ebfab(
             bundle,
             session_execution_authority_by_phase_key,
             verified_receipt_by_canonical_ref,
-            resolved=resolved_record,
         )
         if not binding_ok:
             return (False, binding_result, None)
-        phase_key = binding_result
+        phase_key, resolved_record = binding_result
         phase_index = int(phase_key.split(":", 1)[0])
         if phase_index >= len(pipeline_kinds) or record.get("phase") != pipeline_kinds[phase_index]:
             return (False, "authenticated phase is outside the signed listing pipeline", None)
@@ -967,11 +967,11 @@ def validate_ebfab(
             bundle,
             session_execution_authority_by_phase_key,
             verified_receipt_by_canonical_ref,
-            resolved=False,
         )
         if not interim_binding_ok:
             return (False, interim_binding_result, None)
-        if interim_binding_result != phase_key:
+        interim_phase_key, interim_resolved = interim_binding_result
+        if interim_phase_key != phase_key or interim_resolved:
             return (False, "ST-8 interim receipt resolves to a different authenticated phase", None)
         if bundle.get("outcome") == "completed" and (
             interim_lifecycle.get("state") != "finalized"

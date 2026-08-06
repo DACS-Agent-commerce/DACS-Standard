@@ -546,6 +546,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     ebfab_authority=ebfab_authority,
                 )
                 self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])
+                if "reasonContains" in case["want"]:
+                    self.assertIn(case["want"]["reasonContains"], result["reason"])
 
     def test_malformed_pointer_inputs_fail_closed_without_exceptions(self):
         valid = self.data["pointerCases"][0]

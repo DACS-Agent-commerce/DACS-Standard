@@ -3026,10 +3026,161 @@
         "state": "finalized",
         "independentlyResolvable": true
       }
+    },
+    "single-htlc-direct-completed": {
+      "listing": {
+        "listingId": "listing-seb-single-htlc-direct-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "vet-credentials"
+          },
+          {
+            "kind": "commit-agreement"
+          },
+          {
+            "kind": "pay-cross-chain-htlc"
+          }
+        ],
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "FVafoRkV8s54xoTKQKVjc0VdpSupv2yiRJUM6Elt5gOxUG-MaMpDgqmP_OLELJRTY71l5mag815ieL-Z4pezCg"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-single-htlc-direct-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-single-htlc-direct-completed",
+          "version": 1,
+          "contentHash": "2dfaf9fc489e87a78ab131d5458af3d03423bec364998c229efb9462d57c1a5d"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "vet-credentials",
+            "outcome": "ok"
+          },
+          {
+            "index": 1,
+            "kind": "commit-agreement",
+            "outcome": "ok"
+          },
+          {
+            "index": 2,
+            "kind": "pay-cross-chain-htlc",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-1d27196fb69476001410221916123d8bf78c6499422f669a90cc98a830ebfda7"
+              },
+              "contentHash": "a373442cd7d477fe2eb22f38446a91ff8442b30f69ceb19276183d36622062a4"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-1d27196fb69476001410221916123d8bf78c6499422f669a90cc98a830ebfda7"
+            },
+            "contentHash": "a373442cd7d477fe2eb22f38446a91ff8442b30f69ceb19276183d36622062a4"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "JMHp7AeFVfl79XqADVrMzSh1oJtWOp9S0kI-jCg1jMR2rKQrr3repAGqjFHxAP83hd083M5Wuv9DJY49zJ4lBg"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "Un58xWFNipaVchvIO3WYGrzFscY3XWig6ImpMiDtALcncDCaSpTfMXWkBgdzWcjkLLDjD0djI_2-Uf3xcu7mCQ"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1d27196fb69476001410221916123d8bf78c6499422f669a90cc98a830ebfda7\"},\"contentHash\":\"a373442cd7d477fe2eb22f38446a91ff8442b30f69ceb19276183d36622062a4\"}": {
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-single-htlc-direct-completed",
+            "phase": "pay-cross-chain-htlc",
+            "outcome": "success",
+            "observedAt": 1785772799002,
+            "paymentAmount": {
+              "amount": "1",
+              "currency": "DEM"
+            },
+            "settlementFinality": {
+              "model": "bft-final",
+              "finalityObservedAt": 1785772799002
+            },
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "ZwCaLVrBa3AN6e9Rizcyv_10GUlw-4s8p4BvYIpe4N7R6W1BtLRIIwt_Ygaqv-I7uEr57He0TWiZCQx5TZ_8Dw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "2:pay-cross-chain-htlc": {
+          "jobId": "SEB-AUTHORITY-single-htlc-direct-completed",
+          "phaseIndex": 2,
+          "phaseKind": "pay-cross-chain-htlc",
+          "phaseOrchestrator": "did:demos:seller",
+          "railId": "test-rail"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1d27196fb69476001410221916123d8bf78c6499422f669a90cc98a830ebfda7\"},\"contentHash\":\"a373442cd7d477fe2eb22f38446a91ff8442b30f69ceb19276183d36622062a4\"}": {
+          "logicalAddress": "dacs4:payment:SEB-AUTHORITY-single-htlc-direct-completed:test-rail:2",
+          "nativeAddress": "stor-1d27196fb69476001410221916123d8bf78c6499422f669a90cc98a830ebfda7",
+          "contentHash": "a373442cd7d477fe2eb22f38446a91ff8442b30f69ceb19276183d36622062a4",
+          "transaction": "demos-testnet:tx-03b667d64793cd122e354d7d64e65431",
+          "writer": "did:demos:seller",
+          "nonce": 2
+        }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
     }
   },
-  "hash": "9c39f91b0eed43f5fd7884260c5c7f6aab36d8afdafb2e3a1974a3d87fad6583",
-  "count": 29,
+  "hash": "97f7b0b7b7dd07cd8bfa490b03cfc67764e5a1eb786e1e0ccdae9856e2fef694",
+  "count": 30,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
@@ -3855,6 +4006,29 @@
         "disposition": "rejected",
         "reasonCode": "execution-authority"
       }
+    },
+    {
+      "name": "bundle-settlement-bijection-cross-chain-direct-success-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "single-htlc-direct-completed",
+        "topLevelRefs": [
+          "ref-direct-success"
+        ],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-direct-success": {
+            "jobId": "SEB-AUTHORITY-single-htlc-direct-completed",
+            "phaseKey": "2:pay-cross-chain-htlc",
+            "outcome": "success"
+          }
+        }
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
     }
   ],
   "generator": "scripts/generate_bundle_settlement_evidence_vectors.py",
@@ -4365,6 +4539,35 @@
       },
       "st8Resolved": true,
       "omitSt8Supersedes": true
+    },
+    "single-htlc-direct-completed": {
+      "listingPipeline": [
+        "vet-credentials",
+        "commit-agreement",
+        "pay-cross-chain-htlc"
+      ],
+      "bundleOutcome": "completed",
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "vet-credentials",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "commit-agreement",
+          "outcome": "ok"
+        },
+        {
+          "index": 2,
+          "kind": "pay-cross-chain-htlc",
+          "outcome": "ok"
+        }
+      ],
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
     }
   }
 }

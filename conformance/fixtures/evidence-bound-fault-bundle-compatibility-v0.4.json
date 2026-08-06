@@ -2226,8 +2226,10 @@
       "binding": {
         "bundleContentHash": "04ca3660e6c3981db3be7a996e3bd42186b748f0e7c57cd374ee0aaff494daf2"
       },
+      "useEbfabAuthority": true,
       "want": {
-        "ok": false
+        "ok": false,
+        "reasonContains": "binding invalid"
       }
     }
   ]

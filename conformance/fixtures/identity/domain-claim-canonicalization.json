@@ -4,7 +4,7 @@
     "§6.3.1",
     "§6.3.2"
   ],
-  "note": "Canonical DNS-domain identifier validation (DACS-1 domain form) and the web2:domain: legacy read-alias resolution. op=validate-host strictly validates a domain: identifier (uppercase rejected); op=resolve-ref applies the ordered Layer-2 resolution (a web2:domain: alias lowercases then validates). Nine grammar guards (C1,C3,C4,C6,C7,C8,C10,C11,C12) are each individually mutation-pinned by exactly one reject case; combo cases carry two independent defects for coverage without disturbing the pins.",
+  "note": "Canonical DNS-domain identifier validation (DACS-1 domain form) and the web2:domain: legacy read-alias resolution. op=validate-host strictly validates a domain: identifier (uppercase rejected); op=resolve-ref applies the ordered Layer-2 resolution (a web2:domain: alias lowercases then validates); op=produce-a-label exercises producer-direction A-label ENCODING (U-label input -> xn-- Punycode/ACE output; stdlib codecs only, NOT a full IDNA2008 processor — no IDNA2008 validity checking, which remains a producer obligation). What the produce-a-label vectors pin is the deviation-character handling — the eszett is preserved per IDNA2008, not folded to 'ss' as the UTS-46 transitional mapping would — not that arbitrary input is IDNA2008-validated. Eight grammar guards (C1,C3,C4,C6,C7,C8,C10,C11) are each individually mutation-pinned by exactly one reject case; combo cases carry two independent defects for coverage without disturbing the pins. All-numeric multi-label hosts (e.g. 1.2.3.4.5) are DELIBERATELY ACCEPTED (they are valid DNS names, not IPv4 literals); the former C12 all-numeric guard is removed and accept-all-numeric-labels documents the acceptance so it is not silently reintroduced. C11 still rejects genuine IPv4 literals.",
   "validateHostGuardPins": {
     "C1": "reject-oversize-label",
     "C3": "reject-leading-hyphen",
@@ -13,8 +13,7 @@
     "C7": "reject-uppercase",
     "C8": "reject-non-ascii",
     "C10": "reject-malformed-xn--",
-    "C11": "reject-ipv4-literal",
-    "C12": "reject-all-numeric-labels"
+    "C11": "reject-ipv4-literal"
   },
   "cases": [
     { "id": "accept-canonical-lowercase-ldh", "op": "validate-host", "input": "api.example.com", "expected": { "accepted": true, "canonical": "api.example.com" } },
@@ -31,7 +30,7 @@
     { "id": "reject-non-ascii", "op": "validate-host", "input": "exämple.com", "expected": { "accepted": false, "canonical": null } },
     { "id": "reject-malformed-xn--", "op": "validate-host", "input": "xn--0.example", "expected": { "accepted": false, "canonical": null } },
     { "id": "reject-ipv4-literal", "op": "validate-host", "input": "192.0.2.1", "expected": { "accepted": false, "canonical": null } },
-    { "id": "reject-all-numeric-labels", "op": "validate-host", "input": "1.2.3.4.5", "expected": { "accepted": false, "canonical": null } },
+    { "id": "accept-all-numeric-labels", "op": "validate-host", "input": "1.2.3.4.5", "expected": { "accepted": true, "canonical": "1.2.3.4.5" } },
 
     { "id": "reject-combo-uppercase-port", "op": "validate-host", "input": "Example.com:8080", "expected": { "accepted": false, "canonical": null } },
     { "id": "reject-combo-uppercase-path-query-fragment", "op": "validate-host", "input": "Example.com/agents?x=1#f", "expected": { "accepted": false, "canonical": null } },
@@ -45,6 +44,9 @@
     { "id": "legacy-web2domain-uppercase-lowercased", "op": "resolve-ref", "input": "web2:domain:Alice.Example", "expected": { "effectiveRef": "domain:alice.example" } },
     { "id": "legacy-noncanonical-host-yields-nothing", "op": "resolve-ref", "input": "web2:domain:a..b", "expected": { "effectiveRef": null } },
     { "id": "canonical-noncanonical-host-yields-nothing", "op": "resolve-ref", "input": "domain:ex_ample.com", "expected": { "effectiveRef": null } },
-    { "id": "non-domain-ref-yields-nothing", "op": "resolve-ref", "input": "key:aaaa", "expected": { "effectiveRef": null } }
+    { "id": "non-domain-ref-yields-nothing", "op": "resolve-ref", "input": "key:aaaa", "expected": { "effectiveRef": null } },
+
+    { "id": "produce-a-label-munchen", "op": "produce-a-label", "input": "münchen.example", "expected": { "aLabel": "xn--mnchen-3ya.example" } },
+    { "id": "produce-a-label-fass-idna2008", "op": "produce-a-label", "input": "faß.example", "expected": { "aLabel": "xn--fa-hia.example" } }
   ]
 }

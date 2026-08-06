@@ -26,11 +26,13 @@ whose 32-byte Ed25519 public key is carried in the final component. This is the
 registered ClaimReference or a canonical alias, and it MUST NOT be emitted in
 identity, signer, catalog-key, or reputation-key fields.
 
-**`web2.domain` domain identities.** The Demos node records native DNS-domain
-ownership as a `web2.domain` entry in GCRMain.identities: it fetches and verifies
-a signed `/.well-known/demos-cci.txt` proof before writing the entry, binding the
-host to the owner's ed25519 account (the SDK's `Identities.addDomainIdentity`
-flow). This is a substrate-native **source representation**, not a registered DACS
+**`web2.domain` domain identities.** The Demos node records a DNS-domain
+ownership proof — **authenticated at write time** — as a `web2.domain` entry in
+GCRMain.identities: it fetches and verifies a signed `/.well-known/demos-cci.txt`
+proof before writing the entry, binding the host to the owner's ed25519 account
+(the SDK's `Identities.addDomainIdentity` flow). It is a snapshot at write time,
+not a current-ownership or revocation check — DACS-2 §7.3.10 consumes it under
+that limitation (see §7.3.10 "Limitation"). This is a substrate-native **source representation**, not a registered DACS
 ClaimReference: the string `web2:domain:<host>` MUST NOT be emitted as a DACS claim
 reference. The DACS adapter maps a `web2.domain` GCR entry to the canonical
 `domain:<canonical-host>` reference (DACS-1 §6.3.1), retaining the GCR record, the

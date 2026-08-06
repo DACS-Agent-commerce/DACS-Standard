@@ -16,11 +16,14 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CF-* | Canonical form and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
+| CR-* | `demos-gcr-domain` controlled-use binding (presentedBy / reputation keying) | §6.3.2 | §14.1 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
 | DPA-* | Attested-payload listing coherence, exact-byte method proof, commerce binding, success closure, and minor-safe record typing | §9.6.3 | §14.4 |
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |
+| GE-* | `demos-gcr-domain` authenticated GCR evidence binding checks | §7.3.10 | §14.2 |
+| GF-* | `demos-gcr-domain` GCR freshness / issuance-time rules | §7.3.10 | §14.2 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |

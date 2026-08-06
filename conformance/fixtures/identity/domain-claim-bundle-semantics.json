@@ -6,8 +6,22 @@
     "§7.3.10",
     "§7.5.1"
   ],
-  "note": "Bundle-level semantics for the domain claim: original-byte signature/hash preservation across Layer-2 resolution (V3), semantic-claim dedup + ordered oneOf consumption (V4), and the demos-gcr-domain method result shape — host/account mismatch (V6), unavailable authority split into indeterminate vs error (V7), proof metadata (V8), and the persistent-not-fresh boundary (V9). Signatures are precomputed from a public seed and verified with the runner's self-contained RFC-8032 code; no cryptography import.",
+  "note": "Bundle-level semantics for the domain claim: (V3) original-byte signature/hash preservation across Layer-2 resolution; (V4) semantic-claim deduplication — identity equivalence, evidence-independent, conflict-fails-closed; the demos-gcr-domain method evaluated over AUTHENTICATED GCR evidence — the ten GE-n binding checks (context, substrate, inclusion-covers-sourceTx, finality, SB-2 write-authorization relation, record.account==claim, record.host==identifier, recordRef.contentHash==hash(record), record.proofUrl==derive(identifier), and GE-10 provenance: the record is the state sourceTx actually wrote), the three GF-n freshness rules (verifiedAt derived from evidence.recordedAt with anti-reissue; effective-window bound; recordedAt future-dating/positive-window sanity within recordedAtSkewToleranceSec), and the unavailability->indeterminate mapping; and (CR-1) the DACS-1 §6.3.2 step-6 control-binding rule — controlled use requires the presentation to verify under the exact ed25519 account bound in the GCR record, directly or via an authenticated, PRESENTATION-BOUND SR-1 linkage. Accounts are real Demos ed25519 shapes (64 lowercase hex, no 0x); the valid/control-positive account equals the signedBundle signing key. SB-1 (inclusion/finality/state-recovery), SB-2 (write-authorization relation — account-key vs node-key is an open question), SB-3 (recorded time), and the SR-1 control hook are modelled synthetically; the concrete Demos wire formats are not yet fixed and bind at the substrate profile. Pin-map convention: gcrGuardPins pins exactly one PRIMARY vector per rule id (GE-1..GE-10, GF-1..GF-3, CR-1). The following behaviours are vector-covered but deliberately NOT pinned: the availability->indeterminate cases (not-found / transport-error / record-unreadable), the GE-10 unestablishable-provenance arm (provenance-unestablishable), the GF-3 non-positive-window arm (enforced in derive_effective_window, no dedicated vector), and the SR-1 negative cases (sr1-negative-not-bound / sr1-negative-replay, asserted in test_control_binding_cr1). Signatures are precomputed from a public seed and verified with the runner's self-contained RFC-8032 code; no cryptography import.",
   "proofPathTemplate": "/.well-known/demos-cci.txt",
+  "recipe": {
+    "gcrContext": "web2.domain",
+    "substrate": "demos-testnet",
+    "proofPathTemplate": "/.well-known/demos-cci.txt",
+    "defaultMaxAgeSec": 604800,
+    "finalityMinConfirmations": 32,
+    "recordedAtSkewToleranceSec": 300
+  },
+  "accounts": {
+    "A_keyDerived": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+    "B_standalone": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "C_standalone": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "NODE_key": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  },
   "publicKeys": {
     "key:80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea": "gO26gb5yCZSv9UbnJXxJVUIca1CAHPwstSGU76i9V-o"
   },
@@ -79,113 +93,503 @@
       "expected": { "semanticClaimCount": 1, "verifiedByIdentity": { "domain:alice.example": true } }
     }
   ],
-  "oneOfCases": [
+  "gcrCases": [
     {
-      "id": "dual-alias-single-oneOf-group",
-      "claims": [
-        { "ref": "domain:alice.example" },
-        { "ref": "web2:domain:alice.example" }
-      ],
-      "oneOf": [
-        ["domain:alice.example"],
-        ["domain:alice.example"]
-      ],
-      "expected": { "groupSatisfied": [true, false], "accepted": false }
-    },
-    {
-      "id": "distinct-hosts-both-groups",
-      "claims": [
-        { "ref": "domain:a.example" },
-        { "ref": "domain:b.example" }
-      ],
-      "oneOf": [
-        ["domain:a.example"],
-        ["domain:b.example"]
-      ],
-      "expected": { "groupSatisfied": [true, true], "accepted": true }
-    }
-  ],
-  "methodCases": [
-    {
-      "id": "v-pass-baseline",
+      "id": "authenticated-valid",
       "identifier": "alice.example",
-      "claimAccount": "0xaaaa000000000000000000000000000000000000",
-      "gcrResult": {
-        "availability": "resolved",
-        "boundHost": "alice.example",
-        "boundAccount": "0xaaaa000000000000000000000000000000000000",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
         "sourceTx": "0xtx0",
-        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
-      },
-      "expected": { "decision": "pass" }
-    },
-    {
-      "id": "v6-host-account-mismatch",
-      "identifier": "alice.example",
-      "claimAccount": "0xaaaa000000000000000000000000000000000000",
-      "gcrResult": {
-        "availability": "resolved",
-        "boundHost": "alice.example",
-        "boundAccount": "0xbbbb000000000000000000000000000000000000",
-        "sourceTx": "0xtx6",
-        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" }
-      },
-      "expected": { "decision": "fail", "dataBoundAccount": "0xbbbb000000000000000000000000000000000000" }
-    },
-    {
-      "id": "v7-gcr-inconclusive-indeterminate",
-      "identifier": "alice.example",
-      "claimAccount": "0xaaaa000000000000000000000000000000000000",
-      "gcrResult": { "availability": "not-found" },
-      "expected": { "decision": "indeterminate" }
-    },
-    {
-      "id": "v7-transport-error",
-      "identifier": "alice.example",
-      "claimAccount": "0xaaaa000000000000000000000000000000000000",
-      "gcrResult": { "availability": "transport-error" },
-      "expected": { "decision": "error" }
-    },
-    {
-      "id": "v8-proof-metadata",
-      "identifier": "alice.example",
-      "claimAccount": "0xaaaa000000000000000000000000000000000000",
-      "gcrResult": {
-        "availability": "resolved",
-        "boundHost": "alice.example",
-        "boundAccount": "0xaaaa000000000000000000000000000000000000",
-        "sourceTx": "0xtx8",
-        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice-8" }, "contentHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
       },
       "expected": {
         "decision": "pass",
+        "requirementSatisfied": true,
+        "controlled": true,
+        "accepted": true,
+        "fresh": true,
         "dataProofUrl": "https://alice.example/.well-known/demos-cci.txt",
-        "dataBoundAccount": "0xaaaa000000000000000000000000000000000000",
-        "dataSourceTx": "0xtx8"
+        "dataBoundAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "dataSourceTx": "0xtx0",
+        "dataRecordedAt": 1780000000
       }
+    },
+    {
+      "id": "authenticated-valid-nodekey-write",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+        "authorizedAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "note": "SB-2 node/system-key realisation: txWriter is a node key, but authorizedAccount (the account the node acted for) IS the bound account, so GE-5 passes under the write-authorization relation. Pins that the relation admits a legitimate node-key write.",
+      "expected": { "decision": "pass", "requirementSatisfied": true, "controlled": true, "accepted": true, "fresh": true }
+    },
+    {
+      "id": "forged-wrong-context",
+      "pinsRule": "GE-1",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.other",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "forged-wrong-substrate",
+      "pinsRule": "GE-2",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-mainnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "forged-inclusion-not-covering",
+      "pinsRule": "GE-3",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xUNRELATED", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "indeterminate", "accepted": false }
+    },
+    {
+      "id": "forged-not-finalized",
+      "pinsRule": "GE-4",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": false, "confirmations": 1, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "indeterminate", "accepted": false }
+    },
+    {
+      "id": "forged-txwriter-not-account",
+      "pinsRule": "GE-5",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "authorizedAccount": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "note": "GE-5 under the SB-2 relation: the write was authorized by account C (authorizedAccount), NOT the bound account A — a genuine authorization failure, not merely txWriter!=account key inequality.",
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "forged-wrong-account",
+      "pinsRule": "GE-6",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "193593c90b2d0dc957e889a8ed2a39e4868b452569452fd91427b5b79d77ae80" },
+        "sourceTx": "0xtx0",
+        "txWriter": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "gcrRecord": { "account": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "193593c90b2d0dc957e889a8ed2a39e4868b452569452fd91427b5b79d77ae80" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "forged-wrong-host",
+      "pinsRule": "GE-7",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "9f345a5289cda890897849479c0dd83d7b8fd4be9c69d371a015d5a582c31b44" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "evil.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "9f345a5289cda890897849479c0dd83d7b8fd4be9c69d371a015d5a582c31b44" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "forged-contenthash-mismatch",
+      "pinsRule": "GE-8",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "forged-proofurl-mismatch",
+      "pinsRule": "GE-9",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "f5973fcba858b73120ed59500a82b54673bbde3d42669a3382b8a4069e3a38d3" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://evil.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "f5973fcba858b73120ed59500a82b54673bbde3d42669a3382b8a4069e3a38d3" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "forged-record-not-written-by-tx",
+      "pinsRule": "GE-10",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "672016eb02c5993ec31b86a16981bf66234907f3fdadcb073ee0aedabb6d230b" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "note": "THE COLD-REVIEW ATTACK: a genuine finalized sourceTx (write-authorized) is stapled to a fully coherent gcrRecord (host=identifier, account=claim, proofUrl=correct derivation, contentHash recomputed). GE-1..GE-9 ALL PASS. But the transaction actually wrote a DIFFERENT record (writtenRecordHash=hash of an other.example record, 672016...), so GE-10 provenance is the sole catcher -> fail.",
+      "expected": { "decision": "fail", "accepted": false }
+    },
+    {
+      "id": "provenance-unestablishable",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64 },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "note": "GE-10 indeterminate class: the SB-1 state-recovery cannot establish what sourceTx wrote at all (no writtenRecordHash) — the presented record is neither confirmed nor contradicted -> indeterminate, not fail.",
+      "expected": { "decision": "indeterminate", "accepted": false }
+    },
+    {
+      "id": "unavailable-not-found",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": { "substrate": "demos-testnet", "context": "web2.domain", "availability": "not-found" },
+      "expected": { "decision": "indeterminate", "accepted": false }
+    },
+    {
+      "id": "unavailable-transport-error",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": { "substrate": "demos-testnet", "context": "web2.domain", "availability": "transport-error" },
+      "expected": { "decision": "indeterminate", "accepted": false }
+    },
+    {
+      "id": "unavailable-record-unreadable",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": { "substrate": "demos-testnet", "context": "web2.domain", "availability": "record-unreadable" },
+      "expected": { "decision": "indeterminate", "accepted": false }
+    },
+    {
+      "id": "freshness-past-window",
+      "pinsRule": "GF-2",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780700000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "pass", "accepted": false, "fresh": false }
+    },
+    {
+      "id": "freshness-stale-reissue",
+      "pinsRule": "GF-1",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "presentedVerifiedAt": 1780650000,
+      "now": 1780680000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "pass", "accepted": false, "fresh": false, "antiReissue": true }
+    },
+    {
+      "id": "gf3-future-recordedat",
+      "pinsRule": "GF-3",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780310300,
+        "availability": "resolved"
+      },
+      "note": "GF-3: recordedAt (1780310300) is 10300s ahead of now (1780300000), beyond recordedAtSkewToleranceSec (300) -> unverified window (fail-closed). Decision is pass (binding valid) but not accepted (freshness unverified).",
+      "expected": { "decision": "pass", "accepted": false, "fresh": false }
+    },
+    {
+      "id": "freshness-within-skew-tolerance",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780300100,
+        "availability": "resolved"
+      },
+      "note": "recordedAt (1780300100) is 100s ahead of now (1780300000), WITHIN recordedAtSkewToleranceSec (300) -> ordinary clock skew, accepted. Pins that the tolerance parameter actually admits small skew (a tolerance of 0 would red this vector).",
+      "expected": { "decision": "pass", "accepted": true, "fresh": true }
+    },
+    {
+      "id": "control-binding-positive",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "presentation": { "id": "pres-A-1", "signingAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea" },
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "pass", "requirementSatisfied": true, "controlled": true, "accepted": true, "fresh": true }
+    },
+    {
+      "id": "control-binding-negative",
+      "pinsRule": "CR-1",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "presentation": { "id": "pres-B-1", "signingAccount": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "pass", "requirementSatisfied": true, "controlled": false, "accepted": false, "fresh": true }
+    },
+    {
+      "id": "control-binding-sr1-positive",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "presentation": {
+        "id": "pres-B-2",
+        "signingAccount": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sr1Link": { "authenticated": true, "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "boundPresentation": "pres-B-2" }
+      },
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "expected": { "decision": "pass", "requirementSatisfied": true, "controlled": true, "accepted": true, "fresh": true }
+    },
+    {
+      "id": "sr1-negative-not-bound",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "presentation": {
+        "id": "pres-B-3",
+        "signingAccount": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sr1Link": { "authenticated": true, "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea" }
+      },
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "note": "SR-1 linkage is authenticated and to the right account A, but carries NO boundPresentation (a bearer/ambient credential) -> not bound to this presentation -> controlled REFUSED.",
+      "expected": { "decision": "pass", "requirementSatisfied": true, "controlled": false, "accepted": false, "fresh": true }
+    },
+    {
+      "id": "sr1-negative-replay",
+      "identifier": "alice.example",
+      "claimAccount": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+      "now": 1780300000,
+      "presentation": {
+        "id": "pres-B-4",
+        "signingAccount": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "sr1Link": { "authenticated": true, "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "boundPresentation": "pres-OTHER-999" }
+      },
+      "evidence": {
+        "substrate": "demos-testnet",
+        "context": "web2.domain",
+        "inclusionProof": { "covers": "0xtx0", "finalized": true, "confirmations": 64, "writtenRecordHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "sourceTx": "0xtx0",
+        "txWriter": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea",
+        "gcrRecord": { "account": "80edba81be720994aff546e7257c4955421c6b50801cfc2cb52194efa8bd57ea", "host": "alice.example", "proofUrl": "https://alice.example/.well-known/demos-cci.txt" },
+        "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice" }, "contentHash": "aa92aadf13d307221e785c282f4625173f6e21a562fe061f328528721c8ff925" },
+        "recordedAt": 1780000000,
+        "availability": "resolved"
+      },
+      "note": "SR-1 replay: the linkage is authenticated and to account A but bound to a DIFFERENT presentation (pres-OTHER-999, not this pres-B-4) -> controlled REFUSED (anti-replay).",
+      "expected": { "decision": "pass", "requirementSatisfied": true, "controlled": false, "accepted": false, "fresh": true }
     }
   ],
-  "persistenceCases": {
-    "id": "v9-persistent-not-fresh",
-    "identifier": "alice.example",
-    "claimAccount": "0xaaaa000000000000000000000000000000000000",
-    "gcrResult": {
-      "availability": "resolved",
-      "boundHost": "alice.example",
-      "boundAccount": "0xaaaa000000000000000000000000000000000000",
-      "sourceTx": "0xtx9",
-      "recordRef": { "anchor": { "kind": "storage-program", "locator": "stor-gcr-alice-9" }, "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }
-    },
+  "gcrGuardPins": {
+    "GE-1": "forged-wrong-context",
+    "GE-2": "forged-wrong-substrate",
+    "GE-3": "forged-inclusion-not-covering",
+    "GE-4": "forged-not-finalized",
+    "GE-5": "forged-txwriter-not-account",
+    "GE-6": "forged-wrong-account",
+    "GE-7": "forged-wrong-host",
+    "GE-8": "forged-contenthash-mismatch",
+    "GE-9": "forged-proofurl-mismatch",
+    "GE-10": "forged-record-not-written-by-tx",
+    "GF-1": "freshness-stale-reissue",
+    "GF-2": "freshness-past-window",
+    "GF-3": "gf3-future-recordedat",
+    "CR-1": "control-binding-negative"
+  },
+  "persistenceCase": {
+    "id": "v9-persistent-no-session-nonce",
+    "baseVectorId": "authenticated-valid",
     "sessionNonceA": "nonce-aaaa",
     "sessionNonceB": "nonce-bbbb",
-    "freshness": { "verifiedAt": 1780000000000, "validUntil": 1780604800000 },
-    "nowInWindow": 1780300000000,
-    "nowPastWindow": 1780700000000,
-    "expected": {
-      "hasNonceField": false,
-      "nonceInvariant": true,
-      "freshInWindow": true,
-      "freshPastWindow": false
-    }
+    "inWindowVectorId": "authenticated-valid",
+    "pastWindowVectorId": "freshness-past-window",
+    "expected": { "hasNonceField": false, "nonceInvariant": true, "freshInWindow": true, "freshPastWindow": false }
   }
 }

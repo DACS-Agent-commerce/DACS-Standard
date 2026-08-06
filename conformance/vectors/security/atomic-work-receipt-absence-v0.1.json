@@ -1,0 +1,610 @@
+{
+  "set": "atomic-work-receipt-absence-v0.1",
+  "spec": "Atomic DACS Work \u2014 receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the \u00a77.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt \u2192 receiptLeafHash \u2192 Merkle path to blockHeader.receiptRoot \u2192 finalized-block validator quorum certificate \u2192 validator set anchored to a trusted checkpoint \u2192 winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
+  "hash": "e14a40666e9b4ac8953ea2e8d444d07b573b2e8ac1f4022ab9cddd4e64b3beb3",
+  "count": 31,
+  "vectors": [
+    {
+      "name": "receipt-full-proof-chain-independent-of-indexer-pass",
+      "expected": "pass",
+      "note": "Every link verifies against a trusted checkpoint, WITHOUT any Indexer read: the accepting consumer never touches public Indexer hydration.",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "profile": "dacs-demos-work-receipt/1",
+          "networkId": "demos-mainnet",
+          "workId": "w-1",
+          "winningAttemptId": "a-1",
+          "txHash": "0x01",
+          "blockHeight": 100,
+          "blockHash": "0xb100",
+          "consensusTimestamp": 1780000000000,
+          "outcome": "committed"
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "valid",
+        "validatorSetProof": "valid",
+        "winnerStateProof": "valid",
+        "paymentSlotStateProof": "valid",
+        "usedIndexerHydration": false
+      }
+    },
+    {
+      "name": "receipt-asserted-but-no-inclusion-proof-indeterminate",
+      "expected": "indeterminate",
+      "note": "A receipt object with a signature/attestation but NO Merkle inclusion proof to a finalized receiptRoot is not resolvable to consensus-final state -> indeterminate. A bare validatorAttested boolean must never pass.",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "profile": "dacs-demos-work-receipt/1",
+          "workId": "w-2",
+          "txHash": "0x02",
+          "outcome": "committed"
+        },
+        "receiptInclusionProof": "absent",
+        "finalityProof": "absent",
+        "validatorSetProof": "absent",
+        "usedIndexerHydration": true
+      }
+    },
+    {
+      "name": "receipt-inclusion-proof-invalid-reject",
+      "expected": "reject",
+      "note": "An inclusion proof that does NOT verify against blockHeader.receiptRoot is a contradicted claim, not merely unknown -> reject.",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "workId": "w-3",
+          "txHash": "0x03",
+          "outcome": "committed"
+        },
+        "receiptInclusionProof": "invalid",
+        "finalityProof": "valid",
+        "validatorSetProof": "valid"
+      }
+    },
+    {
+      "name": "finality-quorum-certificate-absent-indeterminate",
+      "expected": "indeterminate",
+      "note": "Inclusion under a block whose finality (validator quorum certificate) is not proven -> the block may not be final -> indeterminate.",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "workId": "w-4",
+          "txHash": "0x04",
+          "outcome": "committed"
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "absent",
+        "validatorSetProof": "valid"
+      }
+    },
+    {
+      "name": "included-failure-rollback-roots-equal-pass",
+      "expected": "pass",
+      "note": "outcome==rolled-back with a verified receipt proof: every prior critical op result is rolled-back, later ops not-executed, and a state-membership proof shows preBusinessStateRoot == postBusinessStateRoot. Fee/nonce effects reported SEPARATELY (may persist).",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "workId": "w-5",
+          "txHash": "0x05",
+          "blockHeight": 105,
+          "outcome": "rolled-back",
+          "failedOperationId": "op-3",
+          "operationResults": [
+            {
+              "operationId": "op-1",
+              "status": "rolled-back"
+            },
+            {
+              "operationId": "op-2",
+              "status": "rolled-back"
+            },
+            {
+              "operationId": "op-3",
+              "status": "rolled-back"
+            },
+            {
+              "operationId": "op-4",
+              "status": "not-executed"
+            }
+          ],
+          "preBusinessStateRoot": "s-pre",
+          "postBusinessStateRoot": "s-pre",
+          "envelopeEffects": {
+            "nonceConsumed": true,
+            "feeCharged": "0.001"
+          }
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "valid",
+        "validatorSetProof": "valid",
+        "businessRootEqualityProof": "valid"
+      }
+    },
+    {
+      "name": "rollback-claimed-but-roots-differ-reject",
+      "expected": "reject",
+      "note": "A rollback whose proven postBusinessStateRoot differs from preBusinessStateRoot means critical business state DID change -> the atomicity claim is contradicted -> reject (this is a partial-critical-state leak, the exact hazard atomic execution must exclude).",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "workId": "w-6",
+          "outcome": "rolled-back",
+          "preBusinessStateRoot": "s-pre",
+          "postBusinessStateRoot": "s-post-DIFFERENT"
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "valid",
+        "businessRootEqualityProof": "invalid"
+      }
+    },
+    {
+      "name": "included-rollback-cannot-prove-non-inclusion-of-other-attempt-indeterminate",
+      "expected": "indeterminate",
+      "note": "A verified rollback receipt binds an INCLUDED failure; it does not prove a DIFFERENT broadcast attempt was never admitted. Presenting it as non-inclusion evidence for another attempt is inconclusive -> indeterminate; MUST NOT authorize resubmission.",
+      "observation": {
+        "kind": "absence-claim",
+        "claimedAbout": "other-attempt-non-inclusion",
+        "evidence": {
+          "kind": "included-rollback-receipt",
+          "workId": "w-5",
+          "proof": "valid",
+          "proofChain": "valid"
+        }
+      }
+    },
+    {
+      "name": "broadcast-plus-ordinary-not-found-indeterminate",
+      "expected": "indeterminate",
+      "note": "Broadcast, then an ordinary RPC/Indexer 'not found'. Not-found is not authoritative absence -> indeterminate; MUST block resubmission (a re-broadcast could double-pay).",
+      "observation": {
+        "kind": "absence-claim",
+        "broadcast": true,
+        "evidence": {
+          "kind": "rpc-not-found",
+          "authoritativeAbsenceProof": "absent"
+        }
+      }
+    },
+    {
+      "name": "point-in-time-non-membership-indeterminate",
+      "expected": "indeterminate",
+      "note": "A non-membership proof valid AS OF height H does not prove the attempt can never later be included -> indeterminate, not terminal.",
+      "observation": {
+        "kind": "absence-claim",
+        "evidence": {
+          "kind": "non-membership-proof",
+          "asOfHeight": 200,
+          "verifiedCannotLaterInclude": false,
+          "proof": "valid"
+        }
+      }
+    },
+    {
+      "name": "authenticated-pre-admission-rejection-terminal-fail",
+      "expected": "fail",
+      "note": "An authenticated pre-admission rejection whose proof establishes the attempt cannot later enter execution (e.g. consumed-nonce or non-replayable-rejection proof) is terminal -> the attempt failed; replacement only under the profile rule.",
+      "observation": {
+        "kind": "absence-claim",
+        "evidence": {
+          "kind": "authenticated-pre-admission-rejection",
+          "verifiedCannotLaterInclude": true,
+          "proof": "valid"
+        }
+      }
+    },
+    {
+      "name": "expiry-authenticated-lifecycle-permits-single-replacement-pass",
+      "expected": "pass",
+      "note": "Authenticated lifecycle evidence proving the old attempt can no longer be included permits exactly one replacement under the same workId; local-clock expiry alone is insufficient (separate indeterminate case).",
+      "observation": {
+        "kind": "absence-claim",
+        "workId": "w-8",
+        "evidence": {
+          "kind": "authenticated-lifecycle-expired",
+          "verifiedCannotLaterInclude": true,
+          "proof": "valid"
+        }
+      }
+    },
+    {
+      "name": "settlement-evidence-mismatched-anchor-reject-before-sb1",
+      "expected": "reject",
+      "note": "xm33's reproduced defect (#316), operation-level analogue: valid SettlementEvidence signature + correct phaseIndex suffix but MISMATCHED anchor jobId/railId at dacs4:payment:{jobId}:{railId}:{phaseIndex} MUST be rejected by the CONSUMER before SB-1 identity/uniqueness key derivation. Upstream slot enforcement does not discharge this consumer check. (Settlement identity for an operation-level atomic ref uses the new versioned rule demoswork:<workId>:pay-dem bound by the receipt, not a reinterpretation of SB-1 demos:{txHash}.)",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureValid": true,
+        "phaseIndexMatches": true,
+        "evidenceJobId": "job-315-a",
+        "anchorJobId": "wrong-job",
+        "anchorRailId": "wrong-rail"
+      }
+    },
+    {
+      "name": "cross-work-double-settlement-same-slot-reject",
+      "expected": "reject",
+      "note": "Two DISTINCT Works (different workId) target the same payment slot (networkId,railId,jobId,phaseIndex). Per-Work atomicity does NOT prevent this: the slot MUST be a consensus-LEDGER singleton with compare-and-set enforced ACROSS Works, not only within each Work's isolated overlay. The second Work's payment op MUST fail the slot CAS pre-effect. A consumer seeing two settlement claims on one slot MUST reject the later one; exactly one effect set commits.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "workId": "w-a",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          },
+          "slotTransition": "open->consumed",
+          "slotStateProof": "valid"
+        },
+        "secondWork": {
+          "workId": "w-b",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          },
+          "slotTransition": "open->consumed",
+          "slotStateProof": "valid"
+        },
+        "ledgerLevelCAS": false
+      }
+    },
+    {
+      "name": "settlement-evidence-missing-jobids-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureValid": true
+      }
+    },
+    {
+      "name": "settlement-evidence-absent-evidence-rail-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureValid": true,
+        "evidenceJobId": "job-rail-absent",
+        "anchorJobId": "job-rail-absent",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": 0,
+        "anchorPhaseIndex": 0
+      }
+    },
+    {
+      "name": "settlement-evidence-phaseindex-mismatch-reject",
+      "expected": "reject",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureProof": "valid",
+        "evidenceJobId": "job-phase-mismatch",
+        "anchorJobId": "job-phase-mismatch",
+        "evidenceRailId": "pay-dem",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": 1,
+        "anchorPhaseIndex": 2
+      }
+    },
+    {
+      "name": "payment-slot-both-committed-cas-claimed-reject",
+      "expected": "reject",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "ledgerLevelCAS": true
+      }
+    },
+    {
+      "name": "payment-slot-consumed-but-uncommitted-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotTransition": "open->consumed"
+        }
+      }
+    },
+    {
+      "name": "payment-slot-no-state-material-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {},
+        "secondWork": {}
+      }
+    },
+    {
+      "name": "rollback-roots-absent-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "workId": "w-roots-absent",
+          "outcome": "rolled-back"
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "valid",
+        "validatorSetProof": "valid",
+        "businessRootEqualityProof": "valid"
+      }
+    },
+    {
+      "name": "absence-unknown-kind-terminal-flag-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "absence-claim",
+        "evidence": {
+          "kind": "unknown-terminal-proof-kind",
+          "verifiedCannotLaterInclude": true,
+          "proof": "valid"
+        }
+      }
+    },
+    {
+      "name": "receipt-committed-payment-slot-proof-absent-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "workId": "w-payment-slot-proof-absent",
+          "outcome": "committed"
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "valid",
+        "validatorSetProof": "valid",
+        "winnerStateProof": "valid"
+      }
+    },
+    {
+      "name": "settlement-evidence-full-slotkey-match-pass",
+      "expected": "pass",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureProof": "valid",
+        "evidenceJobId": "job-full-match",
+        "anchorJobId": "job-full-match",
+        "evidenceRailId": "pay-dem",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": 3,
+        "anchorPhaseIndex": 3
+      }
+    },
+    {
+      "name": "settlement-evidence-null-slotkey-components-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureValid": true,
+        "evidenceJobId": "job-1",
+        "anchorJobId": "job-1",
+        "evidenceRailId": null,
+        "anchorRailId": null,
+        "evidencePhaseIndex": null,
+        "anchorPhaseIndex": null
+      }
+    },
+    {
+      "name": "payment-slot-unknown-transition-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "reopened->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "payment-slot-different-slotkeys-indeterminate",
+      "expected": "indeterminate",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-1",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-2",
+            "phaseIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "local-clock-expiry-only-insufficient-indeterminate",
+      "expected": "indeterminate",
+      "note": "Local-clock expiry is NOT authenticated lifecycle evidence. Even when an observation stamps verifiedCannotLaterInclude:true, `local-clock-expired` is not in the terminal allowlist -> indeterminate; replacement MUST NOT be authorized on local-clock expiry alone (mj-deving acceptance list). Only authenticated-lifecycle-expired evidence proving the old attempt can no longer be included permits a single replacement.",
+      "observation": {
+        "kind": "absence-claim",
+        "workId": "w-lc",
+        "evidence": {
+          "kind": "local-clock-expired",
+          "verifiedCannotLaterInclude": true,
+          "proof": "valid"
+        }
+      }
+    },
+    {
+      "name": "payment-slot-cross-network-same-tuple-no-collision-indeterminate",
+      "expected": "indeterminate",
+      "note": "mj-deving acceptance #1: the same (railId,jobId,phaseIndex) on two different networkIds MUST NOT collide. The verified, proof-bound canonical tuples differ by networkId, so the cross-Work double-settlement check declines to treat them as one slot -> indeterminate (not a same-slot comparison), NOT a false reject. Pairs with cross-work-double-settlement-same-slot-reject to demonstrate network scoping. Per-network ledger isolation remains the Demos-runtime contract.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-testnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "payment-slot-same-provenslot-different-presented-encoding-reject",
+      "expected": "reject",
+      "note": "Different claimant-presented jobId encodings cannot evade double-settlement detection when both verified proofs attest the same canonical slot tuple.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          },
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-09",
+            "phaseIndex": 0
+          },
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "payment-slot-unbound-labels-only-indeterminate",
+      "expected": "indeterminate",
+      "note": "Equal claimant-presented labels do not establish slot identity without proof-bound canonical provenSlot tuples.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "payment-slot-single-verified-commit-pass",
+      "expected": "pass",
+      "note": "Coverage for the sole accept path: exactly one Work verifiably consumes the slot (slotStateProof valid + open->consumed) while the other holds the same proven slot open (slotTransition 'open', not consuming). Both proven slots trusted + equal, verifiedCommitCount==1 -> pass (a legitimate single settlement, no double-spend).",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        }
+      }
+    }
+  ]
+}

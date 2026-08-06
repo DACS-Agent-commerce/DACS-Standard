@@ -1260,7 +1260,9 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
     return {"ok": True, "reason": "triple-identity holds", "recomputedHash": recomputed}
 
 
-def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, pubkeys=None):
+def resolve_absolute_fault_pointer(
+    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None
+):
     """Validate FAB/EBFAB pointer type, domain, signature, and triple identity.
 
     The caller supplies already-dereferenced content; this function performs no network I/O.
@@ -1338,6 +1340,18 @@ def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, p
         return {"ok": False, "reason": "invalid absolute fault attribution context: %s" % exc}
     if dereferenced_bundle.get("faultedParty") not in permissible_faults:
         return {"ok": False, "reason": "faultedParty is outside the §10.4.1 permissible set"}
+    if pointer_kind == "evidence-bound":
+        if not isinstance(ebfab_authority, dict):
+            return {"ok": False, "reason": "EBFAB pointer lacks SEB validation authority"}
+        seb_ok, seb_reason, _ = validate_ebfab(
+            dereferenced_bundle,
+            ebfab_authority.get("listing"),
+            pubkeys,
+            ebfab_authority.get("referenceValidationByCanonicalRef"),
+            ebfab_authority.get("bundleLifecycle"),
+        )
+        if not seb_ok:
+            return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}
 
     signature = pointer.get("signature")
     if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":

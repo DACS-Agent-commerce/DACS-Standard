@@ -500,11 +500,21 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
     def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
         for case in self.data["pointerCases"]:
             with self.subTest(case=case["name"]):
+                ebfab_authority = None
+                if case.get("useEbfabAuthority"):
+                    ebfab_authority = {
+                        "listing": self.data["listing"],
+                        "referenceValidationByCanonicalRef": self.data[
+                            "referenceValidationByCanonicalRef"],
+                        "bundleLifecycle": self.data["bundleLifecycleByHash"][
+                            R.bundle_hash(case["bundle"])],
+                    }
                 result = R.resolve_absolute_fault_pointer(
                     case["pointer"],
                     case["bundle"],
                     binding=case.get("binding"),
                     pubkeys=self.pubkeys,
+                    ebfab_authority=ebfab_authority,
                 )
                 self.assertEqual(result["ok"], case["want"]["ok"], result["reason"])
 

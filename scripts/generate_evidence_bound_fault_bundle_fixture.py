@@ -268,6 +268,7 @@ def generate():
     invalid_fault_bundle["faultedParty"] = "buyer"
     sign_bundle(invalid_fault_bundle, "evidence-bound", signing_keys)
     invalid_fault_pointer = make_pointer("evidence-bound", invalid_fault_bundle, signing_keys)
+    seb_invalid_pointer = make_pointer("evidence-bound", signed_missing_member, signing_keys)
     minimal_ebfab = {"evidenceBoundFaultBundleVersion": "1"}
     minimal_ebfab_pointer = make_pointer("evidence-bound", minimal_ebfab, signing_keys)
     incomplete_binding = {"bundleContentHash": bundle_hash(ebfab_buyer)}
@@ -365,6 +366,7 @@ def generate():
                 "name": "ebfab-pointer-ebfab-pass",
                 "pointer": ebfab_pointer,
                 "bundle": ebfab_buyer,
+                "useEbfabAuthority": True,
                 "want": {"ok": True},
             },
             {
@@ -419,6 +421,13 @@ def generate():
                 "name": "signed-pointer-invalid-fault-attribution-reject",
                 "pointer": invalid_fault_pointer,
                 "bundle": invalid_fault_bundle,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-seb-invalid-bundle-reject",
+                "pointer": seb_invalid_pointer,
+                "bundle": signed_missing_member,
+                "useEbfabAuthority": True,
                 "want": {"ok": False},
             },
             {

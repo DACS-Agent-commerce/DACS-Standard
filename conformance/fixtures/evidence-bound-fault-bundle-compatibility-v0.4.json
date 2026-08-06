@@ -1951,6 +1951,86 @@
       }
     },
     {
+      "name": "signed-pointer-invalid-fault-attribution-reject",
+      "pointer": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": "https://example.invalid/evidence-bound-bundle.json",
+        "fullBundleContentHash": "d7963b1c826c7315815286dc538a96929d93d32f7e1aa342ddfe1faf195934f4",
+        "signature": {
+          "signer": "did:demos:buyer",
+          "algorithm": "ed25519",
+          "value": "8p7zSLwB1jOqJMp1trAopBBAacgiUY7ICVQ5XU0oWj0ThSnIqR3LHJB-2HAtuTqa9m6CFG0irE1rnWUhstivDw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "EBFAB-COMPAT-1",
+        "outcome": "completed",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "listing-ebfab-compat",
+          "version": 1,
+          "contentHash": "9d1bce847bfcc625b76df96cb590e424109472e2e6b3dfc2c389aea4495f6f02"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "72326eda01bafa68cc5a1aface9f53b49c73d30623534b0333fdc7783cc1d250",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5102d78c6a08b03bbef88e42f9a97bb7da1ac497b4dfbd01a315eef420271f80",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "pay-dem",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+              },
+              "contentHash": "4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-9f2180ab668c932d6d88dadf576258f8b8996ed49d94a666437b5ce5bcb5c563"
+            },
+            "contentHash": "4b43a464fecf4fc5dfc641b238bf9aa238f5b29324f2d1cb1f2c7e35807f9ef5"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785772800000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "bl08JPtSa3gAo-NpXL669b2FYExsZZgxQ76Pz4AcO2Qu7zu1yxpoHIuPO2dVklqFwDOoEuc3Fpi23ylwrsUZBA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "0QFZXBh0M-8S9xvs_EeZBQnTQ4tjW8CZ_sAkedaHr39q9VfxX0mDapk38FnakNV99TRsnZ0whilwcA0G3xcGAQ"
+          }
+        ],
+        "faultedParty": "buyer"
+      },
+      "want": {
+        "ok": false
+      }
+    },
+    {
       "name": "signed-pointer-minimal-bundle-reject",
       "pointer": {
         "evidenceBoundFaultBundleVersion": "1",

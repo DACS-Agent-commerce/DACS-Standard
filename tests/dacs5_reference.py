@@ -1328,6 +1328,16 @@ def resolve_absolute_fault_pointer(pointer, dereferenced_bundle, binding=None, p
     bundle_ok, bundle_reason = _bundle_signatures_valid(dereferenced_bundle, pubkeys)
     if not bundle_ok:
         return {"ok": False, "reason": bundle_reason}
+    try:
+        permissible_faults = implied_fault_set(
+            dereferenced_bundle.get("outcome"),
+            dereferenced_bundle.get("anchoredByRole"),
+            roster_roles(dereferenced_bundle),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        return {"ok": False, "reason": "invalid absolute fault attribution context: %s" % exc}
+    if dereferenced_bundle.get("faultedParty") not in permissible_faults:
+        return {"ok": False, "reason": "faultedParty is outside the §10.4.1 permissible set"}
 
     signature = pointer.get("signature")
     if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
@@ -2189,7 +2199,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
 
 
 def replay_receipt(derivation, deref, party, window_start, window_end, evidence_deref=None, pubkeys=None,
-                   anchor_deref=None, pure_mapping_resolver=None):
+                   anchor_deref=None, pure_mapping_resolver=None, ebfab_authority_resolver=None):
     """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
     full per-copy validation (validate_resolution_context) — roleEvidence BB-4/BB-5, BB-6
     reproduction, §10.4.3 divergence against the dereferenced counterparty, and the absence
@@ -2227,6 +2237,15 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
         if job_bound:
             tag["resolvedJobId"] = entry["resolvedJobId"]
             tag["selectedByRoleResolution"] = True
+            if bundle_type(b) == "evidence-bound":
+                authority = (
+                    ebfab_authority_resolver(b, entry)
+                    if callable(ebfab_authority_resolver)
+                    else None
+                )
+                if not isinstance(authority, dict):
+                    return (False, None)
+                tag["ebfabAuthority"] = authority
         tagged.append(tag)
     # (round-13 B3) read the now-REQUIRED, vocab-checked windowingBasis WITHOUT a silent default —
     # rrmp above guarantees it is present and in the vocab. Fail closed BEFORE the (bare) derive echo

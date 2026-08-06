@@ -430,6 +430,73 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                     (False, None),
                 )
 
+    def test_job_bound_ebfab_receipt_replays_with_resolved_authority(self):
+        pair = next(
+            case for case in self.data["pairCases"]
+            if case["name"] == "ebfab-fab-older-cannot-erase-seb"
+        )
+        ebfab = pair["copies"]["buyer"]
+        fab = pair["copies"]["seller"]
+        job_id = ebfab["jobId"]
+        buyer_address = R.logical_address(job_id, "buyer")
+        seller_address = R.logical_address(job_id, "seller")
+        authority = {
+            "listing": self.data["listing"],
+            "publicKeys": self.pubkeys,
+            "referenceValidationByCanonicalRef": self.data["referenceValidationByCanonicalRef"],
+            "bundleLifecycle": self.data["bundleLifecycleByHash"][R.bundle_hash(ebfab)],
+        }
+        receipt = R.derive_job_bound(
+            "did:demos:buyer",
+            [
+                {
+                    "bundle": ebfab,
+                    "selectedByRoleResolution": True,
+                    "resolvedJobId": job_id,
+                    "resolvedRole": "buyer",
+                    "roleEvidence": {"kind": "address", "resolvedAddress": buyer_address},
+                    "counterpartyDisposition": "present",
+                    "counterpartyRef": {"contentHash": R.bundle_hash(fab)},
+                    "counterpartyRoleEvidence": {
+                        "kind": "address",
+                        "resolvedAddress": seller_address,
+                    },
+                    "ebfabAuthority": authority,
+                },
+                {
+                    "bundle": fab,
+                    "resolvedJobId": job_id,
+                    "resolvedRole": "seller",
+                    "counterpartyDisposition": "present",
+                },
+            ],
+            ebfab["finalisedAt"] - 1,
+            ebfab["finalisedAt"] + 1,
+        )
+        by_address = {buyer_address: ebfab, seller_address: fab}
+        replay_args = (
+            receipt,
+            lambda content_hash: {
+                R.bundle_hash(ebfab): ebfab,
+                R.bundle_hash(fab): fab,
+            }.get(content_hash),
+            "did:demos:buyer",
+            ebfab["finalisedAt"] - 1,
+            ebfab["finalisedAt"] + 1,
+        )
+        replay_kwargs = {
+            "pubkeys": self.pubkeys,
+            "anchor_deref": lambda address: by_address.get(address),
+        }
+        self.assertEqual(R.replay_receipt(*replay_args, **replay_kwargs), (False, None))
+        same, replayed = R.replay_receipt(
+            *replay_args,
+            **replay_kwargs,
+            ebfab_authority_resolver=lambda _bundle, _entry: authority,
+        )
+        self.assertTrue(same)
+        self.assertEqual(replayed["bundleCount"], 1)
+
     def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
         for case in self.data["pointerCases"]:
             with self.subTest(case=case["name"]):

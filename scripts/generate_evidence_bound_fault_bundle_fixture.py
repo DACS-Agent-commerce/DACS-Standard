@@ -264,6 +264,10 @@ def generate():
     sign_pointer(unsafe_url_pointer, "evidence-bound", signing_keys, "buyer")
     unauthorized_pointer = copy.deepcopy(ebfab_pointer)
     sign_pointer(unauthorized_pointer, "evidence-bound", signing_keys, "seller")
+    invalid_fault_bundle = copy.deepcopy(ebfab_buyer)
+    invalid_fault_bundle["faultedParty"] = "buyer"
+    sign_bundle(invalid_fault_bundle, "evidence-bound", signing_keys)
+    invalid_fault_pointer = make_pointer("evidence-bound", invalid_fault_bundle, signing_keys)
     minimal_ebfab = {"evidenceBoundFaultBundleVersion": "1"}
     minimal_ebfab_pointer = make_pointer("evidence-bound", minimal_ebfab, signing_keys)
     incomplete_binding = {"bundleContentHash": bundle_hash(ebfab_buyer)}
@@ -409,6 +413,12 @@ def generate():
                 "name": "signed-pointer-unauthorized-role-reject",
                 "pointer": unauthorized_pointer,
                 "bundle": ebfab_buyer,
+                "want": {"ok": False},
+            },
+            {
+                "name": "signed-pointer-invalid-fault-attribution-reject",
+                "pointer": invalid_fault_pointer,
+                "bundle": invalid_fault_bundle,
                 "want": {"ok": False},
             },
             {

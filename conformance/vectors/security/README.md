@@ -30,6 +30,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 29 | `fail` / `indeterminate` / `pass` |
+| [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
@@ -39,10 +40,12 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4 | 4 | `fail` / `pass` |
+| [`listing-rail-registry-resolution-v0.4.json`](listing-rail-registry-resolution-v0.4.json) | DACS-1 §6.3.4 LRR-1..LRR-6; DACS-4 §9.4.3 | 29 | `fail` / `indeterminate` / `pass` |
 | [`metered-pricing-v0.3.json`](metered-pricing-v0.3.json) | DACS-3 §8.5.2 MTR-1..MTR-5; DACS-4 §9.4 PricingSpec | 22 | `accept` / `reject` |
 | [`mixed-version-reconciliation-v0.3.json`](mixed-version-reconciliation-v0.3.json) | DACS-5 §10.4.3 mixed-version rule + §10.5.1 authoritative selection | 8 | `fail` / `pass` |
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
@@ -66,6 +69,57 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `payload-attestation-binding-v0.1.json` — §9.6.3 DPA-1..DPA-9
+
+22 candidate vectors make the attested-payload success gate executable. The two
+positive cases carry genuine deterministic Ed25519 signatures over the distinct
+`dacs-payload-attestation:v1:` and `dacs-evidence:v1:` domains: one composes a
+finalized DAHR `web2Request` commitment, and one proves that `self-signed`
+remains available only as an explicitly selected minimal-trust method with a
+real payload-bound proof.
+
+Negative cases reject a listing with no method before payment, a
+seller/orchestrator evidence signature used as a substitute, VerifyResult
+coercion, an unsupported discriminator, cross-domain signature replay,
+job/agreement/DeliverableSpec/method/payload mismatch, a bad native-evidence
+hash, missing or unauthenticated DAHR transaction evidence, request/response
+substitution, a non-pass payload decision, a stale record reference, and
+cross-session replay. An otherwise well-formed but unavailable method proof
+stays `indeterminate`.
+
+Every vector carries the signed listing context, committed agreement tuple,
+exact UTF-8 payload, method-native evidence, `PayloadAttestationRecord`,
+record reference, and signed `SettlementEvidence`. Public test seeds are
+included for independent reproduction. Regenerate or verify byte determinism:
+
+```sh
+python3 scripts/generate_payload_attestation_vectors.py --write
+python3 scripts/generate_payload_attestation_vectors.py --check
+python3 -m unittest tests.test_payload_attestation_vectors -v
+```
+
+### `cci-xm-rail-chain-applicability-v0.5.json` — §6.3.1 EVM profile + §9.4.3 RD-5 / §9.5.1 PB-2
+
+20 candidate vectors make the PB-2 EVM chain-applicability predicate
+executable. Exact positive-decimal chain IDs map one-to-one to CAIP-2
+`eip155:<chainId>` and cover Ethereum mainnet, Base mainnet, Ethereum Sepolia,
+and Base Sepolia. A different numeric chain, a leading-zero or zero spelling,
+and the human labels `mainnet`, `testnet`, `sepolia`, and `base` do not
+establish tier 2 and leave the signed tier-3 assertion available.
+
+The address component must be non-empty but is otherwise opaque for chain
+selection; optional ClaimReference parameters do not change the derived chain.
+An empty or parameter-only address and a non-lowercase `evm` family spelling do
+not establish tier 2.
+
+The set also pins three fail-closed boundaries: an exact chain match becomes
+tier-2-applicable before SR-1 resolution, so an unavailable or erroneous
+linkage cannot downgrade to tier 3; conflicting EVM asset/network chain IDs
+fail RD-5; and an x402 resource rail that exposes no single EIP-155 chain in
+its pinned definition cannot gain tier 2 retroactively from a later receipt.
+Run the dependency-free executable predicate with
+`python3 -m unittest tests.test_cci_xm_rail_chain_applicability_vectors -v`.
 
 ### `metered-pricing-v0.3.json` — §8.5.2 MTR-1..MTR-5
 

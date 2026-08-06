@@ -258,6 +258,7 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (listing) | `sellerPrimaryClaim` (a ClaimReference) | `listingId`, `v{listingVersion}` |
 | `dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (revocation marker) | `sellerPrimaryClaim` | `listingId`, `v{listingVersion}` |
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
+| `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
 | `dacs2:composite:{jobId}:{evaluatedParty}` (§7.7.2) | `evaluatedParty` (a ClaimReference) | `jobId` |
 | `dacs3:commit:{jobId}` (agreement commitment, §8.6) | none | `jobId` |
@@ -292,6 +293,7 @@ In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a rese
 - **VerifyResult.** The uniform record produced by every DACS-2 verification method. Defined in chapter 7.
 - **VerifyResultRef.** A reference to an anchored VerifyResult: anchor + contentHash + recipeVersion (recipeVersion is load-bearing for staleness checks).
 - **Composite verification record.** The anchored document produced by the vet-credentials phase, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in chapter 7.
+- **PayloadAttestationRecord.** The DACS-4 delivery-verification artifact that binds method-native evidence to exact payload bytes, a job, a committed agreement, and its DeliverableSpec. It is distinct from a claim-oriented DACS-2 VerifyResult. Defined in §9.6.3.
 
 ### B.4 Session, pipeline, and phases
 
@@ -339,7 +341,7 @@ The v0.1 set of identity schemes (DACS-1), verification methods (DACS-2), negoti
 
 ### B.7 Universal signature scheme — domain-separated signing
 
-Every signature in DACS — across DACS-1 (listings, revocations), DACS-2 (VerifyResults, composite records, recipes), DACS-3 (channel messages, agreements, commitments), DACS-4 (settlement evidence, amendments, rails, entitlements), and DACS-5 (bundles, ratings) — MUST be computed over a domain-separated payload. The domain separator prevents cross-protocol signature replay: a signature produced under one artifact kind MUST NOT validate as a signature under any other artifact kind, even when the underlying hash bytes coincide.
+Every signature in DACS — across DACS-1 (listings, revocations), DACS-2 (VerifyResults, composite records, recipes), DACS-3 (channel messages, agreements, commitments), DACS-4 (settlement evidence, payload attestations, amendments, rails, entitlements), and DACS-5 (bundles, ratings) — MUST be computed over a domain-separated payload. The domain separator prevents cross-protocol signature replay: a signature produced under one artifact kind MUST NOT validate as a signature under any other artifact kind, even when the underlying hash bytes coincide.
 The canonical payload to be signed is:
 
 ```
@@ -374,6 +376,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |
+| DACS-4 payload attestation record | "dacs-payload-attestation:v1:" | §9.6.3 |
 | DACS-5 attestation bundle | "dacs-bundle:v1:" | §10.4.1 |
 | DACS-5 fault attestation bundle | "dacs-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 evidence-bound fault attestation bundle | "dacs-evidence-bound-fault-bundle:v1:" | §10.4.1 |

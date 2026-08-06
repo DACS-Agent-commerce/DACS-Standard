@@ -1,0 +1,2552 @@
+{
+  "set": "payload-attestation-binding-v0.1",
+  "spec": "DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3",
+  "decisionModel": "A successful attested-payload delivery requires a distinct signed PayloadAttestationRecord, a passing exact-byte method proof, and matching listing/agreement/settlement bindings. Resolved contradictions fail; unavailable otherwise-valid evidence remains indeterminate.",
+  "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
+  "hash": "a880df153902679247f00a44dbcb9313153ae9fa9ff0ba8b1786db88a40fbbce",
+  "count": 22,
+  "publicTestSeeds": {
+    "verifierEd25519": "3131313131313131313131313131313131313131313131313131313131313131",
+    "orchestratorEd25519": "3232323232323232323232323232323232323232323232323232323232323232"
+  },
+  "vectors": [
+    {
+      "name": "dahr-payload-bound-success",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "pass",
+      "reason": "finalized DAHR request/response commitment binds the exact UTF-8 payload and commerce tuple"
+    },
+    {
+      "name": "explicit-self-signed-tier-still-carries-proof",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "ba3cc4b40cb6f8d164ae7a983a699505f3014da7fffbe6c392d6090e778719b0"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "self-signed-payload",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+        "signatureValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "ba3cc4b40cb6f8d164ae7a983a699505f3014da7fffbe6c392d6090e778719b0",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "self-signed",
+        "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "explicit minimal-trust self-signed payload proof verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:self-signed-proof:01K1DPA0000000000000000000"
+          },
+          "contentHash": "40ee846a7ab409b65d4bf018c6d81ca43cce339fae21c01fde4506361eaeff78",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "wzQP6fAgdpPI1hao811W8C9A9tpZTDJy1kw9UMQ_qPY_BGk53Gpq-9G0RXk9R9Lm5UL5UFxkHf2fLVX-BYLMAA"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+        },
+        "contentHash": "62a91add514c9326e5029e1f517908e6256b87a2695a5935d70ee03888f242ff",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+          },
+          "contentHash": "62a91add514c9326e5029e1f517908e6256b87a2695a5935d70ee03888f242ff",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "v8L-KZfiPQIY0xs5ew4rZTma-EaCEcG32MlAJ7VnuR6vS2ltqKuSTzTkGiMuhDKnamXocWtFjze7EhQ24n0oCQ"
+        }
+      },
+      "expected": "pass",
+      "reason": "self-signed is permitted only as an explicit minimal-trust method with a payload-bound proof"
+    },
+    {
+      "name": "listing-method-missing-rejected-before-payment",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json"
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "fail",
+      "reason": "DPA-1 rejects an unfulfillable listing before any payment"
+    },
+    {
+      "name": "seller-settlement-signature-cannot-substitute",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "3sCL_b-tjX1ELOu0uhRwcB33CbDF5gVRnI2_H-9L4oe0Sx9_WIpkk22i8qw_i9hwN72XgPaxJhAkR4CPOoqHDA"
+        }
+      },
+      "expected": "fail",
+      "reason": "success evidence without attestationRef is seller/orchestrator self-assertion, not attested delivery"
+    },
+    {
+      "name": "verifyresult-discriminator-cannot-coerce",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "Uq2H2EidRWgOm_vPC59_1WPnGzYpzK4XKCede3rx0S1vsazI9105PcTtvJqoeDip7xKqoA3TgR1PpAoSADzaCA"
+        },
+        "resultVersion": "1"
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "2771c383aef64a8d1fc480a8e5ab0eb227390a0b62f6fa3b047492eb0479f0a7",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "2771c383aef64a8d1fc480a8e5ab0eb227390a0b62f6fa3b047492eb0479f0a7",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "GQaRDXOlNHrnT5-vHGM6WnmffY-SAnvJjnQLIED8FPK78OoFz05xfIaSQPjsQJYYsjDAWnydcft5hV71gfh0CQ"
+        }
+      },
+      "expected": "fail",
+      "reason": "DPA-9 refuses a claim VerifyResult shape as a payload attestation"
+    },
+    {
+      "name": "unsupported-payload-attestation-version",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "2",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "A7ZKoZZ9lOsLgKFPLhEnWVDdleri_QEqKblnAEhw2HD-E_XhrXPCU417CCpGmbSdLuexxo_XP6JCzxbbme8PBw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "62c491695273637aa1b7f1f935c9eddd7c3b3843dc34b65aa45f810cca5e14a6",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "62c491695273637aa1b7f1f935c9eddd7c3b3843dc34b65aa45f810cca5e14a6",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "-jtfPmUz2qR3YxYqtnVv4ZbbwIsGPyMJGqXaTpEODy4H2aR4f_j9JPFN5k9Hk6hTOM64xqauIP4k3QiDiAsaAQ"
+        }
+      },
+      "expected": "fail",
+      "reason": "unknown structural discriminator is refused before field interpretation"
+    },
+    {
+      "name": "payload-record-signature-invalid",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "AJyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "fail",
+      "reason": "record signature must verify under the payload-attestation domain"
+    },
+    {
+      "name": "settlement-domain-signature-replay-rejected",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "MO-w6m2hn4SEx3X2tZWa879bfa5qj8FjFjBwD88eImt_5VU7UgqqJXx6pLpJnzWLHovxkeWOx2paAH7PUossCQ"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "fail",
+      "reason": "a valid signature under dacs-evidence:v1 cannot authenticate the payload record"
+    },
+    {
+      "name": "record-job-mismatch",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000001",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "24bDiBoAAKKZoCqqiQBNR8kC0rUoEJMhslBbmbDDILNUqjJcF9BJ7ZFPDwz6Wg9LWZGosiQKYSgIv5ixG12FCQ"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000001:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "0c4ef30c842446689bb3a8b842302aac11e35faa105e765487f36cabd2579118",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000001:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "0c4ef30c842446689bb3a8b842302aac11e35faa105e765487f36cabd2579118",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "n84sGIaPo5BvEq2Q1BqnpXOIGPMFg0rVxpCTjFdl35lrTlAnH5dBXfHLmvnweaxM2xjGIo7GBSFtYnx-EjVPBQ"
+        }
+      },
+      "expected": "fail",
+      "reason": "payload record jobId must equal the agreement and SettlementEvidence jobId"
+    },
+    {
+      "name": "record-agreement-mismatch",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "t45AyDR_Fw02oezzMmJw4Z44IF5kaTz_NRpYNEltsC-MNhgDwYLQa1JrqB_ch7nGRS92NIgHxNtmDv9tAoTrBg"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "52c3e8fe9d99b4eb1cba103a734eb590e7248fde6ece7d498c3a11ad2e0ca82a",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "52c3e8fe9d99b4eb1cba103a734eb590e7248fde6ece7d498c3a11ad2e0ca82a",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "C2hRsgGHC4sQxo30dh36-dMAwpY1WOWUrPTp8u-0yiU6iQwi6Q61OJzr6WtlSdlXV_KzfJdkIhaeO6cxGqe8Cw"
+        }
+      },
+      "expected": "fail",
+      "reason": "proof from another committed agreement cannot be reused"
+    },
+    {
+      "name": "record-deliverable-spec-mismatch",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "1e2lbqzSqHceHxPSyRWpUoFGJ2lLQDzoeYKGhUe9VFSVhcvhJQ7YPRbCHuxlYnG96zF01_HNNUIYdWKtISKWCg"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "69ca08592fd9545cf30f61f4c866829f2dd85ce96be7c4982f8720609f41d617",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "69ca08592fd9545cf30f61f4c866829f2dd85ce96be7c4982f8720609f41d617",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "D_M0vMhyWGTfn9ukJktlowtkyba56n7L-KoKUUiTpU_e7ehYkP-n4VJ71OWNKD6H1_heHmclVJcqb1mgKaClCg"
+        }
+      },
+      "expected": "fail",
+      "reason": "record must bind the exact signed-listing DeliverableSpec"
+    },
+    {
+      "name": "record-payload-digest-mismatch",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "Cl4e__P46fX6dq5rIpAY4OaqR27wFl_fXJBdGNR8Wy6r_WWvezU1iL6qF4RYjOmORXBWvF6c2V0upD3mVdEXAQ"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d3ae44936a3b20e07231168bb1f14649c5f7dbd91c0e5cdc2338ecece993c388",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d3ae44936a3b20e07231168bb1f14649c5f7dbd91c0e5cdc2338ecece993c388",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "Ej9foOW7u8nxMh2IhatFxORPSMou36sKIRPO9PgqIpy2eDHlzGQ9QPlJX7tEwwBPRNrIyH_70WXfLG_gTw3mBA"
+        }
+      },
+      "expected": "fail",
+      "reason": "method proof, record, delivered bytes, and SettlementEvidence must share one digest"
+    },
+    {
+      "name": "record-method-mismatch",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "J6Mq6bycO7OWMkAqoaS-pyEUzN67uciqXjla6qz4JxsqQdCYDDTgiK9scwAIAXKsXE-azM6tfucLKR1NIjEjCQ"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7:0"
+        },
+        "contentHash": "61fda83668cf300459cff9a00b389ca2cb148fd0e243dd0b2ed7e7c55634a2e8",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7:0"
+          },
+          "contentHash": "61fda83668cf300459cff9a00b389ca2cb148fd0e243dd0b2ed7e7c55634a2e8",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "SnzaN0DWC-6D7OExZtdIZAcpmBrIbFN6PYAq97_ByVdnDUvSazVksZuRwxPeGnsrADZXAr6sMKGUq2i9UiTBAw"
+        }
+      },
+      "expected": "fail",
+      "reason": "method substitution is detected against the signed listing"
+    },
+    {
+      "name": "method-evidence-content-hash-mismatch",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "kH2EvDSJ-s516SApdn4XWoS35ChwSvdmtYQIG8hyxwdCp9FSE_2_NSGlgwqRBQnX8O2VFNV-TVWwKtePhfuzCw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "96de48442bceb606f459f139c8b39e65d1d2ffd6d5250dfb6a609b004912838d",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "96de48442bceb606f459f139c8b39e65d1d2ffd6d5250dfb6a609b004912838d",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "1p3AatYc6rlmzWisnm27iITCe1jmP4bQM1Ykk0Za6H2uAFaAshA2ARsxqqZaeKPbVSxJqBO0GEmN_y7xiBUJCQ"
+        }
+      },
+      "expected": "fail",
+      "reason": "resolved native evidence must match its AttestationRef"
+    },
+    {
+      "name": "method-evidence-unresolvable",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "disposition": "unavailable"
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "non-observation is not a clean negative and cannot produce success"
+    },
+    {
+      "name": "dahr-transaction-reference-missing",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "xtZ9KKxk7FTa-gIbZS7kI2VjraAh3pFuk9hTddO4l4RoM5OK4v6jt_fchYy4-zW2qYvbodlCjHdlJOIVEOICDA"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "8ebfcc73de027d3ae47e6cbfbad13b633154e84160cfcb213b4879754d547541",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "8ebfcc73de027d3ae47e6cbfbad13b633154e84160cfcb213b4879754d547541",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "ejUijmZp4xdztKuE7n2eG8eGaOmg9-5V6tTfinBA774Z89wZc4-1XhUDL6BnmmBsl_qT_VVnEnyubQRCtPCNAw"
+        }
+      },
+      "expected": "fail",
+      "reason": "generic SDK optionality does not permit a DAHR-backed pass without txHash"
+    },
+    {
+      "name": "dahr-transaction-not-authenticated",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": false
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "207abf79a2ba682655115b17844ab6ce2c7fb6834f64410388ad23efcc44b6f5",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "UfHlyglOLg9HzhujismvVLTllAa3NLilXl_jY1GYlVTqtVT5UwJYNuTDZEfo_jq2SA6mqgFmA1b7UOJSJAEODw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "5e62ca9a0a5150ddeca037b2f1400362016dd27b3bd82a7a4123f0dff6c4dfb8",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "5e62ca9a0a5150ddeca037b2f1400362016dd27b3bd82a7a4123f0dff6c4dfb8",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "LLsfc-OXXDbeew9KzNfRwMafY5Sc4r7SnyJl4cTnxRM3hnQXNU8GRa5tOYw8ATe6ZaqoSSUiVpryQ7ezFgQ0Cg"
+        }
+      },
+      "expected": "fail",
+      "reason": "broadcast/RPC acknowledgement is not consensus evidence"
+    },
+    {
+      "name": "dahr-request-does-not-match-method",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://evil.example/payload"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "542d50de805826dc24e44d1f7df2e0b60cce57baf299779a85f2f878adad4b3e",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "mLti7vQ4AT58kWjuZjcP0kULp_Vkjlq5RmDLDsrG7-jU6I6__z8piOWD2GWiaEOmhlfpMjjkY_MB814EVyyjBw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "fb034ddeed52e22e2aa707e8b16091eeb5db224bbd9af6f8cf315cb85b801836",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "fb034ddeed52e22e2aa707e8b16091eeb5db224bbd9af6f8cf315cb85b801836",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "vayu7m5xQUWBCt6qjCsxWT_RWFypAWLlfsx3a5M6uiOUlniK0SHeHsqmen01C8golI5LRvWAMiabIYDJ5xCjBQ"
+        }
+      },
+      "expected": "fail",
+      "reason": "DAHR request URL and method must match the signed verificationMethod"
+    },
+    {
+      "name": "dahr-response-bytes-do-not-match-commitment",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"rejected\"}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "57829043e232171bd0fa6990ed746c8abca7022219b6a8a9dee9248af87c9eed",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "7yGxfdDIdcfyuqKmNwBtLyI0Wd8KIwHbKPc705LGCzWf2uAcBV7_pbfjRptJ9FbwCKDruel5YZ4mV6i4VCKkCg"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "17c325da6329e7433a8d7d045afac7cc37f9a3577d7264eb3c26fa6acd9dfe67",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "17c325da6329e7433a8d7d045afac7cc37f9a3577d7264eb3c26fa6acd9dfe67",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "erzJehgwCfjrS8LPmSXkW3SYt6j73s9AIbmXQQtSWPcrrd4GKxpaM3HgFWcdHhWO15FMZueEgQICcps13yEmAQ"
+        }
+      },
+      "expected": "fail",
+      "reason": "delivered UTF-8 bytes must hash to DAHR responseHash"
+    },
+    {
+      "name": "nonpass-payload-record-cannot-support-success",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "indeterminate",
+        "reason": "authority returned incomplete result",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "o50CHAktiO_Tsad05kAV0G0Fi9lFWj7B3LvETMUUm0SRUEAyZQOxyr8NoTGaAQYXQpY09tCfuuobPaU5vCdBBw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "89f475889b8da59dbefad8eab7c3c3d80c2f9b90ec1f622186bd82a6ab65b37b",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "89f475889b8da59dbefad8eab7c3c3d80c2f9b90ec1f622186bd82a6ab65b37b",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "SF9nwWYn4H04aU8YopdQk7_U8QK-KEkTXFrXS8qJyRJX58nXfebJwwOlnljGmJsjKhsVGW8-z5cvY0WMg9ZqCA"
+        }
+      },
+      "expected": "fail",
+      "reason": "DPA-5 never collapses indeterminate to pass"
+    },
+    {
+      "name": "settlement-reference-does-not-match-record",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9d9",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "-jrPuY15ABdhbZABAJCiWXUbE9KLQtBlrlHEPRyCajSIbmAgzge3EvpvlK6jb92cRHgUk2BwpTEFtK1gd8ZGCA"
+        }
+      },
+      "expected": "fail",
+      "reason": "SettlementEvidence must reference the exact signed payload record"
+    },
+    {
+      "name": "cross-session-record-replay",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000002",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "TVcyeE-dMtLNg6EL3o09O1avBTOBnLYrGaSDwdxVHncqvtvbbIgVwafzz1ojAcprdsfy9LNmFrORMDTBeV8xBw"
+        }
+      },
+      "expected": "fail",
+      "reason": "a valid record from one job cannot support another job"
+    }
+  ]
+}

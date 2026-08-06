@@ -164,11 +164,11 @@
       "id": "sig-registry-closed",
       "area": "signing",
       "spec": "§B.7",
-      "summary": "the domain-separator registry is exactly the published closed set of 26",
+      "summary": "the domain-separator registry is exactly the published closed set of 27",
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
       "want": {
-        "count": 26,
+        "count": 27,
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
@@ -189,6 +189,7 @@
           "dacs-finality-commitment:v1:",
           "dacs-listing:v1:",
           "dacs-payee-bound-agreement:v1:",
+          "dacs-payload-attestation:v1:",
           "dacs-rail:v1:",
           "dacs-rating:v1:",
           "dacs-recipe:v1:",

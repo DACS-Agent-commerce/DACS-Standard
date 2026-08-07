@@ -14,6 +14,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -49,6 +50,11 @@ def canonical_bytes(value) -> bytes:
 
 def hash_hex(value) -> str:
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def payment_anchor(job_id: str, rail_id: str, phase_index: int) -> str:
+    encoded_rail_id = quote(rail_id, safe="-._~")
+    return f"dacs4:payment:{job_id}:{encoded_rail_id}:{phase_index}"
 
 
 def b64url(value: bytes) -> str:
@@ -169,15 +175,19 @@ def vector(
     expected_settlement_tx_id: str | None = None,
     note: str,
 ) -> dict:
+    resolved_context = copy.deepcopy(
+        verification_context or context(
+            "solana" if phase == "pay-solana-spl" else "evm"
+        )
+    )
+    resolved_context.setdefault("railId", rail_id)
     item = {
         "name": name,
         "expected": expected,
         "note": note,
-        "anchorAddress": f"dacs4:payment:{job_id}:{rail_id}:{phase_index}",
+        "anchorAddress": payment_anchor(job_id, rail_id, phase_index),
         "phaseIndex": phase_index,
-        "verificationContext": verification_context or context(
-            "solana" if phase == "pay-solana-spl" else "evm"
-        ),
+        "verificationContext": resolved_context,
         "ledgerEvents": ledger_events,
         "priorClaims": prior_claims or {},
         "settlementEvidence": evidence(job_id, phase, tx_ref),
@@ -334,6 +344,52 @@ def build_vectors() -> list[dict]:
         note="a valid evidence signature over 5 USDC cannot validate a 6 USDC ledger event",
     ))
 
+    anchor_job_mismatch = vector(
+        "payment-anchor-job-mismatch",
+        "fail",
+        evm_ref,
+        [event("evm", 0)],
+        note="a valid evidence signature cannot bind the record to another job's PC-2 address",
+    )
+    anchor_job_mismatch["anchorAddress"] = payment_anchor(
+        "wrong-job", "base-usdc", 0
+    )
+    vectors.append(anchor_job_mismatch)
+
+    anchor_rail_mismatch = vector(
+        "payment-anchor-rail-mismatch",
+        "fail",
+        evm_ref,
+        [event("evm", 0)],
+        note="the PC-2 rail segment must equal the authenticated agreement/phase rail",
+    )
+    anchor_rail_mismatch["anchorAddress"] = payment_anchor(
+        "job-315-a", "wrong-rail", 0
+    )
+    vectors.append(anchor_rail_mismatch)
+
+    anchor_phase_mismatch = vector(
+        "payment-anchor-phase-index-mismatch",
+        "fail",
+        evm_ref,
+        [event("evm", 0)],
+        note="the PC-2 phase index must equal the authenticated BundlePhaseEntry index",
+    )
+    anchor_phase_mismatch["anchorAddress"] = payment_anchor(
+        "job-315-a", "base-usdc", 1
+    )
+    vectors.append(anchor_phase_mismatch)
+
+    vectors.append(vector(
+        "payment-anchor-cf4-encoded-rail",
+        "pass",
+        evm_ref,
+        [event("evm", 0)],
+        rail_id="evm-erc20:8453:USDC",
+        expected_settlement_tx_id=f"evm:8453:{EVM_TX}:0",
+        note="the complete PC-2 comparison uses the canonical CF-4-encoded rail segment",
+    ))
+
     vectors.extend([
         vector(
             "legacy-x402-unambiguous-replay",
@@ -444,6 +500,7 @@ def build_vectors() -> list[dict]:
     replay["settlementEvidence"]["paymentAmount"] = {"amount": "5", "currency": "SOL"}
     replay["settlementEvidence"]["paymentTxRefs"] = [copy.deepcopy(solana_ref)]
     replay["verificationContext"] = context("solana")
+    replay["verificationContext"]["railId"] = "solana-devnet-sol"
     replay["ledgerEvents"] = [event("solana", 2)]
     vectors.append(replay)
 

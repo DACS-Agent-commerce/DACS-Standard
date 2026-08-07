@@ -4,6 +4,7 @@ import json
 import subprocess
 import unittest
 from pathlib import Path
+from urllib.parse import quote, unquote_to_bytes
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -29,6 +30,37 @@ def canonical_bytes(value):
 
 def hash_hex(value):
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def payment_anchor(job_id, rail_id, phase_index):
+    encoded_rail_id = quote(rail_id, safe="-._~")
+    return f"dacs4:payment:{job_id}:{encoded_rail_id}:{phase_index}"
+
+
+def parse_payment_anchor(value):
+    if not isinstance(value, str):
+        raise ValueError("payment anchor must be a string")
+    parts = value.split(":")
+    if len(parts) == 6:
+        if parts.pop() != "resolved":
+            raise ValueError("unknown payment-anchor suffix")
+    if len(parts) != 5 or parts[:2] != ["dacs4", "payment"]:
+        raise ValueError("malformed payment anchor")
+    _, _, job_id, encoded_rail_id, phase_text = parts
+    if not job_id or not encoded_rail_id:
+        raise ValueError("empty payment-anchor segment")
+    try:
+        rail_id = unquote_to_bytes(encoded_rail_id).decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("railId is not UTF-8") from exc
+    if quote(rail_id, safe="-._~") != encoded_rail_id:
+        raise ValueError("railId is not canonical CF-4")
+    if not phase_text.isascii() or not phase_text.isdecimal():
+        raise ValueError("phaseIndex is not decimal ASCII")
+    phase_index = int(phase_text)
+    if str(phase_index) != phase_text or not safe_nonnegative_int(phase_index):
+        raise ValueError("phaseIndex is not canonical")
+    return job_id, rail_id, phase_index
 
 
 def b64url_decode(value):
@@ -259,7 +291,11 @@ def evaluate(vector, public_key):
     evidence = vector.get("settlementEvidence")
     if not isinstance(evidence, dict) or not signature_valid(evidence, public_key):
         return "fail"
-    if evidence.get("outcome") != "success" or evidence.get("jobId") is None:
+    if (
+        evidence.get("outcome") != "success"
+        or not isinstance(evidence.get("jobId"), str)
+        or not evidence["jobId"]
+    ):
         return "error"
     refs = evidence.get("paymentTxRefs")
     if not isinstance(refs, list) or len(refs) != 1:
@@ -271,20 +307,30 @@ def evaluate(vector, public_key):
     phase_index = vector.get("phaseIndex")
     if not safe_nonnegative_int(phase_index):
         return "error"
-    expected_suffix = f":{phase_index}"
-    anchor = vector.get("anchorAddress")
-    if not isinstance(anchor, str) or not anchor.endswith(expected_suffix):
+    context = vector.get("verificationContext")
+    if not isinstance(context, dict):
         return "error"
+    rail_id = context.get("railId")
+    if not isinstance(rail_id, str) or not rail_id:
+        return "error"
+
+    # The evidence signature authenticates evidence.jobId, but it does not authenticate
+    # where the record was published. Before SB-1 projection, independently bind the
+    # complete PC-2 tuple to the evidence, authenticated phase/agreement rail context,
+    # and BundlePhaseEntry index. A valid ST-8 resolution may add only the fixed suffix.
+    anchor = vector.get("anchorAddress")
+    try:
+        anchor_tuple = parse_payment_anchor(anchor)
+    except ValueError:
+        return "error"
+    if anchor_tuple != (evidence["jobId"], rail_id, phase_index):
+        return "fail"
 
     ledger_events = vector.get("ledgerEvents")
     if ledger_events is None:
         return "indeterminate"
     if not isinstance(ledger_events, list):
         return "error"
-    context = vector.get("verificationContext")
-    if not isinstance(context, dict):
-        return "error"
-
     if mode in {"current-x402", "legacy-x402"}:
         receipt = context.get("x402Receipt")
         ref = refs[0]
@@ -393,6 +439,39 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
         self.assertEqual(vector["ledgerEvents"][0]["amount"], "6")
         self.assertEqual(evaluate(vector, self.public_key), "fail")
 
+    def test_anchor_tuple_mismatch_rejection_preserves_valid_signature(self):
+        names = {
+            "payment-anchor-job-mismatch",
+            "payment-anchor-rail-mismatch",
+            "payment-anchor-phase-index-mismatch",
+        }
+        vectors = {
+            item["name"]: item for item in self.document["vectors"]
+            if item["name"] in names
+        }
+        self.assertEqual(set(vectors), names)
+        for name, vector in vectors.items():
+            with self.subTest(vector=name):
+                self.assertTrue(signature_valid(vector["settlementEvidence"], self.public_key))
+                self.assertEqual(evaluate(vector, self.public_key), "fail")
+
+    def test_cf4_rail_segment_is_canonical_before_anchor_comparison(self):
+        vector = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "payment-anchor-cf4-encoded-rail"
+        )
+        self.assertEqual(
+            vector["anchorAddress"],
+            "dacs4:payment:job-315-a:evm-erc20%3A8453%3AUSDC:0",
+        )
+        self.assertEqual(evaluate(vector, self.public_key), "pass")
+
+        noncanonical = dict(
+            vector,
+            anchorAddress="dacs4:payment:job-315-a:evm-erc20%3a8453%3aUSDC:0",
+        )
+        self.assertEqual(evaluate(noncanonical, self.public_key), "error")
+
     def test_required_issue_315_cases_are_present(self):
         names = {vector["name"] for vector in self.document["vectors"]}
         required = {
@@ -416,6 +495,10 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
             "legacy-x402-transaction-mismatch",
             "legacy-x402-network-mismatch",
             "legacy-x402-out-of-band-index-not-authority",
+            "payment-anchor-job-mismatch",
+            "payment-anchor-rail-mismatch",
+            "payment-anchor-phase-index-mismatch",
+            "payment-anchor-cf4-encoded-rail",
         }
         self.assertTrue(required <= names)
 
@@ -443,6 +526,7 @@ class SettlementEventIdentityVectorTests(unittest.TestCase):
             "Exactly one matching event permits that event's authenticated index",
             "A caller-supplied index, cache annotation, or indexer field",
             "MUST NOT strip or substitute the discriminator",
+            "MUST compare the complete PC-2 logical-address tuple",
         ):
             self.assertIn(text, spec)
 

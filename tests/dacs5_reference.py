@@ -1695,6 +1695,22 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
 
 REPLAYABLE_DERIVATION_VERSION = "1"
 JOB_BOUND_REPLAYABLE_DERIVATION_VERSION = "1"
+REPLAY_DERIVATION_DISCRIMINATORS = frozenset({
+    "derivationVersion",
+    "replayableDerivationVersion",
+    "jobBoundReplayableDerivationVersion",
+})
+
+
+def _unknown_replay_derivation_discriminators(d):
+    if not isinstance(d, dict):
+        return set()
+    return {
+        key for key in d
+        if (isinstance(key, str)
+            and key.endswith("DerivationVersion")
+            and key not in REPLAY_DERIVATION_DISCRIMINATORS)
+    }
 
 
 def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
@@ -1713,14 +1729,16 @@ def is_replayable_derivation(d):
     return (isinstance(d, dict)
             and d.get("replayableDerivationVersion") == REPLAYABLE_DERIVATION_VERSION
             and "derivationVersion" not in d
-            and "jobBoundReplayableDerivationVersion" not in d)
+            and "jobBoundReplayableDerivationVersion" not in d
+            and not _unknown_replay_derivation_discriminators(d))
 
 
 def is_job_bound_replayable_derivation(d):
     return (isinstance(d, dict)
             and d.get("jobBoundReplayableDerivationVersion") == JOB_BOUND_REPLAYABLE_DERIVATION_VERSION
             and "derivationVersion" not in d
-            and "replayableDerivationVersion" not in d)
+            and "replayableDerivationVersion" not in d
+            and not _unknown_replay_derivation_discriminators(d))
 
 
 def require_replayable_derivation(d):
@@ -1730,6 +1748,10 @@ def require_replayable_derivation(d):
     replay claim exists on the legacy ReputationDerivation. Returns {"ok": bool, "reason": str}."""
     if not isinstance(d, dict) or d.get("replayableDerivationVersion") != REPLAYABLE_DERIVATION_VERSION:
         return {"ok": False, "reason": "not a ReplayableReputationDerivation discriminator (replayableDerivationVersion != \"1\")"}
+    unknown = _unknown_replay_derivation_discriminators(d)
+    if unknown:
+        return {"ok": False, "reason": "unknown/extra *DerivationVersion discriminator: "
+                + ", ".join(sorted(unknown))}
     if "derivationVersion" in d or "jobBoundReplayableDerivationVersion" in d:
         return {"ok": False, "reason": "carries legacy derivationVersion; a ReplayableReputationDerivation MUST NOT carry derivationVersion"}
     return {"ok": True, "reason": "replayable-derivation discriminator holds"}
@@ -1739,12 +1761,23 @@ def require_job_bound_replayable_derivation(d):
     if (not isinstance(d, dict)
             or d.get("jobBoundReplayableDerivationVersion") != JOB_BOUND_REPLAYABLE_DERIVATION_VERSION):
         return {"ok": False, "reason": "not a JobBoundReplayableReputationDerivation discriminator"}
+    unknown = _unknown_replay_derivation_discriminators(d)
+    if unknown:
+        return {"ok": False, "reason": "unknown/extra *DerivationVersion discriminator: "
+                + ", ".join(sorted(unknown))}
     if "derivationVersion" in d or "replayableDerivationVersion" in d:
         return {"ok": False, "reason": "job-bound replay receipt carries another derivation discriminator"}
     return {"ok": True, "reason": "job-bound replay discriminator holds"}
 
 
 def _require_supported_replay_derivation(d):
+    if not isinstance(d, dict):
+        return {"ok": False, "kind": None, "reason": "replay derivation is not an object"}
+    unknown = _unknown_replay_derivation_discriminators(d)
+    if unknown:
+        return {"ok": False, "kind": None,
+                "reason": "unknown/extra *DerivationVersion discriminator: "
+                          + ", ".join(sorted(unknown))}
     if is_replayable_derivation(d):
         return {"ok": True, "kind": "legacy"}
     if is_job_bound_replayable_derivation(d):

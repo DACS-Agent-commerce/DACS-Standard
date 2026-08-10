@@ -208,6 +208,60 @@ class ReceiptRederivationTests(unittest.TestCase):
         self.assertTrue(same)
         self.assertTrue(all("resolvedJobId" not in entry for entry in replayed["resolutionContext"]))
 
+    def test_unknown_extra_derivation_discriminator_refuses_both_replay_types(self):
+        """Unknown future-looking type discriminators fail at the shared chokepoint before
+        member validation or dereference; unrelated extension data remains compatible."""
+        for kind, receipt, require_type, is_type in (
+            (
+                "released",
+                R.derive("did:demos:buyer", [], 0, 1),
+                R.require_replayable_derivation,
+                R.is_replayable_derivation,
+            ),
+            (
+                "job-bound",
+                R.derive_job_bound("did:demos:buyer", [], 0, 1),
+                R.require_job_bound_replayable_derivation,
+                R.is_job_bound_replayable_derivation,
+            ),
+        ):
+            with self.subTest(kind=kind):
+                dereferences = []
+                self.assertTrue(is_type(receipt))
+                self.assertTrue(R._require_supported_replay_derivation(receipt)["ok"])
+
+                unrelated_extension = {**receipt, "futureMetadata": {"version": "1"}}
+                self.assertTrue(R._require_supported_replay_derivation(unrelated_extension)["ok"])
+
+                mutated = {**receipt, "fooDerivationVersion": "1"}
+                self.assertFalse(is_type(mutated))
+                self.assertFalse(require_type(mutated)["ok"])
+                gate = R._require_supported_replay_derivation(mutated)
+                self.assertFalse(gate["ok"])
+                self.assertIn("fooDerivationVersion", gate["reason"])
+                ok, reasons = R.receipt_required_members_present(mutated)
+                self.assertFalse(ok)
+                self.assertTrue(any("discriminator refusal" in reason for reason in reasons))
+                context_ok, context_reasons = R.validate_resolution_context(
+                    mutated,
+                    lambda content_hash: dereferences.append(content_hash),
+                )
+                self.assertFalse(context_ok)
+                self.assertTrue(
+                    any("discriminator refusal" in reason for reason in context_reasons)
+                )
+                self.assertEqual(
+                    R.replay_receipt(
+                        mutated,
+                        lambda content_hash: dereferences.append(content_hash),
+                        "did:demos:buyer",
+                        0,
+                        1,
+                    ),
+                    (False, None),
+                )
+                self.assertEqual(dereferences, [])
+
     def test_negative_vectors_are_refused_by_replay(self):
         """Round-6 blocker #2: N1-N4 are published receipts that pass the discriminator gate and the
         member-presence check, but replay REFUSES each because an authenticated per-copy check fails

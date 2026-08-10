@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
-  "spec": "Atomic DACS Work \u2014 receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the \u00a77.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt \u2192 receiptLeafHash \u2192 Merkle path to blockHeader.receiptRoot \u2192 finalized-block validator quorum certificate \u2192 validator set anchored to a trusted checkpoint \u2192 winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "e14a40666e9b4ac8953ea2e8d444d07b573b2e8ac1f4022ab9cddd4e64b3beb3",
-  "count": 31,
+  "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
+  "hash": "e79bef2990fa32f600458e371c3b8d047a103949acfbe8e1f635a74c792adba1",
+  "count": 33,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -597,6 +597,85 @@
         "secondWork": {
           "slotStateProof": "valid",
           "slotTransition": "open",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "payment-slot-valid-proof-absent-transition-indeterminate",
+      "expected": "indeterminate",
+      "note": "A valid slotStateProof carrying no proof-derived slotTransition leaves half the pair's slot state unknown. Per profile note (E) the pair MUST degrade to indeterminate; returning a non-consuming `pass` here would accept one real commit while the co-slot's transition is unproven.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          },
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          },
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "payment-slot-unknown-transition-with-invalid-proof-reject",
+      "expected": "reject",
+      "note": "An unknown transition label MUST NOT mask contradictory proof material. A slotStateProof that fails verification is a reject regardless of the transition string attached to it, so the invalid-proof check is evaluated before the unknown-transition check.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "invalid",
+          "slotTransition": "unexpected",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          },
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "slot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 0
+          },
           "provenSlot": {
             "networkId": "demos-mainnet",
             "railId": "pay-dem",

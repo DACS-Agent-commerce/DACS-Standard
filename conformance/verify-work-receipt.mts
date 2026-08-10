@@ -242,13 +242,29 @@ function verifyPaymentSlot(obs: PaymentSlotObservation): Verdict {
   if (!obs.firstWork || !obs.secondWork) return 'indeterminate';
 
   const works = [obs.firstWork, obs.secondWork];
+
+  // Invalid proof material is evaluated FIRST. It is the strongest and most
+  // certain signal in the pair, and ordering the unknown-transition check ahead
+  // of it let `slotTransition: "unexpected"` + `slotStateProof: "invalid"`
+  // report `indeterminate`, masking contradictory proof material behind an
+  // unknown label. A proof that fails verification is a reject regardless of
+  // what transition the claimant attached to it.
+  if (works.some((work) => work.slotStateProof === 'invalid')) return 'reject';
+
   const allowedTransitions = new Set(['open', 'open->consumed']);
   if (works.some((work) =>
     work.slotTransition !== undefined &&
     !allowedTransitions.has(work.slotTransition)
   )) return 'indeterminate';
 
-  if (works.some((work) => work.slotStateProof === 'invalid')) return 'reject';
+  // Note (E): a valid slotStateProof MUST carry a proof-derived transition.
+  // Without one, half the pair's slot state is unknown, so the pair degrades to
+  // indeterminate rather than reporting a non-consuming `pass`. Previously one
+  // real commit paired with a transition-less valid proof returned `pass` —
+  // contradicting this file's own documented profile note.
+  if (works.some((work) =>
+    work.slotStateProof === 'valid' && isAbsent(work.slotTransition)
+  )) return 'indeterminate';
 
   const claimsConsumption = works.map(
     (work) => work.slotTransition === 'open->consumed',

@@ -12,12 +12,25 @@
  * `node:` builtins, so the gate needs no package manager, lockfile, or network
  * install — pinning the Node version alone makes it reproducible.
  *
- * Profile-hardening notes for the Standard profile (from adversarial review;
- * none affect the verdicts below, recorded so implementers normalize inputs):
- *  (A) Slot-key / root components: the Standard profile SHOULD require each
- *      component to be a non-empty string or a finite number. This verifier
- *      treats `undefined`/`null` as absent (-> indeterminate); an empty string
- *      or non-finite number is currently treated as present material.
+ * TRUST BOUNDARY. This verifier consumes PROOF MATERIAL and validates the minimum
+ * structure that makes a declared label meaningful before any `pass` is returned. It
+ * does not itself perform cryptographic proof checking: `ProofStatus` values are the
+ * OUTPUT of an upstream proof verifier. What it guarantees is that a `pass` is never
+ * reachable on labels alone — a receipt must carry the workId -> txHash -> block ->
+ * receiptRoot binding, a rollback must carry operation results consistent with its
+ * outcome, and slot/settlement identity must be real material, not empty strings.
+ *
+ * Verdict precedence, applied uniformly: CONTRADICTED material (an invalid proof, roots
+ * that disagree, a receipt contradicting its own outcome) outranks MISSING material. A
+ * contradiction rejects regardless of structure; only absent evidence degrades to
+ * indeterminate. Missing evidence is not counter-evidence.
+ *
+ * Profile-hardening notes for the Standard profile (from adversarial review):
+ *  (A) ENFORCED (was a SHOULD): slot-key / root / identity components must each be a
+ *      non-empty string or a finite number. `undefined`/`null` are absent, and so now
+ *      are `''` and non-finite numbers — an empty identifier compares equal to another
+ *      empty identifier, so admitting it let two sides "match" on nothing and reach
+ *      `pass`. A SHOULD in a comment does not make an exported `pass` fail-closed.
  *  (B) Verdict chains are outcome-scoped: a `rolled-back` receipt is judged on
  *      its declared chain (inclusion/finality/validatorSet + businessRootEquality)
  *      and does NOT reject on a stray invalid proof outside that chain (e.g. a
@@ -29,11 +42,10 @@
  *      verified slot-state proof, never a claimant-presented label. This closes
  *      encoding-drift evasions (alias, zero-padding, delimiter ambiguity) while
  *      refusing to reject on unbound labels alone.
- *  (E) A valid slotStateProof SHOULD carry a proof-derived `slotTransition`;
- *      the profile should treat valid-proof-with-absent-transition as degrading
- *      the pair to indeterminate rather than a non-consuming `pass`. phaseIndex
- *      is trusted only as a number; per note (A) the Standard should also exclude
- *      non-finite numbers from a trusted proven slot.
+ *  (E) ENFORCED (was a SHOULD): a valid slotStateProof must carry a proof-derived
+ *      `slotTransition`. Valid-proof-with-absent-transition degrades the pair to
+ *      indeterminate rather than a non-consuming `pass`, and per note (A) phaseIndex
+ *      is trusted only as a finite number.
  */
 
 import { readFileSync } from 'node:fs';
@@ -146,6 +158,40 @@ export type Observation =
 const isAbsent = (value: unknown): boolean =>
   value === undefined || value === null;
 
+/**
+ * Identifier material must be a NON-EMPTY string. An empty string is not an identifier:
+ * it carries no binding, yet compares equal to another empty string, so treating `''` as
+ * present let two sides "match" on nothing at all and reach `pass`. Formerly note (A) as a
+ * SHOULD; a SHOULD in a comment does not make an exported `pass` fail-closed, so it is
+ * enforced here.
+ */
+const isIdentifier = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0;
+
+/** Numeric material must be a FINITE number — NaN/Infinity are not indices. */
+const isIndex = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The minimum proof-BINDING every receipt must carry before any verdict may rely on its
+ * declared outcome: the identity chain this profile proposes in RFC #320,
+ * workId -> txHash -> block -> receiptRoot.
+ *
+ * Without it, `outcome: 'committed'` is an unbacked claimant label — the receipt names no
+ * Work, no transaction, and no block, so a caller receiving `pass` would be told a receipt
+ * was verified when nothing tied it to chain state at all. Absent binding is UNKNOWN
+ * (indeterminate), not contradicted (reject): missing evidence is not counter-evidence.
+ */
+function hasReceiptBinding(receipt: Record<string, unknown>): boolean {
+  return isIdentifier(receipt.workId)
+    && isIdentifier(receipt.txHash)
+    && isIdentifier(receipt.receiptRoot)
+    && isIndex(receipt.blockHeight);
+}
+
 function verifyProofChain(statuses: Array<ProofStatus | undefined>): Verdict {
   if (statuses.some((status) => status === 'invalid')) return 'reject';
   if (statuses.some((status) => status !== 'valid')) return 'indeterminate';
@@ -160,6 +206,38 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
     obs.finalityProof,
     obs.validatorSetProof,
   ];
+
+  // PRECEDENCE, consistent with verifyPaymentSlot: CONTRADICTED material outranks MISSING
+  // material. An invalid proof, or a rollback whose roots disagree, is counter-evidence and
+  // rejects regardless of how well-formed the receipt is — a well-bound receipt with a failed
+  // inclusion proof is still a reject. Only after no contradiction is found does absent
+  // structure degrade the verdict to indeterminate.
+  if ([...common, obs.winnerStateProof, obs.paymentSlotStateProof,
+       obs.businessRootEqualityProof].some((s) => s === 'invalid')) {
+    return 'reject';
+  }
+  const { preBusinessStateRoot, postBusinessStateRoot } = obs.receipt;
+  if (obs.receipt.outcome === 'rolled-back') {
+    if (
+      isIdentifier(preBusinessStateRoot) && isIdentifier(postBusinessStateRoot) &&
+      preBusinessStateRoot !== postBusinessStateRoot
+    ) {
+      return 'reject';
+    }
+    // A receipt that contradicts ITSELF is contradicted material: an operation still marked
+    // `committed` under a `rolled-back` outcome is counter-evidence, and outranks any missing
+    // binding below. Checked here so the self-contradiction is not masked as merely unknown.
+    if (Array.isArray(obs.receipt.operationResults) && obs.receipt.operationResults.some(
+      (result) => isRecord(result) && result.status === 'committed',
+    )) {
+      return 'reject';
+    }
+  }
+
+  // Structure before labels. `outcome` is a claimant-supplied string and means nothing until
+  // the receipt carrying it is bound to chain state, so a receipt object containing only
+  // `outcome` can never reach `pass` on proof statuses alone.
+  if (!hasReceiptBinding(obs.receipt)) return 'indeterminate';
 
   if (obs.receipt.outcome === 'committed') {
     return verifyProofChain([
@@ -176,19 +254,30 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
     ]);
     if (proofVerdict !== 'pass') return proofVerdict;
 
-    const { preBusinessStateRoot, postBusinessStateRoot } = obs.receipt;
-    if (
-      typeof preBusinessStateRoot !== 'string' ||
-      preBusinessStateRoot.length === 0 ||
-      typeof postBusinessStateRoot !== 'string' ||
-      postBusinessStateRoot.length === 0
-    ) {
+    if (!isIdentifier(preBusinessStateRoot) || !isIdentifier(postBusinessStateRoot)) {
       return 'indeterminate';
     }
 
-    return preBusinessStateRoot === postBusinessStateRoot
-      ? 'pass'
-      : 'reject';
+    // Equal roots are necessary but NOT sufficient for a rollback verdict. A rollback asserts
+    // that every operation in the Work was undone, and that claim lives in the operation
+    // results — not in the root comparison. Two failure modes were reachable here:
+    //   - no operation results at all: nothing states what was rolled back, so the claim is
+    //     unproven -> indeterminate (unknown), not pass;
+    //   - a result still marked `committed`: the receipt contradicts its own rollback outcome
+    //     -> reject. Previously this field was ignored entirely, so a self-contradicting
+    //     receipt returned `pass`.
+    const { operationResults } = obs.receipt;
+    if (!Array.isArray(operationResults) || operationResults.length === 0) {
+      return 'indeterminate';
+    }
+    const contradicts = operationResults.some(
+      (result) => isRecord(result) && result.status === 'committed',
+    );
+    if (contradicts) return 'reject';
+    const allRolledBack = operationResults.every(
+      (result) => isRecord(result) && result.status === 'rolled-back',
+    );
+    return allRolledBack ? 'pass' : 'indeterminate';
   }
 
   const commonVerdict = verifyProofChain(common);
@@ -235,6 +324,15 @@ function verifySettlementEvidence(obs: SettlementEvidenceObservation): Verdict {
     isAbsent(evidence) || isAbsent(anchor)
   )) return 'indeterminate';
 
+  // Matching on empty identifiers is matching on nothing. `'' === ''` satisfied the equality
+  // check above, so evidence whose job/rail identifiers were all empty strings reached `pass`
+  // while binding the evidence to no job and no rail. Ids must be non-empty strings and the
+  // phase index a finite number before a match means anything.
+  const idsBound = isIdentifier(obs.evidenceJobId) && isIdentifier(obs.anchorJobId)
+    && isIdentifier(obs.evidenceRailId) && isIdentifier(obs.anchorRailId)
+    && isIndex(obs.evidencePhaseIndex) && isIndex(obs.anchorPhaseIndex);
+  if (!idsBound) return 'indeterminate';
+
   return 'pass';
 }
 
@@ -280,13 +378,17 @@ function verifyPaymentSlot(obs: PaymentSlotObservation): Verdict {
 
   const trustedProvenSlots = works.map((work) => {
     const slot = work.provenSlot;
+    // Every component must be REAL material: a non-empty identifier, or a finite index.
+    // Empty strings compared equal to each other, so a pair whose proven slot was
+    // ('', '', '', 0) on both sides satisfied the tuple comparison below and returned `pass`
+    // while attesting to no network, no rail, and no job.
     if (
       work.slotStateProof !== 'valid' ||
       !slot ||
-      isAbsent(slot.networkId) || typeof slot.networkId !== 'string' ||
-      isAbsent(slot.railId) || typeof slot.railId !== 'string' ||
-      isAbsent(slot.jobId) || typeof slot.jobId !== 'string' ||
-      isAbsent(slot.phaseIndex) || typeof slot.phaseIndex !== 'number'
+      !isIdentifier(slot.networkId) ||
+      !isIdentifier(slot.railId) ||
+      !isIdentifier(slot.jobId) ||
+      !isIndex(slot.phaseIndex)
     ) {
       return undefined;
     }

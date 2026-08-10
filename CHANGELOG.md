@@ -60,6 +60,13 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **Preserve-unknown Listing fixture aligned with DPA-1** (CORE SIG-5;
+  DACS-4 §9.6.3 DPA-1; #323) — adds an explicit supported `self-signed`
+  verification method to both signed Listings, then deterministically
+  regenerates their artifact hashes and Ed25519 signatures. The executable
+  suite now evaluates signature validity, phase support, and DPA-1 eligibility
+  before comparing each vector's declared overall Listing disposition. No
+  normative protocol rule changes.
 - **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
   DACS-5 §10.4.1; #308) — replaces legacy `{kind,id,contentHash}`
   `AttestationRef` objects in every shared bundle fixture position with

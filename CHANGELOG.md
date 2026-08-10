@@ -15,6 +15,21 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-1 / DACS-4 rail availability
+
+- **Production rail selection and authoritative hints** (DACS-1 §6.3.4
+  LRR-6; DACS-4 §9.4.4 RAV-R1..RAV-R5; #325) — makes the existing mocked-rail
+  prohibition executable: a new production session cannot select `mocked`,
+  `disabled`, or `failed`. Preserves the documented distinction that an
+  already-pinned session may continue after a later `disabled` revision,
+  without permitting a new or replacement session. Discovery and catalog
+  availability values are explicitly non-authoritative prefilters or UI
+  hints and cannot establish, refute, or override the signed pinned result.
+  Replaces the non-existent runner claim with a deterministic Ed25519 vector
+  generator and executable CI evaluator covering 18 cases, including mocked,
+  disabled new/in-flight behavior, stale and forged definitions, missing
+  authority, and contradictory discovery hints.
+
 ### Added — DACS-1 v0.6 / DACS-2 v0.4
 
 - **Canonical domain identity and persistent Demos GCR verification**

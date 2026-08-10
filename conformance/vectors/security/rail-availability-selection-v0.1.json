@@ -1,246 +1,347 @@
 {
   "set": "rail-availability-selection-v0.1",
-  "spec": "DACS-4 \u00a79.4.4 (RAV-R1/R2/R3/R5)",
+  "spec": "DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6)",
   "gaps": [
-    "#13 rail-availability-poisoning"
+    "#13 rail-availability-poisoning",
+    "#325 executable availability gate"
   ],
-  "decisionModel": "\u00a77.5.1 4-value, never collapsed",
-  "hash": "7b7056f679676964e804f5af19b661d0aab589ace995d1589bc3740e2499699d",
-  "count": 15,
+  "decisionModel": "§7.5.1 4-value, never collapsed",
+  "fixtureProfile": {
+    "purpose": "availability decision after RailDefinition schema and RD checks",
+    "signedProjection": [
+      "railId",
+      "availability",
+      "railVersion"
+    ],
+    "canonicalization": "RFC 8785-compatible JSON for this scalar-only projection",
+    "digest": "sha256(canonical projection)",
+    "signature": "Ed25519(dacs-rail:v1: || lowercase-hex digest)",
+    "generator": "scripts/generate_rail_availability_selection_vectors.py"
+  },
+  "hash": "2e4e60074c92277486201d4b72a529ba1be84fd13e02fd63554d963b12c95c32",
+  "count": 18,
   "vectors": [
     {
       "name": "live-signed-pinned",
       "expected": "pass",
-      "note": "live + steward-signed + matches the pinned def \u2192 selectable",
+      "note": "live, steward-signed and pinned is selectable",
       "rail": {
         "railId": "pay-x402",
         "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6ee9039a7c02d736bda13e67b08af4d506716813e6d967dc6e4a6dd126d084d7d00a8d2fe886d998f99ec95027685b22b95f5105e02e78f88c8206497d00dd0e"
+        "stewardSig": "c2051a653f5d2f488b960286a8f7f0a75725a1d8b8496cf4e52b7430882100cbcce4da61daa5e8b97637f0e0c9f7878586e8528981c66b8e29cf2c732cd21e01"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "e86e4d22184f40b19f5e36410855246495f0cb11e93506121bbf97fdb7571b03",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "disabled-signed",
       "expected": "fail",
-      "note": "RAV-R2: disabled MUST NOT be selected",
+      "note": "RAV-R2: disabled cannot start a new session",
       "rail": {
         "railId": "pay-old",
         "availability": "disabled",
         "railVersion": 1,
-        "stewardSig": "46d5871697fd66115ef9616b6ce84b676392000940ef3663572ef35a990655dfe8043363a8477fcdee83b9ebb2f06ff2dbab9997094b5b75e47cfa303d32450b"
+        "stewardSig": "1b4f3989fef6355d3952231b8b05ecff227ce2c50244fabc52c71879d885bcb7a597da7514a13e91ae721242e65118e666d75f7831cb628a4c24a65bb467f20a"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "2bc5c9522f906d627772c6e81b9ac75f47930b1ea8f030c35729b2b65fa96834"
+        "pinnedRailDigest": "125c0fe537a2932c43e98de6ef205817fbe0222bba81217251eba6ad1e62c528",
+        "sessionState": "new",
+        "production": true
+      }
+    },
+    {
+      "name": "disabled-signed-in-flight",
+      "expected": "pass",
+      "note": "RAV-R2: a pinned in-flight session continues after disabled",
+      "rail": {
+        "railId": "pay-old",
+        "availability": "disabled",
+        "railVersion": 1,
+        "stewardSig": "1b4f3989fef6355d3952231b8b05ecff227ce2c50244fabc52c71879d885bcb7a597da7514a13e91ae721242e65118e666d75f7831cb628a4c24a65bb467f20a"
+      },
+      "ctx": {
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "125c0fe537a2932c43e98de6ef205817fbe0222bba81217251eba6ad1e62c528",
+        "sessionState": "in-flight",
+        "production": true
       }
     },
     {
       "name": "failed-signed",
       "expected": "fail",
-      "note": "RAV-R2: failed (network/asset path broken) MUST NOT be selected",
+      "note": "RAV-R2: failed cannot start a new session",
       "rail": {
         "railId": "pay-evm",
         "availability": "failed",
         "railVersion": 1,
-        "stewardSig": "1b3aabc95f737380600fe1bd281b5f4d5a0e2e3ed6145bc9dd4731018b4d04f4dae334cb6fc4eaec1f02032f39a928ea81e24a7638b3f7a6d2ba0e1275364e04"
+        "stewardSig": "7912967a28a248e149ea89996b27b8c5fc33e74d4ddcb7935a9beb131988870ea8889517f4f0140cdc18f3e1ac1598d2de0b49176f121e1ea964f84814665108"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "97a44a124bc639a2c4c1ba25dd9609fbdd78491cbb7f9e159d73fee5a6ea5ea0"
+        "pinnedRailDigest": "96c51d6d3d310475abd4f7bbfb1a4ba5b8324588678c45de0a04a4e612070e5e",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "mocked-signed",
       "expected": "fail",
-      "note": "RAV-R1: mocked is a stub, MUST NOT be treated as live",
+      "note": "RAV-R2: mocked cannot be selected for production",
       "rail": {
         "railId": "pay-ap2",
         "availability": "mocked",
         "railVersion": 1,
-        "stewardSig": "494dacc6dfae27dfd1d8ce813931602b1808f0e463c5cd7248bdd78df19c5b2f7dc0983602d215d2d3a084fb13cb690219264459f8c8b301fb3fd7c439e4400d"
+        "stewardSig": "ec600c8df3376b4ae72e8bf5f98176a4ff725c63f72cb45fd7a8658530b6cd6bfea2192fae9d2f15d284d4214733cbe793c7822b0536fde60ce33b999bba5304"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "46b1ddd17969f2f30c558d69eca352a1b53e830f77c792954026983a6153efb9"
+        "pinnedRailDigest": "03e833860e884229f1642b0e6f1c1ea3d7a6e0c8cf93c8931ca1c05439a97c20",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "operator_gated-no-preflight",
       "expected": "fail",
-      "note": "RAV-R3: operator_gated without preflight \u2192 not selectable",
+      "note": "RAV-R3: operator_gated requires operator preflight",
       "rail": {
         "railId": "pay-ap2",
         "availability": "operator_gated",
         "railVersion": 1,
-        "stewardSig": "c13093d11c95de5ca7d880c930e2406d54be25077a45c44389a54bc4a7d51b004ab3f721cc8d77f9bee381229224b1a3f98938c2d48c35f3082300bbf68e4603"
+        "stewardSig": "fd62fa30984cb0b0f71ddf48d0bdcb846b81b20e028f837a589ecbd6906b0706ea27e4584ccb79132fc89f2d44ed7ee283cfa761ceb7e54bb26a086e9393230c"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "ec3b6902a6ba1fb55a066b482ad308f1b5b28d606aad938cd0fe80d7914da75e"
+        "pinnedRailDigest": "39ac4e7fd7604502cf25e402596bc442b2e06106b3bf3697e2e7c239ac8029c1",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "operator_gated-with-preflight",
       "expected": "pass",
-      "note": "RAV-R3: operator_gated WITH preflight satisfied \u2192 selectable",
+      "note": "RAV-R3: operator_gated with preflight is selectable",
       "rail": {
         "railId": "pay-ap2",
         "availability": "operator_gated",
         "railVersion": 1,
-        "stewardSig": "c13093d11c95de5ca7d880c930e2406d54be25077a45c44389a54bc4a7d51b004ab3f721cc8d77f9bee381229224b1a3f98938c2d48c35f3082300bbf68e4603"
+        "stewardSig": "fd62fa30984cb0b0f71ddf48d0bdcb846b81b20e028f837a589ecbd6906b0706ea27e4584ccb79132fc89f2d44ed7ee283cfa761ceb7e54bb26a086e9393230c"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": true,
-        "pinnedRailDigest": "ec3b6902a6ba1fb55a066b482ad308f1b5b28d606aad938cd0fe80d7914da75e"
+        "pinnedRailDigest": "39ac4e7fd7604502cf25e402596bc442b2e06106b3bf3697e2e7c239ac8029c1",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "closed_data-no-preflight",
       "expected": "fail",
-      "note": "RAV-R3: closed_data without preflight \u2192 not selectable",
+      "note": "RAV-R3: closed_data requires operator preflight",
       "rail": {
-        "railId": "pay-perm",
+        "railId": "pay-closed",
         "availability": "closed_data",
         "railVersion": 1,
-        "stewardSig": "ebf4d26d8e64c9a5c16226b7acc04392cac0ee7db64027cbf09f7305520eb2dd7686bebc24918a79f5ed88e23b5a043ae51412101afd00810d42059eb274e104"
+        "stewardSig": "e7ae5e90e1db3a581c474cb2bc1ecb3e1b30f63632569ffdc8664cac654b8dba79c40b2227dcc5e575a7877ca8da2ac5c4c7bf7e9bd6809e77facb2d9f5ca101"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "c3c9f78f1d7e8c47c47525798e70b7e447132b5958c8bbd47d5f04acc9817219"
+        "pinnedRailDigest": "d9e1c77a322f5f39519708c8a5e87c9833af69d0d63442793a22b9c5b6296ea7",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "bilateral-with-preflight",
       "expected": "pass",
-      "note": "RAV-R3: bilateral WITH per-relationship agreement in place \u2192 selectable",
+      "note": "RAV-R3: bilateral with preflight is selectable",
       "rail": {
-        "railId": "pay-bilat",
+        "railId": "pay-bilateral",
         "availability": "bilateral",
         "railVersion": 1,
-        "stewardSig": "e4fd0a81199bf000ac78bced4b7fb0e5ed00d82fcfead8fd0af7557dba8e11e0cf858afa9f3042784f4756b2f6fed5c8a935aad1cec3314d9e4dc6808856600c"
+        "stewardSig": "9f2de10f50b61b76d4693e7c95ceebb1bed04f989d2e8cad1adb184bfba2504b4651e55f875694fdd510bbf71516b0bc9a783065cfdd0569a4cc477062a1bd00"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": true,
-        "pinnedRailDigest": "549eb37340dae1ae08da02696b4a43a6c20dd96a2d81739f0f940236e9ba5ec1"
+        "pinnedRailDigest": "d29fffa604c5ad556df5ebe3624dac0da2c429f49a31113ccf1bab68ef4a028f",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "poison-live-bad-signer",
       "expected": "fail",
-      "note": "RAV-R5: \"live\" claimed but signed by a non-steward key \u2014 unauthenticated, MUST NOT select",
+      "note": "RAV-R5: attacker-signed live value is not authoritative",
       "rail": {
-        "railId": "pay-x402",
+        "railId": "pay-evm",
         "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6e35f81b47728af93b216c213ce2719004d8892fa8de154220ef1c64e8de357d4445dbec3f5b3eb46fd1af51c072abb3e6fdb42743f24fbdcbbf456eca97690b"
+        "stewardSig": "5a2b4d621675d7ba269f1098cd14e53c6c5283cb010abc2d13af5a263a896b72b1e969b30f67767036d7dc0403b326f541089dca7b65067972eee500c0cc1100"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "e6d8ef973195160d15a57512f097a6f9e9045cc3e2e4ccff75af940d9fbb178a",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "poison-live-unsigned",
       "expected": "fail",
-      "note": "RAV-R5: unsigned/counterparty-supplied copy claiming live \u2014 MUST NOT trust",
+      "note": "RAV-R5: unsigned live value is not authoritative",
       "rail": {
-        "railId": "pay-x402",
+        "railId": "pay-evm",
         "availability": "live",
         "railVersion": 1
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "e6d8ef973195160d15a57512f097a6f9e9045cc3e2e4ccff75af940d9fbb178a",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "stale-cached-signed-copy",
       "expected": "fail",
-      "note": "RAV-R5: an old steward-signed \"live\" v1, superseded by a pinned \"failed\" v2 \u2014 valid signature, but NOT the pinned/anchored def \u2192 MUST NOT steer selection",
+      "note": "RAV-R5: a valid stale live definition cannot replace the pinned failed revision",
       "rail": {
         "railId": "pay-evm",
         "availability": "live",
         "railVersion": 1,
-        "stewardSig": "4085d891f008775376b4097e175f734f9814234220d199bcbec1ebe5495155a0069b2d70e7918c2215f99f98367d2b0e5992fff3dc2fbb981104faa2d4ffe50c"
+        "stewardSig": "442ae6e091ad932157a9f084ee80ced76c2df55007c79cae7a56799a805f35fa338ddb663c16c950431139367958785362943ac83f825ac3452dc32dd4803104"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "6f0af338fe02eba666baf59ed15d51ec3253a695d4707a153639faa75eb2e19d"
+        "pinnedRailDigest": "c19f43cecb8ff959b751d855e460930d951cc525b3bc0fdd2ddb8210a1b43150",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "steward-key-unresolvable",
       "expected": "indeterminate",
-      "note": "cannot authenticate the rail def \u2192 undecidable (NOT fail, NOT pass)",
+      "note": "RAV-R5: unavailable steward authority is indeterminate",
       "rail": {
         "railId": "pay-x402",
         "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6ee9039a7c02d736bda13e67b08af4d506716813e6d967dc6e4a6dd126d084d7d00a8d2fe886d998f99ec95027685b22b95f5105e02e78f88c8206497d00dd0e"
+        "stewardSig": "c2051a653f5d2f488b960286a8f7f0a75725a1d8b8496cf4e52b7430882100cbcce4da61daa5e8b97637f0e0c9f7878586e8528981c66b8e29cf2c732cd21e01"
       },
       "ctx": {
         "stewardPub": null,
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "e86e4d22184f40b19f5e36410855246495f0cb11e93506121bbf97fdb7571b03",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "no-pin-context-signed-live",
       "expected": "indeterminate",
-      "note": "RAV-R5: valid steward signature but NO pinned/anchored reference to compare \u2192 cannot confirm authoritative \u2192 indeterminate (never a silent pass)",
+      "note": "RAV-R5: a signed copy without an authoritative pin is indeterminate",
       "rail": {
         "railId": "pay-x402",
         "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6ee9039a7c02d736bda13e67b08af4d506716813e6d967dc6e4a6dd126d084d7d00a8d2fe886d998f99ec95027685b22b95f5105e02e78f88c8206497d00dd0e"
+        "stewardSig": "c2051a653f5d2f488b960286a8f7f0a75725a1d8b8496cf4e52b7430882100cbcce4da61daa5e8b97637f0e0c9f7878586e8528981c66b8e29cf2c732cd21e01"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
-        "operatorPreflightOk": false
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": null,
+        "sessionState": "new",
+        "production": true,
+        "discoveryAvailabilityHint": "live"
+      }
+    },
+    {
+      "name": "mirror-live-hint-authoritative-failed",
+      "expected": "fail",
+      "note": "LRR-6/RAV-R5: a live discovery hint cannot override authoritative failed",
+      "rail": {
+        "railId": "pay-evm",
+        "availability": "failed",
+        "railVersion": 1,
+        "stewardSig": "7912967a28a248e149ea89996b27b8c5fc33e74d4ddcb7935a9beb131988870ea8889517f4f0140cdc18f3e1ac1598d2de0b49176f121e1ea964f84814665108"
+      },
+      "ctx": {
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "96c51d6d3d310475abd4f7bbfb1a4ba5b8324588678c45de0a04a4e612070e5e",
+        "sessionState": "new",
+        "production": true,
+        "discoveryAvailabilityHint": "live"
+      }
+    },
+    {
+      "name": "mirror-failed-hint-authoritative-live",
+      "expected": "pass",
+      "note": "LRR-6/RAV-R5: a failed discovery hint cannot override authoritative live",
+      "rail": {
+        "railId": "pay-evm",
+        "availability": "live",
+        "railVersion": 1,
+        "stewardSig": "442ae6e091ad932157a9f084ee80ced76c2df55007c79cae7a56799a805f35fa338ddb663c16c950431139367958785362943ac83f825ac3452dc32dd4803104"
+      },
+      "ctx": {
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "e6d8ef973195160d15a57512f097a6f9e9045cc3e2e4ccff75af940d9fbb178a",
+        "sessionState": "new",
+        "production": true,
+        "discoveryAvailabilityHint": "failed"
       }
     },
     {
       "name": "malformed-rail",
       "expected": "error",
-      "note": "missing availability \u2014 verifier-side parse error",
+      "note": "missing availability and railVersion is malformed",
       "rail": {
         "railId": "pay-x402"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "83c7b9e5865a9a013cc7f64a2ab843a5a347650a4d0147532fa6728e20d4141f"
+        "pinnedRailDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "sessionState": "new",
+        "production": true
       }
     },
     {
       "name": "unknown-availability-value",
       "expected": "error",
-      "note": "availability not in the \u00a79.4.4 enum \u2192 error",
+      "note": "an unknown availability value is malformed",
       "rail": {
         "railId": "pay-x402",
-        "availability": "banana",
+        "availability": "experimental",
         "railVersion": 1,
-        "stewardSig": "69f9f85472c6d3a11103c7211898fd9ab83cb936e56021c01ce60fddecaf4e62b9d9d4e3f5eb7b9c84bd0f0230548de96f237031169c7bb01d30fc50ba3a0b02"
+        "stewardSig": "fa18cc123560f5e61d197878873247cf2d640847f84a06e6e2edd0f7b7e9b2706d7aca7eb10c31d1811f912d182af3f6a7ec9f1999da6f2fe0ed57b1f11f7501"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardPub": "198114d5599179e526faab04f03c5333676e00b8277a5ea388be44a6e73fa888",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "704482b24ea6b7e293005245b8627a8be41656bc642ba8da88e17e9d734c06c5"
+        "pinnedRailDigest": "4cab4ded2854cb6cae2a0a2a901b27c7533c1bf8609c5097f6ddb6ee7a160f71",
+        "sessionState": "new",
+        "production": true
       }
     }
   ]

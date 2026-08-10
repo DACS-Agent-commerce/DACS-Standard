@@ -40,7 +40,7 @@
  * Profile-hardening notes for the Standard profile (from adversarial review):
  *  (A) ENFORCED (was a SHOULD): slot-key / root / identity components must each be a
  *      non-empty string or a NON-NEGATIVE INTEGER. `undefined`/`null` are absent, and so now
- *      are `''` and non-finite numbers — an empty identifier compares equal to another
+ *      are `''`, negative numbers and non-integers — an empty identifier compares equal to another
  *      empty identifier, so admitting it let two sides "match" on nothing and reach
  *      `pass`. A SHOULD in a comment does not make an exported `pass` fail-closed.
  *  (B) Verdict chains are outcome-scoped: a `rolled-back` receipt is judged on

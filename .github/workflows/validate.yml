@@ -74,8 +74,8 @@ jobs:
           if (got !== want) { console.log('::error::provisioning drift: expected Node ' + want + ', got ' + got); process.exit(1); }
           "
 
-      - name: Execute Work-receipt/absence verifier (RFC #320, all 47 vectors)
-        run: node conformance/verify-work-receipt.mts --expect-count 47
+      - name: Execute Work-receipt/absence verifier (RFC #320, all 48 vectors)
+        run: node conformance/verify-work-receipt.mts --expect-count 48
       # --- end RFC #320 execution-evidence lane -----------------------------
 
       - name: Verify payload-attestation vectors are deterministic

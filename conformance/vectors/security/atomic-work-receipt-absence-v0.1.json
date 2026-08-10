@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "e259f7b559b28c5e158d294c6a5e0dbfdd81b785cc720c16e70b10e67e9b7f6b",
-  "count": 47,
+  "hash": "ce350b72f9dbd95a82ddc1c586b3f88778747869a7808bac442e0397e0cf0a38",
+  "count": 48,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -912,6 +912,21 @@
         "evidenceRailId": "pay-dem",
         "anchorRailId": "pay-dem",
         "evidencePhaseIndex": 0,
+        "anchorPhaseIndex": 0
+      }
+    },
+    {
+      "name": "settlement-string-phase-index-is-untrusted-not-contradicted",
+      "expected": "indeterminate",
+      "note": "Type-strict comparison with the shared trusted-material definition: a string phase index fails isIndex, so that side is untrusted and the pair is unknown rather than contradicted. Pins the '0' versus 0 case so the distinction between malformed material and a genuine mismatch cannot regress.",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureProof": "valid",
+        "evidenceJobId": "job-9",
+        "anchorJobId": "job-9",
+        "evidenceRailId": "pay-dem",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": "0",
         "anchorPhaseIndex": 0
       }
     }

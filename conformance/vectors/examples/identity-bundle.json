@@ -17,7 +17,7 @@
         }
       },
       {
-        "ref": "web2:domain:alice.example",
+        "ref": "domain:alice.example",
         "verifiedBy": {
           "kind": "sr2",
           "anchor": {

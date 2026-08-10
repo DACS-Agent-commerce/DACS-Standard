@@ -26,6 +26,29 @@ whose 32-byte Ed25519 public key is carried in the final component. This is the
 registered ClaimReference or a canonical alias, and it MUST NOT be emitted in
 identity, signer, catalog-key, or reputation-key fields.
 
+**Demos domain-GCR profile (normative).** The native CCI context remains
+`web2.domain`; it is not a DACS ClaimReference scheme. A conforming adapter
+resolves the consensus-recorded GCR identity entry and emits
+`domain:<DCR-1-canonical-host>` while preserving the native context, host,
+Demos Ed25519 account, proof URL, source transaction hash and block number,
+and inclusion timestamp as DACS-1 DCR-6 metadata. The adapter
+MUST authenticate those values against the carrying Demos transaction and
+finalized GCR state; an Indexer projection alone is insufficient.
+
+The historical Demos proof payload is the UTF-8 string
+`demos:dw2p:ed25519:<128-lowercase-hex-signature>`. At registration time the
+decoded Ed25519 signature verifies over the exact UTF-8 message
+`dacs-domain:v1:<DCR-1-canonical-host>:<64-lowercase-hex-account>`, and the
+proof URL is exactly `https://<host>/.well-known/demos-cci.txt`. Demos records
+the consensus-validated identity and proof URL, not the fetched response body;
+the DACS adapter therefore preserves the authenticated GCR record and source
+transaction and never re-fetches or invents the historical body. The legacy
+`web2:domain:<host>` reference is normalized to `domain:<host>` only after
+original-artifact verification for semantic matching.
+Resolution, outcome, timestamp, and control semantics are DACS-2
+DGCR-1..DGCR-6 and DACS-1 DCR-4..DCR-8. This is persistent GCR evidence; it
+does not invoke DAHR and does not claim a fresh ACME challenge.
+
 **Stor-backed credentials.** The stor-cred:<type>:<id> scheme convention is the extensibility surface for future credentials not yet promoted to native CCI contexts. **OFAC-clear is not a CCI context** — it is a per-session freshness check that lives only in DACS-2’s CompositeVerificationRecord (it is a check, not a stable identity claim).
 
 **Transaction sequencing note.** Demos account nonces are monotonic replay-protection counters in GCR_Main. Nodes enforce strict sequential nonces: a transaction with a stale or skipped nonce fails loudly. Same-signer DACS flows that depend on multiple Demos transactions in order — including settlement followed by an SR-2 evidence anchor — should not derive or sign the follow-on transaction from HTTP broadcast acceptance alone. Same-wallet batches MUST construct with explicit sequential nonces (`getAddressNonce(address)` plus `options.nonce`, demosdk ≥4.0.14) or maintain a local counter across the batch and resume read-derived nonce selection only after the on-chain account nonce catches up.

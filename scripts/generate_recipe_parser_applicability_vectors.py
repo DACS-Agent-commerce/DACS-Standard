@@ -96,6 +96,7 @@ def case(
     method_invoked: bool = True,
     native_result: dict | None = None,
     parser_would_produce: dict | None = None,
+    pin_parser_rule: bool = False,
     note: str,
 ) -> dict:
     item = {
@@ -114,6 +115,10 @@ def case(
         item["want"].update(copy.deepcopy(native_result))
     if parser_would_produce is not None:
         item["parserWouldProduce"] = copy.deepcopy(parser_would_produce)
+    if pin_parser_rule:
+        item["want"]["parserRuleHash"] = hashlib.sha256(
+            canonical_bytes(item["recipe"]["parserRules"])
+        ).hexdigest()
     return item
 
 
@@ -227,6 +232,36 @@ def build_vectors() -> list[dict]:
             "domain-tls-control",
             method_invoked=False,
             note="one parser-consuming alternative makes ParserSpec required for the recipe",
+        ),
+        case(
+            "shared-parser-consensus-proxy-selection",
+            "pass",
+            ["consensus-backed-proxy", "tlsnotary", "zktls"],
+            "consensus-backed-proxy",
+            parser="valid",
+            parser_applied=True,
+            pin_parser_rule=True,
+            note="PRA-2 applies one unchanged ParserSpec to the proxy member",
+        ),
+        case(
+            "shared-parser-tlsnotary-selection",
+            "pass",
+            ["consensus-backed-proxy", "tlsnotary", "zktls"],
+            "tlsnotary",
+            parser="valid",
+            parser_applied=True,
+            pin_parser_rule=True,
+            note="PRA-2 applies the identical ParserSpec to the TLSNotary member",
+        ),
+        case(
+            "shared-parser-zktls-selection",
+            "pass",
+            ["consensus-backed-proxy", "tlsnotary", "zktls"],
+            "zktls",
+            parser="valid",
+            parser_applied=True,
+            pin_parser_rule=True,
+            note="PRA-2 applies the identical ParserSpec to the zkTLS member",
         ),
         case(
             "selected-method-not-declared",

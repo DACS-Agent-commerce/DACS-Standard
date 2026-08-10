@@ -1,8 +1,8 @@
 {
   "set": "recipe-parser-applicability-v0.5",
   "spec": "DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability",
-  "count": 19,
-  "hash": "c8be48847e867bd111c411821bfe352173f744fe55d8a2ed2f766996e76912e1",
+  "count": 22,
+  "hash": "28f9038348ba0f8bdd0add5747573c100eb5c55766cabe5cfd3d64e7481da352",
   "vectors": [
     {
       "name": "verifiable-credential-applies-parser",
@@ -480,6 +480,135 @@
       "want": {
         "parserApplied": false,
         "methodInvoked": false
+      }
+    },
+    {
+      "name": "shared-parser-consensus-proxy-selection",
+      "expected": "pass",
+      "note": "PRA-2 applies one unchanged ParserSpec to the proxy member",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "consensus-backed-proxy",
+          "endpoint": {
+            "method": "GET",
+            "urlTemplate": "https://authority.example/{identifier}"
+          }
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "alternatives": [
+          {
+            "kind": "tlsnotary",
+            "endpoint": "https://notary.example"
+          },
+          {
+            "kind": "zktls",
+            "provider": "reclaim",
+            "programId": "domain-control-v1"
+          }
+        ],
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "consensus-backed-proxy",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true,
+        "parserRuleHash": "1029dab1622c4f8a0ff8263ebaf56951ed671f4e06858b3b06e5b05eb8387600"
+      }
+    },
+    {
+      "name": "shared-parser-tlsnotary-selection",
+      "expected": "pass",
+      "note": "PRA-2 applies the identical ParserSpec to the TLSNotary member",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "consensus-backed-proxy",
+          "endpoint": {
+            "method": "GET",
+            "urlTemplate": "https://authority.example/{identifier}"
+          }
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "alternatives": [
+          {
+            "kind": "tlsnotary",
+            "endpoint": "https://notary.example"
+          },
+          {
+            "kind": "zktls",
+            "provider": "reclaim",
+            "programId": "domain-control-v1"
+          }
+        ],
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "tlsnotary",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true,
+        "parserRuleHash": "1029dab1622c4f8a0ff8263ebaf56951ed671f4e06858b3b06e5b05eb8387600"
+      }
+    },
+    {
+      "name": "shared-parser-zktls-selection",
+      "expected": "pass",
+      "note": "PRA-2 applies the identical ParserSpec to the zkTLS member",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "consensus-backed-proxy",
+          "endpoint": {
+            "method": "GET",
+            "urlTemplate": "https://authority.example/{identifier}"
+          }
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "alternatives": [
+          {
+            "kind": "tlsnotary",
+            "endpoint": "https://notary.example"
+          },
+          {
+            "kind": "zktls",
+            "provider": "reclaim",
+            "programId": "domain-control-v1"
+          }
+        ],
+        "parserRules": {
+          "format": "json",
+          "successJsonPath": "$.verified",
+          "dataMap": {
+            "verified": "$.verified"
+          }
+        }
+      },
+      "selectedMethod": "zktls",
+      "want": {
+        "parserApplied": true,
+        "methodInvoked": true,
+        "parserRuleHash": "1029dab1622c4f8a0ff8263ebaf56951ed671f4e06858b3b06e5b05eb8387600"
       }
     },
     {

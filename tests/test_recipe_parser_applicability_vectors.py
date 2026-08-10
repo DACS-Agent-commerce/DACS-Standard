@@ -79,6 +79,10 @@ def evaluate(vector):
     result["verdict"] = "pass"
     result["methodInvoked"] = True
     result["parserApplied"] = selected in PARSER_METHODS
+    if result["parserApplied"]:
+        result["parserRuleHash"] = hashlib.sha256(
+            canonical_bytes(recipe["parserRules"])
+        ).hexdigest()
     if selected in NATIVE_METHODS and "methodNativeResult" in vector:
         result.update(vector["methodNativeResult"])
     return result
@@ -110,7 +114,7 @@ class RecipeParserApplicabilityVectorTests(unittest.TestCase):
                 self.assertEqual(result["verdict"], vector["expected"])
                 self.assertEqual(result["parserApplied"], vector["want"]["parserApplied"])
                 self.assertEqual(result["methodInvoked"], vector["want"]["methodInvoked"])
-                for field in ("decision", "data"):
+                for field in ("decision", "data", "parserRuleHash"):
                     if field in vector["want"]:
                         self.assertEqual(result[field], vector["want"][field])
 
@@ -140,6 +144,27 @@ class RecipeParserApplicabilityVectorTests(unittest.TestCase):
         result = evaluate(vector)
         self.assertEqual(result["verdict"], "pass")
         self.assertFalse(result["parserApplied"])
+
+    def test_multiple_parser_methods_use_one_unchanged_parser(self):
+        names = (
+            "shared-parser-consensus-proxy-selection",
+            "shared-parser-tlsnotary-selection",
+            "shared-parser-zktls-selection",
+        )
+        results = []
+        for name in names:
+            vector = next(
+                item for item in self.document["vectors"] if item["name"] == name
+            )
+            with self.subTest(vector=name):
+                result = evaluate(vector)
+                self.assertEqual(result["verdict"], "pass")
+                self.assertTrue(result["parserApplied"])
+                self.assertEqual(
+                    result["parserRuleHash"], vector["want"]["parserRuleHash"]
+                )
+                results.append(result["parserRuleHash"])
+        self.assertEqual(len(set(results)), 1)
 
     def test_native_only_parser_values_are_readable_but_inert(self):
         for name in (
@@ -190,6 +215,9 @@ class RecipeParserApplicabilityVectorTests(unittest.TestCase):
             "method-native methods are",
             "`oauth-attested`, `domain-tls-control`, `self-signed`, and",
             "`demos-gcr-domain`",
+            "The single `parserRules` member is shared unchanged",
+            "Methods that require different ParserSpecs MUST be published in",
+            "distinct recipe families",
         ):
             self.assertIn(required, text)
 

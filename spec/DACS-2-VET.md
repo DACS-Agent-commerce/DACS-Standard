@@ -354,9 +354,17 @@ already produces the decision and output data.
 - **(PRA-2) Recipe-shape validity and compatibility.** If `defaultMethod` or
   any member of `alternatives` is parser-consuming, `parserRules` is REQUIRED
   and MUST be a valid `ParserSpec`; `null` is not absence and is not a valid
-  `ParserSpec`. A recipe author producing a native-only recipe MUST omit
-  `parserRules`, and the registry steward MUST NOT activate a newly submitted
-  native-only recipe that carries it. For read/replay compatibility, however,
+  `ParserSpec`. The single `parserRules` member is shared unchanged by every
+  parser-consuming method declared by the recipe. A recipe author MUST ensure
+  that each such method discloses authenticated content compatible with that
+  same parser format, match predicate, and `dataMap`; the registry steward MUST
+  reject a combination that requires method-specific parser interpretation or
+  rewriting. Methods that require different ParserSpecs MUST be published in
+  distinct recipe families. A verifier MUST NOT select, synthesize, or rewrite
+  a ParserSpec based on the selected method. A recipe author producing a
+  native-only recipe MUST omit `parserRules`, and the registry steward MUST NOT
+  activate a newly submitted native-only recipe that carries it. For
+  read/replay compatibility, however,
   a verifier that encounters a signed native-only recipe carrying
   `parserRules` MUST ignore that member regardless of its value and MUST NOT
   reject the recipe solely because the member is present. This is a reader
@@ -470,7 +478,7 @@ A conforming recipe author MUST:
 - (RA-2) anchor the recipe via SR-2 at the canonical address;
 - (RA-3) specify recipeVersion as unique and monotonically increasing per scheme, including across distinct recipe families for that scheme;
 - (RA-4) specify supersedes when replacing a prior recipe in the same family;
-- (RA-5) provide at least one alternative method only if the scheme’s underlying authority supports multiple equivalent attestation paths.
+- (RA-5) provide at least one alternative method only if the scheme’s underlying authority supports multiple equivalent attestation paths; when more than one declared path is parser-consuming, all of them MUST satisfy PRA-2's single shared-ParserSpec contract.
 - (RA-6) ensure that no two active families for one scheme claim the same method kind as either default or alternative. Materially different proof properties (including persistent versus fresh domain control) MUST be separate families, never alternatives.
 
 A verifier MUST resolve a recipe by:

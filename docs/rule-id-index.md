@@ -17,6 +17,8 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
+| DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
+| DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |
 | DPA-* | Attested-payload listing coherence, exact-byte method proof, commerce binding, success closure, and minor-safe record typing | §9.6.3 | §14.4 |
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
@@ -36,7 +38,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | PIPE-* | Pipeline shape and phase ordering | §9.9 | §14.4 |
 | PS-* | Negotiation pattern selection | §8.8 | §14.3 |
 | PSP-* | ParserSpec parse/match semantics | §7.4.1 | §14.2 |
-| RA-* | Recipe authoring and resolution | §7.4.3 | §14.2 |
+| RA-* | Recipe-family authoring and resolution | §7.4.3 | §14.2 |
 | RAV-* | Recipe availability values and consumers | §7.4.5 | §14.2 |
 | RAV-R* | Rail availability values and orchestrators | §9.4.4 | §14.4 |
 | RD-* | Delivery phase required data | §9.4.3 | §14.4 |

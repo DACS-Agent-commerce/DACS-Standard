@@ -48,20 +48,31 @@ jobs:
         run: python3 scripts/validate_security_vectors.py
 
       # --- RFC #320 execution-evidence lane (proposed / non-normative) -------
-      # Self-contained block: the Work-receipt/absence verifier is the only
-      # TypeScript in this repository. It imports nothing outside `node:`
-      # builtins and uses erasable syntax only, so pinning the Node version is
-      # sufficient for reproducibility — no package.json, lockfile, npm/npx, or
-      # network package install is involved.
+      # Self-contained block. The Work-receipt verifier is the only TypeScript
+      # this lane executes: it imports nothing outside `node:` builtins and uses
+      # erasable syntax only, so a pinned Node version needs no package.json,
+      # lockfile, npm/npx, or network *package* install. The runner still
+      # downloads the Node runtime itself — this is reproducible, not hermetic.
+      # The action is pinned to a commit SHA rather than the `@v4` major tag,
+      # which is mutable and would undercut the reproducibility asserted here.
       - name: Set up Node.js (pinned; no package installs)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22.22.2'
 
-      - name: Node runtime gate (fail-closed on missing native type stripping)
+      - name: Node runtime gate (fail-closed)
+        env:
+          EXPECTED_NODE: 22.22.2
         run: |
           node --version
-          node -e "const [maj, min] = process.versions.node.split('.').map(Number); const ok = (maj > 23) || (maj === 23 && min >= 6) || (maj === 22 && min >= 18); if (!ok) { console.log('::error::Node >= 22.18.0 or >= 23.6.0 required for unflagged TypeScript type stripping (found ' + process.versions.node + ')'); process.exit(1); }"
+          node -e "
+          const want = process.env.EXPECTED_NODE;
+          const got = process.versions.node;
+          const [maj, min] = got.split('.').map(Number);
+          const strips = (maj > 23) || (maj === 23 && min >= 6) || (maj === 22 && min >= 18);
+          if (!strips) { console.log('::error::Node >= 22.18.0 or >= 23.6.0 required for unflagged TypeScript type stripping (found ' + got + ')'); process.exit(1); }
+          if (got !== want) { console.log('::error::provisioning drift: expected Node ' + want + ', got ' + got); process.exit(1); }
+          "
 
       - name: Execute Work-receipt/absence verifier (RFC #320, all 31 vectors)
         run: node conformance/verify-work-receipt.mts --expect-count 31

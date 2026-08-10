@@ -47,6 +47,26 @@ jobs:
       - name: Validate security vector sets (candidate tier)
         run: python3 scripts/validate_security_vectors.py
 
+      # --- RFC #320 execution-evidence lane (proposed / non-normative) -------
+      # Self-contained block: the Work-receipt/absence verifier is the only
+      # TypeScript in this repository. It imports nothing outside `node:`
+      # builtins and uses erasable syntax only, so pinning the Node version is
+      # sufficient for reproducibility — no package.json, lockfile, npm/npx, or
+      # network package install is involved.
+      - name: Set up Node.js (pinned; no package installs)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.2'
+
+      - name: Node runtime gate (fail-closed on missing native type stripping)
+        run: |
+          node --version
+          node -e "const [maj, min] = process.versions.node.split('.').map(Number); const ok = (maj > 23) || (maj === 23 && min >= 6) || (maj === 22 && min >= 18); if (!ok) { console.log('::error::Node >= 22.18.0 or >= 23.6.0 required for unflagged TypeScript type stripping (found ' + process.versions.node + ')'); process.exit(1); }"
+
+      - name: Execute Work-receipt/absence verifier (RFC #320, all 31 vectors)
+        run: node conformance/verify-work-receipt.mts --expect-count 31
+      # --- end RFC #320 execution-evidence lane -----------------------------
+
       - name: Verify payload-attestation vectors are deterministic
         run: python3 scripts/generate_payload_attestation_vectors.py --check
 

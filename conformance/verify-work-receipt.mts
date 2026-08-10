@@ -3,8 +3,14 @@
  * absence-proof profile (RFC #320). It makes receipt acceptance independent of
  * Indexer hydration, as required by the receipt-without-Indexer work in #973.
  *
- * Run `npx tsx conformance/verify-work-receipt.mts` for the human-readable
+ * Run `node conformance/verify-work-receipt.mts` for the human-readable
  * conformance table, or append `--json` for a machine-readable summary.
+ * `--expect-count <n>` additionally asserts the executed corpus size.
+ *
+ * Runtime: Node.js >= 22.18.0 (or >= 23.6.0), which strips TypeScript types
+ * natively. The file uses erasable syntax only and imports nothing outside
+ * `node:` builtins, so the gate needs no package manager, lockfile, or network
+ * install — pinning the Node version alone makes it reproducible.
  *
  * Profile-hardening notes for the Standard profile (from adversarial review;
  * none affect the verdicts below, recorded so implementers normalize inputs):
@@ -332,6 +338,33 @@ function run(): void {
     'atomic-work-receipt-absence-v0.1.json',
   );
   const vectorSet = JSON.parse(readFileSync(vectorPath, 'utf8')) as VectorSet;
+
+  // Fail closed on a missing/empty set: `matched === vectors.length` is
+  // vacuously true at length 0, so an emptied or truncated corpus would
+  // otherwise exit 0 and report a green gate that executed nothing.
+  if (!Array.isArray(vectorSet.vectors) || vectorSet.vectors.length === 0) {
+    console.error(
+      `error: ${vectorPath} declares no vectors; refusing to report a vacuous pass`,
+    );
+    process.exit(1);
+  }
+
+  // Optional corpus-size pin for CI: `--expect-count <n>` makes the executed
+  // case count an asserted property rather than whatever happens to be on disk.
+  const expectFlag = process.argv.indexOf('--expect-count');
+  if (expectFlag !== -1) {
+    const expected = Number(process.argv[expectFlag + 1]);
+    if (!Number.isInteger(expected) || expected < 1) {
+      console.error('error: --expect-count requires a positive integer');
+      process.exit(2);
+    }
+    if (vectorSet.vectors.length !== expected) {
+      console.error(
+        `error: expected ${expected} vectors, found ${vectorSet.vectors.length}`,
+      );
+      process.exit(1);
+    }
+  }
 
   const results: Result[] = vectorSet.vectors.map((vector) => {
     try {

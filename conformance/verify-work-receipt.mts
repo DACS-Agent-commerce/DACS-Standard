@@ -196,12 +196,19 @@ const isIdentifier = (value: unknown): value is string =>
   typeof value === 'string' && value.trim().length > 0;
 
 /**
- * Heights and indices must be NON-NEGATIVE INTEGERS. Finiteness alone admitted `-1` and
+ * Heights and indices must be NON-NEGATIVE SAFE INTEGERS. Integrality alone was not enough:
+ * JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so
+ * 9007199254740992 and 9007199254740993 compare EQUAL and a genuine mismatch silently
+ * became a `pass` in every lane that compares indices. This repository already treats
+ * unsafe phaseIndex values as invalid in the SB-2 conformance set, so safe-integer
+ * handling is also the established convention here.
+ *
+ * Finiteness alone admitted `-1` and
  * `0.5` as block heights and phase indices, which name no block and no phase; the profile
  * defines both as counting numbers.
  */
 const isIndex = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isInteger(value) && value >= 0;
+  typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 
 /**
  * Statuses that are consistent with a rolled-back Work. A rollback does not require every

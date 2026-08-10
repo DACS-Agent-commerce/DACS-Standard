@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "ce350b72f9dbd95a82ddc1c586b3f88778747869a7808bac442e0397e0cf0a38",
-  "count": 48,
+  "hash": "50d5163acc14f8b1472ad4e68e81704cb816bd881434ac300f1c87c1dfdece28",
+  "count": 52,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -928,6 +928,86 @@
         "anchorRailId": "pay-dem",
         "evidencePhaseIndex": "0",
         "anchorPhaseIndex": 0
+      }
+    },
+    {
+      "name": "settlement-unsafe-phase-index-is-untrusted-indeterminate",
+      "expected": "indeterminate",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Settlement lane: two distinct phase indices beyond the safe range must not be read as a match.",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureProof": "valid",
+        "evidenceJobId": "job-9",
+        "anchorJobId": "job-9",
+        "evidenceRailId": "pay-dem",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": 9007199254740992,
+        "anchorPhaseIndex": 9007199254740993
+      }
+    },
+    {
+      "name": "payment-slot-unsafe-phase-index-is-untrusted-indeterminate",
+      "expected": "indeterminate",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Payment-slot lane: two distinct proven slots must not collapse into one settled slot.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open->consumed",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 9007199254740992
+          }
+        },
+        "secondWork": {
+          "slotStateProof": "valid",
+          "slotTransition": "open",
+          "provenSlot": {
+            "networkId": "demos-mainnet",
+            "railId": "pay-dem",
+            "jobId": "job-9",
+            "phaseIndex": 9007199254740993
+          }
+        }
+      }
+    },
+    {
+      "name": "absence-unsafe-attempt-is-untrusted-indeterminate",
+      "expected": "indeterminate",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Absence lane: distinct attempts must not collapse, since that would authorise a replacement against evidence for a different attempt.",
+      "observation": {
+        "kind": "absence-claim",
+        "claimedWorkId": "work-7f3a",
+        "claimedAttempt": 9007199254740992,
+        "evidence": {
+          "kind": "authenticated-lifecycle-expired",
+          "proof": "valid",
+          "verifiedCannotLaterInclude": true,
+          "subjectWorkId": "work-7f3a",
+          "subjectAttempt": 9007199254740993
+        }
+      }
+    },
+    {
+      "name": "receipt-unsafe-block-height-fails-binding-indeterminate",
+      "expected": "indeterminate",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Receipt lane: an unsafe block height cannot satisfy the proof binding, since it names no distinguishable block.",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "outcome": "committed",
+          "workId": "work-7f3a",
+          "txHash": "0xa1b2c3",
+          "receiptRoot": "0xrr9f",
+          "blockHeight": 9007199254740992
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "valid",
+        "validatorSetProof": "valid",
+        "winnerStateProof": "valid",
+        "paymentSlotStateProof": "valid"
       }
     }
   ]

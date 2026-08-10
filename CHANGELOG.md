@@ -60,6 +60,12 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
+  replaces the stale `verify-consume-one-sided` manifest hash after the
+  normative reference-shape migration, binds manifest regeneration to the
+  regenerated signed fixture, and refreshes the lifecycle manifest/trace
+  pins. Adds a regression test that verifies both the exact bundle hash and
+  its deterministic Ed25519 signature. No normative protocol rule changes.
 - **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
   DACS-5 §10.4.1; #308) — replaces legacy `{kind,id,contentHash}`
   `AttestationRef` objects in every shared bundle fixture position with

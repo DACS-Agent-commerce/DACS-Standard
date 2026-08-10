@@ -11,6 +11,15 @@ SECURITY = ROOT / "conformance" / "vectors" / "security"
 REFERENCE_VECTORS = SECURITY / "reputation-settlement-reference-divergence-v0.4.json"
 SEMANTIC_VECTORS = SECURITY / "reputation-settlement-semantics-v0.4.json"
 SPEC = ROOT / "spec" / "DACS-5-VERIFY.md"
+PAYMENT_PHASE_TYPES = frozenset({
+    "pay-evm-erc20",
+    "pay-solana-spl",
+    "pay-cross-chain-htlc",
+    "pay-cross-chain-liquidity-tank",
+    "pay-ap2",
+    "pay-x402",
+    "pay-dem",
+})
 
 
 def canonical_json(value):
@@ -54,7 +63,7 @@ def evaluate_semantic(vector):
     completed = included and input_data["outcome"] == "completed"
     payment = (
         input_data["presentedEvidenceCount"] > 0
-        and input_data.get("evidencePhase", "pay-dem").startswith("pay-")
+        and input_data.get("evidencePhase", "pay-dem") in PAYMENT_PHASE_TYPES
         and input_data.get("evidenceOutcome", "success") == "success"
     )
     volume = completed and payment
@@ -112,6 +121,41 @@ class SettlementVerifiedReputationVectorTests(unittest.TestCase):
                 result = evaluate_semantic(vector)
                 self.assertEqual(result["expected"], vector["expected"])
                 self.assertEqual(result["want"], vector["want"])
+
+    def test_volume_uses_closed_payment_phase_type_membership(self):
+        expected_payment_phases = (
+            "pay-evm-erc20",
+            "pay-solana-spl",
+            "pay-cross-chain-htlc",
+            "pay-cross-chain-liquidity-tank",
+            "pay-ap2",
+            "pay-x402",
+            "pay-dem",
+        )
+        self.assertEqual(PAYMENT_PHASE_TYPES, frozenset(expected_payment_phases))
+        base = {
+            "name": "phase-membership-control",
+            "input": {
+                "outcome": "completed",
+                "presentedEvidenceCount": 1,
+                "evidenceOutcome": "success",
+                "authorityDisposition": "verified",
+                "mismatch": None,
+            },
+        }
+        for phase in expected_payment_phases:
+            with self.subTest(phase=phase):
+                vector = {**base, "input": {**base["input"], "evidencePhase": phase}}
+                self.assertEqual(evaluate_semantic(vector)["want"]["volumeByCurrency"], ["5 DEM"])
+
+        for phase in ("pay-not-a-dacs4-phase", "deliver-entitlement"):
+            with self.subTest(phase=phase):
+                vector = {**base, "input": {**base["input"], "evidencePhase": phase}}
+                result = evaluate_semantic(vector)
+                self.assertEqual(result["expected"], "accept")
+                self.assertEqual(result["want"]["volumeByCurrency"], [])
+                self.assertEqual(result["want"]["transactionCountByCurrency"], [])
+                self.assertEqual(result["want"]["disposition"], "eligible-non-volume")
 
     def test_new_discriminators_preserve_released_v1_meaning(self):
         text = SPEC.read_text(encoding="utf-8")

@@ -50,7 +50,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
-| [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 16 | `accept` / `indeterminate` / `reject` |
+| [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
@@ -195,7 +195,7 @@ remains unified. `expected` is the comparison check (`pass`/`fail`);
 
 ### `reputation-settlement-semantics-v0.4.json` — DACS-5 v0.4 §10.5.1 RSV-1..RSV-4
 
-16 candidate vectors for the DACS-4/DACS-5 composition edge under the
+17 candidate vectors for the DACS-4/DACS-5 composition edge under the
 structurally distinct settlement-verified derivation types: the selected
 authoritative bundle's presented SettlementEvidence must pass independent
 semantic authority before the job enters reputation, after two present copies
@@ -208,8 +208,8 @@ bundle pins the symmetric denominator effect.
 
 Most inputs hold the presented reference multiset at one. Two-reference arms
 prove that one invalid member rejects the entire multiset and that two valid
-payments count the Agreement price once. Empty, delivery-only, and failed-
-payment arms pin eligible non-volume output, including an empty
+payments count the Agreement price once. Empty, delivery-only, failed-payment,
+and out-of-set `pay-*` arms pin eligible non-volume output, including an empty
 `transactionCountByCurrency`. §10.4.3 evidence completeness remains separate.
 `input` and `want` are
 neutral post-reconciliation projections, not new wire artifacts.

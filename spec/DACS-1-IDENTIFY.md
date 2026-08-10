@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.4** on the common DACS v0.1 baseline. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.6** on the common DACS v0.1 baseline. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -52,7 +52,7 @@ Parameters       := key1=value1 [ "&" key2=value2 ]*
 - A Scheme MUST start with a lowercase ASCII letter and MAY include lowercase ASCII letters, digits, and hyphens thereafter. Underscores are reserved for future use and MUST NOT appear in v0.1 scheme names.
 - Parsers MUST treat Scheme case-insensitively on read and SHOULD emit lowercase on write.
 - Identifier is treated per-scheme; the per-scheme rules below specify canonicalisation.
-- The ?<parameters> suffix carries scheme-specific qualifiers (e.g. cci-xm:evm:mainnet:0x…?jurisdiction=US). Unknown parameters MUST be ignored by readers, MUST NOT cause rejection, and MUST NOT be silently stripped when forwarding the reference.
+- The ?<parameters> suffix carries scheme-specific qualifiers (e.g. cci-xm:evm:8453:0x…?jurisdiction=US). Unknown parameters MUST be ignored by readers, MUST NOT cause rejection, and MUST NOT be silently stripped when forwarding the reference.
 
 **Canonical form and identity (rules CF-2, CF-3).** A ClaimReference has a *canonical byte form* (the bytes embedded whenever it appears inside a hashed or signed document) and a *canonical identity* (the `(Scheme, Identifier)` pair used for matching, reputation keying, and the §7.3.2 replay defence). Both rules are defined in **CORE §B.1**; CF-2's identifier normalisation uses the per-scheme identifier rules below.
 
@@ -63,7 +63,7 @@ The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes
 
 | Scheme | CCI context | Identifier shape | Status |
 | --- | --- | --- | --- |
-| cci-xm:<chain>:<subchain>:<address> | xm | per chain (EVM hex, Solana base58, …) | Done |
+| cci-xm:<chain>:<subchain>:<address> | xm | per chain (EVM PB-2 profile: `evm:<eip155-chainId>:<address>`; Solana base58, …) | Done |
 | cci-web2:<platform>:<username> | web2 | twitter / github / discord / telegram | Done |
 | cci-pqc:<algorithm>:<pubkey> | pqc | falcon / ml-dsa | Done |
 | cci-ud:<domain> | ud | Unstoppable Domain | Done |
@@ -77,6 +77,39 @@ The v0.1 scheme registry is organised along two axes: (a) **CCI-native** schemes
 | cci-fedramp:<id> | fedramp (NEW) | as-issued | Deferred — later version, not v0.1 |
 | cci-naics:<6-digit> | naics (NEW) | digits only | Deferred — later version, not v0.1 |
 | cci-cmmc:<cert-id> | cmmc (NEW) | as-issued | Deferred — later version, not v0.1 |
+
+**EVM `cci-xm` settlement-chain profile.** The general `cci-xm` identifier
+continues to mirror the substrate's `<chain>:<subchain>:<address>` storage
+coordinates. When a claim is intended to establish the DACS-4 PB-2
+chain-specific payee binding for an EVM rail, producers MUST emit
+`cci-xm:evm:<chainId>:<address>`, where `<chainId>` is the EIP-155 chain ID as
+a bare positive decimal integer with no leading zeros and `<address>` is
+non-empty. The family component is the lowercase ASCII literal `evm`; any
+other spelling does not conform to this profile.
+
+For PB-2 chain applicability, a reader treats the bytes after
+`cci-xm:evm:<chainId>:` and before any optional `?` parameters as the address
+component. The address component MUST be non-empty but is otherwise opaque to the
+chain-applicability predicate: its syntax, case, and normalization do not
+determine the settlement chain, and unknown ClaimReference parameters remain
+ignored as required above. An empty address, including an address represented
+only by parameters, does not conform to this profile. The pair
+`evm:<chainId>` maps one-to-one to the CAIP-2 network identifier
+`eip155:<chainId>`; for example, Ethereum mainnet is `evm:1`, Ethereum Sepolia
+is `evm:11155111`, Base mainnet is `evm:8453`, and Base Sepolia is
+`evm:84532`.
+
+Human-readable subchain labels such as `mainnet`, `testnet`, and `sepolia` are
+not globally unique network identifiers. Readers MUST NOT infer an EIP-155
+chain ID from such a label, from the address shape, or from a local
+provider/SDK convention. This version registers no legacy name-to-chain-ID
+aliases. A future alias can affect PB-2 only if a later Standard revision adds
+it to an explicit closed, versioned table; an implementation-specific alias
+MUST NOT affect a conforming PB-2 result. Existing name-style `cci-xm` values
+remain readable as their original generic claim references, but do not by
+themselves establish an EVM settlement-chain match. These rules do not rewrite
+or re-hash an existing ClaimReference; they define only its eligibility for
+the DACS-4 chain-applicability predicate.
 
 The six new contexts (lei, finra-crd, sam-uei, fedramp, naics, cmmc) extend the existing 8-context CCI model with regulatory identity claims. **They are deferred to a later version and are not part of v0.1.** The native CCI contexts are deferred, not the schemes — `lei`, `finra-crd`, `sam-uei`, `fedramp`, `naics`, and `cmmc` remain live DACS-2-verifiable scheme names (verified via `consensus-backed-proxy` recipes against their respective authorities, e.g. `api.gleif.org` for `lei`), so the `institutional` identity tier (§6.3.2.1) stays reachable in v0.1. Each deferred context will follow the same pattern as the existing 8 contexts: per-context GCR routine for validation; verified payload stored in GCRMain.identities; readable via the existing wallet/SDK identity surface. Until they ship, regulatory credentials are carried via the stor-cred extensibility surface below (the scheme grammar, claim tiers, and DACS-2 verification recipes are substrate-independent and unchanged).
 
@@ -93,9 +126,33 @@ The Storage Program at stor-{sha256(subject_cci + ":" + credential-type + ":" + 
 | --- | --- | --- |
 | did:… | per W3C DID method | external decentralised identifier; resolution per method |
 | erc8004:<chainId>:<contract>:<tokenId> | <chainId> is an eip155 chain id as a bare decimal integer (no leading zeros), canonically the CAIP-2 chain id eip155:<chainId>; lowercase 0x-prefixed contract; tokenId is the uint256 token id in decimal, no leading zeros | external EVM agent identity NFT; verified via DACS-2 evm-rpc |
-| domain:<dns> | lowercase, IDNA-encoded | DNS / TLS control proof via DACS-2 domain-tls-control |
+| domain:<dns> | lowercase IDNA A-label hostname | fresh DNS / TLS control via DACS-2 `domain-tls-control`, or persistent Demos host/account binding via `demos-gcr-domain` |
 | key:<hex-pubkey> | lowercase, no 0x | self-signed; lowest tier; signing-key only |
 | substrate-validator-set:<substrateId>:<epochOrSetId> | registered substrateId + epoch/set id | not a party identity — the signer of a consensus-backed-proxy / evm-rpc DACS-2 attestation; resolution + roster verification per §7.5 |
+
+**Canonical DNS-domain profile and Demos compatibility (DCR-1..DCR-8).**
+
+- **(DCR-1) Canonical domain identity.** The only canonical DACS DNS-domain ClaimReference is `domain:<host>`. `<host>` MUST be the lower-case ASCII A-label result of IDNA2008 ToASCII with STD3 rules applied label-by-label to the NFC-normalized Unicode hostname. It MUST contain only non-empty labels, each at most 63 octets and the complete hostname at most 253 octets. A producer MUST emit that exact form before hashing or signing.
+- **(DCR-2) Hostname-only boundary.** A conforming domain identifier MUST NOT contain a scheme, user information, port, path, query, fragment, IP literal, empty label, leading/trailing hyphen, underscore, wildcard, surrounding whitespace, or terminal root dot. Inputs such as `https://example.com`, `example.com:443`, `user@example.com`, `example.com/path`, `127.0.0.1`, `[::1]`, `*.example.com`, and `example.com.` are not ClaimReference hostnames and MUST be rejected rather than stripped or repaired.
+- **(DCR-3) Producer transition.** DACS-1 v0.6 producers MUST emit only the canonical `domain:` form. Demos `web2.domain` is a substrate-native storage context, not a second DACS scheme. A Demos adapter maps a verified native record to `domain:<host>` and retains its source context under `BundleClaim.metadata.demosGcrDomain`; it MUST NOT emit `web2:domain:`.
+- **(DCR-4) Permanent legacy read/replay.** A historical `web2:domain:<host>` reference is a permanent read/replay alias for semantic matching only. A reader MUST first verify the enclosing artifact's original bytes, hash, and signature. Only after that verification may it canonicalize `<host>` under DCR-1 and derive the semantic identity `domain:<host>`. It MUST NOT rewrite, re-hash, re-sign, or represent the historical artifact as having originally contained the canonical spelling. A malformed legacy hostname is `error`, not a new identity.
+- **(DCR-5) Semantic deduplication.** Before requirement matching, primary-claim resolution, tier derivation, `oneOf` evaluation, or reputation keying, a reader MUST collapse canonical and legacy aliases with the same DCR-1 host to one semantic domain claim. The aliases cannot count twice, improve identity tier, satisfy two alternatives, or split/merge reputation. A current producer emitting both aliases is non-conforming; a reader of historical bytes still verifies the original artifact and evaluates the deduplicated semantic set.
+- **(DCR-6) Source metadata.** `BundleClaim.metadata.demosGcrDomain`, when present, MUST carry the native context literal `web2.domain`, canonical `hostname`, 64-character lower-case hexadecimal Demos Ed25519 `account`, exact HTTPS `proofUrl`, the Demos `sourceTransaction` (`txHash` and `blockNumber`), and `recordedAt`. The canonical proof URL is exactly `https://<host>/.well-known/demos-cci.txt`. The historical fetched proof body is not part of the GCR record and MUST NOT be invented or re-fetched as if it were persistent evidence. Metadata is inspectable provenance, not authority: consumers independently resolve and authenticate the GCR record under DACS-2 §7.3.10.
+- **(DCR-7) Controlled use.** A passing and fresh `demos-gcr-domain` result establishes a persistent host-to-Demos-account binding. It qualifies the domain as controlled only when the bundle presentation also verifies under that same Ed25519 account (directly, or through an authenticated SR-1/session-key binding to it). A GCR record copied into another party's bundle is valid source data but does not give that party control, cannot serve as its `presentedBy`, and cannot receive its reputation.
+- **(DCR-8) Persistent is not fresh control.** `demos-gcr-domain` and `domain-tls-control` are distinct verification families. The former proves the consensus-recorded persistent host/account link as of its GCR inclusion time; the latter proves a fresh ACME-style challenge. Neither MUST be reported as the other. A requirement that explicitly selects fresh domain control is not satisfied by a GCR record, even while that record remains within its ordinary effective window.
+
+The metadata shape used by DCR-6 is:
+
+```text
+type DemosGCRDomainMetadata = {
+  context: "web2.domain"
+  hostname: string
+  account: string
+  proofUrl: string
+  sourceTransaction: { txHash: string; blockNumber: number }
+  recordedAt: number
+}
+```
 
 **Demos self-certifying agent DID profile.** `did:demos:agent:<64hex>` is a
 canonical ClaimReference under the already-registered `did` scheme: its
@@ -247,7 +304,7 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 3. **Parse + recipe-check** — parse the canonicalised content as a DACS-2 VerifyResult and verify it matches the recipe at `recipeVersion`.
 4. **Identifier match** — `VerifyResult.identifier` matches the `BundleClaim.ref` identifier component canonically.
 5. **Decision** — `VerifyResult.decision == "pass"`.
-6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; or a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim. A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
+6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim; or, for `domain:`, a passing-and-fresh `demos-gcr-domain` result plus a bundle presentation that verifies under the result's exact GCR-bound Ed25519 account (DCR-7). A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
 
 **Freshness window.** The claim's effective window is derived from the resolved VerifyResult, **not** the presenter-supplied wrapper:
 - **Issuance** = `VerifyResult.verifiedAt`.
@@ -329,6 +386,16 @@ A reader MUST evaluate a candidate IdentityBundle against a BundleRequirement us
 ```
 match(bundle, requirement):
 
+  0. Verify the original bundle bytes, hash, and presentation signature.
+
+     Then derive a semantic claim set: canonicalize domain hosts under DCR-1,
+
+     map readable web2:domain aliases to domain:, and collapse equal aliases
+
+     under DCR-5. All following steps operate on that set; the original bytes
+
+     remain unchanged and current dual-alias producers are still non-conforming.
+
   1. (MA-1) For each cr in requirement.required:
 
        if NOT find_claim(bundle, cr): return REJECT("missing required: <cr.scheme>")
@@ -377,8 +444,8 @@ find_claim(bundle, cr):
     // Freshness is keyed on the EFFECTIVE window from the resolved VerifyResult (§6.3.2 clamp):
     //   vr := the VerifyResult resolved from c.verifiedBy
     //   eff_verifiedAt := vr.verifiedAt
-    //   eff_expiry := min(c.expiresAt ?? ∞, vr.validUntil ?? (eff_verifiedAt + recipe(c.ref.scheme, vr.recipeVersion).defaultMaxAgeSec * 1000))
-    //     (defaultMaxAgeSec from the recipe at vr.recipeVersion — the exact recipe vr was validated under, not "latest")
+    //   eff_expiry := min(c.expiresAt ?? ∞, vr.validUntil ?? (eff_verifiedAt + recipe(c.ref.scheme, vr.method, vr.recipeVersion).defaultMaxAgeSec * 1000))
+    //     (defaultMaxAgeSec from the recipe family at (scheme, method, recipeVersion) — the exact recipe vr was validated under, not "latest")
     // Presenter-supplied c.issuedAt/c.expiresAt cannot extend this window (clamped, §6.3.2).
     // Window undeterminable (verifiedBy missing, verifiedAt absent, or vr.validUntil < eff_verifiedAt) → fail closed.
     if c.verifiedBy missing OR vr window undeterminable OR now > eff_expiry: continue
@@ -548,7 +615,7 @@ Consumers resolve a listing by looking up native_address for the logical_address
 
 *Forward note.* A future SDK capability to anchor a StorageProgram at a caller-chosen address — or a Demos-native deterministic `logical → native` function that hashes only the logical address — would restore direct recomputation (the pure-mapping case) and let consumers resolve without the published binding. Until then the binding-publication requirement above governs.
 
-**Logical-address delimiter encoding (rule CF-4).** A listing's logical address `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` has a colon-bearing variable segment — `sellerPrimaryClaim`, a ClaimReference (e.g. `cci-xm:evm:mainnet:0x1234`) — that is percent-encoded before assembly per **rule CF-4 (CORE §B.1)**; `listingId` is URL-safe ASCII, so it carries no reserved delimiters. CF-4 governs only the address *string*'s reversible parseability. How it maps to a substrate's *native* address is governed by the §"Logical vs native addresses" universal rule and, for Demos, the Demos-binding block above. The CF-4 table in CORE §B.1 enumerates the variable vs fixed segments for every `dacsN:` address kind across the stack.
+**Logical-address delimiter encoding (rule CF-4).** A listing's logical address `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` has a colon-bearing variable segment — `sellerPrimaryClaim`, a ClaimReference (e.g. `cci-xm:evm:8453:0x1234`) — that is percent-encoded before assembly per **rule CF-4 (CORE §B.1)**; `listingId` is URL-safe ASCII, so it carries no reserved delimiters. CF-4 governs only the address *string*'s reversible parseability. How it maps to a substrate's *native* address is governed by the §"Logical vs native addresses" universal rule and, for Demos, the Demos-binding block above. The CF-4 table in CORE §B.1 enumerates the variable vs fixed segments for every `dacsN:` address kind across the stack.
 
 Substrates MAY use equivalent addressing schemes; the requirement is that any party with substrate access can dereference an anchor reference to the canonical content and verify the content hash.
 
@@ -651,7 +718,17 @@ A seller MAY revoke one listing version by completing RB-1..RB-3.
 > **Note (non-normative).** RB-6 distinguishes a completed discovery read from a resolution failure. It does not claim that one transport's successful “not found” response proves global absence across censored views.
 
 **Validation order for readers**
-Readers MUST validate listings in the following order, **halting on the first failure**:
+Readers MUST validate listings in the following order, **halting on the first
+failure**, except that the `indeterminate` result described in step 8 is
+retained while the reader completes step 9:
+
+```
+type ListingValidationDisposition =
+  | "verified"
+  | "rejected"
+  | "revoked"
+  | "indeterminate"
+```
 
 1. schema conformance;
 2. `dacsVersion` supported — a **major**-version gate: reject a listing whose `dacsVersion` major the reader does not implement. Minor skew is **not** checked here (and needs no per-artifact minor field), because the §11.1.2 additivity contract + SIG-5 make a newer-minor listing forward-readable by an older reader (§11.2.5);
@@ -660,11 +737,49 @@ Readers MUST validate listings in the following order, **halting on the first fa
 5. revocation check per RB-4..RB-6 returns `absent`;
 6. `seller.identity` bundle conformant per §6.3.2;
 7. pipeline references valid phase types per DACS-3/4/5;
-8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and non-empty and MUST reference resolvable payment rails per DACS-4; if pipeline contains no pay-* phase, `acceptedRails` MAY be absent (the intake-only listing pattern — RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band);
+8. if pipeline contains any pay-* phase, `acceptedRails` MUST be present and
+   non-empty and the reader MUST run listing-time rail resolution under
+   LRR-1..LRR-6. A `rejected` result is a validation failure and halts. An
+   `indeterminate` result is retained, MUST NOT be relabelled as `rejected`,
+   and MUST NOT suppress step 9; after step 9 succeeds the listing remains
+   discovery-ineligible and session-ineligible until re-resolution returns
+   `verified`. If pipeline contains no pay-* phase, `acceptedRails` MAY be
+   absent (the intake-only listing pattern — RFP intake, reverse auctions where
+   the bid is the commitment, free services gated by reputation, sealed-bid
+   procurements settled out-of-band);
 9. signer resolves to a key controllable by the listing publisher (`seller.identity`).
+
+The reader MUST compose those results into exactly one
+`ListingValidationDisposition`:
+
+- a failure at step 1–4, 6–7, or 9, and an LRR `rejected` result at step 8,
+  produce `rejected`;
+- the RB-4..RB-6 result at step 5 produces `revoked` or `indeterminate` when
+  it is not `absent`; those revocation dispositions are not relabelled as
+  `rejected`;
+- an LRR `indeterminate` at step 8 is retained while step 9 runs. If step 9
+  then fails, the terminal signer-control failure produces `rejected`; if step
+  9 succeeds, the overall result is `indeterminate`; and
+- `verified` is returned only when every ordinary validation step succeeds,
+  revocation is `absent`, and listing-time rail resolution is `verified` or is
+  not applicable to a pay-less pipeline.
+
+**Listing-time rail resolution (normative).** `acceptedRails` is the publisher's signed claim about rails it is willing to use; it is not evidence that any named rail exists. A reader evaluates step 8 with a three-way `ListingRailResolution` disposition:
+
+```
+type ListingRailResolution = "verified" | "rejected" | "indeterminate"
+```
+
+- (LRR-1) **Unambiguous listing binding.** Every `pay-*` phase MUST carry a string `parameters.rail`, and every such value MUST equal the `railId` of at least one `acceptedRails` entry. The raw `acceptedRails` array MUST NOT contain duplicate full-canonical `PaymentRailRef` values, where equality is over the CORE §B.2 RFC 8785 canonical bytes. Canonically distinct references MAY share a `railId`: at listing time the `railId` dispatches to the one handler fixed by DACS-4 RD-6, while the complete reference carries a selectable version/parameter requirement for agreement and session start. No one complete reference is selected merely by a listing phase's `parameters.rail`. Every reference is validated independently, and every entry in `acceptedRails`, including an entry whose `railId` is not used by a particular pay phase, is subject to LRR-2 through LRR-5. Mere membership in the listing's own array never establishes resolution.
+- (LRR-2) **Authoritative source.** The reader MUST resolve one internally consistent rail-registry snapshot through DACS-4 §9.4.3. Under PA-2 or PA-3 this means reading `dacs4:registry:v0.1`, verifying the applicable steward/governance authority, and obtaining verified CORE §5.1 `finalized` receipts plus independent content resolution for the index and the definition resolved for every advertised `PaymentRailRef`. The reader MUST NOT use a catalog row, listing field, counterparty copy, or unauthenticated cache as registry authority.
+- (LRR-3) **Reference-to-definition match.** For every `PaymentRailRef`, the authenticated index MUST contain that exact `railId`. If `railVersion` is present, the indexed and resolved definition MUST carry that exact version; otherwise the reader uses the index's latest version in the snapshot for this validation attempt. That result is the reference-resolved definition. It MUST match the index's anchor/content hash, verify under `dacs-rail:v1:`, repeat the reference's `railId` and the selected `railVersion`, and satisfy its schema plus RD-1..RD-6.
+- (LRR-4) **Phase-handler binding.** For every `pay-*` phase, every reference-resolved definition whose `railId` equals the phase's `parameters.rail` MUST carry the same `phaseHandler`, as required across versions by DACS-4 RD-6, and that handler MUST equal the phase's `kind`. Two phases with different kinds therefore cannot dispatch through the same `railId`. Selection of one complete `PaymentRailRef` and its parameters is deferred to the agreement and session-start pin; it is not inferred from the listing's railId-only phase field. A listing cannot route `pay-x402`, for example, through a definition registered for `pay-evm-erc20`.
+- (LRR-5) **Disposition and precedence.** Failure to authenticate the registry authority under LRR-2 returns `indeterminate`; an unauthenticated snapshot MUST NOT establish a contradiction. Once registry authority is authenticated, aggregate the checks over every advertised reference with flat precedence `rejected`, then `indeterminate`, then `verified`. Return `rejected` when the listing binding is malformed or ambiguous under LRR-1, when the authenticated snapshot conclusively lacks a named rail/version, or when an otherwise valid resolved definition contradicts the listing or phase handler under LRR-3/LRR-4. Return `indeterminate` when a required definition, finality receipt, independent content, or steward/governance key is absent, unavailable, internally inconsistent, not yet finalized, or cannot be authenticated. Return `verified` only after every applicable check succeeds. Consequently, an unavailable definition for an advertised but currently unused rail makes the whole signed listing `indeterminate` and LR-3 blocks every new session from that listing until all advertised claims resolve; a publisher can remove the unavailable claim only by issuing a new signed listing version.
+- (LRR-6) **Progressive-anchoring and session boundary.** PA-1, PA-2, and PA-3 name the authority basis a reader accepts for this check, not a lifecycle state of the listing. A reader explicitly operating and disclosing PA-1 MAY resolve against its disclosed, signed in-code registry snapshot only when its trust policy accepts `governance.anchoring: "in-code"`; it MUST retain and surface `pa1-in-code` as the authority basis and MUST NOT describe that result as canonically anchored. For an unpinned PA-1 reference, the unique highest `railVersion` for that `railId` in the signed snapshot is used; duplicate definitions at that version or handler drift under RD-6 are `rejected`. A PA-2 or PA-3 reader MUST NOT fall back to in-code constants when the canonical index or a definition is unavailable. Listing-time `verified` establishes discovery eligibility only: at session start the orchestrator MUST select one complete `PaymentRailRef`, resolve and pin its exact definition under DACS-4 §9.4.3, and apply RAV-R1..RAV-R5. A discovery mirror MAY surface availability as an informational hint, but it cannot satisfy that authoritative read.
+
 **Conformance — listing publishers and readers**
-A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record.
-A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings failing any step in the validation order; (LR-3) refuse new sessions when the RB-4..RB-6 revocation check returns `revoked` or `indeterminate`.
+A conforming publisher MUST: (LP-1) obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for each listingVersion, and verify that its native address independently resolves to the expected content hash, before publishing the listing as `active` or referencing it from a listing index; (LP-2) sign the listing with a key referenced by a claim in seller.identity.claims; (LP-3) use monotonic listingVersion values per listingId; and (LP-4) publish and retain revocation markers and bindings per RB-1..RB-3. A submitted, broadcast-acknowledged, merely accepted, or merely index-visible listing does not satisfy LP-1. A deterministic-BFT binding may establish `included` and `finalized` in the same receipt per CORE §5.1. It SHOULD: (LP-5) probe and maintain an actionable engagement surface for every actively published record. For a pay-bearing listing it MUST: (LP-6) obtain `verified` under LRR-1..LRR-6 at publication time rather than treating its own `acceptedRails` array as proof.
+A conforming reader MUST: (LR-1) pin the (listingId, listingVersion, contentHash) tuple into any session record derived from the listing; (LR-2) reject listings whose overall `ListingValidationDisposition` is `rejected`; (LR-3) refuse new sessions unless the overall `ListingValidationDisposition` is `verified`, including when it is `revoked` or `indeterminate`.
 
 #### 6.3.5 Discovery — .well-known/agent.json extension
 
@@ -873,8 +988,8 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 
 | Role | Requirements |
 | --- | --- |
-| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings; LP-5 maintain an actionable engagement surface (SHOULD) |
-| Listing reader | LR-1 pin tuple; LR-2 validate per validation order; LR-3 refuse revoked or indeterminate |
+| Listing publisher | LP-1 anchor; LP-2 sign; LP-3 monotonic versions; LP-4 publish and retain revocation markers and bindings; LP-5 maintain an actionable engagement surface (SHOULD); LP-6 resolve every advertised pay rail before publication |
+| Listing reader | LR-1 pin tuple; LR-2 reject `rejected`; LR-3 refuse new sessions for revocation- or rail-resolution `indeterminate`; LRR-1..LRR-6 resolve every advertised rail |
 | Revocation publisher | RB-1 anchor and sign marker; RB-2 publish binding; RB-3 retain tombstone |
 | Revocation reader | RB-4 post-fetch verification; RB-5 fail closed; RB-6 distinguish successful absence from resolution failure |
 | Bundle producer | BP-1 JCS canonical; BP-2 non-empty claims; BP-3 valid presentedBy; BP-4 valid presentation signature |
@@ -920,6 +1035,8 @@ A catalog MAY carry DACS-5 `BundleBinding` records (§10.4.2); how records reach
 **Bundle replay across sessions.** *Threat:* an attacker captures a bundle from one session and replays it in another. *Mitigation:* the presentation signature is over the domain-separated payload "dacs-bundle-presentation:v1:" || bundle_hash, which the presenter generates fresh per session and which is bound to the session-binding nonce when presented in a session context. The binding is direct for the per-claim and session-key kinds (the top-level `sessionNonce` field enters `bundle_hash`), and runs via the verifier's mandatory SIWD Nonce-match plus Resource-line check for the SIWD kind, whose nonce lives in the omitted `presentation` field (§6.3.2). Verifiers in a session context MUST validate the nonce; bundles missing the nonce in a session context MUST be rejected. Replay of an unverified bundle outside a session context is the equivalent of an unverified self-assertion and offers no advantage to the attacker.
 
 **Catalog poisoning.** *Threat:* a catalog returns false listings or omits real ones. *Mitigation:* ListingSummary includes the anchor and contentHash; clients dereference and verify. A poisoned catalog causes UX confusion (a listing that does not exist on chain, or a missing listing) but cannot produce a verifiable false transaction.
+
+**Self-declared or unregistered payment rail.** *Threat:* a signed listing names a rail in `acceptedRails` and its pipeline, but the rail is absent from the canonical registry, changes handler across versions, has a different registered phase handler, or is available only through an undisclosed local fallback. *Mitigation:* LRR-1..LRR-6 treat the listing fields only as claims, resolve every accepted rail independently through the authenticated registry, enforce the RD-6 same-`railId` handler invariant, bind each pay phase to that handler, and keep unavailable authority `indeterminate`. PA-2/PA-3 readers never fall back silently to in-code constants.
 
 **Claim-scheme spoofing.** *Threat:* a bundle includes a claim with a scheme the reader does not understand. *Mitigation:* unknown schemes MUST be treated as unverified. The reader cannot accept the claim as satisfying a required-and-verified bundle requirement.
 

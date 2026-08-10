@@ -29,11 +29,11 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install crypto dependency
-        run: python3 -m pip install 'cryptography==46.0.5'
+      - name: Install validation dependencies
+        run: python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
 
       - name: crypto import gate (fail-closed)
-        run: python3 -c "import cryptography; print(cryptography.__version__)"
+        run: python3 -c "import cryptography, idna; print(cryptography.__version__, idna.__version__)"
 
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
@@ -46,6 +46,9 @@ jobs:
 
       - name: Validate security vector sets (candidate tier)
         run: python3 scripts/validate_security_vectors.py
+
+      - name: Verify payload-attestation vectors are deterministic
+        run: python3 scripts/generate_payload_attestation_vectors.py --check
 
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check

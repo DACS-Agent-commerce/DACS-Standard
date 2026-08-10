@@ -29,6 +29,49 @@ Resolves the AP2 conformance cluster diagnosed by @norgejbb-byte (#276, #279, #2
 
 ## [Unreleased]
 
+### Added — DACS-1 v0.6 / DACS-2 v0.4
+
+- **Canonical domain identity and persistent Demos GCR verification**
+  (DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6; §A.1;
+  #275) — makes `domain:<lowercase-IDNA-hostname>` the only producer form and
+  keeps historical `web2:domain:<host>` as a permanent read/replay alias.
+  Readers verify original signed bytes before semantic normalization and
+  collapse both aliases before matching, tier derivation, `oneOf`, and
+  reputation. Registers the separate `demos-gcr-domain` recipe family for
+  authenticated, finalized `web2.domain` GCR records: exact host/account,
+  proof URL, source transaction, and inclusion time are checked; the
+  consensus transition authenticates registration-time Ed25519 verification
+  of `dacs-domain:v1:<host>:<account>` without re-fetching the proof; unavailable GCR
+  authority remains `indeterminate`; and inclusion time, not query time,
+  governs the effective window. The persistent record cannot satisfy a fresh
+  `domain-tls-control` requirement and controls a domain only when the bundle
+  presentation verifies under the same GCR-bound account. Adds 31 genuine
+  deterministic Ed25519 vectors and changes the example producer output to
+  canonical `domain:`. The steward's signed registry publication remains a
+  separate post-review operation.
+
+### Added — DACS-4 v0.5
+
+- **Payload-bound attested delivery — `PayloadAttestationRecord` and DPA-1..DPA-9** (§9.6.3, §9.7, §B.1/§B.3/§B.7, §A.3; #300) — closes the path where `deliver-attested-payload` could be counted from seller/orchestrator-signed `SettlementEvidence` without the declared verification method or a payload-bound proof. A distinct minor-safe artifact (`payloadAttestationVersion: "1"`, `dacs-payload-attestation:v1:`) binds the exact delivered cleartext digest to `jobId`, the committed agreement, the signed DeliverableSpec, and the selected verification method; its method evidence remains independently resolved and verified. Listings selecting the phase must declare a usable method before any payment, success evidence must carry content hash + anchor + a ref to a passing payload record, non-pass/unresolved outcomes never collapse to success, and ordinary evidence signatures cannot substitute for method proof. The Demos binding carries DAHR's `responseHash`/`responseHeadersHash`/`txHash` through the method-evidence chain, requires an authenticated resolvable `web2Request` transaction at `included` or stronger (with finalization before terminal DACS-5 production), and limits the current string-returning API to byte-exact UTF-8 payloads. The legacy optional wire spelling of `verificationMethod` is unchanged, but DPA-1 deliberately changes behavior and reject timing: a missing method now rejects before session start and payment instead of potentially failing only when delivery is attempted. Adds candidate vectors covering binding, replay, type/domain separation, DAHR transaction/hash requirements, self-signed disclosure, and fail-closed resolution.
+
+### Fixed — DACS-1 / DACS-4 chain applicability
+
+- **Byte-exact `cci-xm` → EVM rail-chain predicate** (DACS-1 §6.3.1;
+  DACS-4 §9.4.3 RD-5 / §9.5.1 PB-2; #307) — defines the PB-2 EVM claim
+  profile as `cci-xm:evm:<eip155-chainId>:<address>` and compares its CAIP-2
+  `eip155:<chainId>` value byte-for-byte with the pinned rail definition's
+  EVM network. Generic labels such as `mainnet`, `testnet`, and `sepolia`
+  remain readable but are never guessed into a security-bearing chain match;
+  this revision's legacy-alias table is empty. A numeric mismatch or
+  non-profile label leaves tier 2 inapplicable and tier 3 legal. The family is
+  the lowercase literal `evm`; the address component is required to be
+  non-empty but is otherwise opaque to chain selection, and ClaimReference
+  parameters do not change the derived chain. An exact match makes tier 2
+  applicable before SR-1 resolution and therefore preserves the existing
+  no-downgrade pause/error behavior. RD-5 now rejects conflicting EVM
+  asset/network chain IDs. Adds 20 executable candidate vectors. Bumps
+  **DACS-1 and DACS-4 to v0.5** without changing an artifact shape.
+
 ### Fixed — conformance
 
 - **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
@@ -58,6 +101,26 @@ Resolves the AP2 conformance cluster diagnosed by @norgejbb-byte (#276, #279, #2
   402 exists. Catalogs may publish time-stamped reachability hints, but dynamic
   probes never change content/signature validity, conformance, revocation,
   identity, or reputation.
+
+### Fixed — DACS-1 / DACS-4 rail resolution
+
+- **Listing-time accepted-rail validation executes canonical resolution**
+  (§6.3.4 / §9.4.3, LRR-1..LRR-6; #298) — `acceptedRails` membership is now
+  explicitly a publisher claim, never proof that the rail exists. Every
+  pay-bearing listing must independently resolve each accepted rail through the
+  authenticated registry, match any pinned version and the signed definition,
+  and bind each `pay-*` phase to the registered, same-`railId`-invariant
+  `phaseHandler`. A conclusively unknown or mismatched rail rejects;
+  missing/unverifiable registry authority or any unavailable advertised
+  definition is `indeterminate` and blocks every new session from that listing.
+  The reader composes rail resolution into an explicit overall listing
+  disposition: ordinary validation failures and rail `rejected` produce
+  `rejected`; rail `indeterminate` remains non-accusatory but cannot mask a
+  later signer-control failure.
+  PA-1 unpinned references select the signed snapshot's unique highest version;
+  PA-2/PA-3 readers cannot silently substitute in-code constants. Selection of
+  one complete rail reference, session-start pinning, and authoritative
+  availability checks still run separately.
 
 ### Added — CORE v0.2 / DACS-1..5 lifecycle gates
 

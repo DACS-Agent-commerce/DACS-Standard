@@ -10,7 +10,9 @@
  * Runtime: Node.js >= 22.18.0 (or >= 23.6.0), which strips TypeScript types
  * natively. The file uses erasable syntax only and imports nothing outside
  * `node:` builtins, so the gate needs no package manager, lockfile, or network
- * install — pinning the Node version alone makes it reproducible.
+ * *package* install — pinning the Node version alone makes it reproducible. The
+ * CI runner still downloads the Node runtime itself, so this is reproducible
+ * rather than hermetic.
  *
  * TRUST BOUNDARY — read this before adopting.
  *
@@ -37,7 +39,7 @@
  *
  * Profile-hardening notes for the Standard profile (from adversarial review):
  *  (A) ENFORCED (was a SHOULD): slot-key / root / identity components must each be a
- *      non-empty string or a finite number. `undefined`/`null` are absent, and so now
+ *      non-empty string or a NON-NEGATIVE INTEGER. `undefined`/`null` are absent, and so now
  *      are `''` and non-finite numbers — an empty identifier compares equal to another
  *      empty identifier, so admitting it let two sides "match" on nothing and reach
  *      `pass`. A SHOULD in a comment does not make an exported `pass` fail-closed.
@@ -60,7 +62,7 @@
  *  (E) ENFORCED (was a SHOULD): a valid slotStateProof must carry a proof-derived
  *      `slotTransition`. Valid-proof-with-absent-transition degrades the pair to
  *      indeterminate rather than a non-consuming `pass`, and per note (A) phaseIndex
- *      is trusted only as a finite number.
+ *      is trusted only as a non-negative integer.
  */
 
 import { readFileSync } from 'node:fs';
@@ -242,13 +244,19 @@ function verifyProofChain(statuses: Array<ProofStatus | undefined>): Verdict {
 }
 
 function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
-  if (!obs.receipt || typeof obs.receipt !== 'object') return 'indeterminate';
-
   const common = [
     obs.receiptInclusionProof,
     obs.finalityProof,
     obs.validatorSetProof,
   ];
+
+  // Contradiction outranks EVERY structural gate, including a missing receipt object. The
+  // common chain applies to any outcome, so an invalid inclusion/finality/validator-set
+  // proof rejects even when there is no receipt at all — otherwise a claimant could
+  // downgrade contradicted proof material to "unknown" simply by omitting the receipt.
+  if (common.some((status) => status === 'invalid')) return 'reject';
+
+  if (!obs.receipt || typeof obs.receipt !== 'object') return 'indeterminate';
 
   // PRECEDENCE, consistent with verifyPaymentSlot: CONTRADICTED material outranks MISSING
   // material. An invalid proof, or a rollback whose roots disagree, is counter-evidence and
@@ -406,36 +414,35 @@ function verifySettlementEvidence(obs: SettlementEvidenceObservation): Verdict {
     return 'reject';
   }
 
-  const slotKeyPairs: ReadonlyArray<readonly [unknown, unknown]> = [
-    [obs.evidenceJobId, obs.anchorJobId],
-    [obs.evidenceRailId, obs.anchorRailId],
-    [obs.evidencePhaseIndex, obs.anchorPhaseIndex],
+  // "Present" means TRUSTED MATERIAL, the same definition the absence and payment-slot
+  // lanes use. Testing only for null/undefined made `''` vs `'job-9'` and `'0'` vs `0`
+  // read as genuine contradictions and reject, when note (A) says empty or malformed
+  // identity material is absent/untrusted — i.e. unknown, not counter-evidence. Only a
+  // disagreement between two well-formed values is a real contradiction.
+  const slotKeyPairs: ReadonlyArray<readonly [unknown, unknown, (v: unknown) => boolean]> = [
+    [obs.evidenceJobId, obs.anchorJobId, isIdentifier],
+    [obs.evidenceRailId, obs.anchorRailId, isIdentifier],
+    [obs.evidencePhaseIndex, obs.anchorPhaseIndex, isIndex],
   ];
   // A present contradiction outranks missing material ANYWHERE, including a missing
   // signature proof. Evidence whose job/rail/phase disagrees with the anchor is about a
   // different settlement, and that fact does not become unknown just because the signature
   // proof is also absent. Checking completeness first reported such a mismatch as
   // indeterminate, breaking the precedence rule stated in the header.
-  if (slotKeyPairs.some(([evidence, anchor]) =>
-    !isAbsent(evidence) && !isAbsent(anchor) && evidence !== anchor
+  if (slotKeyPairs.some(([evidence, anchor, isTrusted]) =>
+    isTrusted(evidence) && isTrusted(anchor) && evidence !== anchor
   )) return 'reject';
 
   if (obs.signatureProof !== 'valid') {
     return 'indeterminate';
   }
 
-  if (slotKeyPairs.some(([evidence, anchor]) =>
-    isAbsent(evidence) || isAbsent(anchor)
+  // Matching on empty or malformed identifiers is matching on nothing: `'' === ''` would
+  // otherwise satisfy the equality check while binding the evidence to no job and no rail.
+  // Every component must be trusted material on BOTH sides before a match means anything.
+  if (slotKeyPairs.some(([evidence, anchor, isTrusted]) =>
+    !isTrusted(evidence) || !isTrusted(anchor)
   )) return 'indeterminate';
-
-  // Matching on empty identifiers is matching on nothing. `'' === ''` satisfied the equality
-  // check above, so evidence whose job/rail identifiers were all empty strings reached `pass`
-  // while binding the evidence to no job and no rail. Ids must be non-empty strings and the
-  // phase index a finite number before a match means anything.
-  const idsBound = isIdentifier(obs.evidenceJobId) && isIdentifier(obs.anchorJobId)
-    && isIdentifier(obs.evidenceRailId) && isIdentifier(obs.anchorRailId)
-    && isIndex(obs.evidencePhaseIndex) && isIndex(obs.anchorPhaseIndex);
-  if (!idsBound) return 'indeterminate';
 
   return 'pass';
 }

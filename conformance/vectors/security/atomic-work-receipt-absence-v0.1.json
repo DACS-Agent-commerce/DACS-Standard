@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "d341178e62fa15f0c890815b30fcf0afb3a8e7827aa6d3451ecda8adb54ff6f0",
-  "count": 45,
+  "hash": "e259f7b559b28c5e158d294c6a5e0dbfdd81b785cc720c16e70b10e67e9b7f6b",
+  "count": 47,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -885,6 +885,30 @@
         "kind": "settlement-evidence",
         "evidenceJobId": "job-9",
         "anchorJobId": "job-DIFFERENT",
+        "evidenceRailId": "pay-dem",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": 0,
+        "anchorPhaseIndex": 0
+      }
+    },
+    {
+      "name": "invalid-common-proof-without-receipt-object-rejects",
+      "expected": "reject",
+      "note": "Contradiction outranks every structural gate, including a missing receipt object. An invalid inclusion/finality/validator-set proof applies to any outcome, so it rejects even with no receipt present — otherwise a claimant could downgrade contradicted proof material to unknown simply by omitting the receipt.",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receiptInclusionProof": "invalid"
+      }
+    },
+    {
+      "name": "settlement-malformed-identifier-is-untrusted-not-contradicted",
+      "expected": "indeterminate",
+      "note": "Per note (A) empty or malformed identity material is absent/untrusted, not counter-evidence. An empty evidence job identifier against a well-formed anchor is therefore unknown rather than a mismatch; only a disagreement between two well-formed values is a real contradiction. The settlement lane now uses the same trusted-material definition as the absence and payment-slot lanes.",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureProof": "valid",
+        "evidenceJobId": "",
+        "anchorJobId": "job-9",
         "evidenceRailId": "pay-dem",
         "anchorRailId": "pay-dem",
         "evidencePhaseIndex": 0,

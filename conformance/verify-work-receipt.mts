@@ -12,13 +12,23 @@
  * `node:` builtins, so the gate needs no package manager, lockfile, or network
  * install — pinning the Node version alone makes it reproducible.
  *
- * TRUST BOUNDARY. This verifier consumes PROOF MATERIAL and validates the minimum
- * structure that makes a declared label meaningful before any `pass` is returned. It
- * does not itself perform cryptographic proof checking: `ProofStatus` values are the
- * OUTPUT of an upstream proof verifier. What it guarantees is that a `pass` is never
- * reachable on labels alone — a receipt must carry the workId -> txHash -> block ->
+ * TRUST BOUNDARY — read this before adopting.
+ *
+ * CALLERS MUST SUPPLY ALREADY-BOUND VERIFICATION RESULTS. Each `ProofStatus` is a
+ * DETACHED enum that this file takes on trust as the output of an upstream cryptographic
+ * verifier. This file performs NO cryptographic verification: it does not check a Merkle
+ * path, a quorum certificate, or a signature, and it cannot detect a `valid` label
+ * attached to a proof over some OTHER subject. Binding a proof result to the receipt,
+ * header, and state identities it is claimed to cover is the CALLER's obligation.
+ *
+ * What this file does guarantee is narrower and purely structural: a `pass` is never
+ * reachable on labels alone. A receipt must carry the workId -> txHash -> block ->
  * receiptRoot binding, a rollback must carry operation results consistent with its
- * outcome, and slot/settlement identity must be real material, not empty strings.
+ * outcome, and slot/settlement identity must be real material rather than empty strings.
+ * Absent that structure the verdict degrades, so an adopter cannot receive `pass` for a
+ * receipt that names no Work — but `pass` still means "these supplied proof results, if
+ * honestly produced over the right subjects, are internally coherent", NOT "the receipt
+ * was cryptographically verified".
  *
  * Verdict precedence, applied uniformly: CONTRADICTED material (an invalid proof, roots
  * that disagree, a receipt contradicting its own outcome) outranks MISSING material. A
@@ -92,6 +102,13 @@ interface AbsenceClaimObservation {
      * claimant-supplied flag. Modeled here as an already-derived input.
      */
     verifiedCannotLaterInclude?: boolean;
+    /**
+     * The subject this absence evidence is bound to. An absence verdict authorises
+     * resubmission, so the evidence must name the Work and attempt it covers; a proof
+     * over a different subject must not license a replacement here.
+     */
+    subjectWorkId?: string;
+    subjectAttempt?: number;
     [field: string]: unknown;
   };
   [field: string]: unknown;
@@ -166,11 +183,29 @@ const isAbsent = (value: unknown): boolean =>
  * enforced here.
  */
 const isIdentifier = (value: unknown): value is string =>
-  typeof value === 'string' && value.length > 0;
+  typeof value === 'string' && value.trim().length > 0;
 
-/** Numeric material must be a FINITE number — NaN/Infinity are not indices. */
+/**
+ * Heights and indices must be NON-NEGATIVE INTEGERS. Finiteness alone admitted `-1` and
+ * `0.5` as block heights and phase indices, which name no block and no phase; the profile
+ * defines both as counting numbers.
+ */
 const isIndex = (value: unknown): value is number =>
-  typeof value === 'number' && Number.isFinite(value);
+  typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
+/**
+ * Statuses that are consistent with a rolled-back Work. A rollback does not require every
+ * operation to carry `rolled-back`: operations after the failure point were never applied,
+ * so `not-executed` (and a `failed` operation, typically the failure itself) are part of a
+ * coherent rollback sequence. Requiring `rolled-back` on every entry would degrade a
+ * legitimate receipt to indeterminate. `committed` is absent from this set deliberately —
+ * that is the self-contradiction handled as a reject above.
+ */
+const ROLLBACK_CONSISTENT_STATUSES: ReadonlySet<string> = new Set([
+  'rolled-back',
+  'not-executed',
+  'failed',
+]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -270,14 +305,16 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
     if (!Array.isArray(operationResults) || operationResults.length === 0) {
       return 'indeterminate';
     }
-    const contradicts = operationResults.some(
-      (result) => isRecord(result) && result.status === 'committed',
+    // Complete coverage: EVERY entry must be a record carrying a status this profile
+    // recognises as consistent with a rollback. An unrecognised or missing status leaves
+    // that operation's fate unknown, so the receipt degrades to indeterminate rather than
+    // passing on the strength of its siblings.
+    const allConsistent = operationResults.every(
+      (result) => isRecord(result)
+        && typeof result.status === 'string'
+        && ROLLBACK_CONSISTENT_STATUSES.has(result.status),
     );
-    if (contradicts) return 'reject';
-    const allRolledBack = operationResults.every(
-      (result) => isRecord(result) && result.status === 'rolled-back',
-    );
-    return allRolledBack ? 'pass' : 'indeterminate';
+    return allConsistent ? 'pass' : 'indeterminate';
   }
 
   const commonVerdict = verifyProofChain(common);
@@ -294,6 +331,17 @@ function verifyAbsenceClaim(obs: AbsenceClaimObservation): Verdict {
     evidence.verifiedCannotLaterInclude !== true ||
     evidence.proof !== 'valid'
   ) {
+    return 'indeterminate';
+  }
+
+  // SUBJECT BINDING. An absence verdict authorises real action — a terminal `fail`, or a
+  // `pass` permitting exactly one replacement under the same workId — so the evidence must
+  // name WHAT it proves absent. Without a bound subject, a lifecycle-expiry proof over some
+  // other Work or attempt would license a replacement here purely on a caller-supplied
+  // `kind` label. This is the same defect class the receipt lane closes with
+  // hasReceiptBinding; the absence lane needs it at least as much, because its verdicts are
+  // the ones that authorise resubmission. Absent binding is unknown, not contradicted.
+  if (!isIdentifier(evidence.subjectWorkId) || !isIndex(evidence.subjectAttempt)) {
     return 'indeterminate';
   }
 

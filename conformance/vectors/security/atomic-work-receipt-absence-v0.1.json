@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "73cdaf9e91e630c8ca08f8be39493138bb093b6936164816ee9a6a7f921dc190",
-  "count": 39,
+  "hash": "67df66fd83a1e405694bda7f62268be99d0f441f917a3c21be62f0ca2147c800",
+  "count": 40,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -97,7 +97,7 @@
               "status": "rolled-back"
             },
             {
-              "status": "rolled-back"
+              "status": "not-executed"
             }
           ],
           "preBusinessStateRoot": "s-pre",
@@ -182,7 +182,9 @@
         "evidence": {
           "kind": "authenticated-pre-admission-rejection",
           "verifiedCannotLaterInclude": true,
-          "proof": "valid"
+          "proof": "valid",
+          "subjectWorkId": "work-7f3a",
+          "subjectAttempt": 0
         }
       }
     },
@@ -196,7 +198,9 @@
         "evidence": {
           "kind": "authenticated-lifecycle-expired",
           "verifiedCannotLaterInclude": true,
-          "proof": "valid"
+          "proof": "valid",
+          "subjectWorkId": "work-7f3a",
+          "subjectAttempt": 0
         }
       }
     },
@@ -787,6 +791,19 @@
             "jobId": "",
             "phaseIndex": 0
           }
+        }
+      }
+    },
+    {
+      "name": "absence-evidence-without-subject-binding-indeterminate",
+      "expected": "indeterminate",
+      "note": "An absence verdict authorises resubmission, so the evidence MUST name the Work and attempt it covers. Valid lifecycle-expiry proof material carrying no subject binding cannot license a replacement: a proof over some other Work or attempt would otherwise be accepted on the strength of a caller-supplied kind label alone. Absent binding is unknown, not contradicted.",
+      "observation": {
+        "kind": "absence-claim",
+        "evidence": {
+          "kind": "authenticated-lifecycle-expired",
+          "proof": "valid",
+          "verifiedCannotLaterInclude": true
         }
       }
     }

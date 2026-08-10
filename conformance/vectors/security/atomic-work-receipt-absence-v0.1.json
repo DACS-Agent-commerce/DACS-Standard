@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "787178b9f0495252395df211f49869fb69e1499b34fa2b930cf7bf2d11de4746",
-  "count": 43,
+  "hash": "d341178e62fa15f0c890815b30fcf0afb3a8e7827aa6d3451ecda8adb54ff6f0",
+  "count": 45,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -858,6 +858,37 @@
         "finalityProof": "valid",
         "validatorSetProof": "valid",
         "winnerStateProof": "invalid"
+      }
+    },
+    {
+      "name": "absence-subject-mismatch-with-absent-proof-still-rejects",
+      "expected": "reject",
+      "note": "Precedence is uniform: a present contradiction outranks missing material anywhere. Evidence naming a different Work does not become merely unknown because its proof is also absent, so the subject-mismatch check precedes the proof-completeness return.",
+      "observation": {
+        "kind": "absence-claim",
+        "claimedWorkId": "work-7f3a",
+        "claimedAttempt": 0,
+        "evidence": {
+          "kind": "authenticated-lifecycle-expired",
+          "proof": "absent",
+          "verifiedCannotLaterInclude": true,
+          "subjectWorkId": "work-OTHER",
+          "subjectAttempt": 0
+        }
+      }
+    },
+    {
+      "name": "settlement-slotkey-mismatch-with-absent-signature-proof-still-rejects",
+      "expected": "reject",
+      "note": "Same precedence in the settlement lane: evidence whose job identifier disagrees with the anchor is about a different settlement, and that contradiction outranks an absent signature proof rather than being reported as unknown.",
+      "observation": {
+        "kind": "settlement-evidence",
+        "evidenceJobId": "job-9",
+        "anchorJobId": "job-DIFFERENT",
+        "evidenceRailId": "pay-dem",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": 0,
+        "anchorPhaseIndex": 0
       }
     }
   ]

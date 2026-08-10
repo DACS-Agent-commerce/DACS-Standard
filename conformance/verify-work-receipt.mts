@@ -47,7 +47,12 @@
  *      `winnerStateProof` that only applies to a `committed` outcome). Consumers
  *      MUST NOT assume any-invalid-proof-anywhere -> reject.
  *  (C) Slot-key comparison is TYPE-STRICT (`0 !== "0"`). Encoders MUST normalize
- *      phaseIndex to a number; a type mismatch fail-safes to reject, never pass.
+ *      phaseIndex to a number. A type mismatch fail-safes AWAY FROM `pass`, but the
+ *      verdict is `indeterminate`, not `reject`: a wrongly-typed phaseIndex fails
+ *      `isIndex`, so that side's proven slot is untrusted and the pair is UNKNOWN
+ *      rather than contradicted. (This note previously said `reject`, which the
+ *      payment-slot lane does not do — corrected to match the code, since a note
+ *      describing a verdict the verifier never returns is worse than no note.)
  *  (D) Payment-slot identity is the structured canonical tuple attested by the
  *      verified slot-state proof, never a claimant-presented label. This closes
  *      encoding-drift evasions (alias, zero-padding, delimiter ambiguity) while
@@ -338,6 +343,25 @@ function verifyAbsenceClaim(obs: AbsenceClaimObservation): Verdict {
   if (!evidence || typeof evidence !== 'object') return 'indeterminate';
 
   if (evidence.proof === 'invalid') return 'reject';
+
+  // PRESENT CONTRADICTION FIRST, uniformly. If both subjects are present and disagree, the
+  // evidence is about a different Work — that is counter-evidence, and it outranks any
+  // missing proof material below. Ordering the completeness returns ahead of this made a
+  // mismatch with `proof: "absent"` report indeterminate, contradicting the precedence rule
+  // this file states in its header.
+  if (
+    isIdentifier(evidence.subjectWorkId) && isIdentifier(obs.claimedWorkId) &&
+    evidence.subjectWorkId !== obs.claimedWorkId
+  ) {
+    return 'reject';
+  }
+  if (
+    isIndex(evidence.subjectAttempt) && isIndex(obs.claimedAttempt) &&
+    evidence.subjectAttempt !== obs.claimedAttempt
+  ) {
+    return 'reject';
+  }
+
   if (evidence.kind === 'included-rollback-receipt') return 'indeterminate';
   if (
     evidence.verifiedCannotLaterInclude !== true ||
@@ -381,19 +405,24 @@ function verifySettlementEvidence(obs: SettlementEvidenceObservation): Verdict {
   if (obs.signatureProof === 'invalid' || obs.signatureValid === false) {
     return 'reject';
   }
-  if (obs.signatureProof !== 'valid') {
-    return 'indeterminate';
-  }
 
   const slotKeyPairs: ReadonlyArray<readonly [unknown, unknown]> = [
     [obs.evidenceJobId, obs.anchorJobId],
     [obs.evidenceRailId, obs.anchorRailId],
     [obs.evidencePhaseIndex, obs.anchorPhaseIndex],
   ];
-  // A present contradiction outranks missing material elsewhere in the key.
+  // A present contradiction outranks missing material ANYWHERE, including a missing
+  // signature proof. Evidence whose job/rail/phase disagrees with the anchor is about a
+  // different settlement, and that fact does not become unknown just because the signature
+  // proof is also absent. Checking completeness first reported such a mismatch as
+  // indeterminate, breaking the precedence rule stated in the header.
   if (slotKeyPairs.some(([evidence, anchor]) =>
     !isAbsent(evidence) && !isAbsent(anchor) && evidence !== anchor
   )) return 'reject';
+
+  if (obs.signatureProof !== 'valid') {
+    return 'indeterminate';
+  }
 
   if (slotKeyPairs.some(([evidence, anchor]) =>
     isAbsent(evidence) || isAbsent(anchor)

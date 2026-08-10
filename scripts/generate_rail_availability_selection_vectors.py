@@ -26,6 +26,7 @@ STEWARD_SEED = hashlib.sha256(
 ATTACKER_SEED = hashlib.sha256(
     b"DACS rail availability vector attacker v1"
 ).digest()
+PRODUCTION_UNSET = object()
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -72,10 +73,12 @@ def context(
     *,
     preflight=False,
     session_state="new",
+    production=True,
     pinned=True,
     steward=True,
     pinned_digest=None,
     hint=None,
+    later_registry_rail=None,
 ):
     value = {
         "stewardPub": public_hex(
@@ -87,10 +90,13 @@ def context(
             else rail_digest(rail) if pinned else None
         ),
         "sessionState": session_state,
-        "production": True,
     }
+    if production is not PRODUCTION_UNSET:
+        value["production"] = production
     if hint is not None:
         value["discoveryAvailabilityHint"] = hint
+    if later_registry_rail is not None:
+        value["laterRegistryRailDefinition"] = later_registry_rail
     return value
 
 
@@ -106,7 +112,8 @@ def vector(name, expected, note, rail, **ctx):
 
 def build() -> dict:
     live_x402 = sign_rail("pay-x402", "live")
-    disabled = sign_rail("pay-old", "disabled")
+    live_old = sign_rail("pay-old", "live", 1)
+    disabled = sign_rail("pay-old", "disabled", 2)
     failed = sign_rail("pay-evm", "failed")
     mocked = sign_rail("pay-ap2", "mocked")
     gated = sign_rail("pay-ap2", "operator_gated")
@@ -116,9 +123,24 @@ def build() -> dict:
     vectors = [
         vector("live-signed-pinned", "pass", "live, steward-signed and pinned is selectable", live_x402),
         vector("disabled-signed", "fail", "RAV-R2: disabled cannot start a new session", disabled),
-        vector("disabled-signed-in-flight", "pass", "RAV-R2: a pinned in-flight session continues after disabled", disabled, session_state="in-flight"),
+        vector("disabled-signed-non-production", "fail", "RAV-R2: disabled cannot start a non-production session", disabled, production=False),
+        vector("disabled-pinned-in-flight", "fail", "RAV-R2: an already-disabled definition is not a lawful in-flight pin", disabled, session_state="in-flight"),
+        vector(
+            "disabled-after-pin-in-flight",
+            "pass",
+            "RAV-R2: an in-flight session retains its pinned live definition after a later disabled revision",
+            live_old,
+            session_state="in-flight",
+            later_registry_rail=disabled,
+        ),
         vector("failed-signed", "fail", "RAV-R2: failed cannot start a new session", failed),
+        vector("failed-signed-non-production", "fail", "RAV-R2: failed cannot start a non-production session", failed, production=False),
+        vector("failed-pinned-in-flight", "fail", "RAV-R2: an already-failed definition is not a lawful in-flight pin", failed, session_state="in-flight"),
         vector("mocked-signed", "fail", "RAV-R2: mocked cannot be selected for production", mocked),
+        vector("mocked-signed-non-production", "pass", "RAV-R2: mocked remains selectable for development or testing", mocked, production=False),
+        vector("mocked-production-context-missing", "error", "production context is required before mocked selection", mocked, production=PRODUCTION_UNSET),
+        vector("mocked-production-context-string", "error", "string production context cannot authorize mocked selection", mocked, production="true"),
+        vector("mocked-production-context-integer", "error", "integer production context cannot authorize mocked selection", mocked, production=1),
         vector("operator_gated-no-preflight", "fail", "RAV-R3: operator_gated requires operator preflight", gated),
         vector("operator_gated-with-preflight", "pass", "RAV-R3: operator_gated with preflight is selectable", gated, preflight=True),
         vector("closed_data-no-preflight", "fail", "RAV-R3: closed_data requires operator preflight", closed),

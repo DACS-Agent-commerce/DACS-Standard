@@ -73,9 +73,12 @@ def evaluate(vector):
     session_state = ctx.get("sessionState")
     if session_state not in {"new", "in-flight"}:
         return "error"
-    if availability == "mocked" and ctx.get("production") is True:
+    production = ctx.get("production")
+    if type(production) is not bool:
+        return "error"
+    if availability == "mocked" and production:
         return "fail"
-    if session_state == "new" and availability in {"disabled", "failed"}:
+    if availability in {"disabled", "failed"}:
         return "fail"
     if availability in GATED and not ctx.get("operatorPreflightOk"):
         return "fail"
@@ -110,12 +113,52 @@ class RailAvailabilitySelectionVectorTests(unittest.TestCase):
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(evaluate(vector), vector["expected"])
 
-    def test_mocked_and_disabled_new_sessions_fail_before_selection(self):
+    def test_new_session_prohibitions_preserve_non_production_scope(self):
         self.assertEqual(evaluate(self.by_name["mocked-signed"]), "fail")
+        self.assertEqual(
+            evaluate(self.by_name["mocked-signed-non-production"]), "pass"
+        )
         self.assertEqual(evaluate(self.by_name["disabled-signed"]), "fail")
         self.assertEqual(
-            evaluate(self.by_name["disabled-signed-in-flight"]), "pass"
+            evaluate(self.by_name["disabled-signed-non-production"]), "fail"
         )
+        self.assertEqual(
+            evaluate(self.by_name["disabled-pinned-in-flight"]), "fail"
+        )
+        self.assertEqual(evaluate(self.by_name["failed-signed"]), "fail")
+        self.assertEqual(
+            evaluate(self.by_name["failed-signed-non-production"]), "fail"
+        )
+        self.assertEqual(
+            evaluate(self.by_name["failed-pinned-in-flight"]), "fail"
+        )
+
+    def test_production_context_is_required_boolean(self):
+        for name in (
+            "mocked-production-context-missing",
+            "mocked-production-context-string",
+            "mocked-production-context-integer",
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(self.by_name[name]), "error")
+
+    def test_in_flight_session_keeps_original_live_pin(self):
+        vector = self.by_name["disabled-after-pin-in-flight"]
+        pinned = vector["rail"]
+        later = vector["ctx"]["laterRegistryRailDefinition"]
+
+        self.assertEqual(pinned["availability"], "live")
+        self.assertEqual(vector["ctx"]["pinnedRailDigest"], digest(pinned))
+        self.assertEqual(later["railId"], pinned["railId"])
+        self.assertGreater(later["railVersion"], pinned["railVersion"])
+        self.assertEqual(later["availability"], "disabled")
+        Ed25519PublicKey.from_public_bytes(
+            bytes.fromhex(vector["ctx"]["stewardPub"])
+        ).verify(
+            bytes.fromhex(later["stewardSig"]),
+            (DOMAIN + digest(later)).encode("ascii"),
+        )
+        self.assertEqual(evaluate(vector), "pass")
 
     def test_discovery_hint_never_changes_authoritative_result(self):
         for vector in self.data["vectors"]:

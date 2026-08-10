@@ -48,7 +48,11 @@ def valid_parser_spec(value):
 
 
 def evaluate(vector):
-    result = {"verdict": "error", "parserApplied": False, "methodInvoked": False}
+    result = {
+        "verdict": "error",
+        "parserApplied": False,
+        "methodInvoked": False,
+    }
     recipe = vector.get("recipe")
     if not isinstance(recipe, dict) or not isinstance(recipe.get("defaultMethod"), dict):
         return result
@@ -69,17 +73,14 @@ def evaluate(vector):
         not has_parser or not valid_parser_spec(recipe.get("parserRules"))
     ):
         return result
-    if not needs_parser and has_parser:
-        historical = vector.get("producerDacs2Version") in {"0.1", "0.2", "0.3", "0.4"}
-        if not historical or not valid_parser_spec(recipe.get("parserRules")):
-            return result
-
     selected = vector.get("selectedMethod")
     if selected not in kinds:
         return result
     result["verdict"] = "pass"
     result["methodInvoked"] = True
     result["parserApplied"] = selected in PARSER_METHODS
+    if selected in NATIVE_METHODS and "methodNativeResult" in vector:
+        result.update(vector["methodNativeResult"])
     return result
 
 
@@ -109,6 +110,9 @@ class RecipeParserApplicabilityVectorTests(unittest.TestCase):
                 self.assertEqual(result["verdict"], vector["expected"])
                 self.assertEqual(result["parserApplied"], vector["want"]["parserApplied"])
                 self.assertEqual(result["methodInvoked"], vector["want"]["methodInvoked"])
+                for field in ("decision", "data"):
+                    if field in vector["want"]:
+                        self.assertEqual(result[field], vector["want"][field])
 
     def test_closed_classification_covers_all_registered_methods_once(self):
         self.assertFalse(PARSER_METHODS & NATIVE_METHODS)
@@ -137,16 +141,32 @@ class RecipeParserApplicabilityVectorTests(unittest.TestCase):
         self.assertEqual(result["verdict"], "pass")
         self.assertFalse(result["parserApplied"])
 
-    def test_historical_native_parser_is_readable_but_inert(self):
+    def test_native_only_parser_values_are_readable_but_inert(self):
+        for name in (
+            "native-only-inert-parser-is-ignored",
+            "native-only-divergent-parser-output-is-inert",
+            "native-only-null-parser-is-inert",
+        ):
+            with self.subTest(vector=name):
+                vector = next(
+                    item for item in self.document["vectors"]
+                    if item["name"] == name
+                )
+                self.assertIn("parserRules", vector["recipe"])
+                result = evaluate(vector)
+                self.assertEqual(result["verdict"], "pass")
+                self.assertTrue(result["methodInvoked"])
+                self.assertFalse(result["parserApplied"])
+
+    def test_divergent_parser_output_cannot_override_native_result(self):
         vector = next(
             item for item in self.document["vectors"]
-            if item["name"] == "historical-native-only-inert-parser-is-ignored"
+            if item["name"] == "native-only-divergent-parser-output-is-inert"
         )
-        self.assertIn("parserRules", vector["recipe"])
+        self.assertNotEqual(vector["methodNativeResult"], vector["parserWouldProduce"])
         result = evaluate(vector)
-        self.assertEqual(result["verdict"], "pass")
-        self.assertTrue(result["methodInvoked"])
-        self.assertFalse(result["parserApplied"])
+        self.assertEqual(result["decision"], vector["methodNativeResult"]["decision"])
+        self.assertEqual(result["data"], vector["methodNativeResult"]["data"])
 
     def test_invalid_recipe_fails_before_method_invocation(self):
         for vector in self.document["vectors"]:
@@ -165,6 +185,11 @@ class RecipeParserApplicabilityVectorTests(unittest.TestCase):
             "**(PRA-4) Method-native authority.**",
             "**(PRA-5) Fail before invocation.**",
             "parserRules?: ParserSpec",
+            "parser-consuming methods are `verifiable-credential`, `tlsnotary`, `zktls`,",
+            "`consensus-backed-proxy`, and `evm-rpc`",
+            "method-native methods are",
+            "`oauth-attested`, `domain-tls-control`, `self-signed`, and",
+            "`demos-gcr-domain`",
         ):
             self.assertIn(required, text)
 

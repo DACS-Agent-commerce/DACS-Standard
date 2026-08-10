@@ -20,14 +20,16 @@ The format used per release:
 - **Method-conditional recipe parsing** (DACS-2 §7.4.1 PRA-1..PRA-5 and
   §7.6; #318) — makes `Recipe.parserRules` optional at the wire level but
   normatively required whenever a recipe declares a parser-consuming method.
-  New native-only recipes must omit it, while historical signed native-only
-  recipes remain readable with the formerly required field ignored. Mixed
+  Native-only recipe authors must omit it and the steward must reject new
+  submissions that carry it, while readers ignore any such member regardless
+  of value so they need no unverifiable historical-version operand. Mixed
   recipes carry it for their parsing member, and a method-native selection
-  skips it completely. Invalid parser/method combinations fail before method
-  invocation or external side effects. `VerifyResult.data` may be sourced from
-  authenticated method-native output or ParserSpec extraction. Adds
-  executable vectors covering all nine registered methods, historical inert-
-  parser compatibility, invalid presence/absence, mixed-method selection, and
+  skips it completely. Missing or invalid required parsers and unknown methods
+  fail before invocation or external side effects. `VerifyResult.data` may be
+  sourced from authenticated method-native output or ParserSpec extraction.
+  Adds executable vectors covering all nine registered methods, inert native
+  parser compatibility (including `null` and a parser result that contradicts
+  the native result), invalid required presence, mixed-method selection, and
   unknown selection.
 
 ### Added — DACS-1 v0.6 / DACS-2 v0.4

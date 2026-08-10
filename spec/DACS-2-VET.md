@@ -353,13 +353,14 @@ already produces the decision and output data.
   these evaluation modes as part of that method's normative definition.
 - **(PRA-2) Recipe-shape validity and compatibility.** If `defaultMethod` or
   any member of `alternatives` is parser-consuming, `parserRules` is REQUIRED
-  and MUST be a valid `ParserSpec`. A native-only recipe produced under
-  DACS-2 v0.5 or later MUST omit `parserRules`. A signed native-only recipe
-  already published under a DACS-2 v0.4-or-earlier registry snapshot MAY
-  retain the formerly required field for read/replay compatibility; a current
-  consumer MUST ignore it and MUST NOT reject that historical recipe solely
-  because the field is present. A `null` value was never a valid `ParserSpec`:
-  it is not absence and receives no compatibility exception.
+  and MUST be a valid `ParserSpec`; `null` is not absence and is not a valid
+  `ParserSpec`. A recipe author producing a native-only recipe MUST omit
+  `parserRules`, and the registry steward MUST NOT activate a newly submitted
+  native-only recipe that carries it. For read/replay compatibility, however,
+  a verifier that encounters a signed native-only recipe carrying
+  `parserRules` MUST ignore that member regardless of its value and MUST NOT
+  reject the recipe solely because the member is present. This is a reader
+  compatibility rule, not permission for current producers to emit the field.
 - **(PRA-3) Selected-method execution.** The verifier first selects the exact
   method from `defaultMethod` or `alternatives`. It applies `parserRules` only
   when that selected method is parser-consuming. In a mixed recipe, selecting
@@ -372,11 +373,11 @@ already produces the decision and output data.
 - **(PRA-5) Fail before invocation.** A recipe that violates PRA-1 or the
   applicable PRA-2 production/shape rule is invalid and MUST NOT be activated
   by the registry steward. A verifier that encounters a missing or invalid
-  required ParserSpec, an unclassified method, or a non-historical native-only
-  recipe carrying `parserRules` MUST return `error` before invoking the method,
-  fetching an authority, anchoring an attestation, or producing any external
-  side effect. The explicit historical-read exception in PRA-2 is not an
-  invalid recipe and follows PRA-3/PRA-4 instead.
+  required ParserSpec or an unclassified method MUST return `error` before
+  invoking the method, fetching an authority, anchoring an attestation, or
+  producing any external side effect. A native-only recipe carrying
+  `parserRules` follows PRA-2's read rule and PRA-3/PRA-4: the member is inert
+  and never becomes a verifier input.
 
 **Existence/validity, never control (normative).** A DACS-2 `VerifyResult` establishes that the identifier is **real and currently valid at its authority** — it does **not**, and a `decision: "pass"` MUST NOT be read to, establish that the presenter *controls* the identifier. Control is a **DACS-1** property (DACS-1 §6.3.2 step (6)): proven by the bundle presentation signature (`key:`), the anchored address-key linkage (`cci-xm:`), or a credential **holder-binding** proof (§7.3.2) for VC/vLEI claims. A bare-registry method (`consensus-backed-proxy`, e.g. `lei` at GLEIF) resolves a *public* identifier with no key-binding, so it can only ever establish existence — never control — whatever it resolves and wherever the result is stored.
 

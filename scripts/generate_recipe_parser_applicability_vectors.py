@@ -94,21 +94,27 @@ def case(
     parser: str = "absent",
     parser_applied: bool = False,
     method_invoked: bool = True,
-    producer_dacs2_version: str = "0.5",
+    native_result: dict | None = None,
+    parser_would_produce: dict | None = None,
     note: str,
 ) -> dict:
-    return {
+    item = {
         "name": name,
         "expected": expected,
         "note": note,
         "recipe": recipe(method_kinds, parser),
         "selectedMethod": selected_method,
-        "producerDacs2Version": producer_dacs2_version,
         "want": {
             "parserApplied": parser_applied,
             "methodInvoked": method_invoked,
         },
     }
+    if native_result is not None:
+        item["methodNativeResult"] = copy.deepcopy(native_result)
+        item["want"].update(copy.deepcopy(native_result))
+    if parser_would_produce is not None:
+        item["parserWouldProduce"] = copy.deepcopy(parser_would_produce)
+    return item
 
 
 def build_vectors() -> list[dict]:
@@ -157,31 +163,45 @@ def build_vectors() -> list[dict]:
             note="PRA-2/PRA-5 reject a missing required ParserSpec before invocation",
         ),
         case(
-            "historical-native-only-inert-parser-is-ignored",
+            "native-only-inert-parser-is-ignored",
             "pass",
             ["self-signed"],
             "self-signed",
             parser="valid",
-            producer_dacs2_version="0.4",
-            note="PRA-2 preserves a historical signed native recipe while PRA-3/PRA-4 ignore its inert parser",
+            note="PRA-2 read compatibility ignores parserRules on every signed native-only recipe",
         ),
         case(
-            "current-native-only-inert-parser-rejected",
-            "error",
+            "native-only-divergent-parser-output-is-inert",
+            "pass",
             ["self-signed"],
             "self-signed",
             parser="valid",
-            method_invoked=False,
-            note="PRA-2/PRA-5 reject inert parserRules from a new native-only recipe",
+            native_result={
+                "decision": "pass",
+                "data": {"source": "native", "verified": True},
+            },
+            parser_would_produce={
+                "decision": "fail",
+                "data": {"source": "parser", "verified": False},
+            },
+            note="PRA-2/PRA-4 preserve the native decision and data even when an inert parser would disagree",
         ),
         case(
-            "native-only-null-is-not-absence",
-            "error",
+            "native-only-null-parser-is-inert",
+            "pass",
             ["demos-gcr-domain"],
             "demos-gcr-domain",
             parser="null",
+            note="PRA-2 ignores even an invalid or null parserRules value on a native-only read path",
+        ),
+        case(
+            "parser-consuming-null-parser-rejected",
+            "error",
+            ["consensus-backed-proxy"],
+            "consensus-backed-proxy",
+            parser="null",
             method_invoked=False,
-            note="PRA-2 treats a present null as an invalid ParserSpec, not omission",
+            note="PRA-2/PRA-5 reject null where a parser-consuming method requires a valid ParserSpec",
         ),
         case(
             "mixed-recipe-parser-selection",

@@ -1,8 +1,8 @@
 {
   "set": "recipe-parser-applicability-v0.5",
   "spec": "DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability",
-  "count": 18,
-  "hash": "65b4a29c77223b774fc43d0267df7b23d20ac4798f806dd6238f899adaa753fa",
+  "count": 19,
+  "hash": "c8be48847e867bd111c411821bfe352173f744fe55d8a2ed2f766996e76912e1",
   "vectors": [
     {
       "name": "verifiable-credential-applies-parser",
@@ -26,7 +26,6 @@
         }
       },
       "selectedMethod": "verifiable-credential",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": true,
         "methodInvoked": true
@@ -55,7 +54,6 @@
         }
       },
       "selectedMethod": "tlsnotary",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": true,
         "methodInvoked": true
@@ -85,7 +83,6 @@
         }
       },
       "selectedMethod": "zktls",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": true,
         "methodInvoked": true
@@ -117,7 +114,6 @@
         }
       },
       "selectedMethod": "consensus-backed-proxy",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": true,
         "methodInvoked": true
@@ -148,7 +144,6 @@
         }
       },
       "selectedMethod": "evm-rpc",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": true,
         "methodInvoked": true
@@ -174,7 +169,6 @@
         "availability": "live"
       },
       "selectedMethod": "oauth-attested",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": true
@@ -196,7 +190,6 @@
         "availability": "live"
       },
       "selectedMethod": "domain-tls-control",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": true
@@ -217,7 +210,6 @@
         "availability": "live"
       },
       "selectedMethod": "self-signed",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": true
@@ -238,7 +230,6 @@
         "availability": "live"
       },
       "selectedMethod": "demos-gcr-domain",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": true
@@ -263,16 +254,15 @@
         "availability": "live"
       },
       "selectedMethod": "consensus-backed-proxy",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": false
       }
     },
     {
-      "name": "historical-native-only-inert-parser-is-ignored",
+      "name": "native-only-inert-parser-is-ignored",
       "expected": "pass",
-      "note": "PRA-2 preserves a historical signed native recipe while PRA-3/PRA-4 ignore its inert parser",
+      "note": "PRA-2 read compatibility ignores parserRules on every signed native-only recipe",
       "recipe": {
         "recipeVersion": 1,
         "scheme": "parser-applicability-test",
@@ -291,16 +281,15 @@
         }
       },
       "selectedMethod": "self-signed",
-      "producerDacs2Version": "0.4",
       "want": {
         "parserApplied": false,
         "methodInvoked": true
       }
     },
     {
-      "name": "current-native-only-inert-parser-rejected",
-      "expected": "error",
-      "note": "PRA-2/PRA-5 reject inert parserRules from a new native-only recipe",
+      "name": "native-only-divergent-parser-output-is-inert",
+      "expected": "pass",
+      "note": "PRA-2/PRA-4 preserve the native decision and data even when an inert parser would disagree",
       "recipe": {
         "recipeVersion": 1,
         "scheme": "parser-applicability-test",
@@ -319,16 +308,34 @@
         }
       },
       "selectedMethod": "self-signed",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
-        "methodInvoked": false
+        "methodInvoked": true,
+        "decision": "pass",
+        "data": {
+          "source": "native",
+          "verified": true
+        }
+      },
+      "methodNativeResult": {
+        "decision": "pass",
+        "data": {
+          "source": "native",
+          "verified": true
+        }
+      },
+      "parserWouldProduce": {
+        "decision": "fail",
+        "data": {
+          "source": "parser",
+          "verified": false
+        }
       }
     },
     {
-      "name": "native-only-null-is-not-absence",
-      "expected": "error",
-      "note": "PRA-2 treats a present null as an invalid ParserSpec, not omission",
+      "name": "native-only-null-parser-is-inert",
+      "expected": "pass",
+      "note": "PRA-2 ignores even an invalid or null parserRules value on a native-only read path",
       "recipe": {
         "recipeVersion": 1,
         "scheme": "parser-applicability-test",
@@ -341,7 +348,31 @@
         "parserRules": null
       },
       "selectedMethod": "demos-gcr-domain",
-      "producerDacs2Version": "0.5",
+      "want": {
+        "parserApplied": false,
+        "methodInvoked": true
+      }
+    },
+    {
+      "name": "parser-consuming-null-parser-rejected",
+      "expected": "error",
+      "note": "PRA-2/PRA-5 reject null where a parser-consuming method requires a valid ParserSpec",
+      "recipe": {
+        "recipeVersion": 1,
+        "scheme": "parser-applicability-test",
+        "defaultMethod": {
+          "kind": "consensus-backed-proxy",
+          "endpoint": {
+            "method": "GET",
+            "urlTemplate": "https://authority.example/{identifier}"
+          }
+        },
+        "defaultMaxAgeSec": 3600,
+        "retryClass": "permanent",
+        "availability": "live",
+        "parserRules": null
+      },
+      "selectedMethod": "consensus-backed-proxy",
       "want": {
         "parserApplied": false,
         "methodInvoked": false
@@ -379,7 +410,6 @@
         }
       },
       "selectedMethod": "consensus-backed-proxy",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": true,
         "methodInvoked": true
@@ -417,7 +447,6 @@
         }
       },
       "selectedMethod": "domain-tls-control",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": true
@@ -448,7 +477,6 @@
         ]
       },
       "selectedMethod": "domain-tls-control",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": false
@@ -469,7 +497,6 @@
         "availability": "live"
       },
       "selectedMethod": "domain-tls-control",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": false
@@ -490,7 +517,6 @@
         "availability": "live"
       },
       "selectedMethod": "future-unclassified",
-      "producerDacs2Version": "0.5",
       "want": {
         "parserApplied": false,
         "methodInvoked": false

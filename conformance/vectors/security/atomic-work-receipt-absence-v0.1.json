@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "e79bef2990fa32f600458e371c3b8d047a103949acfbe8e1f635a74c792adba1",
-  "count": 33,
+  "hash": "f7fda19988613b2b1b8083d6323314ba2aca7c65440095a02018257883f65613",
+  "count": 34,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -682,6 +682,17 @@
             "jobId": "job-9",
             "phaseIndex": 0
           }
+        }
+      }
+    },
+    {
+      "name": "payment-slot-invalid-proof-absent-counterpart-reject",
+      "expected": "reject",
+      "note": "Contradicted proof material MUST NOT be downgraded by omitting the counterpart Work. An invalid slotStateProof is a reject even when the second Work is absent, so the invalid-proof check precedes the missing-counterpart structural gate.",
+      "observation": {
+        "kind": "payment-slot",
+        "firstWork": {
+          "slotStateProof": "invalid"
         }
       }
     }

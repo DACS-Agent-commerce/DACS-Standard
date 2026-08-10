@@ -239,17 +239,22 @@ function verifySettlementEvidence(obs: SettlementEvidenceObservation): Verdict {
 }
 
 function verifyPaymentSlot(obs: PaymentSlotObservation): Verdict {
+  // Invalid proof material is evaluated before ANY structural or label gate.
+  // It is the strongest and most certain signal in the observation: a proof
+  // that fails verification is a reject regardless of what transition string a
+  // claimant attached to it, and regardless of whether the counterpart Work was
+  // supplied at all. Ordering either the unknown-transition check or the
+  // missing-counterpart return ahead of it let contradicted material be
+  // downgraded to `indeterminate` — in the missing-counterpart case, simply by
+  // omitting the second Work.
+  const presentWorks = [obs.firstWork, obs.secondWork].filter(
+    (work): work is PaymentSlotWork => !isAbsent(work),
+  );
+  if (presentWorks.some((work) => work.slotStateProof === 'invalid')) return 'reject';
+
   if (!obs.firstWork || !obs.secondWork) return 'indeterminate';
 
   const works = [obs.firstWork, obs.secondWork];
-
-  // Invalid proof material is evaluated FIRST. It is the strongest and most
-  // certain signal in the pair, and ordering the unknown-transition check ahead
-  // of it let `slotTransition: "unexpected"` + `slotStateProof: "invalid"`
-  // report `indeterminate`, masking contradictory proof material behind an
-  // unknown label. A proof that fails verification is a reject regardless of
-  // what transition the claimant attached to it.
-  if (works.some((work) => work.slotStateProof === 'invalid')) return 'reject';
 
   const allowedTransitions = new Set(['open', 'open->consumed']);
   if (works.some((work) =>

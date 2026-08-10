@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.5** on the common DACS v0.1 baseline. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.6** on the common DACS v0.1 baseline. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -126,9 +126,33 @@ The Storage Program at stor-{sha256(subject_cci + ":" + credential-type + ":" + 
 | --- | --- | --- |
 | did:… | per W3C DID method | external decentralised identifier; resolution per method |
 | erc8004:<chainId>:<contract>:<tokenId> | <chainId> is an eip155 chain id as a bare decimal integer (no leading zeros), canonically the CAIP-2 chain id eip155:<chainId>; lowercase 0x-prefixed contract; tokenId is the uint256 token id in decimal, no leading zeros | external EVM agent identity NFT; verified via DACS-2 evm-rpc |
-| domain:<dns> | lowercase, IDNA-encoded | DNS / TLS control proof via DACS-2 domain-tls-control |
+| domain:<dns> | lowercase IDNA A-label hostname | fresh DNS / TLS control via DACS-2 `domain-tls-control`, or persistent Demos host/account binding via `demos-gcr-domain` |
 | key:<hex-pubkey> | lowercase, no 0x | self-signed; lowest tier; signing-key only |
 | substrate-validator-set:<substrateId>:<epochOrSetId> | registered substrateId + epoch/set id | not a party identity — the signer of a consensus-backed-proxy / evm-rpc DACS-2 attestation; resolution + roster verification per §7.5 |
+
+**Canonical DNS-domain profile and Demos compatibility (DCR-1..DCR-8).**
+
+- **(DCR-1) Canonical domain identity.** The only canonical DACS DNS-domain ClaimReference is `domain:<host>`. `<host>` MUST be the lower-case ASCII A-label result of IDNA2008 ToASCII with STD3 rules applied label-by-label to the NFC-normalized Unicode hostname. It MUST contain only non-empty labels, each at most 63 octets and the complete hostname at most 253 octets. A producer MUST emit that exact form before hashing or signing.
+- **(DCR-2) Hostname-only boundary.** A conforming domain identifier MUST NOT contain a scheme, user information, port, path, query, fragment, IP literal, empty label, leading/trailing hyphen, underscore, wildcard, surrounding whitespace, or terminal root dot. Inputs such as `https://example.com`, `example.com:443`, `user@example.com`, `example.com/path`, `127.0.0.1`, `[::1]`, `*.example.com`, and `example.com.` are not ClaimReference hostnames and MUST be rejected rather than stripped or repaired.
+- **(DCR-3) Producer transition.** DACS-1 v0.6 producers MUST emit only the canonical `domain:` form. Demos `web2.domain` is a substrate-native storage context, not a second DACS scheme. A Demos adapter maps a verified native record to `domain:<host>` and retains its source context under `BundleClaim.metadata.demosGcrDomain`; it MUST NOT emit `web2:domain:`.
+- **(DCR-4) Permanent legacy read/replay.** A historical `web2:domain:<host>` reference is a permanent read/replay alias for semantic matching only. A reader MUST first verify the enclosing artifact's original bytes, hash, and signature. Only after that verification may it canonicalize `<host>` under DCR-1 and derive the semantic identity `domain:<host>`. It MUST NOT rewrite, re-hash, re-sign, or represent the historical artifact as having originally contained the canonical spelling. A malformed legacy hostname is `error`, not a new identity.
+- **(DCR-5) Semantic deduplication.** Before requirement matching, primary-claim resolution, tier derivation, `oneOf` evaluation, or reputation keying, a reader MUST collapse canonical and legacy aliases with the same DCR-1 host to one semantic domain claim. The aliases cannot count twice, improve identity tier, satisfy two alternatives, or split/merge reputation. A current producer emitting both aliases is non-conforming; a reader of historical bytes still verifies the original artifact and evaluates the deduplicated semantic set.
+- **(DCR-6) Source metadata.** `BundleClaim.metadata.demosGcrDomain`, when present, MUST carry the native context literal `web2.domain`, canonical `hostname`, 64-character lower-case hexadecimal Demos Ed25519 `account`, exact HTTPS `proofUrl`, the Demos `sourceTransaction` (`txHash` and `blockNumber`), and `recordedAt`. The canonical proof URL is exactly `https://<host>/.well-known/demos-cci.txt`. The historical fetched proof body is not part of the GCR record and MUST NOT be invented or re-fetched as if it were persistent evidence. Metadata is inspectable provenance, not authority: consumers independently resolve and authenticate the GCR record under DACS-2 §7.3.10.
+- **(DCR-7) Controlled use.** A passing and fresh `demos-gcr-domain` result establishes a persistent host-to-Demos-account binding. It qualifies the domain as controlled only when the bundle presentation also verifies under that same Ed25519 account (directly, or through an authenticated SR-1/session-key binding to it). A GCR record copied into another party's bundle is valid source data but does not give that party control, cannot serve as its `presentedBy`, and cannot receive its reputation.
+- **(DCR-8) Persistent is not fresh control.** `demos-gcr-domain` and `domain-tls-control` are distinct verification families. The former proves the consensus-recorded persistent host/account link as of its GCR inclusion time; the latter proves a fresh ACME-style challenge. Neither MUST be reported as the other. A requirement that explicitly selects fresh domain control is not satisfied by a GCR record, even while that record remains within its ordinary effective window.
+
+The metadata shape used by DCR-6 is:
+
+```text
+type DemosGCRDomainMetadata = {
+  context: "web2.domain"
+  hostname: string
+  account: string
+  proofUrl: string
+  sourceTransaction: { txHash: string; blockNumber: number }
+  recordedAt: number
+}
+```
 
 **Demos self-certifying agent DID profile.** `did:demos:agent:<64hex>` is a
 canonical ClaimReference under the already-registered `did` scheme: its
@@ -280,7 +304,7 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 3. **Parse + recipe-check** — parse the canonicalised content as a DACS-2 VerifyResult and verify it matches the recipe at `recipeVersion`.
 4. **Identifier match** — `VerifyResult.identifier` matches the `BundleClaim.ref` identifier component canonically.
 5. **Decision** — `VerifyResult.decision == "pass"`.
-6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; or a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim. A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
+6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim; or, for `domain:`, a passing-and-fresh `demos-gcr-domain` result plus a bundle presentation that verifies under the result's exact GCR-bound Ed25519 account (DCR-7). A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
 
 **Freshness window.** The claim's effective window is derived from the resolved VerifyResult, **not** the presenter-supplied wrapper:
 - **Issuance** = `VerifyResult.verifiedAt`.
@@ -362,6 +386,16 @@ A reader MUST evaluate a candidate IdentityBundle against a BundleRequirement us
 ```
 match(bundle, requirement):
 
+  0. Verify the original bundle bytes, hash, and presentation signature.
+
+     Then derive a semantic claim set: canonicalize domain hosts under DCR-1,
+
+     map readable web2:domain aliases to domain:, and collapse equal aliases
+
+     under DCR-5. All following steps operate on that set; the original bytes
+
+     remain unchanged and current dual-alias producers are still non-conforming.
+
   1. (MA-1) For each cr in requirement.required:
 
        if NOT find_claim(bundle, cr): return REJECT("missing required: <cr.scheme>")
@@ -410,8 +444,8 @@ find_claim(bundle, cr):
     // Freshness is keyed on the EFFECTIVE window from the resolved VerifyResult (§6.3.2 clamp):
     //   vr := the VerifyResult resolved from c.verifiedBy
     //   eff_verifiedAt := vr.verifiedAt
-    //   eff_expiry := min(c.expiresAt ?? ∞, vr.validUntil ?? (eff_verifiedAt + recipe(c.ref.scheme, vr.recipeVersion).defaultMaxAgeSec * 1000))
-    //     (defaultMaxAgeSec from the recipe at vr.recipeVersion — the exact recipe vr was validated under, not "latest")
+    //   eff_expiry := min(c.expiresAt ?? ∞, vr.validUntil ?? (eff_verifiedAt + recipe(c.ref.scheme, vr.method, vr.recipeVersion).defaultMaxAgeSec * 1000))
+    //     (defaultMaxAgeSec from the recipe family at (scheme, method, recipeVersion) — the exact recipe vr was validated under, not "latest")
     // Presenter-supplied c.issuedAt/c.expiresAt cannot extend this window (clamped, §6.3.2).
     // Window undeterminable (verifiedBy missing, verifiedAt absent, or vr.validUntil < eff_verifiedAt) → fail closed.
     if c.verifiedBy missing OR vr window undeterminable OR now > eff_expiry: continue

@@ -2,9 +2,9 @@
   "set": "reputation-settlement-semantics-v0.4",
   "spec": "DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules",
   "decisionModel": "accept admits the job; reject and indeterminate both exclude it without fault",
-  "inputModel": "one authoritative bundle projection after cross-copy settlementEvidence reference-multiset agreement; every case uses an authenticated Agreement price of 5 DEM; evidencePhase defaults to the DACS-4 §9.7 PaymentPhaseType pay-dem for non-empty inputs, and evidence outcome defaults to success; authorityDisposition is the independent transaction/authority resolution result; mismatch is evaluated only when authorityDisposition is verified and names the sole semantic contradiction; mismatchIndex selects the zero-based member when present; null then means all semantic checks match",
-  "hash": "e527ca472ddf2b8373b3819a6dcb325af6ea1ffba32be80c84753942f58b51d8",
-  "count": 16,
+  "inputModel": "one authoritative bundle projection after cross-copy settlementEvidence reference-multiset agreement; every case uses an authenticated Agreement price of 5 DEM; evidencePhase defaults to the DACS-4 §9.7 PaymentPhaseType pay-dem for non-empty inputs, and only exact membership in that closed type can establish payment volume; evidence outcome defaults to success; authorityDisposition is the independent transaction/authority resolution result; mismatch is evaluated only when authorityDisposition is verified and names the sole semantic contradiction; mismatchIndex selects the zero-based member when present; null then means all semantic checks match",
+  "hash": "1d30dcb0a2ca091b09bc09e0a0137b572acee00495cb96c3e60460be60a5847d",
+  "count": 17,
   "vectors": [
     {
       "name": "reputation-settlement-semantic-exact-pass",
@@ -102,6 +102,13 @@
       "expected": "accept",
       "note": "verified delivery evidence admits non-volume reputation but is not a verified payment and contributes no volume",
       "input": { "outcome": "completed", "presentedEvidenceCount": 1, "evidencePhase": "deliver-storage-program", "authorityDisposition": "verified", "mismatch": null },
+      "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "eligible-non-volume" }
+    },
+    {
+      "name": "reputation-settlement-semantic-out-of-set-pay-prefix-non-volume",
+      "expected": "accept",
+      "note": "an otherwise-admitted candidate projection with an invented pay-* phase is not a DACS-4 PaymentPhaseType and cannot establish transacted volume",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "evidencePhase": "pay-not-a-dacs4-phase", "evidenceOutcome": "success", "authorityDisposition": "verified", "mismatch": null },
       "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "eligible-non-volume" }
     },
     {

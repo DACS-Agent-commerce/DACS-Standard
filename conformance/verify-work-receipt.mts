@@ -111,6 +111,9 @@ interface AbsenceClaimObservation {
     subjectAttempt?: number;
     [field: string]: unknown;
   };
+  /** The Work actually under question. The evidence's subject must match it. */
+  claimedWorkId?: string;
+  claimedAttempt?: number;
   [field: string]: unknown;
 }
 
@@ -247,10 +250,19 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
   // rejects regardless of how well-formed the receipt is — a well-bound receipt with a failed
   // inclusion proof is still a reject. Only after no contradiction is found does absent
   // structure degrade the verdict to indeterminate.
-  if ([...common, obs.winnerStateProof, obs.paymentSlotStateProof,
-       obs.businessRootEqualityProof].some((s) => s === 'invalid')) {
-    return 'reject';
-  }
+  //
+  // The chain is OUTCOME-SCOPED, per note (B): only proofs that BEAR on the declared outcome
+  // can contradict it. A stray invalid `winnerStateProof` (a committed-outcome proof) must not
+  // reject a rolled-back receipt, and a stray invalid `businessRootEqualityProof` must not
+  // reject a committed one. Scoping this globally was a regression against note (B), which
+  // tells consumers explicitly not to assume any-invalid-proof-anywhere means reject.
+  const outcome = obs.receipt.outcome;
+  const scopedChain = outcome === 'committed'
+    ? [...common, obs.winnerStateProof, obs.paymentSlotStateProof]
+    : outcome === 'rolled-back'
+      ? [...common, obs.businessRootEqualityProof]
+      : common;
+  if (scopedChain.some((status) => status === 'invalid')) return 'reject';
   const { preBusinessStateRoot, postBusinessStateRoot } = obs.receipt;
   if (obs.receipt.outcome === 'rolled-back') {
     if (
@@ -336,13 +348,23 @@ function verifyAbsenceClaim(obs: AbsenceClaimObservation): Verdict {
 
   // SUBJECT BINDING. An absence verdict authorises real action — a terminal `fail`, or a
   // `pass` permitting exactly one replacement under the same workId — so the evidence must
-  // name WHAT it proves absent. Without a bound subject, a lifecycle-expiry proof over some
-  // other Work or attempt would license a replacement here purely on a caller-supplied
-  // `kind` label. This is the same defect class the receipt lane closes with
-  // hasReceiptBinding; the absence lane needs it at least as much, because its verdicts are
-  // the ones that authorise resubmission. Absent binding is unknown, not contradicted.
-  if (!isIdentifier(evidence.subjectWorkId) || !isIndex(evidence.subjectAttempt)) {
+  // name WHAT it proves absent, AND that subject must be the Work actually being asked
+  // about. Requiring the field alone is not enough: evidence naming a different Work would
+  // still be accepted, so a lifecycle-expiry proof over someone else's Work could license a
+  // replacement here. Both sides must be present and must agree.
+  if (
+    !isIdentifier(evidence.subjectWorkId) || !isIndex(evidence.subjectAttempt) ||
+    !isIdentifier(obs.claimedWorkId) || !isIndex(obs.claimedAttempt)
+  ) {
     return 'indeterminate';
+  }
+  // A subject mismatch is CONTRADICTED material, not missing material: the evidence proves
+  // something about a different Work than the one under question.
+  if (
+    evidence.subjectWorkId !== obs.claimedWorkId ||
+    evidence.subjectAttempt !== obs.claimedAttempt
+  ) {
+    return 'reject';
   }
 
   if (evidence.kind === 'authenticated-pre-admission-rejection') return 'fail';
@@ -351,10 +373,15 @@ function verifyAbsenceClaim(obs: AbsenceClaimObservation): Verdict {
 }
 
 function verifySettlementEvidence(obs: SettlementEvidenceObservation): Verdict {
+  // Proof material only. A bare `signatureValid: true` is a claimant assertion with no
+  // verifier behind it, and the set's own contract is "PROOF MATERIAL (never bare
+  // booleans)" — accepting the boolean contradicted that and let a `pass` rest on an
+  // unbacked flag. `signatureValid` is still read for CONTRADICTION (an explicit false is
+  // counter-evidence and rejects), but it can no longer support acceptance.
   if (obs.signatureProof === 'invalid' || obs.signatureValid === false) {
     return 'reject';
   }
-  if (obs.signatureProof !== 'valid' && obs.signatureValid !== true) {
+  if (obs.signatureProof !== 'valid') {
     return 'indeterminate';
   }
 

@@ -1,8 +1,8 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "67df66fd83a1e405694bda7f62268be99d0f441f917a3c21be62f0ca2147c800",
-  "count": 40,
+  "hash": "787178b9f0495252395df211f49869fb69e1499b34fa2b930cf7bf2d11de4746",
+  "count": 43,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
@@ -185,7 +185,9 @@
           "proof": "valid",
           "subjectWorkId": "work-7f3a",
           "subjectAttempt": 0
-        }
+        },
+        "claimedWorkId": "work-7f3a",
+        "claimedAttempt": 0
       }
     },
     {
@@ -201,7 +203,9 @@
           "proof": "valid",
           "subjectWorkId": "work-7f3a",
           "subjectAttempt": 0
-        }
+        },
+        "claimedWorkId": "work-7f3a",
+        "claimedAttempt": 0
       }
     },
     {
@@ -210,11 +214,11 @@
       "note": "xm33's reproduced defect (#316), operation-level analogue: valid SettlementEvidence signature + correct phaseIndex suffix but MISMATCHED anchor jobId/railId at dacs4:payment:{jobId}:{railId}:{phaseIndex} MUST be rejected by the CONSUMER before SB-1 identity/uniqueness key derivation. Upstream slot enforcement does not discharge this consumer check. (Settlement identity for an operation-level atomic ref uses the new versioned rule demoswork:<workId>:pay-dem bound by the receipt, not a reinterpretation of SB-1 demos:{txHash}.)",
       "observation": {
         "kind": "settlement-evidence",
-        "signatureValid": true,
         "phaseIndexMatches": true,
         "evidenceJobId": "job-315-a",
         "anchorJobId": "wrong-job",
-        "anchorRailId": "wrong-rail"
+        "anchorRailId": "wrong-rail",
+        "signatureProof": "valid"
       }
     },
     {
@@ -253,7 +257,7 @@
       "expected": "indeterminate",
       "observation": {
         "kind": "settlement-evidence",
-        "signatureValid": true
+        "signatureProof": "valid"
       }
     },
     {
@@ -261,12 +265,12 @@
       "expected": "indeterminate",
       "observation": {
         "kind": "settlement-evidence",
-        "signatureValid": true,
         "evidenceJobId": "job-rail-absent",
         "anchorJobId": "job-rail-absent",
         "anchorRailId": "pay-dem",
         "evidencePhaseIndex": 0,
-        "anchorPhaseIndex": 0
+        "anchorPhaseIndex": 0,
+        "signatureProof": "valid"
       }
     },
     {
@@ -401,13 +405,13 @@
       "expected": "indeterminate",
       "observation": {
         "kind": "settlement-evidence",
-        "signatureValid": true,
         "evidenceJobId": "job-1",
         "anchorJobId": "job-1",
         "evidenceRailId": null,
         "anchorRailId": null,
         "evidencePhaseIndex": null,
-        "anchorPhaseIndex": null
+        "anchorPhaseIndex": null,
+        "signatureProof": "valid"
       }
     },
     {
@@ -805,6 +809,55 @@
           "proof": "valid",
           "verifiedCannotLaterInclude": true
         }
+      }
+    },
+    {
+      "name": "absence-evidence-subject-mismatch-reject",
+      "expected": "reject",
+      "note": "Absence evidence whose subject names a DIFFERENT Work than the one under question is contradicted material, not missing material. Requiring a subject field without comparing it to the claimed Work would let a lifecycle-expiry proof over someone else's Work license a replacement here.",
+      "observation": {
+        "kind": "absence-claim",
+        "claimedWorkId": "work-7f3a",
+        "claimedAttempt": 0,
+        "evidence": {
+          "kind": "authenticated-lifecycle-expired",
+          "proof": "valid",
+          "verifiedCannotLaterInclude": true,
+          "subjectWorkId": "work-OTHER",
+          "subjectAttempt": 0
+        }
+      }
+    },
+    {
+      "name": "settlement-evidence-bare-boolean-without-proof-indeterminate",
+      "expected": "indeterminate",
+      "note": "A bare signatureValid:true is a claimant assertion with no verifier behind it. This set's contract is proof material, never bare booleans, so acceptance requires signatureProof; the boolean can contradict (an explicit false rejects) but can never support a pass.",
+      "observation": {
+        "kind": "settlement-evidence",
+        "signatureValid": true,
+        "evidenceJobId": "job-9",
+        "anchorJobId": "job-9",
+        "evidenceRailId": "pay-dem",
+        "anchorRailId": "pay-dem",
+        "evidencePhaseIndex": 0,
+        "anchorPhaseIndex": 0
+      }
+    },
+    {
+      "name": "rollback-receipt-unrelated-invalid-winner-proof-not-rejected-indeterminate",
+      "expected": "indeterminate",
+      "note": "Per profile note (B) verdict chains are outcome-scoped: a winnerStateProof bears on a committed outcome, so a stray invalid one MUST NOT reject a rolled-back receipt. Consumers must not assume any-invalid-proof-anywhere means reject. Here the rollback chain itself is incomplete, so the verdict is indeterminate rather than reject.",
+      "observation": {
+        "kind": "work-receipt-proof",
+        "receipt": {
+          "outcome": "rolled-back",
+          "preBusinessStateRoot": "0xr",
+          "postBusinessStateRoot": "0xr"
+        },
+        "receiptInclusionProof": "valid",
+        "finalityProof": "valid",
+        "validatorSetProof": "valid",
+        "winnerStateProof": "invalid"
       }
     }
   ]

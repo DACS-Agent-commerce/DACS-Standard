@@ -39,7 +39,7 @@
  *
  * Profile-hardening notes for the Standard profile (from adversarial review):
  *  (A) ENFORCED (was a SHOULD): slot-key / root / identity components must each be a
- *      non-empty string or a NON-NEGATIVE INTEGER. `undefined`/`null` are absent, and so now
+ *      non-empty string or a NON-NEGATIVE SAFE INTEGER. `undefined`/`null` are absent, and so now
  *      are `''`, negative numbers and non-integers — an empty identifier compares equal to another
  *      empty identifier, so admitting it let two sides "match" on nothing and reach
  *      `pass`. A SHOULD in a comment does not make an exported `pass` fail-closed.
@@ -62,7 +62,7 @@
  *  (E) ENFORCED (was a SHOULD): a valid slotStateProof must carry a proof-derived
  *      `slotTransition`. Valid-proof-with-absent-transition degrades the pair to
  *      indeterminate rather than a non-consuming `pass`, and per note (A) phaseIndex
- *      is trusted only as a non-negative integer.
+ *      is trusted only as a non-negative safe integer.
  */
 
 import { readFileSync } from 'node:fs';
@@ -496,7 +496,7 @@ function verifyPaymentSlot(obs: PaymentSlotObservation): Verdict {
 
   const trustedProvenSlots = works.map((work) => {
     const slot = work.provenSlot;
-    // Every component must be REAL material: a non-empty identifier, or a finite index.
+    // Every component must be REAL material: a non-empty identifier, or a non-negative safe integer.
     // Empty strings compared equal to each other, so a pair whose proven slot was
     // ('', '', '', 0) on both sides satisfied the tuple comparison below and returned `pass`
     // while attesting to no network, no rail, and no job.

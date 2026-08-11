@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,13 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+# Reuse the validator's canonical primitives rather than hand-rolling them:
+#  - decode_signature_value decodes canonical SIG-6 (unpadded Base64URL) and, only under
+#    an explicit permit, legacy padded standard Base64 (called legacy_allowed=False here).
+#  - canonical_json is the §B.2 RFC 8785 (JCS) serializer used for every hash the corpus
+#    commits to, so this test hashes under the SAME canonicalizer the generator signs with.
+from validate_conformance_vectors import canonical_json, decode_signature_value  # noqa: E402
 VECTORS = (
     ROOT
     / "conformance"
@@ -22,17 +30,16 @@ VECTORS = (
 )
 GENERATOR = ROOT / "scripts" / "generate_payload_attestation_vectors.py"
 HAPPY_PATH = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
+NEGATIVE_PATH = ROOT / "conformance" / "vectors" / "dacs-v0.1-negative-paths.json"
 PAYLOAD_DOMAIN = "dacs-payload-attestation:v1:"
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 
 
 def canonical_bytes(value):
-    return json.dumps(
-        value,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
+    # §B.2 canonical bytes via the validator's RFC 8785 (JCS) primitive — the single
+    # canonicalizer the whole corpus commits to. NOT json.dumps, which merely coincides
+    # with JCS on ASCII/float-free input.
+    return canonical_json(value)
 
 
 def hash_hex(value):
@@ -237,6 +244,15 @@ class PayloadAttestationVectorTests(unittest.TestCase):
         bundle = bundle_item["artifact"]
         self.assertEqual(bundle["listingRef"]["contentHash"], listing_hash)
 
+        # Review item 6: the Agreement's Vet-record references must also resolve — both
+        # parties' vetRecordRef must equal the CompositeVerificationRecord's stored §B.2
+        # envelope contentHash, not the legacy whole-artifact hash. Compares two stored
+        # file values (agreement ref vs composite envelope), so it is not a re-derivation.
+        composite_item = artifacts["CompositeVerificationRecord"]
+        composite_hash = composite_item["contentHash"].removeprefix("sha256:")
+        for party in agreement["parties"]:
+            self.assertEqual(party["vetRecordRef"]["contentHash"], composite_hash)
+
         for item, omitted in [
             (listing_item, {"signature"}),
             (agreement_item, {"signatures"}),
@@ -250,8 +266,35 @@ class PayloadAttestationVectorTests(unittest.TestCase):
                 signer = signature.get("signer") or signature.get("party")
                 with self.subTest(kind=item["kind"], signer=signer):
                     public = bytes.fromhex(signer.removeprefix("cci:"))
-                    raw = base64.b64decode(signature["value"], validate=True)
+                    raw = decode_signature_value(signature["value"], legacy_allowed=False)
                     Ed25519PublicKey.from_public_bytes(public).verify(raw, payload)
+
+    def test_negative_chain_is_internally_coherent(self):
+        """The negative chain's DECLARED defects are the tampered bundle signature and
+        the tampered HTLC preimage — reference staleness is NOT one of them. A negative
+        vector must fail only for the reason it declares, so its cross-references must
+        still resolve to the §B.2 envelope hashes of their referents.
+
+        This asserts the same coherence family as the happy-path test, over stored file
+        values only (no signature verification — the tampered bundle signature is
+        SUPPOSED to fail and is never touched here). It is EXPECTED to fail until the
+        negative chain is regenerated (Step 5); the failure precisely localises the
+        remaining incoherence."""
+        data = json.loads(NEGATIVE_PATH.read_text(encoding="utf-8"))
+        artifacts = {item["kind"]: item for item in data["artifacts"]}
+
+        listing_item = artifacts["Listing"]
+        listing_hash = listing_item["contentHash"].removeprefix("sha256:")
+        composite_hash = artifacts["CompositeVerificationRecord"]["contentHash"].removeprefix("sha256:")
+        deliverable = listing_item["artifact"]["offering"]["deliverable"]
+
+        agreement = artifacts["AgreementDocument"]["artifact"]
+        bundle = artifacts["AttestationBundle"]["artifact"]
+        self.assertEqual(agreement["listingRef"]["contentHash"], listing_hash)
+        self.assertEqual(bundle["listingRef"]["contentHash"], listing_hash)
+        for party in agreement["parties"]:
+            self.assertEqual(party["vetRecordRef"]["contentHash"], composite_hash)
+        self.assertEqual(agreement["terms"]["deliverable"]["hash"], hash_hex(deliverable))
 
     def test_spec_registers_distinct_type_domain_and_rules(self):
         core = (ROOT / "spec" / "CORE.md").read_text(encoding="utf-8")

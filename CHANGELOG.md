@@ -15,6 +15,10 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — DACS-4 v0.6
+
+- **Signed settlement-event identity — SB-1/SB-2 repair** (§9.3, §9.5.2, §9.5.3, §9.5.7, §9.5.8; #315) — adds distinct `evm-event`, `solana-instruction`, and `x402-event` `ChainTxRef` arms so the event/instruction coordinate that produces the SB-1 uniqueness key is inside the signed `SettlementEvidence` scope. Current producers must emit the applicable event-level arm and verifiers independently match its asset, payer, agreement-authorized payee, signed `paymentAmount`, and receipt context against authenticated ledger data before projection. They must also compare the complete PC-2 address tuple against signed `jobId`, the authenticated agreement/phase rail, and the authenticated `BundlePhaseEntry.index`; a valid evidence signature or outer receipt cannot substitute for this check. The legacy `evm`, `solana`, and `x402` arms remain byte-stable read/replay shapes: exactly one independently matching event permits projection, no match fails, and unavailable or multiple matches remain `indeterminate`; unsigned caller/indexer coordinates never disambiguate them. Adds deterministic, genuinely signed vectors for EVM, Solana, current and legacy x402 receipt/event reconciliation, batched transfers, cross-job reuse, signed-amount mismatch, full-address tuple mismatch and CF-4 encoding, malformed/missing indexes, ledger mismatch/unavailability, legacy ambiguity, discriminator stripping, and cross-type signature replay.
+
 ### Fixed — DACS-2 v0.5
 
 - **Method-conditional recipe parsing** (DACS-2 §7.4.1 PRA-1..PRA-5 and
@@ -99,8 +103,9 @@ The format used per release:
   `{anchor:{kind,locator},contentHash,signer?}`, replaces legacy
   `{rail,txHash,kind}` transaction references with the applicable
   `ChainTxRef` arm, and deterministically re-hashes/re-signs the affected
-  bundle and settlement fixtures. Adds a 19-case exact-shape suite covering
-  all three attestation anchor kinds and all eleven transaction-reference
+  bundle and settlement fixtures. Adds an exact-shape suite, extended by #315
+  to 23 cases, covering all three attestation anchor kinds and all fourteen
+  transaction-reference
   discriminators, including nested AP2 receipt attestations and negative
   legacy forms. The manifest gains two golden executable cases but retains
   `dacsVersion: "0.1"` because that is the full-profile baseline identifier,

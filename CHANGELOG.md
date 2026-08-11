@@ -60,6 +60,12 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
+  replaces the stale `verify-consume-one-sided` manifest hash after the
+  normative reference-shape migration, binds manifest regeneration to the
+  regenerated signed fixture, and refreshes the lifecycle manifest/trace
+  pins. Adds a regression test that verifies both the exact bundle hash and
+  its deterministic Ed25519 signature. No normative protocol rule changes.
 - **Preserve-unknown Listing fixture aligned with DPA-1** (CORE SIG-5;
   DACS-4 §9.6.3 DPA-1; #323) — adds an explicit supported `self-signed`
   verification method to both signed Listings, then deterministically

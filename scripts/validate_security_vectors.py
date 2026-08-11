@@ -43,8 +43,13 @@ REQUIRED_FIELDS = ("set", "spec", "count", "hash", "vectors")
 #   agreement-listing: accept/reject (+indeterminate)
 #   feeschedule FR-4:  reconciles/diverged/indeterminate
 #   private-deliverables DV-6: readable/clean-negative/ACL-dropped/indeterminate
+#   atomic-work-receipt-absence (RFC #320): coherent/indeterminate/reject/fail — the
+#     positive value is `coherent`, NOT `pass`, because that set is classified by an
+#     evidence classifier rather than a proof verifier; `pass` there would assert a
+#     cryptographic verification the component does not perform (#322, 2026-08-11).
 KNOWN_VERDICTS = {
     "pass", "fail", "indeterminate", "error",
+    "coherent",
     "accept", "reject",
     "reconciles", "diverged",
     "readable", "clean-negative", "ACL-dropped",

@@ -1,9 +1,16 @@
 /**
- * Executable reference verifier for the proposed Atomic-DACS Work-receipt and
- * absence-proof profile (RFC #320). It makes receipt acceptance independent of
+ * Executable EVIDENCE CLASSIFIER for the proposed Atomic-DACS Work-receipt and
+ * absence-proof profile (RFC #320).
+ *
+ * NOT A PROOF VERIFIER, and deliberately not named as one. It performs no signature check, no
+ * Merkle-path check, no quorum/finality-certificate check, no validator-set check and no
+ * proof-subject binding check. It cannot distinguish a genuine bound verification result from
+ * `valid` attached to some other subject. Renamed from `verifyWorkReceipt` at steward request
+ * (#322, 2026-08-11) precisely because the old name and a `pass` verdict overstated what this
+ * component establishes. It makes receipt acceptance independent of
  * Indexer hydration, as required by the receipt-without-Indexer work in #973.
  *
- * Run `node conformance/verify-work-receipt.mts` for the human-readable
+ * Run `node conformance/classify-work-evidence.mts` for the human-readable
  * conformance table, or append `--json` for a machine-readable summary.
  * `--expect-count <n>` additionally asserts the executed corpus size.
  *
@@ -32,7 +39,7 @@
  * honestly produced over the right subjects, are internally coherent", NOT "the receipt
  * was cryptographically verified".
  *
- * Verdict precedence, applied uniformly: CONTRADICTED material (an invalid proof, roots
+ * EvidenceClass precedence, applied uniformly: CONTRADICTED material (an invalid proof, roots
  * that disagree, a receipt contradicting its own outcome) outranks MISSING material. A
  * contradiction rejects regardless of structure; only absent evidence degrades to
  * indeterminate. Missing evidence is not counter-evidence.
@@ -43,7 +50,7 @@
  *      are `''`, negative numbers and non-integers — an empty identifier compares equal to another
  *      empty identifier, so admitting it let two sides "match" on nothing and reach
  *      `pass`. A SHOULD in a comment does not make an exported `pass` fail-closed.
- *  (B) Verdict chains are outcome-scoped: a `rolled-back` receipt is judged on
+ *  (B) EvidenceClass chains are outcome-scoped: a `rolled-back` receipt is judged on
  *      its declared chain (inclusion/finality/validatorSet + businessRootEquality)
  *      and does NOT reject on a stray invalid proof outside that chain (e.g. a
  *      `winnerStateProof` that only applies to a `committed` outcome). Consumers
@@ -69,7 +76,16 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export type Verdict = 'pass' | 'indeterminate' | 'reject' | 'fail';
+/**
+ * Classification of supplied evidence — NOT a verification result.
+ *
+ * `coherent` deliberately replaces `pass`. A reader seeing `pass` from something named a
+ * verifier reasonably concludes the receipt was cryptographically verified; this component
+ * performs no such check. `coherent` says what is actually established: the supplied
+ * verification results, IF honestly produced over the right subjects, hang together and carry
+ * the structure this profile requires.
+ */
+export type EvidenceClass = 'coherent' | 'indeterminate' | 'reject' | 'fail';
 
 // Profile-proposed; refine when the Standard profile lands.
 type ProofStatus = 'valid' | 'invalid' | 'absent';
@@ -244,13 +260,13 @@ function hasReceiptBinding(receipt: Record<string, unknown>): boolean {
     && isIndex(receipt.blockHeight);
 }
 
-function verifyProofChain(statuses: Array<ProofStatus | undefined>): Verdict {
+function verifyProofChain(statuses: Array<ProofStatus | undefined>): EvidenceClass {
   if (statuses.some((status) => status === 'invalid')) return 'reject';
   if (statuses.some((status) => status !== 'valid')) return 'indeterminate';
-  return 'pass';
+  return 'coherent';
 }
 
-function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
+function verifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
   const common = [
     obs.receiptInclusionProof,
     obs.finalityProof,
@@ -319,7 +335,7 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
       ...common,
       obs.businessRootEqualityProof,
     ]);
-    if (proofVerdict !== 'pass') return proofVerdict;
+    if (proofVerdict !== 'coherent') return proofVerdict;
 
     if (!isIdentifier(preBusinessStateRoot) || !isIdentifier(postBusinessStateRoot)) {
       return 'indeterminate';
@@ -346,14 +362,14 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): Verdict {
         && typeof result.status === 'string'
         && ROLLBACK_CONSISTENT_STATUSES.has(result.status),
     );
-    return allConsistent ? 'pass' : 'indeterminate';
+    return allConsistent ? 'coherent' : 'indeterminate';
   }
 
   const commonVerdict = verifyProofChain(common);
   return commonVerdict === 'reject' ? 'reject' : 'indeterminate';
 }
 
-function verifyAbsenceClaim(obs: AbsenceClaimObservation): Verdict {
+function verifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
   const { evidence } = obs;
   if (!evidence || typeof evidence !== 'object') return 'indeterminate';
 
@@ -407,11 +423,11 @@ function verifyAbsenceClaim(obs: AbsenceClaimObservation): Verdict {
   }
 
   if (evidence.kind === 'authenticated-pre-admission-rejection') return 'fail';
-  if (evidence.kind === 'authenticated-lifecycle-expired') return 'pass';
+  if (evidence.kind === 'authenticated-lifecycle-expired') return 'coherent';
   return 'indeterminate';
 }
 
-function verifySettlementEvidence(obs: SettlementEvidenceObservation): Verdict {
+function verifySettlementEvidence(obs: SettlementEvidenceObservation): EvidenceClass {
   // Proof material only. A bare `signatureValid: true` is a claimant assertion with no
   // verifier behind it, and the set's own contract is "PROOF MATERIAL (never bare
   // booleans)" — accepting the boolean contradicted that and let a `pass` rest on an
@@ -451,10 +467,10 @@ function verifySettlementEvidence(obs: SettlementEvidenceObservation): Verdict {
     !isTrusted(evidence) || !isTrusted(anchor)
   )) return 'indeterminate';
 
-  return 'pass';
+  return 'coherent';
 }
 
-function verifyPaymentSlot(obs: PaymentSlotObservation): Verdict {
+function verifyPaymentSlot(obs: PaymentSlotObservation): EvidenceClass {
   // Invalid proof material is evaluated before ANY structural or label gate.
   // It is the strongest and most certain signal in the observation: a proof
   // that fails verification is a reject regardless of what transition string a
@@ -530,11 +546,11 @@ function verifyPaymentSlot(obs: PaymentSlotObservation): Verdict {
 
   // ledgerLevelCAS is merely a claim and cannot whitewash two committed sets.
   if (verifiedCommitCount === 2) return 'reject';
-  if (verifiedCommitCount === 1) return 'pass';
+  if (verifiedCommitCount === 1) return 'coherent';
   return 'indeterminate';
 }
 
-export function verifyWorkReceipt(obs: Observation): Verdict {
+export function classifyVerifiedWorkEvidence(obs: Observation): EvidenceClass {
   switch (obs.kind) {
     case 'work-receipt-proof':
       return verifyReceiptProof(obs as WorkReceiptProofObservation);
@@ -552,7 +568,7 @@ export function verifyWorkReceipt(obs: Observation): Verdict {
 
 interface Vector {
   name: string;
-  expected: Verdict;
+  expected: EvidenceClass;
   observation: Observation;
 }
 
@@ -564,8 +580,8 @@ interface VectorSet {
 
 interface Result {
   name: string;
-  expected: Verdict;
-  computed: Verdict | 'error';
+  expected: EvidenceClass;
+  computed: EvidenceClass | 'error';
   matches: boolean;
   error?: string;
 }
@@ -609,7 +625,7 @@ function run(): void {
 
   const results: Result[] = vectorSet.vectors.map((vector) => {
     try {
-      const computed = verifyWorkReceipt(vector.observation);
+      const computed = classifyVerifiedWorkEvidence(vector.observation);
       return {
         name: vector.name,
         expected: vector.expected,
@@ -645,7 +661,7 @@ function run(): void {
       expected: result.expected,
       computed: result.computed,
     })));
-    console.log(`${matched}/${vectorSet.vectors.length} vectors matched`);
+    console.log(`${matched}/${vectorSet.vectors.length} vectors classified as declared`);
   }
 
   process.exit(allMatched ? 0 : 1);

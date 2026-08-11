@@ -1,12 +1,12 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
-  "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Verifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class verdict a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A verdict of `pass` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent.",
-  "hash": "50d5163acc14f8b1472ad4e68e81704cb816bd881434ac300f1c87c1dfdece28",
+  "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Classifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class EVIDENCE CLASSIFICATION a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A classification of `coherent` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent. NOTE: this component is an evidence CLASSIFIER, not a proof verifier — it performs no signature, Merkle-path, quorum/finality, validator-set or proof-subject check, and `coherent` means the supplied verification results are internally consistent and structurally sufficient, NOT that the receipt was cryptographically verified. Renamed at steward request (#322, 2026-08-11).",
+  "hash": "1084ddf75a372fec82de2a108f50e852568262b0ee2a2aa707b393fa42028873",
   "count": 52,
   "vectors": [
     {
       "name": "receipt-full-proof-chain-independent-of-indexer-pass",
-      "expected": "pass",
+      "expected": "coherent",
       "note": "Every link verifies against a trusted checkpoint, WITHOUT any Indexer read: the accepting consumer never touches public Indexer hydration.",
       "observation": {
         "kind": "work-receipt-proof",
@@ -82,7 +82,7 @@
     },
     {
       "name": "included-failure-rollback-roots-equal-pass",
-      "expected": "pass",
+      "expected": "coherent",
       "note": "outcome==rolled-back with a verified receipt proof: every prior critical op result is rolled-back, later ops not-executed, and a state-membership proof shows preBusinessStateRoot == postBusinessStateRoot. Fee/nonce effects reported SEPARATELY (may persist).",
       "observation": {
         "kind": "work-receipt-proof",
@@ -192,7 +192,7 @@
     },
     {
       "name": "expiry-authenticated-lifecycle-permits-single-replacement-pass",
-      "expected": "pass",
+      "expected": "coherent",
       "note": "Authenticated lifecycle evidence proving the old attempt can no longer be included permits exactly one replacement under the same workId; local-clock expiry alone is insufficient (separate indeterminate case).",
       "observation": {
         "kind": "absence-claim",
@@ -388,7 +388,7 @@
     },
     {
       "name": "settlement-evidence-full-slotkey-match-pass",
-      "expected": "pass",
+      "expected": "coherent",
       "observation": {
         "kind": "settlement-evidence",
         "signatureProof": "valid",
@@ -580,8 +580,8 @@
     },
     {
       "name": "payment-slot-single-verified-commit-pass",
-      "expected": "pass",
-      "note": "Coverage for the sole accept path: exactly one Work verifiably consumes the slot (slotStateProof valid + open->consumed) while the other holds the same proven slot open (slotTransition 'open', not consuming). Both proven slots trusted + equal, verifiedCommitCount==1 -> pass (a legitimate single settlement, no double-spend).",
+      "expected": "coherent",
+      "note": "Coverage for the sole accept path: exactly one Work verifiably consumes the slot (slotStateProof valid + open->consumed) while the other holds the same proven slot open (slotTransition 'open', not consuming). Both proven slots trusted + equal, verifiedCommitCount==1 -> coherent (a legitimate single settlement, no double-spend).",
       "observation": {
         "kind": "payment-slot",
         "firstWork": {
@@ -609,7 +609,7 @@
     {
       "name": "payment-slot-valid-proof-absent-transition-indeterminate",
       "expected": "indeterminate",
-      "note": "A valid slotStateProof carrying no proof-derived slotTransition leaves half the pair's slot state unknown. Per profile note (E) the pair MUST degrade to indeterminate; returning a non-consuming `pass` here would accept one real commit while the co-slot's transition is unproven.",
+      "note": "A valid slotStateProof carrying no proof-derived slotTransition leaves half the pair's slot state unknown. Per profile note (E) the pair MUST degrade to indeterminate; returning a non-consuming `coherent` here would accept one real commit while the co-slot's transition is unproven.",
       "observation": {
         "kind": "payment-slot",
         "firstWork": {

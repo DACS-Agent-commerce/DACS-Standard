@@ -30,14 +30,14 @@
  * attached to a proof over some OTHER subject. Binding a proof result to the receipt,
  * header, and state identities it is claimed to cover is the CALLER's obligation.
  *
- * What this file does guarantee is narrower and purely structural: a `pass` is never
+ * What this file does guarantee is narrower and purely structural: `coherent` is never
  * reachable on labels alone. A receipt must carry the workId -> txHash -> block ->
  * receiptRoot binding, a rollback must carry operation results consistent with its
  * outcome, and slot/settlement identity must be real material rather than empty strings.
- * Absent that structure the verdict degrades, so an adopter cannot receive `pass` for a
- * receipt that names no Work — but `pass` still means "these supplied proof results, if
- * honestly produced over the right subjects, are internally coherent", NOT "the receipt
- * was cryptographically verified".
+ * Absent that structure the classification degrades, so an adopter cannot receive `coherent` for a
+ * receipt that names no Work — but `coherent` means only "these supplied proof results, if
+ * honestly produced over the right subjects, are internally coherent and structurally
+ * sufficient", NOT "the receipt was cryptographically verified".
  *
  * EvidenceClass precedence, applied uniformly: CONTRADICTED material (an invalid proof, roots
  * that disagree, a receipt contradicting its own outcome) outranks MISSING material. A
@@ -49,14 +49,14 @@
  *      non-empty string or a NON-NEGATIVE SAFE INTEGER. `undefined`/`null` are absent, and so now
  *      are `''`, negative numbers and non-integers — an empty identifier compares equal to another
  *      empty identifier, so admitting it let two sides "match" on nothing and reach
- *      `pass`. A SHOULD in a comment does not make an exported `pass` fail-closed.
+ *      `coherent`. A SHOULD in a comment does not make an exported positive result fail-closed.
  *  (B) EvidenceClass chains are outcome-scoped: a `rolled-back` receipt is judged on
  *      its declared chain (inclusion/finality/validatorSet + businessRootEquality)
  *      and does NOT reject on a stray invalid proof outside that chain (e.g. a
  *      `winnerStateProof` that only applies to a `committed` outcome). Consumers
  *      MUST NOT assume any-invalid-proof-anywhere -> reject.
  *  (C) Slot-key comparison is TYPE-STRICT (`0 !== "0"`). Encoders MUST normalize
- *      phaseIndex to a number. A type mismatch fail-safes AWAY FROM `pass`, but the
+ *      phaseIndex to a number. A type mismatch fail-safes AWAY FROM `coherent`, but the
  *      verdict is `indeterminate`, not `reject`: a wrongly-typed phaseIndex fails
  *      `isIndex`, so that side's proven slot is untrusted and the pair is UNKNOWN
  *      rather than contradicted. (This note previously said `reject`, which the
@@ -68,7 +68,7 @@
  *      refusing to reject on unbound labels alone.
  *  (E) ENFORCED (was a SHOULD): a valid slotStateProof must carry a proof-derived
  *      `slotTransition`. Valid-proof-with-absent-transition degrades the pair to
- *      indeterminate rather than a non-consuming `pass`, and per note (A) phaseIndex
+ *      indeterminate rather than a non-consuming `coherent`, and per note (A) phaseIndex
  *      is trusted only as a non-negative safe integer.
  */
 
@@ -204,8 +204,8 @@ const isAbsent = (value: unknown): boolean =>
 /**
  * Identifier material must be a NON-EMPTY string. An empty string is not an identifier:
  * it carries no binding, yet compares equal to another empty string, so treating `''` as
- * present let two sides "match" on nothing at all and reach `pass`. Formerly note (A) as a
- * SHOULD; a SHOULD in a comment does not make an exported `pass` fail-closed, so it is
+ * present let two sides "match" on nothing at all and reach the positive class. Formerly note (A)
+ * as a SHOULD; a SHOULD in a comment does not make an exported positive result fail-closed, so it is
  * enforced here.
  */
 const isIdentifier = (value: unknown): value is string =>
@@ -260,13 +260,13 @@ function hasReceiptBinding(receipt: Record<string, unknown>): boolean {
     && isIndex(receipt.blockHeight);
 }
 
-function verifyProofChain(statuses: Array<ProofStatus | undefined>): EvidenceClass {
+function classifyProofChain(statuses: Array<ProofStatus | undefined>): EvidenceClass {
   if (statuses.some((status) => status === 'invalid')) return 'reject';
   if (statuses.some((status) => status !== 'valid')) return 'indeterminate';
   return 'coherent';
 }
 
-function verifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
+function classifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
   const common = [
     obs.receiptInclusionProof,
     obs.finalityProof,
@@ -281,7 +281,7 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
 
   if (!obs.receipt || typeof obs.receipt !== 'object') return 'indeterminate';
 
-  // PRECEDENCE, consistent with verifyPaymentSlot: CONTRADICTED material outranks MISSING
+  // PRECEDENCE, consistent with classifyPaymentSlot: CONTRADICTED material outranks MISSING
   // material. An invalid proof, or a rollback whose roots disagree, is counter-evidence and
   // rejects regardless of how well-formed the receipt is — a well-bound receipt with a failed
   // inclusion proof is still a reject. Only after no contradiction is found does absent
@@ -319,11 +319,11 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
 
   // Structure before labels. `outcome` is a claimant-supplied string and means nothing until
   // the receipt carrying it is bound to chain state, so a receipt object containing only
-  // `outcome` can never reach `pass` on proof statuses alone.
+  // `outcome` can never reach `coherent` on proof statuses alone.
   if (!hasReceiptBinding(obs.receipt)) return 'indeterminate';
 
   if (obs.receipt.outcome === 'committed') {
-    return verifyProofChain([
+    return classifyProofChain([
       ...common,
       obs.winnerStateProof,
       obs.paymentSlotStateProof,
@@ -331,7 +331,7 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
   }
 
   if (obs.receipt.outcome === 'rolled-back') {
-    const proofVerdict = verifyProofChain([
+    const proofVerdict = classifyProofChain([
       ...common,
       obs.businessRootEqualityProof,
     ]);
@@ -365,11 +365,11 @@ function verifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
     return allConsistent ? 'coherent' : 'indeterminate';
   }
 
-  const commonVerdict = verifyProofChain(common);
+  const commonVerdict = classifyProofChain(common);
   return commonVerdict === 'reject' ? 'reject' : 'indeterminate';
 }
 
-function verifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
+function classifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
   const { evidence } = obs;
   if (!evidence || typeof evidence !== 'object') return 'indeterminate';
 
@@ -402,7 +402,7 @@ function verifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
   }
 
   // SUBJECT BINDING. An absence verdict authorises real action — a terminal `fail`, or a
-  // `pass` permitting exactly one replacement under the same workId — so the evidence must
+  // `coherent` permitting exactly one replacement under the same workId — so the evidence must
   // name WHAT it proves absent, AND that subject must be the Work actually being asked
   // about. Requiring the field alone is not enough: evidence naming a different Work would
   // still be accepted, so a lifecycle-expiry proof over someone else's Work could license a
@@ -427,7 +427,7 @@ function verifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
   return 'indeterminate';
 }
 
-function verifySettlementEvidence(obs: SettlementEvidenceObservation): EvidenceClass {
+function classifySettlementEvidence(obs: SettlementEvidenceObservation): EvidenceClass {
   // Proof material only. A bare `signatureValid: true` is a claimant assertion with no
   // verifier behind it, and the set's own contract is "PROOF MATERIAL (never bare
   // booleans)" — accepting the boolean contradicted that and let a `pass` rest on an
@@ -470,7 +470,7 @@ function verifySettlementEvidence(obs: SettlementEvidenceObservation): EvidenceC
   return 'coherent';
 }
 
-function verifyPaymentSlot(obs: PaymentSlotObservation): EvidenceClass {
+function classifyPaymentSlot(obs: PaymentSlotObservation): EvidenceClass {
   // Invalid proof material is evaluated before ANY structural or label gate.
   // It is the strongest and most certain signal in the observation: a proof
   // that fails verification is a reject regardless of what transition string a
@@ -553,13 +553,13 @@ function verifyPaymentSlot(obs: PaymentSlotObservation): EvidenceClass {
 export function classifyVerifiedWorkEvidence(obs: Observation): EvidenceClass {
   switch (obs.kind) {
     case 'work-receipt-proof':
-      return verifyReceiptProof(obs as WorkReceiptProofObservation);
+      return classifyReceiptProof(obs as WorkReceiptProofObservation);
     case 'absence-claim':
-      return verifyAbsenceClaim(obs as AbsenceClaimObservation);
+      return classifyAbsenceClaim(obs as AbsenceClaimObservation);
     case 'settlement-evidence':
-      return verifySettlementEvidence(obs as SettlementEvidenceObservation);
+      return classifySettlementEvidence(obs as SettlementEvidenceObservation);
     case 'payment-slot':
-      return verifyPaymentSlot(obs as PaymentSlotObservation);
+      return classifyPaymentSlot(obs as PaymentSlotObservation);
     default:
       // Fail-closed contract: embedders MUST treat this throw as non-accept.
       throw new Error(`Unknown work-receipt observation kind: ${String(obs.kind)}`);

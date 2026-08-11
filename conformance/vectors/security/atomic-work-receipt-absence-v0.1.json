@@ -1,11 +1,11 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
-  "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Classifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class EVIDENCE CLASSIFICATION a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A classification of `coherent` REQUIRES the whole chain to verify; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent. NOTE: this component is an evidence CLASSIFIER, not a proof verifier — it performs no signature, Merkle-path, quorum/finality, validator-set or proof-subject check, and `coherent` means the supplied verification results are internally consistent and structurally sufficient, NOT that the receipt was cryptographically verified. Renamed at steward request (#322, 2026-08-11).",
-  "hash": "1084ddf75a372fec82de2a108f50e852568262b0ee2a2aa707b393fa42028873",
+  "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Classifier input: an atomic-Work settlement/recovery observation carrying PROOF MATERIAL (never bare booleans); output: the §7.5.1-class EVIDENCE CLASSIFICATION a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A classification of `coherent` REQUIRES a caller-supplied `valid` status for every required link in the chain, subject to the documented upstream-verification prerequisite — it does NOT establish that the chain verified; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent. NOTE: this component is an evidence CLASSIFIER, not a proof verifier — it performs no signature, Merkle-path, quorum/finality, validator-set or proof-subject check, and `coherent` means the supplied verification results are internally consistent and structurally sufficient, NOT that the receipt was cryptographically verified. Renamed at steward request (#322, 2026-08-11).",
+  "hash": "c1831530cd30e0bb25c2ca94a9f193876e1285f2f9d83335d2cdb17a254911c1",
   "count": 52,
   "vectors": [
     {
-      "name": "receipt-full-proof-chain-independent-of-indexer-pass",
+      "name": "receipt-full-proof-chain-independent-of-indexer-coherent",
       "expected": "coherent",
       "note": "Every link verifies against a trusted checkpoint, WITHOUT any Indexer read: the accepting consumer never touches public Indexer hydration.",
       "observation": {
@@ -81,7 +81,7 @@
       }
     },
     {
-      "name": "included-failure-rollback-roots-equal-pass",
+      "name": "included-failure-rollback-roots-equal-coherent",
       "expected": "coherent",
       "note": "outcome==rolled-back with a verified receipt proof: every prior critical op result is rolled-back, later ops not-executed, and a state-membership proof shows preBusinessStateRoot == postBusinessStateRoot. Fee/nonce effects reported SEPARATELY (may persist).",
       "observation": {
@@ -191,7 +191,7 @@
       }
     },
     {
-      "name": "expiry-authenticated-lifecycle-permits-single-replacement-pass",
+      "name": "expiry-authenticated-lifecycle-permits-single-replacement-coherent",
       "expected": "coherent",
       "note": "Authenticated lifecycle evidence proving the old attempt can no longer be included permits exactly one replacement under the same workId; local-clock expiry alone is insufficient (separate indeterminate case).",
       "observation": {
@@ -387,7 +387,7 @@
       }
     },
     {
-      "name": "settlement-evidence-full-slotkey-match-pass",
+      "name": "settlement-evidence-full-slotkey-match-coherent",
       "expected": "coherent",
       "observation": {
         "kind": "settlement-evidence",
@@ -579,7 +579,7 @@
       }
     },
     {
-      "name": "payment-slot-single-verified-commit-pass",
+      "name": "payment-slot-single-verified-commit-coherent",
       "expected": "coherent",
       "note": "Coverage for the sole accept path: exactly one Work verifiably consumes the slot (slotStateProof valid + open->consumed) while the other holds the same proven slot open (slotTransition 'open', not consuming). Both proven slots trusted + equal, verifiedCommitCount==1 -> coherent (a legitimate single settlement, no double-spend).",
       "observation": {

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from jcs import canonicalize as jcs_canonicalize
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +29,8 @@ ATTACKER_SEED = hashlib.sha256(
     b"DACS rail availability vector attacker v1"
 ).digest()
 PRODUCTION_UNSET = object()
+STEWARD_CLAIM = "did:demos:agent:" + "11" * 32
+ATTACKER_CLAIM = "did:demos:agent:" + "22" * 32
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -35,23 +39,26 @@ def canonical_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
-def public_hex(key: Ed25519PrivateKey) -> str:
-    return key.public_key().public_bytes(
+def base64url(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
+
+
+def public_base64url(key: Ed25519PrivateKey) -> str:
+    return base64url(key.public_key().public_bytes(
         encoding=serialization.Encoding.Raw,
         format=serialization.PublicFormat.Raw,
-    ).hex()
+    ))
 
 
-def rail_projection(rail: dict) -> dict:
-    return {
-        key: rail[key]
-        for key in ("railId", "availability", "railVersion")
-        if key in rail
-    }
+def unsigned_rail(rail: dict) -> dict:
+    """Return the normative RailDefinition signed scope (signature omitted only)."""
+    return {key: value for key, value in rail.items() if key != "signature"}
 
 
 def rail_digest(rail: dict) -> str:
-    return hashlib.sha256(canonical_bytes(rail_projection(rail))).hexdigest()
+    return hashlib.sha256(
+        jcs_canonicalize(unsigned_rail(rail)).encode("utf-8")
+    ).hexdigest()
 
 
 def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=False):
@@ -59,12 +66,36 @@ def sign_rail(rail_id: str, availability: str, version: int = 1, *, attacker=Fal
         ATTACKER_SEED if attacker else STEWARD_SEED
     )
     rail = {
-        "railId": rail_id,
-        "availability": availability,
         "railVersion": version,
+        "railId": rail_id,
+        "railType": "x402",
+        "asset": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x0000000000000000000000000000000000000001",
+            "symbol": "USDC",
+            "decimals": 6,
+        },
+        "network": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/pay",
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {"authorization": "eip-3009"},
+        "availability": availability,
+        "governance": {
+            "proposedBy": STEWARD_CLAIM,
+            "acceptedAt": version,
+            "anchoring": "single-signer",
+            **({"supersedes": version - 1} if version > 1 else {}),
+        },
     }
     digest = rail_digest(rail)
-    rail["stewardSig"] = key.sign((DOMAIN + digest).encode("ascii")).hex()
+    rail["signature"] = {
+        "algorithm": "ed25519",
+        "signer": ATTACKER_CLAIM if attacker else STEWARD_CLAIM,
+        "value": base64url(key.sign((DOMAIN + digest).encode("ascii"))),
+    }
     return rail
 
 
@@ -79,9 +110,12 @@ def context(
     pinned_digest=None,
     hint=None,
     later_registry_rail=None,
+    production_source="local-operator-policy",
+    counterparty_production_hint=None,
 ):
     value = {
-        "stewardPub": public_hex(
+        "stewardClaim": STEWARD_CLAIM if steward else None,
+        "stewardPublicKey": public_base64url(
             Ed25519PrivateKey.from_private_bytes(STEWARD_SEED)
         ) if steward else None,
         "operatorPreflightOk": preflight,
@@ -92,7 +126,12 @@ def context(
         "sessionState": session_state,
     }
     if production is not PRODUCTION_UNSET:
-        value["production"] = production
+        value["operatorContext"] = {
+            "source": production_source,
+            "production": production,
+        }
+    if counterparty_production_hint is not None:
+        value["counterpartyProductionHint"] = counterparty_production_hint
     if hint is not None:
         value["discoveryAvailabilityHint"] = hint
     if later_registry_rail is not None:
@@ -111,15 +150,15 @@ def vector(name, expected, note, rail, **ctx):
 
 
 def build() -> dict:
-    live_x402 = sign_rail("pay-x402", "live")
-    live_old = sign_rail("pay-old", "live", 1)
-    disabled = sign_rail("pay-old", "disabled", 2)
-    failed = sign_rail("pay-evm", "failed")
-    mocked = sign_rail("pay-ap2", "mocked")
-    gated = sign_rail("pay-ap2", "operator_gated")
-    closed = sign_rail("pay-closed", "closed_data")
-    bilateral = sign_rail("pay-bilateral", "bilateral")
-    live_evm = sign_rail("pay-evm", "live")
+    live_x402 = sign_rail("x402:default", "live")
+    live_old = sign_rail("x402:revision-test", "live", 1)
+    disabled = sign_rail("x402:revision-test", "disabled", 2)
+    failed = sign_rail("x402:failure-test", "failed")
+    mocked = sign_rail("x402:mock-test", "mocked")
+    gated = sign_rail("x402:gated-test", "operator_gated")
+    closed = sign_rail("x402:closed-test", "closed_data")
+    bilateral = sign_rail("x402:bilateral-test", "bilateral")
+    live_evm = sign_rail("x402:failure-test", "live")
     vectors = [
         vector("live-signed-pinned", "pass", "live, steward-signed and pinned is selectable", live_x402),
         vector("disabled-signed", "fail", "RAV-R2: disabled cannot start a new session", disabled),
@@ -141,18 +180,34 @@ def build() -> dict:
         vector("mocked-production-context-missing", "error", "production context is required before mocked selection", mocked, production=PRODUCTION_UNSET),
         vector("mocked-production-context-string", "error", "string production context cannot authorize mocked selection", mocked, production="true"),
         vector("mocked-production-context-integer", "error", "integer production context cannot authorize mocked selection", mocked, production=1),
+        vector(
+            "mocked-production-context-untrusted-source",
+            "error",
+            "counterparty-controlled context cannot establish non-production mode",
+            mocked,
+            production=False,
+            production_source="counterparty",
+        ),
+        vector(
+            "mocked-counterparty-non-production-override",
+            "fail",
+            "a counterparty hint cannot override trusted production mode",
+            mocked,
+            production=True,
+            counterparty_production_hint=False,
+        ),
         vector("operator_gated-no-preflight", "fail", "RAV-R3: operator_gated requires operator preflight", gated),
         vector("operator_gated-with-preflight", "pass", "RAV-R3: operator_gated with preflight is selectable", gated, preflight=True),
         vector("closed_data-no-preflight", "fail", "RAV-R3: closed_data requires operator preflight", closed),
         vector("bilateral-with-preflight", "pass", "RAV-R3: bilateral with preflight is selectable", bilateral, preflight=True),
-        vector("poison-live-bad-signer", "fail", "RAV-R5: attacker-signed live value is not authoritative", sign_rail("pay-evm", "live", attacker=True)),
-        vector("poison-live-unsigned", "fail", "RAV-R5: unsigned live value is not authoritative", {"railId": "pay-evm", "availability": "live", "railVersion": 1}),
+        vector("poison-live-bad-signer", "fail", "RAV-R5: attacker-signed live value is not authoritative", sign_rail("x402:failure-test", "live", attacker=True)),
+        vector("poison-live-unsigned", "fail", "RAV-R5: unsigned live value is not authoritative", unsigned_rail(live_evm)),
         vector(
             "stale-cached-signed-copy",
             "fail",
             "RAV-R5: a valid stale live definition cannot replace the pinned failed revision",
             live_evm,
-            pinned_digest=rail_digest(sign_rail("pay-evm", "failed", 2)),
+            pinned_digest=rail_digest(sign_rail("x402:failure-test", "failed", 2)),
         ),
         vector("steward-key-unresolvable", "indeterminate", "RAV-R5: unavailable steward authority is indeterminate", live_x402, steward=False),
         vector("no-pin-context-signed-live", "indeterminate", "RAV-R5: a signed copy without an authoritative pin is indeterminate", live_x402, pinned=False, hint="live"),
@@ -174,14 +229,14 @@ def build() -> dict:
             "malformed-rail",
             "error",
             "missing availability and railVersion is malformed",
-            {"railId": "pay-x402"},
+            {"railId": "x402:default"},
             pinned_digest="00" * 32,
         ),
         vector(
             "unknown-availability-value",
             "error",
             "an unknown availability value is malformed",
-            sign_rail("pay-x402", "experimental"),
+            sign_rail("x402:default", "experimental"),
         ),
     ]
     return {
@@ -190,11 +245,12 @@ def build() -> dict:
         "gaps": ["#13 rail-availability-poisoning", "#325 executable availability gate"],
         "decisionModel": "§7.5.1 4-value, never collapsed",
         "fixtureProfile": {
-            "purpose": "availability decision after RailDefinition schema and RD checks",
-            "signedProjection": ["railId", "availability", "railVersion"],
-            "canonicalization": "RFC 8785-compatible JSON for this scalar-only projection",
-            "digest": "sha256(canonical projection)",
-            "signature": "Ed25519(dacs-rail:v1: || lowercase-hex digest)",
+            "purpose": "availability decision with complete RailDefinition authentication",
+            "signedScope": "complete RailDefinition with only signature omitted; unknown members preserved",
+            "canonicalization": "RFC 8785 JCS via scripts/jcs.py",
+            "digest": "sha256(canonical complete unsigned RailDefinition)",
+            "signature": "RailSignature.algorithm=ed25519; value is unpadded Base64URL Ed25519(dacs-rail:v1: || lowercase-hex digest)",
+            "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
             "generator": "scripts/generate_rail_availability_selection_vectors.py",
         },
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),

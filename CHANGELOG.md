@@ -26,10 +26,13 @@ The format used per release:
   without permitting a new or replacement session. Discovery and catalog
   availability values are explicitly non-authoritative prefilters or UI
   hints and cannot establish, refute, or override the signed pinned result.
-  Replaces the non-existent runner claim with a deterministic Ed25519 vector
-  generator and executable CI evaluator covering 26 cases, including mocked,
-  disabled new/in-flight behavior, stale and forged definitions, missing
-  authority, and contradictory discovery hints.
+  Production/non-production mode is trusted local operator policy, never a
+  counterparty or protocol-artifact input. Replaces the non-existent runner
+  claim with a deterministic Ed25519 vector generator and executable CI
+  evaluator covering 28 cases over complete signed `RailDefinition` documents,
+  including mocked, disabled new/in-flight behavior, stale and forged
+  definitions, missing authority, signed-scope mutation, untrusted mode input,
+  and contradictory discovery hints.
 
 ### Added — DACS-4 v0.6
 

@@ -48,7 +48,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
-| [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 26 | `error` / `fail` / `indeterminate` / `pass` |
+| [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -623,11 +623,11 @@ Run (reference): `npx tsx conformance/security-vectors/verifyresult-acceptance/r
 
 ### `rail-availability-selection-v0.1.json` — §9.4.4 (rail-availability selection + poisoning)
 
-26 executable vectors for the §9.4.4 rail-availability rules, the availability-field poisoning defence (#158 gap #13), and #325:
+28 executable vectors for the §9.4.4 rail-availability rules, the availability-field poisoning defence (#158 gap #13), and #325. Every authenticated case signs the complete `RailDefinition` with only `signature` omitted, uses the normative `dacs-rail:v1:` payload and unpadded Base64URL `RailSignature.value`, and pins that same complete-document digest:
 
-- **RAV-R2** — any new session MUST NOT select `disabled` or `failed`; a new production session additionally MUST NOT select `mocked`. A session that pinned a live definition continues under that pin when a later registry revision marks the rail `disabled`.
+- **RAV-R2** — any new session MUST NOT select `disabled` or `failed`; a new production session additionally MUST NOT select `mocked`. Production mode is explicit trusted local operator policy; counterparty or discovery hints cannot establish non-production mode. A session that pinned a live definition continues under that pin when a later registry revision marks the rail `disabled`.
 - **RAV-R3** — `operator_gated` / `closed_data` / `bilateral` are selectable ONLY when the operator-side preflight is satisfied (a runtime check).
-- **RAV-R5 / LRR-6 (poisoning)** — `availability` MUST be read from the steward-signed **and pinned/anchored** `dacs-rail:v1:` definition. A valid signature alone is insufficient: an unsigned/counterparty copy, or a validly-signed-but-**stale/cached** copy that is not the pinned definition, MUST NOT steer selection. Discovery hints may prefilter or inform a UI but cannot establish, refute, or override the authoritative result.
+- **RAV-R5 / LRR-6 (poisoning)** — `availability` MUST be read from the steward-signed **and pinned/anchored** `dacs-rail:v1:` definition. The signature and pin cover the complete definition, including unknown future members under SIG-5. A valid signature alone is insufficient: an unsigned/counterparty copy, or a validly-signed-but-**stale/cached** copy that is not the pinned definition, MUST NOT steer selection. Discovery hints may prefilter or inform a UI but cannot establish, refute, or override the authoritative result.
 
 Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved, or no pinned reference to compare against, → `indeterminate` (not a silent pass); malformed def / unknown availability value → `error`.
 

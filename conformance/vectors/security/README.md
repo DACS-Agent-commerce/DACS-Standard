@@ -49,6 +49,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`outsider-binding-flooding-v0.3.json`](outsider-binding-flooding-v0.3.json) | DACS-5 §10.4.2 BB-6 authorized-candidate multiplicity + BB-7 side-level exhaustion (round-6 blocker #3) | 11 | `indeterminate` / `pass` |
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
+| [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-6; DACS-5 §10.4.3; CORE §B.1/§B.7 | 34 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -129,6 +130,34 @@ included for independent reproduction. Regenerate or verify byte determinism:
 python3 scripts/generate_payload_attestation_vectors.py --write
 python3 scripts/generate_payload_attestation_vectors.py --check
 python3 -m unittest tests.test_payload_attestation_vectors -v
+```
+
+### `phase-bound-delivery-evidence-v0.7.json` — §9.7 PDE-1..PDE-8
+
+34 deterministic vectors execute the current `DeliveryEvidence` wire contract
+and its DACS-5 one-to-one mapping through fully shaped, three-party-signed
+`FaultAttestationBundle` artifacts. Every evidence, entitlement, payload-
+attestation, and bundle artifact carries a genuine Ed25519 signature over RFC
+8785 JCS and its registered type domain (`dacs-delivery-evidence:v1:`,
+`dacs-entitlement:v1:`, `dacs-payload-attestation:v1:`, or
+`dacs-fault-bundle:v1:`).
+
+The set covers repeated storage delivery with optional phase pointers both
+absent and present, evidence/artifact reuse and address/index/kind mismatch;
+two entitlement phases whose independent renewal streams both start at zero;
+two attested-payload phases whose independent attempt streams both start at
+zero; legacy single/repeated delivery; and exact buyer-only/encrypt-to-buyer
+credential binding. Credential negatives cover missing/mismatched refs, access
+mode, cleartext/ciphertext digest substitution, renewal replay, unsupported
+valid/readable overclaims, and unresolvable private content. Type/domain and
+signature mutation cases pin the minor-safe boundary.
+
+Regenerate and execute:
+
+```sh
+python3 scripts/generate_phase_bound_delivery_vectors.py --write
+python3 scripts/generate_phase_bound_delivery_vectors.py --check
+python3 -m unittest tests.test_phase_bound_delivery_vectors -v
 ```
 
 ### `cci-xm-rail-chain-applicability-v0.5.json` — §6.3.1 EVM profile + §9.4.3 RD-5 / §9.5.1 PB-2
@@ -880,10 +909,12 @@ across implementations, and that the DV-6 readability verdict is **never collaps
 - **DV-4 ACL-mutation auditability (§9.6.1)** — a deliverable ACL mutation SHOULD be an
   anchored+signed record, and MUST be for a `credentialRef` entitlement (§9.6.2); an
   unanchored `credentialRef` ACL mutation ⇒ `fail`.
-- **DV-5 three gates never collapsed (§9.6.2)** — for a `credentialRef` entitlement,
-  `SettlementEvidence` asserts ONLY **delivered** (binds the `credentialRef` + credential
-  cleartext digest at the settled `renewalSeq`), never **valid** or **readable**; evidence
-  that over-asserts `readable` ⇒ `fail`.
+- **DV-5 three gates never collapsed (§9.6.2)** — the historical cases express
+  the semantic split only: delivery asserts **delivered**, never **valid** or
+  **readable**. Their `settlementEvidence` projection is not a normative wire
+  artifact. Exact current `DeliveryEvidence.credentialDelivery` artifacts and
+  overclaim rejection are exercised by
+  `phase-bound-delivery-evidence-v0.7.json`.
 - **DV-6 readability verdict, do-not-collapse (§9.6.2)** — in `allowed` & not blacklisted
   ⇒ **readable** (`pass`); entitlement window lapsed ⇒ **clean-negative** (`fail`,
   lifecycle); buyer dropped from `allowed` / blacklisted ⇒ **ACL-dropped
@@ -908,11 +939,11 @@ Each entry in `vectors[]`:
 | `note` | human-readable rationale |
 | `readability` | *(DV-6 only)* four-way readability label: `readable` \| `clean-negative` \| `ACL-dropped` \| `indeterminate` |
 | `flag` | *(DV-2 downgrade only)* `confidentiality-downgrade` |
-| `assertedGates` | *(DV-5 only)* the gates the `SettlementEvidence` asserts |
+| `assertedGates` | *(DV-5 only)* legacy semantic companion value; not a normative evidence member |
 | `agreementBuyer` | the agreement-bound buyer `AgreementParty` (§8.5): `role`, `primaryClaim`, resolved `address`, `encryptionKey` |
 | `delivery` / `deliveries` | the delivery under test (`accessModel`, `deliverableContentHash`, `hashedOver`, `acl`, `sealedTo`, declared/delivered mode…) |
 | `entitlement` | *(DV-4..6)* the EntitlementRecord binding (`jobId`, `renewalSeq`, `credentialRef`, `startsAt`, `endsAt`) |
-| `aclMutation` / `settlementEvidence` / `acl` / `now` | per-rule context for DV-4 (audit record), DV-5 (evidence gates), DV-6 (ACL + evaluation instant) |
+| `aclMutation` / `settlementEvidence` / `acl` / `now` | per-rule semantic context; the DV-5 `settlementEvidence` object predates the exact wire artifact and MUST NOT be used as a schema fixture |
 
 Fixtures are deterministic: addresses/keys are fixed hex; `deliverableContentHash` values
 are the real `sha256` of the canonical (JCS) cleartext payload (`hashedOver: "cleartext"`),

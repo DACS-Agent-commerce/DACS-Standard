@@ -37,7 +37,8 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Domain separator.** A protocol-specific string prepended to a hash before signing, preventing cross-protocol signature replay. Universal registry in §B.7.
 - **EntitlementRecord.** A DACS-4 deliverable record granting time-bound access to a service. Defined in §9.6.2.
 - **errorClass.** A classification of why a phase failed: permanent, transient, counterparty, substrate, settlement-atomicity. Used in PhaseHandlerResult and BundlePhaseEntry.
-- **Evidence (SettlementEvidence).** The uniform record produced by every DACS-4 payment and delivery phase. Defined in §9.7.
+- **DeliveryEvidence.** The current DACS-4 signed evidence artifact for one delivery invocation; binds `jobId`, `phaseIndex`, phase kind, exact phase-indexed artifact address/hash, and conditional credential delivery. Defined in §9.7.
+- **Evidence (SettlementEvidence / DeliveryEvidence).** The anchored DACS-4 audit record: `SettlementEvidence` for current payment phases and `DeliveryEvidence` for current delivery phases. Historical delivery-shaped `SettlementEvidence` is a restricted legacy form. Defined in §9.7.
 - **Extended-pointer pattern.** A pattern for handling artifacts larger than the substrate’s anchored-storage cap: the canonical address contains a pointer with externalUrl + externalContentHash; payload is hosted externally. Used by deliverables (§9.6.1) and bundles (§10.4.2).
 - **FaultAttestationBundle.** The v0.3 end-of-session artifact carrying absolute hashed `faultedParty` fault attribution; structurally distinguished from the legacy AttestationBundle by its `faultBundleVersion` literal and signed under its own `dacs-fault-bundle:v1:` domain. Defined in §10.4/§10.4.1.
 - **Fixed-price negotiation.** DACS-3 pattern in which the buyer accepts the listed terms. Defined in §8.4.1.

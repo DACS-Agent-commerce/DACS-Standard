@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.4** on the common DACS v0.1 baseline. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 consumes DACS-4 `DeliveryEvidence` and requires an exact one-to-one mapping from each authenticated delivery invocation to its signed phase index and phase-bound artifacts (PDE-8), while retaining a narrow single-delivery legacy read arm. **DACS-5 v0.4** added the non-terminal `audit-pending` gate, required every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, added the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and added structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -204,7 +204,7 @@ type AttestationBundle = {
 
   vetRecords: AttestationRef[]                // composite verification records
 
-  settlementEvidence: AttestationRef[]
+  settlementEvidence: AttestationRef[]       // authoritative refs to DACS-4 SettlementEvidence (payment) or DeliveryEvidence (delivery); name retained for wire compatibility
 
   amendments?: AttestationRef[]
 
@@ -250,7 +250,7 @@ type BundlePhaseEntry = {
 
   txRefs?: ChainTxRef[]
 
-  attestationRef?: AttestationRef             // OPTIONAL per-phase back-pointer to the artifact this phase produced (settle → its SettlementEvidence, vet → its VerifyResult). The authoritative attestation set is the top-level settlementEvidence[] / vetRecords[]; see §10.4.3.
+  attestationRef?: AttestationRef             // OPTIONAL per-phase back-pointer to the artifact this phase produced (payment → SettlementEvidence, delivery → DeliveryEvidence, vet → VerifyResult). The authoritative attestation set is the top-level settlementEvidence[] / vetRecords[]; see §10.4.3.
 
 }
 
@@ -280,7 +280,7 @@ type FaultAttestationBundle = {
   parties: BundleParty[]
   phaseSummary: BundlePhaseEntry[]
   vetRecords: AttestationRef[]
-  settlementEvidence: AttestationRef[]
+  settlementEvidence: AttestationRef[]       // authoritative refs to DACS-4 SettlementEvidence (payment) or DeliveryEvidence (delivery); name retained for wire compatibility
   amendments?: AttestationRef[]
   ratingRefs?: AttestationRef[]
   recipeRegistryVersion: number
@@ -495,11 +495,41 @@ A failed or aborted bundle MUST be produced when the session reaches its termina
 
 - all DACS-2 composite verification records;
 - the DACS-3 agreement (if any);
-- DACS-4 settlement evidence — one entry per phase invocation that ran to an outcome and produced a qualifying SR-2 record, whether that record's outcome is success or failure. For a completed bundle the record is `finalized` and independently resolvable under ST-11; an EBFAB for a failed or aborted terminal requires an established `included` or `finalized` record under SEB-1. An ST-8-resolved cross-chain settle phase contributes exactly its `:resolved` success record; its superseded interim failure record is reachable only through `supersedesEvidenceRef` and is not listed independently. If the ST-8 window expires unresolved, the interim `dest-revealed-source-unclaimed` or `tank-locked-unreleased` failure record stands as that phase's terminal evidence and IS the top-level member. Both parties' `settlementEvidence[]` arrays MUST contain the same applicable terminal member, so the two-sided copies stay canonically equal (§10.4.1). A successful `deliver-attested-payload` entry is valid only after its DACS-4 §9.6.3 `attestationRef` resolves through the complete DPA-3..DPA-9 chain (`PayloadAttestationRecord` → method evidence/native transaction → exact delivered payload hash); these transitive dependencies are required referenced artifacts for CORE §5.1 SR2-9 finalization/resolution and MUST NOT be replaced by the SettlementEvidence signer's assertion;
+- DACS-4 payment/delivery evidence — one entry per phase invocation that ran to an outcome and produced a qualifying SR-2 record, whether that record's outcome is success or failure. The field name remains `settlementEvidence[]` for wire compatibility, but current entries resolve to `SettlementEvidence` for payment and `DeliveryEvidence` for delivery. For a completed bundle the record is `finalized` and independently resolvable under ST-11; an EBFAB for a failed or aborted terminal requires an established `included` or `finalized` record under SEB-1. An ST-8-resolved cross-chain payment phase contributes exactly its `:resolved` success `SettlementEvidence`; its superseded interim failure record is reachable only through `supersedesEvidenceRef` and is not listed independently. If the ST-8 window expires unresolved, the interim `dest-revealed-source-unclaimed` or `tank-locked-unreleased` failure record stands as that phase's terminal evidence and IS the top-level member. Both parties' `settlementEvidence[]` arrays MUST contain the same applicable terminal members, so the two-sided copies stay canonically equal (§10.4.1). A successful `deliver-attested-payload` entry is valid only after its DACS-4 §9.6.3 `attestationRef` resolves through the complete DPA-3..DPA-9 chain (`PayloadAttestationRecord` → method evidence/native transaction → exact delivered payload hash); these transitive dependencies are required referenced artifacts for CORE §5.1 SR2-9 finalization/resolution and MUST NOT be replaced by either evidence signer's assertion;
 - DACS-4 amendments (refunds);
 - DACS-5 ratings (if the rate phase ran).
 
 The bundle MUST NOT include references to any record outside the session’s scope.
+
+**Exact current delivery mapping (PDE-8).** When a bundle references current
+`DeliveryEvidence`, a consumer MUST construct the expected multiset of executed
+delivery invocations from the authenticated signed listing pipeline and the
+bundle's `phaseSummary[]`. It MUST resolve the top-level
+`settlementEvidence[]` references, classify each DACS-4 evidence type before
+field interpretation, and establish a one-to-one mapping for the delivery
+members:
+
+- a current delivery entry maps only when its signed
+  `DeliveryEvidence.jobId`, `phaseIndex`, and `phase` equal the bundle job and
+  the exact `BundlePhaseEntry.index`/`kind`, and its evidence/artifact receipts
+  use the complete PDE-2/PDE-3 logical addresses;
+- every expected executed delivery invocation has exactly one mapped current
+  delivery entry, and every current delivery entry maps to exactly one expected
+  invocation; a missing, extra, mismatched, duplicate, or reused delivery
+  evidence/artifact reference fails bundle verification;
+- a PDE-7 legacy delivery-shaped `SettlementEvidence` may map only when the
+  authenticated legacy pipeline has exactly one matching delivery invocation.
+  It cannot satisfy repeated delivery and cannot establish DV-5 credential
+  delivery.
+
+Array position and the optional `phaseSummary[].attestationRef` are not
+authentication. When that optional pointer is present it MUST equal the
+authoritative top-level reference mapped to that phase; when absent, the signed
+current `DeliveryEvidence.phaseIndex` still makes the delivery mapping complete.
+A single delivery reference MUST NOT be counted twice. Payment exact-set and
+bundle-type compatibility remain governed by their own PC/SB rules and any
+separately adopted evidence-bound-bundle contract; PDE-8 does not retroactively
+change payment membership semantics on the released bundle types.
 
 **EvidenceBoundFaultAttestationBundle exact-set validation (SEB-1..SEB-6).** These rules define validity only for `EvidenceBoundFaultAttestationBundle`. Its producer and consumer validate the authoritative top-level `settlementEvidence[]` against the authenticated executed phase set as follows. The two perspective copies MUST contain the same applicable terminal members. An ST-8-resolved phase lists only its `:resolved` success record; an expired phase lists its standing interim failure record.
 
@@ -513,7 +543,7 @@ The bundle MUST NOT include references to any record outside the session’s sco
 
 For every completed bundle type, every required reference above MUST resolve to an artifact with a verified CORE §5.1 `finalized` receipt whose logical address, native address, content hash, transaction, writer, nonce (where applicable), and session bindings match. A mere submission, durable `accepted` receipt, non-final `included` receipt, or index hit is insufficient. The producer MUST NOT omit a required reference merely because its anchor is still catching up; it remains in `audit-pending` instead.
 
-**Per-phase `attestationRef` (optional).** A `phaseSummary[]` entry's `attestationRef` is **OPTIONAL** — the authoritative attestation set is the bundle's top-level `vetRecords[]` and `settlementEvidence[]` arrays (per the rules above), and a bundle that omits the per-phase pointer is well-formed. A validator MUST NOT reject a bundle solely because a `phaseSummary` entry omits `attestationRef`. A phase that produced an attestation meeting the applicable SR-2 gate above — a settle phase → its `SettlementEvidence`, a vet phase → its `VerifyResult` — **SHOULD** carry `attestationRef` linking to it, so the per-phase → evidence mapping is unambiguous in multi-phase pipelines where the flat top-level arrays alone cannot say which record belongs to which phase invocation.
+**Per-phase `attestationRef` (optional).** A `phaseSummary[]` entry's `attestationRef` is **OPTIONAL** — the authoritative attestation set is the bundle's top-level `vetRecords[]` and `settlementEvidence[]` arrays (per the rules above), and a bundle that omits the per-phase pointer is well-formed. A validator MUST NOT reject a bundle solely because a `phaseSummary` entry omits `attestationRef`. A phase that produced an attestation meeting the applicable SR-2 gate above — a payment phase → its `SettlementEvidence`, a delivery phase → its `DeliveryEvidence`, a vet phase → its `VerifyResult` — **SHOULD** carry `attestationRef` linking to the identical authoritative reference. It never supplies phase identity: current delivery mapping is signed under PDE-8, payment mapping is address-authenticated under PC-2/SB-1 and SEB where applicable, and a legacy delivery remains subject to PDE-7's single-unambiguous-invocation limit.
 
 **For sessions terminating before the agreement commitment phase**, the bundle MUST include the available `vetRecords` and omit `agreementRef`. When a Vet or Negotiate handler actually returned `fail`, `phaseSummary` marks that result and the session uses the corresponding `failed-*` outcome. A no-result ST-3/ST-9 `aborted-by-self` or `aborted-by-other` instead ends before that invocation produces a result, so its strict completed prefix contains no synthetic failed entry, exactly as SEB-1 requires.
 
@@ -1093,8 +1123,8 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Role | Requirements |
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
-| Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
-| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run SEB-1..SEB-6 on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile by EBFAB > FAB > legacy only after validity and non-divergence |
+| Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3, including phase-indexed `DeliveryEvidence` under PDE-8 |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run SEB-1..SEB-6 on EBFAB before pair selection and apply PDE-8 whenever current `DeliveryEvidence` is present; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained `AttestationRef`; reconcile by EBFAB > FAB > legacy only after validity and non-divergence |
 | Reputation deriver | Select the output type before derivation; apply RSV-1 through RSV-4 only for a settlement-verified discriminator, require a job-bound replay type for EBFAB, and preserve released v1 semantics otherwise; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the applicable algorithm's `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |

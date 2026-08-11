@@ -22,11 +22,38 @@ hard-coded. The signature-value spelling is a parameter (`encode_signature`): th
 committed fixtures carry canonical SIG-6 (unpadded Base64URL); `'legacy'` (padded
 standard Base64) exists only for byte-comparable reproduction of prior spellings.
 
+Both CLI modes render through ONE shared path (render_document); a fail closes the
+gate with a distinct, condition-naming message. An explicit mode is required — a
+bare invocation prints usage and exits non-zero.
+
 CLI:
-  --write  regenerate both fixtures in place (canonical SIG-6). This is the live path
-           that produces the committed fixture bytes.
-  --check  read-only: reproduce every stored signature from the derived keys (raw-byte
-           comparison, spelling-agnostic) and prove generator determinism. No writes.
+  --write  staging-first regeneration of both fixtures in place (canonical SIG-6):
+           render AND validate both chains, then write both. The guarantee is
+           gate-conditional: if ANY gate condition fails, no fixture is written.
+           It is NOT transactional against I/O: the two writes are sequential and
+           unprotected, so a permissions error or disk-full on the second leaves
+           the first already replaced.
+  --check  read-only fail-closed gate. Renders both chains through the write path and
+           enforces six conditions — byte drift, unexpected signature distribution,
+           opaque-input change, unresolved reference, nondeterminism, and cannot-run —
+           writing nothing, ever. The MATCH/DIFFER reproduction table is printed for
+           information only and can never set the exit code.
+
+Scope of --check. It discriminates on the corpus's regenerable content: derived
+cross-references, signed §B.2 scopes, signature spellings, the tamper distribution,
+generator determinism, and any divergence between the generator and the committed
+bytes from either side. It proves the corpus is a FIXED POINT of the generator —
+re-rendering the committed document reproduces it byte-for-byte. It does NOT prove
+the generator PRODUCES the corpus from an independent source. Because it renders
+from `before = json.loads(committed)` and echoes every field it does not derive, a
+corruption in a field that is both echoed verbatim AND excluded from the signed hash
+appears identically on both sides of the byte comparison and cancels — so --check
+cannot see it (confirmed instances: the wrapper-level `id`, and `anchoredByRole`,
+hash-excluded per DACS-5 §10.4.1). This is a structural consequence of
+render-and-compare-to-self; closing the class needs a generator that builds the
+document from an independent declarative source rather than from the committed file.
+Until then the residual class is guarded by the committed-fixture hash baseline in
+tests/test_generate_lifecycle_vectors_check.py, which trips on any byte change.
 """
 import argparse
 import base64
@@ -132,6 +159,14 @@ def assert_domain_separators(data):
                 f"KIND_SEPARATOR[{kind!r}] {expected!r}")
 
 
+class UnresolvedReferenceError(ValueError):
+    """A 64-hex value in the regenerated chain resolves to no known artifact §B.2
+    hash, sub-object digest, or declared opaque input. A ValueError SUBCLASS so
+    every existing `except ValueError` still catches it, but a distinct TYPE so
+    the --check gate classifies condition 4 (UNRESOLVED-REFERENCE) structurally by
+    type, never by matching the words in the message."""
+
+
 def assert_all_references_resolve(data):
     """Post-regeneration guard: every 64-hex (or 'sha256:'+64-hex) string in the chain must
     resolve to a known artifact §B.2 hash, a known sub-object digest (terms.deliverable.hash),
@@ -166,7 +201,7 @@ def assert_all_references_resolve(data):
     for item in data["artifacts"]:
         walk(item, item["id"])
     if unresolved:
-        raise ValueError(
+        raise UnresolvedReferenceError(
             "unresolved 64-hex value(s) after regeneration — a cross-reference may be "
             f"unhandled or left stale: {unresolved}")
 
@@ -394,46 +429,188 @@ def regenerate_negative(data, spelling="legacy"):
     return data
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check", action="store_true",
-                        help="Prove reproduction of the current chain + generator determinism (no writes)")
-    parser.add_argument("--write", action="store_true",
-                        help="(Step 3) regenerate fixtures in place")
-    args = parser.parse_args(argv)
+# ---------------------------------------------------------------------------
+# ONE render path, shared by --write and --check (a mirrored second copy is the
+# defect being corrected). The two lifecycle chains, in write/read order.
+# ---------------------------------------------------------------------------
+CHAINS = ((HAPPY, regenerate_positive), (NEGATIVE, regenerate_negative))
 
-    if args.write:
-        # Step-3.5 scope: migrate BOTH lifecycle chains to canonical SIG-6 (unpadded
-        # Base64URL) and drop the top-level signatureValueSpelling declaration, matching
-        # the repo's other SIG-6 vectors (e.g. security/bundle-binding-v0.1.json, which
-        # carries no such field). Signature RAW BYTES are unchanged — only the wire
-        # spelling. Opaque input digests must survive byte-identical in both files.
-        for path, regen in ((HAPPY, regenerate_positive), (NEGATIVE, regenerate_negative)):
-            before = json.loads(path.read_text(encoding="utf-8"))
-            opaque_before = _collect_opaque(before)
-            after = regen(before, spelling="sig6")
-            after.pop("signatureValueSpelling", None)  # SIG-6 files carry no spelling flag
-            opaque_after = _collect_opaque(after)
 
-            print(f"Opaque-input invariant on {path.name} (must be UNCHANGED):")
-            ok = True
-            b_map = dict(opaque_before)
-            a_map = dict(opaque_after)
-            assert set(b_map) == set(a_map), "opaque digest path set changed"
-            for p in b_map:
-                same = b_map[p] == a_map[p]
-                ok = ok and same
-                print(f"  {'OK ' if same else 'CHANGED'} {p} = {a_map[p]}")
-            if not ok:
-                print("ABORT: an opaque input digest changed during regeneration.", file=sys.stderr)
-                return 3
+def render_document(before, regen):
+    """THE single render function. Given a committed document and its chain
+    regenerator, return (after_doc, rendered_text) where rendered_text is the
+    EXACT bytes --write writes: regenerate over §B.2 as canonical SIG-6, drop the
+    top-level signatureValueSpelling declaration (SIG-6 files carry none), then
+    json.dumps(indent=2, ensure_ascii=False) + trailing newline. Both modes call
+    this and only this; neither owns a second copy of the render."""
+    after = regen(before, spelling="sig6")
+    after.pop("signatureValueSpelling", None)
+    return after, json.dumps(after, indent=2, ensure_ascii=False) + "\n"
 
-            rendered = json.dumps(after, indent=2, ensure_ascii=False) + "\n"
-            path.write_text(rendered, encoding="utf-8")
-            print(f"wrote {path.relative_to(ROOT)}")
-            print()
-        return 0
 
+class _GateFail(Exception):
+    """One failed gate condition. The message IS the full stderr line, prefixed
+    with a distinct [CONDITION] tag naming the condition and the chain."""
+
+
+def _load_committed(path):
+    """Return (text, dict). Condition 6 (cannot run) for a missing/unreadable/
+    malformed fixture — a LOUD message explicitly NOT a drift failure."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        raise _GateFail(
+            f"[CANNOT-RUN] {path.name}: committed fixture is missing ({path}). "
+            "Gate could not run — this is NOT a drift/PASS result.")
+    except OSError as e:
+        raise _GateFail(
+            f"[CANNOT-RUN] {path.name}: committed fixture is unreadable ({e}). "
+            "Gate could not run — this is NOT a drift/PASS result.")
+    try:
+        return text, json.loads(text)
+    except json.JSONDecodeError as e:
+        raise _GateFail(
+            f"[CANNOT-RUN] {path.name}: committed fixture is not valid JSON ({e}). "
+            "Gate could not run — this is NOT a drift/PASS result.")
+
+
+def _render_twice(path, before, regen):
+    """Render the chain TWICE through render_document; return (after1, text1, text2).
+    Classifies render-time failures: an unresolved reference (condition 4) gets its
+    own message; any other regeneration abort or crypto failure is condition 6."""
+    try:
+        after1, text1 = render_document(before, regen)
+        _after2, text2 = render_document(before, regen)
+    except _GateFail:
+        raise
+    except UnresolvedReferenceError as e:  # classify by TYPE, before the ValueError arm
+        raise _GateFail(
+            f"[UNRESOLVED-REFERENCE] {path.name}: a 64-hex reference in the rendered "
+            f"chain resolves to no known artifact/sub-object/opaque digest: {e}")
+    except ValueError as e:
+        raise _GateFail(
+            f"[CANNOT-RUN] {path.name}: regeneration aborted on a structural invariant "
+            f"before producing bytes ({e}). NOT a drift failure.")
+    except Exception as e:  # e.g. cryptography missing/broken at sign time
+        raise _GateFail(
+            f"[CANNOT-RUN] {path.name}: regeneration raised {type(e).__name__}: {e}. "
+            "Gate could not run — NOT a drift failure.")
+    return after1, text1, text2
+
+
+def _check_references(path, after):
+    """Condition 4 — assert_all_references_resolve on the RENDERED chain (both
+    chains, explicitly, per this step's design).
+
+    Backstop, not the primary path: render_document already runs the regenerator,
+    which calls assert_all_references_resolve and raises UnresolvedReferenceError
+    first, so _render_twice normally classifies this condition. This explicit call
+    only fires if the regenerator ever stopped raising."""
+    try:
+        assert_all_references_resolve(after)
+    except UnresolvedReferenceError as e:
+        raise _GateFail(
+            f"[UNRESOLVED-REFERENCE] {path.name}: {e}")
+
+
+def _check_opaque(path, before, after):
+    """Condition 3 — opaque input digests (path-set AND every digest) must be
+    byte-identical before vs after regeneration."""
+    b_map = dict(_collect_opaque(before))
+    a_map = dict(_collect_opaque(after))
+    if set(b_map) != set(a_map):
+        raise _GateFail(
+            f"[OPAQUE-INPUT] {path.name}: the set of opaque-input digest paths changed "
+            f"during regeneration (added={sorted(set(a_map) - set(b_map))}, "
+            f"removed={sorted(set(b_map) - set(a_map))}).")
+    changed = [(p, b_map[p], a_map[p]) for p in b_map if b_map[p] != a_map[p]]
+    if changed:
+        raise _GateFail(
+            f"[OPAQUE-INPUT] {path.name}: an opaque input digest changed during "
+            f"regeneration (must be byte-identical): {changed}.")
+
+
+def _check_determinism(path, text1, text2):
+    """Condition 5 — two consecutive renders of the chain must be byte-identical
+    (the RENDERED complete-document bytes, not a sort_keys re-serialisation)."""
+    if text1 != text2:
+        raise _GateFail(
+            f"[NONDETERMINISM] {path.name}: two consecutive renders produced different "
+            "bytes; the generator is not deterministic.")
+
+
+def _check_drift(path, text1, committed_text):
+    """Condition 1 (--check only) — the rendered complete document must equal the
+    committed fixture byte-for-byte."""
+    if text1 != committed_text:
+        raise _GateFail(
+            f"[DRIFT] {path.name}: rendered bytes differ from the committed fixture — "
+            "the generator and the committed vector have diverged "
+            f"(rendered {len(text1)} bytes vs committed {len(committed_text)} bytes).")
+
+
+def _check_distribution(after_docs):
+    """Condition 2 — corpus-wide signature distribution, derived (never a literal)
+    from validate_conformance_vectors.INTENTIONAL_SIGNATURE_TAMPERS: every stored
+    signature must verify except exactly that declared tamper set."""
+    total = 0
+    observed_fail_pins = set()
+    for after in after_docs:
+        for art in after["artifacts"]:
+            for pin in art.get("signatureChecks", []):
+                total += 1
+                if pin.get("expect") != "verify":
+                    observed_fail_pins.add((pin["path"], art["id"]))
+    expected = set(vcv.INTENTIONAL_SIGNATURE_TAMPERS)
+    verify_count = total - len(observed_fail_pins)
+    expected_verify = total - len(expected)
+    if observed_fail_pins != expected or verify_count != expected_verify:
+        raise _GateFail(
+            "[SIGNATURE-DISTRIBUTION] corpus: unexpected signature distribution "
+            f"(total={total}, verify={verify_count}, "
+            f"observed_fail_pins={sorted(observed_fail_pins)}); expected "
+            f"{expected_verify} verify + failures exactly {sorted(expected)} "
+            "(derived from validate_conformance_vectors.INTENTIONAL_SIGNATURE_TAMPERS).")
+
+
+def _run_gate(mode):
+    """Render + validate BOTH chains. Returns (failures, rendered) where failures
+    is a list of distinct stderr lines (empty == green) and rendered maps path ->
+    rendered bytes. Writes NOTHING. mode is 'check' (drift enforced) or 'write'
+    (drift skipped — the write intentionally changes bytes)."""
+    failures = []
+    rendered = {}
+    after_docs = []
+    for path, regen in CHAINS:
+        try:
+            committed_text, before = _load_committed(path)
+            after1, text1, text2 = _render_twice(path, before, regen)
+            _check_references(path, after1)      # condition 4
+            _check_opaque(path, before, after1)  # condition 3
+            _check_determinism(path, text1, text2)  # condition 5
+            if mode == "check":
+                _check_drift(path, text1, committed_text)  # condition 1
+            rendered[path] = text1
+            after_docs.append(after1)
+        except _GateFail as e:
+            failures.append(str(e))
+    # Condition 2 is corpus-wide; only assessable if BOTH chains rendered.
+    if len(after_docs) == len(CHAINS):
+        try:
+            _check_distribution(after_docs)
+        except _GateFail as e:
+            failures.append(str(e))
+    else:
+        failures.append(
+            "[SIGNATURE-DISTRIBUTION] corpus: NOT evaluated — a chain failed to render "
+            "(see above); the corpus-wide distribution cannot be assessed. NOT a PASS.")
+    return failures, rendered
+
+
+def _print_reproduction_table():
+    """Informational only (B6): the MATCH/DIFFER raw-signature reproduction table.
+    A printed row here can NEVER set the exit code — the verdict comes solely from
+    the six gate conditions in _run_gate."""
     keys = derived_keys()
     print("Derived public keys from seeds 0x41/0x42/0x43:")
     for b in SEED_BYTES:
@@ -462,14 +639,65 @@ def main(argv=None):
     print(f"TOTAL signatures: {len(all_rows)}   raw MATCH: {match_raw}   raw DIFFER: {differ}")
     print("raw-vs-string comparison disagreements:",
           disagreements if disagreements else "none (raw and string verdicts agree on every row)")
+    print("[informational only — the pass/fail verdict comes solely from the gate below]")
 
-    # Determinism: regenerate the positive chain twice in-process (SIG-6), compare bytes.
-    happy = json.loads(HAPPY.read_text(encoding="utf-8"))
-    a = json.dumps(regenerate_positive(happy, spelling="sig6"), sort_keys=True)
-    b = json.dumps(regenerate_positive(happy, spelling="sig6"), sort_keys=True)
-    print()
-    print("generator determinism (positive chain regenerated twice): "
-          + ("BYTE-IDENTICAL" if a == b else "NONDETERMINISTIC"))
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true",
+                      help="fail-closed read-only gate: render both chains through the "
+                           "write path and enforce all six conditions; writes nothing")
+    mode.add_argument("--write", action="store_true",
+                      help="regenerate both fixtures in place, staging-first: render AND "
+                           "validate both chains, then write both (or write neither)")
+    args = parser.parse_args(argv)
+
+    # B5: an explicit mode is REQUIRED. A bare invocation is not a pass.
+    if not args.check and not args.write:
+        parser.print_usage(sys.stderr)
+        print("error: exactly one of --check or --write is required; a bare invocation "
+              "does nothing and is NOT a pass.", file=sys.stderr)
+        return 2
+
+    if args.check:
+        # The reproduction table is informational only, and it reads the fixtures
+        # directly — so a missing/malformed fixture would crash it (traceback)
+        # BEFORE the gate runs, shadowing condition 6. Isolate it: any failure
+        # here is reported as "informational unavailable" and execution continues
+        # into _run_gate, which is the SOLE verdict and independently re-reads and
+        # decides. The table only reads the committed fixtures, and the gate reads
+        # them again itself, so a READ/parse failure here cannot mask a fault. The
+        # claim is scoped to that: a hypothetical failure that left inconsistent
+        # in-process state before the gate ran would not be caught by this swallow.
+        try:
+            _print_reproduction_table()
+        except Exception as e:  # noqa: BLE001 — informational only; the gate decides
+            print(f"[informational] reproduction table unavailable ({type(e).__name__}: {e}); "
+                  "the fail-closed gate below still runs and decides.", file=sys.stderr)
+        print()
+        failures, _ = _run_gate("check")
+        if failures:
+            print(f"\nFAIL — --check found {len(failures)} gate condition(s):", file=sys.stderr)
+            for line in failures:
+                print("  " + line, file=sys.stderr)
+            return 1
+        print("\nOK — both lifecycle chains render byte-identically to the committed "
+              "fixtures; all six gate conditions pass. No files written.")
+        return 0
+
+    # --write: staging-first. Nothing is written unless BOTH chains pass every
+    # applicable condition (drift excluded — the write intentionally changes bytes).
+    failures, rendered = _run_gate("write")
+    if failures:
+        print(f"\nFAIL — refusing to write: {len(failures)} gate condition(s):", file=sys.stderr)
+        for line in failures:
+            print("  " + line, file=sys.stderr)
+        print("No fixture was modified.", file=sys.stderr)
+        return 1
+    for path, _regen in CHAINS:
+        path.write_text(rendered[path], encoding="utf-8")
+        print(f"wrote {path.relative_to(ROOT)}")
     return 0
 
 

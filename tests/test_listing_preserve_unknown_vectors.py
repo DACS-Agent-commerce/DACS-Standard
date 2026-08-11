@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "listing-preserve-unknown-v0.1.json"
 CORE = ROOT / "spec" / "CORE.md"
 CONFORMANCE_PLAN = ROOT / "spec" / "CONFORMANCE-PLAN.md"
+DACS4 = ROOT / "spec" / "DACS-4-SETTLE.md"
 
 
 def canonical_json(value):
@@ -145,6 +146,32 @@ class ListingPreserveUnknownVectorTests(unittest.TestCase):
             message,
         )
 
+    def dpa1_disposition(self, listing):
+        if any(
+            phase["kind"] == "deliver-attested-payload"
+            for phase in listing["pipeline"]
+        ):
+            deliverable = listing["offering"]["deliverable"]
+            method = deliverable.get("verificationMethod")
+            if (
+                deliverable.get("kind") != "attested-payload"
+                or not isinstance(method, dict)
+                or method.get("kind") not in self.data["supportedVerificationMethods"]
+            ):
+                return "reject"
+
+        return "accept"
+
+    def listing_disposition(self, listing):
+        if not self.verify_listing_signature(listing):
+            return "reject"
+
+        supported_phases = set(self.data["supportedPhaseKinds"])
+        if any(phase.get("kind") not in supported_phases for phase in listing["pipeline"]):
+            return "refuse-unsupported"
+
+        return self.dpa1_disposition(listing)
+
     def test_vector_hash_and_count_are_byte_exact(self):
         self.assertEqual(self.data["count"], len(self.data["vectors"]))
         self.assertEqual(
@@ -221,11 +248,29 @@ class ListingPreserveUnknownVectorTests(unittest.TestCase):
         self.assertEqual(case["expected"], "fail")
         self.assertEqual(case["want"]["listingDisposition"], "refuse-unsupported")
 
+    def test_declared_listing_dispositions_execute_signature_phase_and_dpa1_rules(self):
+        for case in self.data["vectors"]:
+            with self.subTest(case=case["name"]):
+                listing = self.data["fixtures"][case["fixture"]]["listing"]
+                candidate = transformed_listing(listing, case["transform"])
+                self.assertEqual(
+                    self.listing_disposition(candidate),
+                    case["want"]["listingDisposition"],
+                )
+
+        positive = copy.deepcopy(
+            self.data["fixtures"]["listing-with-inert-extension"]["listing"]
+        )
+        positive["offering"]["deliverable"].pop("verificationMethod")
+        self.assertEqual(self.dpa1_disposition(positive), "reject")
+
     def test_normative_rules_and_concrete_vector_are_linked(self):
         core = CORE.read_text(encoding="utf-8")
+        dacs4 = DACS4.read_text(encoding="utf-8")
         plan = CONFORMANCE_PLAN.read_text(encoding="utf-8")
         self.assertIn("(SIG-5) **Preserve-unknown.**", core)
         self.assertIn("**New-type refusal (normative).**", core)
+        self.assertIn("(DPA-1) **Listing/phase coherence.**", dacs4)
         self.assertIn("listing-preserve-unknown-v0.1.json", plan)
         self.assertIn("unknown phase kind", plan)
 

@@ -19,6 +19,26 @@ The format used per release:
 
 - **Signed settlement-event identity — SB-1/SB-2 repair** (§9.3, §9.5.2, §9.5.3, §9.5.7, §9.5.8; #315) — adds distinct `evm-event`, `solana-instruction`, and `x402-event` `ChainTxRef` arms so the event/instruction coordinate that produces the SB-1 uniqueness key is inside the signed `SettlementEvidence` scope. Current producers must emit the applicable event-level arm and verifiers independently match its asset, payer, agreement-authorized payee, signed `paymentAmount`, and receipt context against authenticated ledger data before projection. They must also compare the complete PC-2 address tuple against signed `jobId`, the authenticated agreement/phase rail, and the authenticated `BundlePhaseEntry.index`; a valid evidence signature or outer receipt cannot substitute for this check. The legacy `evm`, `solana`, and `x402` arms remain byte-stable read/replay shapes: exactly one independently matching event permits projection, no match fails, and unavailable or multiple matches remain `indeterminate`; unsigned caller/indexer coordinates never disambiguate them. Adds deterministic, genuinely signed vectors for EVM, Solana, current and legacy x402 receipt/event reconciliation, batched transfers, cross-job reuse, signed-amount mismatch, full-address tuple mismatch and CF-4 encoding, malformed/missing indexes, ledger mismatch/unavailability, legacy ambiguity, discriminator stripping, and cross-type signature replay.
 
+### Fixed — DACS-2 v0.5
+
+- **Method-conditional recipe parsing** (DACS-2 §7.4.1 PRA-1..PRA-5 and
+  §7.6; #318) — makes `Recipe.parserRules` optional at the wire level but
+  normatively required whenever a recipe declares a parser-consuming method.
+  Native-only recipe authors must omit it and the steward must reject new
+  submissions that carry it, while readers ignore any such member regardless
+  of value so they need no unverifiable historical-version operand. Mixed
+  recipes carry one ParserSpec shared unchanged by every parser-consuming
+  member; authors and stewards reject combinations whose authenticated outputs
+  require different parsers, which instead use distinct recipe families. A
+  method-native selection skips it completely. Missing or invalid required
+  parsers and unknown methods fail before invocation or external side effects.
+  `VerifyResult.data` may be sourced from authenticated method-native output or
+  ParserSpec extraction.
+  Adds executable vectors covering all nine registered methods, inert native
+  parser compatibility (including `null` and a parser result that contradicts
+  the native result), invalid required presence, mixed-method selection, a
+  three-parser-method shared-rule invariant, and unknown selection.
+
 ### Added — DACS-1 v0.6 / DACS-2 v0.4
 
 - **Canonical domain identity and persistent Demos GCR verification**
@@ -64,6 +84,19 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
+  replaces the stale `verify-consume-one-sided` manifest hash after the
+  normative reference-shape migration, binds manifest regeneration to the
+  regenerated signed fixture, and refreshes the lifecycle manifest/trace
+  pins. Adds a regression test that verifies both the exact bundle hash and
+  its deterministic Ed25519 signature. No normative protocol rule changes.
+- **Preserve-unknown Listing fixture aligned with DPA-1** (CORE SIG-5;
+  DACS-4 §9.6.3 DPA-1; #323) — adds an explicit supported `self-signed`
+  verification method to both signed Listings, then deterministically
+  regenerates their artifact hashes and Ed25519 signatures. The executable
+  suite now evaluates signature validity, phase support, and DPA-1 eligibility
+  before comparing each vector's declared overall Listing disposition. No
+  normative protocol rule changes.
 - **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
   DACS-5 §10.4.1; #308) — replaces legacy `{kind,id,contentHash}`
   `AttestationRef` objects in every shared bundle fixture position with

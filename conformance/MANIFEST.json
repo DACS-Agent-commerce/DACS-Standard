@@ -1979,7 +1979,7 @@
         "verdict": "one-sided",
         "buyerDecision": "pass",
         "buyerOutcome": "aborted-by-other",
-        "buyerHash": "c0f2f5fd9403f472478e18f5a8ebcd26c7769c57bcd9adbd70ce7895f8c2deb9",
+        "buyerHash": "f153a102f960f97bfcfeb7d293632092773738ae3a6226a721edf2d1b66f07c7",
         "abortedBySelfRole": "seller",
         "abortedByOtherRole": "buyer"
       }

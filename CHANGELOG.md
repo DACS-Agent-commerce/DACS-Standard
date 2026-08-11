@@ -15,6 +15,26 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-2 v0.5
+
+- **Method-conditional recipe parsing** (DACS-2 §7.4.1 PRA-1..PRA-5 and
+  §7.6; #318) — makes `Recipe.parserRules` optional at the wire level but
+  normatively required whenever a recipe declares a parser-consuming method.
+  Native-only recipe authors must omit it and the steward must reject new
+  submissions that carry it, while readers ignore any such member regardless
+  of value so they need no unverifiable historical-version operand. Mixed
+  recipes carry one ParserSpec shared unchanged by every parser-consuming
+  member; authors and stewards reject combinations whose authenticated outputs
+  require different parsers, which instead use distinct recipe families. A
+  method-native selection skips it completely. Missing or invalid required
+  parsers and unknown methods fail before invocation or external side effects.
+  `VerifyResult.data` may be sourced from authenticated method-native output or
+  ParserSpec extraction.
+  Adds executable vectors covering all nine registered methods, inert native
+  parser compatibility (including `null` and a parser result that contradicts
+  the native result), invalid required presence, mixed-method selection, a
+  three-parser-method shared-rule invariant, and unknown selection.
+
 ### Added — DACS-1 v0.6 / DACS-2 v0.4
 
 - **Canonical domain identity and persistent Demos GCR verification**

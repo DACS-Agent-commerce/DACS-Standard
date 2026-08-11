@@ -31,8 +31,7 @@
  * header, and state identities it is claimed to cover is the CALLER's obligation.
  *
  * What this file does guarantee is narrower and purely structural: `coherent` is never
- * reachable on labels alone. A receipt must carry the workId -> txHash -> block ->
- * receiptRoot binding, a rollback must carry operation results consistent with its
+ * reachable on labels alone. A receipt must carry the workId/txHash/block/receiptRoot identity fields, a rollback must carry operation results consistent with its
  * outcome, and slot/settlement identity must be real material rather than empty strings.
  * Absent that structure the classification degrades, so an adopter cannot receive `coherent` for a
  * receipt that names no Work — but `coherent` means only "these supplied proof results, if
@@ -244,16 +243,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
- * The minimum proof-BINDING every receipt must carry before any verdict may rely on its
- * declared outcome: the identity chain this profile proposes in RFC #320,
- * workId -> txHash -> block -> receiptRoot.
+ * The minimum IDENTITY FIELDS every receipt must carry before any classification may rely on
+ * its declared outcome: workId, txHash, blockHeight, receiptRoot.
+ *
+ * NOTE THE LIMIT, which the previous name (`hasReceiptBinding`) obscured: this checks that the
+ * four fields are PRESENT and well-formed. It establishes no relationship BETWEEN them — it
+ * does not show the txHash contains the workId, that the block contains the transaction, or
+ * that the receiptRoot commits to the receipt. Establishing that chain is upstream work.
  *
  * Without it, `outcome: 'committed'` is an unbacked claimant label — the receipt names no
- * Work, no transaction, and no block, so a caller receiving `pass` would be told a receipt
+ * Work, no transaction, and no block, so a caller receiving the positive class would be told a receipt
  * was verified when nothing tied it to chain state at all. Absent binding is UNKNOWN
  * (indeterminate), not contradicted (reject): missing evidence is not counter-evidence.
  */
-function hasReceiptBinding(receipt: Record<string, unknown>): boolean {
+function hasRequiredIdentityFields(receipt: Record<string, unknown>): boolean {
   return isIdentifier(receipt.workId)
     && isIdentifier(receipt.txHash)
     && isIdentifier(receipt.receiptRoot)
@@ -320,7 +323,7 @@ function classifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
   // Structure before labels. `outcome` is a claimant-supplied string and means nothing until
   // the receipt carrying it is bound to chain state, so a receipt object containing only
   // `outcome` can never reach `coherent` on proof statuses alone.
-  if (!hasReceiptBinding(obs.receipt)) return 'indeterminate';
+  if (!hasRequiredIdentityFields(obs.receipt)) return 'indeterminate';
 
   if (obs.receipt.outcome === 'committed') {
     return classifyProofChain([
@@ -353,10 +356,14 @@ function classifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
     if (!Array.isArray(operationResults) || operationResults.length === 0) {
       return 'indeterminate';
     }
-    // Complete coverage: EVERY entry must be a record carrying a status this profile
-    // recognises as consistent with a rollback. An unrecognised or missing status leaves
-    // that operation's fate unknown, so the receipt degrades to indeterminate rather than
-    // passing on the strength of its siblings.
+    // Every SUPPLIED entry must carry a status this profile recognises as consistent with a
+    // rollback; an unrecognised or missing status degrades the receipt to indeterminate.
+    //
+    // LIMIT, stated because the word "complete" would be false: this cannot establish that
+    // every operation in the Work is accounted for. A single-entry array reaches the positive
+    // class without showing that omitted operations were rolled back or never executed —
+    // nothing here carries an authenticated operation manifest or count to check against.
+    // Closing it needs the profile to pin such a manifest; flagged rather than implied.
     const allConsistent = operationResults.every(
       (result) => isRecord(result)
         && typeof result.status === 'string'

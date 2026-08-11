@@ -64,7 +64,7 @@
  *  (D) Payment-slot identity is the structured canonical tuple attested by the
  *      verified slot-state proof, never a claimant-presented label. This closes
  *      encoding-drift evasions (alias, zero-padding, delimiter ambiguity) while
- *      refusing to reject on unbound labels alone.
+ *      refusing to reject on unbound proof-status labels alone.
  *  (E) ENFORCED (was a SHOULD): a valid slotStateProof must carry a proof-derived
  *      `slotTransition`. Valid-proof-with-absent-transition degrades the pair to
  *      indeterminate rather than a non-consuming `coherent`, and per note (A) phaseIndex
@@ -279,7 +279,7 @@ function classifyReceiptProof(obs: WorkReceiptProofObservation): EvidenceClass {
   // Contradiction outranks EVERY structural gate, including a missing receipt object. The
   // common chain applies to any outcome, so an invalid inclusion/finality/validator-set
   // proof rejects even when there is no receipt at all — otherwise a claimant could
-  // downgrade contradicted proof material to "unknown" simply by omitting the receipt.
+  // downgrade a contradicted proof-result status to "unknown" simply by omitting the receipt.
   if (common.some((status) => status === 'invalid')) return 'reject';
 
   if (!obs.receipt || typeof obs.receipt !== 'object') return 'indeterminate';
@@ -384,7 +384,7 @@ function classifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
 
   // PRESENT CONTRADICTION FIRST, uniformly. If both subjects are present and disagree, the
   // evidence is about a different Work — that is counter-evidence, and it outranks any
-  // missing proof material below. Ordering the completeness returns ahead of this made a
+  // missing proof-result statuses below. Ordering the completeness returns ahead of this made a
   // mismatch with `proof: "absent"` report indeterminate, contradicting the precedence rule
   // this file states in its header.
   if (
@@ -435,7 +435,7 @@ function classifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
 }
 
 function classifySettlementEvidence(obs: SettlementEvidenceObservation): EvidenceClass {
-  // Proof material only. A bare `signatureValid: true` is a claimant assertion with no
+  // Proof-result statuses only. A bare `signatureValid: true` is a claimant assertion with no
   // verifier behind it, and the set's contract is upstream-produced PROOF-RESULT STATUS
   // ENUMS (never bare booleans) — accepting the boolean contradicted that and let a `pass` rest on an
   // unbacked flag. `signatureValid` is still read for CONTRADICTION (an explicit false is
@@ -478,7 +478,7 @@ function classifySettlementEvidence(obs: SettlementEvidenceObservation): Evidenc
 }
 
 function classifyPaymentSlot(obs: PaymentSlotObservation): EvidenceClass {
-  // Invalid proof material is evaluated before ANY structural or label gate.
+  // An `invalid` proof-result status is evaluated before ANY structural or label gate.
   // It is the strongest and most certain signal in the observation: a proof
   // that fails verification is a reject regardless of what transition string a
   // claimant attached to it, and regardless of whether the counterpart Work was

@@ -97,6 +97,38 @@ The format used per release:
   suite now evaluates signature validity, phase support, and DPA-1 eligibility
   before comparing each vector's declared overall Listing disposition. No
   normative protocol rule changes.
+- **Lifecycle-vector content hash corrected to the §B.2 canonical form** (CORE
+  §B.2 / §B.7, DACS-5 §10.4.1; #278) — `scripts/validate_conformance_vectors.py`
+  hashed each artifact whole, signature included, via `json.dumps`, so no
+  published vector exercised the §B.2 canonical-form hash of a *signed* artifact
+  (an implementer could be §B.2-correct yet fail, or §B.2-wrong yet pass). The
+  validator now canonicalises with a vendored stdlib-only module (`scripts/jcs.py`)
+  implementing RFC 8785 (JCS) for the JSON subset DACS lifecycle artifacts occupy —
+  integers |n| ≤ 2⁵³−1, strings, literals, arrays, objects; non-integral numbers
+  are rejected fail-closed (no normative DACS rule forbids them, but the corpus is
+  float-free (executed) and refusing beats emitting a possibly-nonconformant ES6
+  serialisation). It hashes the signature-omitted scope via an explicit per-kind
+  hash-excluded-field table (`signature` / `signatures`; bundles also omit
+  `anchoredByRole` per §10.4.1). It additionally verifies every embedded ed25519
+  signature over the §B.7 domain-separated payload (registry-validated separator ‖
+  lowercase-hex artifact hash) and pins each result two-way in a new per-artifact
+  `signatureChecks` field, so `neg-bundle-tampered-signature` stays discriminated
+  even though its tamper lives entirely in the §B.2-omitted field (under the
+  corrected hash it is byte-identical to the happy bundle). The 10 envelope
+  `contentHash` values were regenerated with `--write`; the embedded signatures
+  already committed to the §B.2 hash, so no re-signing was needed. The
+  `json.dumps` → JCS switch changes no byte on this all-ASCII, float-free corpus
+  (pinned by an executed per-artifact equivalence test). Per CF-1's literal "every
+  JSON string value", NFC is applied to string values only; member names are
+  serialised and UTF-16-sorted as received (matching the in-repo `nfc_deep`
+  precedent) — whether CF-1 also binds member names is a spec-clarification
+  candidate, not resolved here.
+  Residual: the signed internal cross-references
+  (`listingRef` / `vetRecordRef` `contentHash`) still commit to the legacy
+  whole-artifact hashes and cannot be corrected in place without the external
+  signing keys — tracked in #313; these fixtures MUST NOT be used as
+  reference-resolution vectors until regenerated generator-side. No normative
+  protocol rule changes.
 - **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
   DACS-5 §10.4.1; #308) — replaces legacy `{kind,id,contentHash}`
   `AttestationRef` objects in every shared bundle fixture position with

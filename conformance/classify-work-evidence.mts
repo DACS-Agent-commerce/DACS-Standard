@@ -31,7 +31,7 @@
  * header, and state identities it is claimed to cover is the CALLER's obligation.
  *
  * What this file does guarantee is narrower and purely structural: `coherent` is never
- * reachable on labels alone. A receipt must carry the workId/txHash/block/receiptRoot identity fields, a rollback must carry operation results consistent with its
+ * reachable on proof-status labels alone. A receipt must carry the workId/txHash/block/receiptRoot identity fields, a rollback must carry operation results consistent with its
  * outcome, and slot/settlement identity must be real material rather than empty strings.
  * Absent that structure the classification degrades, so an adopter cannot receive `coherent` for a
  * receipt that names no Work — but `coherent` means only "these supplied proof results, if
@@ -436,8 +436,8 @@ function classifyAbsenceClaim(obs: AbsenceClaimObservation): EvidenceClass {
 
 function classifySettlementEvidence(obs: SettlementEvidenceObservation): EvidenceClass {
   // Proof material only. A bare `signatureValid: true` is a claimant assertion with no
-  // verifier behind it, and the set's own contract is "PROOF MATERIAL (never bare
-  // booleans)" — accepting the boolean contradicted that and let a `pass` rest on an
+  // verifier behind it, and the set's contract is upstream-produced PROOF-RESULT STATUS
+  // ENUMS (never bare booleans) — accepting the boolean contradicted that and let a `pass` rest on an
   // unbacked flag. `signatureValid` is still read for CONTRADICTION (an explicit false is
   // counter-evidence and rejects), but it can no longer support acceptance.
   if (obs.signatureProof === 'invalid' || obs.signatureValid === false) {

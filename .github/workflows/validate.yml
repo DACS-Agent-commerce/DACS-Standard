@@ -48,7 +48,7 @@ jobs:
         run: python3 scripts/validate_security_vectors.py
 
       # --- RFC #320 execution-evidence lane (proposed / non-normative) -------
-      # Self-contained block. The Work-receipt verifier is the only TypeScript
+      # Self-contained block. The Work-evidence classifier is the only TypeScript
       # this lane executes: it imports nothing outside `node:` builtins and uses
       # erasable syntax only, so a pinned Node version needs no package.json,
       # lockfile, npm/npx, or network *package* install. The runner still

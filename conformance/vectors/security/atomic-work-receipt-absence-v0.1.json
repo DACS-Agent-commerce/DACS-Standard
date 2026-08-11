@@ -1,13 +1,13 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Classifier input: an atomic-Work settlement/recovery observation carrying PROOF-RESULT STATUS ENUMS produced upstream (never bare booleans); output: the §7.5.1-class EVIDENCE CLASSIFICATION a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set reported as anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A classification of `coherent` REQUIRES a caller-supplied `valid` status for every required link in the chain, subject to the documented upstream-verification prerequisite — it does NOT establish that the chain verified; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent. NOTE: this component is an evidence CLASSIFIER, not a proof verifier — it performs no signature, Merkle-path, quorum/finality, validator-set or proof-subject check, and `coherent` means the supplied verification results are internally consistent and structurally sufficient, NOT that the receipt was cryptographically verified. Renamed at steward request (#322, 2026-08-11).",
-  "hash": "2b8c07a53a9163a1948c6cba7da6676314caec3101091bd5f33290c52bbe0b6f",
+  "hash": "3c127c51308ea0f3bc0a99d2abd7ab94df74a0c2094fdff295ff1b77db341645",
   "count": 52,
   "vectors": [
     {
-      "name": "receipt-full-proof-chain-independent-of-indexer-coherent",
+      "name": "receipt-full-status-chain-independent-of-indexer-coherent",
       "expected": "coherent",
-      "note": "Every link verifies against a trusted checkpoint, WITHOUT any Indexer read: the accepting consumer never touches public Indexer hydration.",
+      "note": "Every required link is REPORTED `valid` by the upstream verifier, including a validator set reported as checkpoint-anchored, WITHOUT any Indexer read: the accepting consumer never touches public Indexer hydration.",
       "observation": {
         "kind": "work-receipt-proof",
         "receipt": {
@@ -83,7 +83,7 @@
     {
       "name": "included-failure-rollback-roots-equal-coherent",
       "expected": "coherent",
-      "note": "outcome==rolled-back with a verified receipt proof: every prior critical op result is rolled-back, later ops not-executed, and a state-membership proof shows preBusinessStateRoot == postBusinessStateRoot. Fee/nonce effects reported SEPARATELY (may persist).",
+      "note": "outcome==rolled-back with a verified receipt proof: every SUPPLIED op result carries a rollback-consistent status (no authenticated operation manifest exists here, so omitted operations are not established), and a state-membership proof shows preBusinessStateRoot == postBusinessStateRoot. Fee/nonce effects reported SEPARATELY (may persist).",
       "observation": {
         "kind": "work-receipt-proof",
         "receipt": {
@@ -699,7 +699,7 @@
     {
       "name": "receipt-committed-without-proof-binding-indeterminate",
       "expected": "indeterminate",
-      "note": "A receipt object carrying only `outcome` is an unbacked claimant label: it names no Work, no transaction and no block, so valid proof-status strings alone MUST NOT yield pass. The profile requires the workId -> txHash -> block -> receiptRoot binding before any verdict relies on the declared outcome. Absent binding is unknown, not contradicted.",
+      "note": "A receipt object carrying only `outcome` is an unbacked claimant label: it names no Work, no transaction and no block, so valid proof-status strings alone MUST NOT yield `coherent`. The profile requires the workId -> txHash -> block -> receiptRoot binding before any verdict relies on the declared outcome. Absent binding is unknown, not contradicted.",
       "observation": {
         "kind": "work-receipt-proof",
         "receipt": {
@@ -831,7 +831,7 @@
     {
       "name": "settlement-evidence-bare-boolean-without-proof-indeterminate",
       "expected": "indeterminate",
-      "note": "A bare signatureValid:true is a claimant assertion with no verifier behind it. This set's contract is proof material, never bare booleans, so acceptance requires signatureProof; the boolean can contradict (an explicit false rejects) but can never support a pass.",
+      "note": "A bare signatureValid:true is a claimant assertion with no verifier behind it. This set's contract is upstream-produced proof-RESULT status enums, never bare booleans, so acceptance requires signatureProof; the boolean can contradict (an explicit false rejects) but can never support the positive class.",
       "observation": {
         "kind": "settlement-evidence",
         "signatureValid": true,

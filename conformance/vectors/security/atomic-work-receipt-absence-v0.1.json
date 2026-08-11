@@ -1,13 +1,13 @@
 {
   "set": "atomic-work-receipt-absence-v0.1",
   "spec": "Atomic DACS Work — receipt proof-shape + inclusion/absence evidence model (RFC #320). PROPOSED candidate set authored by the execution-evidence lane (@cX3po). Classifier input: an atomic-Work settlement/recovery observation carrying PROOF-RESULT STATUS ENUMS produced upstream (never bare booleans); output: the §7.5.1-class EVIDENCE CLASSIFICATION a conforming consumer MUST reach before authorizing payment resubmission or accepting DACS-4/5 evidence. Receipt proof chain (WorkReceiptProofV1): canonical receipt → receiptLeafHash → Merkle path to blockHeader.receiptRoot → finalized-block validator quorum certificate → validator set reported as anchored to a trusted checkpoint → winner/attempt + payment-slot state-membership proofs under blockHeader.stateRoot. A classification of `coherent` REQUIRES a caller-supplied `valid` status for every required link in the chain, subject to the documented upstream-verification prerequisite — it does NOT establish that the chain verified; any absent/invalid link degrades to `indeterminate` (unknown) or `reject` (contradicted). Grounds: mj-deving's minimum-acceptance list + xm33's anchor-misattribution defect (both RFC #320) + node #973 (receipt-without-Indexer). Types profile-proposed; refine as the Standard profile lands. Proof-status fields use: valid | invalid | absent. NOTE: this component is an evidence CLASSIFIER, not a proof verifier — it performs no signature, Merkle-path, quorum/finality, validator-set or proof-subject check, and `coherent` means the supplied verification results are internally consistent and structurally sufficient, NOT that the receipt was cryptographically verified. Renamed at steward request (#322, 2026-08-11).",
-  "hash": "3c127c51308ea0f3bc0a99d2abd7ab94df74a0c2094fdff295ff1b77db341645",
+  "hash": "96d8ed5678dc5a2b0057b45377de663393d6088f838db13546ae1a9a2396fb4c",
   "count": 52,
   "vectors": [
     {
       "name": "receipt-full-status-chain-independent-of-indexer-coherent",
       "expected": "coherent",
-      "note": "Every required link is REPORTED `valid` by the upstream verifier, including a validator set reported as checkpoint-anchored, WITHOUT any Indexer read: the accepting consumer never touches public Indexer hydration.",
+      "note": "Every required link is REPORTED `valid` by the upstream classifier, including a validator set reported as checkpoint-anchored, WITHOUT any Indexer read: the accepting consumer never touches public Indexer hydration.",
       "observation": {
         "kind": "work-receipt-proof",
         "receipt": {
@@ -648,7 +648,7 @@
     {
       "name": "payment-slot-unknown-transition-with-invalid-proof-reject",
       "expected": "reject",
-      "note": "An unknown transition label MUST NOT mask contradictory proof material. A slotStateProof that fails verification is a reject regardless of the transition string attached to it, so the invalid-proof check is evaluated before the unknown-transition check.",
+      "note": "An unknown transition label MUST NOT mask contradictory proof-result status. A slotStateProof that fails verification is a reject regardless of the transition string attached to it, so the invalid-proof check is evaluated before the unknown-transition check.",
       "observation": {
         "kind": "payment-slot",
         "firstWork": {
@@ -688,7 +688,7 @@
     {
       "name": "payment-slot-invalid-proof-absent-counterpart-reject",
       "expected": "reject",
-      "note": "Contradicted proof material MUST NOT be downgraded by omitting the counterpart Work. An invalid slotStateProof is a reject even when the second Work is absent, so the invalid-proof check precedes the missing-counterpart structural gate.",
+      "note": "Contradicted proof-result status MUST NOT be downgraded by omitting the counterpart Work. An invalid slotStateProof is a reject even when the second Work is absent, so the invalid-proof check precedes the missing-counterpart structural gate.",
       "observation": {
         "kind": "payment-slot",
         "firstWork": {
@@ -715,7 +715,7 @@
     {
       "name": "rollback-equal-roots-without-operation-results-indeterminate",
       "expected": "indeterminate",
-      "note": "Equal business roots are necessary but not sufficient for a rollback verdict. A rollback asserts every operation was undone; with no operation results the claim is unproven, so the pair degrades to indeterminate rather than pass.",
+      "note": "Equal business roots are necessary but not sufficient for a rollback verdict. A rollback asserts every operation was undone; with no operation results the claim is unproven, so the pair degrades to indeterminate rather than the positive class.",
       "observation": {
         "kind": "work-receipt-proof",
         "receipt": {
@@ -801,7 +801,7 @@
     {
       "name": "absence-evidence-without-subject-binding-indeterminate",
       "expected": "indeterminate",
-      "note": "An absence verdict authorises resubmission, so the evidence MUST name the Work and attempt it covers. Valid lifecycle-expiry proof material carrying no subject binding cannot license a replacement: a proof over some other Work or attempt would otherwise be accepted on the strength of a caller-supplied kind label alone. Absent binding is unknown, not contradicted.",
+      "note": "An absence verdict authorises resubmission, so the evidence MUST name the Work and attempt it covers. Valid lifecycle-expiry proof-result status carrying no subject binding cannot license a replacement: a proof over some other Work or attempt would otherwise be accepted on the strength of a caller-supplied kind label alone. Absent binding is unknown, not contradicted.",
       "observation": {
         "kind": "absence-claim",
         "evidence": {
@@ -894,7 +894,7 @@
     {
       "name": "invalid-common-proof-without-receipt-object-rejects",
       "expected": "reject",
-      "note": "Contradiction outranks every structural gate, including a missing receipt object. An invalid inclusion/finality/validator-set proof applies to any outcome, so it rejects even with no receipt present — otherwise a claimant could downgrade contradicted proof material to unknown simply by omitting the receipt.",
+      "note": "Contradiction outranks every structural gate, including a missing receipt object. An invalid inclusion/finality/validator-set proof applies to any outcome, so it rejects even with no receipt present — otherwise a claimant could downgrade contradicted proof-result status to unknown simply by omitting the receipt.",
       "observation": {
         "kind": "work-receipt-proof",
         "receiptInclusionProof": "invalid"
@@ -933,7 +933,7 @@
     {
       "name": "settlement-unsafe-phase-index-is-untrusted-indeterminate",
       "expected": "indeterminate",
-      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Settlement lane: two distinct phase indices beyond the safe range must not be read as a match.",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become `coherent`. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Settlement lane: two distinct phase indices beyond the safe range must not be read as a match.",
       "observation": {
         "kind": "settlement-evidence",
         "signatureProof": "valid",
@@ -948,7 +948,7 @@
     {
       "name": "payment-slot-unsafe-phase-index-is-untrusted-indeterminate",
       "expected": "indeterminate",
-      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Payment-slot lane: two distinct proven slots must not collapse into one settled slot.",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become `coherent`. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Payment-slot lane: two distinct proven slots must not collapse into one settled slot.",
       "observation": {
         "kind": "payment-slot",
         "firstWork": {
@@ -976,7 +976,7 @@
     {
       "name": "absence-unsafe-attempt-is-untrusted-indeterminate",
       "expected": "indeterminate",
-      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Absence lane: distinct attempts must not collapse, since that would authorise a replacement against evidence for a different attempt.",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become `coherent`. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Absence lane: distinct attempts must not collapse, since that would authorise a replacement against evidence for a different attempt.",
       "observation": {
         "kind": "absence-claim",
         "claimedWorkId": "work-7f3a",
@@ -993,7 +993,7 @@
     {
       "name": "receipt-unsafe-block-height-fails-binding-indeterminate",
       "expected": "indeterminate",
-      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become a pass. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Receipt lane: an unsafe block height cannot satisfy the proof binding, since it names no distinguishable block.",
+      "note": "JSON numbers above Number.MAX_SAFE_INTEGER collapse onto the same float, so two DISTINCT declared values compare equal and a genuine mismatch would silently become `coherent`. Indices and heights must therefore be non-negative SAFE integers; an unsafe value is untrusted material and the verdict is indeterminate. Receipt lane: an unsafe block height cannot satisfy the proof binding, since it names no distinguishable block.",
       "observation": {
         "kind": "work-receipt-proof",
         "receipt": {

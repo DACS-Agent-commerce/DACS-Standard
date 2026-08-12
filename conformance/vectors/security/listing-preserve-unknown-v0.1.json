@@ -1,6 +1,6 @@
 {
   "set": "listing-preserve-unknown-v0.1",
-  "spec": "CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4",
+  "spec": "CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1",
   "provenance": {
     "generator": "DACS steward deterministic Ed25519 fixture",
     "keySeed": "sha256('DACS issue 247 preserve-unknown Listing vector seed')",
@@ -9,6 +9,14 @@
   "signatureDomain": "dacs-listing:v1:",
   "omittedHashField": "signature",
   "unknownTopLevelField": "futureOptionalMetadata",
+  "supportedPhaseKinds": [
+    "negotiate-fixed-price",
+    "commit-agreement",
+    "deliver-attested-payload"
+  ],
+  "supportedVerificationMethods": [
+    "self-signed"
+  ],
   "knownTopLevelFields": [
     "dacsVersion",
     "listingVersion",
@@ -30,8 +38,8 @@
   "fixtures": {
     "identityBundleHash": "714eccb5392320b3ddf7a87047d9de4e6f8e44d7bd370096ef8d2ea95c91f308",
     "listing-with-inert-extension": {
-      "artifactHash": "7b1aa462dc768d75eb6465c3e9a9fc5d03aa456379cb932f5bf83d9cc1c2ceee",
-      "knownFieldProjectionHash": "590495d084a3aef11e004b7fb6d0b604a444d37082165c4e817cec4e0727f208",
+      "artifactHash": "2b66b0c872f120cfe80fb109cfdc9e90bb494167e75243a76f251ba9f811e3a1",
+      "knownFieldProjectionHash": "ff5e660f78f937f88d5fb9dfe651627cff8d991fda2d76cc06ca434883ba23c1",
       "listing": {
         "dacsVersion": "1",
         "listingVersion": 1,
@@ -68,7 +76,10 @@
           ],
           "deliverable": {
             "kind": "attested-payload",
-            "payloadFormat": "application/json"
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
           }
         },
         "buyerRequirement": {
@@ -111,12 +122,12 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
-          "value": "W7K9t6IJz-TPkk292OQFBuRTMGKvNvYrrFheKaiGDbk2wmPWoU9d14FXsA2OqkGqVnoiim34YYuWp7tkJ8OTBw"
+          "value": "_h4gOtWJuYA1Qt8qu-DxuE9UCEs0yYH4I5eRe2QU3DsHHpe1SliJOmuNHcFar2fX0KQu2H4ZSsVzVXFEqd-uAw"
         }
       }
     },
     "listing-with-unknown-phase": {
-      "artifactHash": "27841278b437e08a16d999f58f87a06bc6b6bc743b86c4c907f975c244da8a46",
+      "artifactHash": "0fc9930933a6029a2f5cd933bc62dcc4de66af7ff03b9960fea6955641ee81d8",
       "listing": {
         "dacsVersion": "1",
         "listingVersion": 1,
@@ -153,7 +164,10 @@
           ],
           "deliverable": {
             "kind": "attested-payload",
-            "payloadFormat": "application/json"
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
           }
         },
         "buyerRequirement": {
@@ -192,12 +206,12 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:9352cb22f109d357155e802379711b7f9f17164f895800ad4322585d564c462c",
-          "value": "JRv2_BRNNsJIHGkD1WqIwcES8bWg-F2BMIwVo1KQAGMzVjZNlzSbXoY3YfQJkeRf_tHXpNwsPUO6aFCnADkjDQ"
+          "value": "YzTlY5HhvAUnhjbMgyAmdUOVgDsSNcTx8WnT7Bj92AmdKabG8HgzqhBLG7JNYgxinITRyFAovGNSG1ifl4SIBA"
         }
       }
     }
   },
-  "hash": "aaacbe1dd914a9a74293172e9baf2ca8a3690b9cd55d380f531620b5b1d9b2af",
+  "hash": "3548dc4111197013fcf586fddc59236c5299737978725bd657027f9d4ad1e533",
   "count": 4,
   "vectors": [
     {
@@ -210,7 +224,7 @@
       },
       "expected": "pass",
       "want": {
-        "computedArtifactHash": "7b1aa462dc768d75eb6465c3e9a9fc5d03aa456379cb932f5bf83d9cc1c2ceee",
+        "computedArtifactHash": "2b66b0c872f120cfe80fb109cfdc9e90bb494167e75243a76f251ba9f811e3a1",
         "signature": "valid",
         "unknownFieldDisposition": "preserve-in-hash-ignore-semantics",
         "listingDisposition": "accept"
@@ -229,7 +243,7 @@
       },
       "expected": "fail",
       "want": {
-        "computedArtifactHash": "27a2948ea53f43920e8ccb08a0d8e44a7e773164ef4f590040ab9305c7b22261",
+        "computedArtifactHash": "9e71a7e13ea433803416a02730827e593edacbb6c9229102ac7807bc54b20459",
         "signature": "invalid",
         "listingDisposition": "reject",
         "failedAt": "signature"
@@ -247,7 +261,7 @@
       },
       "expected": "fail",
       "want": {
-        "computedArtifactHash": "590495d084a3aef11e004b7fb6d0b604a444d37082165c4e817cec4e0727f208",
+        "computedArtifactHash": "ff5e660f78f937f88d5fb9dfe651627cff8d991fda2d76cc06ca434883ba23c1",
         "signature": "invalid",
         "listingDisposition": "reject",
         "failedAt": "signature"
@@ -264,7 +278,7 @@
       },
       "expected": "fail",
       "want": {
-        "computedArtifactHash": "27841278b437e08a16d999f58f87a06bc6b6bc743b86c4c907f975c244da8a46",
+        "computedArtifactHash": "0fc9930933a6029a2f5cd933bc62dcc4de66af7ff03b9960fea6955641ee81d8",
         "signature": "valid",
         "listingDisposition": "refuse-unsupported",
         "failedAt": "pipeline[0].kind"

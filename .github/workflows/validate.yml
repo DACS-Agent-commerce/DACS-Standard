@@ -29,11 +29,11 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install crypto dependency
-        run: python3 -m pip install 'cryptography==46.0.5'
+      - name: Install validation dependencies
+        run: python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
 
       - name: crypto import gate (fail-closed)
-        run: python3 -c "import cryptography; print(cryptography.__version__)"
+        run: python3 -c "import cryptography, idna; print(cryptography.__version__, idna.__version__)"
 
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
@@ -49,6 +49,9 @@ jobs:
 
       - name: Verify payload-attestation vectors are deterministic
         run: python3 scripts/generate_payload_attestation_vectors.py --check
+
+      - name: Verify rail-availability vectors are deterministic
+        run: python3 scripts/generate_rail_availability_selection_vectors.py --check
 
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check
@@ -76,6 +79,9 @@ jobs:
 
       - name: Verify signed EBFAB compatibility fixture is deterministic
         run: python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --check
+
+      - name: Verify lifecycle vectors are deterministic and in sync
+        run: python3 scripts/generate_lifecycle_vectors.py --check
 
       - name: Validate selected spec tables
         run: python3 scripts/validate_spec_tables.py

@@ -1,4 +1,6 @@
+import base64
 import json
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -231,6 +233,219 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("validated manifest", result.stdout)
         self.assertNotIn("validated 2 vectors", result.stdout)
+
+
+class B2ConformanceHashTests(unittest.TestCase):
+    """§B.2 content-hash correction + executed signature verification (#278)."""
+
+    HAPPY = "dacs-v0.1-happy-path.json"
+    NEG = "dacs-v0.1-negative-paths.json"
+    # Synthetic basename in validate_conformance_vectors.LEGACY_SIG_SPELLING_FILES. No such
+    # file is committed; it is the allowlisted name the dual-gate specimen is written under,
+    # so the legacy padded-Base64 gate stays exercised now the lifecycle files are SIG-6.
+    SYNTHETIC_LEGACY_NAME = "legacy-padded-spelling-fixture.json"
+
+    def _respell_to_padded_base64(self, data):
+        """Re-spell every canonical SIG-6 signature value in-place to padded standard
+        Base64 (byte-preserving) and declare the legacy spelling — turning the migrated
+        SIG-6 HAPPY structure into a self-contained legacy padded-Base64 specimen."""
+        data["signatureValueSpelling"] = "legacy-padded-base64"
+
+        def walk(node):
+            if isinstance(node, dict):
+                if isinstance(node.get("algorithm"), str) and isinstance(node.get("value"), str):
+                    value = node["value"]
+                    raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+                    node["value"] = base64.b64encode(raw).decode("ascii")
+                for child in node.values():
+                    walk(child)
+            elif isinstance(node, list):
+                for child in node:
+                    walk(child)
+
+        walk(data["artifacts"])
+
+    def _temp_vector(self, source_name, mutate=None, dest_name=None):
+        data = json.loads((ROOT / "conformance" / "vectors" / source_name).read_text())
+        if mutate is not None:
+            mutate(data)
+        tmpdir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmpdir, ignore_errors=True)
+        dest = tmpdir / (dest_name or source_name)
+        dest.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        return dest
+
+    def test_artifact_hash_path_invokes_jcs_canonicalize(self):
+        # Kills an import-swap back to json.dumps: the hash path MUST go through jcs.
+        module = load_vector_validator()
+        sentinel = RuntimeError("jcs.canonicalize sentinel")
+        original = module.jcs.canonicalize
+
+        def boom(_value):
+            raise sentinel
+
+        module.jcs.canonicalize = boom
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                module.artifact_hash_hex("Listing", {"payload": 1, "signature": {}})
+            self.assertIs(ctx.exception, sentinel)
+        finally:
+            module.jcs.canonicalize = original
+
+    def test_hash_exclusion_matches_walkthrough_signing_scope(self):
+        import importlib.util
+
+        module = load_vector_validator()
+        wpath = ROOT / "scripts" / "run_lifecycle_walkthrough.py"
+        wspec = importlib.util.spec_from_file_location("run_lifecycle_walkthrough", wpath)
+        walk = importlib.util.module_from_spec(wspec)
+        wspec.loader.exec_module(walk)
+        for kind, excluded in module.HASH_EXCLUDED.items():
+            with self.subTest(kind=kind):
+                artifact = {"payload": 1}
+                for field in excluded:
+                    artifact[field] = "buyer" if field == "anchoredByRole" else [{"value": "x"}]
+                scoped = walk.signing_scope(kind, dict(artifact))
+                self.assertEqual(set(artifact) - set(scoped), excluded)
+
+    def test_pinned_repository_vectors_pass_on_temp_copy(self):
+        dest = self._temp_vector(self.HAPPY)
+        result = run_validator(str(dest))
+        self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+
+    def test_signature_byte_tamper_detected(self):
+        def mutate(data):
+            sig = data["artifacts"][0]["artifact"]["signature"]
+            first = "A" if sig["value"][0] != "A" else "B"
+            sig["value"] = first + sig["value"][1:]
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("signatureChecks mismatch", result.stderr)
+
+    def test_signer_swap_detected(self):
+        buyer = "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+
+        def mutate(data):
+            data["artifacts"][0]["artifact"]["signature"]["signer"] = buyer
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("signatureChecks mismatch", result.stderr)
+
+    def test_missing_signature_checks_errors(self):
+        def mutate(data):
+            del data["artifacts"][0]["signatureChecks"]
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("signatureChecks MUST be a non-empty array", result.stderr)
+
+    def test_unknown_kind_errors(self):
+        def mutate(data):
+            data["artifacts"][0]["kind"] = "Bogus"
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("unknown artifact kind", result.stderr)
+
+    def test_legacy_base64_dual_gate(self):
+        # Padded standard Base64 is accepted only when BOTH the basename is allowlisted
+        # AND the file declares signatureValueSpelling. The lifecycle fixtures are now
+        # canonical SIG-6, so this exercises the gate against a SELF-CONTAINED synthetic
+        # specimen constructed at test time — the migrated HAPPY structure re-spelled to
+        # padded standard Base64 under the allowlisted synthetic basename. No repository
+        # fixture carries legacy spelling.
+        # (1) allowlisted name + flag + padded values -> pass
+        ok = run_validator(str(self._temp_vector(
+            self.HAPPY, self._respell_to_padded_base64, dest_name=self.SYNTHETIC_LEGACY_NAME)))
+        self.assertEqual(ok.returncode, 0, ok.stderr + ok.stdout)
+
+        # (2) allowlisted name, flag stripped -> padded no longer permitted -> red
+        def padded_without_flag(data):
+            self._respell_to_padded_base64(data)
+            data.pop("signatureValueSpelling", None)
+
+        no_flag = run_validator(str(self._temp_vector(
+            self.HAPPY, padded_without_flag, dest_name=self.SYNTHETIC_LEGACY_NAME)))
+        self.assertNotEqual(no_flag.returncode, 0, no_flag.stdout)
+        self.assertIn("signatureChecks mismatch", no_flag.stderr)
+
+        # (3) non-allowlisted name + flag + padded values -> red
+        renamed = run_validator(str(self._temp_vector(
+            self.HAPPY, self._respell_to_padded_base64, dest_name="not-allowlisted.json")))
+        self.assertNotEqual(renamed.returncode, 0, renamed.stdout)
+        self.assertIn("signatureChecks mismatch", renamed.stderr)
+
+    def test_verifies_true_with_fail_pin_is_incoherent(self):
+        def mutate(data):
+            data["expectedResult"]["verifies"] = True
+
+        result = run_validator(str(self._temp_vector(self.NEG, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("verifies is true but a signatureChecks pin expects 'fail'", result.stderr)
+
+    def test_json_dumps_equals_jcs_on_signature_omitted_corpus(self):
+        # Pins the "json.dumps -> JCS changes no byte on this corpus" claim: for
+        # every signature-omitted artifact across both files, the two encodings
+        # are byte-identical (all-ASCII, float-free).
+        import sys as _sys
+
+        _sys.path.insert(0, str(ROOT / "scripts"))
+        module = load_vector_validator()
+        checked = 0
+        for name in [self.HAPPY, self.NEG]:
+            data = json.loads((ROOT / "conformance" / "vectors" / name).read_text())
+            for artifact in data["artifacts"]:
+                scope = module.signing_scope(artifact["kind"], artifact["artifact"])
+                jcs_bytes = module.jcs.canonicalize(scope).encode("utf-8")
+                dumps_bytes = json.dumps(
+                    scope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+                ).encode("utf-8")
+                self.assertEqual(jcs_bytes, dumps_bytes, artifact["id"])
+                checked += 1
+        self.assertEqual(checked, 10)
+
+    def test_domain_separator_must_match_kind(self):
+        # C1: a declared domainSeparator that disagrees with the kind's §B.7
+        # separator is rejected, even when the wrong value is itself registered.
+        def mutate(data):
+            data["artifacts"][0]["domainSeparator"] = "dacs-composite:v1:"
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("does not match the Listing §B.7 separator", result.stderr)
+
+    def test_non_ed25519_algorithm_recorded_as_fail(self):
+        # C2: a non-ed25519 suite is unverifiable here -> observed 'fail' -> the
+        # declared 'verify' pin mismatches. It must not crash or silently verify.
+        def mutate(data):
+            data["artifacts"][0]["artifact"]["signature"]["algorithm"] = "rsa"
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("signatureChecks mismatch", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_malformed_pin_is_error_not_crash(self):
+        # C3: a pin missing its required 'path' is a clean validation error, never
+        # a TypeError from sorting a None sort-key.
+        def mutate(data):
+            data["artifacts"][0]["signatureChecks"][0].pop("path")
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("path MUST be a non-empty string", result.stderr)
+        self.assertNotIn("Traceback", result.stderr)
+
+    def test_unknown_pin_key_rejected(self):
+        # C3: fail-closed — an unrecognised pin key must not pass unread.
+        def mutate(data):
+            data["artifacts"][0]["signatureChecks"][0]["note"] = "smuggled"
+
+        result = run_validator(str(self._temp_vector(self.HAPPY, mutate)))
+        self.assertNotEqual(result.returncode, 0, result.stdout)
+        self.assertIn("unknown keys", result.stderr)
 
 
 if __name__ == "__main__":

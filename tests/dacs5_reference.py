@@ -1352,6 +1352,23 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
     return {"ok": True, "reason": "triple-identity holds", "recomputedHash": recomputed}
 
 
+def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
+    if not isinstance(full_bundle_url, str):
+        return False
+    if pointer_kind != "evidence-bound":
+        return True
+    try:
+        parsed_url = urlsplit(full_bundle_url)
+        return (
+            parsed_url.scheme == "https"
+            and bool(parsed_url.hostname)
+            and parsed_url.username is None
+            and parsed_url.password is None
+        )
+    except (TypeError, ValueError):
+        return False
+
+
 def resolve_absolute_fault_pointer(
     pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None
 ):
@@ -1397,17 +1414,7 @@ def resolve_absolute_fault_pointer(
         return {"ok": False, "reason": "unsupported pointer kind"}
     segment_refs = pointer.get("segmentRefs")
     full_bundle_url = pointer.get("fullBundleUrl")
-    try:
-        parsed_url = urlsplit(full_bundle_url) if isinstance(full_bundle_url, str) else None
-        url_ok = (
-            parsed_url is not None
-            and parsed_url.scheme == "https"
-            and bool(parsed_url.hostname)
-            and parsed_url.username is None
-            and parsed_url.password is None
-        )
-    except (TypeError, ValueError):
-        url_ok = False
+    url_ok = _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url)
     if (
         not url_ok
         or not _sha256_hex(pointer.get("fullBundleContentHash"))
@@ -1451,7 +1458,7 @@ def resolve_absolute_fault_pointer(
     if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
         return {"ok": False, "reason": "pointer signature missing or unsupported"}
     signer = signature.get("signer")
-    if not isinstance(pubkeys, dict) or signer not in pubkeys:
+    if not isinstance(signer, str) or not isinstance(pubkeys, dict) or signer not in pubkeys:
         return {"ok": False, "reason": "pointer signer key unavailable"}
     role_claims = [
         party.get("primaryClaim")

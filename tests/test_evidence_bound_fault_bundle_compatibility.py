@@ -570,6 +570,46 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         self.assertFalse(R.resolve_fab_pointer({}, None, None)["ok"])
         self.assertFalse(R.resolve_fab_pointer({}, {}, [])["ok"])
 
+        authority = {
+            "listing": self.data["listing"],
+            "referenceValidationByCanonicalRef": self.data[
+                "referenceValidationByCanonicalRef"],
+            "sessionExecutionAuthorityByPhaseKey": self.data[
+                "sessionExecutionAuthorityByPhaseKey"],
+            "verifiedReceiptByCanonicalRef": self.data[
+                "verifiedReceiptByCanonicalRef"],
+            "bundleLifecycle": self.data["bundleLifecycleByHash"][
+                R.bundle_hash(valid["bundle"])],
+        }
+        for malformed_signer in ([], {}):
+            pointer = copy.deepcopy(valid["pointer"])
+            pointer["signature"]["signer"] = malformed_signer
+            result = R.resolve_absolute_fault_pointer(
+                pointer,
+                valid["bundle"],
+                pubkeys=self.pubkeys,
+                ebfab_authority=authority,
+            )
+            self.assertFalse(result["ok"])
+            self.assertIn("signer key unavailable", result["reason"])
+
+    def test_url_shape_strengthening_is_ebfab_only(self):
+        """Released FAB v1 keeps its historical string URL shape; the new EBFAB
+        pointer type admits only absolute HTTPS without userinfo."""
+        self.assertTrue(R._extended_pointer_url_shape_valid("fault", "ipfs://released-cid"))
+        self.assertFalse(R._extended_pointer_url_shape_valid(
+            "evidence-bound", "ipfs://candidate-cid"))
+        valid = self.data["pointerCases"][0]
+        pointer = copy.deepcopy(valid["pointer"])
+        pointer["fullBundleUrl"] = "ipfs://candidate-cid"
+        result = R.resolve_absolute_fault_pointer(
+            pointer,
+            valid["bundle"],
+            pubkeys=self.pubkeys,
+        )
+        self.assertFalse(result["ok"])
+        self.assertIn("malformed extended pointer payload", result["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

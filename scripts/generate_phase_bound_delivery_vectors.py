@@ -45,6 +45,7 @@ SELLER = claim(SELLER_SEED)
 VERIFIER = claim(VERIFIER_SEED)
 BUYER = claim(BUYER_SEED)
 JOB = "01K2PDE0000000000000000000"
+OTHER_JOB = "01K2PDE9999999999999999999"
 AGREEMENT_HASH = "a1" * 32
 
 
@@ -108,6 +109,31 @@ def legacy_evidence(phase: str, **fields: Any) -> dict:
         "outcome": "success",
         **fields,
         "observedAt": 1786000000000,
+        "signature": {"algorithm": "ed25519", "signer": ORCHESTRATOR, "value": ""},
+    }
+    sign(artifact, ORCHESTRATOR_SEED, LEGACY_DOMAIN)
+    return artifact
+
+
+def payment_evidence(index: int) -> dict:
+    artifact = {
+        "evidenceVersion": "1",
+        "jobId": JOB,
+        "phase": "pay-evm-erc20",
+        "outcome": "success",
+        "paymentTxRefs": [{
+            "kind": "evm-event",
+            "chainId": 1,
+            "txHash": "ab" * 32,
+            "logIndex": index,
+        }],
+        "paymentAmount": {"amount": "5", "currency": "USDC"},
+        "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityObservedAt": 1786000000000 + index,
+        },
+        "observedAt": 1786000000000 + index,
         "signature": {"algorithm": "ed25519", "signer": ORCHESTRATOR, "value": ""},
     }
     sign(artifact, ORCHESTRATOR_SEED, LEGACY_DOMAIN)
@@ -193,6 +219,42 @@ def storage_case(pointers: bool = False) -> dict:
             ),
         })
     bundle(case, pointers)
+    return case
+
+
+def failed_storage_case() -> dict:
+    index = 1
+    artifact = evidence(index, "deliver-storage-program")
+    artifact["outcome"] = "failure"
+    artifact["reason"] = "seller could not publish the deliverable"
+    sign(artifact, ORCHESTRATOR_SEED, DELIVERY_DOMAIN)
+    case = {
+        "pipeline": [{"index": index, "kind": "deliver-storage-program"}],
+        "evidenceRecords": [{
+            "logicalAddress": f"dacs4:delivery:{JOB}:{index}",
+            "artifact": artifact,
+        }],
+        "artifactRecords": [],
+        "credentials": [],
+    }
+    bundle(case, True)
+    case["bundle"]["outcome"] = "failed-counterparty"
+    case["bundle"]["faultedParty"] = "seller"
+    case["bundle"]["phaseSummary"][0]["outcome"] = "fail"
+    case["bundle"]["phaseSummary"][0]["errorClass"] = "counterparty"
+    return case
+
+
+def mixed_payment_delivery_case() -> dict:
+    case = storage_case()
+    index = 0
+    rail = "evm-erc20%3A1%3AUSDC"
+    case["pipeline"].insert(0, {"index": index, "kind": "pay-evm-erc20"})
+    case["evidenceRecords"].insert(0, {
+        "logicalAddress": f"dacs4:payment:{JOB}:{rail}:{index}",
+        "artifact": payment_evidence(index),
+    })
+    bundle(case, True)
     return case
 
 
@@ -347,6 +409,33 @@ def legacy_case(repeated: bool = False) -> dict:
     return case
 
 
+def legacy_credential_case() -> dict:
+    current = credential_case()
+    record = current["artifactRecords"][0]["artifact"]
+    address = f"dacs4:entitlement:{JOB}:0"
+    artifact = legacy_evidence(
+        "deliver-entitlement",
+        deliverableContentHash=hash_hex({k: v for k, v in record.items() if k != "signature"}),
+        deliverableAnchor={"kind": "storage-program", "locator": address},
+    )
+    case = {
+        "pipeline": [{"index": 5, "kind": "deliver-entitlement"}],
+        "evidenceRecords": [{
+            "logicalAddress": f"legacy:dacs4:evidence:{JOB}:entitlement",
+            "artifact": artifact,
+        }],
+        "artifactRecords": [{
+            "kind": "EntitlementRecord",
+            "logicalAddress": address,
+            "artifact": record,
+            "available": True,
+        }],
+        "credentials": current["credentials"],
+    }
+    bundle(case)
+    return case
+
+
 def make(name: str, expected: str, reason: str, factory: Callable[[], dict], mutate: Callable[[dict], None] | None = None, **extra: Any) -> dict:
     case = factory()
     case.setdefault("executionAuthority", {"phaseOrchestrator": ORCHESTRATOR})
@@ -377,6 +466,16 @@ def build_vectors() -> list[dict]:
         refresh_evidence(case, 1)
     vectors.append(make("signed-phase-kind-mismatch", "fail", "signed phase must equal the authenticated pipeline kind", storage_case, wrong_kind))
 
+    def wrong_job(case: dict) -> None:
+        index = 2
+        entry = case["evidenceRecords"][1]
+        entry["artifact"]["jobId"] = OTHER_JOB
+        entry["artifact"]["deliverableAnchor"]["locator"] = f"dacs4:deliverable:{OTHER_JOB}:{index}"
+        entry["logicalAddress"] = f"dacs4:delivery:{OTHER_JOB}:{index}"
+        case["artifactRecords"][1]["logicalAddress"] = f"dacs4:deliverable:{OTHER_JOB}:{index}"
+        refresh_evidence(case, 1)
+    vectors.append(make("signed-delivery-job-mismatch", "fail", "signed delivery jobId must equal the authenticated bundle job", storage_case, wrong_job))
+
     def wrong_evidence_address(case: dict) -> None:
         case["evidenceRecords"][1]["logicalAddress"] = f"dacs4:delivery:{JOB}:99"
         bundle(case)
@@ -393,6 +492,7 @@ def build_vectors() -> list[dict]:
 
     vectors.append(make("legacy-single-delivery-readable", "pass", "one unambiguous legacy delivery remains readable unchanged", legacy_case))
     vectors.append(make("legacy-unindexed-evidence-cannot-cover-repetition", "fail", "legacy evidence never satisfies repeated delivery", lambda: legacy_case(True)))
+    vectors.append(make("legacy-credential-entitlement-cannot-claim-dv5", "fail", "legacy entitlement evidence is audit-only and cannot establish the DV-5 delivered gate", legacy_credential_case, requestedGate="dv5-verified"))
     vectors.append(make("repeated-entitlements-each-renewal-zero", "pass", "phaseIndex separates two renewalSeq zero streams", entitlement_case))
     vectors.append(make("entitlement-renewal-streams-independent", "pass", "each repeated phase can independently reach renewalSeq one", lambda: entitlement_case((1, 1))))
 
@@ -407,6 +507,17 @@ def build_vectors() -> list[dict]:
         entry["artifact"]["deliverableAnchor"]["locator"] = f"dacs4:entitlement:{JOB}:3:9"
         refresh_evidence(case, 0)
     vectors.append(make("entitlement-renewal-address-mismatch", "fail", "address renewal discriminator must equal the signed record", entitlement_case, wrong_renewal_address))
+
+    def wrong_entitlement_hash(case: dict) -> None:
+        case["evidenceRecords"][0]["artifact"]["deliverableContentHash"] = "e2" * 32
+        refresh_evidence(case, 0)
+    vectors.append(make("entitlement-record-content-hash-mismatch", "fail", "delivery evidence must bind the exact signed EntitlementRecord content hash", entitlement_case, wrong_entitlement_hash))
+
+    def invalid_entitlement_signature(case: dict) -> None:
+        signature = case["artifactRecords"][0]["artifact"]["signature"]
+        value = signature["value"]
+        signature["value"] = ("A" if value[0] != "A" else "B") + value[1:]
+    vectors.append(make("entitlement-record-signature-invalid", "fail", "an invalid EntitlementRecord signature cannot satisfy delivery", entitlement_case, invalid_entitlement_signature))
 
     vectors.append(make("repeated-attested-payload-each-attempt-zero", "pass", "phaseIndex separates identical attempt counters", attested_case))
 
@@ -446,6 +557,35 @@ def build_vectors() -> list[dict]:
         case["credentials"][0]["available"] = False
     vectors.append(make("credential-well-formed-but-unresolvable", "indeterminate", "unavailability never becomes fail or readable", credential_case, unresolved))
     vectors.append(make("entitlement-without-credential-needs-no-binding", "pass", "credentialDelivery is absent iff the entitlement has no credentialRef", lambda: credential_case(include_credential=False)))
+
+    vectors.append(make("failure-delivery-omits-success-closure", "pass", "failure evidence does not require success-only deliverable closure", failed_storage_case))
+
+    def success_without_closure(case: dict) -> None:
+        artifact = case["evidenceRecords"][0]["artifact"]
+        artifact["outcome"] = "success"
+        artifact.pop("reason", None)
+        refresh_evidence(case, 0)
+        case["bundle"]["outcome"] = "completed"
+        case["bundle"]["faultedParty"] = "none"
+        case["bundle"]["phaseSummary"][0]["outcome"] = "ok"
+        case["bundle"]["phaseSummary"][0].pop("errorClass", None)
+    vectors.append(make("success-delivery-missing-closure", "fail", "success evidence requires deliverableContentHash and deliverableAnchor", failed_storage_case, success_without_closure))
+
+    vectors.append(make("mixed-payment-and-delivery-evidence", "pass", "PDE-8 maps current delivery members without redefining payment membership", mixed_payment_delivery_case))
+
+    def missing_top_level_delivery_ref(case: dict) -> None:
+        case["bundle"]["settlementEvidence"].pop()
+    vectors.append(make("bundle-missing-one-delivery-reference", "fail", "every executed delivery requires one authoritative top-level reference", storage_case, missing_top_level_delivery_ref))
+
+    def missing_delivery_summary(case: dict) -> None:
+        case["bundle"]["phaseSummary"].pop()
+    vectors.append(make("bundle-missing-one-delivery-summary", "fail", "delivery phaseSummary membership must equal the authenticated delivery pipeline", storage_case, missing_delivery_summary))
+
+    def wrong_phase_pointer(case: dict) -> None:
+        case["bundle"]["phaseSummary"][1]["attestationRef"] = copy.deepcopy(
+            case["bundle"]["settlementEvidence"][0]
+        )
+    vectors.append(make("bundle-delivery-pointer-mismatch", "fail", "an optional per-phase pointer must equal that phase's authoritative top-level reference", lambda: storage_case(True), wrong_phase_pointer))
 
     def binding_without_credential(case: dict) -> None:
         sample = credential_case()["evidenceRecords"][0]["artifact"]["credentialDelivery"]

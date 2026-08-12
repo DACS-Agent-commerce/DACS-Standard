@@ -120,9 +120,14 @@ def validate_delivery_artifact(case, evidence):
     phase = evidence["phase"]
     content_hash = evidence.get("deliverableContentHash")
     anchor = evidence.get("deliverableAnchor")
-    if evidence.get("outcome") == "success":
+    outcome = evidence.get("outcome")
+    if outcome not in {"success", "failure"}:
+        return "error"
+    if outcome == "success":
         if not isinstance(content_hash, str) or not isinstance(anchor, dict):
             return "fail"
+    elif content_hash is None and anchor is None:
+        return "pass"
     if not isinstance(anchor, dict) or set(anchor) != {"kind", "locator"}:
         return "error"
     address = anchor.get("locator")
@@ -234,9 +239,9 @@ def evaluate(case):
         return "error"
     if not verify_bundle_signatures(bundle):
         return "fail"
-    expected = {(step.get("index"), step.get("kind")) for step in pipeline
-                if step.get("kind") in DELIVERY_KINDS}
-    if len(expected) != len(pipeline):
+    delivery_steps = [step for step in pipeline if step.get("kind") in DELIVERY_KINDS]
+    expected = {(step.get("index"), step.get("kind")) for step in delivery_steps}
+    if len(expected) != len(delivery_steps):
         return "error"
     refs = bundle.get("settlementEvidence")
     if not isinstance(refs, list):
@@ -283,6 +288,10 @@ def evaluate(case):
             if "deliveryEvidenceVersion" in artifact:
                 return "error"
             kind = artifact.get("phase")
+            if kind not in DELIVERY_KINDS:
+                if not verify_signature(artifact, LEGACY_DOMAIN):
+                    return "fail"
+                continue
             candidates = [pair for pair in expected if pair[1] == kind]
             if len(candidates) != 1:
                 return "fail"
@@ -291,11 +300,23 @@ def evaluate(case):
             anchor = artifact.get("deliverableAnchor")
             if not isinstance(anchor, dict):
                 return "fail"
-            delivered = find_artifact(case, anchor.get("locator"), "deliverable")
-            if delivered is None or delivered.get("available") is False:
-                return "indeterminate"
-            if artifact.get("deliverableContentHash") != delivered.get("cleartextHash"):
-                return "fail"
+            if kind == "deliver-entitlement":
+                delivered = find_artifact(case, anchor.get("locator"), "EntitlementRecord")
+                if delivered is None or delivered.get("available") is False:
+                    return "indeterminate"
+                record = delivered.get("artifact")
+                if not isinstance(record, dict) or not verify_signature(record, ENTITLEMENT_DOMAIN):
+                    return "fail"
+                if artifact.get("deliverableContentHash") != artifact_hash(record):
+                    return "fail"
+                if record.get("credentialRef") is not None and case.get("requestedGate") == "dv5-verified":
+                    return "fail"
+            else:
+                delivered = find_artifact(case, anchor.get("locator"), "deliverable")
+                if delivered is None or delivered.get("available") is False:
+                    return "indeterminate"
+                if artifact.get("deliverableContentHash") != delivered.get("cleartextHash"):
+                    return "fail"
             mapping = candidates[0]
         else:
             return "error"
@@ -304,15 +325,16 @@ def evaluate(case):
         mapped.append(mapping)
         ref_for_mapping[mapping] = supplied_ref
 
-    if set(mapped) != expected or len(refs) != len(expected):
+    if set(mapped) != expected or len(mapped) != len(expected):
         return "fail"
     summaries = bundle.get("phaseSummary")
     if not isinstance(summaries, list):
         return "error"
-    summary_pairs = {(s.get("index"), s.get("kind")) for s in summaries}
-    if summary_pairs != expected or len(summary_pairs) != len(summaries):
+    delivery_summaries = [s for s in summaries if s.get("kind") in DELIVERY_KINDS]
+    summary_pairs = {(s.get("index"), s.get("kind")) for s in delivery_summaries}
+    if summary_pairs != expected or len(summary_pairs) != len(delivery_summaries):
         return "fail"
-    for summary in summaries:
+    for summary in delivery_summaries:
         pointer = summary.get("attestationRef")
         pair = (summary.get("index"), summary.get("kind"))
         if pointer is not None and pointer != ref_for_mapping.get(pair):

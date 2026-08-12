@@ -18,6 +18,8 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
+| DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
+| DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |
 | DPA-* | Attested-payload listing coherence, exact-byte method proof, commerce binding, success closure, and minor-safe record typing | §9.6.3 | §14.4 |
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
@@ -36,15 +38,16 @@ This non-normative index helps implementers locate labelled conformance rules in
 | PC-* | Payment phase common contract | §9.5 | §14.4 |
 | PIPE-* | Pipeline shape and phase ordering | §9.9 | §14.4 |
 | PS-* | Negotiation pattern selection | §8.8 | §14.3 |
+| PRA-* | Recipe parser applicability and selected-method execution | §7.4.1 / §7.6 | §14.2 |
 | PSP-* | ParserSpec parse/match semantics | §7.4.1 | §14.2 |
-| RA-* | Recipe authoring and resolution | §7.4.3 | §14.2 |
+| RA-* | Recipe-family authoring and resolution | §7.4.3 | §14.2 |
 | RAV-* | Recipe availability values and consumers | §7.4.5 | §14.2 |
 | RAV-R* | Rail availability values and orchestrators | §9.4.4 | §14.4 |
 | RD-* | Delivery phase required data | §9.4.3 | §14.4 |
 | RFQ-* | RFQ negotiation turns | §8.4.2 | §14.3 |
 | RB-* | Listing-revocation marker binding, retained discovery, and fail-closed resolution | §6.3.4 | §14.1 |
 | RT-* | Rating bounds and derivation handling | §10.6.1 | §14.5 |
-| SB-* | Session-bound settlement evidence (tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
+| SB-* | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
 | SE-* | Sealed-envelope negotiation | §8.4.3 | §14.3 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |

@@ -4,13 +4,13 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.3** (on the common DACS v0.1 baseline; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.5** (on the common DACS v0.1 baseline; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
 DACS-2 specifies how a party's claimed credentials are verified against authoritative sources during the Vet stage. It defines:
 
-- A **verification method registry** — a closed set (`verifiable-credential`, `tlsnotary`, `zktls`, `consensus-backed-proxy`, `oauth-attested`, `evm-rpc`, `domain-tls-control`, `self-signed`), each with input/output shape, trust model, and substrate requirements.
+- A **verification method registry** — a closed set (`verifiable-credential`, `tlsnotary`, `zktls`, `consensus-backed-proxy`, `oauth-attested`, `evm-rpc`, `domain-tls-control`, `self-signed`, `demos-gcr-domain`), each with input/output shape, trust model, and substrate requirements.
 - A **recipe registry** — a versioned, anchored lookup binding a DACS-1 claim scheme (`lei`, `finra-crd`, `domain`, …) to the method and parsing rules used to verify it.
 - A **uniform VerifyResult** — the method-agnostic, anchored record the rest of the stack consumes (decision, attestation reference, extracted data).
 - A **composite verification record** — the anchored artifact Vet produces, aggregating freshness checks, supplementary signals, and deal-specific claims; referenced by DACS-5.
@@ -36,9 +36,9 @@ Two further design failures DACS-2 avoids:
 - Treating each method as its own protocol. The uniform `VerifyResult` is the lingua franca — methods produce it, the stack consumes it.
 - Forcing one method onto all credentials. Public-registry credentials fit consensus-backed proxy/SR-3; private-data fit TLSNotary/zkTLS; cooperative-issuer fit W3C VC. The recipe registry routes each scheme; the stack stays method-agnostic.
 
-### 7.3 Verification methods (v0.1 closed registry)
+### 7.3 Verification methods (v0.5 closed registry)
 
-The v0.1 method set is closed. New methods are added in subsequent versions of DACS-2 by the governance process in chapter 11.
+The v0.5 method set is closed. New methods are added in subsequent versions of DACS-2 by the governance process in chapter 11.
 
 #### 7.3.1 Common contract
 
@@ -49,7 +49,7 @@ Every method MUST:
 
   `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}`
 
-  (or substrate-equivalent) — `{identifier}` is a CF-4 variable segment and MUST be percent-encoded before assembly (CORE §B.1);
+  (or substrate-equivalent) — `{identifier}` is a CF-4 variable segment and MUST be percent-encoded before assembly (CORE §B.1). Recipe versions remain unique and monotonic across the scheme, including when the scheme has multiple families, so two families cannot collide at this address;
 - **(CM-3)** produce a VerifyResult conforming to §7.5;
 - **(CM-4)** classify its outcome as exactly one of `pass`, `fail`, `indeterminate`, or `error` per the semantics in §7.5.1;
 - **(CM-5)** set `VerifyResult.method` to its own kind.
@@ -207,16 +207,37 @@ type SelfSignedMethodInput = {
 
 **Procedure.** Validates the signature against the key in identifier; anchors the signed assertion via SR-2; returns VerifyResult with pass on valid signature, fail on invalid. This method provides minimal trust — it proves possession of the key, nothing more. Recipes targeting authority-issued schemes MUST NOT use self-signed. **Trust model:** cryptographic signature. **Substrate:** SR-2.
 
+#### 7.3.10 demos-gcr-domain
+
+```
+type DemosGCRDomainMethodInput = {
+  recipe: Recipe
+  identifier: string                   // canonical DCR-1 A-label hostname
+  metadata: DemosGCRDomainMetadata     // DACS-1 §6.3.1 DCR-6 provenance
+}
+```
+
+This method verifies a persistent domain-to-Demos-account binding already recorded by Demos consensus. It MUST NOT fetch, or treat a prior fetch of, `/.well-known/demos-cci.txt` as fresh session proof.
+
+- **(DGCR-1) Authenticated resolution.** Resolve `metadata.sourceTransaction` through the Demos binding and authenticate the carrying transaction, its finalized block, and the GCR `web2.domain` record. An Indexer response is discovery data only. If the authenticated record or finality evidence is temporarily unavailable or cannot be resolved, return `indeterminate`; do not convert absence or transport failure to `fail`.
+- **(DGCR-2) Exact record match.** Require native context `web2.domain`; the DCR-1 canonical hostname; the 64-character lower-case hexadecimal Ed25519 account; exact `proofUrl`; source transaction hash and block number; and inclusion time to match the authenticated record. The account MUST be the authenticated writer/account bound by the carrying GCR transition. A passing VerifyResult MUST copy those authenticated values, and only those values, to `data.demosGcrDomain`; DACS-1 control checks consume that result data rather than trusting the bundle's metadata copy. A resolved mismatch returns `fail`; malformed input returns `error`.
+- **(DGCR-3) Consensus validation profile.** Authenticate that the carrying GCR transition was accepted under the Demos domain-proof rule: the node fetched the exact URL `https://<host>/.well-known/demos-cci.txt`, required a body of the exact form `demos:dw2p:ed25519:<128-lowercase-hex-signature>`, and verified the decoded Ed25519 signature with `account` over the UTF-8 bytes of `dacs-domain:v1:<host>:<account>` before recording `web2.domain`. The fetched body is not persisted in the GCR and the DACS verifier MUST NOT re-fetch it. A binding that cannot authenticate that this validation profile governed the state transition returns `indeterminate`; a resolved transition that proves a different host, account, URL, or validation profile returns `fail`.
+- **(DGCR-4) Persistent evidence time.** Set `verifiedAt` to the authenticated GCR inclusion timestamp (`metadata.recordedAt`), not query time; set `fetchedAt` to query time. `validUntil`, when emitted, MUST NOT exceed `verifiedAt + recipe.defaultMaxAgeSec * 1000`. Re-reading an old GCR record cannot refresh its effective window.
+- **(DGCR-5) Control boundary.** A passing result establishes that the persistent record bound the host to the Demos account at inclusion. DACS-1 DCR-7 separately requires the bundle presentation to verify under that same account before the domain is treated as controlled. This method alone does not prove who is presenting it.
+- **(DGCR-6) Proof-family separation.** The result method MUST be `demos-gcr-domain`. It does not satisfy a `domain-tls-control` requirement and MUST NOT be relabelled as fresh ACME-style control. Conversely, a `domain-tls-control` result does not authenticate a Demos GCR record.
+
+On successful checks the method anchors the VerifyResult under CM-2 and returns `pass`. **Trust model:** Demos validator consensus and Ed25519; the historical TLS fetch is preserved as provenance, not re-performed. **Substrate:** Demos SR-2 resolution/finality.
+
 ### 7.4 Recipe registry
 
-A recipe binds a DACS-1 claim scheme to a verification method (or set of acceptable methods) plus parsing rules and defaults.
+A recipe binds a DACS-1 claim scheme to one verification-method family plus method-applicable evaluation rules and defaults. A scheme MAY have multiple recipe families when the methods prove materially different properties; the family identity is `(scheme, defaultMethod.kind)`.
 
 #### 7.4.1 Recipe schema
 
 ```
 type Recipe = {
 
-  recipeVersion: number                       // monotonic per scheme; starts at 1
+  recipeVersion: number                       // unique and monotonic per scheme; starts at 1
 
   scheme: string
 
@@ -226,7 +247,7 @@ type Recipe = {
 
   defaultMaxAgeSec: number                    // when a verifiedBy reference becomes stale
 
-  parserRules: ParserSpec
+  parserRules?: ParserSpec                    // presence and execution governed by PRA-1..PRA-5
 
   negativeMatch?: boolean                     // true => presence in source means fail
 
@@ -302,6 +323,8 @@ type VerificationMethod =
 
   | { kind: "self-signed" }
 
+  | { kind: "demos-gcr-domain" }
+
 type IndeterminatePredicate =
 
   | { jsonPath: string } | { selector: string } | { xPath: string } | { matcher: string }
@@ -317,9 +340,56 @@ type ParserSpec =
   | { format: "raw"; matcher: string; indeterminateOn?: IndeterminatePredicate[] }
 ```
 
+**Parser applicability (normative).** `ParserSpec` consumes structured or raw
+content disclosed by a verification method. It is not a generic second verdict
+layer and MUST NOT be applied to a method whose own authenticated procedure
+already produces the decision and output data.
+
+- **(PRA-1) Closed method classification.** In DACS-2 v0.5 the
+  parser-consuming methods are `verifiable-credential`, `tlsnotary`, `zktls`,
+  `consensus-backed-proxy`, and `evm-rpc`. The method-native methods are
+  `oauth-attested`, `domain-tls-control`, `self-signed`, and
+  `demos-gcr-domain`. A later method registration MUST declare exactly one of
+  these evaluation modes as part of that method's normative definition.
+- **(PRA-2) Recipe-shape validity and compatibility.** If `defaultMethod` or
+  any member of `alternatives` is parser-consuming, `parserRules` is REQUIRED
+  and MUST be a valid `ParserSpec`; `null` is not absence and is not a valid
+  `ParserSpec`. The single `parserRules` member is shared unchanged by every
+  parser-consuming method declared by the recipe. A recipe author MUST ensure
+  that each such method discloses authenticated content compatible with that
+  same parser format, match predicate, and `dataMap`; the registry steward MUST
+  reject a combination that requires method-specific parser interpretation or
+  rewriting. Methods that require different ParserSpecs MUST be published in
+  distinct recipe families. A verifier MUST NOT select, synthesize, or rewrite
+  a ParserSpec based on the selected method. A recipe author producing a
+  native-only recipe MUST omit `parserRules`, and the registry steward MUST NOT
+  activate a newly submitted native-only recipe that carries it. For
+  read/replay compatibility, however,
+  a verifier that encounters a signed native-only recipe carrying
+  `parserRules` MUST ignore that member regardless of its value and MUST NOT
+  reject the recipe solely because the member is present. This is a reader
+  compatibility rule, not permission for current producers to emit the field.
+- **(PRA-3) Selected-method execution.** The verifier first selects the exact
+  method from `defaultMethod` or `alternatives`. It applies `parserRules` only
+  when that selected method is parser-consuming. In a mixed recipe, selecting
+  a method-native alternative MUST skip parser execution even though the
+  recipe necessarily carries `parserRules` for its parser-consuming member.
+- **(PRA-4) Method-native authority.** A method-native path derives its
+  `decision` and any `VerifyResult.data` only from that method's authenticated
+  procedure and inputs. Parser output, an inert matcher, or a parser-produced
+  value MUST NOT override, supplement, or relabel the method-native result.
+- **(PRA-5) Fail before invocation.** A recipe that violates PRA-1 or the
+  applicable PRA-2 production/shape rule is invalid and MUST NOT be activated
+  by the registry steward. A verifier that encounters a missing or invalid
+  required ParserSpec or an unclassified method MUST return `error` before
+  invoking the method, fetching an authority, anchoring an attestation, or
+  producing any external side effect. A native-only recipe carrying
+  `parserRules` follows PRA-2's read rule and PRA-3/PRA-4: the member is inert
+  and never becomes a verifier input.
+
 **Existence/validity, never control (normative).** A DACS-2 `VerifyResult` establishes that the identifier is **real and currently valid at its authority** — it does **not**, and a `decision: "pass"` MUST NOT be read to, establish that the presenter *controls* the identifier. Control is a **DACS-1** property (DACS-1 §6.3.2 step (6)): proven by the bundle presentation signature (`key:`), the anchored address-key linkage (`cci-xm:`), or a credential **holder-binding** proof (§7.3.2) for VC/vLEI claims. A bare-registry method (`consensus-backed-proxy`, e.g. `lei` at GLEIF) resolves a *public* identifier with no key-binding, so it can only ever establish existence — never control — whatever it resolves and wherever the result is stored.
 
-**ParserSpec semantics (normative).** Given the attested response body, a verifier applies the recipe’s ParserSpec to produce a decision and an optional extracted-data map:
+**ParserSpec semantics (normative).** When PRA-3 selects a parser-consuming method, the verifier applies the recipe's ParserSpec to that method's authenticated disclosed content to produce a decision and an optional extracted-data map:
 
 - (PSP-1) **successJsonPath / successSelector / successXPath / matcher** is the *match predicate*. For `json`, it is a JSONPath that MUST select at least one node for a match; for `html`, a CSS selector that MUST select at least one element; for `xml`, an XPath that MUST select at least one node; for `raw`, `matcher` is a regular expression (RE2 syntax, no backreferences) that MUST find at least one match in the body.
 - (PSP-2) **Decision mapping.** Schemes have a *match polarity*: for a **positive-match** scheme (e.g. `lei`) a match means the claim holds; for a **negative-match** scheme (e.g. `ofac-clear`, where a match means "listed") the recipe’s `negativeMatch: true` flag inverts the outcome. The `indeterminateOn` predicates, when present, are evaluated against the parsed body BEFORE the match predicate; if any matches, the decision is `indeterminate` and the match predicate is not applied. Otherwise:
@@ -377,9 +447,9 @@ recipe.parserRules = {
 
 A consumer requiring a *current* LEI applies its own risk policy to `indeterminate` (DACS-3 retry-vs-proceed-vs-block); the recipe MUST NOT pre-collapse it to `fail`. **`RETIRED → indeterminate` is a steward decision:** a wound-down entity *was* validly registered, so it reads as "validly-issued, not-current" rather than a false claim — `fail` is the documented alternate under a strict "valid-today" reading. `resolvedEntity` is the NFC-normalized `entity.legalName.name` (the `dataMap.legalName` above). The mapping was source-grounded against **LEI-CDF 3.1** and confirmed by independent implementations converging on the ISSUED / LAPSED / RETIRED rows.
 
-#### 7.4.2 v0.1 recipe registry contents
+#### 7.4.2 v0.4 recipe registry contents
 
-The v0.1 registry contains one recipe per scheme registered in chapter 6. Each recipe is anchored via SR-2 at a steward-controlled address. Implementations MUST resolve recipes from the canonical addresses listed in the recipe-registry index document (dacs2:registry:v0.1). Default methods per scheme:
+The registry contains one or more recipe families per scheme registered in chapter 6. Each recipe is anchored via SR-2 at a steward-controlled address. Implementations MUST resolve recipes from the canonical addresses listed in the recipe-registry index document (`dacs2:registry:v0.1` until the steward publishes its signed successor). Default methods per family:
 
 | Scheme | Default method | Notes |
 | --- | --- | --- |
@@ -393,7 +463,8 @@ The v0.1 registry contains one recipe per scheme registered in chapter 6. Each r
 | fedramp | consensus-backed-proxy against marketplace.fedramp.gov/api/v1/products/{identifier} | JSON; FedRAMP Marketplace API |
 | naics | consensus-backed-proxy against api.census.gov/data/2017/cbp?get=NAICS2017&NAICS2017={identifier} | JSON; US Census API for NAICS validation |
 | cmmc | verifiable-credential preferred; consensus-backed-proxy fallback against cmmcab.org public registry endpoint | CMMC AB publishes both VC issuance and a registry |
-| domain | domain-tls-control | ACME-style |
+| domain | domain-tls-control | Fresh ACME-style challenge |
+| domain | demos-gcr-domain | Persistent Demos `web2.domain` GCR binding; does not imply fresh control |
 | platform:<provider> | oauth-attested | Provider-specific |
 | stripe-connect | oauth-attested (provider="stripe") | Stripe-specific scopes |
 
@@ -405,17 +476,20 @@ A conforming recipe author MUST:
 
 - (RA-1) sign the recipe with the registry steward’s signing key over the domain-separated payload "dacs-recipe:v1:" || recipe_hash per §B.7;
 - (RA-2) anchor the recipe via SR-2 at the canonical address;
-- (RA-3) specify recipeVersion as monotonically increasing per scheme;
-- (RA-4) specify supersedes when replacing a prior recipe for the same scheme;
-- (RA-5) provide at least one alternative method only if the scheme’s underlying authority supports multiple equivalent attestation paths.
+- (RA-3) specify recipeVersion as unique and monotonically increasing per scheme, including across distinct recipe families for that scheme;
+- (RA-4) specify supersedes when replacing a prior recipe in the same family;
+- (RA-5) provide at least one alternative method only if the scheme’s underlying authority supports multiple equivalent attestation paths; when more than one declared path is parser-consuming, all of them MUST satisfy PRA-2's single shared-ParserSpec contract.
+- (RA-6) ensure that no two active families for one scheme claim the same method kind as either default or alternative. Materially different proof properties (including persistent versus fresh domain control) MUST be separate families, never alternatives.
 
 A verifier MUST resolve a recipe by:
 
 1. reading the recipe-registry index from dacs2:registry:v0.1;
-2. looking up the entry for the claim’s scheme;
+2. looking up the entries for the claim’s scheme, then selecting the exact recipe family required by the listing or supplied evidence; a listing selects a method with `ClaimRequirement.parameters.verificationMethod`, and Demos GCR metadata selects `demos-gcr-domain` only when no method was required;
 3. fetching the recipe at the indicated anchor and verifying its content hash and domain-separated signature;
-4. if the matched `ClaimRequirement` pins a specific `recipeVersion` (§6.3.3), MUST use that version; otherwise MUST use the latest version for that scheme in the authenticated recipe-registry snapshot identified by `SessionContext.recipeRegistryVersion` at session start;
+4. if the matched `ClaimRequirement` pins a specific `recipeVersion` (§6.3.3), MUST use that version within the selected family; otherwise MUST use that family's latest version in the authenticated recipe-registry snapshot identified by `SessionContext.recipeRegistryVersion` at session start;
 5. retain that registry snapshot pin in both `VetCredentialsInput.recipeRegistryVersion` and `VetCredentialsInput.sessionContext.recipeRegistryVersion`, require byte-for-byte numeric equality before live aggregation, and carry it into the signed `AttestationBundle` or `FaultAttestationBundle` for later replay. A `SessionRecord` MAY retain the pin operationally, but because it is off-chain, mutable, and unsigned (§10.3.2), it is not replay authority.
+
+A consumer of an existing VerifyResult selects its recipe by the exact triple `(scheme, method, recipeVersion)`. It MUST reject an ambiguous or missing family and MUST NOT silently substitute a different method. For `domain`, a requirement whose `parameters.verificationMethod` is `domain-tls-control` is therefore not satisfied by `demos-gcr-domain`, and vice versa.
 
 This mirrors the rail-side `railVersion` pin (§9.3) and is the mechanism that protects an in-flight session from a steward shipping a recipe revision mid-session.
 
@@ -424,7 +498,7 @@ This mirrors the rail-side `railVersion` pin (§9.3) and is the mechanism that p
 **Recipes are operational artifacts on a different lifecycle than the DACS-2 standard itself.** Authority API endpoints change, response formats evolve, sanctions lists update, OAuth provider scopes shift. Treating every recipe revision as a DACS-2 minor version would force the standard onto an impractical release cadence. v0.1 separates the two tracks:
 
 - **DACS-2 standard releases** (this chapter) version on a multi-year cadence. They define the method registry, the VerifyResult shape, the recipe schema, the aggregation algorithm, the phase contract.
-- **DACS-2 recipe releases** (the recipe registry) version per-scheme on whatever cadence the underlying authority demands. Recipe revisions ship under the steward’s signing key and do not block on DACS-2 standard releases.
+- **DACS-2 recipe releases** (the recipe registry) allocate versions per scheme on whatever cadence the underlying authority demands. A scheme's family revisions share that monotonic sequence; recipe revisions ship under the steward’s signing key and do not block on DACS-2 standard releases.
 
 **Current steward (v0.1).** The DACS-2 recipe registry is currently maintained by **KyneSys Labs** as the v0.1 steward. This is a single-signer arrangement (phase PA-2 per the progressive-anchoring scheme below). Wider governance — working-group constitution, multi-signature schemes, sub-authority delegation by domain (sanctions lists, financial regulation, etc.) — is open work for v0.2+ and depends on the eventual constitution of a multi-party body. v0.1 implementations and consumers reason about the registry under single-steward semantics: one signing key, one anchoring authority, full transparency about both.
 
@@ -495,7 +569,7 @@ type VerifyResult = {
 
   attestation: AttestationRef
 
-  data?: Record<string, unknown>              // structured extraction per recipe.parserRules
+  data?: Record<string, unknown>              // authenticated method-native output or ParserSpec extraction
 
   fetchedAt: number                           // unix ms when the authority was queried
 
@@ -536,7 +610,7 @@ verification rules in CORE §B.7 (SIG-6).
 
 - `data` in a publicly-anchored VerifyResult MUST carry **only predicate outcomes** — the booleans / derived facts the recipe's match needs (e.g. `{ overEighteen: true }`, `{ sanctioned: false }`, `{ kycTier: "enhanced" }`).
 - `data` in a publicly-anchored VerifyResult MUST NOT carry raw extracted **private** personal or financial fields (date of birth, account balance, document/government-ID numbers) or any value a privacy-preserving method was used specifically to avoid disclosing. Carrying the raw fields is only permissible under the encrypted-to-parties anchoring mode that is roadmap work (§12.1).
-- A recipe whose `parserRules` would extract such sensitive raw fields MUST reduce them to predicate outcomes before they enter an unencrypted anchored `data`.
+- A recipe whose `parserRules`, when present, would extract such sensitive raw fields MUST reduce them to predicate outcomes before they enter an unencrypted anchored `data`.
 - Fields that are **already public at the authority** — e.g. a public registry's published company name / jurisdiction, such as GLEIF LEI data — are NOT subject to this minimisation, since anchoring already-public registry data leaks nothing.
 
 > **Note (non-normative).** This is load-bearing for privacy-preserving methods: a `tlsnotary` or `zktls` recipe exists precisely to prove a fact without revealing the underlying value, and copying that value into a cleartext public anchor would defeat the method. The exposure of `scheme`, `identifier`, and `decision` themselves is accepted by design per §12.1.
@@ -572,13 +646,13 @@ A consumer of a VerifyResult MUST validate the attestation by:
 
 The verifier MUST execute each claim verification by:
 
-1. resolving the recipe and pinning recipeVersion to the session record;
+1. resolving the recipe, validating its PRA-1/PRA-2 parser applicability, and pinning recipeVersion to the session record;
 2. rendering method inputs by substituting the claim’s identifier into the method’s template;
 3. invoking the method (calling the appropriate substrate primitive for SR-3 methods, or external service);
 4. receiving the attestation (raw bytes or a reference if too large for inline transport);
 5. anchoring the attestation via SR-2 at the derived address;
-6. parsing the response by applying recipe.parserRules to extract structured data into VerifyResult.data;
-7. applying parameters — checking the listing’s ClaimRequirement.parameters against extracted data (failure to match MUST set decision = "fail");
+6. when the selected method is parser-consuming under PRA-1, applying the required `recipe.parserRules` to the method's authenticated disclosed content and extracting structured data into `VerifyResult.data`; when the selected method is method-native, skipping parser execution and accepting only the decision/data produced by that method's normative procedure (PRA-3/PRA-4);
+7. applying parameters — checking the listing’s ClaimRequirement.parameters against authenticated method-native or parser-extracted data (failure to match MUST set decision = "fail");
 8. signing and emitting the VerifyResult.
 
 #### 7.6.1 Retry and caching semantics
@@ -942,10 +1016,10 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Role | Requirements |
 | --- | --- |
 | Method implementer | CM-1 through CM-5 |
-| Recipe author | RA-1 through RA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
+| Recipe author | RA-1 through RA-6; PRA-1 through PRA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
 | Recipe-availability consumer | RAV-1 through RAV-4 |
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
-| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PSP-1 through PSP-5; WN-1 through WN-4 |
+| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
 | Composite record reader | §7.7.1 aggregation; CRQ-1 through CRQ-4; signature validation |
 
@@ -953,9 +1027,9 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 
 **Method-pluggable registry vs single method.** No single approach fits every credential (cooperative-issuer → W3C VC; private-data → zkTLS; public-registry → consensus-backed proxy). The registry routes by type; the stack consumes a uniform `VerifyResult`.
 
-**Closed v0.1 method set vs open.** An open registry makes conformance untestable (a verifier could declare an arbitrary method producing unvalidatable results). v0.1 ships eight methods covering the established attestation patterns; new ones come via the steward's acceptance process, as in DACS-1.
+**Closed method set vs open.** An open registry makes conformance untestable (a verifier could declare an arbitrary method producing unvalidatable results). v0.5 ships nine methods covering the established attestation patterns; new ones come via the steward's acceptance process, as in DACS-1.
 
-**Recipe-per-scheme vs general-purpose protocol.** A general-purpose fetch endpoint would lose the structured parser rules, success-criterion semantics, and negative-match pattern recipes encode. Recipes are small, per-scheme, and capture each authority's messy response format.
+**Recipe-family-per-scheme vs general-purpose protocol.** A general-purpose fetch endpoint would lose the structured parser rules, success-criterion semantics, and negative-match pattern recipes encode. Recipes are small, family-scoped within a scheme, and capture each authority's messy response format.
 
 **Composite record vs per-claim records.** The stack references *one* Vet artifact, not N. The composite record composes, signs, and anchors once instead of forcing every consumer to walk a list.
 

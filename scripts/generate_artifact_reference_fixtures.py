@@ -10,8 +10,9 @@ generator:
 * rewrites the fixture transaction references to the applicable §9.3 union arm;
 * re-hashes and re-signs every changed SettlementEvidence and DACS-5 bundle with
   the repository's published test seeds; and
-* refreshes the pinned hashes in ``conformance/vectors/golden.json`` and the
-  exact-case hash in ``artifact-reference-shapes-v0.1.json``.
+* refreshes the pinned hashes in ``conformance/vectors/golden.json``,
+  ``conformance/MANIFEST.json``, and the exact-case hash in
+  ``artifact-reference-shapes-v0.1.json``.
 
 Usage:
   python3 scripts/generate_artifact_reference_fixtures.py --write
@@ -28,6 +29,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 GOLDEN = ROOT / "conformance" / "vectors" / "golden.json"
 REFERENCE_CASES = (
     ROOT / "conformance" / "vectors" / "security"
@@ -270,6 +272,7 @@ def regenerate_all() -> dict[Path, str]:
             "attestation-bundle-0004.json",
             "attestation-bundle-0004-seller.json",
             "attestation-bundle-htlc9.json",
+            "session-bundle-one-sided.json",
         }:
             bundle_hashes[path.name] = bundle_hash(regenerated)
 
@@ -326,6 +329,17 @@ def regenerate_all() -> dict[Path, str]:
         refreshed_refs, key=lambda ref: ref["contentHash"]
     )
     outputs[GOLDEN] = encoded(golden)
+
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    one_sided_case = next(
+        case
+        for case in manifest["cases"]
+        if case["id"] == "verify-consume-one-sided"
+    )
+    one_sided_case["want"]["buyerHash"] = bundle_hashes[
+        "session-bundle-one-sided.json"
+    ]
+    outputs[MANIFEST] = encoded(manifest)
 
     cases = json.loads(REFERENCE_CASES.read_text(encoding="utf-8"))
     cases["count"] = len(cases["vectors"])

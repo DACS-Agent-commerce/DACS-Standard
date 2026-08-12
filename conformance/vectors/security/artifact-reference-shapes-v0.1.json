@@ -3,8 +3,8 @@
   "spec": "DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef",
   "tier": "golden",
   "description": "Exact positive and negative wire-shape cases for every normative AttestationRef anchor kind and every ChainTxRef discriminator.",
-  "count": 19,
-  "hash": "fa30c1173271e8ff119cc56a02966ccb4256aaef42415cda582fe16859256e68",
+  "count": 23,
+  "hash": "155ef1e2ab1aa0dbb4dba23d1e1ee20b854bab8034029b4ebd0c87ad4014f858",
   "vectors": [
     {
       "name": "attestation-storage-program",
@@ -64,6 +64,17 @@
       }
     },
     {
+      "name": "txref-evm-event",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "evm-event",
+        "chainId": 8453,
+        "txHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "logIndex": 7
+      }
+    },
+    {
       "name": "txref-solana",
       "type": "ChainTxRef",
       "expected": "pass",
@@ -71,6 +82,17 @@
         "kind": "solana",
         "cluster": "devnet",
         "signature": "3Bxs4exampleSignature"
+      }
+    },
+    {
+      "name": "txref-solana-instruction",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "solana-instruction",
+        "cluster": "devnet",
+        "signature": "3Bxs4exampleSignature",
+        "instructionIndex": 3
       }
     },
     {
@@ -121,6 +143,20 @@
         "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
         "settlementTxHash": "0x402308",
         "chainId": 8453,
+        "protocolVersion": "2"
+      }
+    },
+    {
+      "name": "txref-x402-event",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "x402-event",
+        "httpResource": "https://merchant.test/resource/315",
+        "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "settlementTxHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "chainId": 8453,
+        "logIndex": 2,
         "protocolVersion": "2"
       }
     },
@@ -199,6 +235,16 @@
       "value": {
         "kind": "solana",
         "signature": "3Bxs4missingCluster"
+      }
+    },
+    {
+      "name": "txref-evm-event-missing-index-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "evm-event",
+        "chainId": 8453,
+        "txHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
     },
     {

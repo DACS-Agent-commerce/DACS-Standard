@@ -522,6 +522,93 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         self.assertTrue(same)
         self.assertEqual(replayed["bundleCount"], 1)
 
+    def test_replay_validates_every_participating_ebfab_authority(self):
+        pair = next(
+            case for case in self.data["pairCases"] if case["name"] == "ebfab-ebfab"
+        )
+        buyer = pair["copies"]["buyer"]
+        seller = pair["copies"]["seller"]
+        job_id = buyer["jobId"]
+        addresses = {
+            "buyer": R.logical_address(job_id, "buyer"),
+            "seller": R.logical_address(job_id, "seller"),
+        }
+
+        def authority_for(bundle, *, valid=True):
+            lifecycle = copy.deepcopy(
+                self.data["bundleLifecycleByHash"][R.bundle_hash(bundle)]
+            )
+            if not valid:
+                lifecycle = {"state": "accepted", "independentlyResolvable": False}
+            return {
+                "listing": self.data["listing"],
+                "publicKeys": self.pubkeys,
+                "referenceValidationByCanonicalRef": self.data[
+                    "referenceValidationByCanonicalRef"],
+                "sessionExecutionAuthorityByPhaseKey": self.data[
+                    "sessionExecutionAuthorityByPhaseKey"],
+                "verifiedReceiptByCanonicalRef": self.data[
+                    "verifiedReceiptByCanonicalRef"],
+                "bundleLifecycle": lifecycle,
+            }
+
+        tagged = []
+        for role, bundle, counterparty_role in (
+            ("buyer", buyer, "seller"),
+            ("seller", seller, "buyer"),
+        ):
+            tagged.append({
+                "bundle": bundle,
+                "selectedByRoleResolution": True,
+                "resolvedJobId": job_id,
+                "resolvedRole": role,
+                "roleEvidence": {
+                    "kind": "address", "resolvedAddress": addresses[role]
+                },
+                "counterpartyDisposition": "present",
+                "counterpartyRef": {"contentHash": R.bundle_hash(bundle)},
+                "counterpartyRoleEvidence": {
+                    "kind": "address",
+                    "resolvedAddress": addresses[counterparty_role],
+                },
+                "ebfabAuthority": authority_for(bundle),
+            })
+        receipt = R.derive_job_bound(
+            "did:demos:buyer",
+            tagged,
+            buyer["finalisedAt"] - 1,
+            buyer["finalisedAt"] + 1,
+        )
+        by_address = {addresses["buyer"]: buyer, addresses["seller"]: seller}
+        replay_args = (
+            receipt,
+            lambda _content_hash: buyer,
+            "did:demos:buyer",
+            buyer["finalisedAt"] - 1,
+            buyer["finalisedAt"] + 1,
+        )
+        replay_kwargs = {
+            "pubkeys": self.pubkeys,
+            "anchor_deref": lambda address: by_address.get(address),
+        }
+        same, replayed = R.replay_receipt(
+            *replay_args,
+            **replay_kwargs,
+            ebfab_authority_resolver=lambda bundle, _entry: authority_for(bundle),
+        )
+        self.assertTrue(same)
+        self.assertEqual(replayed["bundleCount"], 1)
+        self.assertEqual(
+            R.replay_receipt(
+                *replay_args,
+                **replay_kwargs,
+                ebfab_authority_resolver=lambda bundle, _entry: authority_for(
+                    bundle, valid=bundle.get("anchoredByRole") != "seller"
+                ),
+            ),
+            (False, None),
+        )
+
     def test_extended_pointer_type_and_domain_match_dereferenced_bundle(self):
         for case in self.data["pointerCases"]:
             with self.subTest(case=case["name"]):

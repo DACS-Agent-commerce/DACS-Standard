@@ -661,6 +661,17 @@ def validate_ebfab(
     """
     if bundle_type(bundle) != "evidence-bound":
         return (False, "not an EvidenceBoundFaultAttestationBundle", None)
+    if not _absolute_fault_bundle_shape_valid(bundle):
+        return (False, "malformed EvidenceBoundFaultAttestationBundle", None)
+    if (
+        not isinstance(listing, dict)
+        or not isinstance(pubkeys, dict)
+        or not isinstance(reference_validation_by_canonical_ref, dict)
+        or not isinstance(bundle_lifecycle, dict)
+        or not isinstance(session_execution_authority_by_phase_key, dict)
+        or not isinstance(verified_receipt_by_canonical_ref, dict)
+    ):
+        return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
     ok, reason = _bundle_signatures_valid(bundle, pubkeys)
     if not ok:
         return (False, reason, None)
@@ -671,16 +682,6 @@ def validate_ebfab(
         return (False, "invalid absolute fault attribution context: %s" % exc, None)
     if bundle.get("faultedParty") not in permissible_faults:
         return (False, "faultedParty is outside the §10.4.1 permissible set", None)
-    if (
-        not isinstance(listing, dict)
-        or not isinstance(pubkeys, dict)
-        or not isinstance(reference_validation_by_canonical_ref, dict)
-        or not isinstance(bundle_lifecycle, dict)
-        or not isinstance(session_execution_authority_by_phase_key, dict)
-        or not isinstance(verified_receipt_by_canonical_ref, dict)
-    ):
-        return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
-
     signature = listing.get("signature")
     if not isinstance(signature, dict):
         return (False, "listing signature missing", None)
@@ -749,6 +750,20 @@ def validate_ebfab(
     if ordered_indices != list(range(len(summary))):
         return (False, "phaseSummary is not a contiguous execution prefix", None)
     bundle_outcome = bundle.get("outcome")
+    retry_marker_indices = [
+        index for index, entry in enumerate(summary) if "retryExhausted" in entry
+    ]
+    retry_marker_expected = (
+        bundle_outcome == "failed-perm"
+        and bool(summary)
+        and summary[-1].get("outcome") == "fail"
+        and summary[-1].get("errorClass") == "transient"
+    )
+    if retry_marker_expected:
+        if retry_marker_indices != [len(summary) - 1] or summary[-1].get("retryExhausted") is not True:
+            return (False, "transient terminal failure lacks exclusive authenticated retry exhaustion", None)
+    elif retry_marker_indices:
+        return (False, "retryExhausted is present outside the terminal transient failure", None)
     if bundle_outcome == "completed":
         if len(summary) != len(pipeline):
             return (False, "completed phaseSummary does not cover the full pipeline", None)
@@ -924,7 +939,7 @@ def validate_ebfab(
                 "pay-cross-chain-htlc",
                 "pay-cross-chain-liquidity-tank",
             }
-            or not isinstance(supersedes, dict)
+            or not _attestation_ref_shape_valid(supersedes)
             or canonical(supersedes) in {canonical(item) for item in actual_refs}
         ):
             return (False, "invalid ST-8 supersession shape", None)
@@ -2394,7 +2409,39 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
                 if not isinstance(authority, dict):
                     return (False, None)
                 tag["ebfabAuthority"] = authority
+                if not _tagged_copy_valid_for_derive(tag):
+                    return (False, None)
         tagged.append(tag)
+        if job_bound and entry.get("counterpartyDisposition") == "present":
+            counterparty = _deref_role_copy(
+                anchor_deref, entry.get("counterpartyRoleEvidence")
+            )
+            if bundle_type(counterparty) == "evidence-bound":
+                counterparty_entry = {
+                    "contentHash": (entry.get("counterpartyRef") or {}).get("contentHash"),
+                    "resolvedJobId": entry["resolvedJobId"],
+                    "resolvedRole": counterparty.get("anchoredByRole"),
+                    "roleEvidence": entry.get("counterpartyRoleEvidence"),
+                }
+                authority = (
+                    ebfab_authority_resolver(counterparty, counterparty_entry)
+                    if callable(ebfab_authority_resolver)
+                    else None
+                )
+                if not isinstance(authority, dict):
+                    return (False, None)
+                counterparty_tag = {
+                    "bundle": counterparty,
+                    "resolvedRole": counterparty.get("anchoredByRole"),
+                    "counterpartyDisposition": "present",
+                    "resolvedJobId": entry["resolvedJobId"],
+                    "selectedByRoleResolution": True,
+                    "roleEvidence": entry.get("counterpartyRoleEvidence"),
+                    "ebfabAuthority": authority,
+                }
+                if not _tagged_copy_valid_for_derive(counterparty_tag):
+                    return (False, None)
+                tagged.append(counterparty_tag)
     # (round-13 B3) read the now-REQUIRED, vocab-checked windowingBasis WITHOUT a silent default —
     # rrmp above guarantees it is present and in the vocab. Fail closed BEFORE the (bare) derive echo
     # when the recorded basis is a valid literal this reference cannot compute (sr2-anchor-timestamp):

@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 import dacs5_reference as R
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +23,39 @@ def canonical_json(value):
 
 def decode(value):
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def encode(value):
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+def resign_ebfab(bundle, seeds):
+    bundle["signatures"] = []
+    payload = (R.EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN + R.bundle_hash(bundle)).encode("utf-8")
+    claims_by_role = {
+        party["role"]: party["primaryClaim"] for party in bundle["parties"]
+    }
+    bundle["signatures"] = [
+        {
+            "party": claims_by_role[role],
+            "algorithm": "ed25519",
+            "value": encode(Ed25519PrivateKey.from_private_bytes(
+                bytes.fromhex(seeds[role])).sign(payload)),
+        }
+        for role in claims_by_role
+    ]
+
+
+def resign_evidence(record, seed):
+    record["signature"] = {
+        "signer": record["signature"]["signer"],
+        "algorithm": "ed25519",
+        "value": "",
+    }
+    payload = (R.SETTLEMENT_EVIDENCE_DOMAIN + R.settlement_evidence_hash(record)).encode("utf-8")
+    record["signature"]["value"] = encode(
+        Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed)).sign(payload)
+    )
 
 
 def derive_phase_keys(authority, pubkeys):
@@ -316,6 +350,53 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 "supersedesEvidenceRef") is not None
         )
         receipt["logicalAddress"] = "dacs4:payment:forged:resolved"
+        self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
+
+    def test_ebfab_shape_and_retry_marker_fail_closed(self):
+        for parties in (None, [None]):
+            authority = copy.deepcopy(self.data["executionAuthorities"]["standard-completed"])
+            authority["bundle"]["parties"] = parties
+            with self.subTest(parties=parties):
+                self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
+
+        for marker in (True, False, "true"):
+            authority = copy.deepcopy(self.data["executionAuthorities"]["standard-completed"])
+            authority["bundle"]["phaseSummary"][0]["retryExhausted"] = marker
+            resign_ebfab(authority["bundle"], self.data["seeds"])
+            with self.subTest(marker=marker):
+                self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
+
+    def test_st8_supersedes_requires_a_complete_attestation_ref(self):
+        authority = copy.deepcopy(self.data["executionAuthorities"]["single-htlc-completed"])
+        old_top_ref = authority["bundle"]["settlementEvidence"][0]
+        old_top_key = R.canonical(old_top_ref).decode("utf-8")
+        top_resolution = authority["referenceValidationByCanonicalRef"].pop(old_top_key)
+        top_receipt = authority["verifiedReceiptByCanonicalRef"].pop(old_top_key)
+        record = top_resolution["record"]
+        old_interim_ref = copy.deepcopy(record["supersedesEvidenceRef"])
+        old_interim_key = R.canonical(old_interim_ref).decode("utf-8")
+        malformed_interim_ref = copy.deepcopy(old_interim_ref)
+        del malformed_interim_ref["anchor"]["kind"]
+        record["supersedesEvidenceRef"] = malformed_interim_ref
+        resign_evidence(record, self.data["seeds"]["seller"])
+
+        new_top_ref = copy.deepcopy(old_top_ref)
+        new_top_ref["contentHash"] = R.settlement_evidence_hash(record)
+        new_top_key = R.canonical(new_top_ref).decode("utf-8")
+        top_receipt["contentHash"] = new_top_ref["contentHash"]
+        authority["referenceValidationByCanonicalRef"][new_top_key] = top_resolution
+        authority["verifiedReceiptByCanonicalRef"][new_top_key] = top_receipt
+        authority["referenceValidationByCanonicalRef"][
+            R.canonical(malformed_interim_ref).decode("utf-8")
+        ] = copy.deepcopy(authority["referenceValidationByCanonicalRef"][old_interim_key])
+        authority["verifiedReceiptByCanonicalRef"][
+            R.canonical(malformed_interim_ref).decode("utf-8")
+        ] = copy.deepcopy(authority["verifiedReceiptByCanonicalRef"][old_interim_key])
+        authority["bundle"]["settlementEvidence"] = [new_top_ref]
+        authority["bundle"]["phaseSummary"][-1]["attestationRef"] = new_top_ref
+        resign_ebfab(authority["bundle"], self.data["seeds"])
+
+        self.assertFalse(R._attestation_ref_shape_valid(malformed_interim_ref))
         self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
 
     def test_declared_reason_precedence_matches_reference_evaluator(self):

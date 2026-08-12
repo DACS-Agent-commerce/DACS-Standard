@@ -27,6 +27,9 @@ hashing, the reconciliation/BB-6/pointer predicates) always run.
 import base64
 import hashlib
 import json
+import math
+import re
+import unicodedata
 from urllib.parse import quote, urlsplit
 
 try:
@@ -77,6 +80,26 @@ EVIDENCE_PHASES = frozenset({
     "deliver-attested-payload",
 })
 
+PAYMENT_PHASES = frozenset(phase for phase in EVIDENCE_PHASES if phase.startswith("pay-"))
+DELIVERY_PHASES = frozenset(phase for phase in EVIDENCE_PHASES if phase.startswith("deliver-"))
+SUPPORTED_PHASES = frozenset({
+    "vet-credentials",
+    "negotiate-fixed-price",
+    "negotiate-rfq",
+    "negotiate-sealed-envelope",
+    "commit-agreement",
+    "rate",
+}) | EVIDENCE_PHASES
+SUPPORTED_ATTESTATION_ANCHOR_KINDS = frozenset({"storage-program", "ipfs", "https"})
+SUPPORTED_SETTLEMENT_FINALITY_MODELS = frozenset({
+    "block-depth",
+    "commitment-level",
+    "provider-receipt",
+    "htlc-reveal",
+    "liquidity-tank",
+    "bft-final",
+})
+
 # §10.5.3 windowingBasis (spec DACS-5-VERIFY.md :530): a REQUIRED closed two-literal union naming
 # which clock the §10.5.1 window was applied against; re-derivation MUST use the recorded basis
 # (:854/:581). SUPPORTED_* is the VOCABULARY (both literals are valid); IMPLEMENTED_* is what this
@@ -90,6 +113,8 @@ IMPLEMENTED_WINDOWING_BASES = frozenset({"finalisedAt"})
 # CORE §B.7 SIG-6 canonical unpadded Base64URL alphabet (spec lines 320-321): the canonical value is
 # non-empty and contains ONLY these characters — no `=` padding, no whitespace, no standard-Base64 `+`/`/`.
 _SIG6_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+_CANONICAL_POSITIVE_DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
+_MAX_SAFE_JSON_INTEGER = 9_007_199_254_740_991
 
 
 def sig6_canonical(value):
@@ -519,7 +544,7 @@ def _bundle_signatures_valid(bundle, pubkeys):
     #     buyer + seller (+ distinct orchestrator) MUST all have signed (spec line 322);
     #   abort outcome (aborted-by-self / aborted-by-other) MAY be single-signed (spec line 323) — the
     #     preserved floor is that the anchoring role-holder itself has signed.
-    if bundle.get("outcome") in _ABORT:
+    if _string_member(bundle.get("outcome"), _ABORT):
         required = role_holder.get(anchor_role)
         if required is None or required not in signers_present:
             return (False, "§10.4.1 required signer (the %r role-holder) has no signature" % (anchor_role,))
@@ -601,6 +626,328 @@ def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase
     return (True, expected_logical)
 
 
+def _string_member(value, allowed):
+    """Total closed-union membership for untrusted JSON values."""
+    return isinstance(value, str) and value in allowed
+
+
+def _non_boolean_number(value):
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return abs(value) <= _MAX_SAFE_JSON_INTEGER
+    return (
+        isinstance(value, float)
+        and math.isfinite(value)
+        and abs(value) <= _MAX_SAFE_JSON_INTEGER
+    )
+
+
+def _price_term_shape_valid(value):
+    if not isinstance(value, dict) or not {"amount", "currency"} <= set(value):
+        return False
+    if set(value) - {"amount", "currency", "unit"}:
+        return False
+    amount = value.get("amount")
+    currency = value.get("currency")
+    if not isinstance(amount, str) or not _nonempty_jcs_string(currency):
+        return False
+    if "unit" in value and not _nonempty_jcs_string(value["unit"]):
+        return False
+    # CORE CD-1 plus PriceTerm's positive-amount requirement, ASCII digits only.
+    return amount != "0" and _CANONICAL_POSITIVE_DECIMAL.fullmatch(amount) is not None
+
+
+def _nonempty_jcs_string(value):
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and unicodedata.normalize("NFC", value) == value
+        and not any(0xD800 <= ord(character) <= 0xDFFF for character in value)
+    )
+
+
+def _safe_nonnegative_integer(value, *, positive=False):
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and (value > 0 if positive else value >= 0)
+        and value <= _MAX_SAFE_JSON_INTEGER
+    )
+
+
+def _chain_tx_ref_shape_valid(ref):
+    """Closed DACS-4 ChainTxRef union, including nested AP2 attestation shape."""
+    if not isinstance(ref, dict) or not isinstance(ref.get("kind"), str):
+        return False
+    kind = ref["kind"]
+    string_fields = set()
+    integer_fields = set()
+    optional_strings = set()
+    optional_integers = set()
+    required = {"kind"}
+    optional = set()
+
+    if kind == "evm":
+        integer_fields = {"chainId"}
+        string_fields = {"txHash"}
+    elif kind == "evm-event":
+        integer_fields = {"chainId", "logIndex"}
+        string_fields = {"txHash"}
+    elif kind == "solana":
+        string_fields = {"cluster", "signature"}
+    elif kind == "solana-instruction":
+        string_fields = {"cluster", "signature"}
+        integer_fields = {"instructionIndex"}
+    elif kind == "demos":
+        string_fields = {"txHash"}
+        optional_integers = {"blockNumber"}
+    elif kind == "storage-program":
+        string_fields = {"address", "writeTxHash"}
+    elif kind == "ap2":
+        string_fields = {"mandateId", "providerRef", "protocolVersion"}
+        optional = {"receiptAttestation"}
+    elif kind == "x402":
+        string_fields = {"httpResource", "paymentReceiptHash", "protocolVersion"}
+        optional_strings = {"settlementTxHash"}
+        optional_integers = {"chainId"}
+    elif kind == "x402-event":
+        string_fields = {
+            "httpResource", "paymentReceiptHash", "settlementTxHash", "protocolVersion",
+        }
+        integer_fields = {"chainId", "logIndex"}
+    elif kind in {"htlc-lock", "htlc-reveal", "htlc-claim", "htlc-refund"}:
+        integer_fields = {"chainId"}
+        transaction_field = {
+            "htlc-lock": "lockTxHash",
+            "htlc-reveal": "revealTxHash",
+            "htlc-claim": "claimTxHash",
+            "htlc-refund": "refundTxHash",
+        }[kind]
+        string_fields = {"contractAddress", transaction_field}
+    elif kind == "liquidity-tank":
+        string_fields = {"bridgeId", "lockTxHash"}
+        integer_fields = {"sourceChainId", "destChainId"}
+        optional_strings = {"releaseTxHash"}
+        optional_integers = {"recoveryDeadline"}
+    else:
+        return False
+
+    required |= string_fields | integer_fields
+    optional |= optional_strings | optional_integers
+    if set(ref) != required | (set(ref) & optional):
+        return False
+    if any(not _nonempty_jcs_string(ref[field]) for field in string_fields):
+        return False
+    if any(not _safe_nonnegative_integer(ref[field]) for field in integer_fields):
+        return False
+    if any(not _nonempty_jcs_string(ref[field]) for field in optional_strings if field in ref):
+        return False
+    if any(not _safe_nonnegative_integer(ref[field]) for field in optional_integers if field in ref):
+        return False
+    if kind in {"evm", "evm-event", "x402-event"} and not _safe_nonnegative_integer(
+        ref["chainId"], positive=True
+    ):
+        return False
+    if kind in {"solana", "solana-instruction"} and not _string_member(
+        ref["cluster"], {"mainnet", "devnet", "testnet"}
+    ):
+        return False
+    if kind == "ap2" and "receiptAttestation" in ref:
+        return _attestation_ref_shape_valid(ref["receiptAttestation"])
+    return True
+
+
+def _payment_tx_refs_match_phase(phase, refs, *, success):
+    kinds = [ref["kind"] for ref in refs]
+    if phase == "pay-evm-erc20":
+        return len(kinds) == 1 and kinds[0] in {"evm-event", "evm"}
+    if phase == "pay-solana-spl":
+        return len(kinds) == 1 and kinds[0] in {"solana-instruction", "solana"}
+    if phase == "pay-cross-chain-htlc":
+        required = {"htlc-lock", "htlc-reveal", "htlc-claim"}
+        if success:
+            return set(kinds) == required and len(kinds) == len(required)
+        return (
+            len(kinds) == len(set(kinds))
+            and set(kinds) <= required | {"htlc-refund"}
+        )
+    if phase == "pay-cross-chain-liquidity-tank":
+        return len(kinds) == 1 and kinds[0] == "liquidity-tank" and (
+            not success or "releaseTxHash" in refs[0]
+        )
+    if phase == "pay-ap2":
+        return len(kinds) == 1 and kinds[0] == "ap2" and (
+            not success or "receiptAttestation" in refs[0]
+        )
+    if phase == "pay-x402":
+        return len(kinds) == 1 and kinds[0] in {"x402-event", "x402"}
+    if phase == "pay-dem":
+        return len(kinds) == 1 and kinds[0] == "demos" and (
+            not success or "blockNumber" in refs[0]
+        )
+    return False
+
+
+def _settlement_finality_matches_phase(phase, finality, refs):
+    allowed = {
+        "pay-evm-erc20": {"block-depth"},
+        "pay-solana-spl": {"commitment-level"},
+        "pay-cross-chain-htlc": {"htlc-reveal"},
+        "pay-cross-chain-liquidity-tank": {"liquidity-tank"},
+        "pay-ap2": {"provider-receipt"},
+        "pay-dem": {"bft-final"},
+    }
+    if phase == "pay-x402":
+        return (
+            len(refs) == 1
+            and (
+                (refs[0]["kind"] == "x402-event" and finality.get("model") == "block-depth")
+                or (refs[0]["kind"] == "x402" and finality.get("model") == "provider-receipt")
+            )
+        )
+    return _string_member(finality.get("model"), allowed.get(phase, set()))
+
+
+def _settlement_finality_shape_valid(value):
+    if not isinstance(value, dict):
+        return False
+    allowed = {
+        "model", "finalityBlocks", "finalityCommitmentLevel", "finalityObservedAt",
+    }
+    if set(value) - allowed:
+        return False
+    model = value.get("model")
+    if (
+        not _string_member(model, SUPPORTED_SETTLEMENT_FINALITY_MODELS)
+        or not _non_boolean_number(value.get("finalityObservedAt"))
+    ):
+        return False
+    if model == "block-depth":
+        blocks = value.get("finalityBlocks")
+        if (
+            isinstance(blocks, bool)
+            or not isinstance(blocks, int)
+            or blocks < 0
+            or blocks > _MAX_SAFE_JSON_INTEGER
+        ):
+            return False
+    elif "finalityBlocks" in value:
+        return False
+    if model == "commitment-level":
+        if not _string_member(
+            value.get("finalityCommitmentLevel"), {"processed", "confirmed", "finalized"}
+        ):
+            return False
+    elif "finalityCommitmentLevel" in value:
+        return False
+    return True
+
+
+def _settlement_evidence_shape_valid(record):
+    """Closed DACS-4 §9.7 shape and phase/outcome-conditional requirements."""
+    if not isinstance(record, dict):
+        return False
+    required = {"evidenceVersion", "jobId", "phase", "outcome", "observedAt", "signature"}
+    optional = {
+        "reason", "paymentTxRefs", "paymentAmount", "paymentFee",
+        "deliverableContentHash", "deliverableAnchor", "attestationRef",
+        "settlementFinality", "amendmentRefs", "supersedesEvidenceRef",
+    }
+    if not required <= set(record) or set(record) - required - optional:
+        return False
+    phase = record.get("phase")
+    outcome = record.get("outcome")
+    signature = record.get("signature")
+    if (
+        record.get("evidenceVersion") != "1"
+        or not _nonempty_jcs_string(record.get("jobId"))
+        or not _string_member(phase, EVIDENCE_PHASES)
+        or not _string_member(outcome, {"success", "failure"})
+        or not _non_boolean_number(record.get("observedAt"))
+        or not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or not _nonempty_jcs_string(signature.get("algorithm"))
+        or not _claim_reference_shape_valid(signature.get("signer"))
+        or not _nonempty_jcs_string(signature.get("value"))
+    ):
+        return False
+    if outcome == "failure":
+        if not _nonempty_jcs_string(record.get("reason")):
+            return False
+    elif "reason" in record:
+        return False
+    for field in ("paymentAmount", "paymentFee"):
+        if field in record and not _price_term_shape_valid(record[field]):
+            return False
+    if "paymentTxRefs" in record and (
+        not isinstance(record["paymentTxRefs"], list)
+        or any(not _chain_tx_ref_shape_valid(ref) for ref in record["paymentTxRefs"])
+        or not _payment_tx_refs_match_phase(
+            phase, record["paymentTxRefs"], success=outcome == "success"
+        )
+    ):
+        return False
+    if "deliverableContentHash" in record and not _sha256_hex(record["deliverableContentHash"]):
+        return False
+    if "deliverableAnchor" in record:
+        anchor = record["deliverableAnchor"]
+        # DACS-4 §9.7 deliberately types deliverableAnchor.kind as string. Only the
+        # storage-program phase narrows it below; AttestationRef's closed anchor
+        # union is a distinct type and must not be projected onto payload locations.
+        if (
+            not isinstance(anchor, dict)
+            or set(anchor) != {"kind", "locator"}
+            or not _nonempty_jcs_string(anchor.get("kind"))
+            or not _nonempty_jcs_string(anchor.get("locator"))
+        ):
+            return False
+    if "attestationRef" in record and not _attestation_ref_shape_valid(record["attestationRef"]):
+        return False
+    if "amendmentRefs" in record and (
+        not isinstance(record["amendmentRefs"], list)
+        or any(not _attestation_ref_shape_valid(ref) for ref in record["amendmentRefs"])
+    ):
+        return False
+    if "supersedesEvidenceRef" in record and not _attestation_ref_shape_valid(
+        record["supersedesEvidenceRef"]
+    ):
+        return False
+    if phase in PAYMENT_PHASES:
+        if outcome == "success" and (
+            not isinstance(record.get("paymentTxRefs"), list)
+            or not record["paymentTxRefs"]
+            or not _price_term_shape_valid(record.get("paymentAmount"))
+            or not _settlement_finality_shape_valid(record.get("settlementFinality"))
+            or not _settlement_finality_matches_phase(
+                phase, record["settlementFinality"], record["paymentTxRefs"]
+            )
+        ):
+            return False
+        if outcome == "failure" and "settlementFinality" in record:
+            return False
+        if any(field in record for field in ("deliverableContentHash", "deliverableAnchor", "attestationRef")):
+            return False
+    else:
+        if any(
+            field in record
+            for field in ("paymentTxRefs", "settlementFinality", "paymentAmount", "paymentFee")
+        ):
+            return False
+        if outcome == "success" and not _sha256_hex(record.get("deliverableContentHash")):
+            return False
+        if phase == "deliver-storage-program" and outcome == "success" and (
+            not isinstance(record.get("deliverableAnchor"), dict)
+            or record["deliverableAnchor"].get("kind") != "storage-program"
+        ):
+            return False
+        if phase == "deliver-attested-payload" and outcome == "success" and (
+            "deliverableAnchor" not in record or not _attestation_ref_shape_valid(record.get("attestationRef"))
+        ):
+            return False
+    return True
+
+
 def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
                                             session_execution_authority_by_phase_key,
                                             verified_receipt_by_canonical_ref):
@@ -641,6 +988,69 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
     if len(matches) != 1:
         return (False, "evidence does not resolve to exactly one authenticated phase receipt", None)
     return (True, matches[0], receipt)
+
+
+def _known_authenticated_st8_successor(
+    interim_ref,
+    interim_record,
+    phase_key,
+    bundle,
+    pubkeys,
+    reference_validation_by_canonical_ref,
+    session_execution_authority_by_phase_key,
+    verified_receipt_by_canonical_ref,
+):
+    """Return true only for a fully authenticated exact-:resolved successor already in authority."""
+    interim_id = canonical(interim_ref)
+    for ref_key, resolution in reference_validation_by_canonical_ref.items():
+        if not isinstance(ref_key, str) or not isinstance(resolution, dict):
+            continue
+        try:
+            candidate_ref = json.loads(ref_key)
+        except (json.JSONDecodeError, TypeError, ValueError, RecursionError):
+            continue
+        if not _attestation_ref_shape_valid(candidate_ref):
+            continue
+        candidate = resolution.get("record")
+        signature = candidate.get("signature") if isinstance(candidate, dict) else None
+        if (
+            not _settlement_evidence_shape_valid(candidate)
+            or candidate.get("jobId") != bundle.get("jobId")
+            or candidate.get("phase") != interim_record.get("phase")
+            or candidate.get("outcome") != "success"
+            or canonical(candidate.get("supersedesEvidenceRef")) != interim_id
+            or candidate_ref.get("contentHash") != settlement_evidence_hash(candidate)
+            or not isinstance(signature, dict)
+            or signature.get("algorithm") != "ed25519"
+            or not isinstance(signature.get("signer"), str)
+            or signature["signer"] not in pubkeys
+        ):
+            continue
+        canonical_ok, _ = sig6_canonical(signature.get("value", ""))
+        if not canonical_ok or not verify_sig(
+            pubkeys[signature["signer"]],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(candidate),
+            signature["value"],
+        ):
+            continue
+        binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
+            candidate_ref,
+            candidate,
+            signature["signer"],
+            bundle,
+            session_execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref,
+        )
+        lifecycle = resolution.get("lifecycle")
+        if (
+            binding_ok
+            and binding_result == (phase_key, True)
+            and isinstance(lifecycle, dict)
+            and _string_member(lifecycle.get("state"), {"included", "finalized"})
+        ):
+            return True
+    return False
 
 
 def validate_ebfab(
@@ -688,6 +1098,7 @@ def validate_ebfab(
     signer = signature.get("signer")
     if (
         signature.get("algorithm") != "ed25519"
+        or not isinstance(signer, str)
         or signer != listing.get("sellerPrimaryClaim")
         or signer not in pubkeys
     ):
@@ -711,7 +1122,13 @@ def validate_ebfab(
     summary = bundle.get("phaseSummary")
     if not isinstance(pipeline, list) or not isinstance(summary, list):
         return (False, "pipeline or phaseSummary is not an array", None)
-    pipeline_kinds = [step.get("kind") if isinstance(step, dict) else None for step in pipeline]
+    if any(
+        not isinstance(step, dict)
+        or not _string_member(step.get("kind"), SUPPORTED_PHASES)
+        for step in pipeline
+    ):
+        return (False, "signed listing pipeline contains an unsupported phase", None)
+    pipeline_kinds = [step["kind"] for step in pipeline]
     seen_indices = set()
     expected_keys = []
     optional_pointers = {}
@@ -728,7 +1145,7 @@ def validate_ebfab(
             or index >= len(pipeline_kinds)
             or index in seen_indices
             or kind != pipeline_kinds[index]
-            or entry.get("outcome") not in {"ok", "fail"}
+            or not _string_member(entry.get("outcome"), {"ok", "fail"})
         ):
             return (False, "phaseSummary contradicts the signed listing pipeline", None)
         seen_indices.add(index)
@@ -781,7 +1198,9 @@ def validate_ebfab(
             "failed-perm": {"permanent", "transient"},
             "failed-counterparty": {"counterparty", "settlement-atomicity"},
         }
-        if summary[-1].get("errorClass") not in expected_error_classes[bundle_outcome]:
+        if not _string_member(
+            summary[-1].get("errorClass"), expected_error_classes[bundle_outcome]
+        ):
             return (False, "terminal errorClass contradicts the failed bundle outcome", None)
         if (
             summary[-1].get("errorClass") == "transient"
@@ -833,11 +1252,11 @@ def validate_ebfab(
             return (False, "settlement evidence lacks authenticated record", None)
         signature = record.get("signature")
         if (
-            record.get("evidenceVersion") != "1"
+            not _settlement_evidence_shape_valid(record)
             or record.get("jobId") != bundle.get("jobId")
-            or record.get("outcome") not in {"success", "failure"}
             or not isinstance(signature, dict)
             or signature.get("algorithm") != "ed25519"
+            or not isinstance(signature.get("signer"), str)
             or signature.get("signer") not in pubkeys
             or ref.get("contentHash") != settlement_evidence_hash(record)
         ):
@@ -917,6 +1336,17 @@ def validate_ebfab(
                 or supersedes is not None
             ):
                 return (False, "expired ST-8 record has the wrong authenticated terminal class", None)
+            if _known_authenticated_st8_successor(
+                ref,
+                record,
+                phase_key,
+                bundle,
+                pubkeys,
+                reference_validation_by_canonical_ref,
+                session_execution_authority_by_phase_key,
+                verified_receipt_by_canonical_ref,
+            ):
+                return (False, "expired ST-8 record suppresses a known authenticated successor", None)
         elif record.get("reason") in st8_reasons:
             return (False, "ST-8 interim reason contradicts the signed phase result", None)
         # The binding-verified PC-2 logical address, not the optional edge,
@@ -952,8 +1382,7 @@ def validate_ebfab(
         interim_lifecycle = interim_resolution.get("lifecycle")
         interim_signature = interim_record.get("signature") if isinstance(interim_record, dict) else None
         if (
-            not isinstance(interim_record, dict)
-            or interim_record.get("evidenceVersion") != "1"
+            not _settlement_evidence_shape_valid(interim_record)
             or interim_record.get("jobId") != bundle.get("jobId")
             or interim_record.get("phase") != record.get("phase")
             or interim_record.get("outcome") != "failure"
@@ -961,6 +1390,7 @@ def validate_ebfab(
             or supersedes.get("contentHash") != settlement_evidence_hash(interim_record)
             or not isinstance(interim_signature, dict)
             or interim_signature.get("algorithm") != "ed25519"
+            or not isinstance(interim_signature.get("signer"), str)
             or interim_signature.get("signer") not in pubkeys
             or not isinstance(interim_lifecycle, dict)
         ):
@@ -995,7 +1425,7 @@ def validate_ebfab(
             return (False, "completed ST-8 interim dependency is not finalized and independently resolvable", None)
         if (
             bundle.get("outcome") != "completed"
-            and interim_lifecycle.get("state") not in {"included", "finalized"}
+            and not _string_member(interim_lifecycle.get("state"), {"included", "finalized"})
         ):
             return (False, "failed ST-8 interim dependency is not included or finalized", None)
 
@@ -1009,14 +1439,16 @@ def validate_ebfab(
             state != "finalized" or lifecycle.get("independentlyResolvable") is not True
         ):
             return (False, "completed evidence is not finalized and independently resolvable", None)
-        if not completed and state not in {"included", "finalized"}:
+        if not completed and not _string_member(state, {"included", "finalized"}):
             return (False, "failed or aborted evidence is not included or finalized", None)
     if completed and (
         bundle_lifecycle.get("state") != "finalized"
         or bundle_lifecycle.get("independentlyResolvable") is not True
     ):
         return (False, "completed EBFAB is not finalized and independently resolvable", None)
-    if not completed and bundle_lifecycle.get("state") not in {"included", "finalized"}:
+    if not completed and not _string_member(
+        bundle_lifecycle.get("state"), {"included", "finalized"}
+    ):
         return (False, "failed or aborted EBFAB is not included or finalized", None)
     return (True, "ok", expected_keys)
 
@@ -1261,15 +1693,64 @@ def _sha256_hex(value):
     )
 
 
+_CLAIM_SCHEME = re.compile(r"[a-z][a-z0-9-]*\Z")
+_CANONICAL_PERCENT_ESCAPE = re.compile(r"%[0-9A-F]{2}")
+
+
+def _claim_reference_shape_valid(value):
+    """Generic DACS-1 grammar plus the scheme/NFC/parameter portions of CF-2."""
+    if not _nonempty_jcs_string(value) or ":" not in value:
+        return False
+    scheme, remainder = value.split(":", 1)
+    if _CLAIM_SCHEME.fullmatch(scheme) is None or not remainder:
+        return False
+    identifier, separator, parameters = remainder.partition("?")
+    if not identifier or unicodedata.normalize("NFC", identifier) != identifier:
+        return False
+    if not separator:
+        return True
+    if not parameters or "?" in parameters:
+        return False
+    pairs = parameters.split("&")
+    keys = []
+    for pair in pairs:
+        if pair.count("=") != 1:
+            return False
+        key, parameter_value = pair.split("=", 1)
+        if not key:
+            return False
+        for component in (key, parameter_value):
+            index = 0
+            while index < len(component):
+                if component[index] == "%":
+                    match = _CANONICAL_PERCENT_ESCAPE.match(component, index)
+                    if match is None:
+                        return False
+                    index = match.end()
+                else:
+                    # Reserved delimiters inside a component must use uppercase percent encoding.
+                    if component[index] in ":?&=%":
+                        return False
+                    index += 1
+        keys.append(key)
+    return keys == sorted(keys) and len(keys) == len(set(keys))
+
+
 def _attestation_ref_shape_valid(ref):
     anchor = ref.get("anchor") if isinstance(ref, dict) else None
     return (
-        isinstance(anchor, dict)
-        and isinstance(anchor.get("kind"), str)
-        and bool(anchor["kind"])
-        and isinstance(anchor.get("locator"), str)
-        and bool(anchor["locator"])
+        isinstance(ref, dict)
+        and set(ref) <= {"anchor", "contentHash", "signer"}
+        and {"anchor", "contentHash"} <= set(ref)
+        and isinstance(anchor, dict)
+        and set(anchor) == {"kind", "locator"}
+        and _string_member(anchor.get("kind"), SUPPORTED_ATTESTATION_ANCHOR_KINDS)
+        and _nonempty_jcs_string(anchor.get("locator"))
         and _sha256_hex(ref.get("contentHash"))
+        and (
+            "signer" not in ref
+            or _claim_reference_shape_valid(ref["signer"])
+        )
     )
 
 
@@ -1283,12 +1764,12 @@ def _absolute_fault_bundle_shape_valid(bundle):
     if (
         not isinstance(bundle.get("jobId"), str)
         or not bundle["jobId"]
-        or bundle.get("outcome") not in {
+        or not _string_member(bundle.get("outcome"), {
             "completed", "failed-perm", "failed-counterparty", "failed-substrate",
             "aborted-by-self", "aborted-by-other",
-        }
-        or bundle.get("faultedParty") not in {"buyer", "seller", "orchestrator", "none"}
-        or bundle.get("anchoredByRole") not in {"buyer", "seller", "orchestrator"}
+        })
+        or not _string_member(bundle.get("faultedParty"), {"buyer", "seller", "orchestrator", "none"})
+        or not _string_member(bundle.get("anchoredByRole"), {"buyer", "seller", "orchestrator"})
         or not isinstance(listing_ref, dict)
         or not isinstance(listing_ref.get("listingId"), str)
         or isinstance(listing_ref.get("version"), bool)
@@ -1310,7 +1791,7 @@ def _absolute_fault_bundle_shape_valid(bundle):
         return False
     if any(
         not isinstance(party, dict)
-        or party.get("role") not in {"buyer", "seller", "orchestrator"}
+        or not _string_member(party.get("role"), {"buyer", "seller", "orchestrator"})
         or not isinstance(party.get("primaryClaim"), str)
         or not _sha256_hex(party.get("bundleHash"))
         for party in parties
@@ -1321,7 +1802,14 @@ def _absolute_fault_bundle_shape_valid(bundle):
         or isinstance(entry.get("index"), bool)
         or not isinstance(entry.get("index"), int)
         or not isinstance(entry.get("kind"), str)
-        or entry.get("outcome") not in {"ok", "fail"}
+        or not _string_member(entry.get("outcome"), {"ok", "fail"})
+        or (
+            "errorClass" in entry
+            and not _string_member(
+                entry.get("errorClass"),
+                {"permanent", "transient", "counterparty", "substrate", "settlement-atomicity"},
+            )
+        )
         for entry in phase_summary
     ):
         return False

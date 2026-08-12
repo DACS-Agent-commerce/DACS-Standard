@@ -98,6 +98,64 @@ def reference(label):
     }
 
 
+def payment_tx_refs(job_id, phase, phase_index):
+    label = f"{job_id}:{phase}:{phase_index}"
+    tx_hash = "0x" + hashlib.sha256(label.encode()).hexdigest()
+    plain_hash = hashlib.sha256(("plain:" + label).encode()).hexdigest()
+    by_phase = {
+        "pay-evm-erc20": [
+            {"kind": "evm-event", "chainId": 1, "txHash": tx_hash, "logIndex": 0},
+        ],
+        "pay-solana-spl": [
+            {"kind": "solana-instruction", "cluster": "mainnet", "signature": plain_hash,
+             "instructionIndex": 0},
+        ],
+        "pay-cross-chain-htlc": [
+            {"kind": "htlc-lock", "chainId": 1, "contractAddress": "0xcontract",
+             "lockTxHash": tx_hash},
+            {"kind": "htlc-reveal", "chainId": 2, "contractAddress": "0xcontract",
+             "revealTxHash": tx_hash},
+            {"kind": "htlc-claim", "chainId": 1, "contractAddress": "0xcontract",
+             "claimTxHash": tx_hash},
+        ],
+        "pay-cross-chain-liquidity-tank": [
+            {"kind": "liquidity-tank", "bridgeId": "demos-tank", "sourceChainId": 1,
+             "destChainId": 2, "lockTxHash": tx_hash, "releaseTxHash": tx_hash},
+        ],
+        "pay-ap2": [
+            {"kind": "ap2", "mandateId": plain_hash, "providerRef": "provider-test",
+             "protocolVersion": "1", "receiptAttestation": reference("ap2:" + label)},
+        ],
+        "pay-x402": [
+            {"kind": "x402-event", "httpResource": "https://example.invalid/resource",
+             "paymentReceiptHash": plain_hash, "settlementTxHash": tx_hash, "chainId": 1,
+             "logIndex": 0, "protocolVersion": "1"},
+        ],
+        "pay-dem": [
+            {"kind": "demos", "txHash": plain_hash, "blockNumber": 1},
+        ],
+    }
+    return copy.deepcopy(by_phase[phase])
+
+
+def settlement_finality(phase, observed_at):
+    model = {
+        "pay-evm-erc20": "block-depth",
+        "pay-solana-spl": "commitment-level",
+        "pay-cross-chain-htlc": "htlc-reveal",
+        "pay-cross-chain-liquidity-tank": "liquidity-tank",
+        "pay-ap2": "provider-receipt",
+        "pay-x402": "block-depth",
+        "pay-dem": "bft-final",
+    }[phase]
+    result = {"model": model, "finalityObservedAt": observed_at}
+    if model == "block-depth":
+        result["finalityBlocks"] = 1
+    elif model == "commitment-level":
+        result["finalityCommitmentLevel"] = "finalized"
+    return result
+
+
 def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success", reason=None,
                   supersedes=None, label_suffix=""):
     record = {
@@ -110,15 +168,24 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
     if outcome == "failure":
         record["reason"] = reason or "permanent"
     elif phase.startswith("pay-"):
+        record["paymentTxRefs"] = payment_tx_refs(job_id, phase, phase_index)
         record["paymentAmount"] = {"amount": "1", "currency": "DEM"}
-        record["settlementFinality"] = {
-            "model": "bft-final",
-            "finalityObservedAt": record["observedAt"],
-        }
+        record["settlementFinality"] = settlement_finality(phase, record["observedAt"])
     else:
         record["deliverableContentHash"] = hashlib.sha256(
             f"deliverable:{job_id}:{phase_index}".encode()
         ).hexdigest()
+        if phase in {"deliver-storage-program", "deliver-attested-payload"}:
+            record["deliverableAnchor"] = {
+                "kind": "storage-program",
+                "locator": "stor-" + hashlib.sha256(
+                    f"deliverable-anchor:{job_id}:{phase_index}".encode()
+                ).hexdigest(),
+            }
+        if phase == "deliver-attested-payload":
+            record["attestationRef"] = reference(
+                f"payload-attestation:{job_id}:{phase_index}"
+            )
     if supersedes is not None:
         record["supersedesEvidenceRef"] = copy.deepcopy(supersedes)
     payload = (SETTLEMENT_EVIDENCE_DOMAIN + evidence_hash(record)).encode("utf-8")

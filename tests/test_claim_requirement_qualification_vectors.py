@@ -1,5 +1,6 @@
 import base64
 import binascii
+import copy
 import hashlib
 import json
 import unicodedata
@@ -131,6 +132,14 @@ def verify_replay_record(input_data, authority, vector_set):
     if not isinstance(authenticated_results, list) or not isinstance(declared_results, list):
         return False
     if len(authenticated_results) != len(declared_results):
+        return False
+    authenticated_result_refs = [
+        authenticated.get("ref") if isinstance(authenticated, dict) else None
+        for authenticated in authenticated_results
+    ]
+    if sorted(canonical_json(ref) for ref in authenticated_result_refs) != sorted(
+        canonical_json(ref) for ref in record_result_refs
+    ):
         return False
     for authenticated, declared in zip(authenticated_results, declared_results):
         if not isinstance(authenticated, dict) or not isinstance(declared, dict):
@@ -367,6 +376,24 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         self.assertTrue(
             verify_replay_record(vector["input"], vector["input"]["aggregationAuthority"], self.data)
         )
+
+    def test_replay_record_requires_every_committed_result(self):
+        vector = next(
+            vector
+            for vector in self.data["vectors"]
+            if vector["name"] == "vet-claim-requirement-signed-bundle-replay-pass"
+        )
+        vector_set = copy.deepcopy(self.data)
+        input_data = copy.deepcopy(vector["input"])
+        authority = input_data["aggregationAuthority"]
+        material = vector_set["replayRecords"][authority["record"]]
+        committed_refs = material["record"].get("freshness", []) + material["record"].get(
+            "dealSpecific", []
+        )
+        self.assertEqual(len(committed_refs), 1)
+        material["results"] = []
+        input_data["resolvedResults"] = []
+        self.assertFalse(verify_replay_record(input_data, authority, vector_set))
 
     def test_signed_bundle_replay_is_executable(self):
         vector = next(

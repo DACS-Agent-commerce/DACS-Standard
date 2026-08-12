@@ -48,6 +48,27 @@ The format used per release:
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
 
+### Fixed — DACS-1 v0.7 / DACS-2 v0.6
+
+- **Presence-only claim requirements made executable** (DACS-1 §6.3.3
+  PCR-1..PCR-6; DACS-2 §7.7.1; #334) — resolves the contradiction where
+  `verificationRequired: false` skipped the decision check but still failed the
+  unconditional freshness gate, while composite aggregation required a passing
+  `VerifyResult` for every member. Presence-only matching now evaluates the
+  exact signed bundle directly: canonical known claim, unexpired presenter
+  bound, and presenter-signed scheme parameters, with `issuedAt` informational. A well-shaped
+  optional `verifiedBy` is non-deciding for presence; malformed references are
+  errors, and `maxAge`/`recipeVersion` are invalid without verification.
+  DACS-2 excludes presence-only members from result evidence and replays mixed
+  required/`oneOf` aggregation against the exact bundle and requirement bound
+  by the existing CVR hashes; missing bundle is indeterminate, while synthetic
+  results, substitutions, invalid signatures, and decision mismatches reject.
+  Presence remains neither verification nor control: the exact `key:` bundle
+  signature may independently prove key control, but existence-only `lei:`
+  presence cannot become `presentedBy`, elevate identity tier, or key
+  reputation. Adds 31 deterministic vectors with genuine Ed25519 bundle,
+  VerifyResult, and composite signatures. No artifact or schema change.
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4

@@ -15,6 +15,25 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-1 / DACS-4 rail availability
+
+- **Production rail selection and authoritative hints** (DACS-1 §6.3.4
+  LRR-6; DACS-4 §9.4.4 RAV-R1..RAV-R5; #325) — makes the existing mocked-rail
+  prohibition executable: no new session can select `disabled` or `failed`,
+  and a new production session also cannot select `mocked`. Preserves the
+  documented distinction that an already-pinned session may continue after a
+  later `disabled` revision,
+  without permitting a new or replacement session. Discovery and catalog
+  availability values are explicitly non-authoritative prefilters or UI
+  hints and cannot establish, refute, or override the signed pinned result.
+  Production/non-production mode is trusted local operator policy, never a
+  counterparty or protocol-artifact input. Replaces the non-existent runner
+  claim with a deterministic Ed25519 vector generator and executable CI
+  evaluator covering 28 cases over complete signed `RailDefinition` documents,
+  including mocked, disabled new/in-flight behavior, stale and forged
+  definitions, missing authority, signed-scope mutation, untrusted mode input,
+  and contradictory discovery hints.
+
 ### Added — DACS-4 v0.6
 
 - **Signed settlement-event identity — SB-1/SB-2 repair** (§9.3, §9.5.2, §9.5.3, §9.5.7, §9.5.8; #315) — adds distinct `evm-event`, `solana-instruction`, and `x402-event` `ChainTxRef` arms so the event/instruction coordinate that produces the SB-1 uniqueness key is inside the signed `SettlementEvidence` scope. Current producers must emit the applicable event-level arm and verifiers independently match its asset, payer, agreement-authorized payee, signed `paymentAmount`, and receipt context against authenticated ledger data before projection. They must also compare the complete PC-2 address tuple against signed `jobId`, the authenticated agreement/phase rail, and the authenticated `BundlePhaseEntry.index`; a valid evidence signature or outer receipt cannot substitute for this check. The legacy `evm`, `solana`, and `x402` arms remain byte-stable read/replay shapes: exactly one independently matching event permits projection, no match fails, and unavailable or multiple matches remain `indeterminate`; unsigned caller/indexer coordinates never disambiguate them. Adds deterministic, genuinely signed vectors for EVM, Solana, current and legacy x402 receipt/event reconciliation, batched transfers, cross-job reuse, signed-amount mismatch, full-address tuple mismatch and CF-4 encoding, malformed/missing indexes, ledger mismatch/unavailability, legacy ambiguity, discriminator stripping, and cross-type signature replay.

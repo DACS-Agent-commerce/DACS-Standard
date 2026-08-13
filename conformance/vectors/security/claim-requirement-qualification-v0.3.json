@@ -6,11 +6,13 @@
   "recipeRegistries": [
     {
       "recipeRegistryVersion": 7,
-      "latestByScheme": { "domain": 4, "key": 2 }
+      "latestByScheme": { "domain": 4, "key": 2 },
+      "latestByFamily": { "domain": { "domain-tls-control": 4 }, "key": { "self-signed": 2 } }
     },
     {
       "recipeRegistryVersion": 8,
-      "latestByScheme": { "domain": 4, "key": 3 }
+      "latestByScheme": { "domain": 4, "key": 3 },
+      "latestByFamily": { "domain": { "domain-tls-control": 4 }, "key": { "self-signed": 3 } }
     }
   ],
   "publicKeys": {
@@ -116,7 +118,7 @@
       "results": [{ "ref": { "anchor": { "kind": "storage-program", "locator": "dacs2:verify-result:job-crq-001:key" }, "contentHash": "26caa227bebf58a7d7eb113953f05609cce893ab33c9b7579c3d43c266b26a43", "recipeVersion": 2 }, "result": { "resultVersion": "1", "scheme": "key", "identifier": "did:demos:seller", "recipeVersion": 2, "method": "self-signed", "decision": "pass", "reason": "synthetic possession proof verified", "attestation": { "anchor": { "kind": "storage-program", "locator": "dacs2:attestation:job-crq-001:key" }, "contentHash": "8888888888888888888888888888888888888888888888888888888888888888", "signer": "did:demos:buyer" }, "data": { "possessionVerified": true }, "fetchedAt": 1750000004000, "verifiedAt": 1750000005000, "validUntil": 1750000065000, "signature": { "algorithm": "ed25519", "signer": "did:demos:buyer", "value": "1PnOzmJzcqAbQoRuEauBsnp94Xd60ZJdP4ECbSGlTr0uunoVKTCYLjGwx6Pu43OYpXEwXDthfSdTtkAtYfL8Cg" } } }]
     }
   },
-  "hash": "4fc1bac76dce97a5205bf38699182f4424d8c89fb97fd40334c2a5479b7d7449",
+  "hash": "d4963dde91a13f402ef8396fcf6adacd91e41d57772f560ad4f6ffe0bc99b706",
   "count": 28,
   "vectors": [
     {
@@ -128,7 +130,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
       }
     },
     {
@@ -140,7 +142,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
       }
     },
     {
@@ -152,7 +154,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -165,8 +167,8 @@
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [
-          { "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } },
-          { "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }
+          { "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } },
+          { "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }
         ]
       }
     },
@@ -179,7 +181,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1749999999999, "data": { "possessionVerified": true } }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1749999999999, "data": { "possessionVerified": true } }]
       }
     },
     {
@@ -191,7 +193,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000000000, "data": { "possessionVerified": true } }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000000000, "data": { "possessionVerified": true } }]
       }
     },
     {
@@ -203,7 +205,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": false } }]
       }
     },
     {
@@ -215,7 +217,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
       }
     },
     {
@@ -227,7 +229,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true, "proofId": "fixture-proof-1" } }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true, "proofId": "fixture-proof-1" } }]
       }
     },
     {
@@ -244,7 +246,7 @@
             { "scheme": "key", "verificationRequired": true, "recipeVersion": 3, "maxAge": 10, "parameters": { "hardwareBacked": true } }
           ]
         },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }]
       }
     },
     {
@@ -256,7 +258,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [], "oneOf": [[{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2 }]] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -275,8 +277,8 @@
           ]]
         },
         "resolvedResults": [
-          { "scheme": "key", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 },
-          { "scheme": "domain", "decision": "pass", "recipeVersion": 4, "verifiedAt": 1750000005000, "data": { "domainControl": true } }
+          { "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 1, "verifiedAt": 1750000005000 },
+          { "scheme": "domain", "method": "domain-tls-control", "decision": "pass", "recipeVersion": 4, "verifiedAt": 1750000005000, "data": { "domainControl": true } }
         ]
       }
     },
@@ -289,7 +291,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "error", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "error", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -301,7 +303,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": {} }]
       }
     },
     {
@@ -313,7 +315,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1749999999999 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "indeterminate", "recipeVersion": 2, "verifiedAt": 1749999999999 }]
       }
     },
     {
@@ -326,8 +328,8 @@
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true, "recipeVersion": 2, "maxAge": 10, "parameters": { "possessionVerified": true } }] },
         "resolvedResults": [
-          { "scheme": "domain", "decision": "fail", "recipeVersion": 4, "verifiedAt": 1750000005000 },
-          { "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }
+          { "scheme": "domain", "method": "domain-tls-control", "decision": "fail", "recipeVersion": 4, "verifiedAt": 1750000005000 },
+          { "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000, "data": { "possessionVerified": true } }
         ]
       }
     },
@@ -340,7 +342,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -352,7 +354,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v999", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 999, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 999 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -364,7 +366,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 7, "sessionContext": { "jobId": "job-crq-OTHER", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -376,7 +378,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 8, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -388,7 +390,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "production", "sessionStart": "job-crq-001-v7", "vetInput": { "jobId": "job-crq-001", "recipeRegistryVersion": 8, "sessionContext": { "jobId": "job-crq-001", "recipeRegistryVersion": 8 } } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 3, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 3, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -400,7 +402,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -412,7 +414,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7-tampered-signature", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -424,7 +426,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "sessionRecord": { "jobId": "job-crq-001", "recipeRegistryVersion": 7 } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -436,7 +438,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-OTHER-v8", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -448,7 +450,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-alternate-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:alternate" }, "contentHash": "ec4bfd0d23a0d6809cf9ae21a1c9f20a219ce625b273cd04fcf2a2a634d4eaeb", "signer": "did:demos:buyer" } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -460,7 +462,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
         "requirement": { "required": [{ "scheme": "key", "verificationRequired": true }] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 3, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 3, "verifiedAt": 1750000005000 }]
       }
     },
     {
@@ -472,7 +474,7 @@
         "recordJobId": "job-crq-001",
         "aggregationAuthority": { "kind": "replay", "bundle": "job-crq-001-v7", "record": "job-crq-001-record", "recordRef": { "anchor": { "kind": "storage-program", "locator": "dacs2:composite:job-crq-001:did%3Ademos%3Aseller" }, "contentHash": "4b23b27aaa7607422893a98371822bdf04da6a472fc07cdb3679ad979ab4e51b", "signer": "did:demos:buyer" } },
         "requirement": { "required": [] },
-        "resolvedResults": [{ "scheme": "key", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
+        "resolvedResults": [{ "scheme": "key", "method": "self-signed", "decision": "pass", "recipeVersion": 2, "verifiedAt": 1750000005000 }]
       }
     }
   ]

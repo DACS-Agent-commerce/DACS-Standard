@@ -219,21 +219,28 @@ def resolve_authenticated_registry(
         return None
     if registry.get("recipeRegistryVersion") != registry_version:
         return None
-    if not isinstance(registry.get("latestByScheme"), dict):
+    if not isinstance(registry.get("latestByFamily"), dict):
         return None
     return registry
 
 
-def applicable_results(input_data, claim_requirement, latest_by_scheme):
-    expected_version = claim_requirement.get("recipeVersion")
-    if expected_version is None:
-        expected_version = latest_by_scheme.get(claim_requirement["scheme"])
-    if expected_version is None:
-        return []
-
+def applicable_results(input_data, claim_requirement, registry):
+    explicit_version = claim_requirement.get("recipeVersion")
+    required_method = claim_requirement.get("parameters", {}).get("verificationMethod")
+    latest_by_family = registry.get("latestByFamily", {})
     results = []
     for result in input_data["resolvedResults"]:
         if result["scheme"] != claim_requirement["scheme"]:
+            continue
+        result_method = result.get("method")
+        if required_method is not None and result_method != required_method:
+            continue
+        expected_version = explicit_version
+        if expected_version is None and result_method is not None:
+            expected_version = latest_by_family.get(claim_requirement["scheme"], {}).get(
+                result_method
+            )
+        if expected_version is None:
             continue
         if result["recipeVersion"] != expected_version:
             continue
@@ -247,6 +254,10 @@ def applicable_results(input_data, claim_requirement, latest_by_scheme):
 
 def parameters_match(result, claim_requirement):
     for key, expected in claim_requirement.get("parameters", {}).items():
+        if key == "verificationMethod":
+            if result.get("method") != expected:
+                return False
+            continue
         if key not in result.get("data", {}):
             return False
         if canonical_json(result["data"][key]) != canonical_json(expected):
@@ -254,7 +265,7 @@ def parameters_match(result, claim_requirement):
     return True
 
 
-def classify_required(input_data, claim_requirement, latest_by_scheme):
+def classify_required(input_data, claim_requirement, registry):
     same_scheme = [
         result
         for result in input_data["resolvedResults"]
@@ -262,7 +273,7 @@ def classify_required(input_data, claim_requirement, latest_by_scheme):
     ]
     if not same_scheme:
         return "fail"
-    results = applicable_results(input_data, claim_requirement, latest_by_scheme)
+    results = applicable_results(input_data, claim_requirement, registry)
     if not results:
         return "fail"
     if any(result["decision"] == "pass" and parameters_match(result, claim_requirement) for result in results):
@@ -274,19 +285,29 @@ def classify_required(input_data, claim_requirement, latest_by_scheme):
     return "indeterminate"
 
 
-def evaluate(input_data, vector_set, **authority_options):
+def evaluate(input_data, vector_set, *, caller_requirement=None, **authority_options):
     registry = resolve_authenticated_registry(input_data, vector_set, **authority_options)
     if registry is None:
         return "error"
-    latest_by_scheme = registry["latestByScheme"]
+    authority = input_data["aggregationAuthority"]
+    if authority["kind"] == "production":
+        # In these fixtures input.requirement is VetCredentialsInput.requirement.
+        # A separate caller projection is deliberately ignored in production.
+        requirement = input_data["requirement"]
+    else:
+        requirement = caller_requirement if caller_requirement is not None else input_data["requirement"]
+        replay_input = copy.deepcopy(input_data)
+        replay_input["requirement"] = requirement
+        if not verify_replay_record(replay_input, authority, vector_set):
+            return "error"
 
     decisions = [
-        classify_required(input_data, claim_requirement, latest_by_scheme)
-        for claim_requirement in input_data["requirement"].get("required", [])
+        classify_required(input_data, claim_requirement, registry)
+        for claim_requirement in requirement.get("required", [])
     ]
-    for group in input_data["requirement"].get("oneOf", []):
+    for group in requirement.get("oneOf", []):
         applicable_by_member = [
-            (claim_requirement, applicable_results(input_data, claim_requirement, latest_by_scheme))
+            (claim_requirement, applicable_results(input_data, claim_requirement, registry))
             for claim_requirement in group
         ]
         if any(
@@ -334,10 +355,94 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         claim_requirement = vector["input"]["requirement"]["required"][0]
         registry = resolve_authenticated_registry(vector["input"], self.data)
         self.assertIsNotNone(registry)
-        applicable = applicable_results(vector["input"], claim_requirement, registry["latestByScheme"])
+        applicable = applicable_results(vector["input"], claim_requirement, registry)
         self.assertEqual([result["recipeVersion"] for result in applicable], [2])
         self.assertEqual(evaluate(vector["input"], self.data), "fail")
         self.assertTrue(parameters_match(vector["input"]["resolvedResults"][0], claim_requirement))
+
+    def test_production_requirement_comes_only_from_vet_input(self):
+        vector = next(
+            vector
+            for vector in self.data["vectors"]
+            if vector["name"] == "vet-claim-requirement-exact-match-pass"
+        )
+        self.assertEqual(evaluate(vector["input"], self.data), "pass")
+        self.assertEqual(
+            evaluate(
+                vector["input"],
+                self.data,
+                caller_requirement={
+                    "required": [
+                        {
+                            "scheme": "missing-scheme",
+                            "verificationRequired": True,
+                        }
+                    ]
+                },
+            ),
+            "pass",
+            "a separate caller projection must not substitute for VetCredentialsInput.requirement",
+        )
+
+    def test_recipe_family_and_method_are_part_of_applicability(self):
+        registry = {
+            "recipeRegistryVersion": 7,
+            "latestByScheme": {"key": 2},
+            "latestByFamily": {"key": {"self-signed": 2, "oauth-attested": 5}},
+        }
+        input_data = {
+            "generatedAt": 1750000010000,
+            "resolvedResults": [
+                {
+                    "scheme": "key",
+                    "method": "oauth-attested",
+                    "decision": "pass",
+                    "recipeVersion": 5,
+                    "verifiedAt": 1750000005000,
+                    "data": {
+                        "possessionVerified": True,
+                        "verificationMethod": "self-signed",
+                    },
+                }
+            ],
+        }
+        claim_requirement = {
+            "scheme": "key",
+            "verificationRequired": True,
+            "maxAge": 10,
+            "parameters": {
+                "possessionVerified": True,
+                "verificationMethod": "self-signed",
+            },
+        }
+        self.assertEqual(
+            applicable_results(input_data, claim_requirement, registry),
+            [],
+            "a method named inside result data cannot substitute for VerifyResult.method",
+        )
+        input_data["resolvedResults"][0]["method"] = "self-signed"
+        input_data["resolvedResults"][0]["recipeVersion"] = 2
+        self.assertEqual(
+            applicable_results(input_data, claim_requirement, registry),
+            input_data["resolvedResults"],
+        )
+        input_data["resolvedResults"][0]["method"] = "unregistered-method"
+        claim_requirement["parameters"]["verificationMethod"] = "unregistered-method"
+        self.assertEqual(
+            applicable_results(input_data, claim_requirement, registry),
+            [],
+            "a family-aware snapshot must not fall back to a scheme-wide version",
+        )
+
+    def test_registry_without_exact_family_metadata_fails_closed(self):
+        vector = next(
+            vector
+            for vector in self.data["vectors"]
+            if vector["name"] == "vet-claim-requirement-exact-match-pass"
+        )
+        vector_set = copy.deepcopy(self.data)
+        vector_set["recipeRegistries"][0].pop("latestByFamily")
+        self.assertEqual(evaluate(vector["input"], vector_set), "error")
 
     def test_authority_failures_are_executable(self):
         expected = {
@@ -394,6 +499,19 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         material["results"] = []
         input_data["resolvedResults"] = []
         self.assertFalse(verify_replay_record(input_data, authority, vector_set))
+        self.assertEqual(evaluate(input_data, vector_set), "error")
+
+        vector_set = copy.deepcopy(self.data)
+        input_data = copy.deepcopy(vector["input"])
+        authority = input_data["aggregationAuthority"]
+        material = vector_set["replayRecords"][authority["record"]]
+        material["results"].append(copy.deepcopy(material["results"][0]))
+        input_data["resolvedResults"].append(copy.deepcopy(input_data["resolvedResults"][0]))
+        self.assertFalse(
+            verify_replay_record(input_data, authority, vector_set),
+            "a committed result cannot be resolved twice",
+        )
+        self.assertEqual(evaluate(input_data, vector_set), "error")
 
     def test_signed_bundle_replay_is_executable(self):
         vector = next(
@@ -404,6 +522,22 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         registry = resolve_authenticated_registry(vector["input"], self.data)
         self.assertEqual(registry["recipeRegistryVersion"], 7)
         self.assertEqual(evaluate(vector["input"], self.data), "pass")
+        self.assertEqual(
+            evaluate(
+                vector["input"],
+                self.data,
+                caller_requirement={
+                    "required": [
+                        {
+                            "scheme": "missing-scheme",
+                            "verificationRequired": True,
+                        }
+                    ]
+                },
+            ),
+            "error",
+            "replay must reject a requirement whose hash is not committed by the record",
+        )
 
     def test_replay_bundle_binding_mutations_are_killed(self):
         vectors = {vector["name"]: vector for vector in self.data["vectors"]}
@@ -456,11 +590,16 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         composite_type = text.split("type CompositeVerificationRecord = {", 1)[1].split("}", 1)[0]
         self.assertNotIn("recipeRegistryVersion", composite_type)
         self.assertIn("vetInput.recipeRegistryVersion != vetInput.sessionContext.recipeRegistryVersion", text)
+        self.assertIn("requirement := vetInput.requirement", text)
         self.assertIn("orchestrator-owned active `SessionContext`", text)
         self.assertIn("verifiedBundle.vetRecords does not contain recordRef", text)
         self.assertIn("sha256(CORE-canonical(requirement)) != record.requirementHash", text)
         self.assertIn("An unsigned `SessionRecord` MUST NOT supply replay authority", text)
-        self.assertIn("An omitted `ClaimRequirement.recipeVersion` therefore does not disable version qualification.", text)
+        self.assertIn(
+            "An omitted `ClaimRequirement.recipeVersion` therefore does not disable family-aware version qualification.",
+            text,
+        )
+        self.assertIn("The resolved set MUST correspond one-to-one", text)
 
 
 if __name__ == "__main__":

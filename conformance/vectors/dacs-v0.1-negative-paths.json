@@ -49,7 +49,10 @@
           ],
           "deliverable": {
             "kind": "attested-payload",
-            "payloadFormat": "application/json"
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
           }
         },
         "buyerRequirement": {
@@ -103,10 +106,17 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
-          "value": "Q297HkA6lk97I8EhxHsWy/HOmmD9H0twmZiZHLjNaCk5zSw+lERqM4OVFeg9RaN6MvN4+8UamzCtCErKxc+EBQ=="
+          "value": "eXw8XpICZUHierYG2zdyFuru6LU0zbtbCf7V9uCpfhfKNb3JwbrVK28DZxBn5RJy3ojM6_PgbxYDQNEW2CG2BA"
         }
       },
-      "contentHash": "sha256:c5685dae0d9246524e93358d52c5b13c2df0aba837755f862f1f1e7dc55d2171"
+      "contentHash": "sha256:9bc81f795ad72632c28ad284531a86a669b89e9d4a2ed5776a491398ef32a77f",
+      "signatureChecks": [
+        {
+          "path": "signature",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-composite-verify-cci",
@@ -147,10 +157,17 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
-          "value": "HlcHuKJjPKurUzMkFO1ssW0Vjb8oaNb6KMkUC1W+mHY9d2pQSpMGO8YyOTeA8KWh33A/WB60aidaSFOkjlVmBw=="
+          "value": "HlcHuKJjPKurUzMkFO1ssW0Vjb8oaNb6KMkUC1W-mHY9d2pQSpMGO8YyOTeA8KWh33A_WB60aidaSFOkjlVmBw"
         }
       },
-      "contentHash": "sha256:f9214f4c11486b772c53a36109f2a2cf1714f8391c8217cb2e8b32e06e3f5f75"
+      "contentHash": "sha256:c2ba1a5b094b15878e2ad905b39973eff67f2a31b189293c656d3ed619ffd629",
+      "signatureChecks": [
+        {
+          "path": "signature",
+          "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-agreement-fixed-price",
@@ -167,7 +184,7 @@
         "listingRef": {
           "listingId": "lst-regen-0001",
           "version": 1,
-          "contentHash": "c5685dae0d9246524e93358d52c5b13c2df0aba837755f862f1f1e7dc55d2171"
+          "contentHash": "9bc81f795ad72632c28ad284531a86a669b89e9d4a2ed5776a491398ef32a77f"
         },
         "parties": [
           {
@@ -179,7 +196,7 @@
                 "kind": "storage-program",
                 "locator": "demos:vet:regen-lifecycle-0001"
               },
-              "contentHash": "f9214f4c11486b772c53a36109f2a2cf1714f8391c8217cb2e8b32e06e3f5f75"
+              "contentHash": "c2ba1a5b094b15878e2ad905b39973eff67f2a31b189293c656d3ed619ffd629"
             }
           },
           {
@@ -191,14 +208,14 @@
                 "kind": "storage-program",
                 "locator": "demos:vet:regen-lifecycle-0001"
               },
-              "contentHash": "f9214f4c11486b772c53a36109f2a2cf1714f8391c8217cb2e8b32e06e3f5f75"
+              "contentHash": "c2ba1a5b094b15878e2ad905b39973eff67f2a31b189293c656d3ed619ffd629"
             }
           }
         ],
         "terms": {
           "deliverable": {
             "deliverableType": "attested-payload",
-            "hash": "cbf76de0db9ceaa7dec0c01a51162fb549feeb5c15314dacb36f122d0dab177c"
+            "hash": "ba3cc4b40cb6f8d164ae7a983a699505f3014da7fffbe6c392d6090e778719b0"
           },
           "price": {
             "amount": "1.5",
@@ -216,16 +233,28 @@
           {
             "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
             "algorithm": "ed25519",
-            "value": "5qkUWrUicWm9CI+SbVRhqPJytAfK7W6ur8ItnSC6SNTGNAgdQENs8KuttLXeQ9aZRpR/YFn+mM59eYz/Dy4RDQ=="
+            "value": "sWzw60ty-MrXrnqR4f4vFVKAeAqBO-l38EE0trHsawYzcO9FK4xytKUhK9EydZlh0aEwst_gYw_vjy3FealHDw"
           },
           {
             "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
             "algorithm": "ed25519",
-            "value": "XrsqEnaqfXvaDU4eOe+RVqUJaCLUJgkap012A04QpRJlfZuTrpSXTB2FgvdIOnOy7ma2O36SnEaFc095mZbzAQ=="
+            "value": "DQZE58OmWi69EU9HtKsngqpHOQlVef78S9xZHpdTHv13HiE1YSjs3jZCPqUGO6ikfUj27e6NOJ-2N_IA9YrDAw"
           }
         ]
       },
-      "contentHash": "sha256:5f8cde1dbee73e80b636bcb361b2d762cf994570d934322607eb7bce1c43bd84"
+      "contentHash": "sha256:0d97cc86b2efb5ab70ae6bb439f6e2e8aeffb6e4af72c10e2e0b40a673710228",
+      "signatureChecks": [
+        {
+          "path": "signatures[0]",
+          "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "expect": "verify"
+        },
+        {
+          "path": "signatures[1]",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-settlement-tampered-preimage",
@@ -260,10 +289,17 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
-          "value": "KK9NYX305GfIw5C06Fo7A/v+K8+bU2srvrwjZwlyjiIdnYVHern6U0zkAeCYaytFqmXPaP7EfxRPCnJxIJMcDQ=="
+          "value": "KK9NYX305GfIw5C06Fo7A_v-K8-bU2srvrwjZwlyjiIdnYVHern6U0zkAeCYaytFqmXPaP7EfxRPCnJxIJMcDQ"
         }
       },
-      "contentHash": "sha256:d0eac0ec7e29e0b9cef0f2a9094ecb9792084624ace24a24319472fd1fc0e7dc"
+      "contentHash": "sha256:da3383a8ef2dc44a6a9f6b703221566c04b817aff60a34db093b3bb942d81b9b",
+      "signatureChecks": [
+        {
+          "path": "signature",
+          "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "expect": "verify"
+        }
+      ]
     },
     {
       "id": "neg-bundle-tampered-signature",
@@ -282,7 +318,7 @@
         "listingRef": {
           "listingId": "lst-regen-0001",
           "version": 1,
-          "contentHash": "c5685dae0d9246524e93358d52c5b13c2df0aba837755f862f1f1e7dc55d2171"
+          "contentHash": "9bc81f795ad72632c28ad284531a86a669b89e9d4a2ed5776a491398ef32a77f"
         },
         "parties": [
           {
@@ -317,16 +353,28 @@
           {
             "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
             "algorithm": "ed25519",
-            "value": "AMO2HZWJzw0mBg2b97wIZ5i43dgcD2AwR1zRibJcF0D8LGq9rgsXj2fl1tXSuav+sxoqHOD76fkMe7UN6z6MDA=="
+            "value": "rIfHjV20JwK_y31vWaU2V_F1itmpgykxi8uGtTldDhqDqeIUggs-cS6b0xkGaaRPIWJSvZYjqcVDqvroZ_hLBg"
           },
           {
             "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
             "algorithm": "ed25519",
-            "value": "zvROXaqMGgcsktn/C4ILeW+fXRj59Sj19LwzQTtfRGyR3BSVaEzjTZFH2xugaHmYSeEOu2gsc8F4c7BmNMjrCQ=="
+            "value": "399ijshT88kCdQgOUIBP2IZwfTgvWvoCJUVkxlvXNLLnCsZYPHUJlUxEhePjoJMoKhj70dc4kWShq03ehvAGAA"
           }
         ]
       },
-      "contentHash": "sha256:18e51de7a5f4a9fc4ab8d7777241f90c9ec7078bb104ff8b690106600e2a64b4"
+      "contentHash": "sha256:cb8756ff512c43488e9d51e1fb1efeb20f45af4b577460dad71c03d489a19f54",
+      "signatureChecks": [
+        {
+          "path": "signatures[0]",
+          "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+          "expect": "fail"
+        },
+        {
+          "path": "signatures[1]",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+          "expect": "verify"
+        }
+      ]
     }
   ],
   "expectedResult": {
@@ -335,7 +383,7 @@
       {
         "artifactId": "neg-settlement-tampered-preimage",
         "stage": "DACS-4",
-        "reason": "verifyHtlcSettlementEvidence → fail (reveal preimage replaced; no longer hashes to hashlock, signature breaks)"
+        "reason": "verifyHtlcSettlementEvidence → fail (reveal preimage replaced; no longer hashes to hashlock). The embedded ed25519 signature over the §B.2 scope still verifies — this is an HTLC-semantics failure, not executed by this structural validator (see signatureChecks for the executed layer)."
       },
       {
         "artifactId": "neg-bundle-tampered-signature",

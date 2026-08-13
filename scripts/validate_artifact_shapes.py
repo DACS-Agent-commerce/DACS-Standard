@@ -74,13 +74,24 @@ _ATTESTATION_ANCHOR_KINDS = {"storage-program", "ipfs", "https"}
 # closed arm field sets here and pin them against an executable vector set.
 _CHAIN_TX_REF_ARMS: dict[str, tuple[set[str], set[str]]] = {
     "evm": ({"kind", "chainId", "txHash"}, set()),
+    "evm-event": ({"kind", "chainId", "txHash", "logIndex"}, set()),
     "solana": ({"kind", "cluster", "signature"}, set()),
+    "solana-instruction": (
+        {"kind", "cluster", "signature", "instructionIndex"}, set()
+    ),
     "demos": ({"kind", "txHash"}, {"blockNumber"}),
     "storage-program": ({"kind", "address", "writeTxHash"}, set()),
     "ap2": ({"kind", "mandateId", "providerRef", "protocolVersion"}, {"receiptAttestation"}),
     "x402": (
         {"kind", "httpResource", "paymentReceiptHash", "protocolVersion"},
         {"settlementTxHash", "chainId"},
+    ),
+    "x402-event": (
+        {
+            "kind", "httpResource", "paymentReceiptHash", "settlementTxHash",
+            "chainId", "logIndex", "protocolVersion",
+        },
+        set(),
     ),
     "htlc-lock": ({"kind", "chainId", "contractAddress", "lockTxHash"}, set()),
     "htlc-reveal": ({"kind", "chainId", "contractAddress", "revealTxHash"}, set()),
@@ -226,7 +237,7 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
 
     int_fields = {
         "chainId", "blockNumber", "sourceChainId", "destChainId",
-        "recoveryDeadline",
+        "recoveryDeadline", "logIndex", "instructionIndex",
     }
     for field in required | optional:
         if field not in value or field == "kind" or field == "receiptAttestation":
@@ -239,7 +250,7 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
                 f"{ctx}: `{path}.{field}` MUST be a "
                 f"{'number' if expected is int else 'non-empty string'}"
             )
-    if kind == "solana" and value.get("cluster") not in {"mainnet", "devnet", "testnet"}:
+    if kind in {"solana", "solana-instruction"} and value.get("cluster") not in {"mainnet", "devnet", "testnet"}:
         errors.append(f"{ctx}: `{path}.cluster` MUST be mainnet, devnet, or testnet")
     if "receiptAttestation" in value:
         check_attestation_ref(value["receiptAttestation"], ctx, errors, f"{path}.receiptAttestation")

@@ -1,246 +1,1339 @@
 {
   "set": "rail-availability-selection-v0.1",
-  "spec": "DACS-4 \u00a79.4.4 (RAV-R1/R2/R3/R5)",
+  "spec": "DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6)",
   "gaps": [
-    "#13 rail-availability-poisoning"
+    "#13 rail-availability-poisoning",
+    "#325 executable availability gate"
   ],
-  "decisionModel": "\u00a77.5.1 4-value, never collapsed",
-  "hash": "7b7056f679676964e804f5af19b661d0aab589ace995d1589bc3740e2499699d",
-  "count": 15,
+  "decisionModel": "§7.5.1 4-value, never collapsed",
+  "fixtureProfile": {
+    "purpose": "availability decision with complete RailDefinition authentication",
+    "signedScope": "complete RailDefinition with only signature omitted; unknown members preserved",
+    "canonicalization": "RFC 8785 JCS via scripts/jcs.py",
+    "digest": "sha256(canonical complete unsigned RailDefinition)",
+    "signature": "RailSignature.algorithm=ed25519; value is unpadded Base64URL Ed25519(dacs-rail:v1: || lowercase-hex digest)",
+    "productionContext": "trusted local-operator-policy input; counterparty and discovery hints are non-authoritative",
+    "generator": "scripts/generate_rail_availability_selection_vectors.py"
+  },
+  "hash": "eb80a8b4eb950ffc46fc92f51fc7d15390dbdc662b4b40122f76f46c32d4d45d",
+  "count": 28,
   "vectors": [
     {
       "name": "live-signed-pinned",
       "expected": "pass",
-      "note": "live + steward-signed + matches the pinned def \u2192 selectable",
+      "note": "live, steward-signed and pinned is selectable",
       "rail": {
-        "railId": "pay-x402",
-        "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6ee9039a7c02d736bda13e67b08af4d506716813e6d967dc6e4a6dd126d084d7d00a8d2fe886d998f99ec95027685b22b95f5105e02e78f88c8206497d00dd0e"
+        "railId": "x402:default",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "ZBP5QIfnThgzE32JRAzRGBst8lWacpvUh0oXWDYAD5XEETeRQXE8NNHOVJKHxKE-WYf1SwyAHOfe-T3w7-mQCA"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "048b86e003e6aa9a63b0f8cca09eb6f861e2d03f98c8d04d8c3a301e8e270cd5",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "disabled-signed",
       "expected": "fail",
-      "note": "RAV-R2: disabled MUST NOT be selected",
+      "note": "RAV-R2: disabled cannot start a new session",
       "rail": {
-        "railId": "pay-old",
+        "railVersion": 2,
+        "railId": "x402:revision-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
         "availability": "disabled",
-        "railVersion": 1,
-        "stewardSig": "46d5871697fd66115ef9616b6ce84b676392000940ef3663572ef35a990655dfe8043363a8477fcdee83b9ebb2f06ff2dbab9997094b5b75e47cfa303d32450b"
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 2,
+          "anchoring": "single-signer",
+          "supersedes": 1
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "HlippWIjAJIBawULrerkQ1NNi5jsRYBeTiwgGCm_Fr9az6jWFzh5--ETZeq3Z1w_UTUT6DAUkbPyj2Ikn-ozCw"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "2bc5c9522f906d627772c6e81b9ac75f47930b1ea8f030c35729b2b65fa96834"
+        "pinnedRailDigest": "9f462b4e4fffaf6f5436a7f97c5d91e5d3135edbf4afc8d063884482d71c19f8",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "disabled-signed-non-production",
+      "expected": "fail",
+      "note": "RAV-R2: disabled cannot start a non-production session",
+      "rail": {
+        "railVersion": 2,
+        "railId": "x402:revision-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "disabled",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 2,
+          "anchoring": "single-signer",
+          "supersedes": 1
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "HlippWIjAJIBawULrerkQ1NNi5jsRYBeTiwgGCm_Fr9az6jWFzh5--ETZeq3Z1w_UTUT6DAUkbPyj2Ikn-ozCw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "9f462b4e4fffaf6f5436a7f97c5d91e5d3135edbf4afc8d063884482d71c19f8",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": false
+        }
+      }
+    },
+    {
+      "name": "disabled-pinned-in-flight",
+      "expected": "fail",
+      "note": "RAV-R2: an already-disabled definition is not a lawful in-flight pin",
+      "rail": {
+        "railVersion": 2,
+        "railId": "x402:revision-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "disabled",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 2,
+          "anchoring": "single-signer",
+          "supersedes": 1
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "HlippWIjAJIBawULrerkQ1NNi5jsRYBeTiwgGCm_Fr9az6jWFzh5--ETZeq3Z1w_UTUT6DAUkbPyj2Ikn-ozCw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "9f462b4e4fffaf6f5436a7f97c5d91e5d3135edbf4afc8d063884482d71c19f8",
+        "sessionState": "in-flight",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "disabled-after-pin-in-flight",
+      "expected": "pass",
+      "note": "RAV-R2: an in-flight session retains its pinned live definition after a later disabled revision",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:revision-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "0BiN8J4ts79rM-79F1_OU2eszu_LPeXNa5oNHSg_QoZ_Ch5XnuiuWYgO7Ha5ZKw-D6sBTTTwov7JvX3iBsHpCA"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "0b31269fa775917f112789dea4c8815c0e2bf3849a4fcceef4a50b6e72f38b6b",
+        "sessionState": "in-flight",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        },
+        "laterRegistryRailDefinition": {
+          "railVersion": 2,
+          "railId": "x402:revision-test",
+          "railType": "x402",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x0000000000000000000000000000000000000001",
+            "symbol": "USDC",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/pay"
+          },
+          "phaseHandler": "pay-x402",
+          "parameters": {
+            "authorization": "eip-3009"
+          },
+          "availability": "disabled",
+          "governance": {
+            "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "acceptedAt": 2,
+            "anchoring": "single-signer",
+            "supersedes": 1
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "value": "HlippWIjAJIBawULrerkQ1NNi5jsRYBeTiwgGCm_Fr9az6jWFzh5--ETZeq3Z1w_UTUT6DAUkbPyj2Ikn-ozCw"
+          }
+        }
       }
     },
     {
       "name": "failed-signed",
       "expected": "fail",
-      "note": "RAV-R2: failed (network/asset path broken) MUST NOT be selected",
+      "note": "RAV-R2: failed cannot start a new session",
       "rail": {
-        "railId": "pay-evm",
-        "availability": "failed",
         "railVersion": 1,
-        "stewardSig": "1b3aabc95f737380600fe1bd281b5f4d5a0e2e3ed6145bc9dd4731018b4d04f4dae334cb6fc4eaec1f02032f39a928ea81e24a7638b3f7a6d2ba0e1275364e04"
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "failed",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "9f8KHjn0SsI7hH1gZ3d62IkVuPvCql4HdYhTL_Mim5wc01S7121gznMGQZxozMwG4hvFasYyYNVAkCikiGucCQ"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "97a44a124bc639a2c4c1ba25dd9609fbdd78491cbb7f9e159d73fee5a6ea5ea0"
+        "pinnedRailDigest": "31b11455aff159b1eef897f4ad39c5d68c08fa6724a6aaea0beb4389aabf11d4",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "failed-signed-non-production",
+      "expected": "fail",
+      "note": "RAV-R2: failed cannot start a non-production session",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "failed",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "9f8KHjn0SsI7hH1gZ3d62IkVuPvCql4HdYhTL_Mim5wc01S7121gznMGQZxozMwG4hvFasYyYNVAkCikiGucCQ"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "31b11455aff159b1eef897f4ad39c5d68c08fa6724a6aaea0beb4389aabf11d4",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": false
+        }
+      }
+    },
+    {
+      "name": "failed-pinned-in-flight",
+      "expected": "fail",
+      "note": "RAV-R2: an already-failed definition is not a lawful in-flight pin",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "failed",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "9f8KHjn0SsI7hH1gZ3d62IkVuPvCql4HdYhTL_Mim5wc01S7121gznMGQZxozMwG4hvFasYyYNVAkCikiGucCQ"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "31b11455aff159b1eef897f4ad39c5d68c08fa6724a6aaea0beb4389aabf11d4",
+        "sessionState": "in-flight",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "mocked-signed",
       "expected": "fail",
-      "note": "RAV-R1: mocked is a stub, MUST NOT be treated as live",
+      "note": "RAV-R2: mocked cannot be selected for production",
       "rail": {
-        "railId": "pay-ap2",
-        "availability": "mocked",
         "railVersion": 1,
-        "stewardSig": "494dacc6dfae27dfd1d8ce813931602b1808f0e463c5cd7248bdd78df19c5b2f7dc0983602d215d2d3a084fb13cb690219264459f8c8b301fb3fd7c439e4400d"
+        "railId": "x402:mock-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "pmxcYd-Mlek3WaCkuW1LXrw0DoaLdB4Mgv46ULw_BM1TokxCZDhbH6I9TTAWRnyT08rX1t7JL11lNQDCcBurBw"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "46b1ddd17969f2f30c558d69eca352a1b53e830f77c792954026983a6153efb9"
+        "pinnedRailDigest": "0b880cd5d12022432c0176434a930291244b2b46f078fc9e8831019c63490943",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
+      }
+    },
+    {
+      "name": "mocked-signed-non-production",
+      "expected": "pass",
+      "note": "RAV-R2: mocked remains selectable for development or testing",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:mock-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "pmxcYd-Mlek3WaCkuW1LXrw0DoaLdB4Mgv46ULw_BM1TokxCZDhbH6I9TTAWRnyT08rX1t7JL11lNQDCcBurBw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "0b880cd5d12022432c0176434a930291244b2b46f078fc9e8831019c63490943",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": false
+        }
+      }
+    },
+    {
+      "name": "mocked-production-context-missing",
+      "expected": "error",
+      "note": "production context is required before mocked selection",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:mock-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "pmxcYd-Mlek3WaCkuW1LXrw0DoaLdB4Mgv46ULw_BM1TokxCZDhbH6I9TTAWRnyT08rX1t7JL11lNQDCcBurBw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "0b880cd5d12022432c0176434a930291244b2b46f078fc9e8831019c63490943",
+        "sessionState": "new"
+      }
+    },
+    {
+      "name": "mocked-production-context-string",
+      "expected": "error",
+      "note": "string production context cannot authorize mocked selection",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:mock-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "pmxcYd-Mlek3WaCkuW1LXrw0DoaLdB4Mgv46ULw_BM1TokxCZDhbH6I9TTAWRnyT08rX1t7JL11lNQDCcBurBw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "0b880cd5d12022432c0176434a930291244b2b46f078fc9e8831019c63490943",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": "true"
+        }
+      }
+    },
+    {
+      "name": "mocked-production-context-integer",
+      "expected": "error",
+      "note": "integer production context cannot authorize mocked selection",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:mock-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "pmxcYd-Mlek3WaCkuW1LXrw0DoaLdB4Mgv46ULw_BM1TokxCZDhbH6I9TTAWRnyT08rX1t7JL11lNQDCcBurBw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "0b880cd5d12022432c0176434a930291244b2b46f078fc9e8831019c63490943",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": 1
+        }
+      }
+    },
+    {
+      "name": "mocked-production-context-untrusted-source",
+      "expected": "error",
+      "note": "counterparty-controlled context cannot establish non-production mode",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:mock-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "pmxcYd-Mlek3WaCkuW1LXrw0DoaLdB4Mgv46ULw_BM1TokxCZDhbH6I9TTAWRnyT08rX1t7JL11lNQDCcBurBw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "0b880cd5d12022432c0176434a930291244b2b46f078fc9e8831019c63490943",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "counterparty",
+          "production": false
+        }
+      }
+    },
+    {
+      "name": "mocked-counterparty-non-production-override",
+      "expected": "fail",
+      "note": "a counterparty hint cannot override trusted production mode",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:mock-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "mocked",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "pmxcYd-Mlek3WaCkuW1LXrw0DoaLdB4Mgv46ULw_BM1TokxCZDhbH6I9TTAWRnyT08rX1t7JL11lNQDCcBurBw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "0b880cd5d12022432c0176434a930291244b2b46f078fc9e8831019c63490943",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        },
+        "counterpartyProductionHint": false
       }
     },
     {
       "name": "operator_gated-no-preflight",
       "expected": "fail",
-      "note": "RAV-R3: operator_gated without preflight \u2192 not selectable",
+      "note": "RAV-R3: operator_gated requires operator preflight",
       "rail": {
-        "railId": "pay-ap2",
-        "availability": "operator_gated",
         "railVersion": 1,
-        "stewardSig": "c13093d11c95de5ca7d880c930e2406d54be25077a45c44389a54bc4a7d51b004ab3f721cc8d77f9bee381229224b1a3f98938c2d48c35f3082300bbf68e4603"
+        "railId": "x402:gated-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "operator_gated",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "3wUZxXvpY9mnI4apt8RpLB44S9dDmvDIeEie_QuR1agMNBBR84kfoBl7rZan_IEFXm0rHISWW9_f64rcpbzPDQ"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "ec3b6902a6ba1fb55a066b482ad308f1b5b28d606aad938cd0fe80d7914da75e"
+        "pinnedRailDigest": "fb450df31970eb3a1b60cc4b8614a1d7d67fcb2adf398e463e6d797701935cb0",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "operator_gated-with-preflight",
       "expected": "pass",
-      "note": "RAV-R3: operator_gated WITH preflight satisfied \u2192 selectable",
+      "note": "RAV-R3: operator_gated with preflight is selectable",
       "rail": {
-        "railId": "pay-ap2",
-        "availability": "operator_gated",
         "railVersion": 1,
-        "stewardSig": "c13093d11c95de5ca7d880c930e2406d54be25077a45c44389a54bc4a7d51b004ab3f721cc8d77f9bee381229224b1a3f98938c2d48c35f3082300bbf68e4603"
+        "railId": "x402:gated-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "operator_gated",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "3wUZxXvpY9mnI4apt8RpLB44S9dDmvDIeEie_QuR1agMNBBR84kfoBl7rZan_IEFXm0rHISWW9_f64rcpbzPDQ"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": true,
-        "pinnedRailDigest": "ec3b6902a6ba1fb55a066b482ad308f1b5b28d606aad938cd0fe80d7914da75e"
+        "pinnedRailDigest": "fb450df31970eb3a1b60cc4b8614a1d7d67fcb2adf398e463e6d797701935cb0",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "closed_data-no-preflight",
       "expected": "fail",
-      "note": "RAV-R3: closed_data without preflight \u2192 not selectable",
+      "note": "RAV-R3: closed_data requires operator preflight",
       "rail": {
-        "railId": "pay-perm",
-        "availability": "closed_data",
         "railVersion": 1,
-        "stewardSig": "ebf4d26d8e64c9a5c16226b7acc04392cac0ee7db64027cbf09f7305520eb2dd7686bebc24918a79f5ed88e23b5a043ae51412101afd00810d42059eb274e104"
+        "railId": "x402:closed-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "closed_data",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "IQU9TrBHKRjNQiWRbbuS7vKmfMXIntNgWH3pyoB0Ta5dnaOlBXvk8iHg8QdLxiP3Qbjn1wXjQEPEPZ-nXlNPDg"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "c3c9f78f1d7e8c47c47525798e70b7e447132b5958c8bbd47d5f04acc9817219"
+        "pinnedRailDigest": "603c9f8ad42c70bbcfd2cb60c8b9ac252c7029a2e2f04388ac64fcda1eca4c92",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "bilateral-with-preflight",
       "expected": "pass",
-      "note": "RAV-R3: bilateral WITH per-relationship agreement in place \u2192 selectable",
+      "note": "RAV-R3: bilateral with preflight is selectable",
       "rail": {
-        "railId": "pay-bilat",
-        "availability": "bilateral",
         "railVersion": 1,
-        "stewardSig": "e4fd0a81199bf000ac78bced4b7fb0e5ed00d82fcfead8fd0af7557dba8e11e0cf858afa9f3042784f4756b2f6fed5c8a935aad1cec3314d9e4dc6808856600c"
+        "railId": "x402:bilateral-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "bilateral",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "ASijKiz8K0e3ChaV2xLgX6aZWxqnD2KGryznVwCwf4s7ah6ip5fvX_p5WDhZySI4YfvtxT9fxjLycfz6CrCoAA"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": true,
-        "pinnedRailDigest": "549eb37340dae1ae08da02696b4a43a6c20dd96a2d81739f0f940236e9ba5ec1"
+        "pinnedRailDigest": "593a40ff966103b9bf426c6eb1757d29b860a6973184bacb1c166d8275a5f40f",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "poison-live-bad-signer",
       "expected": "fail",
-      "note": "RAV-R5: \"live\" claimed but signed by a non-steward key \u2014 unauthenticated, MUST NOT select",
+      "note": "RAV-R5: attacker-signed live value is not authoritative",
       "rail": {
-        "railId": "pay-x402",
-        "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6e35f81b47728af93b216c213ce2719004d8892fa8de154220ef1c64e8de357d4445dbec3f5b3eb46fd1af51c072abb3e6fdb42743f24fbdcbbf456eca97690b"
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+          "value": "m7YLDMfxkgqOpbRB7pwOk8nyrPSTSNZph8g7FR4N3UdFXJYf3EzoVH-KI-1Ug9rR4FdzphF_xD4teEQpsK-6Dg"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "8fa3702fe7bb050d199e5b612b83164e340fd70c1db6dcfb55d4b0f94479c23d",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "poison-live-unsigned",
       "expected": "fail",
-      "note": "RAV-R5: unsigned/counterparty-supplied copy claiming live \u2014 MUST NOT trust",
+      "note": "RAV-R5: unsigned live value is not authoritative",
       "rail": {
-        "railId": "pay-x402",
+        "railVersion": 1,
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
         "availability": "live",
-        "railVersion": 1
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "8fa3702fe7bb050d199e5b612b83164e340fd70c1db6dcfb55d4b0f94479c23d",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "stale-cached-signed-copy",
       "expected": "fail",
-      "note": "RAV-R5: an old steward-signed \"live\" v1, superseded by a pinned \"failed\" v2 \u2014 valid signature, but NOT the pinned/anchored def \u2192 MUST NOT steer selection",
+      "note": "RAV-R5: a valid stale live definition cannot replace the pinned failed revision",
       "rail": {
-        "railId": "pay-evm",
-        "availability": "live",
         "railVersion": 1,
-        "stewardSig": "4085d891f008775376b4097e175f734f9814234220d199bcbec1ebe5495155a0069b2d70e7918c2215f99f98367d2b0e5992fff3dc2fbb981104faa2d4ffe50c"
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "ec4dLndNpOa6RS5EJvsfk7KIZ1j13Uo87StIvN82yv8LLCkF6YTHFGUPLPFBW5SP8NcHTV2d4czX5ioctbBbBw"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "6f0af338fe02eba666baf59ed15d51ec3253a695d4707a153639faa75eb2e19d"
+        "pinnedRailDigest": "93836e5272c424fd32a6c422c3aa8ee14102c934ebc3fd4766de73cfd1a11592",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "steward-key-unresolvable",
       "expected": "indeterminate",
-      "note": "cannot authenticate the rail def \u2192 undecidable (NOT fail, NOT pass)",
+      "note": "RAV-R5: unavailable steward authority is indeterminate",
       "rail": {
-        "railId": "pay-x402",
-        "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6ee9039a7c02d736bda13e67b08af4d506716813e6d967dc6e4a6dd126d084d7d00a8d2fe886d998f99ec95027685b22b95f5105e02e78f88c8206497d00dd0e"
+        "railId": "x402:default",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "ZBP5QIfnThgzE32JRAzRGBst8lWacpvUh0oXWDYAD5XEETeRQXE8NNHOVJKHxKE-WYf1SwyAHOfe-T3w7-mQCA"
+        }
       },
       "ctx": {
-        "stewardPub": null,
+        "stewardClaim": null,
+        "stewardPublicKey": null,
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "e8c75483436f323904f46cece4f9b3eae1f1c89fba60849dc003063c48422c56"
+        "pinnedRailDigest": "048b86e003e6aa9a63b0f8cca09eb6f861e2d03f98c8d04d8c3a301e8e270cd5",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "no-pin-context-signed-live",
       "expected": "indeterminate",
-      "note": "RAV-R5: valid steward signature but NO pinned/anchored reference to compare \u2192 cannot confirm authoritative \u2192 indeterminate (never a silent pass)",
+      "note": "RAV-R5: a signed copy without an authoritative pin is indeterminate",
       "rail": {
-        "railId": "pay-x402",
-        "availability": "live",
         "railVersion": 1,
-        "stewardSig": "6ee9039a7c02d736bda13e67b08af4d506716813e6d967dc6e4a6dd126d084d7d00a8d2fe886d998f99ec95027685b22b95f5105e02e78f88c8206497d00dd0e"
+        "railId": "x402:default",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "ZBP5QIfnThgzE32JRAzRGBst8lWacpvUh0oXWDYAD5XEETeRQXE8NNHOVJKHxKE-WYf1SwyAHOfe-T3w7-mQCA"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
-        "operatorPreflightOk": false
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": null,
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        },
+        "discoveryAvailabilityHint": "live"
+      }
+    },
+    {
+      "name": "mirror-live-hint-authoritative-failed",
+      "expected": "fail",
+      "note": "LRR-6/RAV-R5: a live discovery hint cannot override authoritative failed",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "failed",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "9f8KHjn0SsI7hH1gZ3d62IkVuPvCql4HdYhTL_Mim5wc01S7121gznMGQZxozMwG4hvFasYyYNVAkCikiGucCQ"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "31b11455aff159b1eef897f4ad39c5d68c08fa6724a6aaea0beb4389aabf11d4",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        },
+        "discoveryAvailabilityHint": "live"
+      }
+    },
+    {
+      "name": "mirror-failed-hint-authoritative-live",
+      "expected": "pass",
+      "note": "LRR-6/RAV-R5: a failed discovery hint cannot override authoritative live",
+      "rail": {
+        "railVersion": 1,
+        "railId": "x402:failure-test",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "ec4dLndNpOa6RS5EJvsfk7KIZ1j13Uo87StIvN82yv8LLCkF6YTHFGUPLPFBW5SP8NcHTV2d4czX5ioctbBbBw"
+        }
+      },
+      "ctx": {
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
+        "operatorPreflightOk": false,
+        "pinnedRailDigest": "8fa3702fe7bb050d199e5b612b83164e340fd70c1db6dcfb55d4b0f94479c23d",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        },
+        "discoveryAvailabilityHint": "failed"
       }
     },
     {
       "name": "malformed-rail",
       "expected": "error",
-      "note": "missing availability \u2014 verifier-side parse error",
+      "note": "missing availability and railVersion is malformed",
       "rail": {
-        "railId": "pay-x402"
+        "railId": "x402:default"
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "83c7b9e5865a9a013cc7f64a2ab843a5a347650a4d0147532fa6728e20d4141f"
+        "pinnedRailDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     },
     {
       "name": "unknown-availability-value",
       "expected": "error",
-      "note": "availability not in the \u00a79.4.4 enum \u2192 error",
+      "note": "an unknown availability value is malformed",
       "rail": {
-        "railId": "pay-x402",
-        "availability": "banana",
         "railVersion": 1,
-        "stewardSig": "69f9f85472c6d3a11103c7211898fd9ab83cb936e56021c01ce60fddecaf4e62b9d9d4e3f5eb7b9c84bd0f0230548de96f237031169c7bb01d30fc50ba3a0b02"
+        "railId": "x402:default",
+        "railType": "x402",
+        "asset": {
+          "kind": "erc20",
+          "chainId": 8453,
+          "contract": "0x0000000000000000000000000000000000000001",
+          "symbol": "USDC",
+          "decimals": 6
+        },
+        "network": {
+          "kind": "x402-resource",
+          "resourceBaseUrl": "https://seller.example/pay"
+        },
+        "phaseHandler": "pay-x402",
+        "parameters": {
+          "authorization": "eip-3009"
+        },
+        "availability": "experimental",
+        "governance": {
+          "proposedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "acceptedAt": 1,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "value": "sHhmqhZ7YJZEBOKUrgEHhZGFomAfU5EZRigYr3pgXuVgfkKJ9ia5_hlsH82R1CR0kyjQa42LnNs4m4UiWdJwCA"
+        }
       },
       "ctx": {
-        "stewardPub": "8ca63145907a2e6c5fb3dc0791c0189b8252da3e4143704b3b2ca4e526f25dd1",
+        "stewardClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "stewardPublicKey": "GYEU1VmReeUm-qsE8DxTM2duALgnel6jiL5Epuc_qIg",
         "operatorPreflightOk": false,
-        "pinnedRailDigest": "704482b24ea6b7e293005245b8627a8be41656bc642ba8da88e17e9d734c06c5"
+        "pinnedRailDigest": "d6945dbd292b99b8578e0c470ad25f7c720977786aaaff58180af906c4271a54",
+        "sessionState": "new",
+        "operatorContext": {
+          "source": "local-operator-policy",
+          "production": true
+        }
       }
     }
   ]

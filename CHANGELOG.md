@@ -42,6 +42,48 @@ The format used per release:
   signature algorithms.
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
+### Fixed — DACS-1 / DACS-4 rail availability
+
+- **Production rail selection and authoritative hints** (DACS-1 §6.3.4
+  LRR-6; DACS-4 §9.4.4 RAV-R1..RAV-R5; #325) — makes the existing mocked-rail
+  prohibition executable: no new session can select `disabled` or `failed`,
+  and a new production session also cannot select `mocked`. Preserves the
+  documented distinction that an already-pinned session may continue after a
+  later `disabled` revision,
+  without permitting a new or replacement session. Discovery and catalog
+  availability values are explicitly non-authoritative prefilters or UI
+  hints and cannot establish, refute, or override the signed pinned result.
+  Production/non-production mode is trusted local operator policy, never a
+  counterparty or protocol-artifact input. Replaces the non-existent runner
+  claim with a deterministic Ed25519 vector generator and executable CI
+  evaluator covering 28 cases over complete signed `RailDefinition` documents,
+  including mocked, disabled new/in-flight behavior, stale and forged
+  definitions, missing authority, signed-scope mutation, untrusted mode input,
+  and contradictory discovery hints.
+
+### Added — DACS-4 v0.6
+
+- **Signed settlement-event identity — SB-1/SB-2 repair** (§9.3, §9.5.2, §9.5.3, §9.5.7, §9.5.8; #315) — adds distinct `evm-event`, `solana-instruction`, and `x402-event` `ChainTxRef` arms so the event/instruction coordinate that produces the SB-1 uniqueness key is inside the signed `SettlementEvidence` scope. Current producers must emit the applicable event-level arm and verifiers independently match its asset, payer, agreement-authorized payee, signed `paymentAmount`, and receipt context against authenticated ledger data before projection. They must also compare the complete PC-2 address tuple against signed `jobId`, the authenticated agreement/phase rail, and the authenticated `BundlePhaseEntry.index`; a valid evidence signature or outer receipt cannot substitute for this check. The legacy `evm`, `solana`, and `x402` arms remain byte-stable read/replay shapes: exactly one independently matching event permits projection, no match fails, and unavailable or multiple matches remain `indeterminate`; unsigned caller/indexer coordinates never disambiguate them. Adds deterministic, genuinely signed vectors for EVM, Solana, current and legacy x402 receipt/event reconciliation, batched transfers, cross-job reuse, signed-amount mismatch, full-address tuple mismatch and CF-4 encoding, malformed/missing indexes, ledger mismatch/unavailability, legacy ambiguity, discriminator stripping, and cross-type signature replay.
+
+### Fixed — DACS-2 v0.5
+
+- **Method-conditional recipe parsing** (DACS-2 §7.4.1 PRA-1..PRA-5 and
+  §7.6; #318) — makes `Recipe.parserRules` optional at the wire level but
+  normatively required whenever a recipe declares a parser-consuming method.
+  Native-only recipe authors must omit it and the steward must reject new
+  submissions that carry it, while readers ignore any such member regardless
+  of value so they need no unverifiable historical-version operand. Mixed
+  recipes carry one ParserSpec shared unchanged by every parser-consuming
+  member; authors and stewards reject combinations whose authenticated outputs
+  require different parsers, which instead use distinct recipe families. A
+  method-native selection skips it completely. Missing or invalid required
+  parsers and unknown methods fail before invocation or external side effects.
+  `VerifyResult.data` may be sourced from authenticated method-native output or
+  ParserSpec extraction.
+  Adds executable vectors covering all nine registered methods, inert native
+  parser compatibility (including `null` and a parser result that contradicts
+  the native result), invalid required presence, mixed-method selection, a
+  three-parser-method shared-rule invariant, and unknown selection.
 
 ### Added — DACS-1 v0.6 / DACS-2 v0.4
 
@@ -88,14 +130,60 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
+  replaces the stale `verify-consume-one-sided` manifest hash after the
+  normative reference-shape migration, binds manifest regeneration to the
+  regenerated signed fixture, and refreshes the lifecycle manifest/trace
+  pins. Adds a regression test that verifies both the exact bundle hash and
+  its deterministic Ed25519 signature. No normative protocol rule changes.
+- **Preserve-unknown Listing fixture aligned with DPA-1** (CORE SIG-5;
+  DACS-4 §9.6.3 DPA-1; #323) — adds an explicit supported `self-signed`
+  verification method to both signed Listings, then deterministically
+  regenerates their artifact hashes and Ed25519 signatures. The executable
+  suite now evaluates signature validity, phase support, and DPA-1 eligibility
+  before comparing each vector's declared overall Listing disposition. No
+  normative protocol rule changes.
+- **Lifecycle-vector content hash corrected to the §B.2 canonical form** (CORE
+  §B.2 / §B.7, DACS-5 §10.4.1; #278) — `scripts/validate_conformance_vectors.py`
+  hashed each artifact whole, signature included, via `json.dumps`, so no
+  published vector exercised the §B.2 canonical-form hash of a *signed* artifact
+  (an implementer could be §B.2-correct yet fail, or §B.2-wrong yet pass). The
+  validator now canonicalises with a vendored stdlib-only module (`scripts/jcs.py`)
+  implementing RFC 8785 (JCS) for the JSON subset DACS lifecycle artifacts occupy —
+  integers |n| ≤ 2⁵³−1, strings, literals, arrays, objects; non-integral numbers
+  are rejected fail-closed (no normative DACS rule forbids them, but the corpus is
+  float-free (executed) and refusing beats emitting a possibly-nonconformant ES6
+  serialisation). It hashes the signature-omitted scope via an explicit per-kind
+  hash-excluded-field table (`signature` / `signatures`; bundles also omit
+  `anchoredByRole` per §10.4.1). It additionally verifies every embedded ed25519
+  signature over the §B.7 domain-separated payload (registry-validated separator ‖
+  lowercase-hex artifact hash) and pins each result two-way in a new per-artifact
+  `signatureChecks` field, so `neg-bundle-tampered-signature` stays discriminated
+  even though its tamper lives entirely in the §B.2-omitted field (under the
+  corrected hash it is byte-identical to the happy bundle). The 10 envelope
+  `contentHash` values were regenerated with `--write`; the embedded signatures
+  already committed to the §B.2 hash, so no re-signing was needed. The
+  `json.dumps` → JCS switch changes no byte on this all-ASCII, float-free corpus
+  (pinned by an executed per-artifact equivalence test). Per CF-1's literal "every
+  JSON string value", NFC is applied to string values only; member names are
+  serialised and UTF-16-sorted as received (matching the in-repo `nfc_deep`
+  precedent) — whether CF-1 also binds member names is a spec-clarification
+  candidate, not resolved here.
+  Residual: the signed internal cross-references
+  (`listingRef` / `vetRecordRef` `contentHash`) still commit to the legacy
+  whole-artifact hashes and cannot be corrected in place without the external
+  signing keys — tracked in #313; these fixtures MUST NOT be used as
+  reference-resolution vectors until regenerated generator-side. No normative
+  protocol rule changes.
 - **Artifact reference oracle regenerated** (DACS-2 §7.5.2, DACS-4 §9.3,
   DACS-5 §10.4.1; #308) — replaces legacy `{kind,id,contentHash}`
   `AttestationRef` objects in every shared bundle fixture position with
   `{anchor:{kind,locator},contentHash,signer?}`, replaces legacy
   `{rail,txHash,kind}` transaction references with the applicable
   `ChainTxRef` arm, and deterministically re-hashes/re-signs the affected
-  bundle and settlement fixtures. Adds a 19-case exact-shape suite covering
-  all three attestation anchor kinds and all eleven transaction-reference
+  bundle and settlement fixtures. Adds an exact-shape suite, extended by #315
+  to 23 cases, covering all three attestation anchor kinds and all fourteen
+  transaction-reference
   discriminators, including nested AP2 receipt attestations and negative
   legacy forms. The manifest gains two golden executable cases but retains
   `dacsVersion: "0.1"` because that is the full-profile baseline identifier,

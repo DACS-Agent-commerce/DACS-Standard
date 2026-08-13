@@ -6,6 +6,8 @@
 
 **Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.7** on the common DACS v0.1 baseline. v0.7 adds target-signed `SessionParticipationAdmission` and SPA-1..SPA-8 for exact source-backed obligation, authenticated receipt lifecycle, independently verified timeout outcome, and completed-rate-phase admission. v0.6 applies DACS-4 legacy-agreement era admission (including exclusive legacy-transition evidence), consumes DACS-3 `SealedSelectionAgreementDocument` with SAC-8 receipt reproduction, and adds authenticated business-outcome occurrence for reputation windows. v0.5 participates in the CORE §11.1.2 pre-v1 corrective boundary, applies JID-1..JID-4 to session and bundle resolution, makes the §10.4.2 bundle-address preimage byte-exact, and makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission; it is not live-compatible with a pre-JID-1 profile. v0.4 added `audit-pending`, finalized/resolvable dependency admission, `EvidenceBoundFaultAttestationBundle`, and distinct settlement-verified derivations while preserving released v0.3 derivation semantics. v0.3 added payee-bound Agreement consumption, signed `BundleBinding`, and `FaultAttestationBundle`. **Depends on:** SR-1 for cross-substrate primary-claim keying and SR-2 for bundle anchoring; composes with ERC-8004 as an OPTIONAL publication surface. **Used by:** subsequent DACS-1 reputation lookups and external auditors.
 
+The optional Atomic Work candidate defines role anchoring independently of the outer submitter and preserves the idempotent audit-finalisation tail; it does not change the current DACS-5 version or activate the capability.
+
 **Unallocated compatibility proposals (#391/#392).** The finality-bound bundle,
 pointer, legacy activation artifacts, and coordinated current-use derivation below
 are candidate additive types. They do not allocate a DACS-5 minor or alter any
@@ -160,7 +162,12 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
   - **Precedence.** A cancellation is a deliberate party action and ranks **with** abort (ST-3), above the ST-9 timeout: a party electing to cancel within an open deadline does so as a party decision, not a timeout. `with-fee` cancellation — a cancellation owing a fee after `commit-completed` — is **not defined** here; only the `pre-commit` case is honoured, and a `with-fee` value confers no neutrality.
 
 - (ST-11) **Completed-bundle audit gate.** After the last successful settle/rate step, the session enters `audit-pending`; it does not enter `finalised` merely because commercial performance is complete. During `audit-pending`, the producer MUST:
-  1. obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for every required DACS-2 composite record, the DACS-3 commitment, and every DACS-4 settlement/delivery evidence record;
+  1. obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for every
+     required DACS-2 composite record, the DACS-3 commitment, and every DACS-4
+     settlement/delivery evidence record, including each
+     `AtomicSettlementEvidenceV1`; its referenced Work receipt and operation
+     proof establish the business effect but do not replace the Atomic evidence
+     artifact's own publication receipt;
   2. independently resolve each receipt's native address, recompute the referenced artifact's canonical content hash, and match its logical/session bindings;
   3. resolve the exact signed Listing and agreement, enforce their five-way
      commitment phase/artifact/domain dispatch, and for an identity-bound phase
@@ -762,6 +769,79 @@ Rules:
 
 > **Note (non-normative).** *Forward note.* A future SDK capability to anchor a StorageProgram at a caller-chosen address — or a Demos-native deterministic derivation hashing only the logical address — would restore the pure-mapping case and let consumers resolve without the published binding, exactly as anticipated for listings in §6.3.4. Until then BB-1..BB-8 govern.
 
+**Atomic Work role anchoring and audit tail (normative).** The optional CORE
+§5.2 profile separates the DACS role that authorizes an operation from the
+outer account that transports the Work. That separation applies to every
+role-specific SR-2 anchor used by DACS-5 whose operation kind is admitted by a
+versioned Work profile, including a bundle copy whose native transaction is
+submitted or fee-funded by another party.
+
+Atomic v1 itself admits no DACS-5 bundle-anchor operation. The
+`dacs-purchase-v1` and `dacs-completion-v1` operation lists are closed by
+DACS-3 §8.6.1, and a completed bundle depends on the finalized receipts for
+those Works. The Completion delivery anchor is therefore not a DACS-5 bundle
+copy. A current-v1 producer MUST use the ordinary, idempotent ST-11 audit tail
+for the bundle. AWB-3 through AWB-7 specify the role attribution that a later,
+separately versioned and capability-advertised Work profile MUST preserve if it
+admits an exact bundle-anchor operation. They do not admit that operation into
+either current-v1 profile.
+
+- (AWB-1) A finalized `dacs-completion-v1` Work receipt proves only the
+  operations committed by that Work. It MUST NOT by itself satisfy ST-11,
+  produce a completed bundle, or authorize `audit-pending → finalised`.
+- (AWB-2) Before a completed bundle can pass ST-11, a verifier MUST
+  independently verify the finalized Purchase and Completion Work receipts,
+  their canonical `workId` bindings, winning attempts, finality evidence,
+  ordered operation leaves, and inclusion paths for every projected operation
+  on which the bundle depends.
+- (AWB-3) If an admitted Work profile carries an SR-2 bundle anchor attributed
+  to a DACS role, that anchor MUST be backed
+  by a valid CORE §5.2 operation authorization for that exact Work, operation,
+  role, signer, network, job, rail, and phase. The authorization signer MUST
+  equal the canonical primary claim of the party holding that role in the
+  signed agreement and bundle party map.
+- (AWB-4) The Work's outer submitter, fee payer, native transaction signer,
+  Storage Program deployer, or `AnchorReceipt.writer` MUST NOT establish
+  `anchoredByRole`, satisfy AWB-3, or replace the role holder's operation
+  authorization. A projected `AnchorReceipt.writer` MUST continue to record
+  the actual native writer even when that writer differs from the authorizing
+  role holder.
+- (AWB-5) A role-specific bundle copy, whether submitted directly, relayed in
+  the ordinary audit tail, or carried by a later admitted Work profile, MUST
+  still
+  satisfy the ordinary §10.4.1 signature rules, the `anchoredByRole`
+  cross-check, and BB-1..BB-8. On a write-input substrate its
+  `BundleBinding.signer` is the role holder. For a Work-carried copy this is
+  the same role holder established by AWB-3; a relayer signature does not
+  satisfy that field.
+- (AWB-6) The proof chain for a bundle anchor carried by a later admitted Work
+  profile MUST bind the complete proof chain without an unverified client
+  projection. That chain comprises the verified `BundleBinding`; its native
+  address and bundle content hash; the projected `AnchorReceipt`; the exact
+  `storage-program-put` operation leaf and inclusion path; the finalized Work
+  receipt; and that receipt's authoritative winning attempt. Every job, role,
+  logical address, native address, content hash, `workId`, and `operationId`
+  shared across those objects MUST match component-wise and type-strictly.
+- (AWB-7) Missing finality, winner, operation-inclusion, role-authorization,
+  or binding proof leaves the anchor `indeterminate`. A cryptographic failure
+  or contradictory binding MUST be rejected. Neither case MAY be converted to
+  a positive ST-11 result by an Indexer record, transport acknowledgement,
+  ordinary `not found`, or self-reported SDK status.
+- (AWB-8) The audit-finalisation tail MUST be idempotent. A retry MAY replay an
+  exact bundle or evidence anchor only after reconciling the last authenticated
+  lifecycle state and MUST preserve its canonical bytes, logical address, and
+  content hash.
+- (AWB-9) An audit-tail repair MUST NOT resubmit the Atomic Purchase Work,
+  reconstruct its payment as a new Work, invoke the legacy payment path, or
+  treat fee or nonce consumption as payment authority. It MAY resubmit a
+  payment only through a separately authorized refund, correction, or other
+  DACS-4 settlement operation whose semantics explicitly require a new value
+  transfer.
+- (AWB-10) A producer MUST keep the session in `audit-pending` until all
+  ordinary ST-11 dependencies and every applicable AWB-1 through AWB-9 check
+  are established. Atomic business execution shortens neither the DACS-5 audit
+  trail nor the independent-resolution requirement.
+
 Bundles MUST fit within the substrate’s storage-cap soft limit (128 KB on Demos Storage Programs).
 
 **Extended-pointer pattern for large sessions.** Sessions with extensive evidence (large transcripts, attestation chains, multi-party verifications, e.g. a sealed-envelope auction with 50 bidders’ commits and reveals) MAY exceed the size cap. In that case the bundle at the canonical address contains a pointer record:
@@ -881,7 +961,31 @@ A failed or aborted bundle MUST be produced when the session reaches its termina
 
 - all DACS-2 composite verification records;
 - the DACS-3 agreement (if any);
-- DACS-4 payment/delivery evidence — one entry per phase invocation that ran to an outcome and produced a qualifying SR-2 record, whether that record's outcome is success or failure. The field name remains `settlementEvidence[]` for wire compatibility, but current entries resolve to `SettlementEvidence` for payment and `DeliveryEvidence` for delivery. For a completed bundle the record is `finalized` and independently resolvable under ST-11; an EBFAB for a failed or aborted terminal requires an established `included` or `finalized` record under SEB-1. An ST-8-resolved cross-chain payment phase contributes exactly its `:resolved` success `SettlementEvidence`; its superseded interim failure record is reachable only through `supersedesEvidenceRef` and is not listed independently. If the ST-8 window expires unresolved, the interim `dest-revealed-source-unclaimed` or `tank-locked-unreleased` failure record stands as that phase's terminal evidence and IS the top-level member. Both parties' `settlementEvidence[]` arrays MUST contain the same applicable terminal members, so the two-sided copies stay canonically equal (§10.4.1). Every inner delivery dependency required by DACS-4 PDE-4/DPA-6 — deliverable, entitlement, credential, payload attestation, and method evidence as applicable — MUST carry authenticated receipt evidence keyed to its complete canonical reference and satisfying that terminal's lifecycle/finality gate. A successful `deliver-attested-payload` entry is valid only after its DACS-4 §9.6.3 `attestationRef` resolves through the complete DPA-3..DPA-9 chain (`PayloadAttestationRecord` → method evidence/native transaction → exact delivered payload hash); these transitive dependencies are required referenced artifacts for CORE §5.1 SR2-9 finalization/resolution and MUST NOT be replaced by either evidence signer's assertion;
+- DACS-4 payment/delivery evidence — one versioned `SettlementEvidence`,
+  `DeliveryEvidence`, or `AtomicSettlementEvidenceV1`, as selected by DACS-4
+  §9.7/§9.7.3, per phase
+  invocation that ran to an outcome and produced a qualifying SR-2 record,
+  whether that record's outcome is success or failure. For a completed bundle
+  the record is `finalized` and independently resolvable under ST-11; an EBFAB
+  for a failed or aborted terminal requires an established `included` or
+  `finalized` record under SEB-1. An ST-8-resolved cross-chain settle phase
+  contributes exactly its `:resolved` success record; its superseded interim
+  failure record is reachable only through `supersedesEvidenceRef` and is not
+  listed independently. If the ST-8 window expires unresolved, the interim
+  `dest-revealed-source-unclaimed` or `tank-locked-unreleased` failure record
+  stands as that phase's terminal evidence and IS the top-level member. Both
+  parties' `settlementEvidence[]` arrays MUST contain the same applicable
+  terminal members, so the two-sided copies stay canonically equal (§10.4.1).
+  Every inner delivery dependency required by DACS-4 PDE-4/DPA-6 — deliverable,
+  entitlement, credential, payload attestation, and method evidence as
+  applicable — MUST carry authenticated receipt evidence keyed to its complete
+  canonical reference and satisfying that terminal's lifecycle/finality gate. A
+  successful `deliver-attested-payload` entry is valid only after its DACS-4
+  §9.6.3 `attestationRef` resolves through the complete DPA-3..DPA-9 chain
+  (`PayloadAttestationRecord` → method evidence/native transaction → exact
+  delivered payload hash); these transitive dependencies are required
+  referenced artifacts for CORE §5.1 SR2-9 finalization/resolution and MUST
+  NOT be replaced by either evidence signer's assertion;
 - DACS-4 amendments (refunds);
 - DACS-5 ratings (if the rate phase ran).
 
@@ -1929,6 +2033,7 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run the unchanged SEB-1..SEB-6 contract on EBFAB before pair selection; apply LAA-1..LAA-7 era qualification to successful legacy-agreement payments for every bundle type, with historical-only and transition-only passes current-ineligible; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile old-only copies by EBFAB > FAB > legacy only after validity and non-divergence. Under the explicitly selected current-use contract, additionally require purpose-specific receipts and an exact verifier-owned buyer/seller roster, run LAB against the caller-requested substrate before BB-6 for each legacy candidate, require authenticated complete historical execution/evidence before treating a job as non-payment, run FV plus RSV/SB-3 for every successful payment, and apply finality-bound > EBFAB > FAB > legacy without weaker fallback. |
 | Reputation deriver | Select the exclusive output type before derivation and preserve every existing discriminator's algorithm and metrics. Apply LAA to successful legacy-agreement payments, with historical-only and transition-only current-ineligible. CUR-v1 keeps its original finalisedAt meaning; standalone AWT-v1 is a narrower post-reconciliation occurrence-window signal. For a current-use authenticated-window request, emit only `CurrentUseAuthenticatedWindowReputationDerivation`: validate every requested job under LAB/CUR, FV/RSV/SB/LAA/SAC as applicable, then AWT outcome occurrence, fail the whole request on any indeterminate job, retain outside-window jobs in complete replay context, and preserve finality classes. |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle; current-profile consumption additionally applies SPA-7 and verified completed-outcome occurrence |
+| Atomic audit-tail producer / verifier (optional) | AWB-1 through AWB-10; Completion alone is non-terminal; independently verify both Works and every dependent operation proof; preserve role authorization independently of submitter/writer identity; use ordinary v1 bundle anchoring and `BundleBinding`; make audit retries byte-identical and non-paying; retain `audit-pending` while proof is unavailable |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |
 
 ### 10.9 Rationale

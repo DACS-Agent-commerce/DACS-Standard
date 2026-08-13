@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-dacs-work-intent-v1.schema.json",
+  "title": "AtomicDacsWorkIntentV1",
+  "type": "object",
+  "required": [
+    "workVersion",
+    "executionProfile",
+    "profile",
+    "networkId",
+    "railId",
+    "jobId",
+    "phaseIndex",
+    "expiresAt",
+    "roleRoster",
+    "operations"
+  ],
+  "properties": {
+    "workVersion": { "const": "1" },
+    "executionProfile": { "type": "string", "minLength": 1 },
+    "profile": {
+      "enum": ["dacs-purchase-v1", "dacs-completion-v1"]
+    },
+    "networkId": { "type": "string", "minLength": 1 },
+    "railId": { "type": "string", "minLength": 1 },
+    "jobId": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "phaseIndex": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "expiresAt": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "priorFailureReceiptCommitment": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "roleRoster": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/roleBinding" }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/operation" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "role": {
+      "enum": ["buyer", "seller", "orchestrator", "payer"]
+    },
+    "operationKind": {
+      "enum": [
+        "assert-artifact",
+        "storage-program-put",
+        "payment-slot-cas",
+        "native-dem-transfer",
+        "assert-work-receipt"
+      ]
+    },
+    "roleBinding": {
+      "type": "object",
+      "required": ["role", "signer"],
+      "properties": {
+        "role": { "$ref": "#/$defs/role" },
+        "signer": { "type": "string", "minLength": 3 },
+        "nativeAccount": {
+          "description": "Signed expectation only. The execution profile independently derives and cross-checks this account from authenticated role and payment inputs; this member never establishes authority.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "operation": {
+      "type": "object",
+      "required": [
+        "operationId",
+        "kind",
+        "critical",
+        "dependsOn",
+        "requiredRoles",
+        "payload"
+      ],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,63}$"
+        },
+        "kind": { "$ref": "#/$defs/operationKind" },
+        "critical": { "const": true },
+        "dependsOn": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,63}$"
+          }
+        },
+        "requiredRoles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/role" }
+        },
+        "payload": { "type": "object" }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "assert-artifact" } } },
+          "then": {
+            "properties": {
+              "payload": { "$ref": "atomic-assert-artifact-payload-v1.schema.json" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "storage-program-put" } } },
+          "then": {
+            "properties": {
+              "payload": { "$ref": "atomic-storage-program-put-payload-v1.schema.json" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "payment-slot-cas" } } },
+          "then": {
+            "properties": {
+              "payload": { "$ref": "atomic-payment-slot-cas-payload-v1.schema.json" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "native-dem-transfer" } } },
+          "then": {
+            "properties": {
+              "payload": { "$ref": "atomic-native-dem-transfer-payload-v1.schema.json" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "assert-work-receipt" } } },
+          "then": {
+            "properties": {
+              "payload": { "$ref": "atomic-assert-work-receipt-payload-v1.schema.json" }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

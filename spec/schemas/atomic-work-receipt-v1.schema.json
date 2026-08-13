@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-work-receipt-v1.schema.json",
+  "title": "AtomicWorkReceiptV1",
+  "type": "object",
+  "required": [
+    "receiptVersion",
+    "executionProfile",
+    "profile",
+    "networkId",
+    "workId",
+    "winningAttempt",
+    "blockRef",
+    "outcome",
+    "operationResults",
+    "operationReceiptRoot",
+    "businessState",
+    "paymentSlot",
+    "slotStateEvidence",
+    "envelopeEffects",
+    "receiptCommitment",
+    "finalityEvidence"
+  ],
+  "properties": {
+    "receiptVersion": { "const": "1" },
+    "executionProfile": { "type": "string", "minLength": 1 },
+    "profile": {
+      "enum": ["dacs-purchase-v1", "dacs-completion-v1"]
+    },
+    "networkId": { "type": "string", "minLength": 1 },
+    "workId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "winningAttempt": {
+      "type": "object",
+      "required": ["attemptId", "nativeTransactionRef"],
+      "properties": {
+        "attemptId": { "type": "string", "minLength": 1 },
+        "nativeTransactionRef": { "$ref": "#/$defs/evidenceRef" }
+      },
+      "additionalProperties": true
+    },
+    "blockRef": {
+      "type": "object",
+      "required": ["id", "timestamp"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "height": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" },
+        "timestamp": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": true
+    },
+    "outcome": { "enum": ["committed", "rolled-back"] },
+    "failedOperationId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "operationResults": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/operationResult" }
+    },
+    "operationReceiptRoot": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "businessState": {
+      "type": "object",
+      "required": ["preRoot", "postRoot", "effectsRoot", "evidence"],
+      "properties": {
+        "preRoot": { "$ref": "#/$defs/hash" },
+        "postRoot": { "$ref": "#/$defs/hash" },
+        "effectsRoot": { "$ref": "#/$defs/hash" },
+        "evidence": { "$ref": "#/$defs/evidenceRef" }
+      },
+      "additionalProperties": true
+    },
+    "paymentSlot": {
+      "type": "object",
+      "required": ["key", "before", "after"],
+      "properties": {
+        "key": { "$ref": "#/$defs/paymentSlotKey" },
+        "before": { "$ref": "#/$defs/paymentSlotState" },
+        "after": { "$ref": "#/$defs/paymentSlotState" }
+      },
+      "additionalProperties": true
+    },
+    "slotStateEvidence": { "$ref": "#/$defs/evidenceRef" },
+    "envelopeEffects": {
+      "type": "object",
+      "required": ["nonceConsumed", "feeCharged"],
+      "properties": {
+        "nonceConsumed": { "type": "boolean" },
+        "feeCharged": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" }
+      },
+      "additionalProperties": true
+    },
+    "receiptCommitment": { "$ref": "#/$defs/hash" },
+    "finalityEvidence": { "$ref": "#/$defs/evidenceRef" }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": { "properties": { "outcome": { "const": "committed" } } },
+      "then": {
+        "not": { "required": ["failedOperationId"] },
+        "properties": {
+          "operationResults": {
+            "items": {
+              "properties": { "status": { "const": "committed" } }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "outcome": { "const": "rolled-back" } } },
+      "then": {
+        "required": ["failedOperationId"],
+        "properties": {
+          "operationResults": {
+            "items": {
+              "properties": {
+                "status": { "enum": ["rolled-back", "not-executed"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "profile": { "const": "dacs-purchase-v1" },
+          "outcome": { "const": "committed" }
+        }
+      },
+      "then": {
+        "properties": {
+          "paymentSlot": {
+            "properties": {
+              "after": { "$ref": "#/$defs/settledSlotState" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "profile": { "const": "dacs-purchase-v1" },
+          "outcome": { "const": "rolled-back" }
+        }
+      },
+      "then": {
+        "properties": {
+          "paymentSlot": {
+            "properties": {
+              "after": { "$ref": "#/$defs/rolledBackSlotState" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "profile": { "const": "dacs-completion-v1" } } },
+      "then": {
+        "properties": {
+          "paymentSlot": {
+            "properties": {
+              "before": { "$ref": "#/$defs/settledSlotState" },
+              "after": { "$ref": "#/$defs/settledSlotState" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "safeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "paymentSlotKey": {
+      "type": "object",
+      "required": ["networkId", "railId", "jobId", "phaseIndex"],
+      "properties": {
+        "networkId": { "type": "string", "minLength": 1 },
+        "railId": { "type": "string", "minLength": 1 },
+        "jobId": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "phaseIndex": { "$ref": "#/$defs/safeInteger" }
+      },
+      "additionalProperties": true
+    },
+    "vacantSlotState": {
+      "type": "object",
+      "required": ["state", "generation"],
+      "properties": {
+        "state": { "const": "vacant" },
+        "generation": { "$ref": "#/$defs/safeInteger" }
+      },
+      "additionalProperties": true
+    },
+    "inFlightSlotState": {
+      "type": "object",
+      "required": ["state", "generation", "workId", "conflictDigest"],
+      "properties": {
+        "state": { "const": "in-flight" },
+        "generation": { "$ref": "#/$defs/safeInteger" },
+        "workId": { "$ref": "#/$defs/hash" },
+        "conflictDigest": { "$ref": "#/$defs/hash" }
+      },
+      "additionalProperties": true
+    },
+    "settledSlotState": {
+      "type": "object",
+      "required": ["state", "generation", "workId", "conflictDigest", "receiptCommitment"],
+      "properties": {
+        "state": { "const": "settled" },
+        "generation": { "$ref": "#/$defs/safeInteger" },
+        "workId": { "$ref": "#/$defs/hash" },
+        "conflictDigest": { "$ref": "#/$defs/hash" },
+        "receiptCommitment": { "$ref": "#/$defs/hash" }
+      },
+      "additionalProperties": true
+    },
+    "rolledBackSlotState": {
+      "type": "object",
+      "required": ["state", "generation", "workId", "conflictDigest", "failureReceiptCommitment"],
+      "properties": {
+        "state": { "const": "rolled-back" },
+        "generation": { "$ref": "#/$defs/safeInteger" },
+        "workId": { "$ref": "#/$defs/hash" },
+        "conflictDigest": { "$ref": "#/$defs/hash" },
+        "failureReceiptCommitment": { "$ref": "#/$defs/hash" }
+      },
+      "additionalProperties": true
+    },
+    "paymentSlotState": {
+      "oneOf": [
+        { "$ref": "#/$defs/vacantSlotState" },
+        { "$ref": "#/$defs/inFlightSlotState" },
+        { "$ref": "#/$defs/settledSlotState" },
+        { "$ref": "#/$defs/rolledBackSlotState" }
+      ]
+    },
+    "evidenceRef": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "operationResult": {
+      "type": "object",
+      "required": [
+        "operationId",
+        "operationIndex",
+        "operationKind",
+        "inputHash",
+        "status"
+      ],
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,63}$"
+        },
+        "operationIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "operationKind": {
+          "enum": [
+            "assert-artifact",
+            "storage-program-put",
+            "payment-slot-cas",
+            "native-dem-transfer",
+            "assert-work-receipt"
+          ]
+        },
+        "inputHash": { "$ref": "#/$defs/hash" },
+        "status": { "enum": ["committed", "rolled-back", "not-executed"] },
+        "outputHash": { "$ref": "#/$defs/hash" },
+        "storageOutput": {
+          "type": "object",
+          "required": [
+            "logicalAddress",
+            "nativeAddress",
+            "contentHash",
+            "writer"
+          ],
+          "properties": {
+            "logicalAddress": { "type": "string", "minLength": 1 },
+            "nativeAddress": { "type": "string", "minLength": 1 },
+            "contentHash": { "$ref": "#/$defs/hash" },
+            "writer": { "type": "string", "minLength": 1 },
+            "nonce": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": true
+        },
+        "errorCode": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    }
+  }
+}

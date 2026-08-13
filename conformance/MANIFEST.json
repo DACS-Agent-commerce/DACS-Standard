@@ -172,6 +172,8 @@
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
+          "dacs-atomic-evidence:v1:",
+          "dacs-atomic-work-authorization:v1:",
           "dacs-auto-accept-commitment:v1:",
           "dacs-auto-accept-instance:v1:",
           "dacs-bundle-binding:v1:",

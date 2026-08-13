@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.6** (on the common DACS v0.1 baseline; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.7** (on the common DACS v0.1 baseline; v0.7 adds the Atomic `pay-dem` payment slot and structurally distinct Work-operation settlement evidence; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -12,9 +12,11 @@ DACS-4 specifies how value is exchanged and the deliverable provided once a DACS
 
 - A **payment rail registry** — a versioned, anchored set of payment rails. Each rail is a typed envelope identifying the chain or network, the asset, the settlement contract or protocol, and any rail-specific parameters.
 - A **closed set of payment phases** (DACS-4 phase types) — pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc, pay-cross-chain-liquidity-tank, pay-ap2, pay-x402, pay-dem. Each is a phase with a uniform PhaseHandlerResult shape.
-- A **closed set of delivery phases** — deliver-storage-program, deliver-entitlement, deliver-attested-payload. Each produces SettlementEvidence the rest of the stack consumes.
+- A **closed set of delivery phases** — deliver-storage-program, deliver-entitlement, deliver-attested-payload. Each produces the applicable versioned settlement-evidence artifact the rest of the stack consumes.
 - A **payload-attestation record** — a signed, addressable binding from exact delivered bytes and method-native proof to the job, committed agreement, DeliverableSpec, verification method, and immutable attempt number.
-- A **uniform SettlementEvidence shape** — the record produced by every payment and delivery phase; the substrate-anchored audit unit referenced by DACS-5.
+- A **uniform SettlementEvidence shape** — the legacy record produced by every non-Atomic payment and delivery phase; the substrate-anchored audit unit referenced by DACS-5.
+- A structurally distinct **AtomicSettlementEvidenceV1** shape for phases whose
+  authoritative settlement is one operation in an Atomic DACS Work.
 - A **cross-chain coordination layer** — atomic settlement primitives (HTLC, Liquidity Tank) so a payment on chain A and a delivery on chain B succeed together or not at all.
 
 Payment and delivery are decoupled: a listing’s pipeline composes one or more payment phases with one or more delivery phases, in any order the seller deems safe. The DACS-3 agreement document carries the chosen rail and deliverable references; DACS-4 phases consume them and produce evidence DACS-5 anchors.
@@ -324,6 +326,12 @@ dacs4:payment:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evm-erc20%3A8453%3AUSDC:3:resolved
 ```
 
 > **Note (non-normative).** The `phaseIndex` discriminator mirrors the entitlement `renewalSeq` and amendment `amendmentIndex` discipline.
+
+For a capability-gated CORE §5.2 `dacs-purchase-v1` `pay-dem` operation, the
+handler instead produces `AtomicSettlementEvidenceV1` under §9.7.3. It
+satisfies PC-2 through PC-7 using the Atomic address and type rules there; it
+MUST NOT also emit or reinterpret a legacy `SettlementEvidence` for the same
+operation.
 
 **(PC-3)** return a PhaseHandlerResult with `attestationRef` pointing to the evidence and `anchorReceipt` carrying its latest verified SR-2 lifecycle snapshot, except that both MAY be attached asynchronously under PC-7 after rail-final payment.
 
@@ -730,9 +738,123 @@ Native-DEM transfer on the Demos substrate: settle the agreed price in DEM direc
 
 **Trust model.** Settlement is secured by **Demos consensus itself** — a rotating validator shard under 2/3 BFT — i.e. "the operator is the substrate," not an external bridge, facilitator, or provider. Unlike every other v0.2 rail, `pay-dem` introduces no foreign-chain or third-party trust.
 
+#### 9.5.10 Atomic pay-dem payment slot
+
+The optional CORE §5.2 profile adds a consensus payment slot. The slot is
+separate from the PC-2 evidence address and from client orchestration state.
+
+```
+type AtomicPaymentSlotKeyV1 = {
+  networkId: string
+  railId: string
+  jobId: string
+  phaseIndex: number
+}
+
+type AtomicPaymentSlotStateV1 =
+  | { state: "vacant"; generation: number }
+  | {
+      state: "in-flight"
+      generation: number
+      workId: string
+      conflictDigest: string
+    }
+  | {
+      state: "settled"
+      generation: number
+      workId: string
+      conflictDigest: string
+      receiptCommitment: string
+    }
+  | {
+      state: "rolled-back"
+      generation: number
+      workId: string
+      conflictDigest: string
+      failureReceiptCommitment: string
+    }
+```
+
+- (AWS-1) The slot key MUST be the structured tuple `(networkId, railId,
+  jobId, phaseIndex)`.
+- (AWS-2) Slot components MUST be compared component-wise and type-strictly.
+- (AWS-3) A concatenated string, display label, network alias, or claimant field
+  MUST NOT determine slot equality.
+- (AWS-4) The tuple and transition used for a decision MUST be bound by
+  authenticated consensus proof.
+- (AWS-5) The node MUST enforce one compare-and-set ledger across distinct
+  Works targeting the same slot.
+- (AWS-6) The compare-and-set MUST occur before any payment effect.
+
+The conflict digest is:
+
+```
+slotConflict = {
+  networkId,
+  railId,
+  jobId,
+  phaseIndex,
+  agreementHash,
+  commitmentLogicalAddress,
+  payer,
+  payee,
+  asset,
+  amount
+}
+
+conflictDigest = lowerhex(SHA-256(
+  UTF8("dacs-atomic-payment-slot:v1:") || UTF8(JCS(slotConflict))
+))
+```
+
+`amount` is the CD-1 canonical agreed amount. `payer` and `payee` are the
+canonical native accounts resolved under §9.5.1.
+
+- (AWS-7) Every Work for one slot generation MUST carry the same
+  `conflictDigest` in its signed `payment-slot-cas` payload. That payload MUST
+  also carry the structured slot key and expected state/generation selected by
+  the execution-profile schema. The node MUST derive every `slotConflict`
+  member from the verified agreement and commitment, authenticated
+  `PaymentPhaseInput`, selected rail asset, and signed native-transfer payload;
+  a caller-supplied conflict object is not authority. The transfer payload's
+  `from` and `to`, and any matching CORE `roleRoster.nativeAccount`, are signed
+  expectations only: the execution profile MUST independently derive and
+  cross-check the payer and payee native accounts from those authenticated
+  inputs before the slot transition or payment. No account string establishes
+  signer, payer, payee, or role authority by self-assertion.
+- (AWS-8) A different digest for an occupied or terminal slot MUST be rejected
+  before any payment effect.
+- (AWS-9) Exact replay of an in-flight Work MUST reconcile its existing status
+  instead of executing another transfer.
+- (AWS-10) Exact replay of a settled Work MUST return or reconstruct its
+  authoritative receipt.
+- (AWS-11) A rolled-back generation MAY advance to the next generation only
+  through a transition binding the authenticated failure receipt.
+- (AWS-12) A retry generation MUST retain the same conflict digest and MUST use
+  a newly derived `workId` whose intent carries
+  `priorFailureReceiptCommitment` equal to the terminal slot state's
+  `failureReceiptCommitment`.
+- (AWS-13) An `indeterminate` attempt observation MUST keep the slot held and
+  MUST NOT authorize a replacement payment.
+- (AWS-14) The slot state and Work ledger are authoritative for execution,
+  attempts, winner selection, and payment uniqueness.
+- (AWS-15) An SDK `SessionStore` MAY journal orchestration but MUST NOT become a
+  competing payment authority.
+
+The terminal `rolled-back` record is execution/recovery bookkeeping in the
+authoritative Work/slot ledger and an explicit exception to business-state
+rollback under CORE AW-54. It does not claim that the failed Work's payment or
+other business effects committed. The failure receipt MUST bind the unchanged
+business roots and the terminal slot metadata; that metadata cannot itself
+transfer value or authorize another payment without AWS-11 and AWS-12.
+
 ### 9.6 Delivery phases
 
-The v0.1 closed set. Each consumes the agreement’s DeliverableRef and produces SettlementEvidence.
+The v0.1 closed set. Each consumes the agreement’s DeliverableRef and produces
+the applicable versioned settlement-evidence artifact. A capability-gated CORE
+§5.2 `dacs-completion-v1` `deliver-storage-program` operation produces
+`AtomicSettlementEvidenceV1` at the §9.7.3 Atomic delivery-evidence address
+instead of legacy `SettlementEvidence`.
 
 #### 9.6.1 deliver-storage-program
 
@@ -972,7 +1094,10 @@ method's native evidence remains separately addressable through
 
 ### 9.7 Settlement evidence
 
-The uniform record produced by every payment and delivery phase. Anchored on the substrate; referenced by DACS-5.
+The uniform legacy record produced by every non-Atomic payment and delivery
+phase. Atomic `pay-dem` and Atomic `deliver-storage-program` use the additive
+§9.7.3 artifact instead. Both kinds are anchored on the substrate and
+referenced by DACS-5.
 
 ```
 type SettlementEvidence = {
@@ -1100,7 +1225,7 @@ Refunds are not a separate phase type in v0.1. A refund is modelled as a Settlem
 type SettlementAmendment = {
   amendmentVersion: "1"
   jobId: string
-  amendsEvidenceRef: AttestationRef    // points to the SettlementEvidence being amended
+  amendsEvidenceRef: AttestationRef    // points to the versioned SettlementEvidence or AtomicSettlementEvidenceV1 being amended
   amendmentType: "refund" | "partial-refund" | "correction"
   refundAmount?: PriceTerm
   refundTxRefs?: ChainTxRef[]
@@ -1116,7 +1241,10 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
 
 > **Note (non-normative).** Without these constraints a refund could anchor against a non-existent or failure-outcome record, or over-refund, feeding DACS-5 reputation records it cannot trust.
 
-- (AMEND-1) `amendsEvidenceRef` MUST resolve to an anchored SettlementEvidence whose `jobId` equals the amendment’s `jobId`.
+- (AMEND-1) `amendsEvidenceRef` MUST resolve to an anchored, supported
+  `SettlementEvidence` or `AtomicSettlementEvidenceV1` whose `jobId` equals
+  the amendment’s `jobId`. The target discriminator and target signature
+  domain MUST be verified before amendment semantics are applied.
 - (AMEND-2) a `refund` or `partial-refund` MUST reference an evidence record whose `outcome == "success"`. A settlement-atomicity failure (no funds moved) is unwound on the rail’s refund path (e.g. the HTLC timelock-refund per §9.5.4), NEVER via a refund amendment. A `correction` MUST NOT carry `refundAmount`.
 - (AMEND-3) the sum of `refundAmount` across all amendments referencing a single evidence record MUST NOT exceed that record’s `paymentAmount`, compared currency-matched per the PriceTerm. v0.1 REQUIRES refunds in the settled currency. A `refundAmount.currency` differing from the amended evidence's `paymentAmount.currency` makes the AMEND-3 bound non-evaluable and MUST be flagged per AMEND-4; cross-currency refunds are out of scope for v0.1 — a roadmap candidate.
 - (AMEND-4) bundle assembly MUST reject — or, where a complete audit trail is preferred, flag — any amendment violating AMEND-1..AMEND-3 rather than silently including it. A flagged amendment MUST NOT be treated as a valid unwind by DACS-5 reputation derivation.
@@ -1134,6 +1262,189 @@ A consumer MAY reconcile a DACS-3 `feeSchedule` disclosure (§8.5.3) against act
   - *reconciles* — the actual `network` fee is within the item's `toleranceBps` of the disclosed estimate (absent `toleranceBps` ⇒ exact), and any `fixed` / `rateBps`-derived amount matches **exactly** after FR-2 rounding (these are deterministic — no tolerance applies to them).
   - *diverged* — resolves but beyond tolerance. The consumer records a **provenanced informational flag** carrying the **signed delta** (`paymentFee − disclosed`) and the breached tolerance, so under-disclosure (payer charged more than disclosed) is distinguishable from over-disclosure.
   - *indeterminate* — the actual fee or the agreement cannot be resolved. This MUST NOT be reported as `diverged`: a transient resolution failure is not a divergence.
+
+#### 9.7.3 Atomic Work settlement evidence
+
+An Atomic Work operation is not a legacy Demos transaction. A phase settled by
+CORE §5.2 therefore produces the structurally distinct artifact below during
+the audit-finalisation tail. It does not reinterpret the existing
+`ChainTxRef` arm `{ kind: "demos", txHash }`.
+
+The normative machine-readable schema is
+[`AtomicSettlementEvidenceV1`](schemas/atomic-settlement-evidence-v1.schema.json).
+
+```
+type AtomicSettlementEvidenceV1 = {
+  atomicEvidenceVersion: "1"
+  networkId: string
+  jobId: string
+  railId: string
+  phaseIndex: number
+  phase: "pay-dem" | "deliver-storage-program"
+  outcome: "success" | "failure"
+  reason?: string
+  operationRef: DemosWorkOperationRefV1
+  workReceiptRef: AtomicWorkReceiptRefV1
+  operationProof: {
+    proofProfile: string
+    subject: {
+      networkId: string
+      workId: string
+      winningAttemptId: string
+      operationReceiptRoot: string
+      operationIndex: number
+      operationId: string
+      operationKind: AtomicWorkOperationKindV1
+      receiptContentHash: string
+    }
+    value: string
+  }
+  paymentAmount?: PriceTerm
+  deliverableContentHash?: string
+  deliverableAnchor?: { kind: string; locator: string }
+  settlementFinality?: {
+    model: "bft-final"
+    finalityObservedAt: number
+  }
+  observedAt: number
+  signature: ComponentSignature       // signer is the authenticated phase orchestrator
+}
+
+type AtomicWorkReceiptRefV1 = {
+  refVersion: "1"
+  networkId: string
+  workId: string
+  receiptCommitment: string
+  contentHash: string
+  locator: { kind: string; value: string }
+}
+```
+
+The artifact follows CORE §B.2 with only `signature` omitted. Its signature is
+computed over:
+
+```
+atomic_evidence_hash = lowerhex(SHA-256(
+  UTF8(JCS(atomicEvidenceWithoutSignature))
+))
+signed_bytes = UTF8("dacs-atomic-evidence:v1:") || ASCII(atomic_evidence_hash)
+```
+
+`AtomicWorkReceiptRefV1` is distinct from `AttestationRef`: its locator and
+commitments describe a consensus Work receipt rather than an SR-2 artifact.
+`receiptCommitment` is the CORE §5.2 same-transition commitment;
+`contentHash` is the ordinary CORE §B.2 SHA-256 of the complete canonical Work
+receipt envelope.
+
+`operationRef` and `workReceiptRef` are signed subobjects and follow CORE
+SIG-5 and §11.1.2. Their schemas preserve unknown members, so a verifier MUST
+include those members when recomputing the enclosing evidence signature. A v1
+reader MAY ignore their unknown, non-action-bearing meaning, but MUST still
+match every named required member below. The operation identity intentionally
+derives only the six named `DemosWorkOperationRefV1` members shown in the
+preimage; preserved unknown members do not create an alias or change that
+identity. Likewise, Work-receipt resolution uses the named v1 reference
+members while `contentHash` continues to bind the complete resolved receipt,
+including its preserved unknown members. A future field that changes identity,
+resolution, authorization, or verification behavior requires a new structurally
+distinct `kind`, `refVersion`, or major type rather than new semantics hidden in
+an optional member.
+
+The canonical operation-level settlement identity is:
+
+```
+atomicSettlementId = lowerhex(SHA-256(
+  UTF8("dacs-atomic-settlement-id:v1:") || UTF8(JCS({
+    kind: operationRef.kind,
+    networkId: operationRef.networkId,
+    workId: operationRef.workId,
+    operationIndex: operationRef.operationIndex,
+    operationId: operationRef.operationId,
+    operationKind: operationRef.operationKind
+  }))
+))
+```
+
+Atomic payment evidence is anchored at
+`dacs4:payment:{jobId}:{CF-4(railId)}:{phaseIndex}:atomic:{generation}:{atomicSettlementId}`.
+Atomic delivery evidence is anchored at
+`dacs4:delivery:{jobId}:{phaseIndex}:atomic:{atomicSettlementId}`. `generation`
+is the proven Purchase payment-slot generation. These immutable addresses keep
+a rolled-back attempt and a later successful generation distinct while the
+ordinary PC-2 tuple remains independently recoverable and verifiable.
+
+- (AWS-16) A producer MUST use `AtomicSettlementEvidenceV1` for an Atomic Work
+  payment or delivery and MUST NOT encode a Work, Work receipt, or operation as
+  an existing `demos:{txHash}` reference.
+- (AWS-17) A reader MUST select `atomicEvidenceVersion` before interpreting
+  any other member and MUST reject an unsupported version or an attempted
+  coercion to `SettlementEvidence` under CORE §11.1.2. An artifact carrying
+  both `atomicEvidenceVersion` and legacy `evidenceVersion`, or neither
+  discriminator, MUST be rejected before any other interpretation.
+- (AWS-18) A producer MUST create success evidence only after independently
+  verifying the referenced BFT-final Work receipt and its canonical content
+  hash.
+- (AWS-19) A verifier MUST resolve `workReceiptRef`, compare its `networkId`,
+  `workId`, `receiptCommitment`, and ordinary complete-envelope `contentHash`
+  to the resolved receipt, verify its finality proof, reconstruct its
+  operation-receipt root, and verify `operationProof` against the exact
+  structured `subject` before accepting an operation result.
+  `operationProof.subject.receiptContentHash` MUST equal
+  `workReceiptRef.contentHash`.
+- (AWS-20) `operationRef` and `operationProof.subject` MUST match each other
+  component-wise and identify the winning receipt's operation at the same
+  index, ID, and kind. Success evidence MUST select a `committed` leaf. Failure
+  evidence MUST carry `reason`, select the corresponding `rolled-back` or
+  `not-executed` leaf from a verified `rolled-back` receipt, and omit
+  success-only payment, delivery, and finality members.
+- (AWS-21) Before applying SB-1 or projecting an identity, a verifier MUST
+  compare the evidence's signed `networkId`, `jobId`, `railId`, and
+  `phaseIndex` against the authenticated intent, verified agreement and rail,
+  and the matching invocation at its bare index in the verified pinned signed
+  Listing pipeline, component-wise and type-strictly. A subsequently produced
+  `BundlePhaseEntry` MUST reproduce that established phase context but MUST NOT
+  bootstrap it.
+- (AWS-22) For `pay-dem`, the Atomic payment address's PC-2 prefix `jobId`, CF-4-decoded
+  `railId`, and bare-integer `phaseIndex` MUST match the evidence before
+  projection, and the proof-bound CORE §5.2 receipt slot key MUST additionally
+  match `(networkId, railId, jobId, phaseIndex)`.
+- (AWS-23) A well-formed AWS-21 or AWS-22 mismatch is `fail`; a malformed or
+  non-canonical address or value is `error`; unavailable proof, finalized
+  state, or authenticated context is `indeterminate`.
+- (AWS-24) Successful `pay-dem` evidence MUST identify the Purchase Work's
+  `native-dem-transfer` operation, carry its agreed `paymentAmount`, and set
+  `settlementFinality.model` to `bft-final`.
+- (AWS-25) Successful `deliver-storage-program` evidence MUST identify the
+  Completion Work's `storage-program-put` operation and copy its proven
+  `contentHash` and projected anchor into `deliverableContentHash` and
+  `deliverableAnchor`.
+- (AWS-26) A verifier MUST derive `atomicSettlementId` from the structured
+  reference and apply SB-2 uniqueness to that identity. Identical Work IDs on
+  different `networkId` values are distinct identities.
+- (AWS-27) The phase orchestrator MUST sign every evidence member except the
+  signature envelope under `dacs-atomic-evidence:v1:`; that signature MUST NOT
+  substitute for the Work receipt, operation, slot, finality, or artifact
+  proofs.
+- (AWS-28) Audit publication at the applicable Atomic payment or delivery
+  address above MUST be create-only or byte-identical idempotent. A producer
+  MUST derive that address from verified evidence and MUST NOT overwrite a
+  failed generation with a later success. It MUST obtain and verify a CORE
+  §5.1 `finalized` `AnchorReceipt` binding that address to the complete signed
+  evidence bytes before the evidence satisfies DACS-5 ST-11; the referenced
+  Work receipt proves the business operation but does not replace this audit
+  artifact's own publication receipt. Missing audit material after payment
+  finality MUST trigger evidence catch-up and MUST NOT resubmit the Purchase
+  Work, its payment operation, or a legacy payment.
+- (AWS-29) A client, outer submitter, SDK status, Indexer record, or structural
+  classifier verdict MUST NOT establish operation inclusion, finality, slot
+  state, role authority, or settlement coherence without the independently
+  verified evidence required above.
+
+Missing or unavailable proof produces `indeterminate`, not failure evidence.
+The `operationProof.value` encoding and verification
+algorithm are selected by the authenticated CORE §5.2 capability's
+`proofProfile`; the Demos binding must define its byte-exact format before
+advertising that capability.
 
 ### 9.8 Cross-chain atomic settlement (SR-5)
 
@@ -1175,7 +1486,19 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 - (PIPE-3) If a pay-* phase is followed by a deliver-* phase, the deliver-* phase MUST NOT execute until the pay-* phase returns ok: true.
 - (PIPE-4) If a deliver-* phase is followed by a pay-* phase, the pay-* phase MUST NOT execute until the deliver-* phase returns ok: true.
 - (PIPE-5) Pipelines MAY repeat a phase; each invocation produces independent SettlementEvidence. In v0.1 each repeated pay-* invocation settles the **same** agreement price (`PaymentPhaseInput.amount` = `agreement.terms.price`). The payment contract carries no per-phase amount override, fee, or split, so a **fee-split** (distinct amounts to distinct payees, e.g. buyer + platform fee) is NOT representable in v0.1 and is a roadmap item (fee-split / multi-payee settlement model). Repetition is for genuinely identical settlements, not for splitting one price across payees.
-- (PIPE-6) Before executing any pay-* phase or any delivery whose disclosure, access grant, or external side effect is irreversible, the orchestrator MUST verify the DACS-3 commitment's CORE §5.1 receipt is `finalized` and matches the session's `jobId`, agreement hash, listing reference, and logical address. `submitted`, `accepted`, index-visible, or an unverified `included` state is insufficient. A binding whose declared finality profile makes inclusion final MAY satisfy both states with one receipt.
+- (PIPE-6) Except for a `dacs-purchase-v1` Work that satisfies every DACS-3
+  AWP-6 through AWP-11 co-finality condition, before executing any pay-* phase
+  or any delivery whose disclosure, access grant, or external side effect is
+  irreversible, the orchestrator MUST verify the DACS-3 commitment's CORE
+  §5.1 receipt is `finalized` and matches the session's `jobId`, agreement
+  hash, listing reference, and logical address. `submitted`, `accepted`,
+  index-visible, or an unverified `included` state is insufficient. A binding
+  whose declared finality profile makes inclusion final MAY satisfy both
+  states with one receipt. The exception is closed to that Atomic Purchase
+  profile; all other profiles and every irreversible delivery remain subject
+  to this sequential gate. An Atomic Completion therefore verifies the
+  Purchase commitment operation and its AW-65 through AW-70 projected
+  finalized `AnchorReceipt` under AWP-13 before its delivery operation.
 
 > **Note (non-normative).** PIPE-1 is deliberately aligned with §6.3.4(8): a reader of either chapter reaches the same accept decision for a pay-less pipeline.
 
@@ -1190,6 +1513,8 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 | Delivery phase handler | §9.6 per-kind procedure; DPA-1 through DPA-9 for attested payloads; SettlementEvidence emission |
 | Pipeline executor | PIPE-1 through PIPE-5 |
 | SettlementEvidence consumer | Canonical hash recomputation; signature validation; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (amendment chain following) |
+| Atomic payment-slot producer / verifier (optional) | AWS-1 through AWS-15; structured network-scoped slot identity; proof-bound global compare-and-set; authenticated conflict inputs; generation, replay, and rollback-retry rules; `indeterminate` keeps the slot held; SDK state is not authority |
+| AtomicSettlementEvidence producer / consumer (optional) | AWS-16 through AWS-29; version-first refusal; Work-receipt and operation-proof verification; independent Listing/agreement/rail/phase and Atomic-address checks; operation-level settlement identity; idempotent non-paying audit publication |
 
 ### 9.11 Rationale
 

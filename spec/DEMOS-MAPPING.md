@@ -147,3 +147,88 @@ validator-body-signed.
 - 🔵 **HTLC contracts (generic atomic-swap pattern)** — pay-cross-chain-htlc is a first-class supported rail in DACS-4 v0.1. **The reference implementation in agent-commerce-demo uses HTLCs today for the fx-rfq cross-chain settlement** (929 LOC: real Solana Anchor program + Base Sepolia EVM HTLC contract; lock/reveal/refund implemented end-to-end). This predates Native Bridges Phase 1 deployment. The reference implementation will migrate to pay-cross-chain-liquidity-tank as Phase 1 stabilises; until then both rails are documented honestly. ERC-20, SPL (standard token interfaces). ERC-8183 escrow (proposed; future rail).
 
 **v0.1 cross-chain settlement scope.** pay-cross-chain-liquidity-tank is supported **only** for the rails currently live in tankAddresses.json (ETH Sepolia, Polygon Amoy; USDC; unidirectional EVM source). All other tank rails in the registry are 🟡 to-add and will unlock as Native Bridges Phase 2–4 ship. pay-cross-chain-htlc is the path the reference implementation runs today; v0.1 keeps both first-class.
+
+### A.6 Atomic DACS Work capability gate
+
+The optional CORE §5.2 Atomic DACS Work profile requires an authenticated
+network capability for an exact node release and execution profile. The
+existing DemosWork SDK orchestration API, client simulation, or an ownership
+promise does not by itself establish the consensus properties required by that
+profile. This section records the evidence gaps; it does not assert that a
+particular unpublished node implementation lacks a property.
+
+A Demos node, SDK, adapter, or agent **MUST NOT** advertise
+`AtomicWorkCapabilityV1`, select either Atomic DACS Work profile, or label an
+execution DACS-atomic until the following questions are answered by a
+versioned runtime contract. Independently repeatable conformance and
+failure-injection evidence MUST demonstrate those answers for the advertised
+release:
+
+1. Which exact node and SDK releases authenticate the capability, execution
+   profile, proof profile, supported authorization algorithms, and enforced
+   limits?
+2. Which pure JSON bytes are admitted as the Work intent, how are CF-1/CF-2
+   and JCS applied, how is `workId` recomputed, and which fork-independent or
+   fork-pinned execution rules interpret those bytes?
+   How does the release map each published CORE §5.2 payload schema to exact
+   Demos-native validation, execution, committed-output, and proof behavior,
+   including artifact and receipt verification, Storage Program create/CAS
+   inputs and outputs, slot expected state, and native transfer accounts,
+   asset, and amount?
+3. Which business-state domains share the isolated overlay, and how do
+   Storage Program writes, the global payment-slot CAS, and native DEM transfer
+   commit or roll back together while fee and nonce effects remain separate?
+4. What are the exact `storage-program-put` create-only/CAS semantics, native
+   address derivation, writer/nonce provenance, and logical-to-native output
+   binding under replacement?
+5. Where is the network-scoped payment-slot state stored, how is its structured
+   `(networkId, railId, jobId, phaseIndex)` key compared type-strictly, and how
+   does its global CAS survive concurrent Works, validators, forks, and
+   restarts?
+6. Where are operation authorizations verified, which key-resolution and
+   signature rules apply, and how is a DACS role preserved when the outer
+   submitter, fee payer, or native writer is a different account?
+   How are roster entries bound to the signed agreement, finalized commitment
+   signer, authenticated session parties, pinned payer bundle, and
+   `PaymentPhaseInput` rather than trusted as self-assertions?
+7. What durable ledger maps canonical Work bytes to `workId`, transport
+   attempts, and one winning attempt; which authenticated state permits
+   replacement; and how are late attempts fenced and exact replay answered?
+8. How is the CORE §5.2 `receiptCommitment` committed by consensus in the same
+   transition as business state, how do detachable business-state and finality
+   proofs bind their exact committed subjects, how does finality bind the
+   resulting block ID without a circular preimage, and what independently verifiable validator-set,
+   finality, operation-inclusion, business-root, and rollback proofs are
+   returned? How does the runtime recompute CORE's portable operation
+   `inputHash`, which exact execution-profile derivations produce each optional
+   `outputHash` and `businessState.effectsRoot`, and how can an independent
+   verifier reproduce or prove those values without trusting an SDK projection?
+9. How can a verifier retrieve or reconstruct the same winning receipt and
+   operation proofs from finalized consensus data when a public Indexer is
+   absent, stale, or unavailable?
+10. Which authenticated states distinguish rejection, durable admission,
+    inclusion, rollback, replacement, drop, expiry, and authoritative
+    non-inclusion? An ordinary RPC or storage `not found` answer is not such
+    evidence.
+11. What recovery invariant applies at crashes before admission, during
+    overlay execution, after state commit, and while receipt delivery is
+    unavailable?
+12. Which consensus-selected candidate block timestamp is supplied to the
+    DACS-3 AWP-8 checks, and how is client, signer, RPC, or Indexer time
+    excluded from that decision?
+13. What exact fee-charging and nonce-consumption behavior applies to commit,
+    rollback, replacement, and replay, and how are those envelope effects
+    prevented from authorizing another payment?
+14. What node-enforced `maxCanonicalBytes`, `maxOperations`,
+    `maxExecutionTimeMs`, `maxProofBytes`, and `feeRule` limits apply, and
+    which boundary and failure-injection tests prove atomic rollback at each
+    limit?
+15. How does an audit-tail anchor remain idempotent and independently
+    resolvable, including role authorization and `BundleBinding` when its outer
+    submitter differs, without silently replaying the Purchase payment?
+
+Until all applicable items are established, clients MUST use the existing
+multi-transaction lifecycle or refuse the Atomic profile before any Atomic
+Work is signed. Once an Atomic Work is signed or submitted, failure to
+establish its outcome MUST remain under reconciliation and MUST NOT trigger a
+silent fallback payment.

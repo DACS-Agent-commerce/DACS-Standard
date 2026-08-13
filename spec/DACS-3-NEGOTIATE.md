@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.4** (on the common DACS v0.1 baseline; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.5** (on the common DACS v0.1 baseline; v0.5 adds the optional Atomic Purchase and Completion Work profiles; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -657,6 +657,123 @@ type AgreementCommitmentRecord = CommitmentRecord | FinalityCommitmentRecord
 
 > **Note (non-normative).** The orchestrator is accountable for causing the commitment phase to anchor successfully. It need not be the raw substrate key recorded as a StorageProgram deployer or owner. A buyer- or seller-submitted transaction therefore does not change which parties authored the agreement; their agreement signatures and the committed hash establish that fact.
 
+#### 8.6.1 Atomic Purchase and Completion Work profiles
+
+This section defines the DACS-3 ordering used by the optional CORE §5.2
+profile. CA-1, SR2-8, and PIPE-6 remain unchanged for every other profile.
+
+**Purchase operation order.** A `dacs-purchase-v1` intent has exactly these
+operations and dependencies:
+
+| Index | `operationId` | Permitted kind | `dependsOn` | Required role |
+| --- | --- | --- | --- | --- |
+| 0 | `buyer-vet` | `assert-artifact` or `storage-program-put` | `[]` | `orchestrator` |
+| 1 | `seller-vet` | `assert-artifact` or `storage-program-put` | `[]` | `orchestrator` |
+| 2 | `agreement` | `assert-artifact` | `["buyer-vet", "seller-vet"]` | `orchestrator` |
+| 3 | `commitment` | `storage-program-put` | `["agreement"]` | `orchestrator` |
+| 4 | `payment-slot` | `payment-slot-cas` | `["commitment"]` | `payer` |
+| 5 | `payment` | `native-dem-transfer` | `["payment-slot"]` | `payer` |
+
+- (AWP-1) `buyer-vet` and `seller-vet` MUST carry complete, already-signed Vet
+  artifacts.
+- (AWP-2) A Vet operation MAY assert a finalized resolvable record or anchor
+  byte-identical signed bytes through the Work overlay. A Vet
+  `storage-program-put` MUST use the existing DACS-2 §7.7.2 logical address
+  `dacs2:composite:{jobId}:{evaluatedParty}` with the ClaimReference segment
+  encoded by CF-4, carry the complete signed `CompositeVerificationRecord`,
+  and use `writeCondition: { kind: "create-only" }`. The Atomic profile does
+  not authorize a CAS rewrite of a Vet record.
+- (AWP-3) A live Web2, XM, SR-3, L2PS, or other nondeterministic Vet action
+  MUST NOT execute inside the Purchase Work.
+- (AWP-4) The `agreement` operation MUST verify the existing §8.5 agreement
+  artifact and MUST NOT create another agreement format.
+- (AWP-5) A Purchase intent that differs from the table's exact operation set,
+  order, dependency arrays, or required roles MUST be rejected.
+- (AWP-20) The Purchase profile MUST select exactly one `pay-dem` invocation
+  from the verified pinned signed Listing pipeline. Its `parameters.rail` and
+  bare array index MUST equal the intent's `railId` and payment `phaseIndex`
+  and the payment-slot key. No other rail or phase type is eligible for
+  `dacs-purchase-v1`. A later `BundlePhaseEntry` is an audit copy of that
+  established invocation, not pre-execution authority.
+
+**Atomic co-finality rule.** The following is a profile-scoped alternative to
+CA-1, SR2-8, and DACS-4 PIPE-6, not a reinterpretation of any of those rules.
+
+- (AWP-6) Commitment validation MUST complete before `payment-slot` or
+  `payment` executes in the isolated overlay. The `commitment` payload MUST
+  carry the complete signed `FinalityCommitmentRecord`, use logical address
+  `dacs3:commit:{jobId}`, and use
+  `writeCondition: { kind: "create-only" }`. A different address or CAS
+  rewrite does not establish the commitment gate.
+- (AWP-7) The node MUST run §8.5.2 checks 1 through 9 before the payment effect.
+  It MUST consume the pinned signed Listing and one real `AgreementArtifact`
+  selected by its existing discriminator and signature domain; a synthetic
+  summary of price, rail, or deliverable values MUST NOT substitute for either
+  artifact.
+- (AWP-8) The node MUST evaluate §8.5.2 checks 5 and 6 with the consensus
+  timestamp that becomes the finalized Work receipt's `blockRef.timestamp`.
+- (AWP-9) A client, signer, RPC, Indexer, `createdAt`, or `observedAt` timestamp
+  MUST NOT replace the AWP-8 timestamp.
+- (AWP-10) Commitment, payment-slot mutation, native payment, and every other
+  critical business write MUST commit or roll back together.
+- (AWP-11) One authenticated BFT-final Work receipt MUST prove their signed
+  order and common finality.
+- (AWP-12) If any AWP-6 through AWP-11 condition is unavailable, CA-1,
+  SR2-8, and PIPE-6 remain the required sequential gate.
+
+CA-8 remains the rule that identifies the authoritative timestamp. The deadline
+and `notAfter` obligations themselves remain §8.5.2 checks 5 and 6.
+
+**Completion operation order.** A `dacs-completion-v1` intent has exactly these
+operations and dependencies:
+
+| Index | `operationId` | Kind | `dependsOn` | Required role |
+| --- | --- | --- | --- | --- |
+| 0 | `purchase-receipt` | `assert-work-receipt` | `[]` | `orchestrator` |
+| 1 | `delivery` | `storage-program-put` | `["purchase-receipt"]` | `seller` |
+
+- (AWP-13) `purchase-receipt` MUST verify the finalized Purchase Work receipt,
+  payment slot, committed commitment operation, and committed payment
+  operation. The verifier MUST project the commitment operation's proven
+  storage output to a CORE §5.1 `AnchorReceipt` under AW-65 through AW-70 and
+  establish that finalized receipt before delivery executes; the Purchase
+  Work receipt is the proof source, not an exemption from SR2-8 or PIPE-6 for
+  delivery. The referenced intent MUST be `dacs-purchase-v1`; its `networkId`,
+  `railId`, and `jobId` MUST match the Completion intent component-wise; and
+  its committed operation set MUST include the profile's
+  `native-dem-transfer`. A receipt from another session or rail MUST be
+  rejected before delivery executes.
+- (AWP-14) `delivery` MUST write the exact deliverable bytes or an agreed
+  content-addressed pointer under the committed `DeliverableSpec`. Its
+  `storage-program-put` payload MUST use the existing DACS-4 §9.6.1 logical
+  address `dacs4:deliverable:{jobId}` and
+  `writeCondition: { kind: "create-only" }`; a CAS rewrite is not an Atomic
+  Completion delivery.
+- (AWP-15) A Completion intent that differs from the table's exact operation
+  set, order, dependency arrays, or required roles MUST be rejected.
+- (AWP-21) The Completion profile MUST select exactly one
+  `deliver-storage-program` invocation from the same verified pinned signed
+  Listing pipeline. Its bare array index MUST equal the Completion intent's
+  delivery `phaseIndex`. The independently verified Purchase receipt supplies
+  the distinct payment-slot phase index. No other delivery phase is eligible
+  for `dacs-completion-v1`. A later `BundlePhaseEntry` is an audit copy of that
+  established invocation, not pre-execution authority.
+- (AWP-16) Completion Work inclusion MUST NOT by itself finalize DACS-4
+  evidence or a DACS-5 bundle.
+
+After Purchase finality, seller refusal, crash, timeout, or failed delivery does
+not undo the payment.
+
+- (AWP-17) A post-Purchase failure MUST use the ordinary DACS failure record,
+  role-specific fault bundle, and attribution rules.
+- (AWP-18) A refund or correction MUST use a separately authorized §9.7.1
+  `SettlementAmendment` linked to the original evidence.
+- (AWP-19) A guaranteed delivery-or-refund promise MUST use a separately
+  standardized escrow or delivery-gated profile.
+
+> **Note (non-normative).** Atomic Work supplies execution atomicity, not fair
+> exchange across the interval in which the agent performs the purchased work.
+
 ### 8.7 Channel transcript and disclosure
 
 Negotiation channels produce a transcript: the ordered sequence of signed messages between participants. The transcript is private to channel members. When a transcript is anchored (see disclosure policies below), its signature is computed over the domain-separated payload "dacs-transcript:v1:" || sha256(canonical_JCS(transcript_without_signatures)) per §B.7.
@@ -703,6 +820,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 | negotiate-rfq | §8.4.2 procedure; RFQ-1 through RFQ-4; channel turn timeouts |
 | negotiate-sealed-envelope / negotiate-sealed-envelope-procurement | §8.4.3 procedure; SE-1 through SE-9; deterministic selection; rule-ref content-hash binding; mode-bound role assignment; same-bidder commit authority |
 | commit-agreement / commit-payee-bound-agreement | CA-1 through CA-9; artifact-specific signature, finalized receipt, timestamp separation, minor-safe type distinction, and conformance validation |
+| Atomic Purchase / Completion producer and verifier (optional) | AWP-1 through AWP-21; exact closed operation order, dependencies, and roles; signed or finalized Vet inputs only; authenticated Listing, agreement, payment, and delivery-phase binding; consensus-time deadline checks; common rollback/finality receipt; ordinary post-Purchase failure, refund, and audit handling |
 | Listing publisher | PS-1 through PS-3 |
 | Substrate without SR-4 | MUST support negotiate-fixed-price; MUST refuse negotiate-rfq, negotiate-sealed-envelope, and negotiate-sealed-envelope-procurement with a clear substrate-capability-missing error |
 

@@ -48,6 +48,32 @@ The format used per release:
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
 
+### Added — candidate CORE v0.3 / DACS-3 v0.5 / DACS-4 v0.7 / DACS-5 v0.5
+
+- **Atomic Purchase and Completion Works** (CORE §5.2; DACS-3 §8.6.1;
+  DACS-4 §§9.5.10/9.7.3; DACS-5 §10.4.2; Demos mapping §A.6; #320) — adds an
+  optional, capability-gated execution profile that preserves the existing
+  multi-transaction lifecycle as the fallback and never silently falls back
+  after an Atomic Work is signed or submitted. It defines pure-JCS unsigned
+  intent bytes and `workId`, complete operation authorizations, deterministic
+  operation graphs, transport attempts and winner fencing, authenticated
+  commit/rollback receipts, a network-scoped global payment-slot CAS,
+  structurally distinct Work-operation settlement evidence, DACS-5 role
+  attribution independent of the outer submitter, and an idempotent non-paying
+  audit-finalisation tail. The SR2-8/PIPE-6 exception is closed to a Purchase
+  Work satisfying every co-finality condition; Completion still establishes a
+  projected finalized commitment receipt before delivery, and each Atomic
+  settlement-evidence artifact still obtains its own finalized ST-11
+  publication receipt. Current v1 admits no bundle-anchor Work operation; its
+  bundle remains in that tail. Adds ten JSON Schemas plus deterministic
+  candidate vectors with explicit acceptance/rejection/indeterminate/malformed
+  and true boundary metadata. Every new rule ID has executable coverage; complete
+  positive/negative/boundary coverage per individual rule remains a draft
+  blocker. The Demos binding remains blocked
+  from advertising this capability until its byte-exact consensus, proof,
+  rollback, recovery, fee/nonce, and limit contracts are published and
+  independently demonstrated.
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4

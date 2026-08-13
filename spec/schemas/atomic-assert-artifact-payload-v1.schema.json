@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-assert-artifact-payload-v1.schema.json",
+  "title": "AtomicAssertArtifactPayloadV1",
+  "description": "Carries one complete existing DACS artifact. The artifact remains subject to its own discriminator, schema, canonicalization, hash, signature, authority, and resolution rules.",
+  "type": "object",
+  "required": ["artifact"],
+  "properties": {
+    "artifact": {
+      "type": "object",
+      "minProperties": 1
+    }
+  },
+  "additionalProperties": false
+}

@@ -34,6 +34,27 @@ composition is:
 
 The coordinated cut is identified by the annotated repository tag `v0.4`.
 
+## Candidate Atomic amendment composition
+
+The RFC #320 Atomic DACS Work amendment is a draft, capability-gated candidate,
+not a released coordinated profile. Review and conformance artifacts for the
+candidate pin the following document versions at one exact specification
+commit:
+
+| Document | Version | Status |
+| --- | --- | --- |
+| [CORE](CORE.md) | 0.3 | Draft / Demos contract required |
+| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.6 | Draft |
+| [DACS-2-VET](DACS-2-VET.md) | 0.5 | Draft |
+| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.5 | Draft / Atomic candidate |
+| [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.7 | Draft / Atomic candidate |
+| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.5 | Draft / Atomic candidate |
+
+No implementation may claim this composition merely from schema or candidate
+vector support. The authenticated capability and every Demos-owned contract in
+[DEMOS-MAPPING §A.6](DEMOS-MAPPING.md#a6-atomic-dacs-work-capability-gate) are
+required before the Atomic path is selectable.
+
 ## Qualified implementation claims
 
 The unqualified phrase **“DACS v0.1 conformant”** retains the full-profile meaning

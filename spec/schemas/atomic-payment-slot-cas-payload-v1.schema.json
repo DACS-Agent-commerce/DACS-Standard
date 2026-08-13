@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-payment-slot-cas-payload-v1.schema.json",
+  "title": "AtomicPaymentSlotCasPayloadV1",
+  "type": "object",
+  "required": ["slotKey", "expected", "conflictDigest"],
+  "properties": {
+    "slotKey": {
+      "type": "object",
+      "required": ["networkId", "railId", "jobId", "phaseIndex"],
+      "properties": {
+        "networkId": { "type": "string", "minLength": 1 },
+        "railId": { "type": "string", "minLength": 1 },
+        "jobId": {
+          "type": "string",
+          "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+        },
+        "phaseIndex": { "$ref": "#/$defs/safeInteger" }
+      },
+      "additionalProperties": false
+    },
+    "expected": {
+      "type": "object",
+      "required": ["state", "generation"],
+      "properties": {
+        "state": { "enum": ["vacant", "rolled-back"] },
+        "generation": { "$ref": "#/$defs/safeInteger" }
+      },
+      "additionalProperties": false
+    },
+    "conflictDigest": { "$ref": "#/$defs/hash" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "safeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

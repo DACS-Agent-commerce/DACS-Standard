@@ -29,11 +29,11 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`atomic-work-audit-role-v0.1.json`](atomic-work-audit-role-v0.1.json) | DACS-5 §10.4.2 AWB-1..AWB-10 | 15 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-authorization-v0.1.json`](atomic-work-authorization-v0.1.json) | CORE §5.2 AW-30..AW-38 | 45 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 70 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-identity-v0.1.json`](atomic-work-identity-v0.1.json) | CORE §5.2 AW-1..AW-29, AW-76..AW-77 | 51 | `fail` / `pass` |
-| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 42 | `fail` / `indeterminate` / `pass` |
-| [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 67 | `error` / `fail` / `indeterminate` / `pass` |
+| [`atomic-work-authorization-v0.1.json`](atomic-work-authorization-v0.1.json) | CORE §5.2 AW-30..AW-38 | 46 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 73 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-identity-v0.1.json`](atomic-work-identity-v0.1.json) | CORE §5.2 AW-1..AW-29, AW-76..AW-77 | 52 | `fail` / `pass` |
+| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 43 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 68 | `error` / `fail` / `indeterminate` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
@@ -89,6 +89,15 @@ contracts or production validator proofs. The candidate verifier recognizes
 only `did:dacs:test:*` identities and canonical `domain:` A-label identifiers;
 other ClaimReference schemes remain unsupported by this test key resolver and
 fail closed.
+
+The six sets jointly gate complete **applicable** P/N/B coverage. `P` is an
+acceptance fixture, `N` is a rejection fixture, `B` is a genuine quantitative,
+lifecycle, discriminator, proof-availability, or profile-scope edge, and `X`
+is a machine-readable non-applicable cell with an explicit rationale. A dash is
+an error, not an informational gap. Multi-rule cases use `boundaryRuleRefs` to
+name only the rule edges actually exercised; ordinary signature or hash
+pass/fail cases are not mislabeled as boundaries. The generator and strict
+validator both reject any uncovered applicable polarity.
 
 The advertised `test-fixed-fee` rule is exact: every normal or replacement
 attempt carries a non-empty nonce and fee `"1"`, whether included or not. An

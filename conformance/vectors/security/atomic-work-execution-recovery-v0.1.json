@@ -23,14 +23,15 @@
     "orchestrator": "4444444444444444444444444444444444444444444444444444444444444444",
     "payer": "5555555555555555555555555555555555555555555555555555555555555555"
   },
-  "count": 70,
-  "hash": "076e5f59f7463de0addbd779d179ef0edd5dd93f1c05101f161c90526a5507e6",
+  "count": 73,
+  "hash": "a830261b4a8604b91d0173b0f7f8f3612533468a08b44b8feb8d1ff3da537530",
   "coverage": {
-    "classification": "candidate-partial-polarity",
-    "acceptanceRuleCount": 32,
-    "rejectionRuleCount": 32,
-    "boundaryRuleCount": 2,
-    "note": "ruleRefs provide rule-ID coverage; absence from a polarity set is an explicit conformance gap, not implicit coverage."
+    "classification": "candidate-complete-applicable-polarity",
+    "applicabilityProfile": "atomic-v0.1-explicit",
+    "acceptanceRuleCount": 36,
+    "rejectionRuleCount": 35,
+    "boundaryRuleCount": 15,
+    "note": "Across the generated corpus, every applicable rule polarity has a fixture; non-applicable cells require an explicit rationale, and boundaryRuleRefs attribute only the rule edges actually exercised."
   },
   "vectors": [
     {
@@ -3263,7 +3264,7 @@
         }
       },
       "expected": "pass",
-      "reason": "Authenticated authoritative non-inclusion permits a replacement attempt."
+      "reason": "Authenticated authoritative non-inclusion permits a replacement attempt under the replacement-authority rule."
     },
     {
       "name": "aw-replacement-on-not-found",
@@ -4396,7 +4397,11 @@
         }
       },
       "expected": "indeterminate",
-      "reason": "Ordinary not-found cannot prove a prior attempt will never execute."
+      "reason": "Ordinary not-found remains on the indeterminate side of the replacement-authority boundary.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-42"
+      ]
     },
     {
       "name": "aw-single-ledger-winner",
@@ -5549,7 +5554,12 @@
         }
       },
       "expected": "pass",
-      "reason": "Consensus selects one included winner and fences the competitor."
+      "reason": "Exactly one included winner and business effect is the maximum valid cardinality.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-43",
+        "AW-44"
+      ]
     },
     {
       "name": "aw-two-included-attempts",
@@ -6723,7 +6733,12 @@
         }
       },
       "expected": "fail",
-      "reason": "Two included winners/effects violate the Work ledger invariant."
+      "reason": "A second included winner/effect crosses the Work-ledger cardinality boundary.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-43",
+        "AW-44"
+      ]
     },
     {
       "name": "aw-attempt-evidence-native-ref-mismatch",
@@ -11118,7 +11133,11 @@
         }
       },
       "expected": "fail",
-      "reason": "Distinct attempt IDs cannot alias one canonical native transaction reference."
+      "reason": "A second attempt ID naming the first canonical native reference crosses the one-to-one identity boundary.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-40"
+      ]
     },
     {
       "name": "aw-receipt-ledger-winner-bound",
@@ -22414,7 +22433,10 @@
         "AW-49",
         "AW-50",
         "AW-51",
-        "AW-52"
+        "AW-52",
+        "AW-57",
+        "AW-60",
+        "AW-64"
       ],
       "caseClass": "acceptance",
       "surface": "receipt",
@@ -22867,7 +22889,13 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "pass",
-      "reason": "A BFT checkpoint binds ordered operations and business state in one receipt."
+      "reason": "A reconstructible complete proof closure binds ordered operations and business state while its fee/nonce effects grant no second-payment authority.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-49",
+        "AW-60",
+        "AW-64"
+      ]
     },
     {
       "name": "aw-receipt-capability-proof-profile-substitution",
@@ -30788,7 +30816,10 @@
       },
       "expected": "pass",
       "reason": "The empty RFC 6962-style primitive has its exact defined boundary root; Work intents themselves remain non-empty.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-51"
+      ]
     },
     {
       "name": "aw-operation-root-odd-primitive",
@@ -30842,7 +30873,10 @@
       },
       "expected": "pass",
       "reason": "An odd three-leaf tree uses the largest-power-of-two split without duplicating its last leaf.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-51"
+      ]
     },
     {
       "name": "aw-committed-partial-status",
@@ -31309,7 +31343,8 @@
         "AW-53",
         "AW-54",
         "AW-55",
-        "AW-56"
+        "AW-56",
+        "AW-58"
       ],
       "caseClass": "acceptance",
       "surface": "receipt",
@@ -31741,7 +31776,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "pass",
-      "reason": "Executed leaves roll back, later leaves do not execute, business roots match, while envelope fee/nonce remain separate."
+      "reason": "The included rollback establishes this Work's failure and unchanged business state without claiming global attempt absence.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-58"
+      ]
     },
     {
       "name": "aw-committed-receipt-fee-rule-mismatch",
@@ -33953,7 +33992,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Included rollback says nothing about another attempt's inclusion."
+      "reason": "Claiming global absence crosses the semantic boundary of what an included rollback proves.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-58"
+      ]
     },
     {
       "name": "aw-lifecycle-noninclusion-proof",
@@ -34214,7 +34257,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "indeterminate",
-      "reason": "Missing non-inclusion evidence is indeterminate."
+      "reason": "Missing non-inclusion evidence occupies the indeterminate proof-availability boundary.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-60"
+      ]
     },
     {
       "name": "aw-finality-proof-contradicted",
@@ -34674,7 +34721,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Contradictory finality proof material is rejected."
+      "reason": "Contradictory proof material crosses the proof-status boundary into rejection.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-60"
+      ]
     },
     {
       "name": "aw-finality-proof-missing",
@@ -35144,7 +35195,29 @@
         "inferredAbsent": false
       },
       "expected": "pass",
-      "reason": "Reconciliation does not infer absence before durable admission."
+      "reason": "At the pre-admission crash boundary, reconciliation does not infer absence.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-61"
+      ]
+    },
+    {
+      "name": "aw-crash-before-admission-infers-absence",
+      "ruleRefs": [
+        "AW-61"
+      ],
+      "caseClass": "rejection",
+      "surface": "recovery",
+      "input": {
+        "crashBoundary": "before-durable-admission",
+        "inferredAbsent": true
+      },
+      "expected": "fail",
+      "reason": "A crash before durable admission cannot cross the evidence boundary into inferred absence.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-61"
+      ]
     },
     {
       "name": "aw-crash-overlay-rollback",
@@ -35163,7 +35236,34 @@
         }
       },
       "expected": "pass",
-      "reason": "Crash during overlay leaves no business effect."
+      "reason": "At the overlay crash boundary, recovery preserves the exact pre-state.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-62"
+      ]
+    },
+    {
+      "name": "aw-crash-overlay-state-leak",
+      "ruleRefs": [
+        "AW-62"
+      ],
+      "caseClass": "rejection",
+      "surface": "recovery",
+      "input": {
+        "crashBoundary": "during-overlay",
+        "preState": {
+          "slot": "vacant"
+        },
+        "postRecoveryState": {
+          "slot": "settled"
+        }
+      },
+      "expected": "fail",
+      "reason": "A business-state change across the overlay crash boundary is rejected.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-62"
+      ]
     },
     {
       "name": "aw-crash-after-commit-recovery",
@@ -35180,7 +35280,32 @@
         "recoveredWinner": "attempt-a"
       },
       "expected": "pass",
-      "reason": "Post-commit recovery reproduces receipt and winner."
+      "reason": "At the post-commit crash boundary, recovery reproduces the same receipt and winner.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-63"
+      ]
+    },
+    {
+      "name": "aw-crash-after-commit-divergence",
+      "ruleRefs": [
+        "AW-63"
+      ],
+      "caseClass": "rejection",
+      "surface": "recovery",
+      "input": {
+        "crashBoundary": "after-consensus-commit",
+        "committedReceiptHash": "02a226a06c49aaec5a40496dfa698f22bf68da29f1b2aed5e90e444126f71505",
+        "recoveredReceiptHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "committedWinner": "attempt-a",
+        "recoveredWinner": "attempt-b"
+      },
+      "expected": "fail",
+      "reason": "A changed receipt or winner after the consensus-commit boundary is rejected.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-63"
+      ]
     },
     {
       "name": "aw-receipt-service-unavailable",
@@ -35640,7 +35765,12 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "indeterminate",
-      "reason": "Unavailable receipt service does not authorize resubmission."
+      "reason": "Receipt-service unavailability remains on the indeterminate side of the reconstruction boundary.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-49",
+        "AW-64"
+      ]
     },
     {
       "name": "aw-anchor-projection",
@@ -39431,7 +39561,10 @@
       },
       "expected": "pass",
       "reason": "A Work whose JCS encoding equals maxCanonicalBytes is at the inclusive admission boundary.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-71"
+      ]
     },
     {
       "name": "aw-operation-count-limit-equality",
@@ -40606,7 +40739,10 @@
       },
       "expected": "pass",
       "reason": "A Work with exactly maxOperations operations is at the inclusive admission boundary.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-71"
+      ]
     },
     {
       "name": "aw-execution-time-limit-equality",
@@ -40951,7 +41087,10 @@
       },
       "expected": "pass",
       "reason": "An execution at exactly maxExecutionTimeMs is at the inclusive node limit.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-71"
+      ]
     },
     {
       "name": "aw-proof-byte-limit-equality",
@@ -41296,7 +41435,10 @@
       },
       "expected": "pass",
       "reason": "The canonical proof measurement preimage exactly equal to maxProofBytes is admitted.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-71"
+      ]
     },
     {
       "name": "aw-proof-byte-limit-one-over",
@@ -41641,7 +41783,10 @@
       },
       "expected": "fail",
       "reason": "A proof-profile reservation one byte over maxProofBytes is rejected before execution.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-71"
+      ]
     },
     {
       "name": "aw-client-only-limit-check",
@@ -42014,7 +42159,11 @@
         "treatedAsSame": false
       },
       "expected": "pass",
-      "reason": "Structured typed components remain distinct despite a display-string collision."
+      "reason": "Structured typed components remain distinct at the display-collision boundary.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-74"
+      ]
     },
     {
       "name": "aw-indeterminate-overwrites-auth-state",
@@ -42358,7 +42507,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "A later unknown result cannot erase authenticated in-flight state."
+      "reason": "Crossing from authenticated in-flight state to an indeterminate observation cannot erase the established state.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-75"
+      ]
     }
   ]
 }

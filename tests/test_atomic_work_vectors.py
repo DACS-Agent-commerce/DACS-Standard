@@ -30,7 +30,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 290)
+        self.assertEqual(vector_count, 297)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -221,14 +221,39 @@ class AtomicWorkVectorTests(unittest.TestCase):
         }
         self.assertEqual(covered, validator.EXPECTED_RULES)
 
-    def test_partial_polarity_coverage_is_reported_honestly(self):
+    def test_applicable_polarity_coverage_is_complete_and_honest(self):
         report = validator.coverage_report()
-        self.assertEqual(report["classification"], "candidate-partial-polarity")
-        self.assertTrue(report["nonGatingPolarityGaps"])
+        self.assertEqual(
+            report["classification"],
+            "candidate-complete-applicable-polarity",
+        )
+        self.assertTrue(report["completeApplicablePolarity"])
+        self.assertFalse(report["nonGatingPolarityGaps"])
         self.assertEqual(set(report["byRule"]), validator.EXPECTED_RULES)
-        self.assertTrue(report["missing"]["P"])
-        self.assertTrue(report["missing"]["N"])
-        self.assertTrue(report["missing"]["B"])
+        self.assertEqual(report["missing"], {"P": [], "N": [], "B": []})
+        self.assertEqual(
+            report["applicabilityConflicts"],
+            {"P": [], "N": [], "B": []},
+        )
+        self.assertTrue(report["notApplicable"]["P"])
+        self.assertTrue(report["notApplicable"]["N"])
+        self.assertTrue(report["notApplicable"]["B"])
+        self.assertIn("X", "".join(report["byRule"].values()))
+
+    def test_boundary_attribution_is_rule_specific(self):
+        for data in self.sets:
+            for vector in data["vectors"]:
+                boundary_rules = vector.get("boundaryRuleRefs")
+                if vector.get("boundary") is True:
+                    self.assertTrue(boundary_rules)
+                    self.assertLessEqual(
+                        set(boundary_rules), set(vector["ruleRefs"])
+                    )
+                    self.assertLessEqual(
+                        set(boundary_rules), generator.BOUNDARY_APPLICABLE_RULES
+                    )
+                else:
+                    self.assertNotIn("boundaryRuleRefs", vector)
 
     def test_job_ids_and_signers_use_normative_wire_shapes(self):
         def walk(value):

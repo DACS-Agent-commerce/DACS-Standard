@@ -14,15 +14,15 @@ if str(ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(ROOT / "scripts"))
 
 import atomic_work_reference as ref  # noqa: E402
-from generate_atomic_work_vectors import SET_SPECS  # noqa: E402
+from generate_atomic_work_vectors import (  # noqa: E402
+    ATOMIC_RULES,
+    BOUNDARY_APPLICABLE_RULES,
+    POLARITY_NOT_APPLICABLE,
+    SET_SPECS,
+)
 
 
-EXPECTED_RULES = {
-    *{f"AW-{i}" for i in range(1, 78)},
-    *{f"AWP-{i}" for i in range(1, 22)},
-    *{f"AWS-{i}" for i in range(1, 30)},
-    *{f"AWB-{i}" for i in range(1, 11)},
-}
+EXPECTED_RULES = ATOMIC_RULES
 RULE_PATTERN = re.compile(r"^(AW|AWP|AWS|AWB)-([1-9][0-9]*)$")
 
 
@@ -32,12 +32,12 @@ def rule_sort_key(rule: str) -> tuple[str, int]:
 
 
 def coverage_summary(paths: set[Path] | None = None) -> dict[str, str]:
-    """Return honest global positive/negative/boundary marks for every rule.
+    """Return gated global positive/negative/boundary marks for every rule.
 
     ``P`` means an acceptance case names the rule, ``N`` means a rejection
-    case names it, and ``B`` means a case explicitly marks a genuine boundary.
-    A dash is a reported draft gap.  These polarity gaps are deliberately
-    non-gating; only absence of a rule ID from the corpus is a coverage error.
+    case names it, and ``B`` means ``boundaryRuleRefs`` attributes a genuine
+    edge to the rule. ``X`` is an explicitly justified non-applicable cell;
+    a dash is an uncovered applicable polarity and therefore a gate failure.
     """
     if paths is None:
         paths = {
@@ -55,33 +55,85 @@ def coverage_summary(paths: set[Path] | None = None) -> dict[str, str]:
         for vector in vectors:
             if not isinstance(vector, dict) or not isinstance(vector.get("ruleRefs"), list):
                 continue
-            marks: set[str] = set()
             if vector.get("caseClass") == "acceptance":
-                marks.add("P")
+                for rule in vector["ruleRefs"]:
+                    if rule in observed:
+                        observed[rule].add("P")
             elif vector.get("caseClass") == "rejection":
-                marks.add("N")
-            if vector.get("boundary") is True:
-                marks.add("B")
-            for rule in vector["ruleRefs"]:
+                for rule in vector["ruleRefs"]:
+                    if rule in observed:
+                        observed[rule].add("N")
+            for rule in vector.get("boundaryRuleRefs", []):
                 if rule in observed:
-                    observed[rule].update(marks)
+                    observed[rule].add("B")
+    not_applicable = {
+        "P": set(POLARITY_NOT_APPLICABLE["P"]),
+        "N": set(POLARITY_NOT_APPLICABLE["N"]),
+        "B": EXPECTED_RULES - BOUNDARY_APPLICABLE_RULES,
+    }
     return {
-        rule: "".join(mark if mark in observed[rule] else "-" for mark in "PNB")
+        rule: "".join(
+            mark if mark in observed[rule]
+            else "X" if rule in not_applicable[mark]
+            else "-"
+            for mark in "PNB"
+        )
         for rule in sorted(EXPECTED_RULES, key=rule_sort_key)
     }
 
 
 def coverage_report(paths: set[Path] | None = None) -> dict[str, Any]:
     by_rule = coverage_summary(paths)
+    missing = {
+        mark: [
+            rule for rule, marks in by_rule.items()
+            if marks[index] == "-"
+        ]
+        for index, mark in enumerate("PNB")
+    }
+    not_applicable_rules = {
+        "P": set(POLARITY_NOT_APPLICABLE["P"]),
+        "N": set(POLARITY_NOT_APPLICABLE["N"]),
+        "B": EXPECTED_RULES - BOUNDARY_APPLICABLE_RULES,
+    }
+    applicability_conflicts = {
+        mark: [
+            rule for rule in sorted(rules, key=rule_sort_key)
+            if by_rule[rule][index] == mark
+        ]
+        for index, (mark, rules) in enumerate(not_applicable_rules.items())
+    }
     return {
-        "classification": "candidate-partial-polarity",
-        "nonGatingPolarityGaps": True,
-        "legend": {"P": "acceptance", "N": "rejection", "B": "boundary", "-": "missing"},
+        "classification": "candidate-complete-applicable-polarity",
+        "completeApplicablePolarity": (
+            not any(missing.values()) and not any(applicability_conflicts.values())
+        ),
+        "nonGatingPolarityGaps": False,
+        "legend": {
+            "P": "acceptance", "N": "rejection", "B": "boundary",
+            "X": "not applicable with explicit rationale",
+            "-": "missing applicable fixture",
+        },
         "byRule": by_rule,
-        "missing": {
-            "P": [rule for rule, marks in by_rule.items() if marks[0] == "-"],
-            "N": [rule for rule, marks in by_rule.items() if marks[1] == "-"],
-            "B": [rule for rule, marks in by_rule.items() if marks[2] == "-"],
+        "missing": missing,
+        "applicabilityConflicts": applicability_conflicts,
+        "notApplicable": {
+            mark: [
+                rule for rule, marks in by_rule.items()
+                if marks[index] == "X"
+            ]
+            for index, mark in enumerate("PNB")
+        },
+        "notApplicableReasons": {
+            "P": dict(sorted(POLARITY_NOT_APPLICABLE["P"].items())),
+            "N": dict(sorted(POLARITY_NOT_APPLICABLE["N"].items())),
+            "B": {
+                "reason": "The rule has no quantitative, cardinality, lifecycle, discriminator, proof-availability, or version/profile-scope edge in Atomic v0.1.",
+                "rules": sorted(
+                    EXPECTED_RULES - BOUNDARY_APPLICABLE_RULES,
+                    key=rule_sort_key,
+                ),
+            },
         },
     }
 
@@ -110,8 +162,13 @@ def validate_set(path: Path) -> tuple[list[str], set[str], int]:
     if data.get("count") != len(vectors):
         _error(errors, location, f"count {data.get('count')!r} != {len(vectors)}")
     coverage = data.get("coverage")
-    if not isinstance(coverage, dict) or coverage.get("classification") != "candidate-partial-polarity":
-        _error(errors, location, "coverage must explicitly declare candidate-partial-polarity")
+    if not isinstance(coverage, dict) or coverage.get("classification") != "candidate-complete-applicable-polarity":
+        _error(
+            errors, location,
+            "coverage must explicitly declare candidate-complete-applicable-polarity",
+        )
+    elif coverage.get("applicabilityProfile") != "atomic-v0.1-explicit":
+        _error(errors, location, "coverage applicabilityProfile is not atomic-v0.1-explicit")
     try:
         computed_hash = ref.vector_hash(vectors)
     except (ValueError, TypeError) as exc:
@@ -174,10 +231,28 @@ def validate_set(path: Path) -> tuple[list[str], set[str], int]:
             )
         if "boundary" in vector and vector["boundary"] is not True:
             _error(errors, where, "boundary marker must be boolean true when present")
+        boundary_rules = vector.get("boundaryRuleRefs")
+        if vector.get("boundary") is True:
+            if not isinstance(boundary_rules, list) or not boundary_rules:
+                _error(errors, where, "boundary requires non-empty boundaryRuleRefs")
+            else:
+                if len(boundary_rules) != len(set(boundary_rules)):
+                    _error(errors, where, "duplicate boundaryRuleRef")
+                for rule in boundary_rules:
+                    if not isinstance(rule, str) or rule not in EXPECTED_RULES:
+                        _error(errors, where, f"invalid boundaryRuleRef {rule!r}")
+                    elif not isinstance(rules, list) or rule not in rules:
+                        _error(errors, where, f"boundaryRuleRef {rule} is not in ruleRefs")
+                    elif rule not in BOUNDARY_APPLICABLE_RULES:
+                        _error(errors, where, f"rule {rule} has no applicable Atomic v0.1 boundary")
+        elif boundary_rules is not None:
+            _error(errors, where, "boundaryRuleRefs requires boundary: true")
         if vector.get("caseClass") in {"acceptance", "rejection"} and isinstance(rules, list):
             polarity[vector["caseClass"]].update(r for r in rules if r in EXPECTED_RULES)
-        if vector.get("boundary") is True and isinstance(rules, list):
-            polarity["boundary"].update(r for r in rules if r in EXPECTED_RULES)
+        if isinstance(boundary_rules, list):
+            polarity["boundary"].update(
+                r for r in boundary_rules if r in EXPECTED_RULES
+            )
         if not isinstance(vector.get("reason"), str) or not vector["reason"]:
             _error(errors, where, "reason missing")
         if not isinstance(vector.get("input"), dict):
@@ -215,6 +290,18 @@ def validate_all() -> tuple[list[str], int, int]:
     missing_rules = sorted(EXPECTED_RULES - covered, key=rule_sort_key)
     if missing_rules:
         errors.append("rule coverage missing: " + ", ".join(missing_rules))
+    report = coverage_report(expected_paths & actual_paths)
+    for mark, rules in report["missing"].items():
+        if rules:
+            errors.append(
+                f"applicable {mark} polarity coverage missing: " + ", ".join(rules)
+            )
+    for mark, rules in report["applicabilityConflicts"].items():
+        if rules:
+            errors.append(
+                f"observed {mark} polarity marked not applicable: "
+                + ", ".join(rules)
+            )
     return errors, len(actual_paths), total
 
 
@@ -228,9 +315,10 @@ def main() -> int:
     report = coverage_report()
     print(
         f"Atomic Work vectors OK ({set_count} sets, {total} vectors; "
-        f"{len(EXPECTED_RULES)} rules covered; hashes/signatures/semantics verified)"
+        f"{len(EXPECTED_RULES)} rules with complete applicable P/N/B coverage; "
+        "hashes/signatures/semantics verified)"
     )
-    print("Atomic Work draft P/N/B coverage (polarity gaps are non-gating):")
+    print("Atomic Work applicable P/N/B coverage (X = justified not applicable):")
     print(json.dumps(report, sort_keys=True, separators=(",", ":")))
     return 0
 

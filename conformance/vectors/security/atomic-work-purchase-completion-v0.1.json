@@ -23,19 +23,21 @@
     "orchestrator": "4444444444444444444444444444444444444444444444444444444444444444",
     "payer": "5555555555555555555555555555555555555555555555555555555555555555"
   },
-  "count": 42,
-  "hash": "4ac586379ca62972ac0e6b89d4dd9bce1bdd19f6dcef33fcc8023c9bc51bb1c1",
+  "count": 43,
+  "hash": "33c051ecad9b736b9638617241783793ed18d881a59fc06cecd68a161246660a",
   "coverage": {
-    "classification": "candidate-partial-polarity",
-    "acceptanceRuleCount": 16,
-    "rejectionRuleCount": 22,
-    "boundaryRuleCount": 0,
-    "note": "ruleRefs provide rule-ID coverage; absence from a polarity set is an explicit conformance gap, not implicit coverage."
+    "classification": "candidate-complete-applicable-polarity",
+    "applicabilityProfile": "atomic-v0.1-explicit",
+    "acceptanceRuleCount": 20,
+    "rejectionRuleCount": 23,
+    "boundaryRuleCount": 10,
+    "note": "Across the generated corpus, every applicable rule polarity has a fixture; non-applicable cells require an explicit rationale, and boundaryRuleRefs attribute only the rule edges actually exercised."
   },
   "vectors": [
     {
       "name": "awp-purchase-composed-admission",
       "ruleRefs": [
+        "AWP-3",
         "AWP-5",
         "AWP-6",
         "AWP-7",
@@ -1693,7 +1695,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "pass",
-      "reason": "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt."
+      "reason": "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-12"
+      ]
     },
     {
       "name": "awp-purchase-composed-retry-admission",
@@ -9259,7 +9265,12 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Exact profile shape is enforced before an empty requiredRoles list can erase authorization requirements."
+      "reason": "Exact profile shape is enforced before an empty requiredRoles list can erase authorization requirements.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-5",
+        "AWP-15"
+      ]
     },
     {
       "name": "awp-composed-common-receipt-missing",
@@ -10784,7 +10795,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "indeterminate",
-      "reason": "Co-final admission without its resulting common BFT receipt remains unavailable; it cannot retroactively switch payment paths."
+      "reason": "Co-final admission without its resulting common BFT receipt remains unavailable; it cannot retroactively switch payment paths.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-12"
+      ]
     },
     {
       "name": "awp-composed-winner-receipt-mismatch",
@@ -20736,8 +20751,10 @@
       "ruleRefs": [
         "AWP-1",
         "AWP-2",
+        "AWP-3",
         "AWP-4",
-        "AWP-5"
+        "AWP-5",
+        "AWP-20"
       ],
       "caseClass": "acceptance",
       "surface": "profile",
@@ -21281,7 +21298,13 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "pass",
-      "reason": "Signed Vet artifacts, existing agreement, commitment, slot and payment follow the exact profile."
+      "reason": "Signed Vet artifacts, existing agreement, commitment, slot and payment follow the exact profile.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-3",
+        "AWP-5",
+        "AWP-20"
+      ]
     },
     {
       "name": "awp-purchase-authenticated-pay-dem",
@@ -24032,7 +24055,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Nondeterministic live Vet action cannot execute in the rollback overlay."
+      "reason": "Nondeterministic live Vet action cannot execute in the rollback overlay.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-3"
+      ]
     },
     {
       "name": "awp-purchase-order-changed",
@@ -24582,7 +24609,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Payment cannot move before the signed commitment/slot ordering."
+      "reason": "Payment cannot move before the signed commitment/slot ordering.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-5"
+      ]
     },
     {
       "name": "awp-commitment-agreement-binding",
@@ -26786,10 +26817,11 @@
       "reason": "A valid commitment must repeat the exact listingRef pinned by the signed agreement."
     },
     {
-      "name": "awp-consensus-deadline",
+      "name": "awp-consensus-deadline-last-valid",
       "ruleRefs": [
         "AWP-7",
-        "AWP-8"
+        "AWP-8",
+        "AWP-9"
       ],
       "caseClass": "acceptance",
       "surface": "profile",
@@ -27168,7 +27200,7 @@
           "blockRef": {
             "id": "block-atomic-901",
             "height": "901",
-            "timestamp": 1800000030000
+            "timestamp": 1800000059999
           },
           "outcome": "committed",
           "operationResults": [
@@ -27268,21 +27300,21 @@
               "generation": 0,
               "workId": "8105e9db69929df37c3ae4d6467b7315668522ff7226cb80f00fd3ab164047f2",
               "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
-              "receiptCommitment": "f5353205bbdb030d07bc8cb34f95414ab765ebbb6a77ad14562252861f563663"
+              "receiptCommitment": "b1ad999c3c7f39e1941632eda0a8dac69a1d995f0c98220adda60319fae36b26"
             }
           },
           "envelopeEffects": {
             "nonceConsumed": true,
             "feeCharged": "1"
           },
-          "receiptCommitment": "f5353205bbdb030d07bc8cb34f95414ab765ebbb6a77ad14562252861f563663",
+          "receiptCommitment": "b1ad999c3c7f39e1941632eda0a8dac69a1d995f0c98220adda60319fae36b26",
           "slotStateEvidence": {
             "kind": "test-payment-slot-state",
             "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiYUx1OW50ZkNGdGNNZTNCWkNYYXpTN1lxV0NVR2QtTWNMUEJpWU9yWEEwQ2c1WDNuNUFzZHZEazFnbnZRUURNb0ZFZ2QydGdBMEJvZzdHTEw3M0h2QlEifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiI4MTA1ZTlkYjY5OTI5ZGYzN2MzYWU0ZDY0NjdiNzMxNTY2ODUyMmZmNzIyNmNiODBmMDBmZDNhYjE2NDA0N2YyIn0sImJlZm9yZSI6eyJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InZhY2FudCJ9LCJrZXkiOnsiam9iSWQiOiIwMUsxRFBBMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm5ldHdvcmtJZCI6ImRlbW9zOnRlc3RuZXQtYXRvbWljIiwicGhhc2VJbmRleCI6MiwicmFpbElkIjoiZGVtb3MtbmF0aXZlOkRFTSJ9fSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSIsIndvcmtJZCI6IjgxMDVlOWRiNjk5MjlkZjM3YzNhZTRkNjQ2N2I3MzE1NjY4NTIyZmY3MjI2Y2I4MGYwMGZkM2FiMTY0MDQ3ZjIifQ"
           },
           "finalityEvidence": {
             "kind": "test-bft-checkpoint",
-            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJmNTM1MzIwNWJiZGIwMzBkMDdiYzhjYjM0Zjk1NDE0YWI3NjVlYmJiNmE3N2FkMTQ1NjIyNTI4NjFmNTYzNjYzIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Ik84SDVOZGdMUkFmU2JZZlY0X182OHkwNnp2U3l6bmg5X29uM05HdXNNTmhDVkVfT0JUMmprbGdIQlBYd20zcld4QkVXbGMyeFVlT2xxbGJOTGpVckNRIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJiMWFkOTk5YzNjN2YzOWUxOTQxNjMyZWRhMGE4ZGFjNjlhMWQ5OTVmMGM5ODIyMGFkZGE2MDMxOWZhZTM2YjI2Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IkdfNnRKaUU0bVpydmlrd19RS0FmUkh5YVhaOVZOWjNULUxHdWJXNG9RemRhTEhwTVN3WVhZekdIMk9tblBMXzdlaUxtMkJHY0VqLUw3X0NmQkhXQkN3In0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
           }
         },
         "capability": {
@@ -27333,10 +27365,14 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "pass",
-      "reason": "All commitment checks use the timestamp committed in the BFT Work receipt."
+      "reason": "The consensus timestamp one millisecond before notAfter remains valid; client/RPC time is not consulted.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-8"
+      ]
     },
     {
-      "name": "awp-deadline-expired",
+      "name": "awp-deadline-equality-expired",
       "ruleRefs": [
         "AWP-7",
         "AWP-8"
@@ -27718,7 +27754,7 @@
           "blockRef": {
             "id": "block-atomic-901",
             "height": "901",
-            "timestamp": 1800000070000
+            "timestamp": 1800000060000
           },
           "outcome": "committed",
           "operationResults": [
@@ -27818,21 +27854,21 @@
               "generation": 0,
               "workId": "8105e9db69929df37c3ae4d6467b7315668522ff7226cb80f00fd3ab164047f2",
               "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
-              "receiptCommitment": "fb66bf588e04bc72b9ffb14dd971ef08f8c89044163e8979d76dd5f3d8f71e88"
+              "receiptCommitment": "3d79ff72fc919e13ff2a782450b7cf3d4cd9a7151ea601dae8443cbfc2bf57d5"
             }
           },
           "envelopeEffects": {
             "nonceConsumed": true,
             "feeCharged": "1"
           },
-          "receiptCommitment": "fb66bf588e04bc72b9ffb14dd971ef08f8c89044163e8979d76dd5f3d8f71e88",
+          "receiptCommitment": "3d79ff72fc919e13ff2a782450b7cf3d4cd9a7151ea601dae8443cbfc2bf57d5",
           "slotStateEvidence": {
             "kind": "test-payment-slot-state",
             "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiYUx1OW50ZkNGdGNNZTNCWkNYYXpTN1lxV0NVR2QtTWNMUEJpWU9yWEEwQ2c1WDNuNUFzZHZEazFnbnZRUURNb0ZFZ2QydGdBMEJvZzdHTEw3M0h2QlEifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiI4MTA1ZTlkYjY5OTI5ZGYzN2MzYWU0ZDY0NjdiNzMxNTY2ODUyMmZmNzIyNmNiODBmMDBmZDNhYjE2NDA0N2YyIn0sImJlZm9yZSI6eyJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InZhY2FudCJ9LCJrZXkiOnsiam9iSWQiOiIwMUsxRFBBMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm5ldHdvcmtJZCI6ImRlbW9zOnRlc3RuZXQtYXRvbWljIiwicGhhc2VJbmRleCI6MiwicmFpbElkIjoiZGVtb3MtbmF0aXZlOkRFTSJ9fSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSIsIndvcmtJZCI6IjgxMDVlOWRiNjk5MjlkZjM3YzNhZTRkNjQ2N2I3MzE1NjY4NTIyZmY3MjI2Y2I4MGYwMGZkM2FiMTY0MDQ3ZjIifQ"
           },
           "finalityEvidence": {
             "kind": "test-bft-checkpoint",
-            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJmYjY2YmY1ODhlMDRiYzcyYjlmZmIxNGRkOTcxZWYwOGY4Yzg5MDQ0MTYzZTg5NzlkNzZkZDVmM2Q4ZjcxZTg4Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IndpRTJxaXhTTTF3cmdhaXJURUI5SEhqRWRwS3g2SW5lbWdBUUtQMW5McHVLeEhmUmk1RFJidmVnN0doVzdUN2dNUW1xbzY2X1NneVZXSWVZMERIMkJnIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiIzZDc5ZmY3MmZjOTE5ZTEzZmYyYTc4MjQ1MGI3Y2YzZDRjZDlhNzE1MWVhNjAxZGFlODQ0M2NiZmMyYmY1N2Q1Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Imp1U2dfbV83RmRkVVhQUlZLMGp6NmMzczQ3bHhxMmJZVmxVTlJJS0hSeEdHcVZJc1h5TUZKMTRPS1BfN1N2VFRyeWJXVFJBRDFJRUoweGt2bmJQUkF3In0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
           }
         },
         "capability": {
@@ -27883,7 +27919,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Consensus block time outside notAfter rejects payment."
+      "reason": "Consensus block time equal to notAfter is outside the half-open validity interval and rejects payment.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-8"
+      ]
     },
     {
       "name": "awp-client-time-not-authoritative",
@@ -28268,7 +28308,7 @@
           "blockRef": {
             "id": "block-atomic-901",
             "height": "901",
-            "timestamp": 1800000070000
+            "timestamp": 1800000060000
           },
           "outcome": "committed",
           "operationResults": [
@@ -28368,21 +28408,21 @@
               "generation": 0,
               "workId": "8105e9db69929df37c3ae4d6467b7315668522ff7226cb80f00fd3ab164047f2",
               "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
-              "receiptCommitment": "fb66bf588e04bc72b9ffb14dd971ef08f8c89044163e8979d76dd5f3d8f71e88"
+              "receiptCommitment": "3d79ff72fc919e13ff2a782450b7cf3d4cd9a7151ea601dae8443cbfc2bf57d5"
             }
           },
           "envelopeEffects": {
             "nonceConsumed": true,
             "feeCharged": "1"
           },
-          "receiptCommitment": "fb66bf588e04bc72b9ffb14dd971ef08f8c89044163e8979d76dd5f3d8f71e88",
+          "receiptCommitment": "3d79ff72fc919e13ff2a782450b7cf3d4cd9a7151ea601dae8443cbfc2bf57d5",
           "slotStateEvidence": {
             "kind": "test-payment-slot-state",
             "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiYUx1OW50ZkNGdGNNZTNCWkNYYXpTN1lxV0NVR2QtTWNMUEJpWU9yWEEwQ2c1WDNuNUFzZHZEazFnbnZRUURNb0ZFZ2QydGdBMEJvZzdHTEw3M0h2QlEifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiI4MTA1ZTlkYjY5OTI5ZGYzN2MzYWU0ZDY0NjdiNzMxNTY2ODUyMmZmNzIyNmNiODBmMDBmZDNhYjE2NDA0N2YyIn0sImJlZm9yZSI6eyJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InZhY2FudCJ9LCJrZXkiOnsiam9iSWQiOiIwMUsxRFBBMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm5ldHdvcmtJZCI6ImRlbW9zOnRlc3RuZXQtYXRvbWljIiwicGhhc2VJbmRleCI6MiwicmFpbElkIjoiZGVtb3MtbmF0aXZlOkRFTSJ9fSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSIsIndvcmtJZCI6IjgxMDVlOWRiNjk5MjlkZjM3YzNhZTRkNjQ2N2I3MzE1NjY4NTIyZmY3MjI2Y2I4MGYwMGZkM2FiMTY0MDQ3ZjIifQ"
           },
           "finalityEvidence": {
             "kind": "test-bft-checkpoint",
-            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJmYjY2YmY1ODhlMDRiYzcyYjlmZmIxNGRkOTcxZWYwOGY4Yzg5MDQ0MTYzZTg5NzlkNzZkZDVmM2Q4ZjcxZTg4Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6IndpRTJxaXhTTTF3cmdhaXJURUI5SEhqRWRwS3g2SW5lbWdBUUtQMW5McHVLeEhmUmk1RFJidmVnN0doVzdUN2dNUW1xbzY2X1NneVZXSWVZMERIMkJnIn0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiIzZDc5ZmY3MmZjOTE5ZTEzZmYyYTc4MjQ1MGI3Y2YzZDRjZDlhNzE1MWVhNjAxZGFlODQ0M2NiZmMyYmY1N2Q1Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6Imp1U2dfbV83RmRkVVhQUlZLMGp6NmMzczQ3bHhxMmJZVmxVTlJJS0hSeEdHcVZJc1h5TUZKMTRPS1BfN1N2VFRyeWJXVFJBRDFJRUoweGt2bmJQUkF3In0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
           }
         },
         "clientObservedAt": 1800000030000,
@@ -28434,7 +28474,7 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Client/RPC observation time cannot replace the finalized block timestamp."
+      "reason": "An earlier client/RPC observation time cannot override the expired finalized block timestamp."
     },
     {
       "name": "awp-cofinal-critical-effects",
@@ -29950,7 +29990,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "indeterminate",
-      "reason": "Without common BFT receipt the atomic alternative is unavailable and sequential CA-1/SR2-8 applies."
+      "reason": "Without common BFT receipt the atomic alternative is unavailable and sequential CA-1/SR2-8 applies.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-12"
+      ]
     },
     {
       "name": "awp-completion-exact-profile",
@@ -29958,7 +30002,8 @@
         "AWP-13",
         "AWP-14",
         "AWP-15",
-        "AWP-16"
+        "AWP-16",
+        "AWP-21"
       ],
       "caseClass": "acceptance",
       "surface": "profile",
@@ -30624,7 +30669,12 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "pass",
-      "reason": "Completion verifies Purchase receipt then writes exact delivery bytes; evidence remains for the tail."
+      "reason": "Completion verifies Purchase receipt then writes exact delivery bytes; evidence remains for the tail.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-15",
+        "AWP-21"
+      ]
     },
     {
       "name": "awp-completion-commitment-projection-missing",
@@ -32582,7 +32632,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "Completion delivery phase index must match the verified signed Listing invocation while retaining the Purchase slot phase."
+      "reason": "Completion delivery phase index must match the verified signed Listing invocation while retaining the Purchase slot phase.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-21"
+      ]
     },
     {
       "name": "awp-delivery-content-mismatch",
@@ -35281,7 +35335,28 @@
         "roleSpecificBundle": true
       },
       "expected": "indeterminate",
-      "reason": "A Boolean cannot establish a verified role-specific DACS failure record."
+      "reason": "A Boolean cannot establish a verified role-specific DACS failure record.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-17"
+      ]
+    },
+    {
+      "name": "awp-post-purchase-failure-cannot-undo-payment",
+      "ruleRefs": [
+        "AWP-17"
+      ],
+      "caseClass": "rejection",
+      "surface": "post-purchase",
+      "input": {
+        "remedy": "undo-original-payment"
+      },
+      "expected": "fail",
+      "reason": "An ordinary post-Purchase failure cannot reverse the original committed payment; it requires a new compensating artifact.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-17"
+      ]
     },
     {
       "name": "awp-refund-amendment-placeholder",
@@ -35316,7 +35391,11 @@
         }
       },
       "expected": "indeterminate",
-      "reason": "A generic artifact is not a versioned SettlementAmendment and does not prove the original evidence publication."
+      "reason": "A generic artifact is not a versioned SettlementAmendment and does not prove the original evidence publication.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-18"
+      ]
     },
     {
       "name": "awp-unlinked-refund",
@@ -35351,7 +35430,11 @@
         }
       },
       "expected": "fail",
-      "reason": "An unlinked correction cannot mutate original settlement history."
+      "reason": "An unlinked correction cannot mutate original settlement history.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-18"
+      ]
     },
     {
       "name": "awp-fair-exchange-profile-placeholder",
@@ -35365,7 +35448,11 @@
         "profile": "escrow-v1"
       },
       "expected": "indeterminate",
-      "reason": "The amendment does not fabricate an escrow profile that has not been standardized."
+      "reason": "The amendment does not fabricate an escrow profile that has not been standardized.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-19"
+      ]
     },
     {
       "name": "awp-fair-exchange-claim-without-profile",
@@ -35379,7 +35466,11 @@
         "profile": "dacs-completion-v1"
       },
       "expected": "fail",
-      "reason": "Atomic Work alone does not provide fair exchange between Purchase and Completion."
+      "reason": "Atomic Work alone does not provide fair exchange between Purchase and Completion.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWP-19"
+      ]
     }
   ]
 }

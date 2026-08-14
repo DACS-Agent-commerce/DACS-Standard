@@ -24,13 +24,14 @@
     "payer": "5555555555555555555555555555555555555555555555555555555555555555"
   },
   "count": 15,
-  "hash": "37862c8d519d45357f1d465aa323d17636a4bde7c746c1c3cb0cbbae250c7fe6",
+  "hash": "edb6122b21507edc1f30900c614ab137c337234a2ce35c032e95faa34f35d45a",
   "coverage": {
-    "classification": "candidate-partial-polarity",
-    "acceptanceRuleCount": 3,
+    "classification": "candidate-complete-applicable-polarity",
+    "applicabilityProfile": "atomic-v0.1-explicit",
+    "acceptanceRuleCount": 5,
     "rejectionRuleCount": 5,
-    "boundaryRuleCount": 0,
-    "note": "ruleRefs provide rule-ID coverage; absence from a polarity set is an explicit conformance gap, not implicit coverage."
+    "boundaryRuleCount": 8,
+    "note": "Across the generated corpus, every applicable rule polarity has a fixture; non-applicable cells require an explicit rationale, and boundaryRuleRefs attribute only the rule edges actually exercised."
   },
   "vectors": [
     {
@@ -2854,7 +2855,16 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "indeterminate",
-      "reason": "The conditional Work-carried bundle proof chain is deferred until a later exact Work profile standardizes bundle bytes and authorization."
+      "reason": "The conditional Work-carried bundle proof chain is deferred until a later exact Work profile standardizes bundle bytes and authorization.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWB-2",
+        "AWB-3",
+        "AWB-4",
+        "AWB-5",
+        "AWB-6",
+        "AWB-7"
+      ]
     },
     {
       "name": "awb-purchase-evidence-required",
@@ -13994,6 +14004,8 @@
     {
       "name": "awb-idempotent-nonpaying-audit-tail",
       "ruleRefs": [
+        "AWB-1",
+        "AWB-2",
         "AWB-8",
         "AWB-9",
         "AWB-10"
@@ -15066,7 +15078,12 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "pass",
-      "reason": "The audit tail verifies both finalized Works and every dependency proof before publishing without payment."
+      "reason": "The audit tail establishes final role anchoring by verifying both finalized Works and every dependency proof before publishing without payment.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWB-8",
+        "AWB-10"
+      ]
     },
     {
       "name": "awb-audit-dependency-proof-missing",
@@ -16108,7 +16125,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "indeterminate",
-      "reason": "A missing Purchase or Completion operation proof leaves audit finalisation indeterminate."
+      "reason": "A missing Purchase or Completion operation proof leaves audit finalisation indeterminate.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWB-10"
+      ]
     },
     {
       "name": "awb-audit-replay-no-duplicate",
@@ -18259,7 +18280,11 @@
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
       "expected": "fail",
-      "reason": "A cryptographically valid competing-byte write cannot overwrite the immutable audit address."
+      "reason": "A cryptographically valid competing-byte write cannot overwrite the immutable audit address.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWB-8"
+      ]
     },
     {
       "name": "awb-repair-never-replays-purchase",

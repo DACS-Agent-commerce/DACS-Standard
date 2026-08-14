@@ -37,6 +37,60 @@ SET_SPECS = {
     "atomic-work-audit-role-v0.1": "DACS-5 §10.4.2 AWB-1..AWB-10",
 }
 
+ATOMIC_RULES = {
+    *{f"AW-{index}" for index in range(1, 78)},
+    *{f"AWP-{index}" for index in range(1, 22)},
+    *{f"AWS-{index}" for index in range(1, 30)},
+    *{f"AWB-{index}" for index in range(1, 11)},
+}
+
+# Polarity means the vector's final verdict class, not whether the test itself
+# is useful.  These exclusions prevent an honest indeterminate rule, a
+# conditional later-version rule, or a producer-scope rule from being padded
+# with a fake acceptance/rejection merely to fill a matrix cell.
+POLARITY_NOT_APPLICABLE = {
+    "P": {
+        "AW-42": "The required result for an unauthenticated local observation is indeterminate, never acceptance.",
+        **{
+            f"AWB-{index}": "Atomic v1 admits no Work-carried bundle-anchor operation; the conditional later-profile path cannot have an acceptance fixture yet."
+            for index in range(3, 8)
+        },
+        "AWP-17": "A positive ordinary failure record requires the existing production DACS failure/bundle verifier, not a synthetic Atomic fixture.",
+        "AWP-18": "A positive refund requires a separately published and verified SettlementAmendment fixture outside this Atomic corpus.",
+        "AWP-19": "No escrow or delivery-gated Atomic profile is standardized, so a positive guarantee would invent a new profile.",
+        "AWS-13": "The required result for an indeterminate attempt observation is to hold the slot and remain indeterminate.",
+    },
+    "N": {
+        "AW-13": "Any schema-valid operation array order is authoritative; receipt/execution divergence is rejected under AW-46/AW-51 instead.",
+        "AW-15": "Transport fields are outside unsignedIntent by construction; an unknown intent member is intentionally hashed under AW-14 rather than treated as transport metadata.",
+        "AW-42": "Ordinary not-found/timeout/local expiry must remain indeterminate rather than be coerced to rejection.",
+        "AW-49": "Unavailable receipt reconstruction is indeterminate; contradictory receipt bytes are rejected by AW-46/AW-50.",
+        "AW-64": "Post-commit receipt-service unavailability must remain indeterminate, not rejection.",
+        **{
+            f"AWB-{index}": "Atomic v1 admits no Work-carried bundle-anchor operation; cryptographic pass/fail fixtures require the later profile that defines its bytes."
+            for index in range(3, 8)
+        },
+        "AWP-12": "Unavailable Atomic co-finality selects the sequential gate and remains indeterminate; it is not a rejection of the session.",
+        "AWS-13": "An indeterminate attempt observation must hold the slot rather than produce a rejection verdict.",
+    },
+}
+
+# A true boundary is a quantitative edge or a decision edge between lifecycle,
+# discriminator, proof-availability, or version/profile states.  Ordinary
+# binary signature and hash bindings still require positive and negative
+# vectors, but do not acquire a meaningless `boundary: true` marker.
+BOUNDARY_APPLICABLE_RULES = {
+    "AW-9", "AW-21", "AW-40", "AW-42", "AW-43", "AW-44", "AW-49",
+    "AW-51", "AW-58", "AW-60", "AW-61", "AW-62", "AW-63", "AW-64",
+    "AW-71", "AW-74", "AW-75", "AW-76",
+    "AWP-3", "AWP-5", "AWP-8", "AWP-12", "AWP-15", "AWP-17",
+    "AWP-18", "AWP-19", "AWP-20", "AWP-21",
+    "AWS-2", "AWS-7", "AWS-8", "AWS-11", "AWS-12", "AWS-13",
+    "AWS-16", "AWS-17", "AWS-23", "AWS-24", "AWS-25", "AWS-28",
+    "AWB-2", "AWB-3", "AWB-4", "AWB-5", "AWB-6", "AWB-7",
+    "AWB-8", "AWB-10",
+}
+
 SEEDS = {
     "network": bytes.fromhex("11" * 32),
     "buyer": bytes.fromhex("22" * 32),
@@ -1063,6 +1117,7 @@ def projected_anchor_fixture(
 def vector(
     name: str, rules: list[str], surface: str, input_value: dict[str, Any],
     expected: str, reason: str, *, boundary: bool = False,
+    boundary_rules: list[str] | None = None,
 ) -> dict[str, Any]:
     input_value = copy.deepcopy(input_value)
     if surface in {"purchase-admission", "completion-admission", "authorization", "attempts", "receipt", "lifecycle", "projection", "profile", "slot", "settlement", "role-anchor", "audit", "limits"}:
@@ -1088,8 +1143,14 @@ def vector(
         "expected": expected,
         "reason": reason,
     }
-    if boundary:
+    if boundary_rules is not None:
+        if not boundary_rules or not set(boundary_rules).issubset(rules):
+            raise AssertionError("boundaryRuleRefs must be a non-empty ruleRefs subset")
         result["boundary"] = True
+        result["boundaryRuleRefs"] = boundary_rules
+    elif boundary:
+        result["boundary"] = True
+        result["boundaryRuleRefs"] = copy.deepcopy(rules)
     return result
 
 
@@ -1258,7 +1319,7 @@ def identity_vectors() -> list[dict[str, Any]]:
     uppercase_domain_claim = copy.deepcopy(intent)
     uppercase_domain_claim["roleRoster"][0]["signer"] = "domain:EXAMPLE.COM"
     return [
-        vector("aw-capability-authenticated", ["AW-1", "AW-4", "AW-5"], "capability", common_cap, "pass", "Authenticated exact capability permits two business Works plus an audit tail."),
+        vector("aw-capability-authenticated", ["AW-1", "AW-4", "AW-5", "AW-19", "AW-20", "AW-27"], "capability", common_cap, "pass", "Authenticated exact capability pins the execution profile, permits two business Works plus an audit tail, and supplies node rather than preflight authority."),
         vector("aw-capability-mismatch-pre-sign-fallback", ["AW-1", "AW-2"], "capability", {**common_cap, "capability": invalid_cap, "mode": "legacy", "fallback": True}, "pass", "Before signing, a missing/mismatched capability selects the existing lifecycle."),
         vector("aw-capability-mismatch-no-fallback", ["AW-1", "AW-2"], "capability", {**common_cap, "capability": invalid_cap}, "fail", "Atomic execution cannot begin under a mismatched capability."),
         vector("aw-capability-wrong-authority", ["AW-1"], "capability", {**common_cap, "capability": buyer_cap}, "fail", "A buyer-resigned attestation cannot substitute for the capability's authenticated network authority."),
@@ -1272,10 +1333,11 @@ def identity_vectors() -> list[dict[str, Any]]:
         vector("aw-capability-closed-extension", ["AW-1", "AW-77"], "capability", {**common_cap, "capability": extra_capability_member}, "fail", "Unknown trust-gate members require a new capability version rather than open interpretation."),
         vector("aw-capability-boolean-limit", ["AW-1", "AW-71"], "capability", {**common_cap, "capability": bool_limit}, "fail", "A JSON boolean cannot exploit Python integer equality in a capability limit."),
         vector("aw-capability-evidence-string-not-nfc", ["AW-1", "AW-8"], "capability", {**common_cap, "capability": non_nfc_capability_evidence}, "fail", "A cryptographically valid capability attestation still fails when a preserved signed member violates recursive CF-1 NFC."),
+        vector("aw-signed-atomic-stays-atomic", ["AW-3"], "capability", {**common_cap, "stage": "signed"}, "pass", "After signing, an Atomic Work remains on the Atomic path under the authenticated capability."),
         vector("aw-no-silent-fallback-after-sign", ["AW-3"], "capability", {**common_cap, "stage": "signed", "mode": "legacy", "fallback": True}, "fail", "A signed Atomic Work cannot silently fall back to a payment path."),
         vector("aw-not-exactly-two-lifecycle-transactions", ["AW-4", "AW-5"], "capability", {**common_cap, "claimsExactlyTwoLifecycleTransactions": True}, "fail", "The audit finalisation tail prevents an exactly-two lifecycle transaction claim."),
-        vector("aw-canonical-intent-and-id", ["AW-6", "AW-8", "AW-13", "AW-16"], "intent", {"intent": intent, "claimedWorkId": ref.work_id(intent)}, "pass", "Pure JSON is JCS-canonicalized and its identifier is derived."),
-        vector("aw-runtime-object-marker-rejected", ["AW-7"], "intent", {"intent": runtime}, "fail", "A runtime/SDK object marker is not portable signed data."),
+        vector("aw-canonical-intent-and-id", ["AW-6", "AW-7", "AW-8", "AW-11", "AW-12", "AW-13", "AW-16", "AW-17", "AW-18"], "intent", {"intent": intent, "claimedWorkId": ref.work_id(intent)}, "pass", "Pure JSON with unique ordered roles is JCS-canonicalized, and its exact canonical bytes are accepted only under the derived identifier."),
+        vector("aw-runtime-object-marker-rejected", ["AW-6", "AW-7"], "intent", {"intent": runtime}, "fail", "A runtime/SDK object marker is neither the closed pure-JSON intent shape nor portable signed data."),
         vector("aw-safe-integer-max-accepted", ["AW-9"], "intent", {"intent": safe_integer_max}, "pass", "The inclusive RFC 8785 safe-integer maximum remains valid pure JSON.", boundary=True),
         vector("aw-safe-integer-bound", ["AW-9"], "intent", {"intent": unsafe}, "fail", "Unsafe JSON integers fail before canonicalization."),
         vector("aw-negative-phase-index", ["AW-9", "AW-74"], "intent", {"intent": negative_phase_index}, "fail", "A phase index is a non-negative safe integer in schema and semantics."),
@@ -1295,7 +1357,7 @@ def identity_vectors() -> list[dict[str, Any]]:
         vector("aw-claimed-id-mismatch", ["AW-16", "AW-17"], "intent", {"intent": intent, "claimedWorkId": "00" * 32}, "fail", "Caller-supplied IDs are recomputed and mismatches rejected."),
         vector("aw-different-id-identical-bytes", ["AW-18"], "intent", {"intent": intent, "claimedWorkId": "ff" * 32}, "fail", "Identical canonical bytes cannot be admitted under a second identity."),
         vector("aw-execution-profile-bound", ["AW-19", "AW-20"], "capability", {**common_cap, "executionProfile": "demos-bft-work/other"}, "fail", "An unsupported execution-profile interpretation is rejected before execution."),
-        vector("aw-valid-operation-graph", ["AW-21", "AW-22", "AW-26"], "intent", {"intent": intent}, "pass", "The signed array is a deterministic earlier-dependency execution graph."),
+        vector("aw-valid-operation-graph", ["AW-21", "AW-22", "AW-23", "AW-24", "AW-25", "AW-26", "AW-28", "AW-29"], "intent", {"intent": intent}, "pass", "The signed array uses only critical deterministic v1 kinds and forms a valid earlier-dependency execution graph."),
         vector("aw-operation-id-max-length", ["AW-21"], "intent", {"intent": operation_id_max}, "pass", "A 64-character operation ID is the last valid grammar length.", boundary=True),
         vector("aw-operation-id-over-max-length", ["AW-21"], "intent", {"intent": operation_id_too_long}, "fail", "A 65-character operation ID crosses the fixed grammar boundary.", boundary=True),
         vector("aw-operation-id-grammar", ["AW-21"], "intent", {"intent": bad_opid}, "fail", "Operation IDs follow the fixed grammar."),
@@ -1323,6 +1385,9 @@ def authorization_vectors() -> list[dict[str, Any]]:
     missing = auths[1:]
     outer = copy.deepcopy(base)
     outer["outerSubmitter"] = CLAIMS["buyer"]
+    outer_cannot_fill_missing = copy.deepcopy(base)
+    outer_cannot_fill_missing["authorizations"] = auths[1:]
+    outer_cannot_fill_missing["outerSubmitter"] = auths[0]["signer"]
     wrong_signer = mutate(auths, [-1, "signer"], claim("orchestrator"))
     wrong_role = mutate(auths, [-1, "role"], "orchestrator")
     bad_algorithm = mutate(auths, [0, "algorithm"], "rsa")
@@ -1611,12 +1676,13 @@ def authorization_vectors() -> list[dict[str, Any]]:
         non_nfc_authorizations[0], non_nfc_authorizations[0]["role"]
     )
     return [
-        vector("aw-auth-complete-envelope", ["AW-30", "AW-31", "AW-32", "AW-33", "AW-34"], "authorization", base, "pass", "Each required role signs the full operation envelope for the recomputed Work."),
+        vector("aw-auth-complete-envelope", ["AW-30", "AW-31", "AW-32", "AW-33", "AW-34", "AW-35", "AW-36", "AW-38"], "authorization", base, "pass", "Each required role, including the independently authorized payer rather than a Vet signer, signs the unmodified full envelope for this exact Work and context."),
         vector("aw-auth-mutation-invalidates", ["AW-30", "AW-35"], "authorization", {**base, "authorizations": tampered}, "fail", "Mutating a signed envelope member invalidates both binding and signature."),
         vector("aw-auth-operation-index-binding", ["AW-32"], "authorization", {**base, "authorizations": wrong_index}, "fail", "ID, index and kind must identify the same signed operation."),
         vector("aw-auth-work-replay", ["AW-31", "AW-36"], "authorization", {**base, "authorizations": other_work}, "fail", "Authorization cannot be replayed to another Work."),
         vector("aw-auth-required-role-missing", ["AW-34"], "authorization", {**base, "authorizations": missing}, "fail", "Every operation role needs its own authorization."),
         vector("aw-outer-submitter-is-not-role", ["AW-37"], "authorization", outer, "pass", "An unrelated outer sender does not alter signed DACS role authorization."),
+        vector("aw-outer-submitter-cannot-fill-authorization", ["AW-34", "AW-37"], "authorization", outer_cannot_fill_missing, "fail", "Even when the outer submitter equals the missing role signer, it cannot replace that role's operation authorization."),
         vector("aw-payer-signer-mismatch", ["AW-33", "AW-38"], "authorization", {**base, "authorizations": wrong_signer}, "fail", "Vet/orchestrator authority does not become payer authority."),
         vector("aw-payer-role-relabel", ["AW-36", "AW-38"], "authorization", {**base, "authorizations": wrong_role}, "fail", "A signature for one role cannot be relabelled as payer."),
         vector("aw-auth-version-algorithm-bound", ["AW-30", "AW-35", "AW-36"], "authorization", {**base, "authorizations": bad_algorithm}, "fail", "Algorithm and version are signed envelope members."),
@@ -1898,14 +1964,14 @@ def execution_vectors() -> list[dict[str, Any]]:
     return [
         vector("aw-attempt-byte-identity", ["AW-39", "AW-40"], "attempts", {"intent": intent, "attempts": [attempt_a], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}, "pass", "Native attempt identity is distinct while Work bytes, authorizations, and workId remain immutable."),
         vector("aw-attempt-changed-bytes", ["AW-39"], "attempts", {"intent": intent, "attempts": [{**attempt_a, "canonicalWorkBytes": canonical + " "}], "winningAttemptId": "attempt-a", "businessEffectAttempts": [], "authority": authorization_authority(intent), "publicKeys": PUBLIC_KEYS}, "fail", "Replacement cannot alter canonical Work bytes."),
-        vector("aw-replacement-with-noninclusion", ["AW-41"], "attempts", {"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "businessEffectAttempts": [], "publicKeys": PUBLIC_KEYS}, "pass", "Authenticated authoritative non-inclusion permits a replacement attempt."),
-        vector("aw-replacement-on-not-found", ["AW-41", "AW-42"], "attempts", {"intent": intent, "attempts": [unresolved_attempt, attempt_b_replacement], "winningAttemptId": None, "businessEffectAttempts": [], "publicKeys": PUBLIC_KEYS}, "indeterminate", "Ordinary not-found cannot prove a prior attempt will never execute."),
-        vector("aw-single-ledger-winner", ["AW-43", "AW-44"], "attempts", {"intent": intent, "attempts": [attempt_a, attempt_b], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "pass", "Consensus selects one included winner and fences the competitor."),
-        vector("aw-two-included-attempts", ["AW-43", "AW-44"], "attempts", {"intent": intent, "attempts": [attempt_a, {**attempt_b, "lifecycleEvidence": ledger_evidence("attempt-b", wid, "included-committed", tx_b)}], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a", "attempt-b"], "publicKeys": PUBLIC_KEYS}, "fail", "Two included winners/effects violate the Work ledger invariant."),
+        vector("aw-replacement-with-noninclusion", ["AW-41"], "attempts", {"intent": intent, "attempts": [attempt_a_non, attempt_b_replacement], "winningAttemptId": None, "businessEffectAttempts": [], "publicKeys": PUBLIC_KEYS}, "pass", "Authenticated authoritative non-inclusion permits a replacement attempt under the replacement-authority rule."),
+        vector("aw-replacement-on-not-found", ["AW-41", "AW-42"], "attempts", {"intent": intent, "attempts": [unresolved_attempt, attempt_b_replacement], "winningAttemptId": None, "businessEffectAttempts": [], "publicKeys": PUBLIC_KEYS}, "indeterminate", "Ordinary not-found remains on the indeterminate side of the replacement-authority boundary.", boundary_rules=["AW-42"]),
+        vector("aw-single-ledger-winner", ["AW-43", "AW-44"], "attempts", {"intent": intent, "attempts": [attempt_a, attempt_b], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "pass", "Exactly one included winner and business effect is the maximum valid cardinality.", boundary_rules=["AW-43", "AW-44"]),
+        vector("aw-two-included-attempts", ["AW-43", "AW-44"], "attempts", {"intent": intent, "attempts": [attempt_a, {**attempt_b, "lifecycleEvidence": ledger_evidence("attempt-b", wid, "included-committed", tx_b)}], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a", "attempt-b"], "publicKeys": PUBLIC_KEYS}, "fail", "A second included winner/effect crosses the Work-ledger cardinality boundary.", boundary_rules=["AW-43", "AW-44"]),
         vector("aw-attempt-evidence-native-ref-mismatch", ["AW-40", "AW-59"], "attempts", {"intent": intent, "attempts": [{**attempt_a, "lifecycleEvidence": wrong_native_evidence}], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "Signed lifecycle evidence for another native transaction cannot be attached to this attempt."),
         vector("aw-exact-replay-returns-winner", ["AW-45"], "attempts", {"intent": intent, "attempts": [attempt_a, exact_replay], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "pass", "Exact replay returns the selected winner without execution or another fee/nonce effect."),
         vector("aw-attempt-class-required", ["AW-39", "AW-41", "AW-45"], "attempts", {"intent": intent, "attempts": [missing_attempt_class], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "Every transport attempt declares exactly one normal, replacement, or replay class before class-specific fields are interpreted."),
-        vector("aw-attempt-native-reference-duplicate", ["AW-39", "AW-40", "AW-43"], "attempts", {"intent": intent, "attempts": [attempt_a, duplicate_native_ref_attempt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "Distinct attempt IDs cannot alias one canonical native transaction reference."),
+        vector("aw-attempt-native-reference-duplicate", ["AW-39", "AW-40", "AW-43"], "attempts", {"intent": intent, "attempts": [attempt_a, duplicate_native_ref_attempt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "A second attempt ID naming the first canonical native reference crosses the one-to-one identity boundary.", boundary_rules=["AW-40"]),
         vector("aw-receipt-ledger-winner-bound", ["AW-43", "AW-46"], "attempts", {"intent": intent, "attempts": [receipt_attempt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "receipt": committed, "publicKeys": PUBLIC_KEYS}, "pass", "Receipt winner ID and native reference equal the authenticated ledger-selected attempt."),
         vector("aw-receipt-ledger-winner-mismatch", ["AW-43", "AW-46"], "attempts", {"intent": intent, "attempts": [receipt_attempt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "receipt": wrong_winner_receipt, "publicKeys": PUBLIC_KEYS}, "fail", "A separately finalized receipt cannot name another winning attempt."),
         vector("aw-exact-replay-additional-fee", ["AW-45", "AW-56", "AW-57"], "attempts", {"intent": intent, "attempts": [attempt_a, charged_replay], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "An exact replay returns the old winner with zero additional fee and nonce effects."),
@@ -1916,7 +1982,7 @@ def execution_vectors() -> list[dict[str, Any]]:
         vector("aw-receipt-ledger-outcome-mismatch", ["AW-43", "AW-46"], "attempts", {"intent": intent, "attempts": [rolled_back_winner_for_committed_receipt], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "receipt": committed, "publicKeys": PUBLIC_KEYS}, "fail", "A committed receipt cannot be paired with an authenticated included-rolled-back winner state."),
         vector("aw-attempt-proof-profile-mismatch", ["AW-40", "AW-48"], "attempts", {"intent": intent, "attempts": [wrong_attempt_proof_profile], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "Attempt lifecycle evidence binds the capability-selected proof profile and validator set."),
         vector("aw-attempt-candidate-lifecycle-shape", ["AW-40"], "attempts", {"intent": intent, "attempts": [extended_candidate_lifecycle], "winningAttemptId": "attempt-a", "businessEffectAttempts": ["attempt-a"], "publicKeys": PUBLIC_KEYS}, "fail", "The generic schema leaves lifecycle evidence to the selected profile; this candidate accepts only its complete closed synthetic witness shape."),
-        vector("aw-receipt-complete-and-final", ["AW-46", "AW-47", "AW-48", "AW-49", "AW-50", "AW-51", "AW-52"], "receipt", {"intent": intent, "receipt": committed, "publicKeys": PUBLIC_KEYS}, "pass", "A BFT checkpoint binds ordered operations and business state in one receipt."),
+        vector("aw-receipt-complete-and-final", ["AW-46", "AW-47", "AW-48", "AW-49", "AW-50", "AW-51", "AW-52", "AW-57", "AW-60", "AW-64"], "receipt", {"intent": intent, "receipt": committed, "publicKeys": PUBLIC_KEYS}, "pass", "A reconstructible complete proof closure binds ordered operations and business state while its fee/nonce effects grant no second-payment authority.", boundary_rules=["AW-49", "AW-60", "AW-64"]),
         vector("aw-receipt-capability-proof-profile-substitution", ["AW-46", "AW-48"], "receipt", {"intent": intent, "receipt": committed, "capability": receipt_wrong_proof_capability, "publicKeys": PUBLIC_KEYS}, "fail", "Receipt verification uses the independently selected proof profile, not a substituted capability field."),
         vector("aw-receipt-capability-schema-substitution", ["AW-46", "AW-77"], "receipt", {"intent": intent, "receipt": committed, "capability": receipt_wrong_schema_capability, "publicKeys": PUBLIC_KEYS}, "fail", "Receipt verification consumes the exact authenticated payload-schema map."),
         vector("aw-receipt-slot-validator-set-mismatch", ["AW-46", "AW-48"], "receipt", {"intent": intent, "receipt": wrong_slot_validator_receipt, "publicKeys": PUBLIC_KEYS}, "fail", "The authenticated slot before/after proof binds the capability-selected validator set as well as its proof profile."),
@@ -1936,21 +2002,24 @@ def execution_vectors() -> list[dict[str, Any]]:
         vector("aw-operation-root-empty-primitive", ["AW-51"], "merkle", {"leaves": [], "claimedRoot": ref.operation_receipt_root([])}, "pass", "The empty RFC 6962-style primitive has its exact defined boundary root; Work intents themselves remain non-empty.", boundary=True),
         vector("aw-operation-root-odd-primitive", ["AW-51"], "merkle", {"leaves": odd_leaves, "claimedRoot": odd_root}, "pass", "An odd three-leaf tree uses the largest-power-of-two split without duplicating its last leaf.", boundary=True),
         vector("aw-committed-partial-status", ["AW-50", "AW-52"], "receipt", {"intent": intent, "receipt": partial, "publicKeys": PUBLIC_KEYS}, "fail", "A committed Work cannot report one rolled-back critical operation."),
-        vector("aw-rollback-proves-unchanged", ["AW-53", "AW-54", "AW-55", "AW-56"], "receipt", {"intent": intent, "receipt": rolled, "publicKeys": PUBLIC_KEYS}, "pass", "Executed leaves roll back, later leaves do not execute, business roots match, while envelope fee/nonce remain separate."),
+        vector("aw-rollback-proves-unchanged", ["AW-53", "AW-54", "AW-55", "AW-56", "AW-58"], "receipt", {"intent": intent, "receipt": rolled, "publicKeys": PUBLIC_KEYS}, "pass", "The included rollback establishes this Work's failure and unchanged business state without claiming global attempt absence.", boundary_rules=["AW-58"]),
         vector("aw-committed-receipt-fee-rule-mismatch", ["AW-46", "AW-56"], "receipt", {"intent": intent, "receipt": wrong_commit_fee, "publicKeys": PUBLIC_KEYS}, "fail", "Committed receipt envelope effects must satisfy the authenticated fee rule."),
         vector("aw-rollback-receipt-fee-rule-mismatch", ["AW-53", "AW-56"], "receipt", {"intent": intent, "receipt": wrong_rollback_fee, "publicKeys": PUBLIC_KEYS}, "fail", "Rollback preserves business state but still reports the authenticated native fee and nonce effects."),
         vector("aw-rollback-state-leak", ["AW-54", "AW-55"], "receipt", {"intent": intent, "receipt": leaked, "publicKeys": PUBLIC_KEYS}, "fail", "A rollback witness exposing a payment-slot effect is rejected."),
         vector("aw-nonce-does-not-authorize-payment", ["AW-56", "AW-57"], "receipt", {"intent": intent, "receipt": rolled, "authorizesResubmission": True, "publicKeys": PUBLIC_KEYS}, "fail", "Persistent envelope effects do not authorize a second payment."),
-        vector("aw-rollback-not-global-absence", ["AW-58"], "receipt", {"intent": intent, "receipt": rolled, "claimsOtherAttemptAbsent": True, "publicKeys": PUBLIC_KEYS}, "fail", "Included rollback says nothing about another attempt's inclusion."),
+        vector("aw-rollback-not-global-absence", ["AW-58"], "receipt", {"intent": intent, "receipt": rolled, "claimsOtherAttemptAbsent": True, "publicKeys": PUBLIC_KEYS}, "fail", "Claiming global absence crosses the semantic boundary of what an included rollback proves.", boundary=True),
         vector("aw-lifecycle-noninclusion-proof", ["AW-59"], "lifecycle", {"attemptId": "attempt-a", "nativeTransactionRef": tx_a, "expectedNonce": "attempt-nonce-a", "expectedFee": "1", "claimedState": "authoritative-non-inclusion", "evidence": nonincluded, "publicKeys": PUBLIC_KEYS}, "pass", "Authenticated lifecycle evidence, not a client observation, establishes non-inclusion."),
         vector("aw-lifecycle-native-ref-mismatch", ["AW-59", "AW-60"], "lifecycle", {"attemptId": "attempt-a", "nativeTransactionRef": tx_a, "expectedNonce": "attempt-nonce-a", "expectedFee": "1", "claimedState": "included-committed", "evidence": wrong_native_evidence, "publicKeys": PUBLIC_KEYS}, "fail", "Lifecycle evidence must bind the exact native transaction reference being queried."),
-        vector("aw-lifecycle-missing-proof", ["AW-59", "AW-60"], "lifecycle", {"attemptId": "attempt-a", "nativeTransactionRef": tx_a, "expectedNonce": "attempt-nonce-a", "expectedFee": "1", "claimedState": "authoritative-non-inclusion", "publicKeys": PUBLIC_KEYS}, "indeterminate", "Missing non-inclusion evidence is indeterminate."),
-        vector("aw-finality-proof-contradicted", ["AW-47", "AW-48", "AW-60"], "receipt", {"intent": intent, "receipt": bad_finality, "publicKeys": PUBLIC_KEYS}, "fail", "Contradictory finality proof material is rejected."),
+        vector("aw-lifecycle-missing-proof", ["AW-59", "AW-60"], "lifecycle", {"attemptId": "attempt-a", "nativeTransactionRef": tx_a, "expectedNonce": "attempt-nonce-a", "expectedFee": "1", "claimedState": "authoritative-non-inclusion", "publicKeys": PUBLIC_KEYS}, "indeterminate", "Missing non-inclusion evidence occupies the indeterminate proof-availability boundary.", boundary_rules=["AW-60"]),
+        vector("aw-finality-proof-contradicted", ["AW-47", "AW-48", "AW-60"], "receipt", {"intent": intent, "receipt": bad_finality, "publicKeys": PUBLIC_KEYS}, "fail", "Contradictory proof material crosses the proof-status boundary into rejection.", boundary_rules=["AW-60"]),
         vector("aw-finality-proof-missing", ["AW-47", "AW-48", "AW-60"], "receipt", {"intent": intent, "receipt": missing_finality, "publicKeys": PUBLIC_KEYS}, "fail", "A receipt missing schema-required finality evidence is rejected before semantic verification."),
-        vector("aw-crash-before-admission", ["AW-61"], "recovery", {"crashBoundary": "before-durable-admission", "inferredAbsent": False}, "pass", "Reconciliation does not infer absence before durable admission."),
-        vector("aw-crash-overlay-rollback", ["AW-62"], "recovery", {"crashBoundary": "during-overlay", "preState": {"slot": "vacant"}, "postRecoveryState": {"slot": "vacant"}}, "pass", "Crash during overlay leaves no business effect."),
-        vector("aw-crash-after-commit-recovery", ["AW-63"], "recovery", {"crashBoundary": "after-consensus-commit", "committedReceiptHash": ref.receipt_hash(committed), "recoveredReceiptHash": ref.receipt_hash(committed), "committedWinner": "attempt-a", "recoveredWinner": "attempt-a"}, "pass", "Post-commit recovery reproduces receipt and winner."),
-        vector("aw-receipt-service-unavailable", ["AW-49", "AW-64"], "receipt", {"intent": intent, "receipt": committed, "receiptAvailability": "unavailable", "publicKeys": PUBLIC_KEYS}, "indeterminate", "Unavailable receipt service does not authorize resubmission."),
+        vector("aw-crash-before-admission", ["AW-61"], "recovery", {"crashBoundary": "before-durable-admission", "inferredAbsent": False}, "pass", "At the pre-admission crash boundary, reconciliation does not infer absence.", boundary=True),
+        vector("aw-crash-before-admission-infers-absence", ["AW-61"], "recovery", {"crashBoundary": "before-durable-admission", "inferredAbsent": True}, "fail", "A crash before durable admission cannot cross the evidence boundary into inferred absence.", boundary=True),
+        vector("aw-crash-overlay-rollback", ["AW-62"], "recovery", {"crashBoundary": "during-overlay", "preState": {"slot": "vacant"}, "postRecoveryState": {"slot": "vacant"}}, "pass", "At the overlay crash boundary, recovery preserves the exact pre-state.", boundary=True),
+        vector("aw-crash-overlay-state-leak", ["AW-62"], "recovery", {"crashBoundary": "during-overlay", "preState": {"slot": "vacant"}, "postRecoveryState": {"slot": "settled"}}, "fail", "A business-state change across the overlay crash boundary is rejected.", boundary=True),
+        vector("aw-crash-after-commit-recovery", ["AW-63"], "recovery", {"crashBoundary": "after-consensus-commit", "committedReceiptHash": ref.receipt_hash(committed), "recoveredReceiptHash": ref.receipt_hash(committed), "committedWinner": "attempt-a", "recoveredWinner": "attempt-a"}, "pass", "At the post-commit crash boundary, recovery reproduces the same receipt and winner.", boundary=True),
+        vector("aw-crash-after-commit-divergence", ["AW-63"], "recovery", {"crashBoundary": "after-consensus-commit", "committedReceiptHash": ref.receipt_hash(committed), "recoveredReceiptHash": "00" * 32, "committedWinner": "attempt-a", "recoveredWinner": "attempt-b"}, "fail", "A changed receipt or winner after the consensus-commit boundary is rejected.", boundary=True),
+        vector("aw-receipt-service-unavailable", ["AW-49", "AW-64"], "receipt", {"intent": intent, "receipt": committed, "receiptAvailability": "unavailable", "publicKeys": PUBLIC_KEYS}, "indeterminate", "Receipt-service unavailability remains on the indeterminate side of the reconstruction boundary.", boundary_rules=["AW-49", "AW-64"]),
         vector("aw-anchor-projection", ["AW-65", "AW-66", "AW-67", "AW-68", "AW-69", "AW-70"], "projection", projection, "pass", "Storage result projects from independently verifiable receipt and inclusion path."),
         vector("aw-anchor-no-txhash-reinterpretation", ["AW-67", "AW-68"], "projection", bad_projection, "fail", "The operation reference is versioned and not demos:{txHash}."),
         vector("aw-anchor-finality-field-missing", ["AW-65", "AW-66"], "projection", missing_anchor_finality, "fail", "The projection must emit the complete finalized CORE AnchorReceipt shape."),
@@ -1964,8 +2033,8 @@ def execution_vectors() -> list[dict[str, Any]]:
         vector("aw-proof-byte-limit-equality", ["AW-71"], "limits", proof_limit, "pass", "The canonical proof measurement preimage exactly equal to maxProofBytes is admitted.", boundary=True),
         vector("aw-proof-byte-limit-one-over", ["AW-71"], "limits", proof_over_limit, "fail", "A proof-profile reservation one byte over maxProofBytes is rejected before execution.", boundary=True),
         vector("aw-client-only-limit-check", ["AW-71", "AW-72", "AW-73"], "limits", {**limits_base, "checkedBy": "client", "authoritativeSource": "client"}, "fail", "Client status and limit checks cannot replace node enforcement."),
-        vector("aw-structured-proof-identity", ["AW-74"], "slot-distinction", {"leftKey": {"networkId": "a:b", "railId": "c", "jobId": "01K1DPA0000000000000000000", "phaseIndex": 0}, "rightKey": {"networkId": "a", "railId": "b:c", "jobId": "01K1DPA0000000000000000000", "phaseIndex": 0}, "displayKeyLeft": "a:b:c:01K1DPA0000000000000000000:0", "displayKeyRight": "a:b:c:01K1DPA0000000000000000000:0", "treatedAsSame": False}, "pass", "Structured typed components remain distinct despite a display-string collision."),
-        vector("aw-indeterminate-overwrites-auth-state", ["AW-75"], "limits", {**limits_base, "retainedState": "vacant"}, "fail", "A later unknown result cannot erase authenticated in-flight state."),
+        vector("aw-structured-proof-identity", ["AW-74"], "slot-distinction", {"leftKey": {"networkId": "a:b", "railId": "c", "jobId": "01K1DPA0000000000000000000", "phaseIndex": 0}, "rightKey": {"networkId": "a", "railId": "b:c", "jobId": "01K1DPA0000000000000000000", "phaseIndex": 0}, "displayKeyLeft": "a:b:c:01K1DPA0000000000000000000:0", "displayKeyRight": "a:b:c:01K1DPA0000000000000000000:0", "treatedAsSame": False}, "pass", "Structured typed components remain distinct at the display-collision boundary.", boundary=True),
+        vector("aw-indeterminate-overwrites-auth-state", ["AW-75"], "limits", {**limits_base, "retainedState": "vacant"}, "fail", "Crossing from authenticated in-flight state to an indeterminate observation cannot erase the established state.", boundary=True),
     ]
 
 
@@ -2026,10 +2095,13 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     mixed_receipt["operationReceiptRoot"] = ref.operation_receipt_root(mixed_receipt["operationResults"])
     mixed_receipt = rebind_receipt_finality(mixed_receipt)
     mixed_status = {**purchase_base, "atomicReceipt": mixed_receipt}
-    expired_receipt = final_receipt(purchase, block_timestamp=1_800_000_070_000)
-    outside_deadline = {**purchase_base, "atomicReceipt": expired_receipt}
+    deadline = agreement["terms"]["deadline"]
+    last_valid_receipt = final_receipt(purchase, block_timestamp=deadline - 1)
+    deadline_equality_receipt = final_receipt(purchase, block_timestamp=deadline)
+    last_valid_deadline = {**purchase_base, "atomicReceipt": last_valid_receipt}
+    outside_deadline = {**purchase_base, "atomicReceipt": deadline_equality_receipt}
     client_time = {
-        **purchase_base, "atomicReceipt": expired_receipt,
+        **purchase_base, "atomicReceipt": deadline_equality_receipt,
         "clientObservedAt": 1_800_000_030_000,
     }
     no_bft = dict(purchase_base)
@@ -2129,48 +2201,49 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         copy.deepcopy(composed_purchase), reservation_bytes=1
     )
     return [
-        vector("awp-purchase-composed-admission", ["AWP-5", "AWP-6", "AWP-7", "AWP-10", "AWP-11", "AWP-12"], "purchase-admission", composed_purchase, "pass", "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt."),
+        vector("awp-purchase-composed-admission", ["AWP-3", "AWP-5", "AWP-6", "AWP-7", "AWP-10", "AWP-11", "AWP-12"], "purchase-admission", composed_purchase, "pass", "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt.", boundary_rules=["AWP-12"]),
         vector("awp-purchase-composed-retry-admission", ["AWP-5", "AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry, "pass", "A complete retry proves the prior rolled-back Work receipt, advances generation N to N+1, and carries that same generation through the terminal receipt and settlement."),
         vector("awp-purchase-composed-retry-generation-skip", ["AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry_generation_skip, "fail", "A retry cannot skip a generation or present a slot transition that differs from its terminal receipt."),
         vector("awp-completion-composed-admission", ["AWP-13", "AWP-14", "AWP-15", "AWP-16"], "completion-admission", composed_completion, "pass", "One Completion verifier consumes the finalized Purchase and exact authority context through delivery settlement."),
-        vector("awp-composed-profile-empty-required-roles", ["AWP-5", "AWP-15"], "purchase-admission", empty_required_roles, "fail", "Exact profile shape is enforced before an empty requiredRoles list can erase authorization requirements."),
-        vector("awp-composed-common-receipt-missing", ["AWP-11", "AWP-12"], "purchase-admission", missing_common_receipt, "indeterminate", "Co-final admission without its resulting common BFT receipt remains unavailable; it cannot retroactively switch payment paths."),
+        vector("awp-composed-profile-empty-required-roles", ["AWP-5", "AWP-15"], "purchase-admission", empty_required_roles, "fail", "Exact profile shape is enforced before an empty requiredRoles list can erase authorization requirements.", boundary_rules=["AWP-5", "AWP-15"]),
+        vector("awp-composed-common-receipt-missing", ["AWP-11", "AWP-12"], "purchase-admission", missing_common_receipt, "indeterminate", "Co-final admission without its resulting common BFT receipt remains unavailable; it cannot retroactively switch payment paths.", boundary_rules=["AWP-12"]),
         vector("awp-composed-winner-receipt-mismatch", ["AWP-10", "AWP-11"], "purchase-admission", wrong_composed_winner, "fail", "The finalized receipt winner must equal the ledger-authenticated attempt ID and native transaction reference."),
         vector("awp-composed-slot-cross-work-substitution", ["AWP-5", "AWP-10", "AWP-11"], "purchase-admission", cross_work_slot, "fail", "The slot admission, attempt, terminal receipt, and settlement must all name the same outer canonical Work."),
         vector("awp-composed-capability-limit-enforced", ["AWP-5", "AW-71"], "purchase-admission", composed_limit_too_small, "fail", "Whole-profile admission applies the authenticated node byte limit instead of merely verifying the capability signature."),
         vector("awp-composed-limit-evidence-missing", ["AWP-5", "AW-71"], "purchase-admission", missing_composed_limit_evidence, "indeterminate", "Whole-profile admission requires network-authenticated execution-time and proof-byte metrics for the complete Work-result proof closure."),
         vector("awp-composed-proof-reservation-over-limit", ["AWP-5", "AW-71"], "purchase-admission", composed_proof_limit_too_small, "fail", "The proof-profile reservation exceeds maxProofBytes, so the node rejects before executing the isolated business overlay."),
         vector("awp-composed-work-proof-over-limit", ["AWP-5", "AW-71"], "purchase-admission", composed_final_proof_over_reservation, "fail", "A finalized Work-result proof larger than its admitted reservation demonstrates node/profile nonconformance but cannot retroactively roll back the committed Work."),
-        vector("awp-purchase-exact-profile", ["AWP-1", "AWP-2", "AWP-4", "AWP-5"], "profile", purchase_base, "pass", "Signed Vet artifacts, existing agreement, commitment, slot and payment follow the exact profile."),
+        vector("awp-purchase-exact-profile", ["AWP-1", "AWP-2", "AWP-3", "AWP-4", "AWP-5", "AWP-20"], "profile", purchase_base, "pass", "Signed Vet artifacts, existing agreement, commitment, slot and payment follow the exact profile.", boundary_rules=["AWP-3", "AWP-5", "AWP-20"]),
         vector("awp-purchase-authenticated-pay-dem", ["AWP-20"], "profile", wrong_purchase_phase, "fail", "Atomic Purchase cannot select another rail phase or mismatch its signed phase tuple."),
         vector("awp-vet-signature-mutation", ["AWP-1", "AWP-2"], "profile", {**purchase_base, "intent": bad_vet}, "fail", "Vet bytes and signature are verified, not trusted as a detached verdict."),
         vector("awp-vet-cf4-address-mismatch", ["AWP-1", "AWP-2"], "profile", {**purchase_base, "intent": wrong_vet_address}, "fail", "A Vet write must use the CF-4 encoded CompositeVerificationRecord address."),
         vector("awp-vet-cas-forbidden", ["AWP-2"], "profile", {**purchase_base, "intent": vet_cas}, "fail", "Atomic Purchase may create a Vet record but cannot CAS-rewrite it."),
-        vector("awp-live-vet-action", ["AWP-3"], "profile", {**purchase_base, "intent": live_vet}, "fail", "Nondeterministic live Vet action cannot execute in the rollback overlay."),
-        vector("awp-purchase-order-changed", ["AWP-5", "AWP-6"], "profile", {**purchase_base, "intent": bad_order}, "fail", "Payment cannot move before the signed commitment/slot ordering."),
+        vector("awp-live-vet-action", ["AWP-3"], "profile", {**purchase_base, "intent": live_vet}, "fail", "Nondeterministic live Vet action cannot execute in the rollback overlay.", boundary_rules=["AWP-3"]),
+        vector("awp-purchase-order-changed", ["AWP-5", "AWP-6"], "profile", {**purchase_base, "intent": bad_order}, "fail", "Payment cannot move before the signed commitment/slot ordering.", boundary_rules=["AWP-5"]),
         vector("awp-commitment-agreement-binding", ["AWP-4", "AWP-6", "AWP-7"], "profile", {**purchase_base, "intent": bad_commit}, "fail", "The commitment must bind the accepted agreement before payment."),
         vector("awp-commitment-cas-forbidden", ["AWP-6"], "profile", {**purchase_base, "intent": commitment_cas}, "fail", "The commitment gate requires the canonical create-only dacs3 address."),
         vector("awp-commitment-job-binding", ["AWP-4", "AWP-7"], "profile", {**purchase_base, "intent": other_job_commitment_intent}, "fail", "A valid commitment carrying another jobId cannot be used by this Purchase Work."),
         vector("awp-commitment-listing-binding", ["AWP-4", "AWP-7"], "profile", {**purchase_base, "intent": wrong_listing_commitment_intent}, "fail", "A valid commitment must repeat the exact listingRef pinned by the signed agreement."),
-        vector("awp-consensus-deadline", ["AWP-7", "AWP-8"], "profile", purchase_base, "pass", "All commitment checks use the timestamp committed in the BFT Work receipt."),
-        vector("awp-deadline-expired", ["AWP-7", "AWP-8"], "profile", outside_deadline, "fail", "Consensus block time outside notAfter rejects payment."),
-        vector("awp-client-time-not-authoritative", ["AWP-8", "AWP-9"], "profile", client_time, "fail", "Client/RPC observation time cannot replace the finalized block timestamp."),
+        vector("awp-consensus-deadline-last-valid", ["AWP-7", "AWP-8", "AWP-9"], "profile", last_valid_deadline, "pass", "The consensus timestamp one millisecond before notAfter remains valid; client/RPC time is not consulted.", boundary_rules=["AWP-8"]),
+        vector("awp-deadline-equality-expired", ["AWP-7", "AWP-8"], "profile", outside_deadline, "fail", "Consensus block time equal to notAfter is outside the half-open validity interval and rejects payment.", boundary_rules=["AWP-8"]),
+        vector("awp-client-time-not-authoritative", ["AWP-8", "AWP-9"], "profile", client_time, "fail", "An earlier client/RPC observation time cannot override the expired finalized block timestamp."),
         vector("awp-cofinal-critical-effects", ["AWP-10", "AWP-11"], "profile", purchase_base, "pass", "Commitment, slot and payment share one commit outcome and BFT receipt."),
         vector("awp-partial-critical-effect", ["AWP-10"], "profile", mixed_status, "fail", "Mixed critical outcomes violate co-finality."),
-        vector("awp-sequential-gate-when-proof-missing", ["AWP-11", "AWP-12"], "profile", no_bft, "indeterminate", "Without common BFT receipt the atomic alternative is unavailable and sequential CA-1/SR2-8 applies."),
-        vector("awp-completion-exact-profile", ["AWP-13", "AWP-14", "AWP-15", "AWP-16"], "profile", completion_base, "pass", "Completion verifies Purchase receipt then writes exact delivery bytes; evidence remains for the tail."),
+        vector("awp-sequential-gate-when-proof-missing", ["AWP-11", "AWP-12"], "profile", no_bft, "indeterminate", "Without common BFT receipt the atomic alternative is unavailable and sequential CA-1/SR2-8 applies.", boundary_rules=["AWP-12"]),
+        vector("awp-completion-exact-profile", ["AWP-13", "AWP-14", "AWP-15", "AWP-16", "AWP-21"], "profile", completion_base, "pass", "Completion verifies Purchase receipt then writes exact delivery bytes; evidence remains for the tail.", boundary_rules=["AWP-15", "AWP-21"]),
         vector("awp-completion-commitment-projection-missing", ["AWP-12", "AWP-13"], "profile", missing_commitment_projection, "indeterminate", "Completion cannot execute until the Purchase commitment storage operation has a finalized complete AnchorReceipt projection."),
         vector("awp-completion-commitment-projection-mismatch", ["AWP-13"], "profile", bad_commitment_projection, "fail", "A contradictory Purchase commitment AnchorReceipt cannot satisfy the Completion gate."),
-        vector("awp-completion-authenticated-delivery", ["AWP-21"], "profile", wrong_completion_phase, "fail", "Completion delivery phase index must match the verified signed Listing invocation while retaining the Purchase slot phase."),
+        vector("awp-completion-authenticated-delivery", ["AWP-21"], "profile", wrong_completion_phase, "fail", "Completion delivery phase index must match the verified signed Listing invocation while retaining the Purchase slot phase.", boundary_rules=["AWP-21"]),
         vector("awp-delivery-content-mismatch", ["AWP-14"], "profile", {**completion_base, "intent": bad_delivery}, "fail", "Delivery bytes must match the agreed content hash."),
         vector("awp-delivery-address-mismatch", ["AWP-14"], "profile", {**completion_base, "intent": wrong_delivery_address}, "fail", "Completion delivery must use dacs4:deliverable:{jobId}."),
         vector("awp-delivery-cas-forbidden", ["AWP-14"], "profile", {**completion_base, "intent": delivery_cas}, "fail", "Atomic Completion delivery is create-only and cannot CAS-rewrite a prior artifact."),
         vector("awp-completion-does-not-finalize-bundle", ["AWP-16"], "profile", {**completion_base, "claimsBundleFinalized": True}, "fail", "Completion inclusion alone is not a DACS-5 finalization proof."),
-        vector("awp-post-purchase-failure-placeholder", ["AWP-17"], "post-purchase", {"remedy": "ordinary-failure-record", "roleSpecificBundle": True}, "indeterminate", "A Boolean cannot establish a verified role-specific DACS failure record."),
-        vector("awp-refund-amendment-placeholder", ["AWP-18"], "post-purchase", {"remedy": "settlement-amendment", "originalEvidenceId": "settlement-original-1", "amendment": artifact("settlement-amendment", "payer", {"originalEvidenceId": "settlement-original-1", "reason": "refund"}), "publicKeys": PUBLIC_KEYS}, "indeterminate", "A generic artifact is not a versioned SettlementAmendment and does not prove the original evidence publication."),
-        vector("awp-unlinked-refund", ["AWP-18"], "post-purchase", {"remedy": "settlement-amendment", "originalEvidenceId": "settlement-original-1", "amendment": artifact("settlement-amendment", "payer", {"originalEvidenceId": "other", "reason": "refund"}), "publicKeys": PUBLIC_KEYS}, "fail", "An unlinked correction cannot mutate original settlement history."),
-        vector("awp-fair-exchange-profile-placeholder", ["AWP-19"], "post-purchase", {"remedy": "guaranteed-delivery", "profile": "escrow-v1"}, "indeterminate", "The amendment does not fabricate an escrow profile that has not been standardized."),
-        vector("awp-fair-exchange-claim-without-profile", ["AWP-19"], "post-purchase", {"remedy": "guaranteed-delivery", "profile": "dacs-completion-v1"}, "fail", "Atomic Work alone does not provide fair exchange between Purchase and Completion."),
+        vector("awp-post-purchase-failure-placeholder", ["AWP-17"], "post-purchase", {"remedy": "ordinary-failure-record", "roleSpecificBundle": True}, "indeterminate", "A Boolean cannot establish a verified role-specific DACS failure record.", boundary_rules=["AWP-17"]),
+        vector("awp-post-purchase-failure-cannot-undo-payment", ["AWP-17"], "post-purchase", {"remedy": "undo-original-payment"}, "fail", "An ordinary post-Purchase failure cannot reverse the original committed payment; it requires a new compensating artifact.", boundary_rules=["AWP-17"]),
+        vector("awp-refund-amendment-placeholder", ["AWP-18"], "post-purchase", {"remedy": "settlement-amendment", "originalEvidenceId": "settlement-original-1", "amendment": artifact("settlement-amendment", "payer", {"originalEvidenceId": "settlement-original-1", "reason": "refund"}), "publicKeys": PUBLIC_KEYS}, "indeterminate", "A generic artifact is not a versioned SettlementAmendment and does not prove the original evidence publication.", boundary_rules=["AWP-18"]),
+        vector("awp-unlinked-refund", ["AWP-18"], "post-purchase", {"remedy": "settlement-amendment", "originalEvidenceId": "settlement-original-1", "amendment": artifact("settlement-amendment", "payer", {"originalEvidenceId": "other", "reason": "refund"}), "publicKeys": PUBLIC_KEYS}, "fail", "An unlinked correction cannot mutate original settlement history.", boundary_rules=["AWP-18"]),
+        vector("awp-fair-exchange-profile-placeholder", ["AWP-19"], "post-purchase", {"remedy": "guaranteed-delivery", "profile": "escrow-v1"}, "indeterminate", "The amendment does not fabricate an escrow profile that has not been standardized.", boundary_rules=["AWP-19"]),
+        vector("awp-fair-exchange-claim-without-profile", ["AWP-19"], "post-purchase", {"remedy": "guaranteed-delivery", "profile": "dacs-completion-v1"}, "fail", "Atomic Work alone does not provide fair exchange between Purchase and Completion.", boundary_rules=["AWP-19"]),
     ]
 
 
@@ -2945,7 +3018,7 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         unsigned_mode_flip["auditPublication"]["canonicalBytes"]
     )
     return [
-        vector("aws-structured-network-slot-cas", ["AWS-1", "AWS-2", "AWS-3", "AWS-4", "AWS-5", "AWS-6"], "slot", claim_input, "pass", "Consensus proof binds the network-scoped structured slot; global CAS precedes payment."),
+        vector("aws-structured-network-slot-cas", ["AWS-1", "AWS-2", "AWS-3", "AWS-4", "AWS-5", "AWS-6", "AWS-14"], "slot", claim_input, "pass", "Consensus proof binds the network-scoped structured slot; global CAS precedes payment.", boundary_rules=["AWS-2"]),
         vector("aws-type-strict-phase-index", ["AWS-1", "AWS-2", "AWS-3"], "slot", type_mismatch, "fail", "String phaseIndex and integer phaseIndex are distinct."),
         vector("aws-slot-proof-tuple-mismatch", ["AWS-4", "AWS-5"], "slot", proof_tuple_mismatch, "fail", "Claimant tuple cannot replace the tuple authenticated by the ledger proof."),
         vector("aws-slot-cas-after-payment", ["AWS-6"], "slot", payment_before_slot, "fail", "The signed operation graph cannot place payment before the global CAS."),
@@ -2960,9 +3033,9 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         vector("aws-slot-new-state-boolean-generation", ["AWS-2", "AWS-4", "AWS-7"], "slot", boolean_new_state_generation, "fail", "An unsigned Boolean false cannot alias the claim transition's integer generation zero."),
         vector("aws-slot-cf3-parameter-identity", ["AWS-1", "AWS-7"], "slot", cf3_slot_identity, "pass", "Advisory ClaimReference parameters do not split authenticated payer identity in the slot authority path."),
         vector("aws-slot-proof-profile-mismatch", ["AWS-4", "AWS-7"], "slot", wrong_slot_proof_profile, "fail", "The slot ledger proof binds the capability-selected proof profile and validator set."),
-        vector("aws-conflict-digest-mismatch", ["AWS-7", "AWS-8"], "slot", digest_mismatch, "fail", "A different/false digest is rejected before payment."),
+        vector("aws-conflict-digest-mismatch", ["AWS-7", "AWS-8"], "slot", digest_mismatch, "fail", "A different/false digest is rejected before payment.", boundary_rules=["AWS-8"]),
         vector("aws-occupied-slot-conflict", ["AWS-5", "AWS-8"], "slot", occupied_conflict, "fail", "A distinct Work conflict cannot claim an occupied slot."),
-        vector("aws-inflight-exact-replay", ["AWS-9"], "slot", replay_inflight, "pass", "In-flight exact replay reconciles without a transfer."),
+        vector("aws-inflight-exact-replay", ["AWS-8", "AWS-9"], "slot", replay_inflight, "pass", "In-flight exact replay reconciles without a transfer.", boundary_rules=["AWS-8"]),
         vector("aws-replay-stale-work-wrapper", ["AWS-9", "AW-39"], "slot", stale_replay, "fail", "Replay recomputes workId from canonical intent before comparing the occupied slot."),
         vector("aws-settled-exact-replay", ["AWS-10"], "slot", replay_settled, "pass", "Settled replay returns the receipt bound by slot state."),
         vector("aws-retry-after-rollback", ["AWS-11", "AWS-12"], "slot", retry, "pass", "The first generation advance binds the generation-zero failure receipt, retains the digest, and derives a new Work.", boundary=True),
@@ -2975,14 +3048,15 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         vector("aws-retry-committed-receipt-generation", ["AWS-11", "AWS-12"], "receipt", {"intent": retry_intent, "receipt": retry_committed_receipt, "publicKeys": PUBLIC_KEYS}, "pass", "A successful retry receipt proves complete rolled-back generation N before-state and settled generation N+1 after-state."),
         vector("aws-retry-rollback-receipt-generation", ["AWS-11", "AWS-12"], "receipt", {"intent": retry_intent, "receipt": retry_rolled_back_receipt, "publicKeys": PUBLIC_KEYS}, "pass", "A re-rolled-back retry receipt records the new terminal failure at generation N+1."),
         vector("aws-retry-receipt-terminal-generation-invalid", ["AWS-11", "AWS-12"], "receipt", {"intent": retry_intent, "receipt": retry_wrong_terminal_generation, "publicKeys": PUBLIC_KEYS}, "fail", "A retry receipt cannot retain generation N after executing the N-to-N+1 transition."),
-        vector("aws-retry-on-not-found", ["AWS-13", "AWS-14"], "slot", indeterminate, "indeterminate", "Not-found leaves the authoritative slot held."),
+        vector("aws-retry-on-not-found", ["AWS-13", "AWS-14"], "slot", indeterminate, "indeterminate", "Not-found leaves the authoritative slot held.", boundary_rules=["AWS-13"]),
         vector("aws-sessionstore-not-authority", ["AWS-14", "AWS-15"], "slot", {**replay_inflight, "sessionStoreAuthoritative": True}, "fail", "SessionStore cannot override authenticated global slot state."),
-        vector("aws-distinct-atomic-evidence", ["AWS-16", "AWS-17"], "settlement", settle_input, "pass", "A versioned evidence artifact preserves the legacy ChainTxRef contract."),
-        vector("aws-both-evidence-discriminators", ["AWS-17"], "settlement", both_discriminators, "fail", "Atomic and legacy evidence discriminators cannot coexist."),
-        vector("aws-neither-evidence-discriminator", ["AWS-17"], "settlement", neither_discriminator, "fail", "Evidence without either discriminator is rejected before interpretation."),
+        vector("aws-sessionstore-journal-only", ["AWS-15"], "slot", {**replay_inflight, "sessionStoreAuthoritative": False}, "pass", "SessionStore may retain a non-authoritative journal while the authenticated global slot remains the source of truth."),
+        vector("aws-distinct-atomic-evidence", ["AWS-16", "AWS-17", "AWS-27"], "settlement", settle_input, "pass", "A versioned, properly authorized evidence artifact preserves the legacy ChainTxRef contract.", boundary_rules=["AWS-16", "AWS-17"]),
+        vector("aws-both-evidence-discriminators", ["AWS-17"], "settlement", both_discriminators, "fail", "Atomic and legacy evidence discriminators cannot coexist.", boundary_rules=["AWS-17"]),
+        vector("aws-neither-evidence-discriminator", ["AWS-17"], "settlement", neither_discriminator, "fail", "Evidence without either discriminator is rejected before interpretation.", boundary_rules=["AWS-17"]),
         vector("aws-phase-orchestrator-signature", ["AWS-27"], "settlement", {**settle_input, "evidence": payer_evidence}, "fail", "A payer signature cannot substitute for the authenticated phase orchestrator signature."),
         vector("aws-legacy-txref-not-reinterpreted", ["AWS-16", "AWS-17"], "settlement", legacy, "fail", "demos:{txHash} is not reinterpreted as a Work operation."),
-        vector("aws-final-work-receipt-bound", ["AWS-18", "AWS-19", "AWS-20"], "settlement", settle_input, "pass", "Final receipt, committed operation leaf, and settlement payload are verified together."),
+        vector("aws-final-work-receipt-bound", ["AWS-18", "AWS-19", "AWS-20", "AWS-24"], "settlement", settle_input, "pass", "Final receipt, committed operation leaf, operation kind, and settlement payload are verified together.", boundary_rules=["AWS-24"]),
         vector("aws-failure-work-receipt-bound", ["AWS-18", "AWS-19", "AWS-20"], "settlement", failure_input, "pass", "Failure evidence selects a verified rolled-back operation leaf and carries a reason without success-only fields."),
         vector("aws-failure-leaf-status-invalid", ["AWS-20"], "settlement", failure_wrong_status, "fail", "Failure evidence cannot select a committed operation leaf."),
         vector("aws-failure-reason-missing", ["AWS-20"], "settlement", failure_missing_reason, "fail", "Failure evidence requires a non-empty reason."),
@@ -2990,16 +3064,16 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         vector("aws-failure-proof-missing", ["AWS-20", "AWS-28"], "settlement", failure_missing_proof, "fail", "Settlement evidence missing its schema-required operation proof is rejected before semantic verification."),
         vector("aws-receipt-proof-missing", ["AWS-18", "AWS-28"], "settlement", missing_receipt, "indeterminate", "Missing final Work receipt/proof remains indeterminate."),
         vector("aws-receipt-hash-mismatch", ["AWS-18", "AWS-19", "AWS-28"], "settlement", wrong_receipt_hash, "fail", "Contradictory receipt hash fails."),
-        vector("aws-pc2-context-anchoring", ["AWS-21", "AWS-22", "AWS-23"], "settlement", settle_input, "pass", "PC2 job, rail and phase are checked before SB-1/SB-2 projection."),
-        vector("aws-pc2-rail-mismatch", ["AWS-21", "AWS-22", "AWS-23", "AWS-28"], "settlement", wrong_pc2, "fail", "A cross-rail PC2 rebind is rejected."),
-        vector("aws-pc2-malformed-cf4", ["AWS-22", "AWS-23"], "settlement", malformed_pc2, "error", "Lowercase or otherwise non-canonical CF-4 escapes are malformed."),
-        vector("aws-operation-kind-and-leaf", ["AWS-19", "AWS-24"], "settlement", wrong_op, "fail", "Pay evidence must reference its committed payment operation leaf."),
+        vector("aws-pc2-context-anchoring", ["AWS-21", "AWS-22", "AWS-23"], "settlement", settle_input, "pass", "PC2 job, rail and phase are checked before SB-1/SB-2 projection.", boundary_rules=["AWS-23"]),
+        vector("aws-pc2-rail-mismatch", ["AWS-21", "AWS-22", "AWS-23", "AWS-28"], "settlement", wrong_pc2, "fail", "A cross-rail PC2 rebind is rejected.", boundary_rules=["AWS-23"]),
+        vector("aws-pc2-malformed-cf4", ["AWS-22", "AWS-23"], "settlement", malformed_pc2, "error", "Lowercase or otherwise non-canonical CF-4 escapes are malformed.", boundary_rules=["AWS-23"]),
+        vector("aws-operation-kind-and-leaf", ["AWS-19", "AWS-24"], "settlement", wrong_op, "fail", "Pay evidence must reference its committed payment operation leaf.", boundary_rules=["AWS-24"]),
         vector("aws-versioned-settlement-id", ["AWS-25", "AWS-26"], "settlement", settle_input, "pass", "SB-2 uniqueness uses a new domain-separated identity over the operation reference."),
         vector("aws-sig5-additive-reference-members", ["AWS-25", "AWS-26"], "settlement", extra_op_ref, "pass", "Unknown signed reference members remain authenticated while the six required operation-reference fields alone determine settlement identity."),
         vector("aws-settlement-id-mismatch", ["AWS-25", "AWS-26"], "settlement", wrong_id, "fail", "A claimed settlement identity is independently recomputed."),
         vector("aws-payment-address-generation-mismatch", ["AWS-25", "AWS-28"], "settlement", wrong_generation_address, "fail", "Atomic payment evidence address generation derives from the verified terminal slot, not caller state."),
-        vector("aws-atomic-publication-exact-replay", ["AWS-28", "AWS-29"], "settlement", exact_publication_replay, "pass", "A byte-identical replay of the complete signed evidence reconciles against its authenticated finalized publication."),
-        vector("aws-atomic-publication-competing-bytes", ["AWS-28"], "settlement", competing_publication, "fail", "Different signed bytes cannot replay at the immutable Atomic evidence address."),
+        vector("aws-atomic-publication-exact-replay", ["AWS-28", "AWS-29"], "settlement", exact_publication_replay, "pass", "A byte-identical replay of the complete signed evidence reconciles against its authenticated finalized publication.", boundary_rules=["AWS-28"]),
+        vector("aws-atomic-publication-competing-bytes", ["AWS-28"], "settlement", competing_publication, "fail", "Different signed bytes cannot replay at the immutable Atomic evidence address.", boundary_rules=["AWS-28"]),
         vector("aws-atomic-publication-address-mismatch", ["AWS-28"], "settlement", wrong_publication_address, "fail", "The finalized publication must bind the derived Atomic evidence address."),
         vector("aws-atomic-publication-content-hash-mismatch", ["AWS-28"], "settlement", wrong_publication_hash, "fail", "The publication content hash must cover the complete signed evidence bytes."),
         vector("aws-atomic-publication-unfinalized", ["AWS-28"], "settlement", unfinalized_publication, "fail", "A submitted but unfinalized publication cannot establish Atomic evidence."),
@@ -3008,9 +3082,9 @@ def settlement_slot_vectors() -> list[dict[str, Any]]:
         vector("aws-atomic-publication-prior-state-contradiction", ["AWS-28"], "settlement", contradictory_prior_state, "fail", "Authenticated prior-present different bytes contradict create-only publication."),
         vector("aws-atomic-publication-unsigned-mode-flip", ["AWS-28", "AWS-29"], "settlement", unsigned_mode_flip, "fail", "A caller mode label cannot turn an authenticated vacant create into replay reconciliation."),
         vector("aws-audit-tail-payment-resubmit", ["AWS-27", "AWS-29"], "settlement", resubmit, "fail", "Audit repair cannot replay Purchase payment."),
-        vector("aws-delivery-evidence-address", ["AWS-18", "AWS-19", "AWS-20", "AWS-25", "AWS-28"], "settlement", delivery_input, "pass", "Verified Completion storage leaf projects to the exact Atomic delivery address and content."),
-        vector("aws-delivery-content-mismatch", ["AWS-20", "AWS-25"], "settlement", bad_delivery, "fail", "Signed delivery evidence cannot change the content hash proven by its storage leaf."),
-        vector("aws-delivery-address-phase-mismatch", ["AWS-25", "AWS-28"], "settlement", bad_delivery_address, "fail", "Atomic delivery address binds the authenticated delivery phase index and settlement identity."),
+        vector("aws-delivery-evidence-address", ["AWS-18", "AWS-19", "AWS-20", "AWS-25", "AWS-28"], "settlement", delivery_input, "pass", "Verified Completion storage leaf projects to the exact Atomic delivery address and content.", boundary_rules=["AWS-25"]),
+        vector("aws-delivery-content-mismatch", ["AWS-20", "AWS-25"], "settlement", bad_delivery, "fail", "Signed delivery evidence cannot change the content hash proven by its storage leaf.", boundary_rules=["AWS-25"]),
+        vector("aws-delivery-address-phase-mismatch", ["AWS-25", "AWS-28"], "settlement", bad_delivery_address, "fail", "Atomic delivery address binds the authenticated delivery phase index and settlement identity.", boundary_rules=["AWS-25"]),
         vector("aws-slot-key-display-collision", ["AWS-1", "AWS-2", "AWS-3", "AWS-23"], "slot-distinction", {"leftKey": key, "rightKey": {**key, "networkId": "demos", "railId": "testnet-atomic:demos-native:DEM"}, "displayKeyLeft": "demos:testnet-atomic:demos-native:DEM:01K1DPA0000000000000000000:0", "displayKeyRight": "demos:testnet-atomic:demos-native:DEM:01K1DPA0000000000000000000:0", "treatedAsSame": False}, "pass", "Network and rail remain separate typed components despite a concatenation collision."),
     ]
 
@@ -3185,7 +3259,7 @@ def audit_role_vectors() -> list[dict[str, Any]]:
     )
     return [
         vector("awb-completion-receipt-not-final", ["AWB-1"], "role-anchor", completion_only, "fail", "Completion receipt alone cannot finalize DACS-5."),
-        vector("awb-work-carried-bundle-profile-deferred", ["AWB-2", "AWB-3", "AWB-4", "AWB-5", "AWB-6", "AWB-7"], "role-anchor", base, "indeterminate", "The conditional Work-carried bundle proof chain is deferred until a later exact Work profile standardizes bundle bytes and authorization."),
+        vector("awb-work-carried-bundle-profile-deferred", ["AWB-2", "AWB-3", "AWB-4", "AWB-5", "AWB-6", "AWB-7"], "role-anchor", base, "indeterminate", "The conditional Work-carried bundle proof chain is deferred until a later exact Work profile standardizes bundle bytes and authorization.", boundary_rules=["AWB-2", "AWB-3", "AWB-4", "AWB-5", "AWB-6", "AWB-7"]),
         vector("awb-purchase-evidence-required", ["AWB-2", "AWB-7"], "role-anchor", no_purchase, "indeterminate", "Role anchoring requires independently verified Purchase as well as Completion evidence."),
         vector("awb-purchase-completion-mismatch", ["AWB-2", "AWB-6"], "role-anchor", mismatched_purchase, "indeterminate", "The unstandardized later-Work bundle path cannot establish this proof chain."),
         vector("awb-self-consistent-forged-roster", ["AWB-3", "AWB-4", "AWB-5"], "role-anchor", forged_roster, "indeterminate", "No v1 Work-carried bundle profile exists, so this synthetic roster is not accepted as a bundle-anchor test."),
@@ -3194,10 +3268,10 @@ def audit_role_vectors() -> list[dict[str, Any]]:
         vector("awb-bundlebinding-missing", ["AWB-4", "AWB-7"], "role-anchor", missing_binding, "indeterminate", "Missing role binding evidence is indeterminate rather than inferred."),
         vector("awb-anchor-content-mismatch", ["AWB-2", "AWB-5", "AWB-7"], "role-anchor", wrong_content, "indeterminate", "No v1 Work profile carries the actual receipt-dependent bundle content to test this conditional proof chain."),
         vector("awb-receipt-dependent-bundle-in-completion", ["AWB-2"], "role-anchor", bundle_in_completion, "fail", "Receipt-dependent bundle bytes cannot be authored inside Completion Work."),
-        vector("awb-idempotent-nonpaying-audit-tail", ["AWB-8", "AWB-9", "AWB-10"], "audit", audit, "pass", "The audit tail verifies both finalized Works and every dependency proof before publishing without payment."),
-        vector("awb-audit-dependency-proof-missing", ["AWB-8", "AWB-10"], "audit", missing_dependency_proof, "indeterminate", "A missing Purchase or Completion operation proof leaves audit finalisation indeterminate."),
+        vector("awb-idempotent-nonpaying-audit-tail", ["AWB-1", "AWB-2", "AWB-8", "AWB-9", "AWB-10"], "audit", audit, "pass", "The audit tail establishes final role anchoring by verifying both finalized Works and every dependency proof before publishing without payment.", boundary_rules=["AWB-8", "AWB-10"]),
+        vector("awb-audit-dependency-proof-missing", ["AWB-8", "AWB-10"], "audit", missing_dependency_proof, "indeterminate", "A missing Purchase or Completion operation proof leaves audit finalisation indeterminate.", boundary_rules=["AWB-10"]),
         vector("awb-audit-replay-no-duplicate", ["AWB-9"], "audit", replay_audit, "pass", "An authenticated exact lifecycle replay produces no duplicate effect."),
-        vector("awb-audit-replay-competing-bytes", ["AWB-8", "AWB-9"], "audit", overwrite_audit, "fail", "A cryptographically valid competing-byte write cannot overwrite the immutable audit address."),
+        vector("awb-audit-replay-competing-bytes", ["AWB-8", "AWB-9"], "audit", overwrite_audit, "fail", "A cryptographically valid competing-byte write cannot overwrite the immutable audit address.", boundary_rules=["AWB-8"]),
         vector("awb-repair-never-replays-purchase", ["AWB-10"], "audit", repair_payment, "fail", "Repair/finalization never contains payment or slot operations."),
     ]
 
@@ -3213,17 +3287,55 @@ BUILDERS = {
 
 
 def build_sets() -> dict[str, dict[str, Any]]:
+    built_vectors = {
+        name: builder()
+        for name, builder in BUILDERS.items()
+    }
+    observed = {"P": set(), "N": set(), "B": set()}
+    for vectors in built_vectors.values():
+        for item in vectors:
+            if item["caseClass"] == "acceptance":
+                observed["P"].update(item["ruleRefs"])
+            elif item["caseClass"] == "rejection":
+                observed["N"].update(item["ruleRefs"])
+            observed["B"].update(item.get("boundaryRuleRefs", []))
+    not_applicable = {
+        "P": set(POLARITY_NOT_APPLICABLE["P"]),
+        "N": set(POLARITY_NOT_APPLICABLE["N"]),
+        "B": ATOMIC_RULES - BOUNDARY_APPLICABLE_RULES,
+    }
+    missing = {
+        mark: ATOMIC_RULES - observed[mark] - not_applicable[mark]
+        for mark in ("P", "N", "B")
+    }
+    conflicting = {
+        mark: observed[mark] & not_applicable[mark]
+        for mark in ("P", "N", "B")
+    }
+    if any(conflicting.values()):
+        rendered = "; ".join(
+            f"{mark}: {', '.join(sorted(rules))}"
+            for mark, rules in conflicting.items()
+            if rules
+        )
+        raise AssertionError(f"observed Atomic polarity marked not applicable: {rendered}")
+    if any(missing.values()):
+        rendered = "; ".join(
+            f"{mark}: {', '.join(sorted(rules))}"
+            for mark, rules in missing.items()
+            if rules
+        )
+        raise AssertionError(f"uncovered applicable Atomic polarity: {rendered}")
+
     result = {}
-    for name, builder in BUILDERS.items():
-        vectors = builder()
+    for name, vectors in built_vectors.items():
         polarity = {"acceptance": set(), "rejection": set(), "boundary": set()}
         for item in vectors:
             if item["caseClass"] == "acceptance":
                 polarity["acceptance"].update(item["ruleRefs"])
             elif item["caseClass"] == "rejection":
                 polarity["rejection"].update(item["ruleRefs"])
-            if item.get("boundary") is True:
-                polarity["boundary"].update(item["ruleRefs"])
+            polarity["boundary"].update(item.get("boundaryRuleRefs", []))
         result[name] = {
             "set": name,
             "spec": SET_SPECS[name],
@@ -3240,11 +3352,12 @@ def build_sets() -> dict[str, dict[str, Any]]:
             "count": len(vectors),
             "hash": ref.vector_hash(vectors),
             "coverage": {
-                "classification": "candidate-partial-polarity",
+                "classification": "candidate-complete-applicable-polarity",
+                "applicabilityProfile": "atomic-v0.1-explicit",
                 "acceptanceRuleCount": len(polarity["acceptance"]),
                 "rejectionRuleCount": len(polarity["rejection"]),
                 "boundaryRuleCount": len(polarity["boundary"]),
-                "note": "ruleRefs provide rule-ID coverage; absence from a polarity set is an explicit conformance gap, not implicit coverage.",
+                "note": "Across the generated corpus, every applicable rule polarity has a fixture; non-applicable cells require an explicit rationale, and boundaryRuleRefs attribute only the rule edges actually exercised.",
             },
             "vectors": vectors,
         }

@@ -23,14 +23,15 @@
     "orchestrator": "4444444444444444444444444444444444444444444444444444444444444444",
     "payer": "5555555555555555555555555555555555555555555555555555555555555555"
   },
-  "count": 51,
-  "hash": "47d55d1e3511caed28cf6968049c216a20ff78775b4e835eeeb40e1e4cae809e",
+  "count": 52,
+  "hash": "785abc532c43149f6de862bcd562d98d541c962fca2961f1fff555b93f6aa409",
   "coverage": {
-    "classification": "candidate-partial-polarity",
-    "acceptanceRuleCount": 17,
-    "rejectionRuleCount": 34,
+    "classification": "candidate-complete-applicable-polarity",
+    "applicabilityProfile": "atomic-v0.1-explicit",
+    "acceptanceRuleCount": 31,
+    "rejectionRuleCount": 35,
     "boundaryRuleCount": 3,
-    "note": "ruleRefs provide rule-ID coverage; absence from a polarity set is an explicit conformance gap, not implicit coverage."
+    "note": "Across the generated corpus, every applicable rule polarity has a fixture; non-applicable cells require an explicit rationale, and boundaryRuleRefs attribute only the rule edges actually exercised."
   },
   "vectors": [
     {
@@ -38,7 +39,10 @@
       "ruleRefs": [
         "AW-1",
         "AW-4",
-        "AW-5"
+        "AW-5",
+        "AW-19",
+        "AW-20",
+        "AW-27"
       ],
       "caseClass": "acceptance",
       "surface": "capability",
@@ -106,7 +110,7 @@
         "claimsExactlyTwoLifecycleTransactions": false
       },
       "expected": "pass",
-      "reason": "Authenticated exact capability permits two business Works plus an audit tail."
+      "reason": "Authenticated exact capability pins the execution profile, permits two business Works plus an audit tail, and supplies node rather than preflight authority."
     },
     {
       "name": "aw-capability-mismatch-pre-sign-fallback",
@@ -1067,6 +1071,79 @@
       "reason": "A cryptographically valid capability attestation still fails when a preserved signed member violates recursive CF-1 NFC."
     },
     {
+      "name": "aw-signed-atomic-stays-atomic",
+      "ruleRefs": [
+        "AW-3"
+      ],
+      "caseClass": "acceptance",
+      "surface": "capability",
+      "input": {
+        "capability": {
+          "capabilityVersion": "1",
+          "networkAuthority": "did:dacs:test:network",
+          "networkId": "demos:testnet-atomic",
+          "executionProfile": "demos-bft-work/1",
+          "workVersions": [
+            "1"
+          ],
+          "profiles": [
+            "dacs-purchase-v1",
+            "dacs-completion-v1"
+          ],
+          "operationKinds": [
+            "assert-artifact",
+            "assert-work-receipt",
+            "native-dem-transfer",
+            "payment-slot-cas",
+            "storage-program-put"
+          ],
+          "payloadSchemas": {
+            "assert-artifact": "https://dacs.dev/schemas/atomic-assert-artifact-payload-v1.schema.json",
+            "storage-program-put": "https://dacs.dev/schemas/atomic-storage-program-put-payload-v1.schema.json",
+            "payment-slot-cas": "https://dacs.dev/schemas/atomic-payment-slot-cas-payload-v1.schema.json",
+            "native-dem-transfer": "https://dacs.dev/schemas/atomic-native-dem-transfer-payload-v1.schema.json",
+            "assert-work-receipt": "https://dacs.dev/schemas/atomic-assert-work-receipt-payload-v1.schema.json"
+          },
+          "authorizationAlgorithms": [
+            "ed25519"
+          ],
+          "proofProfile": "demos-bft-proof/test-1",
+          "validatorSetId": "test-validator-set-1",
+          "limits": {
+            "maxCanonicalBytes": 50000,
+            "maxOperations": 16,
+            "maxExecutionTimeMs": 2000,
+            "maxProofBytes": 20000,
+            "feeRule": "test-fixed-fee"
+          },
+          "evidence": {
+            "kind": "test-network-capability-attestation",
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+          }
+        },
+        "expectedNetworkAuthority": "did:dacs:test:network",
+        "publicKeys": {
+          "did:dacs:test:network": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+          "did:dacs:test:buyer": "oJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA",
+          "did:dacs:test:seller": "F8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4",
+          "did:dacs:test:orchestrator": "11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg",
+          "did:dacs:test:payer": "xoImN8fTEOxXYnvgC6JZ0lN0n0qvZERwz_vlOjX3MkI"
+        },
+        "networkId": "demos:testnet-atomic",
+        "executionProfile": "demos-bft-work/1",
+        "profile": "dacs-purchase-v1",
+        "expectedProofProfile": "demos-bft-proof/test-1",
+        "stage": "signed",
+        "mode": "atomic",
+        "fallback": false,
+        "businessWorks": 2,
+        "auditTail": true,
+        "claimsExactlyTwoLifecycleTransactions": false
+      },
+      "expected": "pass",
+      "reason": "After signing, an Atomic Work remains on the Atomic path under the authenticated capability."
+    },
+    {
       "name": "aw-no-silent-fallback-after-sign",
       "ruleRefs": [
         "AW-3"
@@ -1217,9 +1294,14 @@
       "name": "aw-canonical-intent-and-id",
       "ruleRefs": [
         "AW-6",
+        "AW-7",
         "AW-8",
+        "AW-11",
+        "AW-12",
         "AW-13",
-        "AW-16"
+        "AW-16",
+        "AW-17",
+        "AW-18"
       ],
       "caseClass": "acceptance",
       "surface": "intent",
@@ -1487,11 +1569,12 @@
         "claimedWorkId": "8105e9db69929df37c3ae4d6467b7315668522ff7226cb80f00fd3ab164047f2"
       },
       "expected": "pass",
-      "reason": "Pure JSON is JCS-canonicalized and its identifier is derived."
+      "reason": "Pure JSON with unique ordered roles is JCS-canonicalized, and its exact canonical bytes are accepted only under the derived identifier."
     },
     {
       "name": "aw-runtime-object-marker-rejected",
       "ruleRefs": [
+        "AW-6",
         "AW-7"
       ],
       "caseClass": "rejection",
@@ -1739,7 +1822,7 @@
         }
       },
       "expected": "fail",
-      "reason": "A runtime/SDK object marker is not portable signed data."
+      "reason": "A runtime/SDK object marker is neither the closed pure-JSON intent shape nor portable signed data."
     },
     {
       "name": "aw-safe-integer-max-accepted",
@@ -2012,7 +2095,10 @@
       },
       "expected": "pass",
       "reason": "The inclusive RFC 8785 safe-integer maximum remains valid pure JSON.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-9"
+      ]
     },
     {
       "name": "aw-safe-integer-bound",
@@ -7006,7 +7092,12 @@
       "ruleRefs": [
         "AW-21",
         "AW-22",
-        "AW-26"
+        "AW-23",
+        "AW-24",
+        "AW-25",
+        "AW-26",
+        "AW-28",
+        "AW-29"
       ],
       "caseClass": "acceptance",
       "surface": "intent",
@@ -7273,7 +7364,7 @@
         }
       },
       "expected": "pass",
-      "reason": "The signed array is a deterministic earlier-dependency execution graph."
+      "reason": "The signed array uses only critical deterministic v1 kinds and forms a valid earlier-dependency execution graph."
     },
     {
       "name": "aw-operation-id-max-length",
@@ -7546,7 +7637,10 @@
       },
       "expected": "pass",
       "reason": "A 64-character operation ID is the last valid grammar length.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-21"
+      ]
     },
     {
       "name": "aw-operation-id-over-max-length",
@@ -7819,7 +7913,10 @@
       },
       "expected": "fail",
       "reason": "A 65-character operation ID crosses the fixed grammar boundary.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-21"
+      ]
     },
     {
       "name": "aw-operation-id-grammar",
@@ -9262,7 +9359,10 @@
       },
       "expected": "pass",
       "reason": "Consensus may begin execution at the final millisecond strictly before expiresAt.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-76"
+      ]
     },
     {
       "name": "aw-expiry-equality-rejected-before-op",
@@ -9537,7 +9637,10 @@
       },
       "expected": "fail",
       "reason": "At expiresAt equality the Work is expired and no operation executes.",
-      "boundary": true
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AW-76"
+      ]
     },
     {
       "name": "aw-payload-schema-exact-profile",

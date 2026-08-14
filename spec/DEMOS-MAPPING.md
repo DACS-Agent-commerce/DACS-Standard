@@ -204,19 +204,36 @@ release:
 4. What are the exact `storage-program-put` create-only/CAS semantics, native
    address derivation, writer/nonce provenance, and logical-to-native output
    binding under replacement?
-5. Where is the network-scoped payment-slot state stored, how is its structured
-   `(networkId, railId, jobId, phaseIndex)` key compared type-strictly, and how
-   does its global CAS survive concurrent Works, validators, forks, and
-   restarts?
+5. Where is the network-scoped payment-slot state stored? How is its structured
+   `(networkId, railId, jobId, phaseIndex)` key derived from the authenticated
+   capability/network, signed Agreement and commitment, pinned Listing
+   `pay-dem` invocation, the session-pinned canonical registry index and its
+   finalized index/definition receipts, independently pinned
+   rail-registry-steward-verified RailDefinition, and closed
+   `AtomicPaymentPhaseInputV1` authority checks? How are the canonical rail
+   address, indexed hash/version, acceptance time, and both receipt timestamps
+   proven no later than authenticated session start?
+   How is its pure `AtomicPaymentSessionContextV1` projection bound back to the
+   independently authenticated portable source of every serializable runtime
+   SessionContext field without serializing the runtime `SubstrateSigner`
+   capability, and how is the fixed buyer/seller/orchestrator tuple derived
+   from an unordered source party set?
+   How does its global CAS survive concurrent Works,
+   validators, forks, and restarts? How do its proofs bind the complete
+   rolled-back generation-`N` state, the CAS to `in-flight` generation `N + 1`,
+   and committed or re-rolled-back generation `N + 1` receipts?
 6. Where are operation authorizations verified, which key-resolution and
    signature rules apply, and how is a DACS role preserved when the outer
    submitter, fee payer, or native writer is a different account?
    How are roster entries bound to the signed agreement, finalized commitment
    signer, authenticated session parties, pinned payer bundle, and
-   `PaymentPhaseInput` rather than trusted as self-assertions?
-7. What durable ledger maps canonical Work bytes to `workId`, transport
-   attempts, and one winning attempt; which authenticated state permits
-   replacement; and how are late attempts fenced and exact replay answered?
+   `AtomicPaymentPhaseInputV1` rather than trusted as self-assertions?
+7. What durable ledger maps canonical Work bytes to `workId`, binds each
+   `attemptId` one-to-one with its canonical `nativeTransactionRef`, and selects
+   one winning attempt whose complete identity is reproduced by the Work
+   receipt? Which authenticated state permits replacement; how are late
+   attempts fenced; and how does exact replay recompute `workId`, return the
+   authoritative winner and receipt, and avoid another business effect?
 8. How is the CORE §5.2 `receiptCommitment` committed by consensus in the same
    transition as business state, how do detachable business-state and finality
    proofs bind their exact committed subjects, how does finality bind the
@@ -239,16 +256,26 @@ release:
 12. Which consensus-selected candidate block timestamp is supplied to the
     DACS-3 AWP-8 checks, and how is client, signer, RPC, or Indexer time
     excluded from that decision?
-13. What exact fee-charging and nonce-consumption behavior applies to commit,
-    rollback, replacement, and replay, and how are those envelope effects
-    prevented from authorizing another payment?
+13. What exact capability-selected `feeRule`, fee-charging, and
+    nonce-consumption behavior applies to admission, commit, rollback,
+    replacement, retry, and replay? How are those effects bound to the exact
+    native attempt and winning receipt, kept separate for later envelopes, and
+    prevented from selecting another winner or authorizing another payment?
 14. What node-enforced `maxCanonicalBytes`, `maxOperations`,
     `maxExecutionTimeMs`, `maxProofBytes`, and `feeRule` limits apply, and
     which boundary and failure-injection tests prove atomic rollback at each
-    limit?
+    pre-commit limit? Which proof-profile-defined fixed or worst-case encoded
+    size is authenticated and reserved before execution, and how is the actual
+    finalized Work-result proof closure authenticated afterward against both
+    that reservation and `maxProofBytes`? A post-finality overage is node or
+    profile nonconformance, not authority to roll back committed state. Later
+    DACS-4 evidence and audit-publication receipts require their own post-commit
+    bounds and cannot imply Work rollback.
 15. How does an audit-tail anchor remain idempotent and independently
-    resolvable, including role authorization and `BundleBinding` when its outer
-    submitter differs, without silently replaying the Purchase payment?
+    resolvable, including network-proof-bound create-only prior non-membership
+    or byte-identical prior content, role authorization, and `BundleBinding`
+    when its outer submitter differs, without silently replaying the Purchase
+    payment?
 
 Until all applicable items are established, clients MUST use the existing
 multi-transaction lifecycle or refuse the Atomic profile before any Atomic

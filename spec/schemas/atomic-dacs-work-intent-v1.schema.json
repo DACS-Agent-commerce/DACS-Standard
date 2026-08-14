@@ -55,6 +55,11 @@
   },
   "additionalProperties": true,
   "$defs": {
+    "claimReference": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9-]*:[^\\s?]+(?:\\?(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*(?:&(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*)*)?$"
+    },
     "role": {
       "enum": ["buyer", "seller", "orchestrator", "payer"]
     },
@@ -72,7 +77,7 @@
       "required": ["role", "signer"],
       "properties": {
         "role": { "$ref": "#/$defs/role" },
-        "signer": { "type": "string", "minLength": 3 },
+        "signer": { "$ref": "#/$defs/claimReference" },
         "nativeAccount": {
           "description": "Signed expectation only. The execution profile independently derives and cross-checks this account from authenticated role and payment inputs; this member never establishes authority.",
           "type": "string",

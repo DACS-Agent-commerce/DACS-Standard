@@ -149,7 +149,7 @@ A versioned, anchored set of payment rails. Each rail entry describes one settle
 ```
 type RailDefinition = {
   railVersion: number
-  railId: string                       // canonical id; lowercase ASCII; max 64 chars
+  railId: string                       // case-sensitive canonical ASCII: [A-Za-z0-9][A-Za-z0-9._:-]{0,63}
   railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
   asset: AssetSpec                     // what is being transferred
   network: NetworkSpec                 // where it lives
@@ -253,10 +253,21 @@ A conforming rail author MUST:
 
 A consumer MUST resolve a rail by:
 
-1. reading the rail-registry index from dacs4:registry:v0.1;
+1. reading and verifying the finalized rail-registry index receipt from
+   `dacs4:registry:v0.1` for the registry version pinned by the session;
 2. looking up the entry for the agreement’s terms.rail.railId;
-3. fetching the rail at the indicated anchor and verifying its content hash and signature;
+3. deriving the canonical definition address
+   `dacs4:rail:{CF-4(railId)}:{railVersion}`, requiring the index to name that
+   exact address, and fetching and verifying its finalized anchor receipt,
+   indexed content hash, complete definition bytes, and steward signature;
 4. if the agreement pins a specific railVersion, MUST use that version; otherwise MUST use the latest at session start, pinned into the session.
+
+For PA-2 or PA-3, both finalized receipt timestamps and the definition's
+authenticated `governance.acceptedAt` MUST be no later than the authenticated
+session `startedAt`. A caller-supplied definition and steward signature without
+the pinned index membership and both finalized anchor bindings do not resolve a
+rail. A later index or definition MAY inform a new session but MUST NOT rewrite
+the rail authority of an existing session.
 
 For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
 before session creation under §6.3.4 LRR-1..LRR-6, including references not
@@ -311,7 +322,11 @@ The closed v0.x set at this revision. Each is a PhaseType from chapter 6’s clo
 
 Every pay-* phase handler MUST:
 
-**(PC-1)** accept a PaymentPhaseInput conforming to the shape below.
+**(PC-1)** accept the applicable closed input arm below: an ordinary handler
+accepts `PaymentPhaseInput`, while the Atomic Work binding accepts
+`AtomicPaymentPhaseInputV1`. A handler MUST select the arm before interpreting
+fields and MUST NOT coerce either arm into the other by adding or dropping
+members.
 
 **(PC-2)** produce SettlementEvidence anchored via SR-2 at `dacs4:payment:{jobId}:{railId}:{phaseIndex}[:resolved]` (or substrate equivalent). Segment rules:
 
@@ -398,13 +413,65 @@ type PaymentPhaseInput = {
 }
 ```
 
+The Atomic profile does not serialize the runtime `SubstrateSigner` carried by
+the general `SessionContext`. Instead it uses these closed pure-JSON inputs:
+
+```
+type AtomicPaymentSessionContextV1 = {
+  contextVersion: "1"
+  jobId: string
+  listingRef: { listingId: string; version: number; contentHash: string }
+  recipeRegistryVersion: number
+  railRegistryVersion: number
+  parties: [
+    { role: "buyer"; primaryClaim: ClaimReference },
+    { role: "seller"; primaryClaim: ClaimReference },
+    { role: "orchestrator"; primaryClaim: ClaimReference }
+  ]
+  priorPhaseOutputsHash: string        // sha256(JCS(SessionContext.priorPhaseOutputs))
+  startedAt: number
+}
+
+type AtomicPaymentPhaseInputV1 = {
+  jobId: string
+  agreement: AgreementArtifact
+  rail: RailDefinition
+  payer: { bundleHash: string; primaryClaim: ClaimReference; payingKey: ClaimReference }
+  payee: { bundleHash: string; primaryClaim: ClaimReference; payeeAddress: string }
+  amount: PriceTerm
+  atomicSessionContext: AtomicPaymentSessionContextV1
+}
+```
+
+`AtomicPaymentSessionContextV1` is derived from an independently authenticated,
+portable source carrying every serializable `SessionContext` field: `jobId`,
+`listingRef`, both registry versions, the complete `SessionParty` entries,
+`priorPhaseOutputs`, and `startedAt`. The source party array may be in any
+order, but it MUST contain exactly one buyer, one seller, and one orchestrator;
+the projection emits those roles in the fixed tuple order shown above. It copies
+the other scalar fields, projects each party to `{ role, primaryClaim }`, commits
+the complete `priorPhaseOutputs` as `priorPhaseOutputsHash`, and omits only the
+runtime `SubstrateSigner`. Buyer and seller `SessionParty.bundleHash` and
+optional `vetRecordRef` remain in the authenticated source and are cross-bound
+when present to the applicable Agreement and to the exact Vet artifact carried
+by the Purchase Work, using the AttestationRef locator and content hash. An
+optional AttestationRef signer binds to the CompositeVerificationRecord's own
+verified signer; it does not make the session orchestrator the Vet verifier.
+The orchestrator's
+complete source entry remains source-authenticated while its `primaryClaim` is
+also cross-bound to the finalized commitment signer. None of those omitted
+members becomes a projection field. The source and projection MUST each carry or resolve binding-defined
+authenticated evidence, and the verifier MUST derive the projection internally
+from that source. Two matching caller-supplied copies are not authority. Atomic
+verification rejects unknown fields in the closed projection and phase input.
+
 **Artifact gate and legacy behaviour.** Before interpreting agreement terms, a payer MUST select the DACS-3 artifact schema from its required version discriminator (§8.5). A payer that does not implement `PayeeBoundAgreementDocument` MUST reject that artifact as unsupported before invoking any pay handler; it MUST NOT discard `payeeBoundAgreementVersion` or `terms.payoutBindings` and retry it as an `AgreementDocument`. In particular, a DACS-4 v0.2 payer expects the required `agreementVersion` field, so the new artifact fails its legacy schema gate and no payment is submitted.
 
-The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 through PB-3 do not apply, and the pay handler uses `PaymentPhaseInput.payee.payeeAddress` after the other §9.5.1 checks. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
+The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 through PB-3 do not apply, and the pay handler uses the applicable PC-1 input arm's `payee.payeeAddress` after the other §9.5.1 checks. A later implementation MAY refuse legacy agreements by local risk policy, but it MUST NOT report their destination as PB-bound. This preserves earlier-minor semantics instead of retroactively making an optional field action-bearing.
 
 **Payee-destination binding (PB-1..PB-3).** The rules below apply only when `agreement` is a `PayeeBoundAgreementDocument`. `payingKey` already binds the payer side to the bundle (`MUST appear in payer's bundle.claims`); PB restores the missing symmetry on the destination.
 
-- (PB-1) **Agreement carriage.** The pinned agreement MUST carry exactly one `terms.payoutBindings` entry (§8.5) for this phase's `(railId, phaseIndex)`. `PaymentPhaseInput.payee.payeeAddress` MUST equal that entry's `payeeAddress`, and the handler MUST NOT submit payment to any other destination. A missing entry, duplicate key, wrong railId, or extra entry makes the payee-bound artifact invalid and MUST fail before payment. The lookup key is the same anchor tuple PC-2 already derives (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so the equality check is a direct anchor-tuple lookup.
+- (PB-1) **Agreement carriage.** The pinned agreement MUST carry exactly one `terms.payoutBindings` entry (§8.5) for this phase's `(railId, phaseIndex)`. The applicable PC-1 input arm — `PaymentPhaseInput.payee.payeeAddress` for a general handler or `AtomicPaymentPhaseInputV1.payee.payeeAddress` for Atomic `pay-dem` — MUST equal that entry's `payeeAddress`, and the handler MUST NOT submit payment to any other destination. A missing entry, duplicate key, wrong railId, or extra entry makes the payee-bound artifact invalid and MUST fail before payment. The lookup key is the same anchor tuple PC-2 already derives (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so the equality check is a direct anchor-tuple lookup.
 - (PB-2) **Destination-identity binding.** Before submitting, the payer MUST verify the destination is bound to `payee.primaryClaim` by the strongest **applicable** tier. Tier *applicability* is decided by the pinned payee bundle (`payee.bundleHash`) together with the pinned `RailDefinition`, not by whether pay-time linkage resolution succeeds:
   - **Tier 1 — intrinsic.** The rail's destination is definitionally the primary claim's address (e.g. `pay-dem`, §9.5.9): the binding holds by construction.
   - **Tier 2 — controlled linked claim.** Applicable iff the pinned bundle carries a `cci-xm:<chain>:<subchain>:…` claim whose SR-1 anchored linkage resolves control-proven per §6.3.2 step (6) for the pay rail's chain — the same gate, applied settle-side. Applicable and resolving to the phase's `payeeAddress` → bound. Applicable but unresolvable → `substrate` (ST-7 pause); the payer MUST NOT fall through to tier 3 and MUST NOT pay. The pause record MUST carry (or reference) the gate's VerifyResult `decision` and `reason`, so a consumer can distinguish a could-not-verify-the-stronger-binding pause from any other substrate pause; a resolver `error` stays `error` (§7.3.2), never a silent downgrade.
@@ -775,13 +842,45 @@ type AtomicPaymentSlotStateV1 =
     }
 ```
 
+Before any slot lookup or transition, the node derives the authoritative key
+from authenticated DACS inputs. The independently verified CORE §5.2
+capability and network binding supply `networkId`. The verified signed Agreement
+and matching finality commitment supply `jobId`.
+
+The Agreement-selected rail supplies `railId` after verification against the
+pinned signed Listing, its `acceptedRails`, the matching `pay-dem` invocation,
+and the RailDefinition resolved from the session-pinned canonical registry
+index through finalized index and definition receipts and then verified under
+the independently pinned registry steward per RD-1. The index address,
+definition address, content hash, selected version, and pre-session timestamps
+are part of that authority. The network capability authority and rail-registry steward are
+distinct trust roles even when one key happens to hold both in a deployment or
+test fixture. `phaseIndex` is that invocation's bare index in the pinned Listing
+pipeline.
+
+The signed Work-intent tuple and `payment-slot-cas.payload.slotKey` MUST each
+match all four derived components type-strictly. `AtomicPaymentPhaseInputV1`
+does not repeat `networkId` or `phaseIndex`: its `jobId` MUST equal the derived
+`jobId`, its complete `rail` MUST be byte-identical to the verified
+RailDefinition selected for the derived `railId`, and its
+`atomicSessionContext` MUST be byte-identical to the independently verified
+projection above. Its agreement, party bundles, accounts, asset, and amount
+remain the AWS-7 conflict-digest cross-checks. None of these carried copies is
+independent namespace authority.
+
 - (AWS-1) The slot key MUST be the structured tuple `(networkId, railId,
-  jobId, phaseIndex)`.
+  jobId, phaseIndex)` derived above.
 - (AWS-2) Slot components MUST be compared component-wise and type-strictly.
 - (AWS-3) A concatenated string, display label, network alias, or claimant field
   MUST NOT determine slot equality.
-- (AWS-4) The tuple and transition used for a decision MUST be bound by
-  authenticated consensus proof.
+- (AWS-4) The consensus material used at each stage MUST bind the exact derived
+  key plus the capability-selected proof profile and validator set. A
+  pre-execution eligibility check MUST authenticate the complete prior state
+  and derive the proposed transition from the signed operation; it MUST NOT
+  report that the CAS occurred. Result acceptance MUST additionally verify the
+  Work receipt's authenticated complete prior and terminal states. A focused
+  prior-state helper, caller-supplied `newState`, or bare network-key signature
+  is not proof of the resulting transition.
 - (AWS-5) The node MUST enforce one compare-and-set ledger across distinct
   Works targeting the same slot.
 - (AWS-6) The compare-and-set MUST occur before any payment effect.
@@ -811,35 +910,66 @@ conflictDigest = lowerhex(SHA-256(
 canonical native accounts resolved under §9.5.1.
 
 - (AWS-7) Every Work for one slot generation MUST carry the same
-  `conflictDigest` in its signed `payment-slot-cas` payload. That payload MUST
-  also carry the structured slot key and expected state/generation selected by
-  the execution-profile schema. The node MUST derive every `slotConflict`
-  member from the verified agreement and commitment, authenticated
-  `PaymentPhaseInput`, selected rail asset, and signed native-transfer payload;
+  `conflictDigest`, derived slot key, and expected state/generation in its signed
+  `payment-slot-cas` payload. The node MUST derive the remaining `slotConflict`
+  members from the verified Agreement and commitment, authenticated
+  `AtomicPaymentPhaseInputV1`, selected rail asset, and signed native-transfer payload;
   a caller-supplied conflict object is not authority. The transfer payload's
   `from` and `to`, and any matching CORE `roleRoster.nativeAccount`, are signed
-  expectations only: the execution profile MUST independently derive and
-  cross-check the payer and payee native accounts from those authenticated
-  inputs before the slot transition or payment. No account string establishes
-  signer, payer, payee, or role authority by self-assertion.
+  expectations only. The execution profile MUST independently derive and
+  cross-check both native accounts before the slot transition or payment. No
+  account string establishes authority by self-assertion.
 - (AWS-8) A different digest for an occupied or terminal slot MUST be rejected
   before any payment effect.
 - (AWS-9) Exact replay of an in-flight Work MUST reconcile its existing status
-  instead of executing another transfer.
+  instead of executing another transfer. Before treating a submission as exact
+  replay, the node MUST recompute `workId` from the presented canonical intent
+  bytes and compare that result, the authoritative slot key, and
+  `conflictDigest` to the ledger component-wise and type-strictly. Retaining an
+  old wrapper `workId` while changing any canonical intent byte is not replay
+  and MUST be rejected.
 - (AWS-10) Exact replay of a settled Work MUST return or reconstruct its
-  authoritative receipt.
+  authoritative receipt without changing its winner, slot state, or receipt
+  commitment.
 - (AWS-11) A rolled-back generation MAY advance to the next generation only
-  through a transition binding the authenticated failure receipt.
+  through a compare-and-set transition binding the authenticated failure
+  receipt. If the proven terminal state is `rolled-back` at generation `N`, the
+  signed `payment-slot-cas.payload.expected` MUST be exactly
+  `{ state: "rolled-back", generation: N }`, while the authenticated complete
+  prior state additionally binds the failed `workId`, `conflictDigest`, and
+  `failureReceiptCommitment`. The successful CAS result MUST be `in-flight` at
+  generation `N + 1`, name the newly derived retry `workId`, and retain the same
+  `conflictDigest`.
 - (AWS-12) A retry generation MUST retain the same conflict digest and MUST use
   a newly derived `workId` whose intent carries
   `priorFailureReceiptCommitment` equal to the terminal slot state's
+  `failureReceiptCommitment`. Its receipt carries the complete generation-`N`
+  `rolled-back` state in `paymentSlot.before`, not merely the two-field signed
+  expected-state projection. A committed retry receipt ends in `settled` at
+  generation `N + 1`; a retry that rolls back again ends in `rolled-back` at
+  generation `N + 1`, names the retry `workId`, and binds that retry receipt's own
   `failureReceiptCommitment`.
 - (AWS-13) An `indeterminate` attempt observation MUST keep the slot held and
   MUST NOT authorize a replacement payment.
 - (AWS-14) The slot state and Work ledger are authoritative for execution,
-  attempts, winner selection, and payment uniqueness.
+  attempts, winner selection, and payment uniqueness. The ledger binds each
+  `attemptId` one-to-one with its canonical `nativeTransactionRef`; distinct
+  attempt IDs cannot name the same native envelope or transaction. A Work
+  receipt's `winningAttempt` equals the ledger-selected attempt ID and native
+  reference. Its Purchase `paymentSlot.key` is compared directly with the
+  authoritative tuple rather than accepted through an intermediate copy.
 - (AWS-15) An SDK `SessionStore` MAY journal orchestration but MUST NOT become a
   competing payment authority.
+
+The authenticated capability's `feeRule` MUST define and be enforced for
+admission, commit, rollback, replacement, retry, and exact replay.
+
+`envelopeEffects` in a committed or rolled-back Work receipt MUST report the
+nonce and fee effects of that exact winning native attempt.
+
+Any separately charged replay or replacement envelope effect MUST remain bound
+to its own attempt. It MUST NOT mutate the returned authoritative receipt or
+slot, select another winner, or authorize another payment.
 
 The terminal `rolled-back` record is execution/recovery bookkeeping in the
 authoritative Work/slot ledger and an explicit exception to business-state
@@ -1426,19 +1556,32 @@ ordinary PC-2 tuple remains independently recoverable and verifiable.
   substitute for the Work receipt, operation, slot, finality, or artifact
   proofs.
 - (AWS-28) Audit publication at the applicable Atomic payment or delivery
-  address above MUST be create-only or byte-identical idempotent. A producer
-  MUST derive that address from verified evidence and MUST NOT overwrite a
-  failed generation with a later success. It MUST obtain and verify a CORE
-  §5.1 `finalized` `AnchorReceipt` binding that address to the complete signed
-  evidence bytes before the evidence satisfies DACS-5 ST-11; the referenced
-  Work receipt proves the business operation but does not replace this audit
-  artifact's own publication receipt. Missing audit material after payment
-  finality MUST trigger evidence catch-up and MUST NOT resubmit the Purchase
-  Work, its payment operation, or a legacy payment.
+  address above MUST be create-only or byte-identical idempotent. The producer
+  derives that address from verified evidence and never overwrites a failed
+  generation with a later success. Before the evidence satisfies DACS-5 ST-11,
+  the producer MUST verify a CORE §5.1 `finalized` `AnchorReceipt` that binds the
+  address to the complete signed evidence bytes. Its authenticated evidence
+  closure binds the enforced write condition and authoritative prior-state
+  result described below. The referenced Work receipt proves the business
+  operation but does not replace this audit artifact's own publication receipt.
 - (AWS-29) A client, outer submitter, SDK status, Indexer record, or structural
   classifier verdict MUST NOT establish operation inclusion, finality, slot
   state, role authority, or settlement coherence without the independently
   verified evidence required above.
+
+For a newly created publication, the AWS-28 evidence closure proves prior
+non-membership at the derived address. For an idempotent reconciliation, it
+proves that the prior complete canonical bytes, and therefore their content
+hash, were byte-identical.
+
+A caller-supplied `create-only` or `replay` label and a proof of only the
+post-write value do not establish either condition. Missing write-condition or
+prior-state proof is `indeterminate`. Authenticated evidence of a different
+prior value is a contradiction and MUST be rejected.
+
+Missing audit material after payment finality MUST trigger evidence catch-up.
+That catch-up MUST NOT resubmit the Purchase Work, its payment operation, or a
+legacy payment.
 
 Missing or unavailable proof produces `indeterminate`, not failure evidence.
 The `operationProof.value` encoding and verification

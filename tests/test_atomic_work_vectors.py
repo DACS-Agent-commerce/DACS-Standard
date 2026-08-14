@@ -30,7 +30,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 205)
+        self.assertEqual(vector_count, 290)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -41,9 +41,19 @@ class AtomicWorkVectorTests(unittest.TestCase):
         at_limit = by_name["aw-proof-byte-limit-equality"]
         over_limit = by_name["aw-proof-byte-limit-one-over"]
         limit = at_limit["input"]["capability"]["limits"]["maxProofBytes"]
-        self.assertEqual(len(ref.jcs_bytes(at_limit["input"]["proofMaterial"])), limit)
         self.assertEqual(
-            len(ref.jcs_bytes(over_limit["input"]["proofMaterial"])), limit + 1
+            len(ref.proof_package_bytes(
+                at_limit["input"]["proofMaterial"],
+                at_limit["input"]["proofReservationEvidence"],
+            )),
+            limit,
+        )
+        self.assertEqual(
+            len(ref.proof_package_bytes(
+                over_limit["input"]["proofMaterial"],
+                over_limit["input"]["proofReservationEvidence"],
+            )),
+            limit + 1,
         )
         self.assertEqual(ref.evaluate_vector(at_limit)[0], "pass")
         self.assertEqual(ref.evaluate_vector(over_limit)[0], "fail")
@@ -178,6 +188,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
             "aw-receipt-capability-proof-profile-substitution",
             "aw-receipt-capability-schema-substitution",
             "aw-receipt-malformed-operation-payload",
+            "aw-completion-storage-bytes-content-hash-mismatch",
         ):
             with self.subTest(name=name):
                 self.assertEqual(ref.evaluate_vector(receipt_by_name[name])[0], "fail")
@@ -241,7 +252,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         malformed["roleRoster"][0]["signer"] = {
             "kind": "did", "value": generator.CLAIMS["buyer"]
         }
-        with self.assertRaisesRegex(ref.Invalid, "canonical ClaimReference string"):
+        with self.assertRaisesRegex(ref.Invalid, "signer|ClaimReference"):
             ref.validate_intent(malformed)
 
     def test_atomic_settlement_evidence_uses_normative_shape(self):
@@ -360,6 +371,121 @@ class AtomicWorkVectorTests(unittest.TestCase):
             retry["ledgerProof"]["state"]["failureReceiptCommitment"],
         )
         self.assertEqual(retry["work"]["workId"], ref.work_id(retry_intent))
+        self.assertEqual(
+            retry_intent["operations"][4]["payload"]["expected"],
+            {
+                "state": "rolled-back",
+                "generation": retry["ledgerProof"]["state"]["generation"],
+            },
+        )
+        self.assertEqual(
+            retry["newState"]["generation"],
+            retry["ledgerProof"]["state"]["generation"] + 1,
+        )
+
+        by_name = {vector["name"]: vector for vector in slot_set["vectors"]}
+        for name in (
+            "aws-retry-committed-receipt-generation",
+            "aws-retry-rollback-receipt-generation",
+        ):
+            with self.subTest(name=name):
+                candidate = by_name[name]
+                self.assertEqual(ref.evaluate_vector(candidate)[0], "pass")
+                before = candidate["input"]["receipt"]["paymentSlot"]["before"]
+                after = candidate["input"]["receipt"]["paymentSlot"]["after"]
+                self.assertEqual(after["generation"], before["generation"] + 1)
+
+    def test_composed_admission_is_the_whole_profile_verdict(self):
+        profiles = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-purchase-completion-v0.1"
+        )
+        by_name = {vector["name"]: vector for vector in profiles["vectors"]}
+        self.assertEqual(
+            ref.evaluate_vector(by_name["awp-purchase-composed-admission"])[0],
+            "pass",
+        )
+        self.assertEqual(
+            ref.evaluate_vector(by_name["awp-completion-composed-admission"])[0],
+            "pass",
+        )
+        self.assertEqual(
+            ref.evaluate_vector(
+                by_name["awp-purchase-composed-retry-admission"]
+            )[0],
+            "pass",
+        )
+        self.assertNotIn(
+            "commitmentReceipt",
+            by_name["awp-purchase-composed-admission"]["input"]["authority"],
+        )
+        for name, verdict in (
+            ("awp-composed-profile-empty-required-roles", "fail"),
+            ("awp-composed-common-receipt-missing", "indeterminate"),
+            ("awp-composed-winner-receipt-mismatch", "fail"),
+            ("awp-purchase-composed-retry-generation-skip", "fail"),
+            ("awp-composed-slot-cross-work-substitution", "fail"),
+            ("awp-composed-capability-limit-enforced", "fail"),
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(ref.evaluate_vector(by_name[name])[0], verdict)
+
+    def test_closed_capability_and_algorithm_confusion_are_rejected(self):
+        identity = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-identity-v0.1"
+        )
+        authorization = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-authorization-v0.1"
+        )
+        identity_by_name = {
+            vector["name"]: vector for vector in identity["vectors"]
+        }
+        auth_by_name = {
+            vector["name"]: vector for vector in authorization["vectors"]
+        }
+        for name in (
+            "aw-capability-validator-set-empty",
+            "aw-capability-fee-rule-unsupported",
+            "aw-capability-authorization-algorithm-duplicate",
+            "aw-capability-closed-extension",
+            "aw-capability-boolean-limit",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(ref.evaluate_vector(identity_by_name[name])[0], "fail")
+        for name in (
+            "aw-auth-ecdsa-label-confusion",
+            "aw-auth-sr1-label-confusion",
+            "aw-auth-boolean-phase-index",
+            "aw-auth-boolean-operation-index",
+            "aw-auth-rail-phase-handler-mismatch",
+            "aw-auth-self-consistent-session-orchestrator-rekey",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(ref.evaluate_vector(auth_by_name[name])[0], "fail")
+        self.assertEqual(
+            ref.evaluate_vector(auth_by_name["aw-auth-cf3-parameter-identity"])[0],
+            "pass",
+        )
+
+    def test_publication_proof_authenticates_create_only_prior_state(self):
+        settlement = next(
+            data for data in self.sets
+            if data["set"] == "atomic-work-settlement-slot-v0.1"
+        )
+        by_name = {vector["name"]: vector for vector in settlement["vectors"]}
+        self.assertEqual(
+            ref.evaluate_vector(by_name["aws-atomic-publication-exact-replay"])[0],
+            "pass",
+        )
+        for name, verdict in (
+            ("aws-atomic-publication-write-condition-missing", "indeterminate"),
+            ("aws-atomic-publication-prior-state-contradiction", "fail"),
+            ("aws-atomic-publication-unsigned-mode-flip", "fail"),
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(ref.evaluate_vector(by_name[name])[0], verdict)
 
     def test_receipt_witnesses_are_encoded_in_declared_evidence_fields(self):
         execution = next(

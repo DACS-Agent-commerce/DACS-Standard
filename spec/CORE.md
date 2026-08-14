@@ -226,6 +226,7 @@ artifact rules.
 
 The normative machine-readable schemas are:
 
+- [`AtomicWorkCapabilityV1`](schemas/atomic-work-capability-v1.schema.json);
 - [`AtomicDacsWorkIntentV1`](schemas/atomic-dacs-work-intent-v1.schema.json);
 - [`AtomicWorkAuthorizationV1`](schemas/atomic-work-authorization-v1.schema.json);
 - [`AtomicWorkAttemptV1`](schemas/atomic-work-attempt-v1.schema.json); and
@@ -273,7 +274,8 @@ may make a DACS Atomic-profile claim.
 - (AW-5) An implementation MUST NOT describe the complete current-model DACS
   lifecycle as exactly two consensus transactions.
 
-`AtomicWorkCapabilityV1` has this minimum shape:
+`AtomicWorkCapabilityV1` has the following closed v1 shape; the linked JSON
+Schema is authoritative for its exact member, array, and value constraints:
 
 ```
 type AtomicWorkCapabilityV1 = {
@@ -281,11 +283,11 @@ type AtomicWorkCapabilityV1 = {
   networkAuthority: ClaimReference
   networkId: string
   executionProfile: string
-  workVersions: "1"[]
+  workVersions: ["1"]
   profiles: ("dacs-purchase-v1" | "dacs-completion-v1")[]
   operationKinds: AtomicWorkOperationKindV1[]
   payloadSchemas: Record<AtomicWorkOperationKindV1, string>
-  authorizationAlgorithms: ("ed25519" | "ecdsa-secp256k1" | "sr1-aggregate")[]
+  authorizationAlgorithms: ["ed25519"]
   proofProfile: string
   validatorSetId: string
   limits: {
@@ -298,6 +300,20 @@ type AtomicWorkCapabilityV1 = {
   evidence: { kind: string; value: string }
 }
 ```
+
+The v1 capability arrays are ordered, duplicate-free sets in the exact forms
+admitted by the schema. Atomic Work authorization v1 admits Ed25519 only. The
+other signature algorithms registered by CORE remain available to artifact
+types that admit them, but advertising or using another Atomic Work
+authorization algorithm requires a later capability and authorization version
+with algorithm-specific key parsing and verification rules.
+
+`limits.feeRule` selects a binding-defined, independently testable attempt and
+receipt fee contract; it is not a descriptive label. A verifier MUST understand
+that exact rule and apply it to every normal, replacement, included, rolled-back,
+and exact-replay attempt plus the receipt's envelope effects, or reject the
+capability as unsupported. The candidate vectors' synthetic rule is defined in
+their security-vector README; it is not a production Demos fee schedule.
 
 A self-reported SDK feature flag or successful simulation is not capability
 evidence.
@@ -459,7 +475,7 @@ native DEM; and `assert-work-receipt` verifies a prior finalized Work receipt.
 ```
 type AtomicWorkAuthorizationV1 = {
   authorizationVersion: "1"
-  algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
+  algorithm: "ed25519"
   workId: string
   executionProfile: string
   networkId: string
@@ -494,8 +510,9 @@ signedAuthorizationBytes =
   that entry MUST independently match the pre-execution DACS authority: buyer
   and seller match the corresponding verified signed `AgreementParty` primary
   claim; orchestrator matches the verified finalized commitment-record signer
-  and, when present, the authenticated `SessionContext.parties` orchestrator;
-  payer matches `PaymentPhaseInput.payer.payingKey`, after verifying that key
+  and, when present, the independently authenticated source
+  `SessionContext.parties` orchestrator (not a caller-carried projection);
+  payer matches `AtomicPaymentPhaseInputV1.payer.payingKey`, after verifying that key
   appears in the pinned payer bundle and that the input's `bundleHash` and
   `primaryClaim` match the agreement buyer. A self-consistent roster is not
   role authority. A later DACS-5 `BundleParty` map is an AWB-3 audit
@@ -516,16 +533,41 @@ Signature-value encoding follows SIG-6.
 #### 5.2.5 Transport attempts, replacement, and winner selection
 
 ```
-type AtomicWorkAttemptV1 = {
+type AtomicAttemptLifecycleEvidenceV1 = Record<string, unknown>
+
+type AtomicWorkAttemptCommonV1 = {
   attemptVersion: "1"
   workId: string
   attemptId: string
   nativeTransactionRef: { kind: string; value: string }
   canonicalWorkBytes: string
   authorizations: AtomicWorkAuthorizationV1[]
-  nonce?: string
-  fee?: string
 }
+
+type AtomicWorkAttemptV1 =
+  | AtomicWorkAttemptCommonV1 & {
+      attemptClass: "normal"
+      nonce?: string
+      fee?: string
+      lifecycleEvidence?: AtomicAttemptLifecycleEvidenceV1
+      observation?: "not-found" | "timeout" | "expired-local"
+    }
+  | AtomicWorkAttemptCommonV1 & {
+      attemptClass: "replacement"
+      replacementFor: string
+      nonce?: string
+      fee?: string
+      lifecycleEvidence?: AtomicAttemptLifecycleEvidenceV1
+      observation?: "not-found" | "timeout" | "expired-local"
+    }
+  | AtomicWorkAttemptCommonV1 & {
+      attemptClass: "replay"
+      replayOf: string
+      returnedWinner: string
+      nonce?: string
+      fee?: string
+      replayEffects: { nonceConsumed: boolean; feeCharged: string }
+    }
 ```
 
 `canonicalWorkBytes` is carried in JSON as the exact RFC 8785 JCS text; its
@@ -533,12 +575,26 @@ UTF-8 encoding MUST equal §5.2.2 `canonicalWorkBytes` byte-for-byte. It is not
 Base64URL and a parser/re-serializer output is not a substitute for comparing
 the carried text. `authorizations` carries the complete envelopes required by
 the Work; a transport MAY additionally index them elsewhere, but such an index
-does not replace this attempt-to-authorization binding.
+does not replace this attempt-to-authorization binding. The attempt envelope,
+native transaction references, and replay effects are closed objects. Exactly
+one discriminated class arm applies. For normal and replacement attempts,
+authenticated `lifecycleEvidence` and an unauthenticated local `observation`
+are mutually exclusive; either MAY be absent while the attempt remains
+unresolved. A replay admits no replacement, lifecycle-evidence, or
+local-observation fields. `nonce`, `fee`, the members of non-empty
+`lifecycleEvidence`, and their verification semantics are selected by the
+authenticated capability and execution/proof profile. The generic schema
+therefore does not hard-code a fee schedule or a synthetic proof witness.
+When present, `fee` and `replayEffects.feeCharged` use the canonical
+non-negative integer string grammar `0|[1-9][0-9]*`; `replayEffects` has exactly
+the two shown members, but their values remain profile policy.
 
 - (AW-39) Every attempt for one `workId` MUST carry byte-identical
   `canonicalWorkBytes` and authorizations valid for that Work.
 - (AW-40) Each native envelope or transaction hash MUST identify a distinct
-  transport attempt without changing `workId`.
+  transport attempt without changing `workId`. Its authenticated lifecycle
+  evidence MUST bind the capability-selected proof profile and validator set,
+  not merely carry a signature by an otherwise valid network key.
 - (AW-41) A replacement attempt MAY be admitted only after authenticated
   lifecycle evidence proves the superseded attempt cannot later execute.
 - (AW-42) Local-clock expiry, a transport timeout, or ordinary `not found` MUST
@@ -548,7 +604,10 @@ does not replace this attempt-to-authorization binding.
 - (AW-44) After a winner is selected, every late or competing attempt MUST be
   fenced before any business effect.
 - (AW-45) Exact replay after selection MUST return or reconstruct the winner's
-  status and MUST NOT execute the Work again.
+  status and MUST NOT execute the Work again. Normal submission, replacement,
+  and exact replay are mutually exclusive attempt classes. The selected
+  `feeRule` applies to every class and every attempt, including non-winners; a
+  replay without an authenticated winner is invalid.
 
 The Work ledger relation is:
 
@@ -787,8 +846,26 @@ different operation reference and retains all SR2-4 through SR2-6 checks.
 #### 5.2.8 Limits and security boundary
 
 - (AW-71) A node MUST enforce the authenticated capability's canonical-byte,
-  operation-count, execution-time, proof-byte, and fee limits before committing
-  business effects or returning proof material as conforming evidence.
+  operation-count, execution-time, Work-result proof-byte, and fee limits. At
+  pre-execution admission it MUST compute, from the selected proof profile and
+  the admitted Work, a deterministic fixed or worst-case encoded proof-byte
+  reservation. That reservation MUST be authenticated, MUST NOT come from the
+  caller, and MUST NOT exceed `maxProofBytes`; otherwise the node rejects before
+  executing or committing business effects. After consensus finalizes the Work
+  receipt, a whole-profile verifier MUST authenticate the actual execution-time
+  and complete Work-result proof-byte measurements for the same `workId`, proof
+  profile, and validator set, and MUST verify that the actual encoded size does
+  not exceed either the admitted reservation or `maxProofBytes`. The measured
+  preimage is the JCS object containing the Work-result `proofMaterial` and its
+  `proofReservationEvidence`. It excludes only the self-authenticating
+  `limitEvidence` envelope that signs that preimage's hash and byte count; the
+  selected proof profile MUST separately fix and bound that envelope's encoding.
+  The actual proof closure ends at the finalized Work receipt and includes every authority,
+  attempt, slot, receipt, retry, and prior-Work proof needed to accept it. An
+  actual post-finality overage is node or proof-profile nonconformance; it does
+  not retroactively roll back or invalidate already committed business state.
+  Later DACS-4 settlement evidence and its separate audit-publication receipt
+  are outside this Work-result closure and require their own post-commit bounds.
 - (AW-72) A client-side limit check MUST NOT substitute for node enforcement.
 - (AW-73) A client-generated receipt, status, slot label, or rollback summary
   MUST NOT be treated as authoritative.

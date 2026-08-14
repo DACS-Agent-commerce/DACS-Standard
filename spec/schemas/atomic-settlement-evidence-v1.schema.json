@@ -102,6 +102,11 @@
     }
   ],
   "$defs": {
+    "claimReference": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9-]*:[^\\s?]+(?:\\?(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*(?:&(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*)*)?$"
+    },
     "safeInteger": {
       "type": "integer",
       "minimum": 0,
@@ -232,7 +237,7 @@
         "algorithm": {
           "enum": ["ed25519", "ecdsa-secp256k1", "sr1-aggregate"]
         },
-        "signer": { "type": "string", "minLength": 3 },
+        "signer": { "$ref": "#/$defs/claimReference" },
         "value": {
           "type": "string",
           "minLength": 1,

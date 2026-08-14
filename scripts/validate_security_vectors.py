@@ -16,8 +16,9 @@ This validator checks each set against its own claims:
 - ``hash`` recomputes as sha256 over the canonical JSON of the ``vectors``
   array. Sets from different authors used slightly different canonical
   encodings (insertion-order vs sorted keys; ASCII-escaped vs raw UTF-8), so
-  any of the four compact-JSON variants is accepted — but the hash MUST match
-  one of them, so a stale hash after an edit still fails;
+  those four compact-JSON variants and their CORE CF-1 value-normalized forms
+  are accepted — but the hash MUST match one of them, so a stale hash after an
+  edit still fails;
 - every vector carries a unique, non-empty ``name``;
 - every vector carries a verdict field (``expected``; legacy sb2 uses
   ``decision``) whose value is a known DACS verdict — the §7.5.1 four-value
@@ -33,6 +34,7 @@ import hashlib
 import json
 import os
 import sys
+import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECURITY_DIR = os.path.join(ROOT, "conformance", "vectors", "security")
@@ -53,9 +55,20 @@ KNOWN_VERDICTS = {
 VERDICT_FIELDS = ("expected", "decision")
 
 
+def _nfc_values(value):
+    """Apply DACS CF-1 to JSON string values while preserving member names."""
+    if isinstance(value, str):
+        return unicodedata.normalize("NFC", value)
+    if isinstance(value, list):
+        return [_nfc_values(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _nfc_values(item) for key, item in value.items()}
+    return value
+
+
 def canonical_encodings(vectors: list) -> dict[str, bytes]:
-    """The accepted canonical encodings of the vectors array (see docstring)."""
-    return {
+    """Accepted historical JSON plus DACS CF-1/JCS-subset encodings."""
+    encodings = {
         "compact insertion-order (ascii)": json.dumps(
             vectors, separators=(",", ":"), ensure_ascii=True).encode(),
         "compact insertion-order (utf-8)": json.dumps(
@@ -65,6 +78,22 @@ def canonical_encodings(vectors: list) -> dict[str, bytes]:
         "compact sorted-keys (utf-8)": json.dumps(
             vectors, separators=(",", ":"), sort_keys=True, ensure_ascii=False).encode("utf-8"),
     }
+    normalized = _nfc_values(vectors)
+    encodings.update({
+        "CF-1 compact insertion-order (ascii)": json.dumps(
+            normalized, separators=(",", ":"), ensure_ascii=True).encode(),
+        "CF-1 compact insertion-order (utf-8)": json.dumps(
+            normalized, separators=(",", ":"), ensure_ascii=False).encode("utf-8"),
+        "CF-1 compact sorted-keys (ascii)": json.dumps(
+            normalized, separators=(",", ":"), sort_keys=True,
+            ensure_ascii=True,
+        ).encode(),
+        "CF-1 compact sorted-keys (utf-8)": json.dumps(
+            normalized, separators=(",", ":"), sort_keys=True,
+            ensure_ascii=False,
+        ).encode("utf-8"),
+    })
+    return encodings
 
 
 def validate_set(path: str) -> tuple[list[str], int]:

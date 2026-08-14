@@ -5,6 +5,7 @@
   "type": "object",
   "required": [
     "attemptVersion",
+    "attemptClass",
     "workId",
     "attemptId",
     "nativeTransactionRef",
@@ -13,20 +14,10 @@
   ],
   "properties": {
     "attemptVersion": { "const": "1" },
-    "workId": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
+    "attemptClass": { "enum": ["normal", "replacement", "replay"] },
+    "workId": { "$ref": "#/$defs/hash" },
     "attemptId": { "type": "string", "minLength": 1 },
-    "nativeTransactionRef": {
-      "type": "object",
-      "required": ["kind", "value"],
-      "properties": {
-        "kind": { "type": "string", "minLength": 1 },
-        "value": { "type": "string", "minLength": 1 }
-      },
-      "additionalProperties": true
-    },
+    "nativeTransactionRef": { "$ref": "#/$defs/nativeTransactionRef" },
     "canonicalWorkBytes": {
       "description": "The exact RFC 8785 JCS JSON text whose UTF-8 encoding is canonicalWorkBytes in CORE §5.2.5.",
       "type": "string",
@@ -38,7 +29,96 @@
       "items": { "$ref": "atomic-work-authorization-v1.schema.json" }
     },
     "nonce": { "type": "string", "minLength": 1 },
-    "fee": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$" }
+    "fee": { "$ref": "#/$defs/fee" },
+    "replacementFor": { "type": "string", "minLength": 1 },
+    "replayOf": { "type": "string", "minLength": 1 },
+    "returnedWinner": { "type": "string", "minLength": 1 },
+    "lifecycleEvidence": { "$ref": "#/$defs/lifecycleEvidence" },
+    "observation": {
+      "enum": ["not-found", "timeout", "expired-local"]
+    },
+    "replayEffects": { "$ref": "#/$defs/replayEffects" }
   },
-  "additionalProperties": true
+  "additionalProperties": false,
+  "not": {
+    "required": ["lifecycleEvidence", "observation"]
+  },
+  "oneOf": [
+    {
+      "title": "NormalAttempt",
+      "properties": {
+        "attemptClass": { "const": "normal" }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["replacementFor"] },
+          { "required": ["replayOf"] },
+          { "required": ["returnedWinner"] },
+          { "required": ["replayEffects"] }
+        ]
+      }
+    },
+    {
+      "title": "ReplacementAttempt",
+      "required": ["replacementFor"],
+      "properties": {
+        "attemptClass": { "const": "replacement" }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["replayOf"] },
+          { "required": ["returnedWinner"] },
+          { "required": ["replayEffects"] }
+        ]
+      }
+    },
+    {
+      "title": "ReplayAttempt",
+      "required": ["replayOf", "returnedWinner", "replayEffects"],
+      "properties": {
+        "attemptClass": { "const": "replay" }
+      },
+      "not": {
+        "anyOf": [
+          { "required": ["replacementFor"] },
+          { "required": ["lifecycleEvidence"] },
+          { "required": ["observation"] }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "fee": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$"
+    },
+    "nativeTransactionRef": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "lifecycleEvidence": {
+      "description": "Profile-selected authenticated lifecycle evidence. Its complete member grammar and verification semantics are selected by the authenticated execution/proof profile; the generic attempt envelope treats it as pure JSON data and does not infer authority from its member names.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": true
+    },
+    "replayEffects": {
+      "type": "object",
+      "required": ["nonceConsumed", "feeCharged"],
+      "properties": {
+        "nonceConsumed": { "type": "boolean" },
+        "feeCharged": { "$ref": "#/$defs/fee" }
+      },
+      "additionalProperties": false
+    }
+  }
 }

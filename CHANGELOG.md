@@ -65,7 +65,7 @@ The format used per release:
   projected finalized commitment receipt before delivery, and each Atomic
   settlement-evidence artifact still obtains its own finalized ST-11
   publication receipt. Current v1 admits no bundle-anchor Work operation; its
-  bundle remains in that tail. Adds ten JSON Schemas plus deterministic
+  bundle remains in that tail. Adds eleven JSON Schemas plus deterministic
   candidate vectors with explicit acceptance/rejection/indeterminate/malformed
   and true boundary metadata. Every new rule ID has executable coverage; complete
   positive/negative/boundary coverage per individual rule remains a draft

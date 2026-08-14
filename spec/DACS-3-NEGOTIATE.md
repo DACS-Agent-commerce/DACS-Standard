@@ -662,6 +662,71 @@ type AgreementCommitmentRecord = CommitmentRecord | FinalityCommitmentRecord
 This section defines the DACS-3 ordering used by the optional CORE §5.2
 profile. CA-1, SR2-8, and PIPE-6 remain unchanged for every other profile.
 
+**Composed admission and authority context (normative).** A verifier MUST NOT
+claim acceptance of either Atomic profile by combining independent successful
+checks whose inputs were not cross-bound. One fail-closed composed verification
+path MUST apply the following order:
+
+1. validate the complete intent against its selected schema, recompute its
+   canonical `workId`, verify the authenticated capability, execution profile,
+   proof profile, operation kinds, payload schemas, and algorithms, and apply
+   the static canonical-byte and operation-count limits plus the authenticated
+   proof-profile-defined worst-case or fixed proof-byte reservation;
+2. validate the exact Purchase or Completion operation count, array order,
+   operation IDs and kinds, dependency arrays, critical flags, and required
+   roles before deriving or verifying any operation authorization;
+3. construct the authenticated authority context described below from the
+   complete signed artifacts and independently pinned inputs;
+4. verify every required operation authorization against that context, then
+   perform attempt and, for Purchase, payment-slot admission without executing
+   a business effect until all preceding checks have succeeded;
+5. verify the selected attempt, resulting Work receipt, operation results,
+   business-state and slot transition, common finality, the applicable
+   commitment gate, and node-authenticated execution-time and complete
+   Work-result proof-byte measurements under both the admitted reservation and
+   capability limit; a post-finality overage is implementation nonconformance,
+   not authority to undo committed state; and
+6. when a whole-lifecycle verdict includes DACS-4 settlement evidence, verify
+   that evidence and its operation proof against the same context and verified
+   Work result.
+
+Steps 1 through 4 are pre-execution admission. Steps 5 and 6 verify the result
+and its later settlement projection; they cannot repair a failed or omitted
+pre-execution check. Focused schema, authorization, slot, receipt, or settlement
+helpers MAY be exposed for diagnostics and unit testing, but success from one
+such helper MUST NOT be reported as whole-profile acceptance.
+
+For a Purchase, the authenticated authority context MUST be derived from the
+verified pinned signed Listing; the exact signed agreement carried by the
+`agreement` operation; its buyer and seller `AgreementParty` bindings and
+pinned identity bundles; the exact signed `FinalityCommitmentRecord` carried by
+the `commitment` operation; the authenticated `AtomicPaymentPhaseInputV1`; the
+payer and payee bundles; the registry-steward-authenticated rail definition
+resolved through the session-pinned canonical rail-registry index, with
+finalized index and definition anchor receipts no later than session start;
+the independently pinned steward authority; the verified capability and
+network authority; and an independently authenticated portable source of the
+full `SessionContext` fields plus its DACS-4
+`AtomicPaymentSessionContextV1` pure-JSON projection carried byte-exactly by
+`AtomicPaymentPhaseInputV1`. The source and projection MUST each carry or
+resolve authenticated evidence under the selected binding; matching
+caller-supplied copies are not authority. It MUST derive, rather than accept as caller assertions, the
+selected Listing phase, agreement and listing hashes, buyer, seller,
+orchestrator and payer claims, payer and payee native accounts, payment-slot
+tuple, transfer asset and amount, and conflict digest. The agreement,
+authorization, slot, receipt, and settlement checks MUST consume that one
+verified context. A deterministic re-derivation from the same exact inputs is
+equivalent; a caller-supplied `authenticatedContext`, roster, slot key, or
+native account summary is not authority.
+
+For a Completion, the context MUST be derived from the same verified Listing
+and the independently verified Purchase intent and finalized receipt, including
+the Purchase commitment operation's AW-65 through AW-70 projection. It MUST
+recover the exact Purchase agreement and commitment authority, verify the
+seller and orchestrator used by Completion authorizations, and select the one
+eligible delivery invocation. The Completion intent or a later DACS-5 party map
+MUST NOT replace those prior authenticated sources.
+
 **Purchase operation order.** A `dacs-purchase-v1` intent has exactly these
 operations and dependencies:
 
@@ -688,7 +753,10 @@ operations and dependencies:
 - (AWP-4) The `agreement` operation MUST verify the existing §8.5 agreement
   artifact and MUST NOT create another agreement format.
 - (AWP-5) A Purchase intent that differs from the table's exact operation set,
-  order, dependency arrays, or required roles MUST be rejected.
+  order, dependency arrays, or required roles MUST be rejected. This exact-shape
+  check MUST complete before required authorization pairs are derived or any
+  authorization is accepted; in particular, an empty or omitted
+  `requiredRoles` array cannot reduce a table row's required authority.
 - (AWP-20) The Purchase profile MUST select exactly one `pay-dem` invocation
   from the verified pinned signed Listing pipeline. Its `parameters.rail` and
   bare array index MUST equal the intent's `railId` and payment `phaseIndex`
@@ -704,7 +772,15 @@ CA-1, SR2-8, and DACS-4 PIPE-6, not a reinterpretation of any of those rules.
   carry the complete signed `FinalityCommitmentRecord`, use logical address
   `dacs3:commit:{jobId}`, and use
   `writeCondition: { kind: "create-only" }`. A different address or CAS
-  rewrite does not establish the commitment gate.
+  rewrite does not establish the commitment gate. Before execution, the
+  verifier MUST validate that record's signature against the authority
+  context's orchestrator and validate its exact subject: its `jobId` equals the
+  intent's `jobId`, its `agreementHash` equals the recomputed hash of the exact
+  signed `agreement` operation artifact, and its `listingRef` equals that
+  agreement's verified pinned Listing reference. Any copy of the commitment
+  supplied by an authority, slot, receipt, or settlement input MUST have
+  byte-identical canonical JCS to the complete signed record in the operation;
+  another validly signed commitment is not interchangeable.
 - (AWP-7) The node MUST run §8.5.2 checks 1 through 9 before the payment effect.
   It MUST consume the pinned signed Listing and one real `AgreementArtifact`
   selected by its existing discriminator and signature domain; a synthetic
@@ -720,6 +796,30 @@ CA-1, SR2-8, and DACS-4 PIPE-6, not a reinterpretation of any of those rules.
   order and common finality.
 - (AWP-12) If any AWP-6 through AWP-11 condition is unavailable, CA-1,
   SR2-8, and PIPE-6 remain the required sequential gate.
+
+The commitment gate has two distinct proof paths, selected before signing or
+submission:
+
+- In the Atomic co-finality path, the verified capability MUST establish every
+  AWP-6 through AWP-11 guarantee. Pre-execution admission verifies the complete
+  signed commitment and exact subject under AWP-6 but does not require a
+  standalone commitment `AnchorReceipt` that cannot yet exist. The resulting
+  authenticated BFT-final Work receipt MUST then prove that the exact
+  commitment operation, payment-slot mutation, native payment, and other
+  critical writes committed under its one outcome and common finality. A
+  rolled-back receipt proves the included failure, not successful commitment
+  finality or payment.
+- In the sequential path, a verifier MUST, before the Atomic Work is signed or
+  submitted, verify an already-established finalized CORE §5.1
+  `AnchorReceipt` for the same canonical signed commitment record, logical
+  address, content hash, transaction, writer, nonce, and finality profile. Its
+  binding-defined evidence, not its fields alone, MUST establish that finality.
+  A later Work receipt cannot retroactively satisfy this pre-sign gate.
+
+If a Work was admitted under the co-finality path and its common receipt or
+proof later becomes unavailable, the outcome is `indeterminate` until that
+proof is recovered. The implementation MUST NOT reinterpret the Work as having
+used the sequential path or silently resubmit its payment through that path.
 
 CA-8 remains the rule that identifies the authoritative timestamp. The deadline
 and `notAfter` obligations themselves remain §8.5.2 checks 5 and 6.
@@ -750,7 +850,9 @@ operations and dependencies:
   `writeCondition: { kind: "create-only" }`; a CAS rewrite is not an Atomic
   Completion delivery.
 - (AWP-15) A Completion intent that differs from the table's exact operation
-  set, order, dependency arrays, or required roles MUST be rejected.
+  set, order, dependency arrays, or required roles MUST be rejected. This
+  exact-shape check MUST complete before required authorization pairs are
+  derived or any Completion authorization is accepted.
 - (AWP-21) The Completion profile MUST select exactly one
   `deliver-storage-program` invocation from the same verified pinned signed
   Listing pipeline. Its bare array index MUST equal the Completion intent's

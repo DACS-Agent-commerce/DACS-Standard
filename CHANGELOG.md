@@ -69,10 +69,10 @@ The format used per release:
   candidate vectors with explicit acceptance/rejection/indeterminate/malformed
   and true boundary metadata. Every new rule ID has executable coverage; complete
   positive/negative/boundary coverage per individual rule remains a draft
-  blocker. The Demos binding remains blocked
-  from advertising this capability until its byte-exact consensus, proof,
-  rollback, recovery, fee/nonce, and limit contracts are published and
-  independently demonstrated.
+  blocker. Demos already provides an Atomic Work primitive; the DACS-specific
+  binding remains ineligible to advertise `AtomicWorkCapabilityV1` until its
+  byte-exact consensus, proof, rollback, recovery, fee/nonce, and limit
+  contracts are pinned and independently demonstrated.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

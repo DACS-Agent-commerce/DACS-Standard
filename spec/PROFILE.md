@@ -43,17 +43,20 @@ commit:
 
 | Document | Version | Status |
 | --- | --- | --- |
-| [CORE](CORE.md) | 0.3 | Draft / Demos contract required |
+| [CORE](CORE.md) | 0.3 | Draft / Demos DACS binding and evidence required |
 | [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.6 | Draft |
 | [DACS-2-VET](DACS-2-VET.md) | 0.5 | Draft |
 | [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.5 | Draft / Atomic candidate |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.7 | Draft / Atomic candidate |
 | [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.5 | Draft / Atomic candidate |
 
-No implementation may claim this composition merely from schema or candidate
-vector support. The authenticated capability and every Demos-owned contract in
+No implementation may claim this composition merely from generic Atomic Work,
+schema, or candidate-vector support. Demos's existing Atomic Work primitive may
+satisfy some or all runtime requirements, but the DACS-specific path is
+selectable only after the exact release/profile mapping, authenticated
+capability, and evidence required by
 [DEMOS-MAPPING §A.6](DEMOS-MAPPING.md#a6-atomic-dacs-work-capability-gate) are
-required before the Atomic path is selectable.
+pinned and demonstrated.
 
 ## Qualified implementation claims
 

@@ -150,12 +150,35 @@ validator-body-signed.
 
 ### A.6 Atomic DACS Work capability gate
 
-The optional CORE §5.2 Atomic DACS Work profile requires an authenticated
-network capability for an exact node release and execution profile. The
-existing DemosWork SDK orchestration API, client simulation, or an ownership
-promise does not by itself establish the consensus properties required by that
-profile. This section records the evidence gaps; it does not assert that a
-particular unpublished node implementation lacks a property.
+The Demos platform already provides an Atomic Work execution primitive. The
+optional CORE §5.2 profile reuses that primitive; it does not require Demos to
+rebuild Atomic Work. It does require an authenticated network capability that
+binds one exact node and SDK release to the DACS-specific execution, payment,
+authorization, evidence, and recovery contract.
+
+Atomicity within one generic Work, the existing DemosWork SDK orchestration
+API, client simulation, or an ownership promise does not by itself establish
+that DACS contract. In particular, the binding must demonstrate that all
+profile operations share the required rollback boundary, that two different
+Works cannot consume the same payment slot, that DACS roles are enforced
+independently of the outer submitter, and that every outcome is independently
+verifiable and recoverable. This section records binding and evidence gaps; it
+does not assert that a listed property is absent from a particular unpublished
+node implementation.
+
+A Demos response may establish an item by identifying behavior already
+enforced by the pinned release, by specifying a DACS-specific binding or
+configuration over existing behavior, or by implementing a missing
+integration. In every case the exact interface, consensus behavior, and
+independently repeatable evidence are required; the question itself is not an
+assertion that new Atomic Work machinery is needed.
+
+For each numbered item, the versioned contract MUST state whether the pinned
+release already enforces the requirement, needs a DACS-specific binding or
+configuration, needs implementation work, or cannot support the profile. Any
+advertised behavior MUST identify its code or API surface, real node-produced
+fixtures where applicable, and an independently repeatable conformance or
+failure-injection command and result.
 
 A Demos node, SDK, adapter, or agent **MUST NOT** advertise
 `AtomicWorkCapabilityV1`, select either Atomic DACS Work profile, or label an

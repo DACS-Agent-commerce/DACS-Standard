@@ -244,6 +244,13 @@ class or native transaction encoding. The authenticated execution profile
 still determines how a node realizes each contract and how its effects are
 proved.
 
+Demos already provides a generic Atomic Work execution primitive. This section
+defines the narrower DACS-specific binding over that primitive; it does not
+require Atomic Work to be rebuilt and does not assert that a requirement is
+absent from an unpublished Demos release. The capability gate below establishes
+which exact release, native mapping, consensus guarantees, and proof behavior
+may make a DACS Atomic-profile claim.
+
 #### 5.2.1 Scope, capability, and fallback
 
 - (AW-1) An implementation MUST use this profile only after verifying an
@@ -438,9 +445,11 @@ native-transfer account authority, and prior-receipt verification.
   absence or a different hash. Neither condition permits overwrite based on
   ordinary read non-observation.
 
-The Demos binding is not available until §A.6 pins the native realization and
-proof contract for these schemas. At the semantic level, `assert-artifact`
-verifies complete immutable artifact bytes and their existing signatures;
+Generic Demos Atomic Work support does not by itself qualify these schemas for
+the DACS-specific binding. A Demos implementation MUST NOT claim that binding
+until §A.6 pins the native realization and proof contract for these schemas. At
+the semantic level, `assert-artifact` verifies complete immutable artifact bytes
+and their existing signatures;
 `storage-program-put` writes complete immutable bytes under its signed
 condition; `payment-slot-cas` applies §9.5.10; `native-dem-transfer` moves
 native DEM; and `assert-work-receipt` verifies a prior finalized Work receipt.
@@ -809,8 +818,9 @@ The profile inherits the advertised substrate's consensus, validator-set,
 key-resolution, and data-availability assumptions. It adds no fair-exchange
 guarantee between Purchase and Completion, no authenticated-absence guarantee
 where the binding has none, and no reason to trust client or Indexer summaries.
-The Demos binding remains unavailable until §A.6's runtime and proof contracts
-are pinned and independently demonstrated.
+A Demos implementation may provide generic Atomic Work independently; it MUST
+NOT claim the DACS-specific binding until §A.6's runtime and proof contracts are
+pinned and independently demonstrated.
 
 ## A. Demos production mapping
 

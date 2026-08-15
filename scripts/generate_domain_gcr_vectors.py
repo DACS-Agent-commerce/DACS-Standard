@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -51,14 +52,18 @@ def metadata(host: str, private: Ed25519PrivateKey) -> dict:
 
 
 def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
-                  producer_version: str = "0.6") -> dict:
+                  producer_version: str = "0.6",
+                  claim_metadata: list[dict] | None = None) -> dict:
+    metadata_items = claim_metadata or [md for _ in refs]
+    if len(metadata_items) != len(refs):
+        raise ValueError("claim metadata must align one-to-one with claim refs")
     unsigned = {
         "bundleVersion": "1",
         "producerDacs1Version": producer_version,
         "subject": "domain compatibility vector",
         "claims": [
-            {"ref": ref, "metadata": {"demosGcrDomain": copy.deepcopy(md)}}
-            for ref in refs
+            {"ref": ref, "metadata": {"demosGcrDomain": copy.deepcopy(claim_md)}}
+            for ref, claim_md in zip(refs, metadata_items)
         ],
         "presentedBy": refs[0],
         "presentedAt": NOW - 1_000,
@@ -78,6 +83,7 @@ def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
 def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
          signer: Ed25519PrivateKey, **extra: object) -> dict:
     producer_version = str(extra.pop("producerDacs1Version", "0.6"))
+    claim_metadata = extra.pop("claimMetadata", None)
     registration_proof = str(extra.pop(
         "registrationProofPayload",
         proof_payload(key("dacs-275-domain-owner"), md["hostname"], md["account"]),
@@ -85,13 +91,25 @@ def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
     value = {
         "name": name,
         "expected": expected,
-        "artifact": signed_bundle(refs, md, signer, producer_version),
+        "artifact": signed_bundle(
+            refs, md, signer, producer_version,
+            claim_metadata=claim_metadata if isinstance(claim_metadata, list) else None,
+        ),
         "authoritativeGcr": copy.deepcopy(record),
         "registrationValidation": {
             "profile": "demos-web2-domain-v1",
             "proofPayload": registration_proof,
         },
         "sourceAvailable": True,
+        "sourceAuthentication": {
+            "inclusionProofCoversTransaction": True,
+            "blockFinalized": True,
+        },
+        "writerAuthorization": {
+            "authenticated": True,
+            "writer": md["account"],
+            "authorizedAccount": md["account"],
+        },
         "validationProfileAvailable": True,
         "requiredMethod": "demos-gcr-domain",
         "evaluatedAt": NOW,
@@ -111,6 +129,48 @@ def main() -> None:
 
     vectors.append(case("canonical-production", "pass", [f"domain:{host}"], md, record, owner,
                         want={"semanticClaims": [f"domain:{host}"], "freshControl": False}))
+
+    # DCR-1 exact length boundaries: 63 octets per label and 253 octets for the
+    # complete host are admitted; one octet beyond either bound is malformed.
+    label_63_host = f"{'a' * 63}.example"
+    label_63_md = metadata(label_63_host, owner)
+    vectors.append(case(
+        "label-length-63-boundary", "pass", [f"domain:{label_63_host}"],
+        label_63_md, label_63_md, owner, ruleRefs=["DCR-1"],
+        want={"semanticClaims": [f"domain:{label_63_host}"]},
+    ))
+    vectors.append(case(
+        "label-length-64-rejected", "error", [f"domain:{'a' * 64}.example"],
+        md, record, owner, ruleRefs=["DCR-1"],
+    ))
+
+    host_253 = ".".join(["a" * 63, "b" * 63, "c" * 63, "d" * 61])
+    host_254 = ".".join(["a" * 63, "b" * 63, "c" * 63, "d" * 62])
+    assert len(host_253.encode()) == 253
+    assert len(host_254.encode()) == 254
+    host_253_md = metadata(host_253, owner)
+    vectors.append(case(
+        "hostname-length-253-boundary", "pass", [f"domain:{host_253}"],
+        host_253_md, host_253_md, owner, ruleRefs=["DCR-1"],
+        want={"semanticClaims": [f"domain:{host_253}"]},
+    ))
+    vectors.append(case(
+        "hostname-length-254-rejected", "error", [f"domain:{host_254}"],
+        md, record, owner, ruleRefs=["DCR-1"],
+    ))
+
+    vectors.append(case(
+        "invalid-punycode-a-label-rejected", "error", ["domain:xn--0.example"],
+        md, record, owner, ruleRefs=["DCR-1"],
+    ))
+
+    numeric_host = "1.2.3.4.5"
+    numeric_md = metadata(numeric_host, owner)
+    vectors.append(case(
+        "all-numeric-non-ip-hostname", "pass", [f"domain:{numeric_host}"],
+        numeric_md, numeric_md, owner, ruleRefs=["DCR-2"],
+        want={"semanticClaims": [f"domain:{numeric_host}"]},
+    ))
 
     idna_host = "xn--fa-hia.example"
     idna_md = metadata(idna_host, owner)
@@ -142,6 +202,16 @@ def main() -> None:
                         producerDacs1Version="0.5",
                         want={"semanticClaims": [f"domain:{host}"], "tierGain": False,
                               "oneOfGain": False}))
+
+    other_host = "other-agent.example"
+    other_md = metadata(other_host, owner)
+    vectors.append(case(
+        "distinct-hosts-remain-distinct", "pass",
+        [f"domain:{host}", f"domain:{other_host}"], md, record, owner,
+        claimMetadata=[md, other_md], evaluationScope="semantic-claim-set",
+        ruleRefs=["DCR-5"],
+        want={"semanticClaims": [f"domain:{host}", f"domain:{other_host}"]},
+    ))
     vectors.append(case("current-producer-dual-alias-rejected", "fail",
                         [f"domain:{host}", f"web2:domain:{host}"], md, record, owner))
 
@@ -172,6 +242,22 @@ def main() -> None:
 
     vectors.append(case("gcr-unavailable-is-indeterminate", "indeterminate",
                         [f"domain:{host}"], md, record, owner, sourceAvailable=False))
+    vectors.append(case(
+        "inclusion-proof-does-not-cover-transaction", "indeterminate",
+        [f"domain:{host}"], md, record, owner, ruleRefs=["DGCR-1"],
+        sourceAuthentication={
+            "inclusionProofCoversTransaction": False,
+            "blockFinalized": True,
+        },
+    ))
+    vectors.append(case(
+        "carrying-block-not-finalized", "indeterminate",
+        [f"domain:{host}"], md, record, owner, ruleRefs=["DGCR-1"],
+        sourceAuthentication={
+            "inclusionProofCoversTransaction": True,
+            "blockFinalized": False,
+        },
+    ))
     vectors.append(case("gcr-validation-profile-unavailable-is-indeterminate", "indeterminate",
                         [f"domain:{host}"], md, record, owner,
                         validationProfileAvailable=False))
@@ -181,6 +267,34 @@ def main() -> None:
     vectors.append(wrong_profile)
     vectors.append(case("metadata-preserved-exactly", "pass", [f"domain:{host}"], md, record,
                         owner, want={"metadataEqualsAuthority": True}))
+
+    node = key("dacs-332-node-writer")
+    vectors.append(case(
+        "authenticated-node-writer-for-bound-account", "pass",
+        [f"domain:{host}"], md, record, owner, ruleRefs=["DGCR-2"],
+        writerAuthorization={
+            "authenticated": True,
+            "writer": account(node),
+            "authorizedAccount": md["account"],
+        },
+    ))
+    vectors.append(case(
+        "writer-not-authorized-for-bound-account", "fail",
+        [f"domain:{host}"], md, record, owner, ruleRefs=["DGCR-2"],
+        writerAuthorization={
+            "authenticated": True,
+            "writer": account(other),
+            "authorizedAccount": account(other),
+        },
+    ))
+
+    wrong_context = copy.deepcopy(md)
+    wrong_context["context"] = "web2.other"
+    vectors.append(case(
+        "wrong-native-context-with-matching-record", "fail",
+        [f"domain:{host}"], wrong_context, wrong_context, owner,
+        ruleRefs=["DGCR-2"],
+    ))
     vectors.append(case("persistent-proof-does-not-satisfy-fresh-control", "fail",
                         [f"domain:{host}"], md, record, owner,
                         requiredMethod="domain-tls-control"))
@@ -190,6 +304,35 @@ def main() -> None:
     expired_record = copy.deepcopy(expired)
     vectors.append(case("expired-persistent-evidence", "fail", [f"domain:{host}"], expired,
                         expired_record, owner))
+
+    exact_window = case(
+        "inclusion-time-window-exact", "pass", [f"domain:{host}"], md, record,
+        owner, ruleRefs=["DGCR-4"], evaluatedAt=md["recordedAt"] + MAX_AGE_MS,
+        reportedVerifyResult={
+            "verifiedAt": md["recordedAt"],
+            "fetchedAt": md["recordedAt"] + MAX_AGE_MS,
+            "validUntil": md["recordedAt"] + MAX_AGE_MS,
+        },
+    )
+    vectors.append(exact_window)
+    vectors.append(case(
+        "reissued-verified-at-cannot-refresh", "fail", [f"domain:{host}"], md,
+        record, owner, ruleRefs=["DGCR-4"],
+        reportedVerifyResult={
+            "verifiedAt": md["recordedAt"] + 60_000,
+            "fetchedAt": NOW,
+            "validUntil": md["recordedAt"] + MAX_AGE_MS,
+        },
+    ))
+    vectors.append(case(
+        "valid-until-cannot-exceed-inclusion-window", "fail",
+        [f"domain:{host}"], md, record, owner, ruleRefs=["DGCR-4"],
+        reportedVerifyResult={
+            "verifiedAt": md["recordedAt"],
+            "fetchedAt": NOW,
+            "validUntil": md["recordedAt"] + MAX_AGE_MS + 1,
+        },
+    ))
 
     bad_url = copy.deepcopy(md)
     bad_url["proofUrl"] = f"https://{host}/other"
@@ -210,20 +353,70 @@ def main() -> None:
     vectors.append(case("bundle-account-control-mismatch", "fail", [f"domain:{host}"], md,
                         record, other))
 
+    sr1_positive = case(
+        "authenticated-sr1-session-binding", "pass", [f"domain:{host}"], md,
+        record, other, ruleRefs=["DCR-7"],
+    )
+    sr1_positive["authenticatedSr1Binding"] = {
+        "authenticated": True,
+        "account": md["account"],
+        "sessionPublicKey": sr1_positive["artifact"]["signingPublicKey"],
+        "boundPresentationHash": sr1_positive["artifact"]["contentHash"],
+    }
+    vectors.append(sr1_positive)
+
+    sr1_unbound = case(
+        "sr1-link-without-presentation-binding", "fail", [f"domain:{host}"], md,
+        record, other, ruleRefs=["DCR-7"],
+    )
+    sr1_unbound["authenticatedSr1Binding"] = {
+        "authenticated": True,
+        "account": md["account"],
+        "sessionPublicKey": sr1_unbound["artifact"]["signingPublicKey"],
+    }
+    vectors.append(sr1_unbound)
+
+    sr1_replay = case(
+        "sr1-link-bound-to-different-presentation", "fail",
+        [f"domain:{host}"], md, record, other, ruleRefs=["DCR-7"],
+    )
+    sr1_replay["authenticatedSr1Binding"] = {
+        "authenticated": True,
+        "account": md["account"],
+        "sessionPublicKey": sr1_replay["artifact"]["signingPublicKey"],
+        "boundPresentationHash": "00" * 32,
+    }
+    vectors.append(sr1_replay)
+
     output = {
         "set": "domain-claim-gcr-v0.4",
         "spec": "DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6",
         "tier": "candidate",
         "description": "Canonical domain production, permanent signature-preserving Demos alias reads, semantic deduplication, and persistent GCR verification with genuine deterministic Ed25519 proofs.",
+        "modelNotes": [
+            "sourceAuthentication and writerAuthorization are resolved verifier inputs modelling DGCR-1/DGCR-2 substrate evidence; they are not new DACS wire artifacts.",
+            "authenticatedSr1Binding models an already-authenticated SR-1 resolver result bound to the exact presentation; it is not a caller assertion.",
+            "evaluationScope=semantic-claim-set isolates DCR-5 identity-set processing before per-claim GCR evaluation.",
+        ],
         "provenance": {
             "issue": "DACS-Agent-commerce/DACS-Standard#275",
+            "coverageIssue": "DACS-Agent-commerce/DACS-Standard#332",
             "generator": "scripts/generate_domain_gcr_vectors.py",
         },
         "count": len(vectors),
         "hash": hashlib.sha256(compact(vectors)).hexdigest(),
         "vectors": vectors,
     }
-    OUT.write_text(json.dumps(output, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    rendered = json.dumps(output, indent=2, ensure_ascii=False) + "\n"
+    if "--check" in sys.argv[1:]:
+        if not OUT.exists() or OUT.read_text(encoding="utf-8") != rendered:
+            raise SystemExit(
+                f"{OUT.relative_to(ROOT)} is stale; run "
+                "python3 scripts/generate_domain_gcr_vectors.py"
+            )
+        print(f"{OUT.relative_to(ROOT)} is deterministic ({len(vectors)} vectors)")
+        return
+    OUT.write_text(rendered, encoding="utf-8")
     print(f"wrote {OUT.relative_to(ROOT)} ({len(vectors)} vectors)")
 
 

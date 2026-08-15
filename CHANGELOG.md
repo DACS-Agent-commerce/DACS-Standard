@@ -128,6 +128,10 @@ The format used per release:
   asset/network chain IDs. Adds 20 executable candidate vectors. Bumps
   **DACS-1 and DACS-4 to v0.5** without changing an artifact shape.
 
+### Added — DACS-5 v0.4
+
+- **Settlement-verified reputation derivations — RSV-1..RSV-4** (§10.5, §14.5) — adds `SettlementVerifiedReputationDerivation` and `ReplayableSettlementVerifiedReputationDerivation` with exclusive structural discriminators, preserving the released DACS-5 v0.3 `derivationVersion: "1"` and `replayableDerivationVersion: "1"` semantics. Settlement-verified derivation compares the full canonical cross-copy `settlementEvidence[]` reference multiset, requires every presented reference to pass DACS-4 content/signature and independent Agreement/session/phase/rail/transaction/finality verification, excludes rejected or indeterminate jobs without inventing fault, and admits volume only with verified successful DACS-4 payment evidence. Unsupported readers reject the new type before type-specific action; no repository-revision knowledge is needed to distinguish pre-RSV from RSV-enforced output. Adds six v0.4 reference-divergence vectors and seventeen v0.4 semantic-admission vectors; completeness and optional per-phase `attestationRef` remain separate.
+
 ### Fixed — conformance
 
 - **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —

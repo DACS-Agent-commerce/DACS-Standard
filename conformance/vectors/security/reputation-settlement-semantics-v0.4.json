@@ -1,0 +1,129 @@
+{
+  "set": "reputation-settlement-semantics-v0.4",
+  "spec": "DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules",
+  "decisionModel": "accept admits the job; reject and indeterminate both exclude it without fault",
+  "inputModel": "one authoritative bundle projection after cross-copy settlementEvidence reference-multiset agreement; every case uses an authenticated Agreement price of 5 DEM; evidencePhase defaults to the DACS-4 §9.7 PaymentPhaseType pay-dem for non-empty inputs, and only exact membership in that closed type can establish payment volume; evidence outcome defaults to success; authorityDisposition is the independent transaction/authority resolution result; mismatch is evaluated only when authorityDisposition is verified and names the sole semantic contradiction; mismatchIndex selects the zero-based member when present; null then means all semantic checks match",
+  "hash": "1d30dcb0a2ca091b09bc09e0a0137b572acee00495cb96c3e60460be60a5847d",
+  "count": 17,
+  "vectors": [
+    {
+      "name": "reputation-settlement-semantic-exact-pass",
+      "expected": "accept",
+      "note": "one fully verified presented settlement remains eligible and contributes one completion plus the Agreement price",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": null },
+      "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": ["5 DEM"], "transactionCountByCurrency": [{ "currency": "DEM", "count": 1 }], "disposition": "eligible" }
+    },
+    {
+      "name": "reputation-settlement-semantic-amount-reject",
+      "expected": "reject",
+      "note": "resolved transaction amount contradicts the authenticated Agreement amount",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "amount" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-payer-reject",
+      "expected": "reject",
+      "note": "resolved transaction payer contradicts the authenticated payer authority",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "payer" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-payee-reject",
+      "expected": "reject",
+      "note": "resolved recipient or destination contradicts independent payee authority",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "payee" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-session-reject",
+      "expected": "reject",
+      "note": "authenticated session authority contradicts the evidence job binding",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "session" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-phase-reject",
+      "expected": "reject",
+      "note": "authenticated executed-phase authority contradicts the evidence phase index",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "phase" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-rail-reject",
+      "expected": "reject",
+      "note": "independently resolved rail, asset, or network authority contradicts the evidence",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "rail" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-finality-reject",
+      "expected": "reject",
+      "note": "resolved rail finality is absent or below the pinned requirement",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "finality" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-transaction-reject",
+      "expected": "reject",
+      "note": "independent transaction resolution deterministically rejects the presented evidence",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "rejected", "mismatch": null },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-authority-indeterminate",
+      "expected": "indeterminate",
+      "note": "unavailable independent authority excludes the job without becoming success or fault",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "authorityDisposition": "indeterminate", "mismatch": null },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-invalid-failed-outcome",
+      "expected": "reject",
+      "note": "invalid evidence on a failing bundle excludes the job from denominators and creates no fault",
+      "input": { "outcome": "failed-perm", "presentedEvidenceCount": 1, "authorityDisposition": "verified", "mismatch": "amount" },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-multi-entry-one-invalid",
+      "expected": "reject",
+      "note": "one amount contradiction rejects the whole otherwise verified two-reference multiset",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 2, "authorityDisposition": "verified", "mismatch": "amount", "mismatchIndex": 1 },
+      "want": { "bundleIncluded": false, "completionNumerator": 0, "partyFaultDenominator": 0, "counterpartyAdjustedDenominator": 0, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "excluded-without-fault" }
+    },
+    {
+      "name": "reputation-settlement-semantic-empty-presented-multiset",
+      "expected": "accept",
+      "note": "the presented-evidence guard is vacuously verified, but no verified payment record means no volume or transaction count",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 0, "evidencePhase": null, "authorityDisposition": "verified", "mismatch": null },
+      "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "eligible-non-volume" }
+    },
+    {
+      "name": "reputation-settlement-semantic-delivery-only",
+      "expected": "accept",
+      "note": "verified delivery evidence admits non-volume reputation but is not a verified payment and contributes no volume",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "evidencePhase": "deliver-storage-program", "authorityDisposition": "verified", "mismatch": null },
+      "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "eligible-non-volume" }
+    },
+    {
+      "name": "reputation-settlement-semantic-out-of-set-pay-prefix-non-volume",
+      "expected": "accept",
+      "note": "an otherwise-admitted candidate projection with an invented pay-* phase is not a DACS-4 PaymentPhaseType and cannot establish transacted volume",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "evidencePhase": "pay-not-a-dacs4-phase", "evidenceOutcome": "success", "authorityDisposition": "verified", "mismatch": null },
+      "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "eligible-non-volume" }
+    },
+    {
+      "name": "reputation-settlement-semantic-failed-payment-non-volume",
+      "expected": "accept",
+      "note": "a verified payment-phase failure does not establish transacted value",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 1, "evidencePhase": "pay-dem", "evidenceOutcome": "failure", "authorityDisposition": "verified", "mismatch": null },
+      "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": [], "transactionCountByCurrency": [], "disposition": "eligible-non-volume" }
+    },
+    {
+      "name": "reputation-settlement-semantic-two-valid-payments-count-job-once",
+      "expected": "accept",
+      "note": "two verified successful payment references admit one job and count its Agreement price once, not once per evidence record",
+      "input": { "outcome": "completed", "presentedEvidenceCount": 2, "evidencePhase": "pay-dem", "evidenceOutcome": "success", "authorityDisposition": "verified", "mismatch": null },
+      "want": { "bundleIncluded": true, "completionNumerator": 1, "partyFaultDenominator": 1, "counterpartyAdjustedDenominator": 1, "volumeByCurrency": ["5 DEM"], "transactionCountByCurrency": [{ "currency": "DEM", "count": 1 }], "disposition": "eligible" }
+    }
+  ]
+}

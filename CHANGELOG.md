@@ -13,6 +13,41 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6 / DACS-3 v0.5 / DACS-5 v0.5
+
+- **Authenticated VPC-2 requirement and verifier provenance** (DACS-2
+  §§7.7.3–7.8.3 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3
+  §8.5.2; DACS-5 §10.3.1 ST-11; #331) — adds the structurally distinct
+  `vet-credentials-provenanced` phase while leaving legacy `vet-credentials`
+  and `CompositeVerificationRecord` bytes and semantics unchanged. A signed,
+  session-specific `VetRequirementAuthorization` binds the pinned Listing,
+  publisher/counterparty evaluated role, exact evaluated bundle, complete
+  `BundleRequirement` body/hash, and exact verifier `IdentityBundle` before
+  external verification. Every authorization also signs the session-start
+  recipe-registry pin and a common candidate-roster hash/count; all `2 × |C|`
+  authorizations must reach the preverification barrier before any verifier
+  side effect. The new `ProvenancedCompositeVerificationRecord`
+  must reference that authorization and be signed by its selected verifier.
+  Publisher/counterparty terminology makes the ordinary and sealed-envelope
+  procurement mappings explicit: the signed Listing requirement always gates
+  the counterparty (the supplier/agreement seller in procurement), while the
+  counterparty signs the complementary requirement used against the publisher.
+  Sealed fanout retains two directions for every candidate, excludes only
+  conclusively resolved candidates, and prevents a retryable/ambiguous bidder
+  from disappearing behind another bidder's fail. Agreement commitment and
+  ST-11 recursively validate the complete
+  bundle→Composite→authorization→Listing/session-party chain and reject
+  missing, duplicate, swapped, wrong-party, body/hash-mismatched, substituted,
+  or unauthenticated provenance. The frozen DACS-5 outer types cannot represent
+  a pre-winner multi-candidate terminal or conflicting multi-party fault, so
+  multi-candidate runtime remains steward-gated pending a distinct
+  candidate-aware terminal type; no pseudo-bundle or reputation attribution is
+  permitted. Registers distinct artifact domains and CF-4 logical addresses
+  and adds 64 deterministic positive, negative, and boundary vectors with
+  genuine identity/artifact/method-evidence signatures and authenticated
+  receipt proofs. Their executable DACS-5 coverage is explicitly an audit
+  projection, not a claim of complete outer-bundle conformance.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

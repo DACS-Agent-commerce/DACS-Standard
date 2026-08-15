@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 registers the DACS-2 provenanced-Vet artifact domains and logical addresses; v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -262,6 +262,8 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
 | `dacs2:composite:{jobId}:{evaluatedParty}` (§7.7.2) | `evaluatedParty` (a ClaimReference) | `jobId` |
+| `dacs2:vet-authorization:{jobId}:{evaluatedRole}:{counterpartyContext}:{evaluatedParty}` (§7.7.3) | `counterpartyContext`, `evaluatedParty` (ClaimReferences) | `jobId`, `evaluatedRole` |
+| `dacs2:provenanced-composite:{jobId}:{evaluatedRole}:{counterpartyContext}:{evaluatedParty}` (§7.7.4) | `counterpartyContext`, `evaluatedParty` (ClaimReferences) | `jobId`, `evaluatedRole` |
 | `dacs3:commit:{jobId}` (agreement commitment, §8.6) | none | `jobId` |
 | `dacs5:rating:{jobId}:{rater}` (§10.6.1) | `rater` (a ClaimReference) | `jobId` |
 | `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.2) | none — hash-based, no colon-bearing segment | — |
@@ -366,6 +368,8 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-1 identity bundle presentation | "dacs-bundle-presentation:v1:" | §6.3.2 |
 | DACS-2 VerifyResult | "dacs-verifyresult:v1:" | §7.5 |
 | DACS-2 composite verification record | "dacs-composite:v1:" | §7.7 |
+| DACS-2 Vet requirement authorization | "dacs-vet-authorization:v1:" | §7.7.3 |
+| DACS-2 provenanced composite verification record | "dacs-provenanced-composite:v1:" | §7.7.4 |
 | DACS-2 recipe | "dacs-recipe:v1:" | §7.4 |
 | DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |

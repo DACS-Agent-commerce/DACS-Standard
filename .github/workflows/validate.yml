@@ -64,6 +64,9 @@ jobs:
       - name: Verify alternative-payment vectors are deterministic
         run: python3 scripts/generate_alternative_payment_projection_vectors.py --check
 
+      - name: Verify Vet-provenance vectors are deterministic
+        run: python3 scripts/generate_vet_provenance_vectors.py --check
+
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check
 

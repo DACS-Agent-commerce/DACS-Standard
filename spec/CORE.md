@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 registers the DACS-2 provenanced-Vet artifact domains and logical addresses; v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -261,6 +261,8 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
 | `dacs2:composite:{jobId}:{evaluatedParty}` (§7.7.2) | `evaluatedParty` (a ClaimReference) | `jobId` |
+| `dacs2:vet-authorization:{jobId}:{evaluatedRole}:{counterpartyContext}:{evaluatedParty}` (§7.7.3) | `counterpartyContext`, `evaluatedParty` (ClaimReferences) | `jobId`, `evaluatedRole` |
+| `dacs2:provenanced-composite:{jobId}:{evaluatedRole}:{counterpartyContext}:{evaluatedParty}` (§7.7.4) | `counterpartyContext`, `evaluatedParty` (ClaimReferences) | `jobId`, `evaluatedRole` |
 | `dacs3:commit:{jobId}` (agreement commitment, §8.6) | none | `jobId` |
 | `dacs5:rating:{jobId}:{rater}` (§10.6.1) | `rater` (a ClaimReference) | `jobId` |
 | `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.2) | none — hash-based, no colon-bearing segment | — |
@@ -272,8 +274,12 @@ In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a rese
 - **Anchored.** Stored on the substrate with authenticated `included` or stronger evidence such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve the canonical content and verify integrity. A consuming rule MAY explicitly require `finalized`, or explicitly permit durable `accepted` before retrieval; the bare term does neither. Realized by SR-2.
 - **Signed.** Carrying an Ed25519 (or equivalent) signature over the RFC 8785 canonical-JSON serialisation of the document’s signed scope, where the signed scope is all fields except the signature field itself.
 - **Canonical form.** RFC 8785 JSON Canonicalization Scheme (JCS) serialisation of the document with the signature(s) field omitted.
-- **Content hash.** sha256 hex of the canonical form.
-- **Per-artifact canonical-form template.** Every signed DACS artifact follows the same discipline: canonical form = the JCS serialisation with the artifact's hash-excluded field(s) omitted (normally the signature field); artifact hash = the content hash of that form; signature = over the domain-separated payload per §B.7 — `signed_bytes := <separator> || <artifact hash>` for single-hash separators, composite-payload separators per the §B.7 note — with verifiers reconstructing everything independently (SIG-2). Each artifact's defining section states only the artifact-specific facts: the omitted field(s), the exact domain separator, and any exceptions to this template.
+- **Content hash.** By default, sha256 hex of the canonical form. A new artifact
+  type's defining section MAY explicitly separate its signature-preimage hash
+  from its anchored-content hash and define the latter over the complete signed
+  artifact. Such an exception is type-dispatched and MUST NOT change any legacy
+  artifact's hash semantics.
+- **Per-artifact canonical-form template.** Every signed DACS artifact follows the same discipline: canonical form = the JCS serialisation with the artifact's hash-excluded field(s) omitted (normally the signature field); artifact hash = the hash of that form; signature = over the domain-separated payload per §B.7 — `signed_bytes := <separator> || <artifact hash>` for single-hash separators, composite-payload separators per the §B.7 note — with verifiers reconstructing everything independently (SIG-2). Unless the defining section explicitly declares an anchored-content exception, an `AttestationRef`/receipt `contentHash` uses that same artifact hash. Each artifact's defining section states the omitted field(s), exact domain separator, and any exception.
 - **Numeric safe-integer constraint.** Every JSON number in a signed or content-hashed DACS document MUST lie within the IEEE-754 double safe-integer range. Any quantity that may exceed it (token IDs, uint256 values, large on-chain counters or block numbers) MUST be carried as a decimal string — or, where ABI conventions apply, a `0x`-prefixed hex string — rather than a bare JSON number. Producers MUST NOT emit, and readers SHOULD reject, a signed or content-hashed document containing a JSON number outside this range.
 
   > **Note (non-normative).** RFC 8785 JCS defines a canonical serialisation only for JSON numbers within the IEEE-754 double range; integers above 2^53−1 (9,007,199,254,740,991) have no reproducible canonical form. The string carriage keeps the canonical form and content hash reproducible across serializers.
@@ -365,6 +371,8 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-1 identity bundle presentation | "dacs-bundle-presentation:v1:" | §6.3.2 |
 | DACS-2 VerifyResult | "dacs-verifyresult:v1:" | §7.5 |
 | DACS-2 composite verification record | "dacs-composite:v1:" | §7.7 |
+| DACS-2 Vet requirement authorization | "dacs-vet-authorization:v1:" | §7.7.3 |
+| DACS-2 provenanced composite verification record | "dacs-provenanced-composite:v1:" | §7.7.4 |
 | DACS-2 recipe | "dacs-recipe:v1:" | §7.4 |
 | DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |

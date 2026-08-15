@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.4** (on the common DACS v0.1 baseline; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.5** (on the common DACS v0.1 baseline; v0.5 validates DACS-2 provenanced Vet records against agreement parties and procurement-aware roles; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -194,7 +194,7 @@ type NegotiateRfqOutput = PhaseHandlerResult & {
 Sealed-bid procurement: all bidders submit hash-committed bids before a deadline; bids are revealed after the deadline; winner is selected per the listing’s selection criterion.
 
 ```
-type NegotiateSealedEnvelopeInput = {
+type LegacyNegotiateSealedEnvelopeInput = {
   jobId: string
   listingHash: string
   listingRef: { listingId: string; version: number }
@@ -220,6 +220,29 @@ type NegotiateSealedEnvelopeParameters =
     auctionMode: "procurement"         // explicit procurement marker; valid only on the procurement phase kind (SE-8)
     channelSubnet?: string
   }
+
+type ProvenancedSealedVetPair = {
+  counterpartyContext: ClaimReference
+  counterpartyBundle: IdentityBundle
+  counterpartyVetRef: AttestationRef          // evaluates this counterparty against Listing.buyerRequirement
+  publisherVetRef: AttestationRef             // evaluates publisher under this counterparty's requirement
+}
+
+type ProvenancedNegotiateSealedEnvelopeInput = {
+  vetProvenanceInputVersion: "1"              // exclusive structural discriminator
+  jobId: string
+  listingHash: string
+  listingRef: { listingId: string; version: number }
+  publisherBundle: IdentityBundle
+  vetPairs: ProvenancedSealedVetPair[]         // keyed by counterpartyContext; never positional parallel arrays
+  parameters: NegotiateSealedEnvelopeParameters
+  sessionContext: SessionContext
+}
+
+type NegotiateSealedEnvelopeInput =
+  | LegacyNegotiateSealedEnvelopeInput
+  | ProvenancedNegotiateSealedEnvelopeInput
+
 type NegotiateSealedEnvelopeOutput = PhaseHandlerResult & {
   contextDelta?: {   // present only on ok:true; a failed phase (no winning bid) returns a bare PhaseHandlerResult
     "negotiate-sealed-envelope"?: {
@@ -239,6 +262,41 @@ type NegotiateSealedEnvelopeOutput = PhaseHandlerResult & {
   }
 }
 ```
+
+The provenanced input variant is valid only when the signed pinned Listing
+selects `vet-credentials-provenanced`. It MUST carry
+`vetProvenanceInputVersion: "1"` and MUST NOT carry the legacy
+`buyerBundles`, `sellerBundle`, `buyerVetRefs`, or singular `sellerVetRef`
+members. Conversely, the legacy input MUST NOT carry the new discriminator or
+`vetPairs`. A reader selects exactly one supported arm: either the new
+discriminator with the complete new-member set, or a discriminator-absent
+complete legacy shape. A value carrying both member sets, a partial mixture, or
+neither complete arm is rejected before channels open. This is a structurally distinct minor-safe type: an older reader
+already refuses the new signed Vet PhaseStep, and a newer reader cannot coerce
+N publisher records through the legacy singular `sellerVetRef`.
+
+For either sealed mode before agreement commitment, `SessionContext.parties`
+MUST contain the authenticated listing publisher (and an orchestrator when
+applicable) but MUST NOT coerce the candidate set into repeated singular
+`buyer`/`seller` session-party entries. The authenticated candidate set lives
+in the VPA pair roster and this input's context-keyed `vetPairs`. After
+commitment, the SessionRecord party set contains publisher and winner; losing
+candidates remain AgreementParty/audit provenance rather than invented DACS-5
+SessionParty roles.
+
+For the provenanced variant, `vetPairs` MUST equal the complete DACS-2 PVPC-6
+`eligibleCounterparties` set, keyed and matched by canonical
+`counterpartyContext`, not array position. Each object must resolve two passing
+records for that same context: `counterpartyVetRef` evaluates the exact
+`counterpartyBundle`; `publisherVetRef` evaluates the pinned Listing publisher.
+Every resolved publisher authorization's signed `evaluatedIdentity` and
+`evaluatedBundleHash` MUST equal the single `publisherBundle` body and its
+independently recomputed hash byte-for-byte across all contexts; equality of the
+primary claim alone is insufficient.
+Missing, duplicate, unvetted, non-pass, or cross-context pairs are rejected
+before step 1. DACS-5 retains every emitted candidate-pair record, including
+records for candidates excluded as non-pass before this input is built; only
+eligible pairs enter `vetPairs` and the channel/bid set.
 
 Exactly one contextDelta key is present on success, and it MUST equal the phase kind that ran. The two keys carry the same payload shape; the split keeps session-state consumers keyed by pipeline phase kind from reading a procurement result as a demand-phase result.
 
@@ -260,7 +318,7 @@ Exactly one contextDelta key is present on success, and it MUST equal the phase 
    - **Reserve** — then, if the auction PricingSpec declares `reservePrice` (whose `currency` MUST equal the listing-declared currency — a mismatched-currency reserve is a non-conformant listing), exclude bids failing the reserve: for `highest-price` and for `first-acceptable`/`rule-ref` the reserve is a price **floor** (`amount < reservePrice` excluded); for `lowest-price` it is a **ceiling** (`amount > reservePrice` excluded). The comparison uses CD-1-canonical full-precision decimals and a bid whose `amount == reservePrice` is **admitted** (the bound is inclusive). If the candidate set is empty after these exclusions, the phase fails with no winning bid (bare PhaseHandlerResult → `negotiate-failed`, errorClass per step 6).
    - **Selection rule** — the orchestrator applies the phase-step `parameters.selectionRule`, which is content-hash-bound into the listing pipeline per §6.3.4 and is the authoritative selection rule; the auction PricingSpec's own `selectionRule` MUST equal it (a listing whose two values disagree is non-conformant).
    - **Tie-break ladder** — ties resolved by earliest SR-2 anchor timestamp of each bidder's SE-9-authoritative commit (the same objective, substrate-determined timestamp SE-2 uses for the deadline gate — *not* the self-reported `commitTimestamp` field); any remaining ties (authoritative commits anchored in the same block / with equal anchor timestamps) resolved by ascending lexicographic order of the lowercase-hex `bidHash` string (per step 2).
-6. **No winning bid / agreement construction** — if the selection rule yields no winner (an empty candidate set — all bids excluded for currency/non-positive/reserve, or all bidders failed to reveal per SE-4 — or a `first-acceptable`/`rule-ref` rule that no bid satisfies), the phase fails with no winning bid (bare PhaseHandlerResult; errorClass `counterparty` when the emptiness is bidder-caused, `permanent` for a structural listing defect; → `negotiate-failed`). Otherwise construct the AgreementArtifact selected by the listing's commitment phase from the winning bid, including the required payout bindings when payee-bound, with `derivedFromPattern: "sealed-envelope"` and roles assigned by the pinned sealed-envelope phase kind (SE-8): for demand (`negotiate-sealed-envelope`), the winning bidder is the agreement `buyer` and the listing publisher is the `seller`; for procurement (`negotiate-sealed-envelope-procurement` with `"procurement"` `auctionMode`), the listing publisher is the agreement `buyer` and the winning bidder is the `seller`. In both modes, `bid.price` is the amount payable by the agreement `buyer` to the agreement `seller`; the money direction is defined by the agreement roles, never by which party ran the auction. Then collect the agreement `buyer` and agreement `seller` co-signatures — equivalently, the listing publisher and winning bidder after SE-8 role assignment. Losing bidders are listed as bidder-non-winning parties and their signatures are not required.
+6. **No winning bid / agreement construction** — if the selection rule yields no winner (an empty candidate set — all bids excluded for currency/non-positive/reserve, or all bidders failed to reveal per SE-4 — or a `first-acceptable`/`rule-ref` rule that no bid satisfies), the phase fails with no winning bid (bare PhaseHandlerResult; errorClass `counterparty` when the emptiness is bidder-caused, `permanent` for a structural listing defect; → `negotiate-failed`). Otherwise construct the AgreementArtifact selected by the listing's commitment phase from the winning bid, including the required payout bindings when payee-bound, with `derivedFromPattern: "sealed-envelope"` and roles assigned by the pinned sealed-envelope phase kind (SE-8): for demand (`negotiate-sealed-envelope`), the winning bidder is the agreement `buyer` and the listing publisher is the `seller`; for procurement (`negotiate-sealed-envelope-procurement` with `"procurement"` `auctionMode`), the listing publisher is the agreement `buyer` and the winning bidder is the `seller`. In both modes, `bid.price` is the amount payable by the agreement `buyer` to the agreement `seller`; the money direction is defined by the agreement roles, never by which party ran the auction. Then collect the agreement `buyer` and agreement `seller` co-signatures — equivalently, the listing publisher and winning bidder after SE-8 role assignment. Losing bidders are listed as bidder-non-winning parties and their signatures are not required. Under the provenanced input, every winning or losing bidder's `AgreementParty.vetRecordRef` is its `counterpartyVetRef`; the publisher's singular `AgreementParty.vetRecordRef` is the `publisherVetRef` from the **winning bidder's context**. Publisher refs for losing contexts remain in the DACS-5 `vetRecords[]` audit set rather than being discarded or coerced through the singular AgreementParty field.
 7. **Anchor** the agreement via SR-2 (each reveal record was already anchored by its own bidder in step 4).
 
 **Sealed bid body schema**
@@ -375,7 +433,7 @@ type AgreementParty = {
 
   primaryClaim: ClaimReference         // pulled from bundle.presentedBy
 
-  vetRecordRef: AttestationRef         // DACS-2 composite verification record
+  vetRecordRef: AttestationRef         // DACS-2 legacy or provenanced Composite for this exact party
 
   encryptionKey?: string               // optional party encryption public key; binds which key an encrypt-to-buyer deliverable is sealed to (DACS-4 §9.6.1, DV-3). Distinct from the signing key.
 
@@ -505,6 +563,32 @@ A verifier MUST validate the agreement against its referenced listing — checke
 7. **Pattern** — `derivedFromPattern` MUST match the listing's pipeline-declared negotiation phase after mapping phase kind to agreement pattern: `negotiate-fixed-price` → `"fixed-price"`, `negotiate-rfq` → `"rfq"`, and both `negotiate-sealed-envelope` and `negotiate-sealed-envelope-procurement` → `"sealed-envelope"`.
 8. **Sealed-envelope role direction** — for `derivedFromPattern == "sealed-envelope"`, the agreement party roles and `terms.price` direction MUST match the pinned listing's sealed-envelope phase kind per SE-8. If `auctionMode` is required but missing, or present but unresolvable/malformed, validation MUST reject with a recorded `unresolvable-auctionMode` reason. If the roles are inverted relative to the pinned mode, validation MUST reject before Settle.
 9. **Artifact/commit-phase match** — `commit-agreement` MUST reference an `AgreementDocument`; `commit-payee-bound-agreement` MUST reference a `PayeeBoundAgreementDocument` whose payout bindings satisfy the exact pipeline coverage rules in §8.5. Any mismatch, missing entry, duplicate key, wrong railId, or extra entry MUST be rejected before Settle.
+10. **Provenanced Vet party/role binding** — when the pinned listing selects
+    `vet-credentials-provenanced`, every agreement party MUST carry the exact
+    party-evaluation record selected by PVPC-7; its `evaluatedParty`, signed
+    `evaluatedIdentity`, and `bundleHash` MUST recompute to that party, and the
+    complete DACS-2 VPA/PVC chain and `pass` decision MUST validate.
+
+    For fixed-price/RFQ, `C` has one context: the existing singular
+    `buyerVetRef` and `sellerVetRef` input members MUST be the two role-distinct
+    passing records for that sole pair, and the agreement has exactly the
+    corresponding buyer and seller. No sealed `vetPairs` or winner/loser rule
+    applies.
+
+    For either sealed mode, the provenanced input's context-keyed `vetPairs`
+    set MUST equal the DACS-2 eligible set. The publisher `buyer`/`seller` entry
+    MUST carry the publisher-evaluation record from the winner's context, and
+    the agreement's candidate contexts MUST equal that eligible set exactly:
+    one winning buyer/seller candidate and every other context exactly once as
+    `bidder-non-winning`. An all-pass candidate cannot be omitted after
+    admission, and an excluded/non-pass candidate cannot be inserted. The
+    publisher appears exactly once.
+    Missing or unvetted winning/losing bidders, a missing publisher-for-winner
+    record, cross-bidder substitution, duplicates, non-pass records, or
+    ordinary/procurement role inversion MUST be rejected before commitment.
+    Publisher-for-loser records are checked through DACS-5 `vetRecords[]`, not
+    duplicated into the publisher's singular AgreementParty field. Legacy
+    `vet-credentials` listings are unaffected by this conditional check.
 
 Checks 5 and 6 are the two `committedAt`-relative checks — see the ordering note below. Agreements failing any check MUST be rejected by the declared agreement commitment phase.
 

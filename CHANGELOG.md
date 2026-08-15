@@ -13,7 +13,7 @@ The format used per release:
 
 ## [Unreleased]
 
-### Added — DACS-4 v0.5 pay-ap2 hardening
+### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte
   (`dacs-ap2-idem:v1:` + NFC(jobId) + `0x3a` + minimal decimal phaseIndex),
@@ -24,24 +24,30 @@ The format used per release:
   count a second payment; cross-job/cross-phase reuse rejects, and conflicting
   stored bindings fail closed.
 - **Executable AP2 handler-safety candidates** cover idempotency-key bytes and
-  NFC, exact-tuple retry/resume, cross-session/cross-phase replay, AP2 checkout
-  signature policy, and split-credential registration eligibility.
+  NFC; exact compact-JWS `transaction_id` derivation with `_sd_alg` selection;
+  separate CheckoutMandate + PaymentMandate admission before AP2-7/provider
+  side effects; exact-tuple retry/resume; cross-session/cross-phase replay;
+  the DACS checkout-signature profile; and split-credential registration.
 
-### Changed — DACS-4 v0.5 pay-ap2 composition
+### Changed — DACS-4 v0.6 pay-ap2 composition
 
-- **(AP2-2)** describes the SR-3 provider-receipt fetch as a
-  consensus-anchored fetch-and-hash commitment, not multi-validator
-  observation of the response body (#280).
+- **(AP2-2)** keeps the universal provider-receipt rule bounded by the selected
+  SR-3 binding's authenticated property, while scoping consensus-anchored
+  fetch-and-hash (not validator-body-signing) to current Demos DAHR (#280).
 - **(AP2-3)** names the distinct privileged create/metadata credential and
   relayed read-only status credential, and makes ability to provision the
   latter a registration-time requirement (#282).
-- **Step 2** surfaces the complete CheckoutMandate + merchant-signed checkout
-  JWT chain and its exact `transaction_id` binding (#284), including AP2 v0.2's
-  requirement that the merchant checkout JWT use a non-deterministic signature
-  and not deterministic Ed25519 (#281). This does not alter DACS artifact
-  signature algorithms.
+- **Step 2** requires the handler to possess and verify separate CheckoutMandate
+  and PaymentMandate artifacts, derives `transaction_id` from the exact compact
+  checkout JWS using CheckoutMandate `_sd_alg` with SHA-256 fallback, and rejects
+  malformed, unsupported, or mismatched derivations before AP2-7 reservation or
+  provider submission (#284). DACS explicitly profiles the stricter branch of
+  AP2 v0.2's contradictory checkout-signature guidance and requires
+  non-deterministic signature generation (#281); DACS artifact algorithms are
+  unchanged.
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4

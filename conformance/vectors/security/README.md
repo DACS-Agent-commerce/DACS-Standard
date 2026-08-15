@@ -26,7 +26,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
-| [`ap2-handler-safety-v0.5.json`](ap2-handler-safety-v0.5.json) | DACS-4 §9.5.6 AP2-3/AP2-6/AP2-7 | 19 | `error` / `fail` / `pass` |
+| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -75,20 +75,24 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 
 ## Included sets
 
-### `ap2-handler-safety-v0.5.json` — §9.5.6 AP2-3/AP2-6/AP2-7
+### `ap2-handler-safety-v0.6.json` — §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7
 
-19 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
-by AP2-6 and AP2-7. They pin the provider idempotency-key bytes, NFC handling,
-job/phase separation, malformed phase refusal, first-use binding, exact-tuple
-retry/resume, cross-job and cross-phase replay refusal, and fail-closed handling
-of conflicting stored bindings. An exact retry never submits or counts a
-second payment.
+30 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
+in DACS-4 v0.6. They pin provider idempotency-key bytes, NFC handling,
+job/phase separation, malformed phase refusal, exact compact-JWS transaction-ID
+derivation, CheckoutMandate `_sd_alg` selection and SHA-256 fallback, signature-
+byte sensitivity, and refusal of malformed or unsupported algorithms. The
+composed admission cases require separate verified CheckoutMandate and
+PaymentMandate artifacts, enforce the DACS signature profile, and reject a
+transaction-ID mismatch before AP2-7 reservation or provider submission.
 
-The set also records the AP2 v0.2 merchant checkout-JWT signature-policy and
-AP2-3 split-credential registration decisions. Those cases consume modeled
-provider capability and signature-generation properties; they do not claim to
-introspect a live provider credential or prove a signer's nonce-generation
-implementation. Regenerate, verify, and execute with:
+The same set executes first-use binding, exact-tuple retry/resume, cross-job and
+cross-phase replay refusal, and fail-closed conflicting-store handling. An exact
+retry never submits or counts a second payment. Provider capability, mandate
+cryptographic verification, and checkout signature generation remain modeled
+inputs: the cases do not claim to introspect a live provider credential, replace
+AP2 signature verification, or prove a signer's nonce-generation implementation.
+Regenerate, verify, and execute with:
 
 ```sh
 python3 scripts/generate_ap2_handler_safety_vectors.py --write

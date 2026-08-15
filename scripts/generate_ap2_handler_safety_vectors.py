@@ -1,18 +1,27 @@
 #!/usr/bin/env python3
-"""Generate the candidate AP2-6/AP2-7 handler-safety vector family."""
+"""Generate the candidate AP2 checkout/admission handler-safety vectors."""
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
+import re
 import sys
 import unicodedata
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "conformance" / "vectors" / "security" / "ap2-handler-safety-v0.5.json"
+OUTPUT = ROOT / "conformance" / "vectors" / "security" / "ap2-handler-safety-v0.6.json"
 DOMAIN = b"dacs-ap2-idem:v1:"
+MISSING = object()
+COMPACT_JWS_RE = re.compile(
+    r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\Z"
+)
+HASH_ALGORITHMS = {
+    "sha-256": hashlib.sha256,
+}
 
 
 def canonical_json(value: object) -> bytes:
@@ -33,6 +42,51 @@ def derive_key(job_id: str, phase_index: int) -> str:
         + str(phase_index).encode("ascii")
     )
     return hashlib.sha256(preimage).hexdigest()
+
+
+def base64url_nopad(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+def derive_transaction_id(checkout_jws: object, sd_alg: object = MISSING) -> str:
+    """Apply the DACS AP2 digest selection to exact compact-JWS bytes."""
+    if (
+        not isinstance(checkout_jws, str)
+        or not COMPACT_JWS_RE.fullmatch(checkout_jws)
+    ):
+        raise ValueError("checkoutJws must be an unpadded RFC 7515 compact JWS")
+    algorithm = "sha-256" if sd_alg is MISSING else sd_alg
+    if not isinstance(algorithm, str) or algorithm not in HASH_ALGORITHMS:
+        raise ValueError("_sd_alg is unsupported")
+    digest = HASH_ALGORITHMS[algorithm](checkout_jws.encode("ascii")).digest()
+    return base64url_nopad(digest)
+
+
+def transaction_id_case(
+    name: str,
+    checkout_jws: object,
+    expected: str,
+    case_class: str,
+    note: str,
+    *,
+    sd_alg: object = MISSING,
+    different_from_transaction_id: str | None = None,
+) -> dict[str, object]:
+    case: dict[str, object] = {
+        "name": name,
+        "op": "derive-transaction-id",
+        "caseClass": case_class,
+        "checkoutJws": checkout_jws,
+        "expected": expected,
+        "note": note,
+    }
+    if sd_alg is not MISSING:
+        case["_sd_alg"] = sd_alg
+    if expected == "pass":
+        case["expectedTransactionId"] = derive_transaction_id(checkout_jws, sd_alg)
+    if different_from_transaction_id is not None:
+        case["differentFromTransactionId"] = different_from_transaction_id
+    return case
 
 
 def key_case(name: str, job_id: object, phase_index: object, expected: str, note: str,
@@ -64,7 +118,27 @@ def binding(transaction_id: str, job_id: str, phase_index: int, state: str) -> d
 def vectors() -> list[dict[str, object]]:
     job_a = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
     job_b = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
-    tx = "NivWhuqfzcvZNapvIEJ2-3tsdQLkiuIcye2g46WVgX8"
+    header = base64url_nopad(b'{"alg":"ES256","typ":"JWT"}')
+    payload = base64url_nopad(
+        b'{"checkout_id":"checkout-123","currency":"USD","total":"10.00"}'
+    )
+    signature = base64url_nopad(bytes(range(1, 65)))
+    changed_signature = base64url_nopad(bytes(range(1, 64)) + b"A")
+    checkout_jws = f"{header}.{payload}.{signature}"
+    changed_signature_jws = f"{header}.{payload}.{changed_signature}"
+    tx = derive_transaction_id(checkout_jws)
+    changed_signature_tx = derive_transaction_id(changed_signature_jws)
+    admission_common: dict[str, object] = {
+        "op": "checkout-payment-admission",
+        "checkoutMandatePresent": True,
+        "checkoutMandateVerified": True,
+        "paymentMandatePresent": True,
+        "paymentMandateVerified": True,
+        "checkoutJws": checkout_jws,
+        "algorithm": "ES256",
+        "signatureGeneration": "non-deterministic",
+        "paymentTransactionId": tx,
+    }
     return [
         key_case(
             "ap2-key-base", job_a, 3, "pass",
@@ -91,6 +165,126 @@ def vectors() -> list[dict[str, object]]:
             "ap2-key-string-phase-error", job_a, "03", "error",
             "a textual phase index cannot introduce a non-minimal decimal spelling",
         ),
+        transaction_id_case(
+            "ap2-transaction-id-sha256-default",
+            checkout_jws,
+            "pass",
+            "positive",
+            "an absent CheckoutMandate _sd_alg selects SHA-256 over the exact compact JWS bytes",
+        ),
+        transaction_id_case(
+            "ap2-transaction-id-sha256-explicit",
+            checkout_jws,
+            "pass",
+            "boundary",
+            "an explicit CheckoutMandate _sd_alg selects the required SHA-256 algorithm",
+            sd_alg="sha-256",
+        ),
+        transaction_id_case(
+            "ap2-transaction-id-signature-byte-change",
+            changed_signature_jws,
+            "pass",
+            "boundary",
+            "changing only the merchant signature bytes changes transaction_id",
+            different_from_transaction_id=tx,
+        ),
+        transaction_id_case(
+            "ap2-transaction-id-unsupported-algorithm-error",
+            checkout_jws,
+            "error",
+            "negative",
+            "an unsupported CheckoutMandate _sd_alg refuses before admission",
+            sd_alg="dacs-unknown-hash",
+        ),
+        transaction_id_case(
+            "ap2-transaction-id-malformed-compact-jws-error",
+            "header.payload",
+            "error",
+            "negative",
+            "a value that is not an unpadded three-segment compact JWS refuses before hashing",
+        ),
+        {
+            **admission_common,
+            "name": "ap2-admission-complete-chain-match",
+            "caseClass": "positive",
+            "expected": "pass",
+            "want": {
+                "derivedTransactionId": tx,
+                "reserveAp2Binding": True,
+                "submitProviderPayment": True,
+            },
+            "note": (
+                "separate verified CheckoutMandate and PaymentMandate artifacts with a "
+                "matching digest admit side effects"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-transaction-id-mismatch",
+            "caseClass": "negative",
+            "paymentTransactionId": changed_signature_tx,
+            "expected": "fail",
+            "want": {
+                "derivedTransactionId": tx,
+                "reserveAp2Binding": False,
+                "submitProviderPayment": False,
+            },
+            "note": (
+                "a PaymentMandate mismatch rejects before AP2-7 reservation or provider "
+                "submission"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-checkout-mandate-missing",
+            "caseClass": "negative",
+            "checkoutMandatePresent": False,
+            "checkoutMandateVerified": False,
+            "expected": "fail",
+            "want": {
+                "reserveAp2Binding": False,
+                "submitProviderPayment": False,
+            },
+            "note": "a standalone PaymentMandate is not a complete AP2 checkout chain",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-payment-mandate-missing",
+            "caseClass": "negative",
+            "paymentMandatePresent": False,
+            "paymentMandateVerified": False,
+            "expected": "fail",
+            "want": {
+                "reserveAp2Binding": False,
+                "submitProviderPayment": False,
+            },
+            "note": "a CheckoutMandate alone cannot authorize payment",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-deterministic-signature-rejects",
+            "caseClass": "negative",
+            "algorithm": "Ed25519",
+            "signatureGeneration": "deterministic",
+            "expected": "fail",
+            "want": {
+                "reserveAp2Binding": False,
+                "submitProviderPayment": False,
+            },
+            "note": "the DACS strict signature profile is enforced before either side effect",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-unsupported-algorithm-errors",
+            "caseClass": "boundary",
+            "_sd_alg": "dacs-unknown-hash",
+            "expected": "error",
+            "want": {
+                "reserveAp2Binding": False,
+                "submitProviderPayment": False,
+            },
+            "note": "unsupported digest selection fails before AP2-7 reservation or provider submission",
+        },
         {
             "name": "ap2-first-presentation-binds",
             "op": "transaction-binding",
@@ -166,7 +360,7 @@ def vectors() -> list[dict[str, object]]:
             "algorithm": "ES256",
             "signatureGeneration": "non-deterministic",
             "expected": "pass",
-            "note": "the merchant checkout JWT satisfies the upstream AP2 v0.2 property",
+            "note": "the merchant checkout JWT satisfies the DACS strict AP2 signature profile",
         },
         {
             "name": "ap2-checkout-ed25519-reject",
@@ -174,7 +368,7 @@ def vectors() -> list[dict[str, object]]:
             "algorithm": "Ed25519",
             "signatureGeneration": "deterministic",
             "expected": "fail",
-            "note": "AP2 v0.2 explicitly excludes deterministic Ed25519 for the merchant checkout JWT",
+            "note": "DACS chooses AP2 v0.2's stricter branch and rejects deterministic Ed25519",
         },
         {
             "name": "ap2-checkout-deterministic-ecdsa-reject",
@@ -230,11 +424,13 @@ def vectors() -> list[dict[str, object]]:
 def render() -> str:
     cases = vectors()
     document = {
-        "set": "ap2-handler-safety-v0.5",
-        "spec": "DACS-4 §9.5.6 AP2-3/AP2-6/AP2-7",
+        "set": "ap2-handler-safety-v0.6",
+        "spec": "DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7",
         "scope": (
-            "candidate handler predicates: key derivation and retry/replay consumption are "
-            "executed; provider capability and checkout signature generation are modeled inputs"
+            "candidate handler predicates: idempotency-key and transaction-id derivation, "
+            "checkout/payment admission ordering, and retry/replay consumption are executed; "
+            "provider capability, mandate cryptographic verification, and signature generation "
+            "are modeled inputs"
         ),
         "hash": hashlib.sha256(canonical_json(cases)).hexdigest(),
         "count": len(cases),

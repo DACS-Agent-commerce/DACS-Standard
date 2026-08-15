@@ -1,0 +1,414 @@
+{
+  "set": "ap2-handler-safety-v0.6",
+  "spec": "DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7",
+  "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, checkout/payment admission ordering, and retry/replay consumption are executed; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
+  "hash": "f85b678a1e91db0707a97a792134adb8d2ba87da57f715abd42a109d38dba745",
+  "count": 30,
+  "vectors": [
+    {
+      "name": "ap2-key-base",
+      "op": "derive-idempotency-key",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "expected": "pass",
+      "note": "the same session phase always derives the same lower-case 64-hex provider key",
+      "expectedKey": "326c806fa163e7ec2c97f512d479a846a67291c8c4092d55395068e35356eb97"
+    },
+    {
+      "name": "ap2-key-phase-separation",
+      "op": "derive-idempotency-key",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 4,
+      "expected": "pass",
+      "note": "a repeated AP2 phase receives a distinct provider key",
+      "expectedKey": "7b80ba1a15d989611ed25599fb25d7e7071b52c30a01c54fed23138371f058a4"
+    },
+    {
+      "name": "ap2-key-job-separation",
+      "op": "derive-idempotency-key",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+      "phaseIndex": 3,
+      "expected": "pass",
+      "note": "a different job receives a distinct provider key at the same phase index",
+      "expectedKey": "e255e8c5eacfbeadbefbeee884bad22bf2164894a890bb9a7ceb934d99062f3b"
+    },
+    {
+      "name": "ap2-key-nfc-normalization",
+      "op": "derive-idempotency-key",
+      "jobId": "café-job",
+      "phaseIndex": 0,
+      "expected": "pass",
+      "note": "decomposed and composed job identifiers derive identical bytes",
+      "expectedKey": "2128576ea9daf4765462705820c909c9f40cad744fa7b46298e495579c4eb184",
+      "normalizedJobId": "café-job"
+    },
+    {
+      "name": "ap2-key-negative-phase-error",
+      "op": "derive-idempotency-key",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": -1,
+      "expected": "error",
+      "note": "a negative phase index refuses before hashing"
+    },
+    {
+      "name": "ap2-key-string-phase-error",
+      "op": "derive-idempotency-key",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": "03",
+      "expected": "error",
+      "note": "a textual phase index cannot introduce a non-minimal decimal spelling"
+    },
+    {
+      "name": "ap2-transaction-id-sha256-default",
+      "op": "derive-transaction-id",
+      "caseClass": "positive",
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "expected": "pass",
+      "note": "an absent CheckoutMandate _sd_alg selects SHA-256 over the exact compact JWS bytes",
+      "expectedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+    },
+    {
+      "name": "ap2-transaction-id-sha256-explicit",
+      "op": "derive-transaction-id",
+      "caseClass": "boundary",
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "expected": "pass",
+      "note": "an explicit CheckoutMandate _sd_alg selects the required SHA-256 algorithm",
+      "_sd_alg": "sha-256",
+      "expectedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+    },
+    {
+      "name": "ap2-transaction-id-signature-byte-change",
+      "op": "derive-transaction-id",
+      "caseClass": "boundary",
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QQ",
+      "expected": "pass",
+      "note": "changing only the merchant signature bytes changes transaction_id",
+      "expectedTransactionId": "iECTDxg6jDyMmaBix8DHKhNnhNqCzzEgD4RJ-tXvuXM",
+      "differentFromTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+    },
+    {
+      "name": "ap2-transaction-id-unsupported-algorithm-error",
+      "op": "derive-transaction-id",
+      "caseClass": "negative",
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "expected": "error",
+      "note": "an unsupported CheckoutMandate _sd_alg refuses before admission",
+      "_sd_alg": "dacs-unknown-hash"
+    },
+    {
+      "name": "ap2-transaction-id-malformed-compact-jws-error",
+      "op": "derive-transaction-id",
+      "caseClass": "negative",
+      "checkoutJws": "header.payload",
+      "expected": "error",
+      "note": "a value that is not an unpadded three-segment compact JWS refuses before hashing"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-complete-chain-match",
+      "caseClass": "positive",
+      "expected": "pass",
+      "want": {
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+        "reserveAp2Binding": true,
+        "submitProviderPayment": true
+      },
+      "note": "separate verified CheckoutMandate and PaymentMandate artifacts with a matching digest admit side effects"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "iECTDxg6jDyMmaBix8DHKhNnhNqCzzEgD4RJ-tXvuXM",
+      "name": "ap2-admission-transaction-id-mismatch",
+      "caseClass": "negative",
+      "expected": "fail",
+      "want": {
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "a PaymentMandate mismatch rejects before AP2-7 reservation or provider submission"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "checkoutMandatePresent": false,
+      "checkoutMandateVerified": false,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-checkout-mandate-missing",
+      "caseClass": "negative",
+      "expected": "fail",
+      "want": {
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "a standalone PaymentMandate is not a complete AP2 checkout chain"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": false,
+      "paymentMandateVerified": false,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-payment-mandate-missing",
+      "caseClass": "negative",
+      "expected": "fail",
+      "want": {
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "a CheckoutMandate alone cannot authorize payment"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "Ed25519",
+      "signatureGeneration": "deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-deterministic-signature-rejects",
+      "caseClass": "negative",
+      "expected": "fail",
+      "want": {
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "the DACS strict signature profile is enforced before either side effect"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-unsupported-algorithm-errors",
+      "caseClass": "boundary",
+      "_sd_alg": "dacs-unknown-hash",
+      "expected": "error",
+      "want": {
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "unsupported digest selection fails before AP2-7 reservation or provider submission"
+    },
+    {
+      "name": "ap2-first-presentation-binds",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [],
+      "expected": "pass",
+      "want": {
+        "action": "bind-new",
+        "submitNewPayment": true
+      },
+      "note": "the first valid presentation atomically reserves the transaction for this tuple"
+    },
+    {
+      "name": "ap2-same-tuple-inflight-resumes",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        }
+      ],
+      "expected": "pass",
+      "want": {
+        "action": "resume-existing",
+        "submitNewPayment": false
+      },
+      "note": "an exact retry resumes with the same AP2-6 key rather than becoming replay"
+    },
+    {
+      "name": "ap2-same-tuple-settled-resumes-evidence",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "settled"
+        }
+      ],
+      "expected": "pass",
+      "want": {
+        "action": "resume-settlement",
+        "submitNewPayment": false
+      },
+      "note": "a settled retry reuses the existing provider result and never counts twice"
+    },
+    {
+      "name": "ap2-cross-job-replay-rejects",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        }
+      ],
+      "expected": "fail",
+      "want": {
+        "action": "reject-replay",
+        "submitNewPayment": false
+      },
+      "note": "one checkout transaction cannot authorize a different DACS session"
+    },
+    {
+      "name": "ap2-cross-phase-replay-rejects",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 4,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        }
+      ],
+      "expected": "fail",
+      "want": {
+        "action": "reject-replay",
+        "submitNewPayment": false
+      },
+      "note": "one checkout transaction cannot settle two repeated phases in a session"
+    },
+    {
+      "name": "ap2-conflicting-stored-bindings-error",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        },
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a corrupt or racy binding store fails closed instead of selecting a winner"
+    },
+    {
+      "name": "ap2-checkout-randomized-signature-pass",
+      "op": "checkout-signature-policy",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "expected": "pass",
+      "note": "the merchant checkout JWT satisfies the DACS strict AP2 signature profile"
+    },
+    {
+      "name": "ap2-checkout-ed25519-reject",
+      "op": "checkout-signature-policy",
+      "algorithm": "Ed25519",
+      "signatureGeneration": "deterministic",
+      "expected": "fail",
+      "note": "DACS chooses AP2 v0.2's stricter branch and rejects deterministic Ed25519"
+    },
+    {
+      "name": "ap2-checkout-deterministic-ecdsa-reject",
+      "op": "checkout-signature-policy",
+      "algorithm": "ES256",
+      "signatureGeneration": "deterministic",
+      "expected": "fail",
+      "note": "the security property is non-deterministic generation, not an algorithm label alone"
+    },
+    {
+      "name": "ap2-split-credentials-registration-pass",
+      "op": "registration-eligibility",
+      "createCredential": true,
+      "statusOnlyCredential": true,
+      "credentialsDistinct": true,
+      "createCredentialRelayed": false,
+      "expected": "pass",
+      "note": "the privileged key stays local and a distinct status-only key may transit SR-3"
+    },
+    {
+      "name": "ap2-missing-status-credential-reject",
+      "op": "registration-eligibility",
+      "createCredential": true,
+      "statusOnlyCredential": false,
+      "credentialsDistinct": true,
+      "createCredentialRelayed": false,
+      "expected": "fail",
+      "note": "an integration unable to provision status-only access cannot register pay-ap2"
+    },
+    {
+      "name": "ap2-shared-provider-credential-reject",
+      "op": "registration-eligibility",
+      "createCredential": true,
+      "statusOnlyCredential": true,
+      "credentialsDistinct": false,
+      "createCredentialRelayed": false,
+      "expected": "fail",
+      "note": "one credential cannot serve both the privileged and relayed scopes"
+    },
+    {
+      "name": "ap2-privileged-credential-relayed-reject",
+      "op": "registration-eligibility",
+      "createCredential": true,
+      "statusOnlyCredential": true,
+      "credentialsDistinct": true,
+      "createCredentialRelayed": true,
+      "expected": "fail",
+      "note": "a credential capable of creating or moving value must never transit SR-3"
+    }
+  ]
+}

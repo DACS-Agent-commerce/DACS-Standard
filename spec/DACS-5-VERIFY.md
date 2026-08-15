@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.4** on the common DACS v0.1 baseline. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, and adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, `BundleBinding` BB-1..BB-8 resolution, and absolute fault attribution through `FaultAttestationBundle`. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.4** on the common DACS v0.1 baseline. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -611,8 +611,19 @@ type ReplayableReputationDerivation = {
   computedAt: number
   windowingBasis: "finalisedAt" | "sr2-anchor-timestamp"   // which clock the §10.5.1 window was applied against; re-derivation MUST use the same one (§10.5.3 determinism receipt)
   bundleRefs: AttestationRef[]                 // exactly the reconciled set (§10.5.1), in canonical ascending-contentHash order (§10.5.3 determinism receipt)
-  resolutionContext: ResolutionContextEntry[]   // REQUIRED (empty array only when bundleRefs is empty): one entry per reconciled jobId (§10.5.1) — the resolution facts derive() consumed that the copies themselves cannot carry. Never part of any signed bundle (§10.5.1 guard (iv)); it is derivation-record data.
+  resolutionContext: ResolutionContextEntry[]   // REQUIRED (empty array only when bundleRefs is empty): one entry per reconciled jobId (§10.5.1) — the resolution facts the applicable algorithm consumed that the copies themselves cannot carry. Never part of any signed bundle (§10.5.1 guard (iv)); it is derivation-record data.
 }
+
+type SettlementVerifiedReputationDerivation =
+  Omit<ReputationDerivation, "derivationVersion"> & {
+    settlementVerifiedDerivationVersion: "1"    // structural discriminator; never carries derivationVersion or either replayable discriminator
+  }
+
+type ReplayableSettlementVerifiedReputationDerivation =
+  Omit<ReplayableReputationDerivation, "replayableDerivationVersion" | "resolutionContext"> & {
+    replayableSettlementVerifiedDerivationVersion: "1"  // structural discriminator; never carries any other derivation discriminator
+    resolutionContext: JobBoundResolutionContextEntry[]  // settlement-verified replay is job-bound; EBFAB evidence cannot be replayed through the released context contract
+  }
 
 type ResolutionContextEntry = {
   contentHash: string                           // keys the entry to its bundleRefs member (ascending-contentHash order, §10.5.3)
@@ -641,7 +652,7 @@ type AbsenceEvidence = {
 }
 ```
 
-**`JobBoundReplayableReputationDerivation` (strengthened replayable receipt).** EBFAB replay and any producer claiming that returned content was bound to the trusted requested session identity MUST use this distinct type. It carries `jobBoundReplayableDerivationVersion: "1"`, never `replayableDerivationVersion` or `derivationVersion`, and uses `JobBoundResolutionContextEntry`. Unknown, stripped, relabelled, unsupported, or multiply-present derivation discriminators are rejected before any replay action.
+**`JobBoundReplayableReputationDerivation` (strengthened replayable receipt).** EBFAB replay and any producer claiming that returned content was bound to the trusted requested session identity MUST use a job-bound replay type. When retaining released metric semantics, the producer uses this distinct type. It carries `jobBoundReplayableDerivationVersion: "1"`, never `replayableDerivationVersion`, `derivationVersion`, or either settlement-verified discriminator, and uses `JobBoundResolutionContextEntry`. Unknown, stripped, relabelled, unsupported, or multiply-present derivation discriminators are rejected before any replay action.
 
 ```
 type JobBoundReplayableReputationDerivation = Omit<ReplayableReputationDerivation,
@@ -655,7 +666,9 @@ type JobBoundResolutionContextEntry = ResolutionContextEntry & {
 }
 ```
 
-The released v1 path neither requires nor acts on `resolvedJobId`; adding, removing, or changing such an unknown extension cannot strengthen or alter its semantics. A job-bound consumer instead verifies `resolvedJobId` against the dereferenced authoritative copy and uses it for every role, counterparty, candidate-binding, and absence-binding job relation before reconciliation. EBFAB is not admissible to the released v1 derivation path.
+The released v1 path neither requires nor acts on `resolvedJobId`; adding, removing, or changing such an unknown extension cannot strengthen or alter its semantics. A job-bound consumer instead verifies `resolvedJobId` against the dereferenced authoritative copy and uses it for every role, counterparty, candidate-binding, and absence-binding job relation before reconciliation. EBFAB is not admissible to the released v1 derivation path. A producer replaying EBFAB with released metric semantics uses `JobBoundReplayableReputationDerivation`; a producer also claiming RSV-1 through RSV-4 uses `ReplayableSettlementVerifiedReputationDerivation`, whose context is job-bound by definition.
+
+**Settlement-verified type boundary (normative).** The two `*SettlementVerified*` types are the only derivation types that apply RSV-1 through RSV-4, settlement-reference multiset comparison, and the successful-payment floor for volume. Their shared fields have the settlement-verified meanings defined in §10.5.1. A producer claiming those semantics MUST emit exactly one matching settlement-verified discriminator and MUST NOT emit `derivationVersion`, `replayableDerivationVersion`, `jobBoundReplayableDerivationVersion`, or the sibling settlement-verified discriminator. A consumer that does not support the encountered settlement-verified discriminator MUST reject the object as unsupported before type-specific action; it MUST NOT discard or rename the discriminator and reinterpret the object as either released version-1 type. Conversely, `ReputationDerivation` and `ReplayableReputationDerivation` retain their DACS-5 v0.3 meanings and MUST NOT be evaluated under RSV. The discriminator therefore distinguishes pre-RSV from RSV-enforced output using object bytes alone, without repository-revision knowledge.
 
 A supported replay receipt's `resolutionContext`:
 
@@ -671,31 +684,36 @@ Three relations make each authenticated copy independently checkable at replay:
 - **BB-6 reproduction.** A binding-backed entry MUST carry the `bb6Context` multiplicity inputs that reproduce why the authoritative copy won BB-6 selection. A replay that re-runs BB-6 over `candidateBindings` under `partyMap` and `budget` and reaches a `resolvedNativeAddress` other than `roleEvidence.binding.nativeAddress` is non-conforming.
 - **Absence relation.** `absenceBinding.nativeAddress` MUST equal the dereferenced `AbsenceEvidence.nativeAddress`. `absenceBinding` MUST itself be BB-4-valid, with `role` equal to the missing side's role and `jobId` equal to the entry's jobId. BB-5 check 8 (`bundleContentHash` byte-equality with fetched content) is inapplicable to `absenceBinding` — the missing side's bundle never anchored, so no fetched content exists to match; the binding is verified per BB-4 with `jobId` and `role` equality and the `nativeAddress` relation above.
 
-A deriver retaining the released contract emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. A deriver making the stronger requested-session binding claim emits `jobBoundReplayableDerivationVersion: "1"` and includes `resolvedJobId` in every context entry. Both set `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`.
+A deriver publishing a released-semantics replayable receipt emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. A deriver making the stronger requested-session binding claim while retaining released metric semantics emits `jobBoundReplayableDerivationVersion: "1"`. A settlement-verified replayable receipt emits `replayableSettlementVerifiedDerivationVersion: "1"` and no other derivation discriminator. Both job-bound forms include `resolvedJobId` in every context entry. All three set `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`.
 
-**Replay (normative, extends the §10.5.3 determinism receipt).** Either supported replay type MUST be replayable as below, and is non-conforming if it is missing, mis-keyed, lacks any member REQUIRED for its type or an entry's disposition, or fails any check:
+**Replay (normative, extends the §10.5.3 determinism receipt).** All three replayable types MUST satisfy the common checks below and are non-conforming if their context is missing, mis-keyed, lacks any member REQUIRED for their type or an entry's disposition, or fails any check. The RSV-labelled checks apply only to `ReplayableSettlementVerifiedReputationDerivation`; the job-bound checks apply to both `JobBoundReplayableReputationDerivation` and `ReplayableSettlementVerifiedReputationDerivation`:
 
 - it MUST satisfy the §10.5.3 (1)–(3) determinism-receipt contract;
-- re-running `derive(partyPrimaryClaim, deref(bundleRefs), windowStart, windowEnd)` under the recorded `windowingBasis`, each copy's `resolutionContext` entry supplied as its §10.5.1 tag, MUST reproduce byte-identical `metrics` and `bundleCount`;
+- re-running the algorithm selected by the receipt discriminator (`derive` for released v1, `derive_job_bound` for job-bound released metrics, or `derive_settlement_verified` for settlement-verified v1) under the recorded `windowingBasis`, each copy's `resolutionContext` entry supplied as its §10.5.1 tag, MUST reproduce byte-identical `metrics` and `bundleCount`;
 - **re-verify `roleEvidence`** — a binding-backed entry's binding MUST pass BB-4, with `jobId` equal to the authoritative copy's jobId, `role` equal to `resolvedRole`, and `bundleContentHash` equal to the entry's `contentHash`;
 - **reproduce BB-6 selection** — re-run BB-6 over `bb6Context.candidateBindings` under `partyMap` and `budget`, requiring disposition `present` with `resolvedNativeAddress` equal to `roleEvidence.binding.nativeAddress`;
-- **re-run §10.4.3 reconciliation** — dereference `counterpartyRef`, verify `counterpartyRoleEvidence` per the counterparty-authentication relation, and require `divergence()` against the authoritative copy to be false;
+- **re-run reconciliation** — dereference `counterpartyRef`, verify `counterpartyRoleEvidence` per the counterparty-authentication relation, and require the applicable type's divergence predicate against the authoritative copy to be false; the settlement-verified type additionally requires exact `settlementEvidence[]` reference-multiset agreement;
+- **re-run RSV admission (settlement-verified type only)** — resolve and independently verify every presented SettlementEvidence under RSV-1/RSV-2 from immutable, hash-bound or finalized-state-bound authority; require `verified` before comparing metrics. `rejected` or `indeterminate` makes the receipt unverifiable and MUST NOT produce an alternative metric set;
 - **re-check absence** — dereference `AbsenceEvidence`, require `absenceEvidenceRef.contentHash` to equal its `sha256(canonical)`, verify `absenceBinding` per the absence relation, and require `absenceBinding.nativeAddress` to equal `AbsenceEvidence.nativeAddress`.
-- **job-bound type only** — require each non-empty `resolvedJobId` to equal the dereferenced authoritative copy's `jobId` and use that trusted value, rather than returned content, in every job-binding check. The released v1 type performs its historical checks against the authenticated copy's `jobId` and makes no stronger claim.
-- **EBFAB in the job-bound type** — resolve and re-verify the signed listing, exact SettlementEvidence resolutions including authenticated phase-orchestrator authority, transitive ST-8 evidence, and bundle/evidence lifecycle state referenced by the EBFAB. A replay implementation whose configured authority resolvers cannot recover that material MUST refuse; it MUST NOT rederive while silently dropping SEB validation.
+- **job-bound types only** — require each non-empty `resolvedJobId` to equal the dereferenced authoritative copy's `jobId` and use that trusted value, rather than returned content, in every job-binding check. The released v1 type performs its historical checks against the authenticated copy's `jobId` and makes no stronger claim.
+- **EBFAB in either job-bound type** — resolve and re-verify the signed listing, exact SettlementEvidence resolutions including authenticated phase-orchestrator authority, transitive ST-8 evidence, and bundle/evidence lifecycle state referenced by the EBFAB. A replay implementation whose configured authority resolvers cannot recover that material MUST refuse; it MUST NOT rederive while silently dropping SEB validation.
 
-The discriminator is unsigned. Stripping `replayableDerivationVersion` from a published receipt downgrades it to a legacy `ReputationDerivation` making no replay claim — a loss of claims, not a forgery, since the surviving metrics remain auditable under §10.5.3 (1)–(3).
+The discriminators are unsigned but type-authoritative. A consumer MUST reject any receipt carrying no recognized derivation discriminator, multiple derivation discriminators, or a discriminator inconsistent with its claimed type. In particular it MUST NOT strip a settlement-verified discriminator and process the remaining fields under released v1 semantics.
 
 > **Note (non-normative).** A conforming replay proves the receipt's *internal consistency* and the *authentication* of the evidence it re-verifies — the `roleEvidence`/`counterpartyRoleEvidence` bindings, the `partyMap` against the bundle roster, and the `bb6Context` candidates (BB-4/BB-5). It does NOT prove *completeness* or faithful disclosure: a deriver that omits relevant bundles from `bundleRefs` is not detected by replay — the §10.5.3 completeness residual (no authoritative "which bundles exist" oracle; #251-adjacent).
 
 #### 10.5.1 Derivation algorithm
 
-*Input precondition: each admitted input copy is tagged with the role under which it resolved. A job-bound derivation additionally carries the trusted requested `jobId` from the role address or verified `BundleBinding`; it MUST equal the dereferenced copy before that copy may enter grouping or fallback. EBFAB requires this job-bound path. The released replayable v1 path retains its historical input contract and does not consume `resolvedJobId`.*
+The algorithm below is `derive_settlement_verified` and emits `SettlementVerifiedReputationDerivation` or its replayable counterpart. The released `derive` algorithm and its two version-1 output types retain the DACS-5 v0.3 semantics; implementations MUST NOT label output from this algorithm with either released discriminator. For an executable current definition, released `derive` is the algorithm below with exactly three settlement-verified limbs disabled: it uses only the §10.4.3 divergence predicate, does not call `verify_presented_settlement_evidence`, and applies the released volume rule (a completed bundle with a valid `agreementRef` contributes its Agreement price without requiring presented successful-payment evidence). All other reconciliation, denominator, rating, ordering, windowing, and receipt rules are shared.
+
+The job-bound `derive_job_bound` path retains the released metric semantics but emits `JobBoundReplayableReputationDerivation`; it is the minimum replayable path for EBFAB. A replayable settlement-verified derivation applies both the job-bound and RSV requirements and emits `ReplayableSettlementVerifiedReputationDerivation`.
+
+*Input precondition: each admitted input copy is resolution-context-tagged with the role under which it resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate). A job-bound derivation additionally carries the trusted requested `jobId` from the role address or verified `BundleBinding`; it MUST equal the dereferenced copy before that copy may enter grouping or fallback. EBFAB requires this job-bound path. The released replayable v1 path retains its historical input contract and does not consume `resolvedJobId`.*
 
 *Settlement uniqueness (SB-2, §9.5.8): across the bundles reconciled below, a `settlement-tx-id` bound to more than one `(jobId, phaseIndex)` is counted once (earliest `observedAt`), so a reused settlement transaction cannot inflate `observedTransactionalVolume` or completion across jobs.*
 
 ```
-derive(party, bundles, windowStart, windowEnd):
+derive_settlement_verified(party, bundles, windowStart, windowEnd):
 
   scoped := [b for b in bundles
 
@@ -705,7 +723,7 @@ derive(party, bundles, windowStart, windowEnd):
 
   if scoped is empty:
 
-    return ReputationDerivation with bundleCount=0, bundleRefs=[], observedTransactionalVolume=[], transactionCountByCurrency=[], and the scalar metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) null
+    return SettlementVerifiedReputationDerivation with bundleCount=0, bundleRefs=[], observedTransactionalVolume=[], transactionCountByCurrency=[], and the scalar metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) null
 
   # Per-jobId reconciliation to the scored party's perspective.
   # Two-sided anchoring (§10.4.2) means one jobId may contribute up to two
@@ -754,7 +772,7 @@ derive(party, bundles, windowStart, windowEnd):
     role_of_party := the role of the BundleParty p in copies[0].parties where p.primaryClaim == party
     self_copy := the b in copies where b.anchoredByRole == role_of_party        // scored party's own copy, if present
     cp        := the b in copies where b.anchoredByRole != role_of_party        // at most one (the buyer/seller counterparty copy)
-    if self_copy exists AND cp exists AND self_copy and cp diverge (divergence rule below):
+    if self_copy exists AND cp exists AND self_copy and cp diverge under the settlement-verified predicate (the §10.4.3 predicate plus a different settlementEvidence reference multiset):
       continue   // (§10.4.3(d)) genuine dispute — EXCLUDE this jobId from ALL metrics (numerator and denominator), do not silently trust self_copy
     pair_faults := the common absolute-fault set established by self_copy and cp under §10.4.3, or {} when only one copy exists
     if self_copy exists AND cp exists AND bundle_type_rank(self_copy) != bundle_type_rank(cp):
@@ -763,6 +781,9 @@ derive(party, bundles, windowStart, windowEnd):
       authoritative := self_copy
     else:
       authoritative := cp                                                       // only a counterparty copy exists (e.g. §10.11 suppression)
+    settlement_verdict := verify_presented_settlement_evidence(authoritative)
+    if settlement_verdict != "verified":
+      continue   // RSV-3: rejected or indeterminate nested evidence excludes the jobId from ALL metrics without assigning fault
     outcome := scored_outcome(authoritative, role_of_party)                     // fault from either absolute type's faultedParty, or the legacy role-relative residual; see below
     # (ST-10) policy-permitted cancellation — resolve the `cancellation` marker across BOTH
     # non-divergent copies of this jobId (a marker on EITHER self_copy or cp counts). A one-sided
@@ -795,9 +816,12 @@ derive(party, bundles, windowStart, windowEnd):
   #   failed-perm <-> failed-counterparty ; completed / failed-substrate unchanged.
   # divergence rule (self_copy, cp): per the exhaustive §10.4.3 table. Absolute-fault pairs diverge iff they differ in
   #   faultedParty, in outcome-class ({completed, failed-substrate, abort, failure}), or in a
-  #   phaseSummary entry (§10.4.3) — NOT in the role-relative outcome spelling, which the absolute
+  #   phaseSummary entry — NOT in the role-relative outcome spelling, which the absolute
   #   faultedParty reconciles (the invariant: paired copies carry an identical faultedParty). For
-  #   a legacy pair, the §10.4.3 implied-fault-set definition (disjoint sets diverge); for an absolute/legacy pair, the implied absolute fault is compared with faultedParty.
+  #   a legacy pair, use the §10.4.3 implied-fault-set definition (disjoint sets diverge); for a
+  #   mixed pair, use the §10.4.3 mixed-version rule (implied absolute fault vs faultedParty).
+  #   For this settlement-verified type, every pair kind also diverges when its copies have
+  #   different settlementEvidence reference multisets.
   # The §10.4.1 filter guarantees a non-abort outcome here is fully-signed and thus legitimately attributable.
   # All downstream metrics use `reconciled` (deduped bundles) / `outcomes`, never raw `scoped`.
 
@@ -872,7 +896,7 @@ derive(party, bundles, windowStart, windowEnd):
 
   volume_terms := []
 
-  for b in reconciled where b.outcome == "completed" AND agreementRef present:
+  for b in reconciled where b.outcome == "completed" AND agreementRef present AND b has at least one RSV-verified SettlementEvidence whose outcome == "success" AND phase is a DACS-4 §9.7 PaymentPhaseType:
 
     agreement := fetch_and_verify_agreement(b.agreementRef)   // DACS-3 AgreementArtifact
 
@@ -889,7 +913,7 @@ derive(party, bundles, windowStart, windowEnd):
   bundleRefs := sort([ref(b) for b in reconciled], ascending by contentHash)   // deduped authoritative copies (matches bundleCount); canonical ascending-contentHash order per the §10.5.3 determinism receipt; empty when reconciled is empty
   windowingBasis := <"finalisedAt" | "sr2-anchor-timestamp">   // record which clock the window predicate was applied against (§10.5.1); re-derivation MUST use the same basis
 
-  return ReputationDerivation with computed metrics
+  return SettlementVerifiedReputationDerivation with computed metrics
 ```
 
 **Two-sided reconciliation (normative).** Two-sided anchoring (§10.4.2) can place two bundles for one jobId in the input, each recording `outcome` from *its anchorer's* perspective. The deriver MUST collapse the input to one authoritative bundle per jobId before partitioning (the `reconciled` step above). It MUST interpret `outcome` relative to the *scored* party, not the anchorer. The read rules:
@@ -902,18 +926,30 @@ derive(party, bundles, windowStart, windowEnd):
 Three normative guards apply during reconciliation:
 
 - (i) **type and signature validation first** — each copy MUST carry exactly one supported discriminator, verify under that type's domain, satisfy §10.4.1, and, for EBFAB, pass SEB-1..SEB-6 before it is considered. A single-signed bundle is valid only for an abort outcome; a single-signed `completed`/`failed-*` MUST be dropped. This closes the attack where a lone counterparty-anchored `failed-counterparty` is perspective-flipped to depress the victim's score. Any copy failing the §10.4.2 `anchoredByRole` cross-check — against the anchor-address role on a pure-mapping substrate, or against the verified `BundleBinding`'s role (BB-4/BB-5) on a write-input substrate — MUST be dropped. Divergent same-role copies resolve per BB-6 before the self/counterparty selection below — a fully-signed copy takes precedence over lesser-signed divergents, and only equal-standing divergence voids the side — preserving the at-most-one-copy-per-role invariant;
-- (ii) **divergence → exclusion** — the scored party's own copy and a counterparty copy *canonically diverge* under the exhaustive §10.4.3 table when they contradict in outcome class/absolute fault, in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass`, or by a `phaseSummary` entry present in only one copy. Absolute-fault pairs compare `faultedParty`; absolute/legacy pairs compare it with the legacy implied-fault set; legacy pairs compare both implied-fault sets. A divergent jobId is a §10.4.3(d) dispute and MUST be excluded from ALL metrics, rather than silently trusting the self-copy. Exclusion removes the jobId from both the numerator and `party_fault_denom`, so a disputed session neither helps nor harms the score. There is no `disputed` value in the `outcome` enum (§10.4.1); this is an exclusion, not an outcome;
+- (ii) **divergence → exclusion** — the scored party's own copy and a counterparty copy *canonically diverge* under the exhaustive §10.4.3 table when they contradict in outcome class/absolute fault, in a shared-index `phaseSummary` entry's `kind`/`outcome`/`errorClass`, or by a `phaseSummary` entry present in only one copy. Absolute-fault pairs compare `faultedParty`; absolute/legacy pairs compare it with the legacy implied-fault set; legacy pairs compare both implied-fault sets. For a settlement-verified derivation only, extend that predicate with exact canonical `settlementEvidence[]` reference-multiset equality: an added, removed, duplicated, or substituted full `AttestationRef` diverges, while array order alone is immaterial. A job divergent under the applicable predicate is a §10.4.3(d) dispute and MUST be excluded from ALL metrics, rather than silently trusting either copy. Exclusion removes the jobId from both the numerator and `party_fault_denom`, so a disputed session neither helps nor harms the score. There is no `disputed` value in the `outcome` enum (§10.4.1); this is an exclusion, not an outcome;
 - (iii) **buyer/seller only** — `perspective_flip` is a buyer↔seller involution. Orchestrator-anchored copies are evidence-only and are not used as a reputation perspective (orchestrator reputation is out of scope for v0.1). This also makes the counterparty-copy selection unambiguous: at most one buyer/seller counterparty copy per jobId.
 
 A fourth normative guard applies to any one-copy jobId:
 
-- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. In the job-bound path, each resolution tag MUST carry the trusted requested `jobId` established from the role address or verified `BundleBinding`; a consumer binds returned content and every rejection to that requested identity, never to returned content's self-asserted `jobId`. Returned content that is an invalid EBFAB — including content that omits or alters its `jobId` — is rejected for the requested session, not absent; an older copy on the other side therefore cannot become authoritative through this guard. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to any signed bundle type. EBFAB or any stronger job-binding claim is published only as `JobBoundReplayableReputationDerivation`; the released `ReplayableReputationDerivation` v1 remains unchanged and makes no such claim. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
+- (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. In the job-bound path, each resolution tag MUST carry the trusted requested `jobId` established from the role address or verified `BundleBinding`; a consumer binds returned content and every rejection to that requested identity, never to returned content's self-asserted `jobId`. Returned content that is an invalid EBFAB — including content that omits or alters its `jobId` — is rejected for the requested session, not absent; an older copy on the other side therefore cannot become authoritative through this guard. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to any signed bundle type. EBFAB or any stronger job-binding claim is published only as `JobBoundReplayableReputationDerivation` or, when RSV semantics are also claimed, `ReplayableSettlementVerifiedReputationDerivation`; the released `ReplayableReputationDerivation` v1 remains unchanged and makes no such claim. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
+
+**Presented SettlementEvidence admission (RSV-1..RSV-4; settlement-verified types only).** This guard runs on the selected `authoritative` copy before it enters `reconciled`. When both buyer and seller copies exist, the settlement-verified divergence limb first requires their canonical `settlementEvidence[]` reference multisets to agree; comparison uses each full canonical `AttestationRef`, including multiplicity, while array order alone is immaterial. A producer therefore cannot make its own semantically contradictory reference silently control the other copy's settlement-verified reputation input:
+
+- (RSV-1) `verify_presented_settlement_evidence` MUST resolve every `AttestationRef` in `authoritative.settlementEvidence`, verify its content hash and SettlementEvidence signature, and return exactly `verified`, `rejected`, or `indeterminate`. Whether the presented multiset is complete is the separate §10.4.3 production rule, not this guard.
+- (RSV-2) Each resolved artifact MUST pass the applicable DACS-4 consumer rules against authority independent of the evidence under test: the authenticated Agreement and session, executed phase index, pinned rail/asset/network, resolved transaction parties/destination/amount, finality, and SB-1 through SB-3. The deriver MUST NOT infer expected economics from the SettlementEvidence itself, from the outer bundle's signatures, or from `fetch_and_verify_agreement` alone.
+- (RSV-3) If any presented artifact is `rejected` or `indeterminate`, the deriver MUST exclude the entire jobId from every metric for that derivation. It MUST NOT convert the semantic contradiction or unavailable authority into a new outcome or fault attribution; exclusion removes the job from numerator, denominators, volume, ratings, `bundleCount`, and `bundleRefs` alike.
+- **Conservative-attribution residual.** RSV-3 can remove an otherwise fault-bearing job from a denominator when its evidence is invalid. That is an accepted conservative cost: a rejected artifact proves that the job is unsafe as a settlement-verified reputation input, but its phase-orchestrator signature and the outer bundle signatures do not by themselves adjudicate which buyer/seller caused the semantic contradiction. A one-sided reference-multiset change is excluded by the settlement-verified divergence limb; a jointly presented invalid reference remains non-attributive. Resolving either case into party fault requires the out-of-band dispute/adjudication layer, not inference by `derive_settlement_verified()`.
+- (RSV-4) A `verified` result admits the job to the unchanged reconciliation and non-volume metric formulas below. This rule verifies only the evidence multiset presented by the authoritative copy; it neither proves that the multiset is complete nor makes an optional `phaseSummary[].attestationRef` mandatory. An empty multiset is vacuously verified for this presented-evidence guard, but supplies no verified payment record and therefore contributes no `observedTransactionalVolume` or `transactionCountByCurrency` under the Volume rule below.
+
+For `ReplayableSettlementVerifiedReputationDerivation`, RSV is re-executed from the hash-bound `settlementEvidence[]`, Agreement/session/phase/rail authority, and finalized transaction evidence before metric comparison. `rejected` or `indeterminate` at replay makes the receipt unverifiable; a replayer MUST NOT silently recompute a different metric set. The RSV verdict is derived evidence, not a trusted disposition to copy into `resolutionContext`. An authority input that is not immutable or bound to the finalized state used by the original verification cannot produce `verified`.
+
+**Versioning.** DACS-5 v0.3 and both existing version-1 derivation types were released in the DACS v0.4 profile at `4bb9e48a1095ab32c06c25b7c0b52018d3ce4091`. RSV changes which bundles enter metrics and therefore ships additively in DACS-5 v0.4 only through `settlementVerifiedDerivationVersion: "1"` and `replayableSettlementVerifiedDerivationVersion: "1"`. Existing discriminators retain their released meaning. Any future action-bearing change to either settlement-verified type requires another structurally distinguishable type or a major compatibility path under CORE §11.1.2.
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
 **Neutral exclusions from the fault denominator.** Three classes are excluded from the party-fault denominator — `party_fault_denom = |outcomes| − |failed_substrate| − |cancelled_neutral| − |orchestrator_fault_neutral|`: **`failed-substrate`** sessions (substrate-induced, nobody's fault) and **established §10.3.1 ST-10 policy-permitted cancellations** (an advertised, signed cancellation right, neutral for *both* parties — resolved across both non-divergent copies, so the exclusion applies whether the scored-party outcome is `aborted-by-self` or `aborted-by-other`), and **orchestrator-fault sessions** (either absolute-fault type naming `faultedParty: "orchestrator"`, or a non-divergent legacy pair whose per-copy implied-fault sets intersect only at `orchestrator`). In the latter case the singleton intersection, not the scored party's selected legacy spelling, is the established absolute attribution. A distinct orchestrator, not the scored buyer or seller, was responsible; orchestrator reputation is out of scope in v0.1 (§10.5.1 guard (iii)). None of the three classes damages either party's reputation; all remain in `bundleCount` as observable, non-fault sessions.
 
-**Null vs empty metrics.** The **scalar** metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) produce numeric values when their denominator > 0. With denominator == 0 (e.g., bundleCount=0, or all sessions failed-substrate; for `counterpartyAdjustedCompletionRate`, also when every reconciled bundle was counterparty-caused) they produce null — distinct from zero, signalling "no signal" rather than "zero signal". The **array** metrics `observedTransactionalVolume` and `transactionCountByCurrency` (non-nullable) and `bundleRefs` (a non-nullable `AttestationRef[]`) produce `[]` on the empty path: an empty list, never null. Every return path therefore yields a schema-total `ReputationDerivation`.
+**Null vs empty metrics.** The **scalar** metrics (completionRate, counterpartyAdjustedCompletionRate, counterpartyFaultRate, averageBuyerRating, averageSellerRating) produce numeric values when their denominator > 0. With denominator == 0 (e.g., bundleCount=0, or all sessions failed-substrate; for `counterpartyAdjustedCompletionRate`, also when every reconciled bundle was counterparty-caused) they produce null — distinct from zero, signalling "no signal" rather than "zero signal". The **array** metrics `observedTransactionalVolume` and `transactionCountByCurrency` (non-nullable) and `bundleRefs` (a non-nullable `AttestationRef[]`) produce `[]` on the empty path: an empty list, never null. Every return path therefore yields a schema-total derivation of the selected type.
 
 **Rating metrics.** The averageBuyerRating / averageSellerRating metrics are computed by walking each reconciled bundle’s ratingRefs, fetching the referenced RatingRecord, and verifying its signature against the rater’s primary-claim key (the same key class as a BundleSignature, per §10.4.1). A RatingRecord MUST be discarded — not aggregated — unless it binds to the session being scored:
 
@@ -923,7 +959,7 @@ A fourth normative guard applies to any one-copy jobId:
 
 Only the remaining records’ values, whose target matches the scored party, are aggregated; the metric is null when no qualifying ratings exist.
 
-**Volume metric.** The observedTransactionalVolume metric is computed analogously. For each reconciled bundle whose `outcome` is `completed` and whose agreementRef is present, the deriver MUST resolve the AttestationRef to its AgreementArtifact via fetch_and_verify_agreement(agreementRef), then sum agreement.terms.price grouped by currency. Non-completed bundles (failed, aborted) contribute no volume: the metric reports value transacted, not value agreed. Resolution follows the §7.5.2 attestation resolution algorithm:
+**Settlement-verified volume metric.** For the settlement-verified types, observedTransactionalVolume is computed after RSV-1 through RSV-4 have admitted the job's presented SettlementEvidence. A successful **payment** record is a DACS-4 §9.7 `SettlementEvidence` whose `outcome == "success"` and whose `phase` is a member of the closed `PaymentPhaseType` set defined there; a `DeliveryPhaseType` record is not payment evidence. For each reconciled bundle whose `outcome` is `completed`, whose `agreementRef` is present, and whose RSV-verified multiset contains at least one such successful payment record, the deriver MUST resolve the AttestationRef to its AgreementArtifact via fetch_and_verify_agreement(agreementRef), then sum agreement.terms.price grouped by currency. The Agreement establishes the agreed price; by itself it does not establish that the price settled. A completed bundle with no presented payment evidence contributes no volume, even if it remains eligible for non-volume metrics; §10.4.3 completeness is evaluated separately. Non-completed bundles (failed, aborted) contribute no volume: the metric reports value transacted, not value agreed. Resolution follows the §7.5.2 attestation resolution algorithm:
 
 - fetch the anchor at agreementRef.anchor.locator;
 - compare the hashed bytes to agreementRef.contentHash — a mismatch MUST cause that bundle to be excluded;
@@ -951,15 +987,15 @@ Derivation MAY be computed:
 - (b) by a DACS-5 catalog operator (similar to a DACS-1 catalog — indexed for performance, but consumers MUST verify against the underlying bundles for high-stakes decisions);
 - (c) on chain via an ERC-8004 reputation registry write per §10.7.
 
-Each surface is a different point on the trust / performance trade-off; the algorithm is the same.
+Each surface is a different point on the trust / performance trade-off; for a given discriminator, the selected algorithm is the same.
 
-**Determinism receipt (normative).** Because the surfaces above can feed `derive()` different inputs, a published `ReputationDerivation` MUST be independently reproducible from its own contents:
+**Determinism receipt (normative).** Because the surfaces above can feed a derivation algorithm different inputs, every published derivation MUST be independently reproducible from its own contents under the algorithm selected by its discriminator:
 
-- (1) `bundleRefs` MUST be exactly the §10.5.1 `reconciled` set — the post-window-filter, two-sided-reconciled authoritative bundles `derive()` actually aggregated (one per jobId) — neither a superset nor a subset;
+- (1) `bundleRefs` MUST be exactly the applicable algorithm's `reconciled` set — the post-window-filter, two-sided-reconciled authoritative bundles it actually aggregated (one per jobId) — neither a superset nor a subset;
 - (2) `bundleRefs` MUST be serialised in **canonical order: ascending lexicographic by `AttestationRef.contentHash`** (the same tie-break discipline as SE-5). Because `contentHash` is a sha256 digest the ordering is total; two refs sharing a `contentHash` reference byte-identical content and collapse to one entry. Two derivers that computed identical metrics over the same set therefore cannot disagree on `bundleRefs` byte-order;
-- (3) a consumer that re-runs `derive(partyPrimaryClaim, deref(bundleRefs), windowStart, windowEnd)` under the recorded `windowingBasis` MUST obtain byte-identical `metrics` and `bundleCount`.
+- (3) a consumer that re-runs `derive` for a released v1 discriminator or `derive_settlement_verified` for a settlement-verified discriminator under the recorded `windowingBasis` MUST obtain byte-identical `metrics` and `bundleCount`.
 
-Because §10.5.1 lets high-stakes consumers window against the SR-2 anchor timestamp rather than the producer-set `finalisedAt`, two derivers using different windowing bases legitimately compute different sets. The receipt is therefore defined **relative to the declared `windowingBasis`**, which a conforming derivation MUST record. This makes any published derivation auditable against its declared inputs. It does NOT establish *completeness*: whether `bundleRefs` contains every relevant bundle is out of scope — no authoritative "which bundles exist" oracle is defined, and catalogs are best-effort per (b). Conformance: given a fixed `bundleRefs` set, window, and `windowingBasis`, `derive()` output is byte-identical across implementations.
+Because §10.5.1 lets high-stakes consumers window against the SR-2 anchor timestamp rather than the producer-set `finalisedAt`, two derivers using different windowing bases legitimately compute different sets. The receipt is therefore defined **relative to the declared `windowingBasis`**, which a conforming derivation MUST record. This makes any published derivation auditable against its declared inputs. It does NOT establish *completeness*: whether `bundleRefs` contains every relevant bundle is out of scope — no authoritative "which bundles exist" oracle is defined, and catalogs are best-effort per (b). Conformance: given a fixed discriminator, `bundleRefs` set, window, and `windowingBasis`, the selected algorithm's output is byte-identical across implementations.
 
 #### 10.5.4 Category-scoped derivation
 
@@ -978,6 +1014,8 @@ derive_category_scoped(party, bundles, windowStart, windowEnd, categoryScope):
   // 2. Apply the standard §10.5.1 derive() algorithm over category_bundles
   return derive(party, category_bundles, windowStart, windowEnd)
 ```
+
+`derive_settlement_verified_category_scoped` applies the identical category filter and then calls `derive_settlement_verified`; it emits only a settlement-verified discriminator. The released `derive_category_scoped` continues to call released `derive` and MUST NOT emit a settlement-verified discriminator.
 
 `fetch_category` performs the full two-step resolution:
 
@@ -1056,8 +1094,8 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
 | Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
-| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run SEB-1..SEB-6 on EBFAB before pair selection; dereference and validate every contained AttestationRef; reconcile by EBFAB > FAB > legacy only after validity and non-divergence |
-| Reputation deriver | Apply algorithm in §10.5.1 verbatim; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the §10.5.1 `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run SEB-1..SEB-6 on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile by EBFAB > FAB > legacy only after validity and non-divergence |
+| Reputation deriver | Select the output type before derivation; apply RSV-1 through RSV-4 only for a settlement-verified discriminator, require a job-bound replay type for EBFAB, and preserve released v1 semantics otherwise; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the applicable algorithm's `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |
 

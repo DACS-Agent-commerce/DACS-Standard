@@ -15,6 +15,20 @@ ROOT = Path(__file__).resolve().parents[1]
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "claim-requirement-qualification-v0.3.json"
 SPEC = ROOT / "spec" / "DACS-2-VET.md"
 
+RECIPE_AVAILABILITY_VALUES = {
+    "live",
+    "operator_gated",
+    "closed_data",
+    "bilateral",
+    "mocked",
+    "disabled",
+    "failed",
+}
+
+
+class QualificationError(ValueError):
+    """The authenticated inputs cannot establish a classification context."""
+
 
 def canonical_json(value):
     def normalize(item):
@@ -221,27 +235,115 @@ def resolve_authenticated_registry(
         return None
     if not isinstance(registry.get("latestByFamily"), dict):
         return None
+    if not isinstance(registry.get("versionsByFamily"), dict):
+        return None
     return registry
 
 
-def applicable_results(input_data, claim_requirement, registry):
+def results_for_requirement(input_data, claim_requirement):
+    resolved_results = input_data.get("resolvedResults")
+    if not isinstance(resolved_results, list):
+        raise QualificationError("resolved results missing or invalid")
+    reuse_metadata = input_data.get("resultReuse")
+    if reuse_metadata is None:
+        reuse_metadata = [None] * len(resolved_results)
+    if not isinstance(reuse_metadata, list) or len(reuse_metadata) != len(resolved_results):
+        raise QualificationError("reuse metadata does not match resolved results")
+
+    current_parameters = (
+        claim_requirement.get("parameters") if "parameters" in claim_requirement else None
+    )
+    prepared = []
+    for result, reuse in zip(resolved_results, reuse_metadata):
+        if not isinstance(result, dict):
+            raise QualificationError("resolved result is invalid")
+        if result.get("scheme") != claim_requirement.get("scheme"):
+            prepared.append(result)
+            continue
+        if reuse is None:
+            prepared.append(result)
+            continue
+        if not isinstance(reuse, dict):
+            raise QualificationError("reuse context is invalid")
+        if reuse.get("kind") == "current-session":
+            prepared.append(result)
+            continue
+        if reuse.get("kind") != "cross-session":
+            raise QualificationError("reuse context is invalid")
+        if result.get("decision") == "pass":
+            prepared.append(result)
+            continue
+        predicate_matches = reuse.get("originatingParametersAuthenticated") is True and canonical_json(
+            reuse.get("originatingParameters")
+        ) == canonical_json(current_parameters)
+        if predicate_matches:
+            prepared.append(result)
+            continue
+        rerun_result = reuse.get("rerunResult")
+        if not isinstance(rerun_result, dict):
+            raise QualificationError("non-pass cross-session result requires a current rerun")
+        if rerun_result.get("scheme") != result.get("scheme") or rerun_result.get(
+            "method"
+        ) != result.get("method"):
+            raise QualificationError("rerun result changes the selected recipe family")
+        prepared.append(rerun_result)
+    return prepared
+
+
+def qualification_context(input_data, claim_requirement, registry):
     explicit_version = claim_requirement.get("recipeVersion")
     required_method = claim_requirement.get("parameters", {}).get("verificationMethod")
     latest_by_family = registry.get("latestByFamily", {})
+    versions_by_family = registry.get("versionsByFamily", {})
+    candidates = results_for_requirement(input_data, claim_requirement)
+    same_scheme = [
+        result
+        for result in candidates
+        if result.get("scheme") == claim_requirement.get("scheme")
+    ]
+    if required_method is not None:
+        methods = {required_method}
+    else:
+        methods = {result.get("method") for result in same_scheme}
+    if None in methods or any(not isinstance(method, str) or not method for method in methods):
+        raise QualificationError("selected recipe family is missing or invalid")
+    if explicit_version is not None and (
+        not isinstance(explicit_version, int) or isinstance(explicit_version, bool)
+    ):
+        raise QualificationError("explicit recipe version is invalid")
+
+    expected_versions = {}
+    for method in methods:
+        family_versions = versions_by_family.get(claim_requirement["scheme"], {}).get(method)
+        if not isinstance(family_versions, dict):
+            raise QualificationError("selected recipe family cannot be resolved")
+        expected_version = explicit_version
+        if expected_version is None:
+            expected_version = latest_by_family.get(claim_requirement["scheme"], {}).get(method)
+        if not isinstance(expected_version, int) or isinstance(expected_version, bool):
+            raise QualificationError("effective recipe version cannot be resolved")
+        availability = family_versions.get(str(expected_version))
+        if availability not in RECIPE_AVAILABILITY_VALUES:
+            raise QualificationError("effective recipe version cannot be resolved")
+        if explicit_version is None and availability != "live":
+            raise QualificationError("latest recipe-family version is not live")
+        if explicit_version is not None and availability in {"mocked", "disabled", "failed"}:
+            raise QualificationError("explicit recipe version is non-operational")
+        expected_versions[method] = expected_version
+    return candidates, expected_versions
+
+
+def applicable_results(input_data, claim_requirement, registry):
+    candidates, expected_versions = qualification_context(input_data, claim_requirement, registry)
+    required_method = claim_requirement.get("parameters", {}).get("verificationMethod")
     results = []
-    for result in input_data["resolvedResults"]:
+    for result in candidates:
         if result["scheme"] != claim_requirement["scheme"]:
             continue
         result_method = result.get("method")
         if required_method is not None and result_method != required_method:
             continue
-        expected_version = explicit_version
-        if expected_version is None and result_method is not None:
-            expected_version = latest_by_family.get(claim_requirement["scheme"], {}).get(
-                result_method
-            )
-        if expected_version is None:
-            continue
+        expected_version = expected_versions.get(result_method)
         if result["recipeVersion"] != expected_version:
             continue
         if "maxAge" in claim_requirement:
@@ -266,9 +368,10 @@ def parameters_match(result, claim_requirement):
 
 
 def classify_required(input_data, claim_requirement, registry):
+    prepared_results, _ = qualification_context(input_data, claim_requirement, registry)
     same_scheme = [
         result
-        for result in input_data["resolvedResults"]
+        for result in prepared_results
         if result["scheme"] == claim_requirement["scheme"]
     ]
     if not same_scheme:
@@ -300,6 +403,17 @@ def evaluate(input_data, vector_set, *, caller_requirement=None, **authority_opt
         replay_input["requirement"] = requirement
         if not verify_replay_record(replay_input, authority, vector_set):
             return "error"
+
+    all_requirements = list(requirement.get("required", [])) + [
+        claim_requirement
+        for group in requirement.get("oneOf", [])
+        for claim_requirement in group
+    ]
+    try:
+        for claim_requirement in all_requirements:
+            qualification_context(input_data, claim_requirement, registry)
+    except QualificationError:
+        return "error"
 
     decisions = [
         classify_required(input_data, claim_requirement, registry)
@@ -389,6 +503,12 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
             "recipeRegistryVersion": 7,
             "latestByScheme": {"key": 2},
             "latestByFamily": {"key": {"self-signed": 2, "oauth-attested": 5}},
+            "versionsByFamily": {
+                "key": {
+                    "self-signed": {"1": "live", "2": "live"},
+                    "oauth-attested": {"5": "live"},
+                }
+            },
         }
         input_data = {
             "generatedAt": 1750000010000,
@@ -428,11 +548,8 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         )
         input_data["resolvedResults"][0]["method"] = "unregistered-method"
         claim_requirement["parameters"]["verificationMethod"] = "unregistered-method"
-        self.assertEqual(
-            applicable_results(input_data, claim_requirement, registry),
-            [],
-            "a family-aware snapshot must not fall back to a scheme-wide version",
-        )
+        with self.assertRaisesRegex(QualificationError, "family cannot be resolved"):
+            applicable_results(input_data, claim_requirement, registry)
 
     def test_registry_without_exact_family_metadata_fails_closed(self):
         vector = next(
@@ -443,6 +560,97 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         vector_set = copy.deepcopy(self.data)
         vector_set["recipeRegistries"][0].pop("latestByFamily")
         self.assertEqual(evaluate(vector["input"], vector_set), "error")
+        vector_set = copy.deepcopy(self.data)
+        vector_set["recipeRegistries"][0].pop("versionsByFamily")
+        self.assertEqual(evaluate(vector["input"], vector_set), "error")
+
+    def test_version_resolution_and_availability_fail_before_classification(self):
+        expected = {
+            "vet-claim-requirement-implicit-latest-disabled-error",
+            "vet-claim-requirement-explicit-version-unresolvable-error",
+            "vet-claim-requirement-implicit-family-unresolvable-error",
+            "vet-claim-requirement-unresolvable-preflight-precedes-fail",
+        }
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        self.assertTrue(expected.issubset(vectors))
+        for name in expected:
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(vectors[name]["input"], self.data), "error")
+        self.assertEqual(
+            evaluate(
+                vectors["vet-claim-requirement-same-scheme-cross-satisfaction-fail"]["input"],
+                self.data,
+            ),
+            "fail",
+            "the independent same-scheme case must use a resolvable competing version",
+        )
+
+    def test_non_pass_cross_session_reuse_requires_equivalence_or_rerun(self):
+        expected = {
+            "vet-claim-requirement-cross-session-fail-rerun-pass": "pass",
+            "vet-claim-requirement-cross-session-fail-equivalent-predicate": "fail",
+            "vet-claim-requirement-cross-session-indeterminate-without-rerun-error": "error",
+            "vet-claim-requirement-cross-session-pass-requalified": "pass",
+        }
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+        self.assertTrue(expected.keys() <= vectors.keys())
+        for name, decision in expected.items():
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate(vectors[name]["input"], self.data), decision)
+
+    def test_new_preflight_and_reuse_controls_are_decision_bearing(self):
+        vectors = {vector["name"]: vector for vector in self.data["vectors"]}
+
+        disabled = vectors["vet-claim-requirement-implicit-latest-disabled-error"]
+        vector_set = copy.deepcopy(self.data)
+        registry = next(
+            registry
+            for registry in vector_set["recipeRegistries"]
+            if registry["recipeRegistryVersion"] == 9
+        )
+        registry["versionsByFamily"]["key"]["self-signed"]["3"] = "live"
+        self.assertEqual(
+            evaluate(disabled["input"], vector_set),
+            "fail",
+            "making only the exact latest entry live must reach version qualification",
+        )
+        registry["latestByFamily"]["key"]["self-signed"] = 2
+        self.assertEqual(
+            evaluate(disabled["input"], vector_set),
+            "pass",
+            "selecting the older live entry instead would change the decision",
+        )
+
+        unresolved = vectors["vet-claim-requirement-explicit-version-unresolvable-error"]
+        vector_set = copy.deepcopy(self.data)
+        vector_set["recipeRegistries"][0]["versionsByFamily"]["key"]["self-signed"][
+            "99"
+        ] = "live"
+        self.assertEqual(
+            evaluate(unresolved["input"], vector_set),
+            "fail",
+            "resolving only the explicit version must expose the ordinary mismatch path",
+        )
+
+        rerun = copy.deepcopy(
+            vectors["vet-claim-requirement-cross-session-fail-rerun-pass"]["input"]
+        )
+        rerun.pop("resultReuse")
+        self.assertEqual(
+            evaluate(rerun, self.data),
+            "fail",
+            "acting on the cached predicate-derived fail would change the verdict",
+        )
+
+        equivalent = copy.deepcopy(
+            vectors["vet-claim-requirement-cross-session-fail-equivalent-predicate"]["input"]
+        )
+        equivalent["resultReuse"][0]["originatingParametersAuthenticated"] = False
+        self.assertEqual(
+            evaluate(equivalent, self.data),
+            "error",
+            "removing only authenticated predicate provenance must force a rerun",
+        )
 
     def test_authority_failures_are_executable(self):
         expected = {
@@ -599,6 +807,10 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
             "An omitted `ClaimRequirement.recipeVersion` therefore does not disable family-aware version qualification.",
             text,
         )
+        self.assertIn("MUST NOT fall back to an older live version", text)
+        self.assertIn("returns `error`; it MUST NOT become an empty applicable set", text)
+        self.assertIn("the artifact alone is insufficient", text)
+        self.assertIn("does not by itself authenticate who authored or accepted", text)
         self.assertIn("The resolved set MUST correspond one-to-one", text)
 
 

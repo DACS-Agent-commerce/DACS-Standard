@@ -52,6 +52,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
+| [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
+| [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
@@ -184,6 +186,47 @@ copies have the same `jobId`, bundle outcome, phase-index set, per-entry
 outcome, and absent `errorClass`, but the shared index names different phase
 kinds. The expected consumer verdict is `divergent`; a DACS-5 reputation
 deriver excludes the jobId from every metric and does not select either copy.
+
+### `reputation-settlement-reference-divergence-v0.4.json` — DACS-5 v0.4 §10.5.1 settlement-verified divergence limb
+
+Six candidate vectors pin the cross-copy comparison used only by the new
+settlement-verified derivation types before RSV. The
+comparison is a multiset of full canonical `AttestationRef` values: added,
+removed, duplicated, or substituted references make the two copies divergent,
+as does the same content hash under a different anchor. A pure array reorder
+remains unified. `expected` is the comparison check (`pass`/`fail`);
+`want.lookupDisposition` carries the protocol result (`unified`/`divergent`).
+
+### `reputation-settlement-semantics-v0.4.json` — DACS-5 v0.4 §10.5.1 RSV-1..RSV-4
+
+17 candidate vectors for the DACS-4/DACS-5 composition edge under the
+structurally distinct settlement-verified derivation types: the selected
+authoritative bundle's presented SettlementEvidence must pass independent
+semantic authority before the job enters reputation, after two present copies
+have agreed on the exact reference multiset. The positive arm admits
+one verified completed job and counts the Agreement price once. One-field
+adversarial arms reject amount, payer, payee/destination, session, phase, rail,
+and finality contradictions. Transaction rejection and authority-indeterminate
+arms both exclude the job without fault. A semantically invalid `failed-perm`
+bundle pins the symmetric denominator effect.
+
+Most inputs hold the presented reference multiset at one. Two-reference arms
+prove that one invalid member rejects the entire multiset and that two valid
+payments count the Agreement price once. Empty, delivery-only, failed-payment,
+and out-of-set `pay-*` arms pin eligible non-volume output, including an empty
+`transactionCountByCurrency`. §10.4.3 evidence completeness remains separate.
+`input` and `want` are
+neutral post-reconciliation projections, not new wire artifacts.
+Cryptographic/reference validation and the independent
+Agreement/session/phase/rail/transaction fixtures precede this projection.
+
+Each vector carries an `expected` semantic disposition (`accept`, `reject`, or
+`indeterminate`) and a stable `want` projection covering admission, completion
+numerator, both denominators, volume, and the non-attributive disposition.
+This is a candidate set. Independent semantic cross-run and golden promotion
+remain pending. SB-1 through SB-3 are exercised by their dedicated
+`sb2-settlement-uniqueness-v0.1.json` and `sb3-eip3009-nonce-v0.1.json` sets;
+this family does not duplicate their multi-job and rail-specific schemas.
 
 ### `revocation-binding-v0.3.json` — §6.3.4 RB-1..RB-6
 

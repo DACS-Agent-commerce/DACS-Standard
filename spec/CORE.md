@@ -245,12 +245,13 @@ class or native transaction encoding. The authenticated execution profile
 still determines how a node realizes each contract and how its effects are
 proved.
 
-Demos already provides a generic Atomic Work execution primitive. This section
-defines the narrower DACS-specific binding over that primitive; it does not
-require Atomic Work to be rebuilt and does not assert that a requirement is
-absent from an unpublished Demos release. The capability gate below establishes
-which exact release, native mapping, consensus guarantees, and proof behavior
-may make a DACS Atomic-profile claim.
+Demos provides a generic `DemosWork` orchestration primitive. This section
+defines the narrower DACS-specific consensus-atomic binding over that
+primitive; it does not require the orchestration surface to be rebuilt. The
+capability gate below establishes which exact release, native mapping,
+consensus guarantees, and proof behavior may make a DACS Atomic-profile claim.
+The pinned Phase 0 release is recorded in DEMOS-MAPPING §A.6 and does not yet
+satisfy that gate.
 
 #### 5.2.1 Scope, capability, and fallback
 

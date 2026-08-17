@@ -150,11 +150,13 @@ validator-body-signed.
 
 ### A.6 Atomic DACS Work capability gate
 
-The Demos platform already provides an Atomic Work execution primitive. The
-optional CORE §5.2 profile reuses that primitive; it does not require Demos to
-rebuild Atomic Work. It does require an authenticated network capability that
-binds one exact node and SDK release to the DACS-specific execution, payment,
-authorization, evidence, and recovery contract.
+The Demos platform provides the `DemosWork` orchestration primitive that the
+optional CORE §5.2 profile builds on. The pinned release recorded below does
+not yet execute that primitive as one consensus-atomic business-state overlay;
+the DACS profile therefore requires additional node and SDK binding. It also
+requires an authenticated network capability that binds one exact node and SDK
+release to the DACS-specific execution, payment, authorization, evidence, and
+recovery contract.
 
 Atomicity within one generic Work, the existing DemosWork SDK orchestration
 API, client simulation, or an ownership promise does not by itself establish
@@ -276,6 +278,42 @@ release:
     or byte-identical prior content, role authorization, and `BundleBinding`
     when its outer submitter differs, without silently replaying the Purchase
     payment?
+
+**Recorded Phase 0 implementation disposition (informative, 2026-08-14).**
+The Demos owner completed the requested classification in
+[RFC #320](https://github.com/DACS-Agent-commerce/DACS-Standard/issues/320#issuecomment-5294684294)
+against node `demos-node-software` `0.9.8` at commit `08a0c3e4` on
+`stabilisation`, with `@kynesyslabs/demosdk` `4.0.16`. The reported genesis
+profile has `osDenomination` and `nonceEnforcement` active from height zero and
+`gasFeeSeparation` inactive; a deployment still has to prove that its sealed
+genesis matches those values. The report classifies zero items as
+`EXISTING — PIN/EVIDENCE`, so it records ownership and implementation scope but
+does not satisfy the capability-advertisement gate above.
+
+| Item | Recorded classification | Remaining release obligation |
+| ---: | --- | --- |
+| 1 | `NEW — IMPLEMENT` | Authenticated capability and aligned node/SDK release. |
+| 2 | `EXISTING — DACS BINDING` | Recompute `workId` and pin fork-safe native payload interpretation. |
+| 3 | `NEW — IMPLEMENT` | One isolated storage/slot/DEM overlay with joint rollback. |
+| 4 | `NEW — IMPLEMENT` | Storage create-only/CAS and proof-bound native output; coordinate with issue #242. |
+| 5 | `NEW — IMPLEMENT` | Durable network-scoped payment-slot CAS across concurrency, forks, and restarts. |
+| 6 | `EXISTING — DACS BINDING` | Enforce DACS operation roles before effects, independently of submitter. |
+| 7 | `NEW — IMPLEMENT` | Durable Work/attempt/winner ledger with replacement fencing and exact replay. |
+| 8 | `NEW — IMPLEMENT` | Same-transition receipt commitment and detachable effect/finality proofs. |
+| 9 | `NEW — IMPLEMENT` | Indexer-independent receipt and operation-proof reconstruction. |
+| 10 | `NEW — IMPLEMENT` | Authenticated lifecycle and authoritative non-inclusion states. |
+| 11 | `EXISTING — DACS BINDING` | Extend existing recovery to the new in-overlay execution boundary. |
+| 12 | `NEW — IMPLEMENT` | Supply the consensus-selected timestamp to AWP-8. |
+| 13 | `NEW — IMPLEMENT` | Define and prove fee/nonce behavior across every terminal and replay path. |
+| 14 | `NEW — IMPLEMENT` | Enforce Work limits and produce boundary failure-injection evidence. |
+| 15 | `EXISTING — DACS BINDING` | Bind the audit tail and `BundleBinding` when submitter and role differ. |
+
+No item was classified `UNAVAILABLE — PROFILE/FALLBACK`: the Demos owner
+accepted the node/consensus implementation track. Recording this disposition
+is sufficient to remove ambiguity about who owns each gap; it is not runtime
+evidence. Each row moves to `EXISTING — PIN/EVIDENCE` only with the exact
+interface, node-produced fixture where applicable, and independently
+repeatable conformance or failure-injection result required above.
 
 Until all applicable items are established, clients MUST use the existing
 multi-transaction lifecycle or refuse the Atomic profile before any Atomic

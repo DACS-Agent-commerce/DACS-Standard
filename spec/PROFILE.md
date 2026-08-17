@@ -51,10 +51,10 @@ commit:
 | [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.5 | Draft / Atomic candidate |
 
 No implementation may claim this composition merely from generic Atomic Work,
-schema, or candidate-vector support. Demos's existing Atomic Work primitive may
-satisfy some or all runtime requirements, but the DACS-specific path is
-selectable only after the exact release/profile mapping, authenticated
-capability, and evidence required by
+schema, or candidate-vector support. Demos's existing `DemosWork` orchestration
+primitive does not by itself provide the consensus-atomic DACS binding. The
+DACS-specific path is selectable only after the exact release/profile mapping,
+authenticated capability, and evidence required by
 [DEMOS-MAPPING §A.6](DEMOS-MAPPING.md#a6-atomic-dacs-work-capability-gate) are
 pinned and demonstrated.
 

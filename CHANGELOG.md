@@ -69,10 +69,15 @@ The format used per release:
   candidate vectors with explicit acceptance/rejection/indeterminate/malformed
   and true boundary metadata. Every new rule ID has executable coverage; complete
   positive/negative/boundary coverage per individual rule remains a draft
-  blocker. Demos already provides an Atomic Work primitive; the DACS-specific
-  binding remains ineligible to advertise `AtomicWorkCapabilityV1` until its
+  blocker. Demos provides a generic `DemosWork` orchestration primitive; the
+  consensus-atomic DACS binding remains ineligible to advertise
+  `AtomicWorkCapabilityV1` until its
   byte-exact consensus, proof, rollback, recovery, fee/nonce, and limit
-  contracts are pinned and independently demonstrated.
+  contracts are pinned and independently demonstrated. Records the Demos Phase
+  0 disposition against node `0.9.8` at `08a0c3e4` and SDK `4.0.16`: zero of
+  fifteen requirements are yet `EXISTING — PIN/EVIDENCE`, four require a DACS
+  binding, and eleven require implementation. This assigns the remaining work
+  without weakening the capability gate or the sequential fallback.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

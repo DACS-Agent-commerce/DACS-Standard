@@ -3,7 +3,7 @@
 ## Status and scope
 
 - **Review base:** `origin/next` at
-  `86c3b3bc64d709bd23dc1ac73f5e7b153ece217c`.
+  `81ded2b49851d8fa17399e3fdade9e36e33a4ff7`.
 - **Source discussion:** [RFC #320 — Atomic DACS Work: protocol, execution,
   evidence, and recovery][rfc-320].
 - **Status:** non-normative review artifact. This document records proposed
@@ -24,14 +24,13 @@ The matrix uses three deliberately separate evidence classes:
 2. **Proposed Atomic-profile rule** — a direction proposed in
    [the DACS-side disposition][proposed-answers] and refined by review. It is
    not part of the Standard yet.
-3. **Demos DACS-binding/evidence requirement** — Demos already provides an
-   Atomic Work execution primitive; this class does not request that it be
-   rebuilt and does not assert that the named behavior is absent. It identifies
-   a node/runtime/SDK property that DACS requires but cannot establish by
-   specification text. Demos may answer with already-enforced behavior, a
-   DACS-specific binding or configuration, or a missing integration. Every
-   answer requires an exact implementation pin, authenticated interfaces, and
-   reproducible execution evidence.
+3. **Demos DACS-binding/evidence requirement** — Demos provides the generic
+   `DemosWork` orchestration primitive; this class identifies the additional
+   node/runtime/SDK properties needed for a consensus-atomic DACS binding,
+   which DACS cannot establish by specification text. Demos may answer with
+   already-enforced behavior, a DACS-specific binding or configuration, or a
+   missing integration. Every answer requires an exact implementation pin,
+   authenticated interfaces, and reproducible execution evidence.
 
 For each §A.6 item, the requested Demos response uses one of four review
 classifications:
@@ -79,13 +78,23 @@ readiness, merge, or normative promotion.
 | DACS SDK | Version-pinned safe abstraction, orchestration journal, idempotent reconciliation, receipt/evidence verification, and compatibility handling after the Standard and Demos contracts stabilize. |
 | Reference integrations | Capability-gated shadow/canary integration and failure injection. They may demonstrate interoperability but do not define Demos consensus behavior or normative DACS meaning. |
 
-The Demos-side response [confirms ownership, the existing Atomic Work
-foundation, and reusable work][demos-response], including SR-4
-agreement/commitment surfaces and existing nonce/idempotency work. The open
-question is not whether the generic primitive exists. It is whether one exact
-release binds that primitive to every DACS-specific operation, cross-Work
-payment-uniqueness, role-authorization, receipt, proof, and recovery rule below.
-The response is not yet that exact runtime pin or reproducible evidence.
+The initial Demos-side response [confirmed ownership and reusable
+work][demos-response], including SR-4 agreement/commitment surfaces and
+existing nonce/idempotency work. The later [Phase 0 implementation
+disposition][demos-phase-0-response] pins node `demos-node-software` `0.9.8` at
+`08a0c3e4` (`stabilisation`) and `@kynesyslabs/demosdk` `4.0.16`, and clarifies
+that the released `DemosWork` path is an orchestrator over HTLC-compensation
+settlement, not yet one consensus-atomic business-state overlay.
+
+That disposition classifies zero of the fifteen §A.6 requirements as
+`EXISTING — PIN/EVIDENCE`: items 2, 6, 11, and 15 are
+`EXISTING — DACS BINDING`; the other eleven are `NEW — IMPLEMENT`; and none is
+`UNAVAILABLE — PROFILE/FALLBACK`. Demos accepted ownership of the node and SDK
+track. This closes the classification question but not the runtime-evidence
+gate: the sequential lifecycle remains authoritative and no implementation may
+advertise `AtomicWorkCapabilityV1` until every applicable row is reclassified
+with the pinned interfaces, fixtures, and repeatable evidence required by
+[Demos mapping] §A.6.
 
 ## SR-2 resolution boundary from issue #242
 
@@ -264,6 +273,8 @@ questions and the issue body’s eleven-item decision checklist.
   5194367410][phase-0-questions].
 - [Proposed DACS-side answers, comment 5194697161][proposed-answers].
 - [Demos runtime/node and SDK response, comment 5195210014][demos-response].
+- [Demos Phase 0 implementation disposition, comment
+  5294684294][demos-phase-0-response].
 - [Execution-evidence and receipt-model lane, comment
   5196976595][execution-evidence].
 - [Six required corrections and vector gates, comment
@@ -302,6 +313,8 @@ questions and the issue body’s eleven-item decision checklist.
 [proposed-answers]: https://github.com/DACS-Agent-commerce/DACS-Standard/issues/320#issuecomment-5194697161
 
 [demos-response]: https://github.com/DACS-Agent-commerce/DACS-Standard/issues/320#issuecomment-5195210014
+
+[demos-phase-0-response]: https://github.com/DACS-Agent-commerce/DACS-Standard/issues/320#issuecomment-5294684294
 
 [execution-evidence]: https://github.com/DACS-Agent-commerce/DACS-Standard/issues/320#issuecomment-5196976595
 

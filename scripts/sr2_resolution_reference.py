@@ -1,0 +1,368 @@
+#!/usr/bin/env python3
+"""Reference predicates for CORE SR2-10..SR2-13 and registry bootstrap v1.
+
+The receipt-evidence booleans in these candidate fixtures are results supplied
+by a substrate-specific proof verifier. They are never treated as proof bytes.
+Registry-bootstrap signatures are genuine Ed25519 signatures over the exact
+registered DACS domain.
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import re
+from copy import deepcopy
+from typing import Any
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+
+BOOTSTRAP_DOMAIN = b"dacs-registry-bootstrap:v1:"
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+KEY_ID = re.compile(r"^key:([0-9a-f]{64})$")
+STATE_RANK = {"submitted": 0, "accepted": 1, "included": 2, "finalized": 3}
+PAIRING = {
+    "recipe": "dacs2:registry:v0.1",
+    "rail": "dacs4:registry:v0.1",
+}
+SIGNATURE_FIELDS = {"authorizationSignature", "authorityAcceptanceSignature"}
+
+
+def canonical_bytes(value: Any) -> bytes:
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+
+
+def hash_hex(value: Any) -> str:
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def descriptor_hash(descriptor: dict[str, Any]) -> str:
+    return hash_hex({k: v for k, v in descriptor.items() if k not in SIGNATURE_FIELDS})
+
+
+def _decode_b64url(value: Any) -> bytes | None:
+    if not isinstance(value, str) or not value or "=" in value:
+        return None
+    if re.fullmatch(r"[A-Za-z0-9_-]+", value) is None:
+        return None
+    try:
+        raw = base64.urlsafe_b64decode(value + "=" * ((-len(value)) % 4))
+    except Exception:
+        return None
+    if base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=") != value:
+        return None
+    return raw
+
+
+def _verify_signature(signature: Any, digest: str, expected_key: str) -> bool:
+    if not isinstance(signature, dict) or set(signature) != {"keyId", "algorithm", "value"}:
+        return False
+    if signature.get("algorithm") != "ed25519" or signature.get("keyId") != expected_key:
+        return False
+    match = KEY_ID.fullmatch(expected_key)
+    raw_signature = _decode_b64url(signature.get("value"))
+    if match is None or raw_signature is None or len(raw_signature) != 64:
+        return False
+    try:
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(match.group(1))).verify(
+            raw_signature, BOOTSTRAP_DOMAIN + digest.encode("ascii")
+        )
+    except (ValueError, InvalidSignature):
+        return False
+    return True
+
+
+def _receipt_tuple(receipt: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        receipt.get("substrate"),
+        receipt.get("logicalAddress"),
+        receipt.get("nativeAddress"),
+        receipt.get("contentHash"),
+        canonical_bytes(receipt.get("transactionRef")).decode("utf-8"),
+        receipt.get("writer"),
+        receipt.get("nonce"),
+    )
+
+
+def evaluate_resolution(case: dict[str, Any]) -> str:
+    """Return pass/fail/indeterminate for one portable-resolution fixture."""
+    if case.get("claimsAbsent"):
+        policy = case.get("absencePolicy", {})
+        return "pass" if policy.get("declared") is True and policy.get("satisfied") is True else "indeterminate"
+
+    carriers = case.get("carriers")
+    if not isinstance(carriers, list) or not carriers:
+        return "indeterminate"
+
+    qualified: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    for carrier in carriers:
+        if not isinstance(carrier, dict):
+            continue
+        kind = carrier.get("kind")
+        if kind in {"bare-native-locator", "catalog-assertion", "index-assertion"}:
+            continue
+        if kind == "authenticated-reference":
+            if carrier.get("referenceAuthenticated") is not True:
+                continue
+            native = carrier.get("nativeAddress")
+            content = case.get("storage", {}).get(native)
+            if content is None or hash_hex(content) != carrier.get("contentHash"):
+                continue
+            if carrier.get("artifactChecksVerified") is not True:
+                continue
+            qualified.append((("reference", native, carrier.get("contentHash")), carrier))
+            continue
+        if kind != "anchor-receipt":
+            continue
+        receipt = carrier.get("receipt")
+        if not isinstance(receipt, dict) or carrier.get("receiptEvidenceVerified") is not True:
+            continue
+        if receipt.get("receiptVersion") != "1" or receipt.get("observationDisposition") != "established":
+            continue
+        state = receipt.get("state")
+        minimum = case.get("minimumState")
+        if state not in STATE_RANK or minimum not in STATE_RANK or STATE_RANK[state] < STATE_RANK[minimum]:
+            continue
+        if state in {"included", "finalized"} and not isinstance(receipt.get("blockRef"), dict):
+            continue
+        if receipt.get("logicalAddress") != case.get("expectedLogicalAddress"):
+            continue
+        expected_hash = case.get("expectedContentHash")
+        if expected_hash is not None and receipt.get("contentHash") != expected_hash:
+            continue
+        if carrier.get("authorityVerified") is not True:
+            continue
+        native = receipt.get("nativeAddress")
+        content = case.get("storage", {}).get(native)
+        if content is None or hash_hex(content) != receipt.get("contentHash"):
+            continue
+        if carrier.get("deliveredAt") is not None and case.get("requiredBy") is not None:
+            if carrier["deliveredAt"] > case["requiredBy"]:
+                return "fail"
+        qualified.append((_receipt_tuple(receipt), carrier))
+
+    if not qualified:
+        return "indeterminate"
+    distinct = {canonical_bytes(item[0]) for item in qualified}
+    if len(distinct) != 1:
+        return "indeterminate"
+    return "pass"
+
+
+def _basic_descriptor(descriptor: Any) -> bool:
+    if not isinstance(descriptor, dict):
+        return False
+    discriminators = [
+        key for key in descriptor if isinstance(key, str) and key.endswith("BootstrapVersion")
+    ]
+    if discriminators != ["registryBootstrapVersion"] or descriptor.get("registryBootstrapVersion") != "1":
+        return False
+    required = {
+        "registryBootstrapVersion", "registryKind", "registryLogicalAddress",
+        "substrate", "sequence", "nativeIndexAddress", "indexContentHash",
+        "indexAnchorReceipt", "authorityKeyId", "authorizationSignature",
+    }
+    if not required.issubset(descriptor):
+        return False
+    kind = descriptor.get("registryKind")
+    if kind not in PAIRING or descriptor.get("registryLogicalAddress") != PAIRING[kind]:
+        return False
+    sequence = descriptor.get("sequence")
+    if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1 or sequence > 9007199254740991:
+        return False
+    if not isinstance(descriptor.get("substrate"), str) or not descriptor["substrate"]:
+        return False
+    if not isinstance(descriptor.get("nativeIndexAddress"), str) or not descriptor["nativeIndexAddress"]:
+        return False
+    if HEX64.fullmatch(str(descriptor.get("indexContentHash"))) is None:
+        return False
+    if KEY_ID.fullmatch(str(descriptor.get("authorityKeyId"))) is None:
+        return False
+    revoked = descriptor.get("revokedAuthorityKeyIds", [])
+    if not isinstance(revoked, list) or revoked != sorted(set(revoked)):
+        return False
+    if any(KEY_ID.fullmatch(str(key)) is None for key in revoked):
+        return False
+    if descriptor["authorityKeyId"] in revoked:
+        return False
+    if sequence == 1:
+        if "supersedesDescriptorHash" in descriptor or "authorityAcceptanceSignature" in descriptor:
+            return False
+    elif HEX64.fullmatch(str(descriptor.get("supersedesDescriptorHash"))) is None:
+        return False
+    receipt = descriptor.get("indexAnchorReceipt")
+    if not isinstance(receipt, dict):
+        return False
+    return True
+
+
+def _verify_snapshot(descriptor: dict[str, Any], case: dict[str, Any]) -> str:
+    receipt = descriptor["indexAnchorReceipt"]
+    if receipt.get("receiptVersion") != "1" or receipt.get("state") != "finalized":
+        return "fail"
+    if receipt.get("observationDisposition") != "established" or not isinstance(receipt.get("blockRef"), dict):
+        return "fail"
+    if (
+        receipt.get("substrate") != descriptor.get("substrate")
+        or receipt.get("logicalAddress") != descriptor.get("registryLogicalAddress")
+        or receipt.get("nativeAddress") != descriptor.get("nativeIndexAddress")
+        or receipt.get("contentHash") != descriptor.get("indexContentHash")
+    ):
+        return "fail"
+    evidence = receipt.get("evidence", {}).get("value") if isinstance(receipt.get("evidence"), dict) else None
+    if receipt.get("evidence", {}).get("kind") == "registry-dependent":
+        return "fail"
+    if evidence not in case.get("verifiedEvidenceValues", []):
+        return "indeterminate"
+    snapshot = case.get("indexStorage", {}).get(descriptor.get("nativeIndexAddress"))
+    if snapshot is None or hash_hex(snapshot) != descriptor.get("indexContentHash"):
+        return "indeterminate"
+    return "pass"
+
+
+def _validate_root(descriptor: dict[str, Any], case: dict[str, Any]) -> str:
+    if not _basic_descriptor(descriptor) or descriptor.get("sequence") != 1:
+        return "fail"
+    digest = descriptor_hash(descriptor)
+    if not _verify_signature(descriptor.get("authorizationSignature"), digest, descriptor["authorityKeyId"]):
+        return "fail"
+    pin = case.get("trustPin", {})
+    if not isinstance(pin, dict) or not ({"descriptorHash", "authorityKeyId"} & set(pin)):
+        return "fail"
+    if "descriptorHash" in pin and pin["descriptorHash"] != digest:
+        return "fail"
+    if "authorityKeyId" in pin and pin["authorityKeyId"] != descriptor["authorityKeyId"]:
+        return "fail"
+    return _verify_snapshot(descriptor, case)
+
+
+def _validate_successor(
+    predecessor: dict[str, Any], descriptor: dict[str, Any], case: dict[str, Any]
+) -> str:
+    if not _basic_descriptor(descriptor):
+        return "fail"
+    if descriptor.get("sequence") != predecessor.get("sequence") + 1:
+        return "fail"
+    if descriptor.get("supersedesDescriptorHash") != descriptor_hash(predecessor):
+        return "fail"
+    for field in ("registryKind", "registryLogicalAddress", "substrate", "registryBootstrapVersion"):
+        if descriptor.get(field) != predecessor.get(field):
+            return "fail"
+    previous_revoked = predecessor.get("revokedAuthorityKeyIds", [])
+    current_revoked = descriptor.get("revokedAuthorityKeyIds", [])
+    if not set(previous_revoked).issubset(current_revoked):
+        return "fail"
+    digest = descriptor_hash(descriptor)
+    previous_key = predecessor["authorityKeyId"]
+    if previous_key in previous_revoked:
+        return "fail"
+    if not _verify_signature(descriptor.get("authorizationSignature"), digest, previous_key):
+        return "fail"
+    changed = descriptor["authorityKeyId"] != previous_key
+    acceptance = descriptor.get("authorityAcceptanceSignature")
+    if changed:
+        if not _verify_signature(acceptance, digest, descriptor["authorityKeyId"]):
+            return "fail"
+    elif acceptance is not None:
+        return "fail"
+    if descriptor.get("indexContentHash") != predecessor.get("indexContentHash"):
+        if descriptor.get("nativeIndexAddress") == predecessor.get("nativeIndexAddress"):
+            return "fail"
+    elif descriptor.get("nativeIndexAddress") != predecessor.get("nativeIndexAddress"):
+        return "fail"
+    return _verify_snapshot(descriptor, case)
+
+
+def _definition_result(head: dict[str, Any], case: dict[str, Any]) -> str:
+    query = case.get("definitionQuery")
+    if not isinstance(query, dict):
+        return "pass"
+    index = case.get("indexStorage", {}).get(head["nativeIndexAddress"])
+    entries = index.get("entries", []) if isinstance(index, dict) else []
+    matches = [
+        entry for entry in entries
+        if entry.get("id") == query.get("id") and entry.get("version") == query.get("version")
+    ]
+    if len(matches) != 1:
+        return "fail"
+    entry = matches[0]
+    locator = entry.get("anchor", {}).get("locator") if isinstance(entry.get("anchor"), dict) else None
+    definition = case.get("definitionStorage", {}).get(locator)
+    if definition is None:
+        return "indeterminate"
+    if hash_hex(definition) != entry.get("contentHash"):
+        return "fail"
+    checks = case.get("definitionChecks", {})
+    if checks.get("signatureVerified") is not True or checks.get("semanticRulesVerified") is not True:
+        return "fail"
+    return "pass"
+
+
+def evaluate_bootstrap(case: dict[str, Any]) -> str:
+    descriptors = case.get("descriptors")
+    if not isinstance(descriptors, list) or not descriptors:
+        return "indeterminate"
+    roots = [d for d in descriptors if isinstance(d, dict) and d.get("sequence") == 1]
+    pin = case.get("trustPin", {})
+    if "descriptorHash" in pin:
+        roots = [d for d in roots if descriptor_hash(d) == pin["descriptorHash"]]
+    if "authorityKeyId" in pin:
+        roots = [d for d in roots if d.get("authorityKeyId") == pin["authorityKeyId"]]
+    if len(roots) != 1:
+        return "indeterminate" if roots else "fail"
+    root = roots[0]
+    status = _validate_root(root, case)
+    if status != "pass":
+        return status
+    head = root
+    while True:
+        candidates = [
+            d for d in descriptors
+            if isinstance(d, dict)
+            and d.get("supersedesDescriptorHash") == descriptor_hash(head)
+        ]
+        valid: list[dict[str, Any]] = []
+        indeterminate_seen = False
+        for candidate in candidates:
+            result = _validate_successor(head, candidate, case)
+            if result == "pass":
+                valid.append(candidate)
+            elif result == "indeterminate":
+                indeterminate_seen = True
+            else:
+                return "fail"
+        if len(valid) > 1:
+            return "indeterminate"
+        if len(valid) == 1:
+            head = valid[0]
+            continue
+        if indeterminate_seen:
+            return "indeterminate"
+        break
+
+    stored = case.get("storedLatest")
+    if isinstance(stored, dict) and case.get("mode", "latest") == "latest":
+        if head.get("sequence") < stored.get("sequence", 0):
+            return "fail"
+        if head.get("sequence") == stored.get("sequence") and descriptor_hash(head) != stored.get("descriptorHash"):
+            return "indeterminate"
+    if case.get("mode") == "historical":
+        target_sequence = case.get("targetSequence")
+        matches = [d for d in descriptors if d.get("sequence") == target_sequence]
+        if len(matches) != 1:
+            return "indeterminate"
+        head = matches[0]
+    return _definition_result(head, case)
+
+
+def evaluate_vector(vector: dict[str, Any]) -> str:
+    family = vector.get("family")
+    if family == "resolution":
+        return evaluate_resolution(deepcopy(vector["input"]))
+    if family == "bootstrap":
+        return evaluate_bootstrap(deepcopy(vector["input"]))
+    return "error"

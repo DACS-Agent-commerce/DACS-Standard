@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.5** (on the common DACS v0.1 baseline; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 makes PA-2 recipe-registry discovery executable through the CORE §5.1 registry bootstrap and authenticated index references; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -483,11 +483,35 @@ A conforming recipe author MUST:
 
 A verifier MUST resolve a recipe by:
 
-1. reading the recipe-registry index from dacs2:registry:v0.1;
-2. looking up the entries for the claim’s scheme, then selecting the exact recipe family required by the listing or supplied evidence; a listing selects a method with `ClaimRequirement.parameters.verificationMethod`, and Demos GCR metadata selects `demos-gcr-domain` only when no method was required;
-3. if the matched `ClaimRequirement` pins a specific `recipeVersion` (§6.3.3), resolving that exact version within the selected family; otherwise selecting that family's exact latest version in the authenticated recipe-registry snapshot identified by `SessionContext.recipeRegistryVersion` at session start. The selected family and version MUST resolve before verification or aggregation; a missing family, an absent explicit version, or an implicit latest entry that cannot be resolved returns `error`, not a counterparty `fail`. For an implicit pin, the selected latest entry MUST be `live`; any other availability returns `error`, and the verifier MUST NOT scan backward to an older live version. An explicit pin remains subject to RAV-1 through RAV-4, including the required `error` for `mocked`, `disabled`, or `failed`;
-4. fetching that exact recipe at its indicated anchor and verifying its content hash and domain-separated signature;
-5. retain that registry snapshot pin in both `VetCredentialsInput.recipeRegistryVersion` and `VetCredentialsInput.sessionContext.recipeRegistryVersion`, require byte-for-byte numeric equality before live aggregation, and carry it into the signed `AttestationBundle` or `FaultAttestationBundle` for later replay. A `SessionRecord` MAY retain the pin operationally, but because it is off-chain, mutable, and unsigned (§10.3.2), it is not replay authority.
+1. under PA-2, authenticate the release-pinned CORE §5.1
+   `RegistryBootstrapDescriptor` for the exact
+   `(recipe, dacs2:registry:v0.1, substrate, "1")` tuple, verify its finalized
+   embedded receipt, and fetch the exact immutable index snapshot at its
+   `nativeIndexAddress` with the declared `indexContentHash`;
+2. look up the entries for the claim’s scheme, then select the exact recipe
+   family required by the listing or supplied evidence; a listing selects a
+   method with `ClaimRequirement.parameters.verificationMethod`, and Demos GCR
+   metadata selects `demos-gcr-domain` only when no method was required;
+3. if the matched `ClaimRequirement` pins a specific `recipeVersion` (§6.3.3),
+   resolve that exact version within the selected family; otherwise select that
+   family's exact latest version in the authenticated snapshot at session start.
+   The selected family and version MUST resolve before verification or aggregation;
+   a missing family, an absent explicit version, or an unresolved implicit latest
+   entry returns `error`, not a counterparty `fail`. For an implicit pin, the
+   selected latest entry MUST be `live`; any other availability returns `error`,
+   and the verifier MUST NOT scan backward to an older live version. An explicit
+   pin remains subject to RAV-1 through RAV-4, including the required `error` for
+   `mocked`, `disabled`, or `failed`;
+4. treat the selected entry's locator plus content hash as an authenticated
+   SR2-10 content reference, fetch the recipe, and independently verify its
+   content hash, `dacs-recipe:v1:` signature, version, availability, governance,
+   and RA-1..RA-6; and
+5. retain the registry snapshot version together with the accepted descriptor
+   sequence and hash in the live Vet input and session context, require their
+   exact equality before aggregation, and carry the authoritative replay pin
+   into the signed `AttestationBundle` or `FaultAttestationBundle`. A
+   `SessionRecord` MAY retain the same pin operationally, but because it is
+   off-chain, mutable, and unsigned (§10.3.2), it is not replay authority.
 
 A consumer of an existing VerifyResult selects its recipe by the exact triple `(scheme, method, recipeVersion)`. It MUST reject an ambiguous or missing family and MUST NOT silently substitute a different method. For `domain`, a requirement whose `parameters.verificationMethod` is `domain-tls-control` is therefore not satisfied by `demos-gcr-domain`, and vice versa.
 
@@ -513,6 +537,11 @@ This mirrors the rail-side `railVersion` pin (§9.3) and is the mechanism that p
 | (PA-1) Bootstrap | `in-code` | Implementations MAY ship recipes as in-code constants or static configuration. Recipes in this phase MUST be marked `anchoring: "in-code"` and MUST NOT be presented as canonically anchored. |
 | (PA-2) Single-steward | `single-signer` | The steward (currently KyneSys Labs) anchors recipes at the canonical address under a single signature, marked `anchoring: "single-signer"` and disclosing the steward’s identity. **This is the current operating phase for v0.1.** |
 | (PA-3) Constituted | `multisig` | If and when a multi-party governance body is constituted, recipes anchor under that body’s multi-signature scheme. |
+
+PA-1 uses its disclosed signed in-code snapshot and does not use a bootstrap
+descriptor. Under PA-2, `recipeRegistryVersion` is the accepted immutable
+registry-bootstrap content sequence. Descriptor v1 is single-Ed25519-authority
+only; PA-3 requires a distinct governance-policy bootstrap type.
 
 **Append-only re-anchoring.** Re-anchoring is append-only: prior single-signer recipeVersions MUST remain anchored, immutable, and independently re-verifiable under the steward key and content hash recorded during the single-signer phase (PA-2). The constituted body re-anchors prior recipes only as NEW recipeVersions under its multi-signature scheme; it MUST NOT mutate the signer or content hash of an already-published recipeVersion. This preserves the monotonic recipe-version pinning that §7.12 and §12.4 depend on: a VerifyResult pinned to a recipeVersion during PA-2 MUST continue to validate against the anchoring phase and signing key in force at pin time, not the current registry state.
 

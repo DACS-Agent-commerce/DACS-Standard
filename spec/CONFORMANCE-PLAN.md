@@ -131,7 +131,7 @@ A cross-cutting test category that every conforming implementation runs once:
 For substrates other than Demos that claim conformance, additional capability tests apply:
 
 - **SR-1.** Sub-identity binding test: a root key binds N sub-identities, presents under a single SR-1 signature, verifier resolves each to its claim scheme.
-- **SR-2 (SR2-1..SR2-9).** Exercise the lifecycle graph (`submitted → accepted|rejected`; `accepted → included|dropped|replaced|expired`; `included → finalized|reorged`; authenticated `dropped|expired|reorged` re-entry), and reject illegal promotion. Exercise `observationDisposition: indeterminate` after intermediate and terminal states without adding a graph edge: it hash-links and preserves the last established receipt, never demotes/promotes state, and never permits resubmission. Order conflicting snapshots by binding-authenticated evidence, never `observedAt`; independently verify carrying-transaction replacements. Verify durable-admission evidence before `accepted`; require block evidence for `included`/`finalized`; bind logical/native address, content hash, transaction, writer, nonce, and finality profile in each receipt; treat `indexed` as orthogonal and never gating. Exercise reversible Vet progression on qualifying `accepted`, finalized commitment before irreversible effects, rail-final payment with asynchronous evidence catch-up/no resubmission, and completed-bundle `audit-pending` until all dependencies and the bundle are finalized/resolvable. Also run anchor-write → retrieve → content-hash round-trip and size-cap enforcement. A binding claiming authoritative absence exercises its declared finalized non-membership proof or authenticated independent quorum; unqualified `not found`, transport failure, stale response, and inconsistent state views remain `indeterminate`. Concrete lifecycle cases: `conformance/vectors/security/sr2-anchor-lifecycle-v0.1.json`.
+- **SR-2 (SR2-1..SR2-13).** Exercise the lifecycle graph (`submitted → accepted|rejected`; `accepted → included|dropped|replaced|expired`; `included → finalized|reorged`; authenticated `dropped|expired|reorged` re-entry), and reject illegal promotion. Exercise `observationDisposition: indeterminate` after intermediate and terminal states without adding a graph edge: it hash-links and preserves the last established receipt, never demotes/promotes state, and never permits resubmission. Order conflicting snapshots by binding-authenticated evidence, never `observedAt`; independently verify carrying-transaction replacements. Verify durable-admission evidence before `accepted`; require block evidence for `included`/`finalized`; bind logical/native address, content hash, transaction, writer, nonce, and finality profile in each receipt; treat `indexed` as orthogonal and never gating. Exercise reversible Vet progression on qualifying `accepted`, finalized commitment before irreversible effects, rail-final payment with asynchronous evidence catch-up/no resubmission, and completed-bundle `audit-pending` until all dependencies and the bundle are finalized/resolvable. Also run anchor-write → retrieve → content-hash round-trip and size-cap enforcement. A binding claiming authoritative absence exercises its declared finalized non-membership proof or authenticated independent quorum; unqualified `not found`, transport failure, stale response, and inconsistent state views remain `indeterminate`. Run the logical-to-native and registry-bootstrap cases in §14.11 on every write-input-mapping binding. Concrete lifecycle cases: `conformance/vectors/security/sr2-anchor-lifecycle-v0.1.json`.
 - **SR-3.** Fetch-specification → consensus-signed commitment → anchor; body-hash verification by independent consumer. (v0.1 conformance bar is trust-property; v2 will add wire-protocol tests.)
 - **SR-4.** Channel-establish → member-only-message-delivery → non-member-cannot-read; CH-1..CH-6 each as a test (CH-6: channelId unique per session — cross-session offer-replay rejected). (v0.1 trust-property; v2 wire-protocol.)
 - **SR-5.** Cross-chain lock → release with bounded-time atomicity; refund path on counterparty timeout.
@@ -259,3 +259,25 @@ The normative JSON shape is
 [`conformance/implementation-manifest.schema.json`](../conformance/implementation-manifest.schema.json).
 Repository examples and dependency-free validation live under
 [`conformance/implementation-manifests/`](../conformance/implementation-manifests/).
+
+### 14.11 Logical-to-native resolution and registry bootstrap
+
+Every write-input-mapping consumer MUST execute CORE SR2-10..SR2-13. The test
+surface includes direct verified-receipt resolution; every SR2-5 tuple
+substitution; missing, unverified, bare-locator, and unauthenticated-index
+candidates; absent artifact-specific authority; pre-gate versus late delivery;
+aborted-session retention; authenticated bundle/index references; unsupported
+absence claims; and immutable-address equivocation. The concrete set is
+`conformance/vectors/security/sr2-logical-native-resolution-v0.1.json`.
+
+PA-2 recipe and rail consumers MUST also exercise both pinned registry kinds,
+hash-only and key-only first contact, first-contact and successor forks,
+same-key content successors, dual-authorized rotation, cumulative revocation,
+latest rollback, historical replay, immutable snapshot enforcement,
+signature-domain and discriminator refusal, recursive-evidence refusal,
+descriptor-to-receipt tuple binding, and authenticated definition-reference
+resolution. The concrete set is
+`conformance/vectors/security/registry-bootstrap-v0.1.json`. A supported
+implementation claim MUST disclose its descriptor retrieval transport,
+replacement-pin distribution channel, retained-history policy, and, when
+declared, its expected replacement-pin distribution bound.

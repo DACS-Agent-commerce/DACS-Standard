@@ -32,6 +32,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 31 | `error` / `fail` / `indeterminate` / `pass` |
@@ -692,13 +693,71 @@ ed25519 over the §8.3.3 signed scope). Run (reference):
 `npx tsx conformance/security-vectors/channel-message-replay/run.mts` → 20/20
 (15 persisted vectors + 5 non-serialisable robustness assertions).
 
+### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
+
+36 candidate vectors for qualifying authenticated, resolved `VerifyResult`
+objects against the complete applicable `ClaimRequirement` predicate before
+decision classification. The set covers exact positive matching, absent
+listing constraints with an implicit session-start version pin, competing old
+and current recipe results, wrong recipe version, the inclusive and exceeded age
+boundaries, parameter mismatch and absence, additional unrequested result data,
+same-scheme cross-satisfaction, negative and positive `oneOf` selection,
+preservation of applicable `error` and `indeterminate`, stale-indeterminate
+exclusion, an unrelated-result control, and fail-closed missing, unresolvable,
+wrong-job, and internally mismatched production contexts. Replay coverage uses
+genuinely signed synthetic `AttestationBundle`, `CompositeVerificationRecord`,
+and `VerifyResult` fixtures and includes the valid path, a signed wrong-job
+substitution, a same-job bundle missing the exact record reference, substituted
+requirement and result projections, and refusal of an unsigned `SessionRecord`.
+The eight additional preflight/reuse cases require exact latest-family
+selection, reject a non-live latest version without falling back to an older
+live version, classify explicit and implicit unresolved versions as `error`
+before decision precedence, and distinguish cache eligibility from aggregation
+applicability. Cross-session non-pass reuse requires authenticated exact
+originating-parameter equivalence; otherwise a current-predicate rerun replaces
+the cached decision or the phase returns `error` when no rerun is available.
+
+The inputs begin after reference, hash, signature, recipe-authority,
+attestation, and governing freshness validation. Those failures retain their
+governing dispositions and are not reclassified by this set. A declared
+`ClaimRequirement.maxAge` is an additional bound and cannot widen that baseline.
+`resolvedResults` is therefore a neutral projection of already-authenticated
+DACS `VerifyResult` fields, not a new wire artifact. The set-level
+`recipeRegistries` project the exact snapshots selected by each authenticated
+production or replay authority; `latestByFamily` supplies the implicit pin and
+`versionsByFamily` proves exact version existence plus availability. Parameter
+matching requires every requested own key to be present and canonically equal;
+additional extracted-data keys remain valid. `resultReuse` is neutral
+pre-aggregation cache provenance and optional rerun output; it is not a field
+added to `VerifyResult` v1.
+
+#### Vector schema
+
+Each entry in `recipeRegistries[]` contains `recipeRegistryVersion`,
+`latestByFamily`, and `versionsByFamily`; `latestByScheme` remains only as a
+negative control against scheme-wide fallback. `authenticatedSessionStarts`
+models the trusted in-process production boundary. `replayBundles` and
+`replayRecords` contain concrete domain-signed fixtures; `publicKeys` allows
+independent bundle, record, and result signature verification. Each entry in `vectors[]` contains `name`, `expected`
+(§7.5.1 four-value verdict), `note`, and `input`.
+`input.aggregationAuthority` selects either a production `vetInput` plus its
+authenticated session-start state or a replay bundle plus exact record reference;
+`input.generatedAt` is the fixed aggregation
+time; `input.requirement` is the canonical `BundleRequirement`; and
+`input.resolvedResults` contains the authenticated result projections available
+to §7.7.1. Optional `input.resultReuse` supplies parallel, neutral cache context
+for cross-session cases.
+
+This is a candidate set. Independent cross-run convergence and golden promotion
+remain pending.
+
 ### `verifyresult-acceptance-v0.1.json` — §7.12 (VerifyResult acceptance)
 
 13 vectors for the §7.12 consumer-side acceptance checks — three threat rows from the §12.4 matrix (#158) in one set:
 
 - **method substitution (#6):** `VerifyResult.method` MUST be in the recipe's `defaultMethod` ∪ `alternatives`; an unaccepted method is rejected.
 - **recipe poisoning (#7):** the recipe's steward signature MUST verify and `recipeVersion` MUST equal the version pinned for the session.
-- **VerifyResult replay (#17):** `identifier` MUST match the claim under verification per the CF-3 canonical identity; `bundleHash` binds the result to a bundle. **Cross-session reuse within `validUntil` is explicitly permitted** (and tested) — a conformant impl MUST NOT over-reject it.
+- **VerifyResult replay (#17):** `identifier` MUST match the claim under verification per the CF-3 canonical identity; `bundleHash` binds the result to a bundle. **Cross-session cache eligibility within `validUntil` is explicitly permitted** (and tested) — a conformant implementation MUST NOT blanket-reject it. VP-C1 and CRQ-2 remain the subsequent applicability gate: a cached pass is requalified under the consuming requirement, while a non-pass needs authenticated exact originating-parameter equivalence or a current-predicate rerun.
 
 Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved → `indeterminate` (not `fail`); malformed input → `error`. The set deliberately includes the SAFE cases (permitted cross-session reuse; CF-3 `cci:0x`/case canonicalisation) so existence of the rule can't be satisfied by blanket rejection.
 

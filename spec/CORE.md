@@ -379,8 +379,10 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-4 payload attestation record | "dacs-payload-attestation:v1:" | §9.6.3 |
 | DACS-5 attestation bundle | "dacs-bundle:v1:" | §10.4.1 |
 | DACS-5 fault attestation bundle | "dacs-fault-bundle:v1:" | §10.4.1 |
+| DACS-5 evidence-bound fault attestation bundle | "dacs-evidence-bound-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 BundleBinding | "dacs-bundle-binding:v1:" | §10.4.2 |
 | DACS-5 FaultAttestationBundle extended pointer | "dacs-fault-bundle-pointer:v1:" | §10.4.2 |
+| DACS-5 EvidenceBoundFaultAttestationBundle extended pointer | "dacs-evidence-bound-fault-bundle-pointer:v1:" | §10.4.2 |
 | DACS-5 rating record | "dacs-rating:v1:" | §10.6 |
 | DACS-1 bundle session-key root binding | "dacs-session-binding:v1:" | §6.3.2 |
 | DACS-3 auto-accept commitment | "dacs-auto-accept-commitment:v1:" | §8.4.1 |
@@ -602,7 +604,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 The **§11.1.2 additivity contract** makes the major-only signal sufficient for *minor* skew, in both directions, with **no per-artifact minor-version field**:
 

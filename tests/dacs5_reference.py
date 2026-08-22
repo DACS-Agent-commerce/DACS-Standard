@@ -27,6 +27,10 @@ hashing, the reconciliation/BB-6/pointer predicates) always run.
 import base64
 import hashlib
 import json
+import math
+import re
+import unicodedata
+from urllib.parse import quote, urlsplit
 
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -37,8 +41,12 @@ except ImportError:  # pragma: no cover - environment-dependent
 
 BUNDLE_DOMAIN = "dacs-bundle:v1:"
 FAULT_BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
+EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
+LISTING_DOMAIN = "dacs-listing:v1:"
+SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
+EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
 
 BB6_DEFAULT_BUDGET = 8
 
@@ -59,6 +67,39 @@ _FAILURE = {"failed-perm", "failed-counterparty"}
 # MUST be rejected (SIG-3). Dispatch is on this label, never assumed.
 SUPPORTED_SIGNATURE_ALGORITHMS = frozenset({"ed25519"})
 
+EVIDENCE_PHASES = frozenset({
+    "pay-evm-erc20",
+    "pay-solana-spl",
+    "pay-cross-chain-htlc",
+    "pay-cross-chain-liquidity-tank",
+    "pay-ap2",
+    "pay-x402",
+    "pay-dem",
+    "deliver-storage-program",
+    "deliver-entitlement",
+    "deliver-attested-payload",
+})
+
+PAYMENT_PHASES = frozenset(phase for phase in EVIDENCE_PHASES if phase.startswith("pay-"))
+DELIVERY_PHASES = frozenset(phase for phase in EVIDENCE_PHASES if phase.startswith("deliver-"))
+SUPPORTED_PHASES = frozenset({
+    "vet-credentials",
+    "negotiate-fixed-price",
+    "negotiate-rfq",
+    "negotiate-sealed-envelope",
+    "commit-agreement",
+    "rate",
+}) | EVIDENCE_PHASES
+SUPPORTED_ATTESTATION_ANCHOR_KINDS = frozenset({"storage-program", "ipfs", "https"})
+SUPPORTED_SETTLEMENT_FINALITY_MODELS = frozenset({
+    "block-depth",
+    "commitment-level",
+    "provider-receipt",
+    "htlc-reveal",
+    "liquidity-tank",
+    "bft-final",
+})
+
 # §10.5.3 windowingBasis (spec DACS-5-VERIFY.md :530): a REQUIRED closed two-literal union naming
 # which clock the §10.5.1 window was applied against; re-derivation MUST use the recorded basis
 # (:854/:581). SUPPORTED_* is the VOCABULARY (both literals are valid); IMPLEMENTED_* is what this
@@ -72,6 +113,8 @@ IMPLEMENTED_WINDOWING_BASES = frozenset({"finalisedAt"})
 # CORE §B.7 SIG-6 canonical unpadded Base64URL alphabet (spec lines 320-321): the canonical value is
 # non-empty and contains ONLY these characters — no `=` padding, no whitespace, no standard-Base64 `+`/`/`.
 _SIG6_ALPHABET = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
+_CANONICAL_POSITIVE_DECIMAL = re.compile(r"(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?\Z")
+_MAX_SAFE_JSON_INTEGER = 9_007_199_254_740_991
 
 
 def sig6_canonical(value):
@@ -130,6 +173,18 @@ def bundle_hash(bundle):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
+def listing_hash(listing):
+    """§6.3.4 listing hash: canonical form minus the signature envelope."""
+    unsigned = {k: v for k, v in listing.items() if k != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def settlement_evidence_hash(record):
+    """DACS-4 §9.7 evidence hash: canonical form minus its signature envelope."""
+    unsigned = {k: v for k, v in record.items() if k != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
 def binding_hash(binding):
     unsigned = {k: v for k, v in binding.items() if k != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
@@ -149,8 +204,50 @@ def b64url_decode(value):
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
+def bundle_type(bundle):
+    """Return the exact supported §10.4 discriminator class or None.
+
+    Discriminators are exclusive. Unknown, stripped, or multiply-labelled objects do not
+    inherit a legacy type merely because one verifier happens to recognize fewer fields.
+    """
+    if not isinstance(bundle, dict):
+        return None
+    candidates = []
+    if bundle.get("bundleVersion") == "1":
+        candidates.append("legacy")
+    if bundle.get("faultBundleVersion") == "1":
+        candidates.append("fault")
+    if bundle.get("evidenceBoundFaultBundleVersion") == "1":
+        candidates.append("evidence-bound")
+    known_keys = {
+        "bundleVersion",
+        "faultBundleVersion",
+        "evidenceBoundFaultBundleVersion",
+    }
+    unknown_discriminators = {
+        key for key in bundle
+        if isinstance(key, str) and key.endswith("BundleVersion") and key not in known_keys
+    }
+    if unknown_discriminators:
+        return None
+    if any(key in bundle and bundle.get(key) != "1" for key in known_keys):
+        return None
+    return candidates[0] if len(candidates) == 1 else None
+
+
+def bundle_type_rank(bundle):
+    return {"legacy": 0, "fault": 1, "evidence-bound": 2}.get(bundle_type(bundle), -1)
+
+
 def bundle_domain(bundle):
-    return FAULT_BUNDLE_DOMAIN if "faultBundleVersion" in bundle else BUNDLE_DOMAIN
+    kind = bundle_type(bundle)
+    if kind == "legacy":
+        return BUNDLE_DOMAIN
+    if kind == "fault":
+        return FAULT_BUNDLE_DOMAIN
+    if kind == "evidence-bound":
+        return EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN
+    raise ValueError("unsupported, missing, or non-exclusive bundle discriminator")
 
 
 def verify_sig(pubkey_bytes, domain, content_hash, sig_value):
@@ -240,7 +337,8 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
 
 
 def is_fab(bundle):
-    return "faultBundleVersion" in bundle
+    """True for either absolute-fault type (FAB or EBFAB)."""
+    return bundle_type(bundle) in {"fault", "evidence-bound"}
 
 
 def _outcome_class(outcome):
@@ -345,6 +443,12 @@ def divergence(copy_a, copy_b):
     if _outcome_class(copy_a["outcome"]) != _outcome_class(copy_b["outcome"]):
         return True
 
+    if bundle_type(copy_a) == bundle_type(copy_b) == "evidence-bound":
+        refs_a = {canonical(ref) for ref in copy_a.get("settlementEvidence", [])}
+        refs_b = {canonical(ref) for ref in copy_b.get("settlementEvidence", [])}
+        if refs_a != refs_b:
+            return True
+
     a_fab, b_fab = is_fab(copy_a), is_fab(copy_b)
 
     if a_fab and b_fab:
@@ -426,6 +530,8 @@ def _bundle_signatures_valid(bundle, pubkeys):
     idiom). Returns (ok, reason)."""
     if not isinstance(bundle, dict):
         return (False, "bundle is not an object")
+    if bundle_type(bundle) is None:
+        return (False, "unsupported, missing, or non-exclusive bundle discriminator")
     anchor_role = bundle.get("anchoredByRole")
     role_holder = {p.get("role"): p.get("primaryClaim") for p in bundle.get("parties", [])}
     raw_sigs = bundle.get("signatures", [])                # RAW list — NEVER a party-keyed dict (F2: a
@@ -438,7 +544,7 @@ def _bundle_signatures_valid(bundle, pubkeys):
     #     buyer + seller (+ distinct orchestrator) MUST all have signed (spec line 322);
     #   abort outcome (aborted-by-self / aborted-by-other) MAY be single-signed (spec line 323) — the
     #     preserved floor is that the anchoring role-holder itself has signed.
-    if bundle.get("outcome") in _ABORT:
+    if _string_member(bundle.get("outcome"), _ABORT):
         required = role_holder.get(anchor_role)
         if required is None or required not in signers_present:
             return (False, "§10.4.1 required signer (the %r role-holder) has no signature" % (anchor_role,))
@@ -476,6 +582,898 @@ def _bundle_signatures_valid(bundle, pubkeys):
             if not verify_sig(pk, dom, h, s.get("value", "")):    # F2: every entry must verify
                 return (False, "§10.4.1 bundle signature does not verify for signer %r" % (party,))
     return (True, "ok")
+
+
+def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase_index,
+                                          phase_kind, signer, *, resolved=False):
+    """Validate independently authenticated execution authority against a verified receipt."""
+    if not isinstance(execution, dict) or not isinstance(receipt, dict):
+        return (False, "missing executionAuthority or anchorReceipt binding")
+    if (
+        execution.get("jobId") != bundle.get("jobId")
+        or execution.get("phaseIndex") != phase_index
+        or execution.get("phaseKind") != phase_kind
+        or execution.get("phaseOrchestrator") != signer
+    ):
+        return (False, "execution authority does not bind job, phase, or orchestrator")
+    if phase_kind.startswith("pay-"):
+        rail_id = execution.get("railId")
+        if not isinstance(rail_id, str) or not rail_id:
+            return (False, "payment execution authority lacks railId")
+        expected_logical = "dacs4:payment:%s:%s:%d%s" % (
+            bundle.get("jobId"), quote(rail_id, safe="-._~"), phase_index,
+            ":resolved" if resolved else "",
+        )
+    else:
+        expected_logical = execution.get("evidenceLogicalAddress")
+        if not isinstance(expected_logical, str) or not expected_logical:
+            return (False, "delivery execution authority lacks evidenceLogicalAddress")
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    nonce = receipt.get("nonce")
+    if (
+        receipt.get("logicalAddress") != expected_logical
+        or not isinstance(anchor, dict)
+        or receipt.get("nativeAddress") != anchor.get("locator")
+        or receipt.get("contentHash") != ref.get("contentHash")
+        or not isinstance(receipt.get("transaction"), str)
+        or not receipt["transaction"]
+        or receipt.get("writer") != signer
+        or isinstance(nonce, bool)
+        or not isinstance(nonce, int)
+        or nonce < 0
+    ):
+        return (False, "anchor receipt does not bind address, content, transaction, writer, or nonce")
+    return (True, expected_logical)
+
+
+def _string_member(value, allowed):
+    """Total closed-union membership for untrusted JSON values."""
+    return isinstance(value, str) and value in allowed
+
+
+def _non_boolean_number(value):
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return abs(value) <= _MAX_SAFE_JSON_INTEGER
+    return (
+        isinstance(value, float)
+        and math.isfinite(value)
+        and abs(value) <= _MAX_SAFE_JSON_INTEGER
+    )
+
+
+def _price_term_shape_valid(value):
+    if not isinstance(value, dict) or not {"amount", "currency"} <= set(value):
+        return False
+    if set(value) - {"amount", "currency", "unit"}:
+        return False
+    amount = value.get("amount")
+    currency = value.get("currency")
+    if not isinstance(amount, str) or not _nonempty_jcs_string(currency):
+        return False
+    if "unit" in value and not _nonempty_jcs_string(value["unit"]):
+        return False
+    # CORE CD-1 plus PriceTerm's positive-amount requirement, ASCII digits only.
+    return amount != "0" and _CANONICAL_POSITIVE_DECIMAL.fullmatch(amount) is not None
+
+
+def _nonempty_jcs_string(value):
+    return (
+        isinstance(value, str)
+        and bool(value)
+        and unicodedata.normalize("NFC", value) == value
+        and not any(0xD800 <= ord(character) <= 0xDFFF for character in value)
+    )
+
+
+def _safe_nonnegative_integer(value, *, positive=False):
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and (value > 0 if positive else value >= 0)
+        and value <= _MAX_SAFE_JSON_INTEGER
+    )
+
+
+def _chain_tx_ref_shape_valid(ref):
+    """Closed DACS-4 ChainTxRef union, including nested AP2 attestation shape."""
+    if not isinstance(ref, dict) or not isinstance(ref.get("kind"), str):
+        return False
+    kind = ref["kind"]
+    string_fields = set()
+    integer_fields = set()
+    optional_strings = set()
+    optional_integers = set()
+    required = {"kind"}
+    optional = set()
+
+    if kind == "evm":
+        integer_fields = {"chainId"}
+        string_fields = {"txHash"}
+    elif kind == "evm-event":
+        integer_fields = {"chainId", "logIndex"}
+        string_fields = {"txHash"}
+    elif kind == "solana":
+        string_fields = {"cluster", "signature"}
+    elif kind == "solana-instruction":
+        string_fields = {"cluster", "signature"}
+        integer_fields = {"instructionIndex"}
+    elif kind == "demos":
+        string_fields = {"txHash"}
+        optional_integers = {"blockNumber"}
+    elif kind == "storage-program":
+        string_fields = {"address", "writeTxHash"}
+    elif kind == "ap2":
+        string_fields = {"mandateId", "providerRef", "protocolVersion"}
+        optional = {"receiptAttestation"}
+    elif kind == "x402":
+        string_fields = {"httpResource", "paymentReceiptHash", "protocolVersion"}
+        optional_strings = {"settlementTxHash"}
+        optional_integers = {"chainId"}
+    elif kind == "x402-event":
+        string_fields = {
+            "httpResource", "paymentReceiptHash", "settlementTxHash", "protocolVersion",
+        }
+        integer_fields = {"chainId", "logIndex"}
+    elif kind in {"htlc-lock", "htlc-reveal", "htlc-claim", "htlc-refund"}:
+        integer_fields = {"chainId"}
+        transaction_field = {
+            "htlc-lock": "lockTxHash",
+            "htlc-reveal": "revealTxHash",
+            "htlc-claim": "claimTxHash",
+            "htlc-refund": "refundTxHash",
+        }[kind]
+        string_fields = {"contractAddress", transaction_field}
+    elif kind == "liquidity-tank":
+        string_fields = {"bridgeId", "lockTxHash"}
+        integer_fields = {"sourceChainId", "destChainId"}
+        optional_strings = {"releaseTxHash"}
+        optional_integers = {"recoveryDeadline"}
+    else:
+        return False
+
+    required |= string_fields | integer_fields
+    optional |= optional_strings | optional_integers
+    if set(ref) != required | (set(ref) & optional):
+        return False
+    if any(not _nonempty_jcs_string(ref[field]) for field in string_fields):
+        return False
+    if any(not _safe_nonnegative_integer(ref[field]) for field in integer_fields):
+        return False
+    if any(not _nonempty_jcs_string(ref[field]) for field in optional_strings if field in ref):
+        return False
+    if any(not _safe_nonnegative_integer(ref[field]) for field in optional_integers if field in ref):
+        return False
+    if kind in {"evm", "evm-event", "x402-event"} and not _safe_nonnegative_integer(
+        ref["chainId"], positive=True
+    ):
+        return False
+    if kind in {"solana", "solana-instruction"} and not _string_member(
+        ref["cluster"], {"mainnet", "devnet", "testnet"}
+    ):
+        return False
+    if kind == "ap2" and "receiptAttestation" in ref:
+        return _attestation_ref_shape_valid(ref["receiptAttestation"])
+    return True
+
+
+def _payment_tx_refs_match_phase(phase, refs, *, success):
+    kinds = [ref["kind"] for ref in refs]
+    if phase == "pay-evm-erc20":
+        return len(kinds) == 1 and kinds[0] in {"evm-event", "evm"}
+    if phase == "pay-solana-spl":
+        return len(kinds) == 1 and kinds[0] in {"solana-instruction", "solana"}
+    if phase == "pay-cross-chain-htlc":
+        required = {"htlc-lock", "htlc-reveal", "htlc-claim"}
+        if success:
+            return set(kinds) == required and len(kinds) == len(required)
+        return (
+            len(kinds) == len(set(kinds))
+            and set(kinds) <= required | {"htlc-refund"}
+        )
+    if phase == "pay-cross-chain-liquidity-tank":
+        return len(kinds) == 1 and kinds[0] == "liquidity-tank" and (
+            not success or "releaseTxHash" in refs[0]
+        )
+    if phase == "pay-ap2":
+        return len(kinds) == 1 and kinds[0] == "ap2" and (
+            not success or "receiptAttestation" in refs[0]
+        )
+    if phase == "pay-x402":
+        return len(kinds) == 1 and kinds[0] in {"x402-event", "x402"}
+    if phase == "pay-dem":
+        return len(kinds) == 1 and kinds[0] == "demos" and (
+            not success or "blockNumber" in refs[0]
+        )
+    return False
+
+
+def _settlement_finality_matches_phase(phase, finality, refs):
+    allowed = {
+        "pay-evm-erc20": {"block-depth"},
+        "pay-solana-spl": {"commitment-level"},
+        "pay-cross-chain-htlc": {"htlc-reveal"},
+        "pay-cross-chain-liquidity-tank": {"liquidity-tank"},
+        "pay-ap2": {"provider-receipt"},
+        "pay-dem": {"bft-final"},
+    }
+    if phase == "pay-x402":
+        return (
+            len(refs) == 1
+            and (
+                (refs[0]["kind"] == "x402-event" and finality.get("model") == "block-depth")
+                or (refs[0]["kind"] == "x402" and finality.get("model") == "provider-receipt")
+            )
+        )
+    return _string_member(finality.get("model"), allowed.get(phase, set()))
+
+
+def _settlement_finality_shape_valid(value):
+    if not isinstance(value, dict):
+        return False
+    allowed = {
+        "model", "finalityBlocks", "finalityCommitmentLevel", "finalityObservedAt",
+    }
+    if set(value) - allowed:
+        return False
+    model = value.get("model")
+    if (
+        not _string_member(model, SUPPORTED_SETTLEMENT_FINALITY_MODELS)
+        or not _non_boolean_number(value.get("finalityObservedAt"))
+    ):
+        return False
+    if model == "block-depth":
+        blocks = value.get("finalityBlocks")
+        if (
+            isinstance(blocks, bool)
+            or not isinstance(blocks, int)
+            or blocks < 0
+            or blocks > _MAX_SAFE_JSON_INTEGER
+        ):
+            return False
+    elif "finalityBlocks" in value:
+        return False
+    if model == "commitment-level":
+        if not _string_member(
+            value.get("finalityCommitmentLevel"), {"processed", "confirmed", "finalized"}
+        ):
+            return False
+    elif "finalityCommitmentLevel" in value:
+        return False
+    return True
+
+
+def _settlement_evidence_shape_valid(record):
+    """Closed DACS-4 §9.7 shape and phase/outcome-conditional requirements."""
+    if not isinstance(record, dict):
+        return False
+    required = {"evidenceVersion", "jobId", "phase", "outcome", "observedAt", "signature"}
+    optional = {
+        "reason", "paymentTxRefs", "paymentAmount", "paymentFee",
+        "deliverableContentHash", "deliverableAnchor", "attestationRef",
+        "settlementFinality", "amendmentRefs", "supersedesEvidenceRef",
+    }
+    if not required <= set(record) or set(record) - required - optional:
+        return False
+    phase = record.get("phase")
+    outcome = record.get("outcome")
+    signature = record.get("signature")
+    if (
+        record.get("evidenceVersion") != "1"
+        or not _nonempty_jcs_string(record.get("jobId"))
+        or not _string_member(phase, EVIDENCE_PHASES)
+        or not _string_member(outcome, {"success", "failure"})
+        or not _non_boolean_number(record.get("observedAt"))
+        or not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or not _nonempty_jcs_string(signature.get("algorithm"))
+        or not _claim_reference_shape_valid(signature.get("signer"))
+        or not _nonempty_jcs_string(signature.get("value"))
+    ):
+        return False
+    if outcome == "failure":
+        if not _nonempty_jcs_string(record.get("reason")):
+            return False
+    elif "reason" in record:
+        return False
+    for field in ("paymentAmount", "paymentFee"):
+        if field in record and not _price_term_shape_valid(record[field]):
+            return False
+    if "paymentTxRefs" in record and (
+        not isinstance(record["paymentTxRefs"], list)
+        or any(not _chain_tx_ref_shape_valid(ref) for ref in record["paymentTxRefs"])
+        or not _payment_tx_refs_match_phase(
+            phase, record["paymentTxRefs"], success=outcome == "success"
+        )
+    ):
+        return False
+    if "deliverableContentHash" in record and not _sha256_hex(record["deliverableContentHash"]):
+        return False
+    if "deliverableAnchor" in record:
+        anchor = record["deliverableAnchor"]
+        # DACS-4 §9.7 deliberately types deliverableAnchor.kind as string. Only the
+        # storage-program phase narrows it below; AttestationRef's closed anchor
+        # union is a distinct type and must not be projected onto payload locations.
+        if (
+            not isinstance(anchor, dict)
+            or set(anchor) != {"kind", "locator"}
+            or not _nonempty_jcs_string(anchor.get("kind"))
+            or not _nonempty_jcs_string(anchor.get("locator"))
+        ):
+            return False
+    if "attestationRef" in record and not _attestation_ref_shape_valid(record["attestationRef"]):
+        return False
+    if "amendmentRefs" in record and (
+        not isinstance(record["amendmentRefs"], list)
+        or any(not _attestation_ref_shape_valid(ref) for ref in record["amendmentRefs"])
+    ):
+        return False
+    if "supersedesEvidenceRef" in record and not _attestation_ref_shape_valid(
+        record["supersedesEvidenceRef"]
+    ):
+        return False
+    if phase in PAYMENT_PHASES:
+        if outcome == "success" and (
+            not isinstance(record.get("paymentTxRefs"), list)
+            or not record["paymentTxRefs"]
+            or not _price_term_shape_valid(record.get("paymentAmount"))
+            or not _settlement_finality_shape_valid(record.get("settlementFinality"))
+            or not _settlement_finality_matches_phase(
+                phase, record["settlementFinality"], record["paymentTxRefs"]
+            )
+        ):
+            return False
+        if outcome == "failure" and "settlementFinality" in record:
+            return False
+        if any(field in record for field in ("deliverableContentHash", "deliverableAnchor", "attestationRef")):
+            return False
+    else:
+        if any(
+            field in record
+            for field in ("paymentTxRefs", "settlementFinality", "paymentAmount", "paymentFee")
+        ):
+            return False
+        if outcome == "success" and not _sha256_hex(record.get("deliverableContentHash")):
+            return False
+        if phase == "deliver-storage-program" and outcome == "success" and (
+            not isinstance(record.get("deliverableAnchor"), dict)
+            or record["deliverableAnchor"].get("kind") != "storage-program"
+        ):
+            return False
+        if phase == "deliver-attested-payload" and outcome == "success" and (
+            "deliverableAnchor" not in record or not _attestation_ref_shape_valid(record.get("attestationRef"))
+        ):
+            return False
+    return True
+
+
+def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
+                                            session_execution_authority_by_phase_key,
+                                            verified_receipt_by_canonical_ref):
+    """Resolve one exact phase from trusted SB-1 authority plus verified SR-2 receipt evidence."""
+    ref_key = canonical(ref).decode("utf-8")
+    receipt = verified_receipt_by_canonical_ref.get(ref_key)
+    if not isinstance(receipt, dict):
+        return (False, "settlement evidence lacks a verified SR-2 receipt", None)
+    matches = []
+    for phase_key, execution in session_execution_authority_by_phase_key.items():
+        if not isinstance(execution, dict):
+            continue
+        phase_index = execution.get("phaseIndex")
+        phase_kind = execution.get("phaseKind")
+        if (
+            isinstance(phase_index, bool)
+            or not isinstance(phase_index, int)
+            or phase_index < 0
+            or phase_key != f"{phase_index}:{phase_kind}"
+            or execution.get("jobId") != bundle.get("jobId")
+            or phase_kind != record.get("phase")
+            or execution.get("phaseOrchestrator") != signer
+        ):
+            continue
+        resolution_classes = [False]
+        if (
+            phase_kind in {"pay-cross-chain-htlc", "pay-cross-chain-liquidity-tank"}
+            and record.get("outcome") == "success"
+        ):
+            resolution_classes.append(True)
+        for resolved in resolution_classes:
+            ok, _ = _validate_evidence_resolution_binding(
+                ref, execution, receipt, bundle, phase_index, phase_kind, signer,
+                resolved=resolved,
+            )
+            if ok:
+                matches.append((phase_key, resolved))
+    if len(matches) != 1:
+        return (False, "evidence does not resolve to exactly one authenticated phase receipt", None)
+    return (True, matches[0], receipt)
+
+
+def _known_authenticated_st8_successor(
+    interim_ref,
+    interim_record,
+    phase_key,
+    bundle,
+    pubkeys,
+    reference_validation_by_canonical_ref,
+    session_execution_authority_by_phase_key,
+    verified_receipt_by_canonical_ref,
+):
+    """Return true only for a fully authenticated exact-:resolved successor already in authority."""
+    interim_id = canonical(interim_ref)
+    for ref_key, resolution in reference_validation_by_canonical_ref.items():
+        if not isinstance(ref_key, str) or not isinstance(resolution, dict):
+            continue
+        try:
+            candidate_ref = json.loads(ref_key)
+        except (json.JSONDecodeError, TypeError, ValueError, RecursionError):
+            continue
+        if not _attestation_ref_shape_valid(candidate_ref):
+            continue
+        candidate = resolution.get("record")
+        signature = candidate.get("signature") if isinstance(candidate, dict) else None
+        if (
+            not _settlement_evidence_shape_valid(candidate)
+            or candidate.get("jobId") != bundle.get("jobId")
+            or candidate.get("phase") != interim_record.get("phase")
+            or candidate.get("outcome") != "success"
+            or canonical(candidate.get("supersedesEvidenceRef")) != interim_id
+            or candidate_ref.get("contentHash") != settlement_evidence_hash(candidate)
+            or not isinstance(signature, dict)
+            or signature.get("algorithm") != "ed25519"
+            or not isinstance(signature.get("signer"), str)
+            or signature["signer"] not in pubkeys
+        ):
+            continue
+        canonical_ok, _ = sig6_canonical(signature.get("value", ""))
+        if not canonical_ok or not verify_sig(
+            pubkeys[signature["signer"]],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(candidate),
+            signature["value"],
+        ):
+            continue
+        binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
+            candidate_ref,
+            candidate,
+            signature["signer"],
+            bundle,
+            session_execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref,
+        )
+        lifecycle = resolution.get("lifecycle")
+        if (
+            binding_ok
+            and binding_result == (phase_key, True)
+            and isinstance(lifecycle, dict)
+            and _string_member(lifecycle.get("state"), {"included", "finalized"})
+        ):
+            return True
+    return False
+
+
+def validate_ebfab(
+    bundle,
+    listing,
+    pubkeys,
+    reference_validation_by_canonical_ref,
+    bundle_lifecycle,
+    session_execution_authority_by_phase_key,
+    verified_receipt_by_canonical_ref,
+):
+    """Execute the authenticated SEB gate needed before EBFAB reconciliation.
+
+    This bounded reference covers the protected #290 authority path: exact type/domain
+    signatures, content-bound signed listing pipeline, phase-key derivation, the
+    settlementEvidence bijection, and the SR-2 lifecycle threshold. It intentionally
+    remains test support rather than a general DACS validator.
+    """
+    if bundle_type(bundle) != "evidence-bound":
+        return (False, "not an EvidenceBoundFaultAttestationBundle", None)
+    if not _absolute_fault_bundle_shape_valid(bundle):
+        return (False, "malformed EvidenceBoundFaultAttestationBundle", None)
+    if (
+        not isinstance(listing, dict)
+        or not isinstance(pubkeys, dict)
+        or not isinstance(reference_validation_by_canonical_ref, dict)
+        or not isinstance(bundle_lifecycle, dict)
+        or not isinstance(session_execution_authority_by_phase_key, dict)
+        or not isinstance(verified_receipt_by_canonical_ref, dict)
+    ):
+        return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
+    ok, reason = _bundle_signatures_valid(bundle, pubkeys)
+    if not ok:
+        return (False, reason, None)
+    try:
+        permissible_faults = implied_fault_set(
+            bundle.get("outcome"), bundle.get("anchoredByRole"), roster_roles(bundle))
+    except (KeyError, TypeError, ValueError) as exc:
+        return (False, "invalid absolute fault attribution context: %s" % exc, None)
+    if bundle.get("faultedParty") not in permissible_faults:
+        return (False, "faultedParty is outside the §10.4.1 permissible set", None)
+    signature = listing.get("signature")
+    if not isinstance(signature, dict):
+        return (False, "listing signature missing", None)
+    signer = signature.get("signer")
+    if (
+        signature.get("algorithm") != "ed25519"
+        or not isinstance(signer, str)
+        or signer != listing.get("sellerPrimaryClaim")
+        or signer not in pubkeys
+    ):
+        return (False, "listing signer or algorithm unsupported", None)
+    canonical_ok, canonical_reason = sig6_canonical(signature.get("value", ""))
+    if not canonical_ok:
+        return (False, canonical_reason, None)
+    content_hash = listing_hash(listing)
+    if not verify_sig(pubkeys[signer], LISTING_DOMAIN, content_hash, signature["value"]):
+        return (False, "listing signature does not verify", None)
+
+    listing_ref = bundle.get("listingRef")
+    if not isinstance(listing_ref, dict) or (
+        listing_ref.get("listingId") != listing.get("listingId")
+        or listing_ref.get("version") != listing.get("listingVersion")
+        or listing_ref.get("contentHash") != content_hash
+    ):
+        return (False, "listingRef does not bind the signed listing", None)
+
+    pipeline = listing.get("pipeline")
+    summary = bundle.get("phaseSummary")
+    if not isinstance(pipeline, list) or not isinstance(summary, list):
+        return (False, "pipeline or phaseSummary is not an array", None)
+    if any(
+        not isinstance(step, dict)
+        or not _string_member(step.get("kind"), SUPPORTED_PHASES)
+        for step in pipeline
+    ):
+        return (False, "signed listing pipeline contains an unsupported phase", None)
+    pipeline_kinds = [step["kind"] for step in pipeline]
+    seen_indices = set()
+    expected_keys = []
+    optional_pointers = {}
+    summary_by_key = {}
+    for entry in summary:
+        if not isinstance(entry, dict):
+            return (False, "phaseSummary entry is not an object", None)
+        index = entry.get("index")
+        kind = entry.get("kind")
+        if (
+            isinstance(index, bool)
+            or not isinstance(index, int)
+            or index < 0
+            or index >= len(pipeline_kinds)
+            or index in seen_indices
+            or kind != pipeline_kinds[index]
+            or not _string_member(entry.get("outcome"), {"ok", "fail"})
+        ):
+            return (False, "phaseSummary contradicts the signed listing pipeline", None)
+        seen_indices.add(index)
+        summary_by_key[f"{index}:{kind}"] = entry
+        if kind in EVIDENCE_PHASES:
+            ref = entry.get("attestationRef")
+            phase_key = f"{index}:{kind}"
+            expected_keys.append(phase_key)
+            if ref is not None:
+                if not _attestation_ref_shape_valid(ref):
+                    return (False, "optional phase attestationRef is malformed", None)
+                optional_pointers[phase_key] = ref
+
+    # The signed phaseSummary is execution-result authority only when it is a
+    # complete, outcome-consistent trace of the deterministic listing pipeline.
+    # Otherwise an author could remove the same phase from phaseSummary and
+    # settlementEvidence and make the supposed exact set circular.
+    ordered_indices = [entry["index"] for entry in summary]
+    if ordered_indices != list(range(len(summary))):
+        return (False, "phaseSummary is not a contiguous execution prefix", None)
+    bundle_outcome = bundle.get("outcome")
+    retry_marker_indices = [
+        index for index, entry in enumerate(summary) if "retryExhausted" in entry
+    ]
+    retry_marker_expected = (
+        bundle_outcome == "failed-perm"
+        and bool(summary)
+        and summary[-1].get("outcome") == "fail"
+        and summary[-1].get("errorClass") == "transient"
+    )
+    if retry_marker_expected:
+        if retry_marker_indices != [len(summary) - 1] or summary[-1].get("retryExhausted") is not True:
+            return (False, "transient terminal failure lacks exclusive authenticated retry exhaustion", None)
+    elif retry_marker_indices:
+        return (False, "retryExhausted is present outside the terminal transient failure", None)
+    if bundle_outcome == "completed":
+        if len(summary) != len(pipeline):
+            return (False, "completed phaseSummary does not cover the full pipeline", None)
+        if any(
+            entry.get("outcome") == "fail" and entry.get("kind") != "rate"
+            for entry in summary
+        ):
+            return (False, "completed phaseSummary contains a fatal phase failure", None)
+    elif bundle_outcome in {"failed-perm", "failed-counterparty"}:
+        if not summary or summary[-1].get("outcome") != "fail":
+            return (False, "failed phaseSummary lacks its terminal failed result", None)
+        if any(entry.get("outcome") != "ok" for entry in summary[:-1]):
+            return (False, "failed phaseSummary is not an ok-prefix plus terminal failure", None)
+        expected_error_classes = {
+            "failed-perm": {"permanent", "transient"},
+            "failed-counterparty": {"counterparty", "settlement-atomicity"},
+        }
+        if not _string_member(
+            summary[-1].get("errorClass"), expected_error_classes[bundle_outcome]
+        ):
+            return (False, "terminal errorClass contradicts the failed bundle outcome", None)
+        if (
+            summary[-1].get("errorClass") == "transient"
+            and summary[-1].get("retryExhausted") is not True
+        ):
+            return (False, "transient terminal failure lacks authenticated retry exhaustion", None)
+    elif bundle_outcome == "failed-substrate":
+        phase_failure = (
+            bool(summary)
+            and summary[-1].get("outcome") == "fail"
+            and summary[-1].get("errorClass") == "substrate"
+            and all(entry.get("outcome") == "ok" for entry in summary[:-1])
+        )
+        completed_before_audit_failure = (
+            len(summary) == len(pipeline)
+            and all(
+                entry.get("outcome") == "ok"
+                or (entry.get("kind") == "rate" and entry.get("outcome") == "fail")
+                for entry in summary
+            )
+        )
+        if not (phase_failure or completed_before_audit_failure):
+            return (False, "failed-substrate phaseSummary is not outcome-consistent", None)
+    elif bundle_outcome in _ABORT:
+        if len(summary) >= len(pipeline) or any(entry.get("outcome") != "ok" for entry in summary):
+            return (False, "aborted phaseSummary is not the completed prefix before no-result abort", None)
+    else:
+        return (False, "unsupported EBFAB outcome", None)
+
+    actual_refs = bundle.get("settlementEvidence")
+    if not isinstance(actual_refs, list):
+        return (False, "settlementEvidence is not an array", None)
+    if any(not _attestation_ref_shape_valid(ref) for ref in actual_refs):
+        return (False, "settlementEvidence member is malformed", None)
+    actual_ids = [canonical(ref) for ref in actual_refs]
+    if len(actual_ids) != len(set(actual_ids)):
+        return (False, "settlementEvidence contains a raw duplicate", None)
+    exact_resolutions = [
+        reference_validation_by_canonical_ref.get(canonical(ref).decode("utf-8"))
+        for ref in actual_refs
+    ]
+    if any(not isinstance(resolution, dict) for resolution in exact_resolutions):
+        return (False, "settlementEvidence member lacks exact authenticated resolution", None)
+    authenticated_records = []
+    actual_keys = []
+    for ref, resolution in zip(actual_refs, exact_resolutions):
+        record = resolution.get("record")
+        if not isinstance(record, dict):
+            return (False, "settlement evidence lacks authenticated record", None)
+        signature = record.get("signature")
+        if (
+            not _settlement_evidence_shape_valid(record)
+            or record.get("jobId") != bundle.get("jobId")
+            or not isinstance(signature, dict)
+            or signature.get("algorithm") != "ed25519"
+            or not isinstance(signature.get("signer"), str)
+            or signature.get("signer") not in pubkeys
+            or ref.get("contentHash") != settlement_evidence_hash(record)
+        ):
+            return (False, "settlement evidence record does not bind this job, phase, signer, or hash", None)
+        canonical_ok, canonical_reason = sig6_canonical(signature.get("value", ""))
+        if not canonical_ok:
+            return (False, canonical_reason, None)
+        if not verify_sig(
+            pubkeys[signature["signer"]],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(record),
+            signature["value"],
+        ):
+            return (False, "settlement evidence signature does not verify", None)
+        binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
+            ref,
+            record,
+            signature["signer"],
+            bundle,
+            session_execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref,
+        )
+        if not binding_ok:
+            return (False, binding_result, None)
+        phase_key, resolved_record = binding_result
+        phase_index = int(phase_key.split(":", 1)[0])
+        if phase_index >= len(pipeline_kinds) or record.get("phase") != pipeline_kinds[phase_index]:
+            return (False, "authenticated phase is outside the signed listing pipeline", None)
+        summary_entry = summary_by_key.get(phase_key)
+        expected_record_outcome = (
+            "success" if isinstance(summary_entry, dict) and summary_entry.get("outcome") == "ok"
+            else "failure"
+        )
+        if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
+            return (False, "settlement evidence record contradicts the signed phase result", None)
+        actual_keys.append(phase_key)
+        authenticated_records.append((ref, resolution, record, phase_key, resolved_record))
+    if (
+        None in actual_keys
+        or len(actual_keys) != len(set(actual_keys))
+        or len(expected_keys) != len(set(expected_keys))
+        or set(actual_keys) != set(expected_keys)
+    ):
+        return (False, "settlementEvidence is not the exact phase-result set", None)
+    actual_ref_by_key = dict(zip(actual_keys, actual_refs))
+    for phase_key, pointer in optional_pointers.items():
+        if canonical(pointer) != canonical(actual_ref_by_key[phase_key]):
+            return (False, "optional phase pointer contradicts settlementEvidence", None)
+
+    # ST-8 terminal selection is derived from authenticated SettlementEvidence
+    # content. A signed success record binds the superseded interim reference;
+    # the referenced record must itself authenticate as the same job/phase and
+    # as the specific asymmetric interim failure. Caller-supplied class/edge
+    # metadata has no authority here.
+    st8_reason_by_phase = {
+        "pay-cross-chain-htlc": "dest-revealed-source-unclaimed",
+        "pay-cross-chain-liquidity-tank": "tank-locked-unreleased",
+    }
+    st8_reasons = set(st8_reason_by_phase.values())
+    for ref, resolution, record, phase_key, st8_resolved_anchor in authenticated_records:
+        summary_entry = summary_by_key[phase_key]
+        supersedes = record.get("supersedesEvidenceRef")
+        expected_st8_reason = st8_reason_by_phase.get(record.get("phase"))
+        expired_st8 = (
+            record.get("phase") == "pay-cross-chain-htlc"
+            and summary_entry.get("errorClass") == "settlement-atomicity"
+        ) or (
+            record.get("phase") == "pay-cross-chain-liquidity-tank"
+            and summary_entry.get("errorClass") == "substrate"
+            and record.get("reason") == expected_st8_reason
+        )
+        if expired_st8:
+            if (
+                record.get("outcome") != "failure"
+                or expected_st8_reason is None
+                or record.get("reason") != expected_st8_reason
+                or supersedes is not None
+            ):
+                return (False, "expired ST-8 record has the wrong authenticated terminal class", None)
+            if _known_authenticated_st8_successor(
+                ref,
+                record,
+                phase_key,
+                bundle,
+                pubkeys,
+                reference_validation_by_canonical_ref,
+                session_execution_authority_by_phase_key,
+                verified_receipt_by_canonical_ref,
+            ):
+                return (False, "expired ST-8 record suppresses a known authenticated successor", None)
+        elif record.get("reason") in st8_reasons:
+            return (False, "ST-8 interim reason contradicts the signed phase result", None)
+        # The binding-verified PC-2 logical address, not the optional edge,
+        # classifies an ST-8 resolution. A :resolved record must therefore
+        # carry the signed edge; an edge at the ordinary phase address is not
+        # a valid way to self-classify as ST-8.
+        if st8_resolved_anchor and (
+            record.get("outcome") != "success"
+            or expected_st8_reason is None
+            or supersedes is None
+        ):
+            return (False, "ST-8 resolved anchor lacks its signed supersession edge", None)
+        if supersedes is not None and not st8_resolved_anchor:
+            return (False, "ST-8 supersession edge is not bound to a resolved anchor", None)
+        if supersedes is None:
+            continue
+        if (
+            record.get("outcome") != "success"
+            or record.get("phase") not in {
+                "pay-cross-chain-htlc",
+                "pay-cross-chain-liquidity-tank",
+            }
+            or not _attestation_ref_shape_valid(supersedes)
+            or canonical(supersedes) in {canonical(item) for item in actual_refs}
+        ):
+            return (False, "invalid ST-8 supersession shape", None)
+        interim_resolution = reference_validation_by_canonical_ref.get(
+            canonical(supersedes).decode("utf-8")
+        )
+        if not isinstance(interim_resolution, dict):
+            return (False, "ST-8 interim record lacks authenticated resolution", None)
+        interim_record = interim_resolution.get("record")
+        interim_lifecycle = interim_resolution.get("lifecycle")
+        interim_signature = interim_record.get("signature") if isinstance(interim_record, dict) else None
+        if (
+            not _settlement_evidence_shape_valid(interim_record)
+            or interim_record.get("jobId") != bundle.get("jobId")
+            or interim_record.get("phase") != record.get("phase")
+            or interim_record.get("outcome") != "failure"
+            or interim_record.get("reason") != expected_st8_reason
+            or supersedes.get("contentHash") != settlement_evidence_hash(interim_record)
+            or not isinstance(interim_signature, dict)
+            or interim_signature.get("algorithm") != "ed25519"
+            or not isinstance(interim_signature.get("signer"), str)
+            or interim_signature.get("signer") not in pubkeys
+            or not isinstance(interim_lifecycle, dict)
+        ):
+            return (False, "ST-8 successor does not authenticate its same-phase interim failure", None)
+        canonical_ok, canonical_reason = sig6_canonical(interim_signature.get("value", ""))
+        if not canonical_ok:
+            return (False, canonical_reason, None)
+        if not verify_sig(
+            pubkeys[interim_signature["signer"]],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(interim_record),
+            interim_signature["value"],
+        ):
+            return (False, "ST-8 interim evidence signature does not verify", None)
+        interim_binding_ok, interim_binding_result, _ = _resolve_authenticated_evidence_binding(
+            supersedes,
+            interim_record,
+            interim_signature["signer"],
+            bundle,
+            session_execution_authority_by_phase_key,
+            verified_receipt_by_canonical_ref,
+        )
+        if not interim_binding_ok:
+            return (False, interim_binding_result, None)
+        interim_phase_key, interim_resolved = interim_binding_result
+        if interim_phase_key != phase_key or interim_resolved:
+            return (False, "ST-8 interim receipt resolves to a different authenticated phase", None)
+        if bundle.get("outcome") == "completed" and (
+            interim_lifecycle.get("state") != "finalized"
+            or interim_lifecycle.get("independentlyResolvable") is not True
+        ):
+            return (False, "completed ST-8 interim dependency is not finalized and independently resolvable", None)
+        if (
+            bundle.get("outcome") != "completed"
+            and not _string_member(interim_lifecycle.get("state"), {"included", "finalized"})
+        ):
+            return (False, "failed ST-8 interim dependency is not included or finalized", None)
+
+    completed = bundle.get("outcome") == "completed"
+    for resolution in exact_resolutions:
+        lifecycle = resolution.get("lifecycle")
+        if not isinstance(lifecycle, dict):
+            return (False, "settlement evidence lacks authenticated lifecycle", None)
+        state = lifecycle.get("state")
+        if completed and (
+            state != "finalized" or lifecycle.get("independentlyResolvable") is not True
+        ):
+            return (False, "completed evidence is not finalized and independently resolvable", None)
+        if not completed and not _string_member(state, {"included", "finalized"}):
+            return (False, "failed or aborted evidence is not included or finalized", None)
+    if completed and (
+        bundle_lifecycle.get("state") != "finalized"
+        or bundle_lifecycle.get("independentlyResolvable") is not True
+    ):
+        return (False, "completed EBFAB is not finalized and independently resolvable", None)
+    if not completed and not _string_member(
+        bundle_lifecycle.get("state"), {"included", "finalized"}
+    ):
+        return (False, "failed or aborted EBFAB is not included or finalized", None)
+    return (True, "ok", expected_keys)
+
+
+def _tagged_copy_valid_for_derive(tagged):
+    """Reject an EBFAB before divergence/ranking unless its authenticated SEB gate passes."""
+    bundle = tagged.get("bundle")
+    kind = bundle_type(bundle)
+    if kind is None:
+        return False
+    if kind != "evidence-bound":
+        return True
+    authority = tagged.get("ebfabAuthority")
+    if not isinstance(authority, dict):
+        return False
+    ok, _, _ = validate_ebfab(
+        bundle,
+        authority.get("listing"),
+        authority.get("publicKeys"),
+        authority.get("referenceValidationByCanonicalRef"),
+        authority.get("bundleLifecycle"),
+        authority.get("sessionExecutionAuthorityByPhaseKey"),
+        authority.get("verifiedReceiptByCanonicalRef"),
+    )
+    return ok
 
 
 def _post_fetch_valid(fetched, binding, pubkeys):
@@ -687,11 +1685,166 @@ def resolve_bb6(bindings, party_map=None, budget=BB6_DEFAULT_BUDGET, anchored=No
 # --------------------------------------------------------------------------- #
 # Extended-pointer triple-identity (E7)
 # --------------------------------------------------------------------------- #
+def _sha256_hex(value):
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
+
+
+_CLAIM_SCHEME = re.compile(r"[a-z][a-z0-9-]*\Z")
+_CANONICAL_PERCENT_ESCAPE = re.compile(r"%[0-9A-F]{2}")
+
+
+def _claim_reference_shape_valid(value):
+    """Generic DACS-1 grammar plus the scheme/NFC/parameter portions of CF-2."""
+    if not _nonempty_jcs_string(value) or ":" not in value:
+        return False
+    scheme, remainder = value.split(":", 1)
+    if _CLAIM_SCHEME.fullmatch(scheme) is None or not remainder:
+        return False
+    identifier, separator, parameters = remainder.partition("?")
+    if not identifier or unicodedata.normalize("NFC", identifier) != identifier:
+        return False
+    if not separator:
+        return True
+    if not parameters or "?" in parameters:
+        return False
+    pairs = parameters.split("&")
+    keys = []
+    for pair in pairs:
+        if pair.count("=") != 1:
+            return False
+        key, parameter_value = pair.split("=", 1)
+        if not key:
+            return False
+        for component in (key, parameter_value):
+            index = 0
+            while index < len(component):
+                if component[index] == "%":
+                    match = _CANONICAL_PERCENT_ESCAPE.match(component, index)
+                    if match is None:
+                        return False
+                    index = match.end()
+                else:
+                    # Reserved delimiters inside a component must use uppercase percent encoding.
+                    if component[index] in ":?&=%":
+                        return False
+                    index += 1
+        keys.append(key)
+    return keys == sorted(keys) and len(keys) == len(set(keys))
+
+
+def _attestation_ref_shape_valid(ref):
+    anchor = ref.get("anchor") if isinstance(ref, dict) else None
+    return (
+        isinstance(ref, dict)
+        and set(ref) <= {"anchor", "contentHash", "signer"}
+        and {"anchor", "contentHash"} <= set(ref)
+        and isinstance(anchor, dict)
+        and set(anchor) == {"kind", "locator"}
+        and _string_member(anchor.get("kind"), SUPPORTED_ATTESTATION_ANCHOR_KINDS)
+        and _nonempty_jcs_string(anchor.get("locator"))
+        and _sha256_hex(ref.get("contentHash"))
+        and (
+            "signer" not in ref
+            or _claim_reference_shape_valid(ref["signer"])
+        )
+    )
+
+
+def _absolute_fault_bundle_shape_valid(bundle):
+    if bundle_type(bundle) not in {"fault", "evidence-bound"}:
+        return False
+    listing_ref = bundle.get("listingRef")
+    parties = bundle.get("parties")
+    phase_summary = bundle.get("phaseSummary")
+    signatures = bundle.get("signatures")
+    if (
+        not isinstance(bundle.get("jobId"), str)
+        or not bundle["jobId"]
+        or not _string_member(bundle.get("outcome"), {
+            "completed", "failed-perm", "failed-counterparty", "failed-substrate",
+            "aborted-by-self", "aborted-by-other",
+        })
+        or not _string_member(bundle.get("faultedParty"), {"buyer", "seller", "orchestrator", "none"})
+        or not _string_member(bundle.get("anchoredByRole"), {"buyer", "seller", "orchestrator"})
+        or not isinstance(listing_ref, dict)
+        or not isinstance(listing_ref.get("listingId"), str)
+        or isinstance(listing_ref.get("version"), bool)
+        or not isinstance(listing_ref.get("version"), int)
+        or not _sha256_hex(listing_ref.get("contentHash"))
+        or not isinstance(parties, list)
+        or len(parties) < 2
+        or not isinstance(phase_summary, list)
+        or not isinstance(bundle.get("vetRecords"), list)
+        or not isinstance(bundle.get("settlementEvidence"), list)
+        or isinstance(bundle.get("recipeRegistryVersion"), bool)
+        or not isinstance(bundle.get("recipeRegistryVersion"), int)
+        or isinstance(bundle.get("railRegistryVersion"), bool)
+        or not isinstance(bundle.get("railRegistryVersion"), int)
+        or isinstance(bundle.get("finalisedAt"), bool)
+        or not isinstance(bundle.get("finalisedAt"), (int, float))
+        or not isinstance(signatures, list)
+    ):
+        return False
+    if any(
+        not isinstance(party, dict)
+        or not _string_member(party.get("role"), {"buyer", "seller", "orchestrator"})
+        or not isinstance(party.get("primaryClaim"), str)
+        or not _sha256_hex(party.get("bundleHash"))
+        for party in parties
+    ):
+        return False
+    if any(
+        not isinstance(entry, dict)
+        or isinstance(entry.get("index"), bool)
+        or not isinstance(entry.get("index"), int)
+        or not isinstance(entry.get("kind"), str)
+        or not _string_member(entry.get("outcome"), {"ok", "fail"})
+        or (
+            "errorClass" in entry
+            and not _string_member(
+                entry.get("errorClass"),
+                {"permanent", "transient", "counterparty", "substrate", "settlement-atomicity"},
+            )
+        )
+        for entry in phase_summary
+    ):
+        return False
+    if (
+        any(not _attestation_ref_shape_valid(ref) for ref in bundle["vetRecords"])
+        or any(not _attestation_ref_shape_valid(ref) for ref in bundle["settlementEvidence"])
+        or any(
+            entry.get("attestationRef") is not None
+            and not _attestation_ref_shape_valid(entry["attestationRef"])
+            for entry in phase_summary
+        )
+        or (
+            bundle.get("agreementRef") is not None
+            and not _attestation_ref_shape_valid(bundle["agreementRef"])
+        )
+    ):
+        return False
+    return all(
+        isinstance(signature, dict)
+        and isinstance(signature.get("party"), str)
+        and isinstance(signature.get("algorithm"), str)
+        and isinstance(signature.get("value"), str)
+        for signature in signatures
+    )
+
+
 def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
     """E7 triple-identity for a FaultBundleExtendedPointer anchoring. Returns
     {"ok": bool, "reason": str, "recomputedHash": hex}. BB-5 check 8 + §10.4.1 apply to
     the DEREFERENCED full bundle: binding.bundleContentHash == pointer.fullBundleContentHash
     == recomputed §10.4.1 hash of the dereferenced bundle. A mismatch is rejected content."""
+    if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
+        return {"ok": False, "reason": "pointer and dereferenced bundle must be objects", "recomputedHash": None}
+    if binding is not None and not isinstance(binding, dict):
+        return {"ok": False, "reason": "binding must be an object", "recomputedHash": None}
     if pointer.get("faultBundleVersion") != "1" or "bundleVersion" in pointer:
         return {"ok": False, "reason": "not a FaultBundleExtendedPointer discriminator", "recomputedHash": None}
     recomputed = bundle_hash(dereferenced_bundle)
@@ -700,6 +1853,144 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
     if binding is not None and binding.get("bundleContentHash") != recomputed:
         return {"ok": False, "reason": "binding.bundleContentHash != dereferenced hash", "recomputedHash": recomputed}
     return {"ok": True, "reason": "triple-identity holds", "recomputedHash": recomputed}
+
+
+def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
+    if not isinstance(full_bundle_url, str):
+        return False
+    if pointer_kind != "evidence-bound":
+        return True
+    try:
+        parsed_url = urlsplit(full_bundle_url)
+        return (
+            parsed_url.scheme == "https"
+            and bool(parsed_url.hostname)
+            and parsed_url.username is None
+            and parsed_url.password is None
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def resolve_absolute_fault_pointer(
+    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None
+):
+    """Validate FAB/EBFAB pointer type, domain, signature, and triple identity.
+
+    The caller supplies already-dereferenced content; this function performs no network I/O.
+    """
+    if not isinstance(pointer, dict) or not isinstance(dereferenced_bundle, dict):
+        return {"ok": False, "reason": "pointer and dereferenced bundle must be objects"}
+    if binding is not None and not isinstance(binding, dict):
+        return {"ok": False, "reason": "binding must be an object"}
+    known_pointer_discriminators = {
+        "bundleVersion",
+        "faultBundleVersion",
+        "evidenceBoundFaultBundleVersion",
+    }
+    if any(
+        isinstance(key, str)
+        and key.endswith("BundleVersion")
+        and key not in known_pointer_discriminators
+        for key in pointer
+    ):
+        return {"ok": False, "reason": "unknown pointer discriminator"}
+    present_discriminators = {
+        key for key in known_pointer_discriminators if key in pointer
+    }
+    if len(present_discriminators) != 1:
+        return {"ok": False, "reason": "non-exclusive pointer discriminator"}
+    only_discriminator = next(iter(present_discriminators))
+    if only_discriminator == "bundleVersion" or pointer.get(only_discriminator) != "1":
+        return {"ok": False, "reason": "unsupported pointer discriminator"}
+    pointer_candidates = []
+    if pointer.get("faultBundleVersion") == "1":
+        pointer_candidates.append(("fault", FAULT_POINTER_DOMAIN))
+    if pointer.get("evidenceBoundFaultBundleVersion") == "1":
+        pointer_candidates.append(("evidence-bound", EVIDENCE_BOUND_FAULT_POINTER_DOMAIN))
+    if len(pointer_candidates) != 1:
+        return {"ok": False, "reason": "unsupported or non-exclusive pointer discriminator"}
+    pointer_kind, domain = pointer_candidates[0]
+    if bundle_type(dereferenced_bundle) != pointer_kind:
+        return {"ok": False, "reason": "pointer and dereferenced bundle types differ"}
+    if pointer.get("pointerKind") != "extended":
+        return {"ok": False, "reason": "unsupported pointer kind"}
+    segment_refs = pointer.get("segmentRefs")
+    full_bundle_url = pointer.get("fullBundleUrl")
+    url_ok = _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url)
+    if (
+        not url_ok
+        or not _sha256_hex(pointer.get("fullBundleContentHash"))
+        or (segment_refs is not None and (
+            not isinstance(segment_refs, list)
+            or any(not _attestation_ref_shape_valid(ref) for ref in segment_refs)
+        ))
+    ):
+        return {"ok": False, "reason": "malformed extended pointer payload"}
+    if not _absolute_fault_bundle_shape_valid(dereferenced_bundle):
+        return {"ok": False, "reason": "malformed dereferenced absolute-fault bundle"}
+    bundle_ok, bundle_reason = _bundle_signatures_valid(dereferenced_bundle, pubkeys)
+    if not bundle_ok:
+        return {"ok": False, "reason": bundle_reason}
+    try:
+        permissible_faults = implied_fault_set(
+            dereferenced_bundle.get("outcome"),
+            dereferenced_bundle.get("anchoredByRole"),
+            roster_roles(dereferenced_bundle),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        return {"ok": False, "reason": "invalid absolute fault attribution context: %s" % exc}
+    if dereferenced_bundle.get("faultedParty") not in permissible_faults:
+        return {"ok": False, "reason": "faultedParty is outside the §10.4.1 permissible set"}
+    if pointer_kind == "evidence-bound":
+        if not isinstance(ebfab_authority, dict):
+            return {"ok": False, "reason": "EBFAB pointer lacks SEB validation authority"}
+        seb_ok, seb_reason, _ = validate_ebfab(
+            dereferenced_bundle,
+            ebfab_authority.get("listing"),
+            pubkeys,
+            ebfab_authority.get("referenceValidationByCanonicalRef"),
+            ebfab_authority.get("bundleLifecycle"),
+            ebfab_authority.get("sessionExecutionAuthorityByPhaseKey"),
+            ebfab_authority.get("verifiedReceiptByCanonicalRef"),
+        )
+        if not seb_ok:
+            return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}
+
+    signature = pointer.get("signature")
+    if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
+        return {"ok": False, "reason": "pointer signature missing or unsupported"}
+    signer = signature.get("signer")
+    if not isinstance(signer, str) or not isinstance(pubkeys, dict) or signer not in pubkeys:
+        return {"ok": False, "reason": "pointer signer key unavailable"}
+    role_claims = [
+        party.get("primaryClaim")
+        for party in dereferenced_bundle.get("parties", [])
+        if isinstance(party, dict)
+        and party.get("role") == dereferenced_bundle.get("anchoredByRole")
+    ]
+    if len(role_claims) != 1 or signer != role_claims[0]:
+        return {"ok": False, "reason": "pointer signer is not authorized for anchoredByRole"}
+    canonical_ok, _ = sig6_canonical(signature.get("value", ""))
+    if not canonical_ok or not verify_sig(
+        pubkeys[signer], domain, pointer_hash(pointer), signature.get("value", "")
+    ):
+        return {"ok": False, "reason": "pointer signature does not verify"}
+
+    recomputed = bundle_hash(dereferenced_bundle)
+    if pointer.get("fullBundleContentHash") != recomputed:
+        return {"ok": False, "reason": "dereferenced content hash mismatch"}
+    if binding is not None:
+        binding_result = verify_binding(
+            binding,
+            pubkeys,
+            expected_jobid=dereferenced_bundle["jobId"],
+            expected_role=dereferenced_bundle["anchoredByRole"],
+            expected_content_hash=recomputed,
+        )
+        if not binding_result["ok"]:
+            return {"ok": False, "reason": "binding invalid: " + binding_result["reason"]}
+    return {"ok": True, "reason": "pointer type, signature, and triple identity hold"}
 
 
 # --------------------------------------------------------------------------- #
@@ -717,13 +2008,16 @@ def _role_of_party(bundle, party):
     return None
 
 
-def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt", *, job_bound=False):
     """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
     complete ReplayableReputationDerivation implementation.
 
     tagged_bundles: list of {"bundle": <dict>, "resolvedRole": "buyer"|"seller",
       "counterpartyDisposition": "present"|"absent"|None, "counterpartyRef": ...?,
-      "absenceEvidenceRef": ...?} — each input copy carries its §10.5.1 resolution tag.
+      "absenceEvidenceRef": ...?, "selectedByRoleResolution": true?} — each input copy
+      carries its §10.5.1 resolution tag. The job-bound variant additionally requires a
+      trusted requested `resolvedJobId`. EBFAB inputs are admitted only by that variant and
+      require the true marker because BB-6 resolution precedes SEB admission.
 
     Returns a ReputationDerivation dict (bundleCount, metrics, resolutionContext,
     bundleRefs, windowingBasis). Metrics reproduce byte-identically across runs given
@@ -744,9 +2038,56 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         raise ValueError("windowingBasis must be one of %s (got %r)"
                          % (sorted(SUPPORTED_WINDOWING_BASES), basis))
     clock = basis  # guaranteed "finalisedAt" (the only implemented basis); no silent hardcode
-    scoped = [t for t in tagged_bundles
-              if party in _primary_claims(t["bundle"])
-              and window_start <= t["bundle"][clock] <= window_end]
+    if not job_bound:
+        # Historical replayableDerivationVersion "1" semantics: no trusted requested jobId
+        # member and no EBFAB admission. Keep this path byte-compatible with released v1.
+        scoped = [t for t in tagged_bundles
+                  if isinstance(t, dict)
+                  and bundle_type(t.get("bundle")) in {"legacy", "fault"}
+                  and party in _primary_claims(t["bundle"])
+                  and window_start <= t["bundle"][clock] <= window_end]
+    else:
+        candidates = []
+        rejected_selected_jobs = set()
+        for tagged in tagged_bundles:
+            if not isinstance(tagged, dict):
+                continue
+            bundle = tagged.get("bundle")
+            kind = bundle_type(bundle)
+            selected = tagged.get("selectedByRoleResolution") is True
+
+            # The requested jobId belongs to authenticated address/binding resolution
+            # context. Never recover it from returned bundle content.
+            if kind == "evidence-bound" and not selected:
+                continue
+            resolved_job = tagged.get("resolvedJobId")
+            if not isinstance(resolved_job, str) or not resolved_job:
+                if kind is None and not selected:
+                    continue
+                raise ValueError("admitted role resolution lacks trusted resolvedJobId")
+            if kind is None and not selected:
+                continue
+            if kind is None:
+                rejected_selected_jobs.add(resolved_job)
+                continue
+            if bundle.get("jobId") != resolved_job:
+                rejected_selected_jobs.add(resolved_job)
+                continue
+            if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
+                rejected_selected_jobs.add(resolved_job)
+                continue
+            if party not in _primary_claims(bundle):
+                continue
+            timestamp = bundle.get(clock)
+            if isinstance(timestamp, bool) or not isinstance(timestamp, (int, float)):
+                continue
+            if window_start <= timestamp <= window_end:
+                candidates.append(tagged)
+
+        scoped = [
+            tagged for tagged in candidates
+            if tagged["bundle"]["jobId"] not in rejected_selected_jobs
+        ]
 
     # group by jobId
     by_job = {}
@@ -769,9 +2110,9 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
             if divergence(self_c["bundle"], cp["bundle"]):
                 continue  # §10.4.3(d) dispute -> EXCLUDE from ALL metrics
             pair_faults = common_fault_set(self_c["bundle"], cp["bundle"])
-            # non-divergent mixed-version pair -> FAB authoritative
-            if is_fab(self_c["bundle"]) != is_fab(cp["bundle"]):
-                auth = self_c if is_fab(self_c["bundle"]) else cp
+            # §10.4.3 exhaustive authority: EBFAB > FAB > legacy after both copies validate.
+            if bundle_type_rank(self_c["bundle"]) != bundle_type_rank(cp["bundle"]):
+                auth = max((self_c, cp), key=lambda tagged: bundle_type_rank(tagged["bundle"]))
             else:
                 auth = self_c
         elif self_c is not None:
@@ -828,6 +2169,8 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     for h, t in refs:
         entry = {"contentHash": h, "resolvedRole": t["resolvedRole"],
                  "counterpartyDisposition": t.get("counterpartyDisposition")}
+        if job_bound:
+            entry["resolvedJobId"] = t["resolvedJobId"]
         if t.get("counterpartyDisposition") == "present":
             entry["counterpartyRef"] = t.get("counterpartyRef")
             if t.get("counterpartyRoleEvidence") is not None:
@@ -847,7 +2190,7 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
         # structural discriminator, never the legacy `derivationVersion` (CORE §11.1.2 new-type
         # refusal; mirrors the AttestationBundle/FaultAttestationBundle split). derive() emits the
         # ReplayableReputationDerivation; the legacy ReputationDerivation has no `resolutionContext`.
-        "replayableDerivationVersion": REPLAYABLE_DERIVATION_VERSION,
+        ("jobBoundReplayableDerivationVersion" if job_bound else "replayableDerivationVersion"): "1",
         "bundleCount": len(reconciled),
         "metrics": {
             "completionRate": completion_rate,
@@ -861,6 +2204,33 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
 
 
 REPLAYABLE_DERIVATION_VERSION = "1"
+JOB_BOUND_REPLAYABLE_DERIVATION_VERSION = "1"
+REPLAY_DERIVATION_DISCRIMINATORS = frozenset({
+    "derivationVersion",
+    "replayableDerivationVersion",
+    "jobBoundReplayableDerivationVersion",
+})
+
+
+def _unknown_replay_derivation_discriminators(d):
+    if not isinstance(d, dict):
+        return set()
+    return {
+        key for key in d
+        if (isinstance(key, str)
+            and key.endswith("DerivationVersion")
+            and key not in REPLAY_DERIVATION_DISCRIMINATORS)
+    }
+
+
+def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+    """Emit the released ReplayableReputationDerivation v1 shape and semantics."""
+    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=False)
+
+
+def derive_job_bound(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+    """Emit the distinct job-bound replay receipt used by strengthened EBFAB replay."""
+    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=True)
 
 
 def is_replayable_derivation(d):
@@ -868,7 +2238,17 @@ def is_replayable_derivation(d):
     replayableDerivationVersion discriminator and NOT the legacy derivationVersion (§10.5)."""
     return (isinstance(d, dict)
             and d.get("replayableDerivationVersion") == REPLAYABLE_DERIVATION_VERSION
-            and "derivationVersion" not in d)
+            and "derivationVersion" not in d
+            and "jobBoundReplayableDerivationVersion" not in d
+            and not _unknown_replay_derivation_discriminators(d))
+
+
+def is_job_bound_replayable_derivation(d):
+    return (isinstance(d, dict)
+            and d.get("jobBoundReplayableDerivationVersion") == JOB_BOUND_REPLAYABLE_DERIVATION_VERSION
+            and "derivationVersion" not in d
+            and "replayableDerivationVersion" not in d
+            and not _unknown_replay_derivation_discriminators(d))
 
 
 def require_replayable_derivation(d):
@@ -878,9 +2258,41 @@ def require_replayable_derivation(d):
     replay claim exists on the legacy ReputationDerivation. Returns {"ok": bool, "reason": str}."""
     if not isinstance(d, dict) or d.get("replayableDerivationVersion") != REPLAYABLE_DERIVATION_VERSION:
         return {"ok": False, "reason": "not a ReplayableReputationDerivation discriminator (replayableDerivationVersion != \"1\")"}
-    if "derivationVersion" in d:
+    unknown = _unknown_replay_derivation_discriminators(d)
+    if unknown:
+        return {"ok": False, "reason": "unknown/extra *DerivationVersion discriminator: "
+                + ", ".join(sorted(unknown))}
+    if "derivationVersion" in d or "jobBoundReplayableDerivationVersion" in d:
         return {"ok": False, "reason": "carries legacy derivationVersion; a ReplayableReputationDerivation MUST NOT carry derivationVersion"}
     return {"ok": True, "reason": "replayable-derivation discriminator holds"}
+
+
+def require_job_bound_replayable_derivation(d):
+    if (not isinstance(d, dict)
+            or d.get("jobBoundReplayableDerivationVersion") != JOB_BOUND_REPLAYABLE_DERIVATION_VERSION):
+        return {"ok": False, "reason": "not a JobBoundReplayableReputationDerivation discriminator"}
+    unknown = _unknown_replay_derivation_discriminators(d)
+    if unknown:
+        return {"ok": False, "reason": "unknown/extra *DerivationVersion discriminator: "
+                + ", ".join(sorted(unknown))}
+    if "derivationVersion" in d or "replayableDerivationVersion" in d:
+        return {"ok": False, "reason": "job-bound replay receipt carries another derivation discriminator"}
+    return {"ok": True, "reason": "job-bound replay discriminator holds"}
+
+
+def _require_supported_replay_derivation(d):
+    if not isinstance(d, dict):
+        return {"ok": False, "kind": None, "reason": "replay derivation is not an object"}
+    unknown = _unknown_replay_derivation_discriminators(d)
+    if unknown:
+        return {"ok": False, "kind": None,
+                "reason": "unknown/extra *DerivationVersion discriminator: "
+                          + ", ".join(sorted(unknown))}
+    if is_replayable_derivation(d):
+        return {"ok": True, "kind": "legacy"}
+    if is_job_bound_replayable_derivation(d):
+        return {"ok": True, "kind": "job-bound"}
+    return {"ok": False, "kind": None, "reason": "unsupported or non-exclusive replay derivation discriminator"}
 
 
 def receipt_required_members_present(derivation):
@@ -904,7 +2316,7 @@ def receipt_required_members_present(derivation):
          carries counterpartyRef + counterpartyRoleEvidence; an absent entry carries absenceEvidenceRef,
          and a write-input substrate carries absenceBinding).
     Returns (ok, [reasons])."""
-    gate = require_replayable_derivation(derivation)
+    gate = _require_supported_replay_derivation(derivation)
     if not gate["ok"]:
         return (False, ["discriminator refusal: " + gate["reason"]])
     # (2) resolutionContext REQUIRED array. Missing refuses even with empty bundleRefs (round-12
@@ -1020,7 +2432,7 @@ def _role_evidence_grammar(re_, ch, label):
     return (True, None)
 
 
-def _entry_structural_gate(entry, index):
+def _entry_structural_gate(entry, index, *, require_resolved_job=False):
     """Round-10 D6 + round-11 per-entry gate (step-5 1b). NO LONGER pure type-when-present: it now
     enforces PRESENCE + VOCABULARY + member types for the §10.5.3 ResolutionContextEntry grammar
     (spec DACS-5-VERIFY.md lines 535-552), so a malformed untrusted entry refuses DETERMINISTICALLY —
@@ -1038,6 +2450,10 @@ def _entry_structural_gate(entry, index):
     ch = entry.get("contentHash")
     if not isinstance(ch, str):
         return (False, "resolutionContext[%d]: contentHash must be a string (got %s)" % (index, type(ch).__name__))
+    if require_resolved_job:
+        resolved_job = entry.get("resolvedJobId")
+        if not isinstance(resolved_job, str) or not resolved_job:
+            return (False, "%s: resolvedJobId must be a non-empty string (got %r)" % (ch, resolved_job))
     # dict-typed members guarded downstream by falsy-tolerant `or {}` / `if not`: flag truthy non-dict only.
     for field in ("roleEvidence", "bb6Context", "counterpartyRef", "counterpartyRoleEvidence", "absenceEvidenceRef"):
         v = entry.get(field)
@@ -1181,9 +2597,10 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
     native address supplies a substrate's deterministic logical-to-native mapping (the reference
     default is identity on logical_address). evidence_deref(contentHash) -> AbsenceEvidence.
     Returns (ok, [reasons])."""
-    gate = require_replayable_derivation(derivation)
+    gate = _require_supported_replay_derivation(derivation)
     if not gate["ok"]:
         return (False, ["discriminator refusal: " + gate["reason"]])
+    job_bound = gate["kind"] == "job-bound"
     reasons = []
     ev_get = evidence_deref if evidence_deref is not None else (lambda h: None)
     # (1a) PRE-LOOP: resolutionContext is REQUIRED (spec :532). Missing now refuses with its own
@@ -1198,11 +2615,15 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
     for index, entry in enumerate(rc):
         # (1b) PER-ENTRY STRUCTURAL GATE: type-when-present for every receipt-supplied member the loop
         # reads by attr/iteration/index, BEFORE any of the falsy-only `or {}` idioms below run.
-        ok_entry, reason_entry = _entry_structural_gate(entry, index)
+        ok_entry, reason_entry = _entry_structural_gate(
+            entry, index, require_resolved_job=job_bound)
         if not ok_entry:
             reasons.append(reason_entry)
             continue
         ch = entry.get("contentHash")
+        # Released v1 derives the expected jobId from the authenticated copy. Only the
+        # structurally distinct job-bound type treats resolvedJobId as trusted/action-bearing.
+        resolved_job = entry.get("resolvedJobId") if job_bound else None
         role = entry.get("resolvedRole")
         other = _other(role) if role in ("buyer", "seller") else None
         re_ = entry.get("roleEvidence") or {}
@@ -1223,11 +2644,15 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         if not ok_w:
             reasons.append("%s: winner copy %s" % (ch, reason_w))
             continue
+        if job_bound and auth.get("jobId") != resolved_job:
+            reasons.append("%s: winner copy jobId != trusted resolvedJobId" % ch)
+            continue
+        expected_job = resolved_job if job_bound else auth.get("jobId")
         # (1) roleEvidence re-verification + (2) BB-6 reproduction.
         if re_.get("kind") == "binding":
             auth_binding = re_.get("binding") or {}
             vb = verify_binding(auth_binding, pubkeys,
-                                expected_jobid=auth.get("jobId"), expected_role=role,
+                                expected_jobid=expected_job, expected_role=role,
                                 expected_content_hash=ch)
             if not vb["ok"]:
                 reasons.append("%s: roleEvidence %s" % (ch, vb["reason"]))
@@ -1280,7 +2705,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             #    surface resolution) is not replayable; a malformed AUTHORIZED candidate fails the receipt closed.
             bad_candidate = None
             for cand in survivors:
-                vbc = verify_binding(cand, pubkeys, expected_jobid=auth.get("jobId"), expected_role=role)
+                vbc = verify_binding(cand, pubkeys, expected_jobid=expected_job, expected_role=role)
                 if not vbc["ok"]:
                     bad_candidate = (cand.get("nativeAddress"), vbc["reason"])
                     break
@@ -1354,6 +2779,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         else:
             pf_auth_ok, pf_auth_reason = _post_fetch_address_valid(
                 auth, re_.get("resolvedAddress"), role, ch, pubkeys,
+                expected_jobid=expected_job,
                 pure_mapping_resolver=pure_mapping_resolver)
             if not pf_auth_ok:
                 reasons.append("%s: authoritative copy %s" % (ch, pf_auth_reason))
@@ -1383,7 +2809,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if cre.get("kind") == "binding":
                 cp_binding = cre.get("binding") or {}
                 vb2 = verify_binding(cp_binding, pubkeys,
-                                     expected_jobid=auth.get("jobId"), expected_role=other,
+                                     expected_jobid=expected_job, expected_role=other,
                                      expected_content_hash=cref.get("contentHash"))
                 if not vb2["ok"]:
                     reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
@@ -1392,7 +2818,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             else:
                 pf_cp_ok, pf_cp_reason = _post_fetch_address_valid(
                     cp, cre.get("resolvedAddress"), other, cref.get("contentHash"), pubkeys,
-                    expected_jobid=auth.get("jobId"), pure_mapping_resolver=pure_mapping_resolver)
+                    expected_jobid=expected_job, pure_mapping_resolver=pure_mapping_resolver)
             if not pf_cp_ok:
                 reasons.append("%s: counterparty copy %s" % (ch, pf_cp_reason))
                 continue
@@ -1413,7 +2839,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if not isinstance(ab, dict):
                 reasons.append("%s: absent disposition missing absenceBinding" % ch)
                 continue
-            vb3 = verify_binding(ab, pubkeys, expected_jobid=auth.get("jobId"), expected_role=other)
+            vb3 = verify_binding(ab, pubkeys, expected_jobid=expected_job, expected_role=other)
             if not vb3["ok"]:
                 reasons.append("%s: absenceBinding %s" % (ch, vb3["reason"]))
                 continue
@@ -1424,7 +2850,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
 
 
 def replay_receipt(derivation, deref, party, window_start, window_end, evidence_deref=None, pubkeys=None,
-                   anchor_deref=None, pure_mapping_resolver=None):
+                   anchor_deref=None, pure_mapping_resolver=None, ebfab_authority_resolver=None):
     """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
     full per-copy validation (validate_resolution_context) — roleEvidence BB-4/BB-5, BB-6
     reproduction, §10.4.3 divergence against the dereferenced counterparty, and the absence
@@ -1433,8 +2859,10 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     invalid object carries no replay claim. evidence_deref(contentHash) -> AbsenceEvidence;
     pubkeys enables crypto binding-signature verification (None => structural only).
     Returns (byte_identical, replayed_derivation) — (False, None) on refusal."""
-    if not require_replayable_derivation(derivation)["ok"]:
+    gate = _require_supported_replay_derivation(derivation)
+    if not gate["ok"]:
         return (False, None)
+    job_bound = gate["kind"] == "job-bound"
     # (round-12) integrated-replay completeness gate BEFORE per-copy validation: an object missing the
     # required resolutionContext / metrics / bundleCount members, or whose context is not keyed 1:1 to
     # bundleRefs in order, carries no replay claim and must refuse deterministically (never raise).
@@ -1457,7 +2885,51 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
                "absenceBinding": entry.get("absenceBinding"),
                "roleEvidence": entry.get("roleEvidence"),
                "bb6Context": entry.get("bb6Context")}
+        if job_bound:
+            tag["resolvedJobId"] = entry["resolvedJobId"]
+            tag["selectedByRoleResolution"] = True
+            if bundle_type(b) == "evidence-bound":
+                authority = (
+                    ebfab_authority_resolver(b, entry)
+                    if callable(ebfab_authority_resolver)
+                    else None
+                )
+                if not isinstance(authority, dict):
+                    return (False, None)
+                tag["ebfabAuthority"] = authority
+                if not _tagged_copy_valid_for_derive(tag):
+                    return (False, None)
         tagged.append(tag)
+        if job_bound and entry.get("counterpartyDisposition") == "present":
+            counterparty = _deref_role_copy(
+                anchor_deref, entry.get("counterpartyRoleEvidence")
+            )
+            if bundle_type(counterparty) == "evidence-bound":
+                counterparty_entry = {
+                    "contentHash": (entry.get("counterpartyRef") or {}).get("contentHash"),
+                    "resolvedJobId": entry["resolvedJobId"],
+                    "resolvedRole": counterparty.get("anchoredByRole"),
+                    "roleEvidence": entry.get("counterpartyRoleEvidence"),
+                }
+                authority = (
+                    ebfab_authority_resolver(counterparty, counterparty_entry)
+                    if callable(ebfab_authority_resolver)
+                    else None
+                )
+                if not isinstance(authority, dict):
+                    return (False, None)
+                counterparty_tag = {
+                    "bundle": counterparty,
+                    "resolvedRole": counterparty.get("anchoredByRole"),
+                    "counterpartyDisposition": "present",
+                    "resolvedJobId": entry["resolvedJobId"],
+                    "selectedByRoleResolution": True,
+                    "roleEvidence": entry.get("counterpartyRoleEvidence"),
+                    "ebfabAuthority": authority,
+                }
+                if not _tagged_copy_valid_for_derive(counterparty_tag):
+                    return (False, None)
+                tagged.append(counterparty_tag)
     # (round-13 B3) read the now-REQUIRED, vocab-checked windowingBasis WITHOUT a silent default —
     # rrmp above guarantees it is present and in the vocab. Fail closed BEFORE the (bare) derive echo
     # when the recorded basis is a valid literal this reference cannot compute (sr2-anchor-timestamp):
@@ -1466,7 +2938,8 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     basis = derivation["windowingBasis"]
     if basis not in IMPLEMENTED_WINDOWING_BASES:
         return (False, None)   # declared basis valid but unimplemented -> no honest replay claim
-    replayed = derive(party, tagged, window_start, window_end, basis)
+    replayed = (derive_job_bound if job_bound else derive)(
+        party, tagged, window_start, window_end, basis)
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])
             and replayed["bundleCount"] == derivation["bundleCount"])
     return (same, replayed)

@@ -197,8 +197,183 @@
         "reputationEffect": "exclude",
         "reason": "pointer.fullBundleContentHash != recomputed §10.4.1 hash of the dereferenced bundle; rejected content (BB-7)"
       }
+    },
+    {
+      "name": "fab-pointer-wrong-version-rejected",
+      "rule": "§10.4.2 FaultBundleExtendedPointer discriminator (E7)",
+      "expected": "fail",
+      "note": "an otherwise genuine pointer carries faultBundleVersion 2; the consumer rejects the unsupported discriminator before hashing or using the dereferenced bundle.",
+      "nativeAddress": "stor-6f130d0835b6515890b5a4cbb658a6bdd8a4dc47",
+      "pointer": {
+        "faultBundleVersion": "2",
+        "pointerKind": "extended",
+        "fullBundleUrl": "https://cdn.example/FBEP-3",
+        "fullBundleContentHash": "83be55acda5aa033f6c825cec803d1cd0f2016066a757577dc839574c89cd084",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "IXr0CAfIZdqJyScjyzKXGUXBcXDmPohFHmaeeYxvwDFdEwp-gzx-98zivuTFeN-1TMSnJ3ph8PFrBZvZ2_OBCw"
+        }
+      },
+      "dereferenced": {
+        "faultBundleVersion": "1",
+        "jobId": "FBEP-3",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-FBEP-3",
+          "version": 1,
+          "contentHash": "f8273001c5de5ef027dccb2093d33ba69ab85d2bd7d2cc092322175aa4b36211"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1780004000000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "OlhSkEAM1olpFjjE0XL-HaTW9KPMYGndrQqym0XTkWIA0dfRAx3FRjB98BtDGXE8FlcS0G909CVUEXCgJWQaCQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "u2uCSZKEJsMp3L9tiOspfWytPo5U3ihv__pNag3JsBApuDljdJOGxWYr4q_Brzg7tS1n6OgkLWld-UKHsoO5Bg"
+          }
+        ]
+      },
+      "binding": {
+        "bindingVersion": "1",
+        "jobId": "FBEP-3",
+        "role": "seller",
+        "logicalAddress": "stor-5062f50fecab804f995d7ee65584839bd6f8fdfc4ea68829651d758926d77156",
+        "nativeAddress": "stor-6f130d0835b6515890b5a4cbb658a6bdd8a4dc47",
+        "bundleContentHash": "83be55acda5aa033f6c825cec803d1cd0f2016066a757577dc839574c89cd084",
+        "anchorTx": "demos-testnet:tx-6f130d0835b65158",
+        "signer": "did:demos:seller",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "HVqPnsuEPV8g3BYTUoH23DLuGL2A7R7T-D-KOr6DvKO14Th2MPolU_Lz9fPn8a84v_-QHJID8azF5dzdt8dbDg"
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "tripleIdentity": false,
+        "reputationEffect": "exclude",
+        "reason": "unsupported FaultBundleExtendedPointer discriminator; dereferenced content is not evaluated"
+      }
+    },
+    {
+      "name": "fab-pointer-ambiguous-bundle-version-rejected",
+      "rule": "§10.4.2 FaultBundleExtendedPointer discriminator (E7)",
+      "expected": "fail",
+      "note": "an otherwise genuine pointer carries both faultBundleVersion and bundleVersion; the consumer rejects the ambiguous discriminator before dereferenced-content hashing.",
+      "nativeAddress": "stor-df25c7909dda236767757908b369b16da0fac794",
+      "pointer": {
+        "faultBundleVersion": "1",
+        "pointerKind": "extended",
+        "fullBundleUrl": "https://cdn.example/FBEP-4",
+        "fullBundleContentHash": "eee2dc699ca37e7c13e9c600e600ce942c5b6781d31b22952fbedf5c542a7fa7",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "Y6nToz9Gq6WODt54_7gBYV5szXCRCnNONJpAEv44c8-XesfGp3sXzLjK8cMiGEO7AvYMUgTBJD7hPk0LVcNSDA"
+        },
+        "bundleVersion": "1"
+      },
+      "dereferenced": {
+        "faultBundleVersion": "1",
+        "jobId": "FBEP-4",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-FBEP-4",
+          "version": 1,
+          "contentHash": "ba950ddc86bce644da35da3b5cb9dd202fa15d5e0f08e9d2c4bd6441e580cb2e"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "9de64ca8c0729eefa9c184d36561e1dca8c5da1173978a0dd7685daced49fa8d",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "478511a528a87b893429adf3d019039303822fa568979785d79614562914fd07",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1780004000000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "BaWBMDHh-xL433YVlfUmqRJXHmcl3wn58Z_d3zEKImkMlsR-gb_9PA23y5YPPriKXb8LKRzC30pGQ4tP_KSWBA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "Ds0cSGbDHJHh4b9U67vF75pPImGqJyHuCKdcJWNqzvn08VKkzdF3bjr282ggJaQSlg_eSIDYefWi07ie0tJpBQ"
+          }
+        ]
+      },
+      "binding": {
+        "bindingVersion": "1",
+        "jobId": "FBEP-4",
+        "role": "seller",
+        "logicalAddress": "stor-231df676cb1558faf780f4a6e393d4d61aed8b1626b0a823566d94a58d8b8968",
+        "nativeAddress": "stor-df25c7909dda236767757908b369b16da0fac794",
+        "bundleContentHash": "eee2dc699ca37e7c13e9c600e600ce942c5b6781d31b22952fbedf5c542a7fa7",
+        "anchorTx": "demos-testnet:tx-df25c7909dda2367",
+        "signer": "did:demos:seller",
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:seller",
+          "value": "YmmxVwu6Wj0HGH2y8GNIJjlUYdHrlT3iHYhZltjLZ7f56CyngJvLdA9jO1Ji7SP6x8pa7CmFi47SrDGePlDDAg"
+        }
+      },
+      "want": {
+        "expected": "fail",
+        "tripleIdentity": false,
+        "reputationEffect": "exclude",
+        "reason": "non-exclusive FaultBundleExtendedPointer discriminator; dereferenced content is not evaluated"
+      }
     }
   ],
-  "count": 2,
-  "hash": "9d1329a1ecd7ab18f1b5d351d6f4ddbb33a46e903c1efff9ad0b8d87ce5a3bcf"
+  "count": 4,
+  "hash": "8cee708cf873e038b0e4707797f92811e6d9749cba5902c762ad82a059be00ce"
 }

@@ -73,6 +73,7 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
 - `fixtures/attestation-bundle-0004.json` — the full byte-stable completed §10.4 AttestationBundle fixture.
 - `fixtures/attestation-bundle-0004-seller.json` — the same `jobId` as DACS-VERIFY-0004 with a divergent `failed-counterparty` outcome; it verifies independently and has a different bundle hash.
 - `fixtures/attestation-bundle-htlc9.json` — the full byte-stable HTLC-9 asymmetric-settlement fixture.
+- `fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json` — deterministic signed listing/EBFAB fixture covering bundle and extended-pointer domains, discriminator/type-swap refusal, cross-type replay, signed-but-SEB-invalid rejection, EBFAB/EBFAB member divergence, and EBFAB authority across every older bundle type.
 - `fixtures/identity/control-gate-vectors.json` — the #170 DACS-1 controlled-use input→expected fixture pack: existence-only registry passes remain valid supporting context but cannot satisfy `presentedBy` / reputation-key use; malformed or unresolvable control proofs stay on the §7.5.1 4-value path.
 - `fixtures/settlement-evidence-payment-success.json` — a byte-stable pay-evm-erc20 success SettlementEvidence (§9.7) with its PaymentPhaseInput + PhaseHandlerResult, signed by a deterministic orchestrator key.
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable deliver-storage-program success SettlementEvidence (deliverable content hash + anchor, no settlementFinality).
@@ -95,6 +96,13 @@ python3 scripts/generate_artifact_reference_fixtures.py --check
 The generator upgrades the nested refs, re-hashes and re-signs the affected
 bundle/evidence bytes with the published test seeds, and refreshes the pinned
 golden hashes.
+
+The EBFAB compatibility fixture has its own deterministic generator:
+
+```sh
+python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --write
+python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --check
+```
 
 ## Implementation observations (non-normative)
 

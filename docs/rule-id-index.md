@@ -16,6 +16,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CF-* | Canonical form and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
+| CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
 | DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
 | DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |
@@ -49,6 +50,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RSV-* | SettlementEvidence semantic admission before reputation | §10.5.1 | §14.5 |
 | SB-* | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
 | SE-* | Sealed-envelope negotiation | §8.4.3 | §14.3 |
+| SEB-* | SettlementEvidence exact-set and phase-bijection validation | §10.4.3 | §14.5 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |
 | SR2-* | SR-2 write lifecycle, portable receipts, visibility separation, and stage gates | §5.1 | §14.8 |

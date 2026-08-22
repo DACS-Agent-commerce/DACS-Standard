@@ -184,6 +184,19 @@ def make_fab_pointer(keys, signer_role, full_url, full_content_hash):
     return p
 
 
+def resign_fab_pointer(keys, signer_role, pointer):
+    """Refresh a deliberately mutated pointer's genuine domain signature."""
+    unsigned = {key: value for key, value in pointer.items() if key != "signature"}
+    ph = binding_hash(unsigned)
+    payload = (FAULT_POINTER_DOMAIN + ph).encode("utf-8")
+    pointer["signature"] = {
+        "algorithm": "ed25519",
+        "signer": CLAIM[signer_role],
+        "value": b64u(keys[signer_role].sign(payload)),
+    }
+    return pointer
+
+
 def concrete_header(keys, name, spec, gaps, decision, note):
     return {
         "set": name,
@@ -1538,6 +1551,48 @@ def build_fab_extended_pointer(keys):
         "binding": make_binding(keys, v2j, "seller", "seller", native2, wrong),
         "want": {"expected": "fail", "tripleIdentity": False, "reputationEffect": "exclude",
                  "reason": "pointer.fullBundleContentHash != recomputed §10.4.1 hash of the dereferenced bundle; rejected content (BB-7)"},
+    })
+    # (3) wrong discriminator version: reject before dereferenced-content hashing.
+    v3j = j + "-3"
+    full3 = make_fab(keys, v3j, "completed", "none", "seller", ["buyer", "seller"])
+    h3 = bundle_hash(full3)
+    native3 = native_address(v3j, "seller")
+    pointer3 = make_fab_pointer(keys, "seller", f"https://cdn.example/{v3j}", h3)
+    pointer3["faultBundleVersion"] = "2"
+    resign_fab_pointer(keys, "seller", pointer3)
+    vectors.append({
+        "name": "fab-pointer-wrong-version-rejected",
+        "rule": "§10.4.2 FaultBundleExtendedPointer discriminator (E7)",
+        "expected": "fail",
+        "note": ("an otherwise genuine pointer carries faultBundleVersion 2; the consumer rejects the "
+                 "unsupported discriminator before hashing or using the dereferenced bundle."),
+        "nativeAddress": native3,
+        "pointer": pointer3,
+        "dereferenced": full3,
+        "binding": make_binding(keys, v3j, "seller", "seller", native3, h3),
+        "want": {"expected": "fail", "tripleIdentity": False, "reputationEffect": "exclude",
+                 "reason": "unsupported FaultBundleExtendedPointer discriminator; dereferenced content is not evaluated"},
+    })
+    # (4) ambiguous discriminator: legacy bundleVersion cannot coexist with faultBundleVersion.
+    v4j = j + "-4"
+    full4 = make_fab(keys, v4j, "completed", "none", "seller", ["buyer", "seller"])
+    h4 = bundle_hash(full4)
+    native4 = native_address(v4j, "seller")
+    pointer4 = make_fab_pointer(keys, "seller", f"https://cdn.example/{v4j}", h4)
+    pointer4["bundleVersion"] = "1"
+    resign_fab_pointer(keys, "seller", pointer4)
+    vectors.append({
+        "name": "fab-pointer-ambiguous-bundle-version-rejected",
+        "rule": "§10.4.2 FaultBundleExtendedPointer discriminator (E7)",
+        "expected": "fail",
+        "note": ("an otherwise genuine pointer carries both faultBundleVersion and bundleVersion; the "
+                 "consumer rejects the ambiguous discriminator before dereferenced-content hashing."),
+        "nativeAddress": native4,
+        "pointer": pointer4,
+        "dereferenced": full4,
+        "binding": make_binding(keys, v4j, "seller", "seller", native4, h4),
+        "want": {"expected": "fail", "tripleIdentity": False, "reputationEffect": "exclude",
+                 "reason": "non-exclusive FaultBundleExtendedPointer discriminator; dereferenced content is not evaluated"},
     })
     d["vectors"] = vectors
     return finalize(d)

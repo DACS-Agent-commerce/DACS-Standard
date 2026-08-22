@@ -77,6 +77,12 @@ jobs:
       - name: Verify reference-bearing fixtures are deterministic
         run: python3 scripts/generate_artifact_reference_fixtures.py --check
 
+      - name: Verify signed SEB authority vectors are deterministic
+        run: python3 scripts/generate_bundle_settlement_evidence_vectors.py --check
+
+      - name: Verify signed EBFAB compatibility fixture is deterministic
+        run: python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --check
+
       - name: Verify lifecycle vectors are deterministic and in sync
         run: python3 scripts/generate_lifecycle_vectors.py --check
 

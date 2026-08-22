@@ -29,12 +29,14 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
+| [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
+| [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
 | [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 49 | `error` / `fail` / `indeterminate` / `pass` |
-| [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 2 | `fail` / `pass` |
+| [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
@@ -144,6 +146,57 @@ raw measurement to the ceiled canonical quantity, while
 `agreement-validation` carries the pinned `pricing`, signed `terms`, expected
 verdict, and exact reason or computed amount. Run the dependency-free reference
 assertions with `python3 -m unittest tests.test_metered_pricing_vectors -v`.
+
+### `bundle-settlement-evidence-bijection-v0.4.json` — §10.4.3 SEB-1..SEB-6
+
+30 candidate vectors bind an `EvidenceBoundFaultAttestationBundle` raw top-level
+`settlementEvidence[]` array to the
+phase keys derived from a signature-verified DACS-1 listing pipeline and the
+domain-verified EBFAB `phaseSummary`; no caller-supplied expected set is trusted.
+They cover exact
+pointerless and pointer-bearing positives; missing, equal-count duplicate,
+coverage-complete duplicate, distinct-reference alias, extra, wrong-phase, non-evidence-phase, pointer
+reuse/conflict/dangling, and structural-before-uncertainty negatives; plus all
+four ST-8 top-level representations. Resolved ST-8 lists only the success
+successor; expired ST-8 lists the standing interim failure; known-successor
+suppression rejects. Repeated kinds remain distinct by index, a failed invocation
+is included, an invocation aborted before returning a result is excluded, and
+`accepted` evidence fails both the completed and failed/aborted lifecycle gates.
+Optional per-phase pointers remain optional.
+
+Each input selects a named execution authority carrying a real Ed25519-signed
+listing and EBFAB, bound by the EBFAB `listingRef`. The evaluator cryptographically
+verifies both canonical hashes and domains before deriving `P`; corrupted listing
+or bundle signatures, a listing signer not authorized by the declared publisher,
+and an unfinalized or unresolvable completed EBFAB reject. Inputs keep raw
+full-canonical reference keys, independently resolved phase keys, present optional
+pointers, SR-2 lifecycle overrides, ST-8 record classes/supersession edges, and
+unrelated authority disposition separate. Stable
+outputs use `verified`, `rejected`, or `indeterminate` plus one normative
+`reasonCode`; `reasonPrecedence` fixes cross-run code selection. The evaluator
+derives `P` from those authenticated artifacts and tests the exact SR-2 vocabulary:
+completed evidence is `finalized` and independently resolvable; failed/aborted
+evidence is `included` or `finalized` without importing that stricter ST-11
+resolution requirement.
+
+The deterministic signed compatibility fixture
+[`evidence-bound-fault-bundle-compatibility-v0.4.json`](../../fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json)
+verifies real Ed25519 signatures under the EBFAB domain, discriminator exclusivity,
+unknown/stripped-discriminator refusal, cross-type replay failure, rejection of a
+correctly signed but SEB-invalid EBFAB, and non-divergent EBFAB/EBFAB, EBFAB/FAB,
+and EBFAB/legacy authority. The authoritative EBFAB hash and validated phase set
+are pinned even though the otherwise-valid older type carries no SEB claim. A
+second independently SEB-valid EBFAB with a different canonical record for the
+same phase key diverges, and FAB/EBFAB extended-pointer type swaps reject under
+their distinct signed pointer domains.
+
+The candidate set has independent producer/consumer evidence: DACS Forge
+produced the signed fixture at
+[`4218eb93`](https://github.com/mj-deving/dacs-forge/commit/4218eb93c6c20c3f6cc7d2d4f485e454c3858de8),
+and `dacs-verify` consumed the serialized artifact and these vector bytes at
+[`03a03667`](https://github.com/mj-deving/dacs-verify/commit/03a036676fb624ab5374fd5f971267a11b2d2905).
+This is not yet formal run-file convergence under `CROSS-RUN.md`; a Demos
+cross-run and golden promotion remain pending.
 
 ### `bundle-absence-evidence-v0.3.json` — CORE §5 SR-2 + DACS-5 §10.4.3 / §10.5.1 guard (iv)
 
@@ -640,13 +693,71 @@ ed25519 over the §8.3.3 signed scope). Run (reference):
 `npx tsx conformance/security-vectors/channel-message-replay/run.mts` → 20/20
 (15 persisted vectors + 5 non-serialisable robustness assertions).
 
+### `claim-requirement-qualification-v0.3.json` — §7.7.1 CRQ-1..CRQ-4
+
+36 candidate vectors for qualifying authenticated, resolved `VerifyResult`
+objects against the complete applicable `ClaimRequirement` predicate before
+decision classification. The set covers exact positive matching, absent
+listing constraints with an implicit session-start version pin, competing old
+and current recipe results, wrong recipe version, the inclusive and exceeded age
+boundaries, parameter mismatch and absence, additional unrequested result data,
+same-scheme cross-satisfaction, negative and positive `oneOf` selection,
+preservation of applicable `error` and `indeterminate`, stale-indeterminate
+exclusion, an unrelated-result control, and fail-closed missing, unresolvable,
+wrong-job, and internally mismatched production contexts. Replay coverage uses
+genuinely signed synthetic `AttestationBundle`, `CompositeVerificationRecord`,
+and `VerifyResult` fixtures and includes the valid path, a signed wrong-job
+substitution, a same-job bundle missing the exact record reference, substituted
+requirement and result projections, and refusal of an unsigned `SessionRecord`.
+The eight additional preflight/reuse cases require exact latest-family
+selection, reject a non-live latest version without falling back to an older
+live version, classify explicit and implicit unresolved versions as `error`
+before decision precedence, and distinguish cache eligibility from aggregation
+applicability. Cross-session non-pass reuse requires authenticated exact
+originating-parameter equivalence; otherwise a current-predicate rerun replaces
+the cached decision or the phase returns `error` when no rerun is available.
+
+The inputs begin after reference, hash, signature, recipe-authority,
+attestation, and governing freshness validation. Those failures retain their
+governing dispositions and are not reclassified by this set. A declared
+`ClaimRequirement.maxAge` is an additional bound and cannot widen that baseline.
+`resolvedResults` is therefore a neutral projection of already-authenticated
+DACS `VerifyResult` fields, not a new wire artifact. The set-level
+`recipeRegistries` project the exact snapshots selected by each authenticated
+production or replay authority; `latestByFamily` supplies the implicit pin and
+`versionsByFamily` proves exact version existence plus availability. Parameter
+matching requires every requested own key to be present and canonically equal;
+additional extracted-data keys remain valid. `resultReuse` is neutral
+pre-aggregation cache provenance and optional rerun output; it is not a field
+added to `VerifyResult` v1.
+
+#### Vector schema
+
+Each entry in `recipeRegistries[]` contains `recipeRegistryVersion`,
+`latestByFamily`, and `versionsByFamily`; `latestByScheme` remains only as a
+negative control against scheme-wide fallback. `authenticatedSessionStarts`
+models the trusted in-process production boundary. `replayBundles` and
+`replayRecords` contain concrete domain-signed fixtures; `publicKeys` allows
+independent bundle, record, and result signature verification. Each entry in `vectors[]` contains `name`, `expected`
+(§7.5.1 four-value verdict), `note`, and `input`.
+`input.aggregationAuthority` selects either a production `vetInput` plus its
+authenticated session-start state or a replay bundle plus exact record reference;
+`input.generatedAt` is the fixed aggregation
+time; `input.requirement` is the canonical `BundleRequirement`; and
+`input.resolvedResults` contains the authenticated result projections available
+to §7.7.1. Optional `input.resultReuse` supplies parallel, neutral cache context
+for cross-session cases.
+
+This is a candidate set. Independent cross-run convergence and golden promotion
+remain pending.
+
 ### `verifyresult-acceptance-v0.1.json` — §7.12 (VerifyResult acceptance)
 
 13 vectors for the §7.12 consumer-side acceptance checks — three threat rows from the §12.4 matrix (#158) in one set:
 
 - **method substitution (#6):** `VerifyResult.method` MUST be in the recipe's `defaultMethod` ∪ `alternatives`; an unaccepted method is rejected.
 - **recipe poisoning (#7):** the recipe's steward signature MUST verify and `recipeVersion` MUST equal the version pinned for the session.
-- **VerifyResult replay (#17):** `identifier` MUST match the claim under verification per the CF-3 canonical identity; `bundleHash` binds the result to a bundle. **Cross-session reuse within `validUntil` is explicitly permitted** (and tested) — a conformant impl MUST NOT over-reject it.
+- **VerifyResult replay (#17):** `identifier` MUST match the claim under verification per the CF-3 canonical identity; `bundleHash` binds the result to a bundle. **Cross-session cache eligibility within `validUntil` is explicitly permitted** (and tested) — a conformant implementation MUST NOT blanket-reject it. VP-C1 and CRQ-2 remain the subsequent applicability gate: a cached pass is requalified under the consuming requirement, while a non-pass needs authenticated exact originating-parameter equivalence or a current-predicate rerun.
 
 Decision is the §7.5.1 four-value verdict, never collapsed: a steward key that cannot be resolved → `indeterminate` (not `fail`); malformed input → `error`. The set deliberately includes the SAFE cases (permitted cross-session reuse; CF-3 `cci:0x`/case canonicalisation) so existence of the rule can't be satisfied by blanket rejection.
 

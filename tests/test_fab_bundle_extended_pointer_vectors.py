@@ -29,7 +29,17 @@ except ImportError:  # pragma: no cover
 ROOT = Path(__file__).resolve().parents[1]
 VECTOR_PATH = ROOT / "conformance" / "vectors" / "security" / "fab-bundle-extended-pointer-v0.3.json"
 
-EXPECTED_NAMES = {"fab-pointer-valid", "fab-pointer-content-mismatch"}
+EXPECTED_NAMES = {
+    "fab-pointer-valid",
+    "fab-pointer-content-mismatch",
+    "fab-pointer-wrong-version-rejected",
+    "fab-pointer-ambiguous-bundle-version-rejected",
+}
+
+DISCRIMINATOR_NEGATIVES = {
+    "fab-pointer-wrong-version-rejected",
+    "fab-pointer-ambiguous-bundle-version-rejected",
+}
 
 
 def canonical(value):
@@ -59,7 +69,8 @@ class FabBundleExtendedPointerTests(unittest.TestCase):
 
     def test_pointer_is_fault_typed_discriminator(self):
         """E7: a FAB pointer carries faultBundleVersion and never bundleVersion."""
-        for v in self.vectors:
+        for name in EXPECTED_NAMES - DISCRIMINATOR_NEGATIVES:
+            v = self.by_name[name]
             p = v["pointer"]
             with self.subTest(vector=v["name"]):
                 self.assertEqual(p["faultBundleVersion"], "1")
@@ -76,7 +87,27 @@ class FabBundleExtendedPointerTests(unittest.TestCase):
                 self.assertEqual(res["ok"], v["want"]["tripleIdentity"],
                                  "resolve_fab_pointer(%s) disagrees with want (%s)" % (res, v["want"]))
                 # the recomputed §10.4.1 hash is the anchor of the identity
-                self.assertEqual(res["recomputedHash"], bundle_hash(v["dereferenced"]))
+                if v["name"] in DISCRIMINATOR_NEGATIVES:
+                    self.assertIsNone(res["recomputedHash"])
+                else:
+                    self.assertEqual(res["recomputedHash"], bundle_hash(v["dereferenced"]))
+
+    def test_discriminator_negatives_reject_before_dereferenced_hashing(self):
+        wrong = self.by_name["fab-pointer-wrong-version-rejected"]
+        ambiguous = self.by_name["fab-pointer-ambiguous-bundle-version-rejected"]
+        self.assertNotEqual(wrong["pointer"]["faultBundleVersion"], "1")
+        self.assertIn("bundleVersion", ambiguous["pointer"])
+        for vector in (wrong, ambiguous):
+            with self.subTest(vector=vector["name"]):
+                result = R.resolve_fab_pointer(
+                    vector["pointer"], vector["dereferenced"], vector["binding"]
+                )
+                self.assertFalse(result["ok"])
+                self.assertIsNone(result["recomputedHash"])
+                self.assertEqual(
+                    result["reason"],
+                    "not a FaultBundleExtendedPointer discriminator",
+                )
 
     def test_content_mismatch_is_rejected_not_absence(self):
         """The mismatch vector: pointer.fullBundleContentHash == binding.bundleContentHash,

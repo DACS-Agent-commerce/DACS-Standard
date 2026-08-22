@@ -205,9 +205,9 @@ class Round14HubReproductionTests(unittest.TestCase):
         privs = _privkeys(self.rrd)
         parties = [{"role": "buyer", "primaryClaim": "did:demos:buyer"},
                    {"role": "seller", "primaryClaim": "did:demos:seller"}]
-        self_copy = {"jobId": "J9", "anchoredByRole": "seller", "outcome": "failed-perm",
+        self_copy = {"bundleVersion": "1", "jobId": "J9", "anchoredByRole": "seller", "outcome": "failed-perm",
                      "parties": copy.deepcopy(parties)}
-        cp_true = {"jobId": "J9", "anchoredByRole": "buyer", "outcome": "failed-perm", "noteTag": "cp",
+        cp_true = {"bundleVersion": "1", "jobId": "J9", "anchoredByRole": "buyer", "outcome": "failed-perm", "noteTag": "cp",
                    "parties": copy.deepcopy(parties)}
         for b in (self_copy, cp_true):
             _add_bundle_signature(b, "buyer", privs)
@@ -293,7 +293,7 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
                    {"role": "seller", "primaryClaim": "did:demos:seller"}]
         if omit_role_holder:
             parties = [p for p in parties if p["role"] != role]
-        b = {"jobId": job_id, "anchoredByRole": role, "outcome": outcome, "parties": parties}
+        b = {"bundleVersion": "1", "jobId": job_id, "anchoredByRole": role, "outcome": outcome, "parties": parties}
         for r in ("buyer", "seller"):
             _add_bundle_signature(b, r, self.privs)
         return b
@@ -384,7 +384,7 @@ class Round14VerificationCompletion(unittest.TestCase):
     def _legacy(self, job, outcome, anchor_role, sign_roles, extra=None):
         """A legacy AttestationBundle (no faultBundleVersion) signed by `sign_roles`. `extra` merges
         HASHED fields BEFORE signing (so the signature covers them and stays valid under crypto)."""
-        b = {"jobId": job, "outcome": outcome, "anchoredByRole": anchor_role, "finalisedAt": self.FA,
+        b = {"bundleVersion": "1", "jobId": job, "outcome": outcome, "anchoredByRole": anchor_role, "finalisedAt": self.FA,
              "parties": [{"role": "buyer", "primaryClaim": "did:demos:buyer"},
                          {"role": "seller", "primaryClaim": "did:demos:seller"}]}
         if extra:

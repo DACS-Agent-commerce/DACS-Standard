@@ -27,7 +27,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
-| [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
+| [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 25 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
@@ -68,6 +68,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
+| [`x402-negotiated-protocol-v0.7.json`](x402-negotiated-protocol-v0.7.json) | §8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1 | 69 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
 _This table is generated from the set files — do not edit by hand._
@@ -355,6 +356,50 @@ Each entry carries `protocolVersion`, the received `responseHeader`, optional
 `evidence`, and `want`. Positive cases pin the JCS string and receipt hash;
 negative cases pin the rejection reason. This is a candidate set. Independent
 implementation cross-run and golden promotion remain pending.
+
+### `x402-negotiated-protocol-v0.7.json` — §9.5.7 XN-1..XN-11
+
+The negotiated-protocol set exercises the provider-neutral `x402:protocol`
+definition and the complete agreement-signed request and
+`PaymentRequirements` selection. Its Ed25519-signed Listing, Agreement, and
+SettlementEvidence fixtures cover current x402 v1 and v2 challenge shapes,
+exact full-reference membership, payee and payer binding, decimal conversion,
+request-body and extension commitments, local capability separation, and the
+independent scheme/network finality floor, including an EVM-to-direct-rail key
+alias and a non-EVM Solana exact settlement. The upstream wire shapes are pinned
+to `x402-foundation/x402@230e6a9a7eebce22c911a0687d6f4e6d1ac019f7`
+(`typescript/packages/core/src/types/payments.ts` and
+`typescript/packages/core/src/types/v1/index.ts`) rather than a mutable SDK
+interpretation.
+
+Negative cases reject global provider or asset policy, first-`railId` lookup,
+challenge substitution, redirects, incomplete `extra` or `extensions`, a
+facilitator acknowledgement without authenticated settlement, conflicting
+native event identity, unsupported `upto`/`batch` schemes, and use of the
+legacy `x402:default` rail for a new session—even by pinning its historical
+live revision. Legacy string-version evidence remains represented only for
+replay or an already-pinned continuation; negotiated evidence carries numeric
+`x402Version` and is never rewritten into the old shape.
+
+#### Vector schema
+
+`fixtures.v1` and `fixtures.v2` are complete signed controls. Each
+`vectors[]` entry names one base and carries ordered `add`, `remove`, or
+`replace` operations whose `path` is an array of object-member names and
+zero-based array indexes. Deep-copy the base and apply those operations to
+materialize the case. Any artifact mutation includes its deterministic updated
+signature in the patch, so a runner verifies the committed bytes and MUST NOT
+re-sign during materialization.
+
+Run the independent reference evaluator and signature checks with:
+
+```sh
+python3 -m unittest tests.test_x402_negotiated_protocol_vectors -v
+```
+
+Regenerate the deterministic file with
+`python3 scripts/generate_x402_negotiated_protocol_vectors.py --write`; CI uses
+the same generator with `--check`.
 
 ### `listing-preserve-unknown-v0.1.json` — CORE §B.7 SIG-3/SIG-5 + §11.1.2 + DPA-1
 

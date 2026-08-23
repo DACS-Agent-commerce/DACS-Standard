@@ -744,6 +744,16 @@ XN-10.
   `asset`, and `currency` MUST be non-empty strings; `network` MUST have the
   CAIP-2 `namespace:reference` form; and `extra` plus any
   `paymentRequiredExtensions` MUST be JSON objects valid under CORE §B.2.
+  URL syntax validation is not permission to connect. Both the unpaid and paid
+  requests, including every retry or retained replay, MUST apply the complete
+  DACS-1 §6.3.6 bounded server-fetch requirements immediately before each new
+  connection: validate every resolved address as public, pin the connection to
+  a validated address, repeat resolution and validation for each connection,
+  refuse redirects, omit ambient credentials, and enforce finite connection,
+  whole-request, and decoded-response-size bounds. A non-public target MAY be
+  used only through an explicit out-of-band operator allowlist that the
+  listing, agreement, challenge, and other counterparty-controlled content
+  cannot modify.
 
 - **(XN-3) Capability and operator separation.** Before the unpaid request, the
   executing implementation MUST establish local support for the exact

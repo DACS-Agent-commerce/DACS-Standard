@@ -1,6 +1,7 @@
 import base64
 import copy
 import hashlib
+import ipaddress
 import json
 import re
 import subprocess
@@ -205,6 +206,22 @@ def validate_ref(ref):
     return "pass"
 
 
+def public_http_target(url):
+    """Reject directly encoded non-public targets before a network adapter runs.
+
+    Hostname DNS, mixed-answer, and rebinding enforcement remains an executable
+    adapter obligation under DACS-1 §6.3.6; URL-only conformance cannot prove it.
+    """
+    try:
+        hostname = urlsplit(url).hostname
+        if hostname is None or hostname.lower() == "localhost":
+            return False
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        return True
+    return address.is_global
+
+
 def exact_atomic(amount, decimals):
     if not isinstance(amount, str) or not CD1.fullmatch(amount):
         raise ValueError("non-canonical decimal")
@@ -373,6 +390,8 @@ def evaluate(v):
         return ("indeterminate" if selection["scheme"] == "batch-settlement" else "fail"), "x402-capability-unsupported"
 
     request = ref["parameters"]["request"]
+    if not public_http_target(request["url"]):
+        return "fail", "non-public-request-target"
     if runtime.get("redirected") or runtime.get("effectiveUrl") != request["url"]:
         return "fail", "effective-request"
     try:
@@ -603,6 +622,11 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "unsigned-runtime-url-override",
             "lowercase-request-method",
             "non-https-request-url",
+            "bounded-fetch-localhost-target",
+            "bounded-fetch-ipv4-loopback-target",
+            "bounded-fetch-ipv4-private-target",
+            "bounded-fetch-ipv4-link-local-metadata-target",
+            "bounded-fetch-ipv6-loopback-target",
             "bare-network-label",
             "numeric-version-replaced-by-string",
             "negative-asset-decimals",

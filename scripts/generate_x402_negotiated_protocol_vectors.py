@@ -551,6 +551,31 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "non-https-request-url", "error", "XN-2",
              "payable target must be absolute HTTPS",
              lambda v: v["agreement"]["terms"]["rail"]["parameters"]["request"].update({"url": "http://seller.example/pay"}))
+    for name, unsafe_url in (
+        ("localhost", "https://localhost/pay"),
+        ("ipv4-loopback", "https://127.0.0.1/pay"),
+        ("ipv4-private", "https://10.0.0.1/pay"),
+        ("ipv4-link-local-metadata", "https://169.254.169.254/latest/meta-data/"),
+        ("ipv6-loopback", "https://[::1]/pay"),
+    ):
+        def unsafe_public_target(v, target=unsafe_url):
+            request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
+            request["url"] = target
+            v["listing"]["acceptedRails"][0] = copy.deepcopy(
+                v["agreement"]["terms"]["rail"])
+            v["runtime"]["selectedRailRef"] = copy.deepcopy(
+                v["agreement"]["terms"]["rail"])
+            v["runtime"]["effectiveUrl"] = target
+            v["http"]["paymentRequired"]["resource"]["url"] = target
+            v["evidence"]["paymentTxRefs"][0]["httpResource"] = target
+        add_case(
+            vectors,
+            f"bounded-fetch-{name}-target",
+            "fail",
+            "XN-2/DACS-1-6.3.6",
+            "a counterparty-selected non-public payable target rejects before signing",
+            unsafe_public_target,
+        )
     add_case(vectors, "bare-network-label", "error", "XN-2/XN-4",
              "a bare network label is not CAIP-2",
              lambda v: v["agreement"]["terms"]["rail"]["parameters"]["selection"].update({"network": "base"}))

@@ -1,0 +1,675 @@
+import base64
+import copy
+import hashlib
+import json
+import re
+import subprocess
+import sys
+import unittest
+from decimal import Decimal, InvalidOperation
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from scripts.jcs import canonicalize as jcs_canonicalize
+
+
+ROOT = Path(__file__).resolve().parents[1]
+VECTORS = ROOT / "conformance/vectors/security/x402-negotiated-protocol-v0.7.json"
+GENERATOR = ROOT / "scripts/generate_x402_negotiated_protocol_vectors.py"
+SAFE_INT = 2**53 - 1
+HEX_32 = re.compile(r"^[0-9a-f]{64}$")
+HTTP_TOKEN = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Z-]+$")
+CAIP2 = re.compile(r"^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$")
+CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
+EVM_EVENT = re.compile(r"^evm:([1-9][0-9]*):([0-9a-f]{64}):(0|[1-9][0-9]*)$")
+SOLANA_EVENT = re.compile(
+    r"^solana:(mainnet|devnet|testnet):([1-9A-HJ-NP-Za-km-z]+):(0|[1-9][0-9]*)$"
+)
+SOLANA_NETWORK_CLUSTERS = {
+    "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1": "devnet",
+}
+PROTOCOL_REQUIRED = {
+    "railVersion", "railId", "railType", "phaseHandler", "resolution",
+    "availability", "governance", "signature",
+}
+PROTOCOL_FORBIDDEN = {
+    "asset", "network", "parameters", "resourceBaseUrl", "provider",
+    "providers", "facilitator", "facilitatorEndpoint", "apiKey", "wallet", "rpc",
+}
+REF_FIELDS = {"railId", "railVersion", "parameters"}
+PARAM_FIELDS = {"request", "selection", "paymentRequiredExtensions"}
+REQUEST_FIELDS = {"method", "url", "bodyHash"}
+SELECTION_FIELDS = {
+    "x402Version", "scheme", "network", "asset", "assetDecimals",
+    "currency", "maxTimeoutSeconds", "extra",
+}
+EVIDENCE_REF_FIELDS = {
+    "kind", "httpResource", "paymentRequiredHash", "paymentReceiptHash",
+    "x402Version", "settlementNetwork", "settlementTransaction", "settlementEvent",
+}
+
+
+def digest(value):
+    return hashlib.sha256(jcs_canonicalize(value).encode("utf-8")).hexdigest()
+
+
+def b64u_decode(value):
+    if not isinstance(value, str) or not value or "=" in value:
+        raise ValueError("non-canonical base64url")
+    raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    if base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=") != value:
+        raise ValueError("non-canonical base64url")
+    return raw
+
+
+def verify_signature(public, domain, body, value):
+    try:
+        Ed25519PublicKey.from_public_bytes(b64u_decode(public)).verify(
+            b64u_decode(value), (domain + digest(body)).encode("ascii")
+        )
+        return True
+    except (InvalidSignature, TypeError, ValueError):
+        return False
+
+
+def verify_artifact_signatures(v):
+    keys = v.get("keys", {})
+    rail = v.get("railDefinition", {})
+    signature = rail.get("signature", {})
+    if not verify_signature(
+        keys.get("steward"), "dacs-rail:v1:",
+        {k: value for k, value in rail.items() if k != "signature"},
+        signature.get("value"),
+    ):
+        return False
+
+    listing = v.get("listing", {})
+    signature = listing.get("signature", {})
+    if not verify_signature(
+        keys.get("seller"), "dacs-listing:v1:",
+        {k: value for k, value in listing.items() if k != "signature"},
+        signature.get("value"),
+    ):
+        return False
+
+    agreement = v.get("agreement", {})
+    if agreement.get("payeeBoundAgreementVersion") != "1":
+        return False
+    body = {k: value for k, value in agreement.items() if k != "signatures"}
+    signatures = {s.get("party"): s for s in agreement.get("signatures", [])}
+    roles = {party.get("role"): party.get("primaryClaim") for party in agreement.get("parties", [])}
+    for role in ("buyer", "seller"):
+        signature = signatures.get(roles.get(role), {})
+        if not verify_signature(
+            keys.get(role), "dacs-payee-bound-agreement:v1:", body,
+            signature.get("value"),
+        ):
+            return False
+
+    evidence = v.get("evidence", {})
+    signature = evidence.get("signature", {})
+    if not verify_signature(
+        keys.get("orchestrator"), "dacs-evidence:v1:",
+        {k: value for k, value in evidence.items() if k != "signature"},
+        signature.get("value"),
+    ):
+        return False
+    return True
+
+
+def is_safe_positive(value):
+    return type(value) is int and 0 < value <= SAFE_INT
+
+
+def is_safe_nonnegative(value):
+    return type(value) is int and 0 <= value <= SAFE_INT
+
+
+def validate_protocol_definition(rail):
+    if not isinstance(rail, dict):
+        return "error"
+    if not PROTOCOL_REQUIRED.issubset(rail) or PROTOCOL_FORBIDDEN.intersection(rail):
+        return "error"
+    if set(rail) != PROTOCOL_REQUIRED:
+        return "error"
+    if (
+        rail.get("railId") != "x402:protocol"
+        or rail.get("railType") != "x402"
+        or rail.get("phaseHandler") != "pay-x402"
+        or rail.get("resolution") != {"kind": "x402-payment-required"}
+        or not is_safe_positive(rail.get("railVersion"))
+    ):
+        return "error"
+    return "pass"
+
+
+def validate_ref(ref):
+    if not isinstance(ref, dict) or set(ref) != REF_FIELDS:
+        return "error"
+    if ref.get("railId") != "x402:protocol" or not is_safe_positive(ref.get("railVersion")):
+        return "error"
+    parameters = ref.get("parameters")
+    if not isinstance(parameters, dict) or not set(parameters).issubset(PARAM_FIELDS):
+        return "error"
+    if not {"request", "selection"}.issubset(parameters):
+        return "error"
+    request = parameters.get("request")
+    if not isinstance(request, dict) or not set(request).issubset(REQUEST_FIELDS):
+        return "error"
+    if not {"method", "url"}.issubset(request):
+        return "error"
+    method = request.get("method")
+    if not isinstance(method, str) or not HTTP_TOKEN.fullmatch(method):
+        return "error"
+    try:
+        parsed = urlsplit(request.get("url"))
+    except (TypeError, ValueError):
+        return "error"
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:
+        return "error"
+    if "bodyHash" in request and not (
+        isinstance(request["bodyHash"], str) and HEX_32.fullmatch(request["bodyHash"])
+    ):
+        return "error"
+
+    selection = parameters.get("selection")
+    if not isinstance(selection, dict) or set(selection) != SELECTION_FIELDS:
+        return "error"
+    if not is_safe_positive(selection.get("x402Version")):
+        return "error"
+    if not is_safe_positive(selection.get("maxTimeoutSeconds")):
+        return "error"
+    if not is_safe_nonnegative(selection.get("assetDecimals")):
+        return "error"
+    for field in ("scheme", "network", "asset", "currency"):
+        if not isinstance(selection.get(field), str) or not selection[field]:
+            return "error"
+    if not CAIP2.fullmatch(selection["network"]):
+        return "error"
+    if not isinstance(selection.get("extra"), dict):
+        return "error"
+    if "paymentRequiredExtensions" in parameters and not isinstance(
+        parameters["paymentRequiredExtensions"], dict
+    ):
+        return "error"
+    if selection["x402Version"] == 1 and "paymentRequiredExtensions" in parameters:
+        return "error"
+    try:
+        jcs_canonicalize(selection["extra"])
+        if "paymentRequiredExtensions" in parameters:
+            jcs_canonicalize(parameters["paymentRequiredExtensions"])
+    except (TypeError, ValueError):
+        return "error"
+    return "pass"
+
+
+def exact_atomic(amount, decimals):
+    if not isinstance(amount, str) or not CD1.fullmatch(amount):
+        raise ValueError("non-canonical decimal")
+    try:
+        atomic = Decimal(amount) * (Decimal(10) ** decimals)
+    except InvalidOperation as exc:
+        raise ValueError("invalid decimal") from exc
+    if atomic != atomic.to_integral_value() or atomic <= 0:
+        raise ValueError("not exactly representable")
+    value = str(int(atomic))
+    if not re.fullmatch(r"[1-9][0-9]*", value):
+        raise ValueError("non-canonical atomic amount")
+    return value
+
+
+def decode_response_header(header, version):
+    wanted = "X-PAYMENT-RESPONSE" if version == 1 else "PAYMENT-RESPONSE" if version == 2 else None
+    if wanted is None or not isinstance(header, dict) or header.get("name") != wanted:
+        raise ValueError("wrong response header")
+    raw = base64.b64decode(header.get("value"), validate=True)
+    response = json.loads(raw.decode("utf-8"))
+    if not isinstance(response, dict):
+        raise ValueError("response is not object")
+    return response
+
+
+def native_event_matches(event, network, transaction):
+    if not isinstance(event, str):
+        return False
+    evm = EVM_EVENT.fullmatch(event)
+    if evm:
+        return network == f"eip155:{evm.group(1)}" and transaction == evm.group(2)
+    solana = SOLANA_EVENT.fullmatch(event)
+    if solana:
+        return (
+            SOLANA_NETWORK_CLUSTERS.get(network) == solana.group(1)
+            and transaction == solana.group(2)
+        )
+    return False
+
+
+def materialize_vector(data, vector):
+    value = copy.deepcopy(data["fixtures"][vector["base"]])
+    for patch in vector.get("patch", []):
+        path = patch.get("path")
+        if not isinstance(path, list) or not path:
+            raise ValueError("patch path must be a non-empty array")
+        target = value
+        for segment in path[:-1]:
+            target = target[segment]
+        leaf = path[-1]
+        operation = patch.get("op")
+        if operation in {"add", "replace"}:
+            target[leaf] = copy.deepcopy(patch["value"])
+        elif operation == "remove":
+            del target[leaf]
+        else:
+            raise ValueError(f"unsupported patch operation: {operation!r}")
+    return {
+        **{name: copy.deepcopy(item) for name, item in vector.items()
+           if name not in {"base", "patch"}},
+        **value,
+    }
+
+
+def evaluate(v):
+    operation = v.get("operation")
+    rail = v.get("railDefinition")
+
+    if operation == "validate-definition":
+        if not verify_artifact_signatures(v):
+            return "fail", "signature"
+        return validate_protocol_definition(rail), None
+
+    if operation == "new-session":
+        if not verify_artifact_signatures(v):
+            return "fail", "signature"
+        if rail.get("railId") == "x402:default":
+            return "fail", "legacy-default-new-session"
+        return "pass", None
+
+    if operation in {"legacy-replay", "legacy-continuation"}:
+        if not verify_artifact_signatures(v):
+            return "fail", "signature"
+        if (
+            operation == "legacy-continuation"
+            and v.get("runtime", {}).get("sessionState") != "in-flight"
+        ):
+            return "fail", "not-in-flight"
+        refs = v.get("evidence", {}).get("paymentTxRefs", [])
+        if len(refs) != 1:
+            return "error", "shape"
+        ref = refs[0]
+        if (
+            rail.get("railId") == "x402:default"
+            and ref.get("kind") == "x402-event"
+            and isinstance(ref.get("protocolVersion"), str)
+            and "x402Version" not in ref
+        ):
+            return "pass", None
+        return "error", "legacy-boundary"
+
+    if operation == "retry":
+        if not verify_artifact_signatures(v):
+            return "fail", "signature"
+        if v.get("runtime", {}).get("retryWouldAuthorize"):
+            return "fail", "reauthorization"
+        return "pass", "reconciliation-pending"
+
+    if operation != "execute":
+        return "error", "operation"
+    if not verify_artifact_signatures(v):
+        return "fail", "signature"
+    if validate_protocol_definition(rail) != "pass":
+        return "error", "definition"
+
+    agreement = v.get("agreement", {})
+    ref = agreement.get("terms", {}).get("rail")
+    ref_result = validate_ref(ref)
+    if ref_result != "pass":
+        return ref_result, "rail-ref-shape"
+    canonical_ref = jcs_canonicalize(ref)
+    listed = v.get("listing", {}).get("acceptedRails")
+    if not isinstance(listed, list) or not listed:
+        return "fail", "listing-membership"
+    try:
+        canonical_listed = [jcs_canonicalize(item) for item in listed]
+    except (TypeError, ValueError):
+        return "error", "listing-ref-shape"
+    if len(canonical_listed) != len(set(canonical_listed)):
+        return "fail", "duplicate-listing-ref"
+    if canonical_listed.count(canonical_ref) != 1:
+        return "fail", "listing-membership"
+    if jcs_canonicalize(v.get("runtime", {}).get("selectedRailRef")) != canonical_ref:
+        return "fail", "runtime-selection"
+
+    parties = agreement.get("parties", [])
+    buyer = [p for p in parties if p.get("role") == "buyer"]
+    seller = [p for p in parties if p.get("role") == "seller"]
+    if len(buyer) != 1 or len(seller) != 1:
+        return "fail", "party-cardinality"
+    runtime = v.get("runtime", {})
+    if runtime.get("payer", {}).get("primaryClaim") != buyer[0].get("primaryClaim"):
+        return "fail", "payer-party"
+    if runtime.get("payer", {}).get("payingKey") != buyer[0].get("primaryClaim"):
+        return "fail", "payer-control"
+    if runtime.get("payee", {}).get("primaryClaim") != seller[0].get("primaryClaim"):
+        return "fail", "payee-party"
+    bindings = agreement.get("terms", {}).get("payoutBindings", [])
+    binding = [item for item in bindings if (
+        item.get("railId") == "x402:protocol"
+        and item.get("phaseIndex") == runtime.get("phaseIndex")
+    )]
+    if len(binding) != 1 or binding[0].get("payeeAddress") != runtime.get("payee", {}).get("payeeAddress"):
+        return "fail", "payout-binding"
+
+    if runtime.get("operatorConfigSource") != "local-operator-policy":
+        return "error", "operator-config-source"
+    selection = ref["parameters"]["selection"]
+    capability = v.get("capability", {})
+    tuple_value = [selection["x402Version"], selection["scheme"], selection["network"]]
+    if tuple_value not in capability.get("supportedTuples", []):
+        return "fail", "x402-capability-unsupported"
+    if selection["scheme"] != "exact" or "dacs-x402-exact:v1" not in capability.get("bindingProfiles", []):
+        # Other schemes are protocol-valid but have no v0.7 DACS success profile.
+        return ("indeterminate" if selection["scheme"] == "batch-settlement" else "fail"), "x402-capability-unsupported"
+
+    request = ref["parameters"]["request"]
+    if runtime.get("redirected") or runtime.get("effectiveUrl") != request["url"]:
+        return "fail", "effective-request"
+    try:
+        body = base64.b64decode(runtime.get("requestBodyBase64"), validate=True)
+    except Exception:
+        return "error", "request-body"
+    if "bodyHash" in request:
+        if hashlib.sha256(body).hexdigest() != request["bodyHash"]:
+            return "fail", "request-body-hash"
+    elif body:
+        return "fail", "unsigned-request-body"
+
+    http = v.get("http", {})
+    if http.get("status") != 402:
+        return "fail", "not-payment-required"
+    required = http.get("paymentRequired")
+    if not isinstance(required, dict) or required.get("x402Version") != selection["x402Version"]:
+        return "error", "payment-required-version"
+    version = selection["x402Version"]
+    accepts = required.get("accepts")
+    if not isinstance(accepts, list):
+        return "error", "payment-required-shape"
+    if version == 2:
+        resource = required.get("resource")
+        if not isinstance(resource, dict):
+            return "error", "payment-required-shape"
+        resource_url = resource.get("url")
+        actual_extensions_present = "extensions" in required
+        signed_extensions_present = "paymentRequiredExtensions" in ref["parameters"]
+        if actual_extensions_present != signed_extensions_present:
+            return "fail", "extension-presence"
+        if actual_extensions_present and jcs_canonicalize(required["extensions"]) != jcs_canonicalize(
+            ref["parameters"]["paymentRequiredExtensions"]
+        ):
+            return "fail", "extensions"
+    elif version == 1:
+        resource_url = None
+        if "extensions" in required or "paymentRequiredExtensions" in ref["parameters"]:
+            return "fail", "legacy-extension-boundary"
+    else:
+        return "error", "unsupported-version"
+
+    price = agreement.get("terms", {}).get("price", {})
+    if selection["currency"] != price.get("currency"):
+        return "fail", "currency"
+    metadata = capability.get("assetMetadata", {})
+    if (
+        metadata.get("network") != selection["network"]
+        or metadata.get("asset") != selection["asset"]
+        or metadata.get("decimals") != selection["assetDecimals"]
+    ):
+        return "fail", "asset-metadata"
+    try:
+        amount = exact_atomic(price.get("amount"), selection["assetDecimals"])
+    except (TypeError, ValueError):
+        return "fail", "exact-amount"
+    pay_to = binding[0]["payeeAddress"]
+    matches = []
+    for candidate in accepts:
+        if not isinstance(candidate, dict):
+            return "error", "accepts-shape"
+        candidate_amount = candidate.get("amount") if version == 2 else candidate.get("maxAmountRequired")
+        candidate_url = resource_url if version == 2 else candidate.get("resource")
+        if (
+            candidate_url == request["url"]
+            and candidate.get("scheme") == selection["scheme"]
+            and candidate.get("network") == selection["network"]
+            and candidate.get("asset") == selection["asset"]
+            and candidate.get("maxTimeoutSeconds") == selection["maxTimeoutSeconds"]
+            and isinstance(candidate.get("extra"), dict)
+            and jcs_canonicalize(candidate["extra"]) == jcs_canonicalize(selection["extra"])
+            and candidate_amount == amount
+            and candidate.get("payTo") == pay_to
+        ):
+            matches.append(candidate)
+    if len(matches) != 1:
+        return "fail", "challenge-match"
+    action_bearing = set(http.get("actionBearingExtensions", []))
+    understood = set(capability.get("understoodActionExtensions", []))
+    if not action_bearing.issubset(understood):
+        return "fail", "unsupported-action-extension"
+
+    try:
+        response = decode_response_header(http.get("responseHeader"), version)
+    except Exception:
+        return "error", "response-header"
+    if response.get("success") is not True:
+        return "fail", "response-not-success"
+    if response.get("network") != selection["network"]:
+        return "fail", "response-network"
+    if response.get("payer") != runtime.get("payer", {}).get("paymentAddress"):
+        return "fail", "response-payer"
+
+    evidence = v.get("evidence", {})
+    refs = evidence.get("paymentTxRefs")
+    if not isinstance(refs, list) or len(refs) != 1:
+        return "error", "evidence-ref-count"
+    evidence_ref = refs[0]
+    if not isinstance(evidence_ref, dict) or set(evidence_ref) != EVIDENCE_REF_FIELDS:
+        return "error", "evidence-ref-shape"
+    if evidence_ref.get("kind") != "x402-protocol" or type(evidence_ref.get("x402Version")) is not int:
+        return "error", "evidence-version"
+    if evidence_ref["x402Version"] != version:
+        return "fail", "evidence-version"
+    if not HEX_32.fullmatch(evidence_ref.get("paymentRequiredHash", "")) or not HEX_32.fullmatch(
+        evidence_ref.get("paymentReceiptHash", "")
+    ):
+        return "error", "evidence-hash-shape"
+    if evidence_ref["paymentRequiredHash"] != digest(required):
+        return "fail", "payment-required-hash"
+    if evidence_ref["paymentReceiptHash"] != digest(response):
+        return "fail", "payment-receipt-hash"
+    if (
+        evidence_ref.get("httpResource") != request["url"]
+        or evidence_ref.get("settlementNetwork") != selection["network"]
+        or evidence_ref.get("settlementTransaction") != response.get("transaction")
+    ):
+        return "fail", "evidence-response-binding"
+    finality = evidence.get("settlementFinality", {})
+    profile = finality.get("schemeNetworkFinality", {})
+    if (
+        finality.get("model") != "scheme-network-finality"
+        or profile != {
+            "scheme": selection["scheme"],
+            "network": selection["network"],
+            "bindingProfile": "dacs-x402-exact:v1",
+        }
+    ):
+        return "fail", "finality-profile"
+
+    ledger = v.get("ledger")
+    if not isinstance(ledger, dict) or ledger.get("available") is not True:
+        return "indeterminate", "independent-settlement-unavailable"
+    if ledger.get("finalized") is not True:
+        return "indeterminate", "settlement-not-final"
+    event = evidence_ref.get("settlementEvent")
+    if not native_event_matches(
+        event, selection["network"], evidence_ref.get("settlementTransaction")
+    ):
+        return "error", "native-event-key"
+    if (
+        ledger.get("network") != selection["network"]
+        or ledger.get("transaction") != response.get("transaction")
+        or ledger.get("settlementEvent") != event
+        or ledger.get("scheme") != "exact"
+        or ledger.get("asset") != selection["asset"]
+        or ledger.get("assetDecimals") != selection["assetDecimals"]
+        or ledger.get("amount") != amount
+        or ledger.get("payer") != runtime.get("payer", {}).get("paymentAddress")
+        or ledger.get("payTo") != pay_to
+    ):
+        return "fail", "ledger-event"
+    if ledger.get("authorization") in {"eip-3009", "permit2"} and ledger.get("sessionBound") is not True:
+        return "fail", "sb3"
+    return "pass", None
+
+
+class X402NegotiatedProtocolVectorTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
+        cls.raw_vectors = cls.data["vectors"]
+        cls.vectors = [materialize_vector(cls.data, item) for item in cls.raw_vectors]
+        cls.by_name = {item["name"]: item for item in cls.vectors}
+
+    def test_generated_file_is_current(self):
+        result = subprocess.run(
+            [sys.executable, str(GENERATOR), "--check"], cwd=ROOT,
+            capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_hash_count_and_names_are_exact(self):
+        vectors = self.raw_vectors
+        self.assertEqual(self.data["count"], len(vectors))
+        self.assertEqual(len(vectors), len(self.by_name))
+        encoded = json.dumps(
+            vectors, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        self.assertEqual(self.data["hash"], hashlib.sha256(encoded).hexdigest())
+
+    def test_every_vector_executes_to_pinned_verdict(self):
+        for vector in self.vectors:
+            with self.subTest(vector=vector["name"]):
+                actual, reason = evaluate(vector)
+                self.assertEqual(actual, vector["expected"])
+                if "expectedReason" in vector:
+                    self.assertEqual(reason, vector["expectedReason"])
+
+    def test_resolution_inputs_are_inside_real_agreement_signatures(self):
+        original = self.by_name["protocol-v2-exact-success"]
+        self.assertEqual(evaluate(original)[0], "pass")
+        mutations = (
+            (("terms", "rail", "parameters", "request", "url"), "https://attacker.example/pay"),
+            (("terms", "rail", "parameters", "request", "method"), "POST"),
+            (("terms", "rail", "parameters", "request", "bodyHash"), "00" * 32),
+            (("terms", "rail", "parameters", "selection", "x402Version"), 1),
+            (("terms", "rail", "parameters", "selection", "scheme"), "upto"),
+            (("terms", "rail", "parameters", "selection", "network"), "eip155:1"),
+            (("terms", "rail", "parameters", "selection", "asset"), "0x" + "99" * 20),
+            (("terms", "rail", "parameters", "selection", "assetDecimals"), 18),
+            (("terms", "rail", "parameters", "selection", "currency"), "USDT"),
+            (("terms", "rail", "parameters", "selection", "maxTimeoutSeconds"), 61),
+            (("terms", "rail", "parameters", "selection", "extra"), {"spender": "attacker"}),
+            (("terms", "rail", "parameters", "paymentRequiredExtensions", "payment-identifier", "required"), False),
+            (("terms", "price", "amount"), "1.26"),
+            (("terms", "payoutBindings", 0, "payeeAddress"), "0x" + "99" * 20),
+        )
+        for path, value in mutations:
+            mutated = copy.deepcopy(original)
+            target = mutated["agreement"]
+            for segment in path[:-1]:
+                target = target[segment]
+            target[path[-1]] = value
+            with self.subTest(path=path):
+                self.assertEqual(evaluate(mutated), ("fail", "signature"))
+
+    def test_pre_authorization_failures_never_reach_wallet_use(self):
+        pre_authorization = (
+            "definition-hybrid-static-asset",
+            "definition-global-resource-url",
+            "definition-global-provider-allowlist",
+            "definition-global-operator-credential",
+            "listing-duplicate-canonical-ref",
+            "runtime-first-matching-railid",
+            "agreement-ref-not-full-jcs-member",
+            "protocol-legacy-agreement-artifact",
+            "unsigned-runtime-url-override",
+            "lowercase-request-method",
+            "non-https-request-url",
+            "bare-network-label",
+            "numeric-version-replaced-by-string",
+            "negative-asset-decimals",
+            "unsupported-local-capability",
+            "counterparty-operator-config",
+            "non-402-response-before-authorization",
+            "challenge-resource-substitution",
+            "challenge-duplicate-exact-accepts",
+            "challenge-network-substitution",
+            "challenge-asset-substitution",
+            "challenge-timeout-substitution",
+            "challenge-amount-substitution",
+            "challenge-payto-substitution",
+            "challenge-extra-substitution",
+            "challenge-extension-substitution",
+            "challenge-extension-absent-vs-empty",
+            "unsupported-action-bearing-extension",
+            "redirected-payable-resource",
+            "body-sent-without-signed-hash",
+            "asset-decimals-adapter-mismatch",
+            "agreement-price-excess-precision",
+            "runtime-payer-not-agreement-buyer",
+            "runtime-paying-key-not-buyer-controlled",
+            "runtime-payee-not-signed-destination",
+            "upto-has-no-dacs-success-profile",
+            "legacy-default-new-session-disabled",
+            "legacy-default-pinned-live-new-session",
+        )
+        for name in pre_authorization:
+            with self.subTest(vector=name):
+                self.assertFalse(self.by_name[name]["runtime"]["authorizationSubmitted"])
+
+    def test_new_and_legacy_version_fields_are_not_interchangeable(self):
+        new_ref = self.by_name["protocol-v2-exact-success"]["evidence"]["paymentTxRefs"][0]
+        legacy_ref = self.by_name["legacy-default-string-version-replay"]["evidence"]["paymentTxRefs"][0]
+        self.assertEqual(type(new_ref["x402Version"]), int)
+        self.assertNotIn("protocolVersion", new_ref)
+        self.assertEqual(type(legacy_ref["protocolVersion"]), str)
+        self.assertNotIn("x402Version", legacy_ref)
+
+    def test_cross_rail_identity_uses_native_evm_key(self):
+        vector = self.by_name["event-key-cross-rail-alias"]
+        event = vector["evidence"]["paymentTxRefs"][0]["settlementEvent"]
+        self.assertRegex(event, EVM_EVENT)
+        self.assertEqual(event, vector["ledger"]["settlementEvent"])
+
+    def test_non_evm_success_uses_native_solana_key(self):
+        vector = self.by_name["protocol-v2-solana-exact-success"]
+        ref = vector["evidence"]["paymentTxRefs"][0]
+        self.assertRegex(ref["settlementEvent"], SOLANA_EVENT)
+        self.assertEqual(ref["settlementEvent"], vector["ledger"]["settlementEvent"])
+        self.assertEqual(evaluate(vector), ("pass", None))
+
+    def test_spec_contains_load_bearing_guards(self):
+        spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")
+        for text in (
+            'railId: "x402:protocol"',
+            'resolution: { kind: "x402-payment-required" }',
+            "the first matching `railId`",
+            "No wallet or signing operation may occur before all of those gates pass",
+            "paymentRequiredHash = lowerhex(SHA-256(UTF8(JCS(nfcPaymentRequired))))",
+            'MUST NOT produce `SettlementEvidence.outcome: "success"`',
+            '`availability: "disabled"`',
+            "MUST NOT rewrite",
+        ):
+            self.assertIn(text, spec)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -11,13 +11,41 @@ a reference implementation, or the substrate primitives DACS depends on, **pleas
 report it privately**. Publicly filing an exploitable issue exposes an attack
 surface before it can be fixed.
 
-Use either channel:
+### Preferred channel — GitHub Private Vulnerability Reporting
 
-1. **GitHub Private Vulnerability Reporting** — the *Security* tab → *Report a
-   vulnerability* (enable "Private vulnerability reporting" in repo settings if not
-   already on). This keeps the report private until a fix ships.
-2. **A dedicated security contact** — a monitored address (e.g. `security@kynesys…`)
-   listed here by the steward.
+The *Security* tab → *Report a vulnerability*. This keeps the report private until a
+fix ships, and is the channel this policy is written around.
+
+> **Status on this repository: NOT YET ENABLED.** Enabling it needs elevated repository
+> security authority — repository admin, an organization owner, or a security manager —
+> under *Settings → Code security → Private vulnerability reporting*. Until then the
+> *Security* tab shows no reporting form here. `DACS-Agent-commerce/dacs-sdk` has it
+> enabled and is the working reference.
+
+### If Private Vulnerability Reporting is unavailable
+
+*Proposed interim guidance — maintainers should amend or replace this. It is added
+because the policy currently has no answer for this case, not because the answer below
+is settled.*
+
+Until the preferred channel is enabled and while no monitored security address is
+listed below, **do not post the finding publicly, and do not send it to a third-party
+reviewer.** Instead, open a public issue that contains only:
+
+- that you have a security finding against this repository,
+- its rough area (spec §, or "reference evaluator"), and
+- a request for a private channel.
+
+No reproduction, no vectors, no impact detail. That avoids publishing reproductions or
+exploit-enabling details while still putting the steward on the clock in public, which a
+silent private queue does not. Naming the rough area is itself a small signal; the
+judgement here is that it is a smaller one than either a full public write-up or an
+indefinitely stalled report.
+
+### Dedicated security contact
+
+*None currently published for this repository.* When the steward lists a monitored
+address here, it becomes a valid alternative to the *Security* tab.
 
 A high-signal report names: the **affected component** (spec §, file path, or
 contract), the **impact** (what an attacker gains), a **minimal reproduction / PoC**

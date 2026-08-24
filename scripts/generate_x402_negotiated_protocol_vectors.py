@@ -551,12 +551,51 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "non-https-request-url", "error", "XN-2",
              "payable target must be absolute HTTPS",
              lambda v: v["agreement"]["terms"]["rail"]["parameters"]["request"].update({"url": "http://seller.example/pay"}))
+    # NB the address-class rule cited here lives in DACS-1 §6.3.6 on the `next` branch, which
+    # is this PR's base; it is not yet present on `main`. Anyone checking the citation against
+    # `main` will not find it — that is a branch difference, not a bad citation.
+    #
+    # At least one representative for each address class DACS-1 §6.3.6 names —
+    # representative samples, not exhaustive coverage of each class's address space.
+    # The multicast rows are the ones an `is_global` gate lets through; ipv4-mapped-*
+    # pin the "equivalent IPv4-mapped IPv6 spellings" clause.
+    #
+    # NB these vectors assert REJECTION only. They are not deletion-sensitive on their
+    # own: 127.0.0.1, 169.254.1.1, 0.0.0.0 and 240.0.0.1 are all is_private in CPython,
+    # so removing the loopback, link-local, unspecified or reserved branch still rejects
+    # them through the is_private fallback and leaves these green. The class-name unit
+    # test is what makes a deleted branch fail.
     for name, unsafe_url in (
         ("localhost", "https://localhost/pay"),
         ("ipv4-loopback", "https://127.0.0.1/pay"),
         ("ipv4-private", "https://10.0.0.1/pay"),
+        # 169.254.169.254 is BOTH link-local and a metadata address, and _non_public_class
+        # checks metadata first — so this case exercises the metadata branch, not link-local.
+        # The pure link-local case below executes the link-local branch, but note what it does
+        # NOT do: deleting that branch still rejects 169.254.1.1 through the is_private
+        # fallback, so these vectors stay green. Only the class-name unit test detects the
+        # deletion. Vectors prove rejection; the unit test proves which rule did the rejecting.
         ("ipv4-link-local-metadata", "https://169.254.169.254/latest/meta-data/"),
+        ("ipv4-link-local-only", "https://169.254.1.1/pay"),
         ("ipv6-loopback", "https://[::1]/pay"),
+        ("ipv4-multicast", "https://224.0.0.1/pay"),
+        ("ipv4-multicast-ssdp", "https://239.255.255.250/pay"),
+        ("ipv6-multicast", "https://[ff02::1]/pay"),
+        ("ipv4-shared-address", "https://100.64.0.1/pay"),
+        ("ipv4-unspecified", "https://0.0.0.0/pay"),
+        ("ipv4-reserved", "https://240.0.0.1/pay"),
+        ("ipv4-broadcast", "https://255.255.255.255/pay"),
+        # Metadata endpoints whose rejection §6.3.6 compels directly. Azure's WireServer
+        # (168.63.129.16) is deliberately NOT asserted here: Microsoft documents it as a
+        # platform endpoint distinct from IMDS, so requiring its rejection would impose a
+        # conformance obligation the spec does not clearly state on every implementer.
+        # The evaluator still rejects it as defence-in-depth — see _METADATA_ADDRESSES —
+        # but that is our hardening choice and does not belong in a normative vector set.
+        ("ipv6-aws-imds-metadata", "https://[fd00:ec2::254]/latest/meta-data/"),
+        ("ipv6-unique-local", "https://[fc00::1]/pay"),
+        ("ipv4-mapped-loopback", "https://[::ffff:127.0.0.1]/pay"),
+        ("ipv4-mapped-metadata", "https://[::ffff:169.254.169.254]/pay"),
+        ("ipv4-mapped-multicast", "https://[::ffff:224.0.0.1]/pay"),
     ):
         def unsafe_public_target(v, target=unsafe_url):
             request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
@@ -573,7 +612,7 @@ def build_vectors() -> list[dict]:
             f"bounded-fetch-{name}-target",
             "fail",
             "XN-2/DACS-1-6.3.6",
-            "a counterparty-selected non-public payable target rejects before signing",
+            "a counterparty-selected non-public payable target is rejected",
             unsafe_public_target,
         )
     add_case(vectors, "bare-network-label", "error", "XN-2/XN-4",

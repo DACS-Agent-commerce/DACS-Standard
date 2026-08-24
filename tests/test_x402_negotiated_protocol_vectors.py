@@ -333,6 +333,117 @@ def validate_ref(ref):
     return "pass"
 
 
+# DACS-1 §6.3.6 names the classes a server-side probe MUST reject:
+#   "loopback, private, link-local, shared-address, unspecified, multicast,
+#    reserved, and cloud-provider metadata destinations, including equivalent
+#    IPv4-mapped IPv6 spellings"
+# One branch per named class, so the gate can be read against that sentence.
+#
+# Why not ``is_global``: it is well-defined — CPython derives it from IANA's
+# global-reachability registries — but it answers a different question than §6.3.6 asks.
+# It admits multicast (``224.0.0.1``, ``239.255.255.250`` and ``ff02::1`` are all
+# ``is_global == True``), because globally-reachable and safe-to-fetch are not the same
+# property. An aggregate predicate could in principle implement the union of these classes;
+# ``is_global`` is simply not that predicate, so the evaluator tracks the spec's sentence
+# instead of borrowing a near-neighbour.
+_SHARED_ADDRESS_V4 = ipaddress.ip_network("100.64.0.0/10")   # RFC 6598 CGNAT
+
+# "cloud-provider metadata destinations" is an independently named required class in §6.3.6.
+# The spec names the CLASS; it lists no example addresses, so the endpoints below are ones we
+# selected. Stated without inference, because the distinction is easy to overclaim:
+#
+#   - §6.3.6 names metadata as a required class, and this branch implements it as a distinct
+#     rule rather than leaving it to be caught by accident.
+#   - Of the addresses listed here for conformance, EVERY one also falls in another rejected
+#     class (169.254.169.254 link-local, 100.100.100.200 shared-address, fd00:ec2::254
+#     private). So no conformance rejection currently depends on this branch alone, and this
+#     branch's presence is not what makes those particular addresses reject.
+#   - It would be the only thing rejecting a metadata endpoint that falls outside every
+#     generic range. 168.63.129.16 is exactly such an address — and it is excluded from
+#     conformance below as hardening, so that case is not claimed either.
+#
+# 168.63.129.16 (Azure WireServer) is included as defence-in-depth, not as conformance:
+# Microsoft documents it as a platform endpoint distinct from IMDS, so §6.3.6 does not clearly
+# compel its rejection. It is deliberately kept out of the normative named-class table and out
+# of the conformance vectors; see the hardening test instead.
+#
+# On 168.63.129.16 specifically: CPython reports is_global == True for it, because is_global
+# follows IANA's global-reachability registries and that address sits in a globally-allocated
+# block. Microsoft nonetheless documents it as an Azure-internal platform endpoint, distinct
+# from IMDS. The property that matters here is simply that no generic predicate rejects it.
+# Rejecting it is defence-in-depth beyond what §6.3.6 plainly compels — same trust boundary
+# and SSRF exposure — and it is deliberately NOT asserted as a conformance vector: an
+# evaluator that rejects more than the standard requires is security-conservative but can
+# refuse inputs the standard permits, which is an interoperability cost, not a free win.
+#
+# 169.254.169.253 is deliberately NOT listed: it is AWS's Route 53 VPC DNS resolver, not a
+# metadata service (AWS IMDS is .254). It is link-local and rejected by that branch.
+_METADATA_ADDRESSES = frozenset(
+    ipaddress.ip_address(a) for a in (
+        "169.254.169.254",   # AWS / GCP / Azure IMDS / Oracle / OpenStack / DigitalOcean
+        "168.63.129.16",     # Azure WireServer — no generic predicate matches it
+        "100.100.100.200",   # Alibaba Cloud metadata
+        "fd00:ec2::254",     # AWS IPv6 IMDS
+    )
+)
+
+
+def _non_public_class(address):
+    """Name of the §6.3.6 class this address falls in, or None if it is public.
+
+    Order matters: metadata is tested before the generic classes it partially overlaps, so a
+    metadata address is reported as metadata rather than as whatever else it happens to be.
+    """
+    if address in _METADATA_ADDRESSES:
+        return "cloud-metadata"
+    if address.is_loopback:
+        return "loopback"
+    if address.is_link_local:
+        return "link-local"
+    if address.is_multicast:
+        return "multicast"
+    if address.is_unspecified:
+        return "unspecified"
+    if address.is_reserved:
+        return "reserved"            # includes 240/4 and 255.255.255.255
+    if address.version == 4 and address in _SHARED_ADDRESS_V4:
+        return "shared-address"
+    if address.is_private:
+        return "private"             # includes IPv6 unique-local fc00::/7
+    return None
+
+
+# At least one representative for every named class — representative samples, not exhaustive
+# coverage of each class's address space. Asserted on the CLASS NAME rather than on the
+# rejection boolean, because rejection alone is not deletion-sensitive: 127.0.0.1,
+# 169.254.1.1, 0.0.0.0 and 240.0.0.1 are all is_private in CPython, so deleting the loopback,
+# link-local, unspecified or reserved branch would still reject them via the final is_private
+# fallback and every vector would stay green. §6.3.6 requires REJECTION; asserting the class
+# name is an internal deletion-sensitivity technique for this suite, not a protocol
+# requirement. Precisely what it catches: a deleted branch, or a reorder that changes
+# PRECEDENCE between overlapping branches. It does not catch a reorder between branches
+# whose inputs never overlap, since that cannot change any verdict.
+NON_PUBLIC_CLASS_CASES = (
+    ("169.254.169.254", "cloud-metadata"),
+    ("100.100.100.200", "cloud-metadata"),
+    ("fd00:ec2::254", "cloud-metadata"),
+    ("127.0.0.1", "loopback"),
+    ("::1", "loopback"),
+    ("169.254.1.1", "link-local"),
+    ("224.0.0.1", "multicast"),
+    ("239.255.255.250", "multicast"),
+    ("ff02::1", "multicast"),
+    ("0.0.0.0", "unspecified"),
+    ("240.0.0.1", "reserved"),
+    ("255.255.255.255", "reserved"),
+    ("100.64.0.1", "shared-address"),
+    ("10.0.0.1", "private"),
+    ("fc00::1", "private"),
+    ("8.8.8.8", None),
+    ("2606:4700::1111", None),
+)
+
+
 def public_http_target(url):
     """Reject directly encoded non-public targets before a network adapter runs.
 
@@ -346,17 +457,11 @@ def public_http_target(url):
         address = ipaddress.ip_address(hostname)
     except ValueError:
         return True
-    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
-        address = address.ipv4_mapped
-    return not (
-        address.is_loopback
-        or address.is_private
-        or address.is_link_local
-        or address.is_multicast
-        or address.is_reserved
-        or address.is_unspecified
-        or not address.is_global
-    )
+    # An IPv4-mapped IPv6 spelling must reach the same verdict as its IPv4 form.
+    mapped = getattr(address, "ipv4_mapped", None)
+    if mapped is not None:
+        address = mapped
+    return _non_public_class(address) is None
 
 
 def record_wallet_authorization(effects):
@@ -820,11 +925,20 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "bounded-fetch-ipv4-loopback-target",
             "bounded-fetch-ipv4-private-target",
             "bounded-fetch-ipv4-link-local-metadata-target",
+            "bounded-fetch-ipv4-link-local-only-target",
             "bounded-fetch-ipv6-loopback-target",
-            "bounded-fetch-ipv4-shared-target",
             "bounded-fetch-ipv4-multicast-target",
+            "bounded-fetch-ipv4-multicast-ssdp-target",
+            "bounded-fetch-ipv6-multicast-target",
+            "bounded-fetch-ipv4-shared-address-target",
+            "bounded-fetch-ipv4-unspecified-target",
             "bounded-fetch-ipv4-reserved-target",
-            "bounded-fetch-ipv4-mapped-ipv6-loopback-target",
+            "bounded-fetch-ipv4-broadcast-target",
+            "bounded-fetch-ipv6-aws-imds-metadata-target",
+            "bounded-fetch-ipv6-unique-local-target",
+            "bounded-fetch-ipv4-mapped-loopback-target",
+            "bounded-fetch-ipv4-mapped-metadata-target",
+            "bounded-fetch-ipv4-mapped-multicast-target",
             "bare-network-label",
             "numeric-version-replaced-by-string",
             "negative-asset-decimals",
@@ -923,6 +1037,46 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         self.assertRegex(ref["settlementEvent"], SOLANA_EVENT)
         self.assertEqual(ref["settlementEvent"], vector["ledger"]["settlementEvent"])
         self.assertEqual(evaluate(vector), ("pass", None))
+
+    def test_each_named_class_is_reported_by_its_own_branch(self):
+        """Every §6.3.6 named class has at least one representative that reports that class.
+
+        §6.3.6 requires these targets to be REJECTED; reporting a class name is this suite's
+        own device, not a protocol requirement. Asserting the class rather than the rejection
+        boolean is what catches a deleted branch or a precedence-changing reorder between
+        overlapping branches — a reorder between non-overlapping branches changes no verdict
+        and is not detected, nor does it need to be. Several of these addresses are ALSO is_private in CPython, so a
+        test that only checked "was it rejected" would stay green with the loopback,
+        link-local, unspecified or reserved branch deleted — the is_private fallback would
+        absorb them and the loss of a named rule would be invisible.
+        """
+        for literal, expected in NON_PUBLIC_CLASS_CASES:
+            with self.subTest(address=literal):
+                address = ipaddress.ip_address(literal)
+                self.assertEqual(_non_public_class(address), expected)
+
+    def test_wireserver_is_rejected_as_hardening_not_conformance(self):
+        """Azure WireServer is rejected, but that is our choice — not a §6.3.6 obligation.
+
+        Kept separate from the named-class table on purpose. Microsoft documents 168.63.129.16
+        as a platform endpoint distinct from IMDS, so asserting it under "cloud-provider
+        metadata destinations" would claim a conformance requirement the spec does not clearly
+        state, and would push that requirement onto every other implementer. It is also the one
+        address here that no generic predicate rejects, which is why the evaluator carries it at
+        all. Asserted on REJECTION only — deliberately not on class name.
+        """
+        self.assertFalse(public_http_target("https://168.63.129.16/machine/"))
+        self.assertFalse(public_http_target("https://[::ffff:168.63.129.16]/machine/"))
+
+    def test_ipv4_mapped_spellings_match_their_ipv4_verdict(self):
+        """§6.3.6 requires equivalent IPv4-mapped IPv6 spellings to reach the same verdict."""
+        for literal, _ in NON_PUBLIC_CLASS_CASES:
+            address = ipaddress.ip_address(literal)
+            if address.version != 4:
+                continue
+            with self.subTest(address=literal):
+                self.assertEqual(public_http_target(f"https://{literal}/pay"),
+                                 public_http_target(f"https://[::ffff:{literal}]/pay"))
 
     def test_spec_contains_load_bearing_guards(self):
         spec = (ROOT / "spec/DACS-4-SETTLE.md").read_text(encoding="utf-8")

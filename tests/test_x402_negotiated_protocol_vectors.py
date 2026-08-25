@@ -12,7 +12,10 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from scripts.evm_crypto import evm_address
 from scripts.jcs import canonicalize as jcs_canonicalize
 
 
@@ -75,7 +78,131 @@ def verify_signature(public, domain, body, value):
         return False
 
 
+def base58(raw):
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    number = int.from_bytes(raw, "big")
+    encoded = ""
+    while number:
+        number, remainder = divmod(number, 58)
+        encoded = alphabet[remainder] + encoded
+    zeroes = len(raw) - len(raw.lstrip(b"\x00"))
+    return "1" * zeroes + (encoded or "1")
+
+
+def buyer_bundle_scope(bundle):
+    if not isinstance(bundle, dict):
+        return None
+    return {name: value for name, value in bundle.items() if name != "presentation"}
+
+
+def payment_claim_parts(claim):
+    if not isinstance(claim, str):
+        return None
+    bare = claim.split("?", 1)[0]
+    parts = bare.split(":", 3)
+    if len(parts) != 4 or parts[0] != "cci-xm" or not parts[3]:
+        return None
+    return parts[1], parts[2], parts[3]
+
+
+def verify_buyer_bundle_presentation(v):
+    bundle = v.get("buyerBundle")
+    scope = buyer_bundle_scope(bundle)
+    if not isinstance(scope, dict) or bundle.get("bundleVersion") != "1":
+        return False
+    claims = bundle.get("claims")
+    presentation = bundle.get("presentation")
+    if not isinstance(claims, list) or not claims or not isinstance(presentation, dict):
+        return False
+    refs = [claim.get("ref") for claim in claims if isinstance(claim, dict)]
+    if len(refs) != len(claims) or bundle.get("presentedBy") not in refs:
+        return False
+    signatures = presentation.get("signatures")
+    if presentation.get("kind") != "per-claim" or not isinstance(signatures, list):
+        return False
+    by_ref = {}
+    for envelope in signatures:
+        if not isinstance(envelope, dict) or set(envelope) != {"ref", "signature"}:
+            return False
+        if envelope["ref"] in by_ref:
+            return False
+        by_ref[envelope["ref"]] = envelope["signature"]
+    if set(by_ref) != set(refs):
+        return False
+    payload = ("dacs-bundle-presentation:v1:" + digest(scope)).encode("ascii")
+    keys = v.get("keys", {})
+    for claim in claims:
+        ref = claim["ref"]
+        metadata = claim.get("metadata", {})
+        try:
+            signature = b64u_decode(by_ref[ref])
+            if ref == bundle.get("presentedBy"):
+                Ed25519PublicKey.from_public_bytes(b64u_decode(keys.get("buyer"))).verify(
+                    signature, payload
+                )
+            elif metadata.get("algorithm") == "ecdsa-secp256k1":
+                public = bytes.fromhex(metadata.get("publicKey"))
+                ec.EllipticCurvePublicKey.from_encoded_point(
+                    ec.SECP256K1(), public
+                ).verify(signature, payload, ec.ECDSA(hashes.SHA256()))
+            elif metadata.get("algorithm") == "ed25519":
+                public = b64u_decode(metadata.get("publicKey"))
+                Ed25519PublicKey.from_public_bytes(public).verify(signature, payload)
+            else:
+                return False
+        except (InvalidSignature, TypeError, ValueError):
+            return False
+    return True
+
+
+def buyer_payment_control(v, buyer, selection):
+    bundle = v.get("buyerBundle", {})
+    runtime = v.get("runtime", {})
+    payer = runtime.get("payer", {})
+    scope = buyer_bundle_scope(bundle)
+    if not isinstance(scope, dict):
+        return False
+    bundle_hash = digest(scope)
+    if (
+        buyer.get("bundleHash") != bundle_hash
+        or payer.get("bundleHash") != bundle_hash
+        or bundle.get("presentedBy") != buyer.get("primaryClaim")
+        or bundle.get("sessionNonce") != runtime.get("issuedBuyerSessionNonce")
+    ):
+        return False
+    claims = [
+        claim for claim in bundle.get("claims", [])
+        if isinstance(claim, dict) and claim.get("ref") == payer.get("payingKey")
+    ]
+    if len(claims) != 1:
+        return False
+    parts = payment_claim_parts(payer.get("payingKey"))
+    if parts is None:
+        return False
+    family, subchain, claimed_address = parts
+    metadata = claims[0].get("metadata", {})
+    network = selection.get("network")
+    try:
+        if network == f"eip155:{subchain}" and family == "evm":
+            public = bytes.fromhex(metadata.get("publicKey"))
+            derived_address = evm_address(public)
+            if metadata.get("algorithm") != "ecdsa-secp256k1":
+                return False
+        elif network == f"solana:{subchain}" and family == "solana":
+            public = b64u_decode(metadata.get("publicKey"))
+            derived_address = base58(public)
+            if metadata.get("algorithm") != "ed25519":
+                return False
+        else:
+            return False
+    except (TypeError, ValueError):
+        return False
+    return claimed_address == derived_address == payer.get("paymentAddress")
+
+
 def verify_artifact_signatures(v):
+    if not verify_buyer_bundle_presentation(v):
+        return False
     keys = v.get("keys", {})
     rail = v.get("railDefinition", {})
     signature = rail.get("signature", {})
@@ -397,7 +524,7 @@ def evaluate(v, effects=None):
     runtime = v.get("runtime", {})
     if runtime.get("payer", {}).get("primaryClaim") != buyer[0].get("primaryClaim"):
         return "fail", "payer-party"
-    if runtime.get("payer", {}).get("payingKey") != buyer[0].get("primaryClaim"):
+    if not buyer_payment_control(v, buyer[0], ref["parameters"]["selection"]):
         return "fail", "payer-control"
     if runtime.get("payee", {}).get("primaryClaim") != seller[0].get("primaryClaim"):
         return "fail", "payee-party"
@@ -609,6 +736,37 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         ).encode("utf-8")
         self.assertEqual(self.data["hash"], hashlib.sha256(encoded).hexdigest())
 
+    def test_buyer_bundle_and_native_payment_key_proofs_are_cryptographic(self):
+        generator_public_key = bytes.fromhex(
+            "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+            "483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+        )
+        self.assertEqual(
+            evm_address(generator_public_key),
+            "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+        )
+        for name in ("protocol-v2-exact-success", "protocol-v2-solana-exact-success"):
+            with self.subTest(vector=name):
+                vector = self.by_name[name]
+                self.assertTrue(verify_buyer_bundle_presentation(vector))
+                buyer = next(
+                    party for party in vector["agreement"]["parties"]
+                    if party["role"] == "buyer"
+                )
+                selection = vector["agreement"]["terms"]["rail"]["parameters"]["selection"]
+                self.assertTrue(buyer_payment_control(vector, buyer, selection))
+                self.assertEqual(
+                    buyer["bundleHash"],
+                    digest(buyer_bundle_scope(vector["buyerBundle"])),
+                )
+
+        tampered = copy.deepcopy(self.by_name["protocol-v2-exact-success"])
+        signature = tampered["buyerBundle"]["presentation"]["signatures"][1]["signature"]
+        tampered["buyerBundle"]["presentation"]["signatures"][1]["signature"] = (
+            ("A" if signature[0] != "A" else "B") + signature[1:]
+        )
+        self.assertEqual(evaluate(tampered), ("fail", "signature"))
+
     def test_every_vector_executes_to_pinned_verdict(self):
         for vector in self.vectors:
             with self.subTest(vector=vector["name"]):
@@ -690,6 +848,7 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "agreement-price-excess-precision",
             "runtime-payer-not-agreement-buyer",
             "runtime-paying-key-not-buyer-controlled",
+            "runtime-payer-address-not-derived-from-paying-key",
             "runtime-payee-not-signed-destination",
             "upto-has-no-dacs-success-profile",
             "legacy-default-new-session-disabled",

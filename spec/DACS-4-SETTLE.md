@@ -442,7 +442,7 @@ type PaymentPhaseInput = {
   payer: {
     bundleHash: string
     primaryClaim: ClaimReference
-    payingKey: ClaimReference          // MUST appear in payer's bundle.claims
+    payingKey: ClaimReference          // MUST appear in the resolved, presentation-verified payer bundle
   }
   payee: {
     bundleHash: string
@@ -799,13 +799,23 @@ XN-10.
   reject before authorization. The matched requirement's `payTo` MUST equal the
   PB-1 payout binding for this `(x402:protocol, phaseIndex)`. The
   `PaymentPhaseInput` payer and payee MUST equal the signed agreement buyer and
-  seller respectively. Before signing, the adapter MUST establish that the
-  authorization payer is controlled by the buyer's pinned bundle/paying key;
-  after settlement, it MUST independently establish that the authenticated
-  event debits that payer and credits the signed `payTo` in the selected asset
-  for exactly the selected atomic amount. An unsigned legacy
-  `PaymentPhaseInput.payee.payeeAddress`, server-returned payer/payee, or local
-  wallet default cannot substitute for these signed bindings.
+  seller respectively. Before signing, the handler MUST resolve the buyer's
+  exact pinned `bundleHash`, recompute that DACS-1 bundle hash, verify its
+  presentation (including the session-nonce match where the bundle is presented
+  for this session), and require `payingKey` to identify exactly one claim in
+  that bundle. The selected scheme/network adapter MUST then independently
+  validate the claim's native control proof and derive or recover the
+  authorization payer address from the proven key under that network's native
+  rules. That derived address MUST equal the payer used by the authorization;
+  string equality between `payingKey` and `primaryClaim`, a caller-supplied or
+  echoed address, bundle membership without a valid control proof, or a
+  signature under a key that derives a different address is insufficient.
+  After settlement, the adapter MUST independently establish that the
+  authenticated event debits that same derived payer and credits the signed
+  `payTo` in the selected asset for exactly the selected atomic amount. An
+  unsigned legacy `PaymentPhaseInput.payee.payeeAddress`, server-returned
+  payer/payee, or local wallet default cannot substitute for these signed
+  bindings.
 
 - **(XN-6) Complete extension and request binding.** The handler MUST preserve
   and compare the complete `PaymentRequirements.extra` and top-level

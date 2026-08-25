@@ -12,6 +12,11 @@ from pathlib import Path
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from jcs import canonicalize as jcs_canonicalize
+from evm_crypto import (
+    deterministic_ecdsa_sha256,
+    evm_address,
+    uncompressed_public_key,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,23 +24,28 @@ OUTPUT = ROOT / "conformance/vectors/security/x402-negotiated-protocol-v0.7.json
 SAFE_TX = "ab" * 32
 URL = "https://seller.example/dacs/resource?job=274"
 ASSET = "0x" + "33" * 20
-BUYER_ADDRESS = "0x" + "11" * 20
+EVM_BUYER_PRIVATE_SCALAR = 1
+EVM_BUYER_PUBLIC_KEY = uncompressed_public_key(EVM_BUYER_PRIVATE_SCALAR)
+BUYER_ADDRESS = evm_address(EVM_BUYER_PUBLIC_KEY)
 SELLER_ADDRESS = "0x" + "22" * 20
 SOLANA_NETWORK = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
 SOLANA_ASSET = "3" * 44
-SOLANA_BUYER = "4" * 44
 SOLANA_SELLER = "5" * 44
 SOLANA_TX = "1" * 64
 BUYER_CLAIM = "did:demos:agent:" + "11" * 32
 SELLER_CLAIM = "did:demos:agent:" + "22" * 32
 STEWARD_CLAIM = "did:demos:agent:" + "44" * 32
 ORCHESTRATOR_CLAIM = "did:demos:agent:" + "55" * 32
+BUYER_SESSION_NONCE = hashlib.sha256(
+    b"01M0NVBGYEANE562QQXD33C7WX:buyer:x402"
+).hexdigest()[:32]
 SEEDS = {
     "buyer": hashlib.sha256(b"DACS #274 buyer").digest(),
     "seller": hashlib.sha256(b"DACS #274 seller").digest(),
     "steward": hashlib.sha256(b"DACS #274 steward").digest(),
     "orchestrator": hashlib.sha256(b"DACS #274 orchestrator").digest(),
 }
+SOLANA_BUYER_SEED = hashlib.sha256(b"DACS #274 buyer Solana payment key").digest()
 CLAIMS = {
     "buyer": BUYER_CLAIM,
     "seller": SELLER_CLAIM,
@@ -55,6 +65,31 @@ def b64u(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
+def base58(raw: bytes) -> str:
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    number = int.from_bytes(raw, "big")
+    encoded = ""
+    while number:
+        number, remainder = divmod(number, 58)
+        encoded = alphabet[remainder] + encoded
+    zeroes = len(raw) - len(raw.lstrip(b"\x00"))
+    return "1" * zeroes + (encoded or "1")
+
+
+def solana_payment_key() -> Ed25519PrivateKey:
+    return Ed25519PrivateKey.from_private_bytes(SOLANA_BUYER_SEED)
+
+
+def solana_public_key_bytes() -> bytes:
+    return solana_payment_key().public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+
+
+SOLANA_BUYER = base58(solana_public_key_bytes())
+
+
 def public_key(role: str) -> str:
     return b64u(key(role).public_key().public_bytes(
         encoding=serialization.Encoding.Raw,
@@ -72,6 +107,57 @@ def sign(role: str, domain: str, unsigned: object) -> str:
 
 def unsigned(value: dict, signature_field: str) -> dict:
     return {k: v for k, v in value.items() if k != signature_field}
+
+
+def payment_claim(network: str, address: str) -> str:
+    family, subchain = network.split(":", 1)
+    return f"cci-xm:{'evm' if family == 'eip155' else family}:{subchain}:{address}"
+
+
+def buyer_bundle(network: str, address: str) -> dict:
+    claim = payment_claim(network, address)
+    if network.startswith("eip155:"):
+        payment_metadata = {
+            "algorithm": "ecdsa-secp256k1",
+            "publicKey": EVM_BUYER_PUBLIC_KEY.hex(),
+        }
+    elif network.startswith("solana:"):
+        payment_metadata = {
+            "algorithm": "ed25519",
+            "publicKey": b64u(solana_public_key_bytes()),
+        }
+    else:
+        raise ValueError(f"no payment-key fixture for {network}")
+    body = {
+        "bundleVersion": "1",
+        "presentedBy": BUYER_CLAIM,
+        "presentedAt": 1787443199000,
+        "sessionNonce": BUYER_SESSION_NONCE,
+        "claims": [
+            {"ref": BUYER_CLAIM, "metadata": {"testRole": "buyer"}},
+            {"ref": claim, "metadata": payment_metadata},
+        ],
+    }
+    payload = ("dacs-bundle-presentation:v1:" + digest(body)).encode("ascii")
+    if network.startswith("eip155:"):
+        payment_signature = deterministic_ecdsa_sha256(
+            EVM_BUYER_PRIVATE_SCALAR, payload
+        )
+    else:
+        payment_signature = solana_payment_key().sign(payload)
+    return {
+        **body,
+        "presentation": {
+            "kind": "per-claim",
+            "signatures": [
+                {
+                    "ref": BUYER_CLAIM,
+                    "signature": b64u(key("buyer").sign(payload)),
+                },
+                {"ref": claim, "signature": b64u(payment_signature)},
+            ],
+        },
+    }
 
 
 def payment_ref(version: int = 2) -> dict:
@@ -224,8 +310,11 @@ def make_base(version: int = 2) -> dict:
     ref = payment_ref(version)
     response = settlement_response(version)
     event = f"evm:8453:{SAFE_TX}:7"
+    bundle = buyer_bundle("eip155:8453", BUYER_ADDRESS)
+    bundle_hash = digest(unsigned(bundle, "presentation"))
     value = {
         "railDefinition": protocol_rail(),
+        "buyerBundle": bundle,
         "listing": {
             "dacsVersion": "1",
             "listingVersion": 1,
@@ -236,7 +325,7 @@ def make_base(version: int = 2) -> dict:
             "payeeBoundAgreementVersion": "1",
             "jobId": "01M0NVBGYEANE562QQXD33C7WX",
             "parties": [
-                {"role": "buyer", "bundleHash": "aa" * 32, "primaryClaim": BUYER_CLAIM},
+                {"role": "buyer", "bundleHash": bundle_hash, "primaryClaim": BUYER_CLAIM},
                 {"role": "seller", "bundleHash": "bb" * 32, "primaryClaim": SELLER_CLAIM},
             ],
             "terms": {
@@ -251,10 +340,12 @@ def make_base(version: int = 2) -> dict:
         },
         "runtime": {
             "phaseIndex": 3,
+            "issuedBuyerSessionNonce": BUYER_SESSION_NONCE,
             "selectedRailRef": copy.deepcopy(ref),
             "payer": {
+                "bundleHash": bundle_hash,
                 "primaryClaim": BUYER_CLAIM,
-                "payingKey": BUYER_CLAIM,
+                "payingKey": payment_claim("eip155:8453", BUYER_ADDRESS),
                 "paymentAddress": BUYER_ADDRESS,
             },
             "payee": {"primaryClaim": SELLER_CLAIM, "payeeAddress": SELLER_ADDRESS},
@@ -458,7 +549,15 @@ def build_vectors() -> list[dict]:
             })
         binding = v["agreement"]["terms"]["payoutBindings"][0]
         binding["payeeAddress"] = SOLANA_SELLER
-        v["runtime"]["payer"]["paymentAddress"] = SOLANA_BUYER
+        bundle = buyer_bundle(SOLANA_NETWORK, SOLANA_BUYER)
+        bundle_hash = digest(unsigned(bundle, "presentation"))
+        v["buyerBundle"] = bundle
+        v["agreement"]["parties"][0]["bundleHash"] = bundle_hash
+        v["runtime"]["payer"].update({
+            "bundleHash": bundle_hash,
+            "payingKey": payment_claim(SOLANA_NETWORK, SOLANA_BUYER),
+            "paymentAddress": SOLANA_BUYER,
+        })
         v["runtime"]["payee"]["payeeAddress"] = SOLANA_SELLER
         requirement_value = v["http"]["paymentRequired"]["accepts"][0]
         requirement_value.update({
@@ -686,6 +785,9 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "runtime-paying-key-not-buyer-controlled", "fail", "XN-5",
              "the payment authorization key must be controlled by the signed buyer",
              lambda v: v["runtime"]["payer"].update({"payingKey": "did:demos:agent:" + "99" * 32}))
+    add_case(vectors, "runtime-payer-address-not-derived-from-paying-key", "fail", "XN-5",
+             "an attacker address cannot replace the address independently derived from the signed bundle payment key",
+             lambda v: v["runtime"]["payer"].update({"paymentAddress": "0x" + "99" * 20}))
     add_case(vectors, "runtime-payee-not-signed-destination", "fail", "XN-5",
              "an unsigned runtime payee cannot replace the payout binding",
              lambda v: v["runtime"]["payee"].update({"payeeAddress": "0x" + "99" * 20}))

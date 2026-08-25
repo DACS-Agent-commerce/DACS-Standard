@@ -102,7 +102,7 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | RT-1, RT-2 (rate phase) | §10.6.1 | run-after-settle; one-record-per-direction; rating domain-sep sig; RT-1 producer-reject out-of-range/over-length; RT-2 deriver-exclude non-conforming; `dimensions` opaque | `conformance/` |
 | ERC-8004 publication (optional) | §10.7 | token-owner-signed entry; bundle-anchor pointer; rate-limit | `conformance/` |
 
-### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-4, CD-1, SN-1..SN-4)
+### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-4, JID-1..JID-4, CD-1, SN-1..SN-4)
 
 A cross-cutting test category that every conforming implementation runs once:
 
@@ -117,6 +117,17 @@ A cross-cutting test category that every conforming implementation runs once:
   - the DACS-5 rating address `dacs5:rating:{jobId}:{rater}` MUST round-trip a multi-colon `{rater}`.
 
   An address whose variable segments are left raw (unescaped) MUST be rejected as malformed.
+- **JID-1..JID-4 (canonical job identifier).** Run
+  `conformance/vectors/security/job-id-grammar-v0.1.json`. Accept the complete
+  26-byte uppercase Crockford grammar including its `0` and `7` first-byte
+  boundaries. Reject lowercase, mixed-case, `I`/`L`/`O` aliases, `U`, first
+  byte `8`/`9`, wrong lengths, separators, whitespace, percent encoding,
+  composed/decomposed Unicode, null, numbers, and booleans as `error` before
+  hashing, lookup, or another side effect. Recompute the three literal-known
+  DACS-5 bundle addresses from exact ASCII bytes; insert the same bytes into
+  non-hash logical-address templates; compare equal and distinct canonical
+  identifiers byte-exact; and prove a malformed comparison operand is not
+  repaired into equality.
 - **CD-1 (canonical decimal).** `"1.50"` and `"1.5"` as `PriceTerm.amount` MUST produce identical agreement hashes and signatures.
 - **SN-1..SN-4 (session nonce).** A presenter-chosen nonce the verifier did not issue MUST be rejected (SN-1); a native `sessionNonce` below 128 bits / not ≥32 lowercase-hex chars MUST be rejected (SN-2); a **same-session** replay of an already-consumed nonce MUST be rejected (SN-4); a nonce still unconsumed past its bounded challenge lifetime MUST be rejected (SN-4 retention); and a nonce issued for one `jobId` MUST NOT validate a presentation for another `jobId` — the cross-session case is caught by the §6.3.2 match against the jobId-issued nonce (SN-3), not SN-4.
 - **SIG-5 (preserve-unknown).** A verifier built against schema vN MUST successfully verify the signature on a document produced under vN+1 that adds an unknown field, by hashing the document as received (unknown field included); a verifier that strips the unknown field before hashing (and thus rejects) FAILS this test. The concrete Listing cases are `conformance/vectors/security/listing-preserve-unknown-v0.1.json`: an unchanged signed Listing carrying one inert unknown top-level field and a supported DPA-1 verification method passes, while mutation or removal of the unknown field fails the signature. A separately signed Listing with an unknown phase kind still refuses as unsupported under §11.1.2's new-type rule. Runners MUST apply signature, phase-kind, and DPA-1 eligibility checks before comparing each case's declared overall Listing disposition.

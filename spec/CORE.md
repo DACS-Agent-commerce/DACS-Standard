@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 pins one byte-exact canonical `jobId` grammar across the stack; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -266,7 +266,56 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs5:rating:{jobId}:{rater}` (§10.6.1) | `rater` (a ClaimReference) | `jobId` |
 | `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.2) | none — hash-based, no colon-bearing segment | — |
 
-In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a reserved-delimiter-free token (§6.3.1 grammar), and `phaseIndex`/`resolved`/`v{recipeVersion}` are fixed structural segments — none need encoding.
+In every case `{jobId}` is a JID-1 canonical ULID (no reserved delimiters), `{scheme}` is a reserved-delimiter-free token (§6.3.1 grammar), and `phaseIndex`/`resolved`/`v{recipeVersion}` are fixed structural segments — none need encoding.
+
+**Canonical job identifier (rules JID-1..JID-4).** One `jobId` grammar
+applies to every DACS document, signature scope, logical address, registry or
+resolver key, settlement binding, and API path. The grammar is the canonical
+text form of a 128-bit ULID:
+
+```text
+jobId        = first-crockford 25*crockford
+first-crockford = %x30-37                         ; 0-7
+crockford    = %x30-39 / %x41-48 / %x4A-4B       ; 0-9 / A-H / J-K
+             / %x4D-4E / %x50-54 / %x56-5A       ; M-N / P-T / V-Z
+```
+
+Equivalently, the complete ASCII string matches
+`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`. The match is over the entire value and does
+not admit a trailing line terminator.
+
+- **(JID-1) Canonical wire form.** `jobId` MUST be a JSON string containing
+  exactly 26 ASCII characters in that grammar. Lowercase input, Crockford
+  decode aliases (`I` or `L` for `1`, `O` for `0`), the excluded `U`,
+  whitespace, separators, percent encoding, Unicode, and a first character
+  `8` or `9` are malformed. A producer MUST NOT emit them and a consumer MUST
+  NOT repair them.
+- **(JID-2) Production and uniqueness.** A current producer MUST generate the
+  canonical uppercase ULID form directly and MUST keep each `jobId` unique
+  within its retained session history. A substrate-native session or
+  transaction identifier is carried in its defined native-reference field; it
+  MUST NOT replace, prefix, suffix, or otherwise extend `jobId`.
+- **(JID-3) Validate before derivation or action.** An implementation MUST
+  validate JID-1 before it assembles a logical address, hashes a
+  `jobId`-specific preimage, queries a resolver or discovery surface, signs a
+  new artifact, or invokes a protocol side effect. Malformed input is `error`
+  and MUST reach none of those operations. Every derivation uses the exact
+  validated ASCII bytes; there is no Unicode normalization, case folding,
+  alias decoding, trimming, or percent decoding step.
+- **(JID-4) Equality and cross-artifact binding.** Implementations compare two
+  `jobId` values by byte-exact equality only after both pass JID-1. Two
+  different well-formed values are a binding mismatch (`fail` where the
+  consuming rule uses the DACS four-way disposition); a missing or malformed
+  operand is `error`. A caller, transport, indexer, or substrate library MUST
+  NOT supply a decoded or normalized substitute.
+
+CF-1 normalization remains part of a signed document's canonicalization, but
+it is an identity operation on a JID-1 value and does not create an alternate
+`jobId` spelling. The former allowance for a “substrate-equivalent” `jobId` is
+removed. Archival tooling MAY still report whether an older object with a
+non-conforming value has a cryptographically valid signature over its original
+scope; it MUST NOT report current DACS semantic conformance, derive an address,
+perform a lookup, or authorize an action from that value.
 
 ### B.2 Anchoring and signing
 
@@ -313,7 +362,7 @@ Every phase handler in the stack consumes a SessionContext and returns a PhaseHa
 
 ```
 type SessionContext = {
-  jobId: string
+  jobId: string                            // canonical JID-1 ULID
   listingRef: { listingId: string; version: number; contentHash: string }
   recipeRegistryVersion: number             // DACS-2 registry pinned at session start
   railRegistryVersion: number               // DACS-4 registry pinned at session start

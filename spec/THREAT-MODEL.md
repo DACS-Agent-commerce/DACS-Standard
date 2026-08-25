@@ -129,6 +129,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Bundle forgery | malicious counterparty | §10.11 (co-signature requirement) | mitigated |
 | Bundle suppression | malicious counterparty | §10.11 + §10.4.3 authoritative-absence gate | mitigated when authoritative absence is available; otherwise indeterminate |
 | Bundle-copy read censorship (a hidden divergent copy appears one-sided) | malicious infrastructure | CORE §5 SR-2 absence evidence + §10.4.3 / §10.5.1 guard (iv) | mitigated for integrity; one-copy availability depends on the substrate binding |
+| `jobId` spelling split creates divergent logical addresses, nonces, or lookups | implementation divergence / lenient ULID decoder | CORE §B.1 JID-1..JID-4 + DACS-5 §10.4.2 exact ASCII preimage | mitigated — malformed case, aliases, Unicode, and overflow stop before derivation or action |
 | Sybil reputation farming | sybil attacker | §10.11 (per-primary-claim keying) | mitigated for cross-tier; not for same-tier |
 | Reputation collusion | two colluding counterparties | §10.11 (volume disclosure + external signals) | partial — protocol cannot prevent |
 | Orchestrator error-class misclassification | malicious orchestrator | §10.11 (party-disagreement → aborted-by-other) | mitigated |

@@ -318,7 +318,7 @@ Every pay-* phase handler MUST:
 
 - `phaseIndex` is the bare-integer pipeline phase index of this pay-* invocation (`BundlePhaseEntry.index`). It is REQUIRED so repeated pay-* phases (PIPE-5) do not collide at one address.
 - An ST-8 resolution anchors its superseding success record at the same address with a trailing `:resolved` segment.
-- `railId` is a CF-4 variable segment and MUST be percent-encoded before assembly (internal colons → `%3A`, CORE §B.1). `jobId` (a ULID), `phaseIndex`, and `resolved` need no encoding.
+- `railId` is a CF-4 variable segment and MUST be percent-encoded before assembly (internal colons → `%3A`, CORE §B.1). `jobId` is already canonical ASCII under JID-1, while `phaseIndex` and `resolved` are fixed structural values; none of those three need encoding.
 
 Worked example — `jobId` `01J8ME0SXKQ4T9V2RC5HJ6WX7D`, rail `evm-erc20:8453:USDC`, phase index 3, after an ST-8 resolution:
 
@@ -665,7 +665,7 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
 
 - **(SB-1) Signed event identity and binding key.** A `SettlementEvidence` record's `paymentTxRefs` claim that the referenced transaction event(s) settled **this** `(jobId, phaseIndex)`, where `phaseIndex` is the phase's `BundlePhaseEntry.index` — required because a repeated phase type (PIPE-5) settles the same `phase` more than once. `phaseIndex` is **not a new evidence field**: it is recovered from the §9.5.2 payment-evidence anchor address the record is published at (`dacs4:payment:{jobId}:{railId}:{phaseIndex}`), so two consumers key a settlement identically.
 
-  Before projecting any SB-1 identity, a consumer MUST compare the complete PC-2 logical-address tuple, not only its terminal phase-index segment. The address `jobId` MUST equal the signed `SettlementEvidence.jobId`; the CF-4-decoded `railId` MUST equal the rail selected by the authenticated agreement and phase context; and `phaseIndex` MUST equal that pay phase's authenticated `BundlePhaseEntry.index`. The optional `:resolved` segment does not change this tuple and is valid only for an ST-8 superseding record. A well-formed tuple mismatch is `fail` and the evidence MUST be rejected before projection. A malformed or non-canonical address, including a non-CF-4 rail segment, is `error`. The evidence signature, a matching transaction event, an outer SR-2 receipt, or a caller/indexer annotation MUST NOT substitute for this address-binding check.
+  Before projecting any SB-1 identity, a consumer MUST compare the complete PC-2 logical-address tuple, not only its terminal phase-index segment. Both the address `jobId` and signed `SettlementEvidence.jobId` MUST first pass JID-1 and then compare byte-exact under JID-4; the CF-4-decoded `railId` MUST equal the rail selected by the authenticated agreement and phase context; and `phaseIndex` MUST equal that pay phase's authenticated `BundlePhaseEntry.index`. The optional `:resolved` segment does not change this tuple and is valid only for an ST-8 superseding record. A well-formed tuple mismatch is `fail` and the evidence MUST be rejected before projection. A malformed or non-canonical address, including a non-JID-1 job segment or non-CF-4 rail segment, is `error`. The evidence signature, a matching transaction event, an outer SR-2 receipt, or a caller/indexer annotation MUST NOT substitute for this address-binding check.
 
   For a success-outcome `pay-evm-erc20`, `pay-solana-spl`, or on-chain `pay-x402` record produced under DACS-4 v0.6 or later, the applicable event/instruction index MUST be inside the signed `SettlementEvidence` scope. The producer MUST use `evm-event`, `solana-instruction`, or `x402-event`, respectively. It MUST NOT emit the legacy `evm`, `solana`, or `x402` arm for new success evidence on those paths. The distinct `kind` values are an additive type boundary: a legacy reader that does not implement them rejects the new arm as unsupported before acting, and a current reader MUST NOT strip or substitute the discriminator and retry verification as a legacy arm.
 
@@ -692,6 +692,13 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
                || ASCII(decimal(phaseIndex))
     nonceBytes = SHA-256(preimage)
     ```
+
+    JID-1 validation MUST occur before either binding branch. Consequently the
+    Permit2 equality is byte-exact and `NFC(jobId)` in the versioned EIP-3009
+    v1 preimage is an identity operation for every current input. The explicit
+    NFC step remains in that already-published preimage recipe so historical
+    derivation-only fixtures can be reproduced; it MUST NOT be used to repair
+    or admit a non-JID-1 value.
 
     `UTF8` is UTF-8 without a byte-order mark. `0x3a` is the single ASCII colon byte. `decimal(phaseIndex)` is the non-negative integer's minimal base-10 ASCII representation (`0` for zero; no sign and no leading zeroes). `nonceBytes` is used directly as the 32-byte EIP-3009 value; when a DACS implementation serialises that value as text it MUST use `0x` followed by exactly 64 lower-case hexadecimal digits. The handler MUST use this derived value and MUST NOT substitute a random or provider-generated nonce. The verifier MUST recover `phaseIndex` from the SB-1 payment-evidence anchor, independently recompute `nonceBytes` from `evidence.jobId`, and compare the decoded 32 bytes. A well-formed nonce that differs is a **present-and-mismatches** rejection under the branch rule below; a malformed nonce encoding is `error`.
 

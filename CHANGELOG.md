@@ -90,6 +90,23 @@ The format used per release:
   unknown phase; ordinary and repeated payment pipelines retain their prior
   meaning.
 
+### Fixed — DACS Core v0.3 / DACS-5 v0.5
+
+- **Canonical byte-exact `jobId` grammar** (CORE §B.1 JID-1..JID-4;
+  DACS-4 §9.5.8; DACS-5 §10.3/§10.4.2; #339) — replaces the ambiguous
+  “ULID or substrate-equivalent” form with one 26-character uppercase
+  Crockford ULID grammar (`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`). Current producers
+  emit that form directly; consumers validate before logical-address
+  assembly, job-specific hashing, discovery, lookup, comparison, signing, or
+  side effects and never trim, case-fold, alias-decode, percent-decode, or
+  Unicode-normalize it. Cross-artifact equality is byte-exact. The DACS-5
+  bundle address is now explicitly
+  `stor-` plus the lowercase SHA-256 hex of
+  `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`. Adds 31 deterministic
+  vectors with three independent literal address known answers, Unicode/case/
+  alias/overflow negatives, comparison cases, and executed zero-hash/
+  zero-lookup assertions for malformed input.
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4

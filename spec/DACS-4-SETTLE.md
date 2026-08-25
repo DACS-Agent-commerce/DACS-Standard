@@ -285,8 +285,11 @@ at session start, and applies RAV-R1..RAV-R5.
 
 PA-1 uses its disclosed signed in-code snapshot and does not use a bootstrap
 descriptor. Under PA-2, `railRegistryVersion` is the accepted immutable
-registry-bootstrap content sequence. Descriptor v1 is single-Ed25519-authority
-only; PA-3 requires a distinct governance-policy bootstrap type.
+registry-bootstrap content sequence and `railRegistryDescriptorHash` is its
+exact accepted descriptor identity. Current PA-2 session context MUST carry and
+compare the pair; the numeric sequence alone cannot select historical rail
+state. Descriptor v1 is single-Ed25519-authority only; PA-3 requires a distinct
+governance-policy bootstrap type.
 
 Implementations MUST disclose which phase they operate in. Consumers MUST verify the rail’s anchoring phase against their own trust requirements.
 
@@ -1318,7 +1321,7 @@ than being silently upgraded to independent authority evidence.
 
 **Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Rail authors MUST specify `decimals` exactly, and phase handlers MUST validate `amount.amount` precision against `rail.asset.decimals` (excess precision is an error).
 
-**Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start (per railRegistryVersion in SessionContext). Settle MUST use the pinned rail definition, even if the registry has since superseded it.
+**Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start by the exact `(railRegistryVersion, railRegistryDescriptorHash)` pair in `SessionContext`. Settle MUST use the definition from that predecessor-validated immutable snapshot, even if the registry has since superseded it; a numeric sequence or same-sequence descriptor from transport is not authority.
 
 ### 9.14 Phase parameters reference card
 

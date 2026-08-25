@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import json
 import re
 from copy import deepcopy
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from jcs import canonicalize as jcs_canonicalize
 
 
 BOOTSTRAP_DOMAIN = b"dacs-registry-bootstrap:v1:"
@@ -31,9 +31,7 @@ SIGNATURE_FIELDS = {"authorizationSignature", "authorityAcceptanceSignature"}
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    return jcs_canonicalize(value).encode("utf-8")
 
 
 def hash_hex(value: Any) -> str:
@@ -42,6 +40,15 @@ def hash_hex(value: Any) -> str:
 
 def descriptor_hash(descriptor: dict[str, Any]) -> str:
     return hash_hex({k: v for k, v in descriptor.items() if k not in SIGNATURE_FIELDS})
+
+
+def _try_descriptor_hash(descriptor: Any) -> str | None:
+    if not isinstance(descriptor, dict):
+        return None
+    try:
+        return descriptor_hash(descriptor)
+    except (TypeError, ValueError, UnicodeError):
+        return None
 
 
 def _decode_b64url(value: Any) -> bytes | None:
@@ -90,15 +97,20 @@ def _receipt_tuple(receipt: dict[str, Any]) -> tuple[Any, ...]:
 
 def evaluate_resolution(case: dict[str, Any]) -> str:
     """Return pass/fail/indeterminate for one portable-resolution fixture."""
-    if case.get("claimsAbsent"):
-        policy = case.get("absencePolicy", {})
-        return "pass" if policy.get("declared") is True and policy.get("satisfied") is True else "indeterminate"
+    policy = case.get("absencePolicy", {})
+    authenticated_absence = (
+        case.get("claimsAbsent") is True
+        and isinstance(policy, dict)
+        and policy.get("declared") is True
+        and policy.get("satisfied") is True
+    )
 
     carriers = case.get("carriers")
     if not isinstance(carriers, list) or not carriers:
-        return "indeterminate"
+        return "pass" if authenticated_absence else "indeterminate"
 
-    qualified: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    qualified_receipts: list[tuple[tuple[Any, ...], tuple[Any, ...], dict[str, Any]]] = []
+    qualified_references: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
     for carrier in carriers:
         if not isinstance(carrier, dict):
             continue
@@ -110,11 +122,18 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
                 continue
             native = carrier.get("nativeAddress")
             content = case.get("storage", {}).get(native)
-            if content is None or hash_hex(content) != carrier.get("contentHash"):
+            try:
+                content_matches = content is not None and hash_hex(content) == carrier.get("contentHash")
+            except (TypeError, ValueError, UnicodeError):
+                content_matches = False
+            if not content_matches:
+                continue
+            expected_hash = case.get("expectedContentHash")
+            if expected_hash is not None and carrier.get("contentHash") != expected_hash:
                 continue
             if carrier.get("artifactChecksVerified") is not True:
                 continue
-            qualified.append((("reference", native, carrier.get("contentHash")), carrier))
+            qualified_references.append(((native, carrier.get("contentHash")), carrier))
             continue
         if kind != "anchor-receipt":
             continue
@@ -138,19 +157,35 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
             continue
         native = receipt.get("nativeAddress")
         content = case.get("storage", {}).get(native)
-        if content is None or hash_hex(content) != receipt.get("contentHash"):
+        try:
+            content_matches = content is not None and hash_hex(content) == receipt.get("contentHash")
+        except (TypeError, ValueError, UnicodeError):
+            content_matches = False
+        if not content_matches:
             continue
         if carrier.get("deliveredAt") is not None and case.get("requiredBy") is not None:
             if carrier["deliveredAt"] > case["requiredBy"]:
                 return "fail"
-        qualified.append((_receipt_tuple(receipt), carrier))
+        qualified_receipts.append((
+            _receipt_tuple(receipt),
+            (receipt.get("nativeAddress"), receipt.get("contentHash")),
+            carrier,
+        ))
 
-    if not qualified:
+    if not qualified_receipts and not qualified_references:
+        return "pass" if authenticated_absence else "indeterminate"
+    if authenticated_absence:
         return "indeterminate"
-    distinct = {canonical_bytes(item[0]) for item in qualified}
-    if len(distinct) != 1:
-        return "indeterminate"
-    return "pass"
+    if qualified_receipts:
+        receipt_tuples = {item[0] for item in qualified_receipts}
+        if len(receipt_tuples) != 1:
+            return "indeterminate"
+        receipt_artifact = qualified_receipts[0][1]
+        if any(reference[0] != receipt_artifact for reference in qualified_references):
+            return "indeterminate"
+        return "pass"
+    reference_artifacts = {item[0] for item in qualified_references}
+    return "pass" if len(reference_artifacts) == 1 else "indeterminate"
 
 
 def _basic_descriptor(descriptor: Any) -> bool:
@@ -309,36 +344,47 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
     roots = [d for d in descriptors if isinstance(d, dict) and d.get("sequence") == 1]
     pin = case.get("trustPin", {})
     if "descriptorHash" in pin:
-        roots = [d for d in roots if descriptor_hash(d) == pin["descriptorHash"]]
+        roots = [d for d in roots if _try_descriptor_hash(d) == pin["descriptorHash"]]
     if "authorityKeyId" in pin:
         roots = [d for d in roots if d.get("authorityKeyId") == pin["authorityKeyId"]]
     if len(roots) != 1:
         return "indeterminate" if roots else "fail"
     root = roots[0]
-    status = _validate_root(root, case)
+    try:
+        status = _validate_root(root, case)
+    except (TypeError, ValueError, UnicodeError):
+        status = "fail"
     if status != "pass":
         return status
     head = root
+    accepted_chain = [root]
     while True:
+        head_hash = _try_descriptor_hash(head)
+        if head_hash is None:
+            return "fail"
         candidates = [
             d for d in descriptors
             if isinstance(d, dict)
-            and d.get("supersedesDescriptorHash") == descriptor_hash(head)
+            and d.get("supersedesDescriptorHash") == head_hash
         ]
         valid: list[dict[str, Any]] = []
         indeterminate_seen = False
         for candidate in candidates:
-            result = _validate_successor(head, candidate, case)
+            try:
+                result = _validate_successor(head, candidate, case)
+            except (TypeError, ValueError, UnicodeError):
+                result = "fail"
             if result == "pass":
                 valid.append(candidate)
             elif result == "indeterminate":
                 indeterminate_seen = True
-            else:
-                return "fail"
         if len(valid) > 1:
+            return "indeterminate"
+        if indeterminate_seen and valid:
             return "indeterminate"
         if len(valid) == 1:
             head = valid[0]
+            accepted_chain.append(head)
             continue
         if indeterminate_seen:
             return "indeterminate"
@@ -348,11 +394,22 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
     if isinstance(stored, dict) and case.get("mode", "latest") == "latest":
         if head.get("sequence") < stored.get("sequence", 0):
             return "fail"
-        if head.get("sequence") == stored.get("sequence") and descriptor_hash(head) != stored.get("descriptorHash"):
+        if head.get("sequence") == stored.get("sequence") and _try_descriptor_hash(head) != stored.get("descriptorHash"):
             return "indeterminate"
     if case.get("mode") == "historical":
         target_sequence = case.get("targetSequence")
-        matches = [d for d in descriptors if d.get("sequence") == target_sequence]
+        target_hash = case.get("targetDescriptorHash")
+        if (
+            isinstance(target_sequence, bool)
+            or not isinstance(target_sequence, int)
+            or HEX64.fullmatch(str(target_hash)) is None
+        ):
+            return "fail"
+        matches = [
+            d for d in accepted_chain
+            if d.get("sequence") == target_sequence
+            and _try_descriptor_hash(d) == target_hash
+        ]
         if len(matches) != 1:
             return "indeterminate"
         head = matches[0]

@@ -60,9 +60,15 @@ The format used per release:
   distinct signed `RegistryBootstrapDescriptor` trust root for the recipe and
   rail index major lines, immutable content-sequenced snapshots, exact
   first-contact pins, dual-authorized key rotation, cumulative revocation,
-  fork/rollback refusal, historical replay, and authenticated definition
-  references. Registers `dacs-registry-bootstrap:v1:` and adds deterministic
-  positive, negative, indeterminate, and boundary vectors for both algorithms.
+  fork/rollback refusal, exact sequence-and-descriptor-hash historical replay,
+  and authenticated definition references. PA-2 session and signed bundle
+  shapes now carry the descriptor hash paired with the numeric registry
+  version. Registry hashes use the repository's JCS/NFC implementation;
+  invalid candidates are discarded, unresolved signed competitors prevent
+  availability from selecting a branch, and equivalent receipt/reference
+  carriers do not create false forks. Registers
+  `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,
+  indeterminate, and boundary vectors for both algorithms.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

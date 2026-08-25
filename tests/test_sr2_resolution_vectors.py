@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from sr2_resolution_reference import descriptor_hash, evaluate_vector  # noqa: E402
+from sr2_resolution_reference import descriptor_hash, evaluate_vector, hash_hex  # noqa: E402
 
 
 RESOLUTION = (
@@ -99,6 +99,58 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         vector = copy.deepcopy(self.vectors["key-only-sequence-one-fork"])
         vector["input"]["descriptors"].reverse()
         self.assertEqual(evaluate_vector(vector), "indeterminate")
+
+    def test_historical_replay_uses_exact_accepted_descriptor_identity(self):
+        self.assertEqual(
+            evaluate_vector(self.vectors["historical-replay-uses-recorded-sequence"]),
+            "pass",
+        )
+        self.assertEqual(
+            evaluate_vector(self.vectors["historical-replay-refuses-unrelated-descriptor"]),
+            "indeterminate",
+        )
+        self.assertEqual(
+            evaluate_vector(self.vectors["historical-replay-requires-descriptor-hash"]),
+            "fail",
+        )
+
+    def test_candidate_classification_precedes_chain_advance(self):
+        self.assertEqual(
+            evaluate_vector(self.vectors["valid-and-unavailable-successors-remain-unresolved"]),
+            "indeterminate",
+        )
+        self.assertEqual(
+            evaluate_vector(self.vectors["invalid-successor-is-discarded"]),
+            "pass",
+        )
+
+    def test_presence_absence_and_equivalent_carriers_are_unambiguous(self):
+        self.assertEqual(
+            evaluate_vector(self.vectors["authenticated-presence-and-absence-conflict"]),
+            "indeterminate",
+        )
+        self.assertEqual(
+            evaluate_vector(self.vectors["equivalent-reference-and-receipt-collapse"]),
+            "pass",
+        )
+
+    def test_jcs_nfc_known_answers_are_independent_of_generator_metadata(self):
+        self.assertEqual(
+            hash_hex({"z": 1, "a": "e\u0301"}),
+            "fb64e573f7cde5b7efeda52ffc4bdd57572055b0b7e64a70172606c82c6c7eac",
+        )
+        vector = copy.deepcopy(self.vectors["signed-unknown-member-is-nfc-canonical"])
+        descriptor = vector["input"]["descriptors"][0]
+        self.assertEqual(
+            descriptor_hash(descriptor),
+            "3a06d68ee4fbc7ace3c67e8c7e0a0fa1f7e05a838a16e76fd3c26c829845e882",
+        )
+        descriptor["futurePolicyHint"]["label"] = "é"
+        self.assertEqual(evaluate_vector(vector), "pass")
+        with self.assertRaises(ValueError):
+            hash_hex({"unsafe": 9007199254740992})
+        with self.assertRaises(ValueError):
+            hash_hex({"unsafe": 1.5})
 
 
 if __name__ == "__main__":

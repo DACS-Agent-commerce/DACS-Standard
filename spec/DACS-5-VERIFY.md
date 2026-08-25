@@ -44,7 +44,9 @@ type SessionRecord = {
   lastUpdatedAt: number
   endedAt?: number                           // set on terminal state
   recipeRegistryVersion: number              // DACS-2 registry pinned at session start
+  recipeRegistryDescriptorHash?: string      // REQUIRED for a PA-2 recipe pin
   railRegistryVersion: number                // DACS-4 registry pinned at session start
+  railRegistryDescriptorHash?: string        // REQUIRED for a PA-2 rail pin
   amendments?: AttestationRef[]              // refunds and other amendments
 }
 type SessionState =
@@ -211,8 +213,10 @@ type AttestationBundle = {
   ratingRefs?: AttestationRef[]               // when the rate phase ran
 
   recipeRegistryVersion: number               // DACS-2 registry pinned at session start
+  recipeRegistryDescriptorHash?: string       // REQUIRED for a PA-2 recipe pin; signed replay authority
 
   railRegistryVersion: number                 // DACS-4 registry pinned at session start
+  railRegistryDescriptorHash?: string         // REQUIRED for a PA-2 rail pin; signed replay authority
 
   finalisedAt: number
 
@@ -284,7 +288,9 @@ type FaultAttestationBundle = {
   amendments?: AttestationRef[]
   ratingRefs?: AttestationRef[]
   recipeRegistryVersion: number
+  recipeRegistryDescriptorHash?: string
   railRegistryVersion: number
+  railRegistryDescriptorHash?: string
   finalisedAt: number
   signatures: BundleSignature[]               // both buyer and seller (and orchestrator if separate); each value over the FaultAttestationBundle domain-separated payload (§10.4.1)
 }
@@ -309,13 +315,25 @@ type EvidenceBoundFaultAttestationBundle = {
   amendments?: AttestationRef[]
   ratingRefs?: AttestationRef[]
   recipeRegistryVersion: number
+  recipeRegistryDescriptorHash?: string
   railRegistryVersion: number
+  railRegistryDescriptorHash?: string
   finalisedAt: number
   signatures: BundleSignature[]
 }
 ```
 
 A consumer that does not support `EvidenceBoundFaultAttestationBundle` MUST reject its discriminator as unsupported and MUST NOT strip or rename it to reinterpret the object as either older bundle type (CORE §11.1.2). Conversely, an SEB-conforming consumer MUST NOT claim SEB validation for an `AttestationBundle` or `FaultAttestationBundle`; those released types retain their v0.3 validity semantics.
+
+For all three bundle types, each `*RegistryDescriptorHash` is REQUIRED on a
+current PA-2-produced bundle and MUST be exactly 64 lower-case hexadecimal
+digits. It is signed with the bundle and pairs with the adjacent numeric
+registry version. Historical bundles that predate this member remain
+signature-verifiable, but their numeric version alone MUST NOT authorize
+registry-dependent replay: the consumer returns `indeterminate` unless the
+exact descriptor hash is supplied by another authenticated historical record.
+An unsigned `SessionRecord` can retain the pair operationally but cannot supply
+that replay authority.
 
 Except for discriminator, signature-domain, extended-pointer, and SEB-specific rules, every rule naming `FaultAttestationBundle` also applies to `EvidenceBoundFaultAttestationBundle`. For pair reconciliation both are absolute-fault types: any pair of absolute-fault copies uses the `faultedParty` plus outcome-class rule, including a mixed pair of these two types. Only an `EvidenceBoundFaultAttestationBundle` copy makes an SEB claim.
 

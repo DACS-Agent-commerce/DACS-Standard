@@ -336,7 +336,36 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
             "a binding-defined finalized authenticated absence policy may establish absence",
             lambda c: c.update({"carriers": [], "claimsAbsent": True, "absencePolicy": {"declared": True, "satisfied": True}}),
         ),
+        resolution_vector(
+            "authenticated-presence-and-absence-conflict",
+            "indeterminate",
+            "conflicting authenticated positive and negative state views cannot select a winner",
+            lambda c: c.update({"claimsAbsent": True, "absencePolicy": {"declared": True, "satisfied": True}}),
+        ),
+        resolution_vector(
+            "ordinary-absence-claim-cannot-override-presence",
+            "pass",
+            "an unauthenticated absence claim is ignored when a qualifying receipt resolves",
+            lambda c: c.update({"claimsAbsent": True, "absencePolicy": {"declared": False, "satisfied": False}}),
+        ),
     ])
+
+    def equivalent_reference_and_receipt(case: dict[str, Any]) -> None:
+        case["carriers"].append({
+            "kind": "authenticated-reference",
+            "surface": "finalized-dacs5-bundle",
+            "referenceAuthenticated": True,
+            "nativeAddress": NATIVE,
+            "contentHash": hash_hex(ARTIFACT),
+            "artifactChecksVerified": True,
+        })
+
+    vectors.append(resolution_vector(
+        "equivalent-reference-and-receipt-collapse",
+        "pass",
+        "two carrier classes resolving the same artifact are retained but are not a fork",
+        equivalent_reference_and_receipt,
+    ))
 
     def observed_at_does_not_choose(case: dict[str, Any]) -> None:
         equivocation(case)
@@ -590,23 +619,23 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
 
     vectors.extend([
         bootstrap_vector(
-            "rotation-missing-predecessor-authorization", "fail",
-            "new-key acceptance cannot substitute for predecessor delegation",
+            "rotation-missing-predecessor-authorization", "pass",
+            "an invalid rotation is discarded and cannot replace the accepted root",
             lambda c: (add_successor(c, rotate=True)["authorizationSignature"].update({"value": "AA"}),),
         ),
         bootstrap_vector(
-            "rotation-missing-new-key-acceptance", "fail",
-            "predecessor delegation alone cannot prove control of the new key",
+            "rotation-missing-new-key-acceptance", "pass",
+            "a rotation without new-key acceptance is discarded and the accepted root remains",
             lambda c: add_successor(c, rotate=True).pop("authorityAcceptanceSignature"),
         ),
         bootstrap_vector(
-            "sequence-skip-is-rejected", "fail",
-            "successors increment exactly once",
+            "sequence-skip-is-rejected", "pass",
+            "a sequence-skipping candidate is discarded and cannot advance the accepted chain",
             lambda c: changed_successor(c, lambda d: d.update({"sequence": 3})),
         ),
         bootstrap_vector(
-            "successor-registry-tuple-change", "fail",
-            "a successor cannot silently change the registry identity tuple",
+            "successor-registry-tuple-change", "pass",
+            "a tuple-changing candidate is discarded and cannot advance the accepted chain",
             lambda c: changed_successor(c, lambda d: d.update({"substrate": "other:testnet"})),
         ),
         bootstrap_vector(
@@ -635,10 +664,10 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         sign_descriptor(successor, NEW_SEED)
 
     vectors.extend([
-        bootstrap_vector("revocation-set-cannot-shrink", "fail", "revocations are cumulative", lambda c: revoked_chain_case(c, "shrink")),
-        bootstrap_vector("revocation-set-cannot-contain-duplicates", "fail", "revocations are unique", lambda c: revoked_chain_case(c, "duplicate")),
-        bootstrap_vector("revocation-set-order-is-canonical", "fail", "revocations are sorted", lambda c: revoked_chain_case(c, "reorder")),
-        bootstrap_vector("revoked-predecessor-cannot-authorize", "fail", "a revoked active predecessor cannot authorize a successor", lambda c: revoked_chain_case(c, "revoked-predecessor")),
+        bootstrap_vector("revocation-set-cannot-shrink", "pass", "a successor with non-cumulative revocations is discarded", lambda c: revoked_chain_case(c, "shrink")),
+        bootstrap_vector("revocation-set-cannot-contain-duplicates", "pass", "a successor with duplicate revocations is discarded", lambda c: revoked_chain_case(c, "duplicate")),
+        bootstrap_vector("revocation-set-order-is-canonical", "pass", "a successor with non-canonical revocation order is discarded", lambda c: revoked_chain_case(c, "reorder")),
+        bootstrap_vector("revoked-predecessor-cannot-authorize", "pass", "an invalid candidate that revokes its active authority is discarded", lambda c: revoked_chain_case(c, "revoked-predecessor")),
     ])
 
     def successor_fork(case: dict[str, Any]) -> None:
@@ -667,8 +696,59 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         case["verifiedEvidenceValues"].append("evidence-recipe-index-99")
         case["indexStorage"]["demos:storage:recipe-index-99"] = snapshot
 
+    def valid_and_unavailable_successor(case: dict[str, Any]) -> None:
+        successor_fork(case)
+        unavailable = case["descriptors"][-1]
+        evidence = unavailable["indexAnchorReceipt"]["evidence"]["value"]
+        case["verifiedEvidenceValues"].remove(evidence)
+
+    def valid_and_invalid_successor(case: dict[str, Any]) -> None:
+        successor_fork(case)
+        case["descriptors"][-1]["authorizationSignature"]["value"] = "AA"
+
+    def historical_root(case: dict[str, Any]) -> None:
+        add_successor(case)
+        root = case["descriptors"][0]
+        case.update({
+            "mode": "historical",
+            "targetSequence": 1,
+            "targetDescriptorHash": descriptor_hash(root),
+        })
+
+    def historical_unrelated_descriptor(case: dict[str, Any]) -> None:
+        add_successor(case)
+        snapshot = index_snapshot("recipe", revision=33)
+        unrelated = make_descriptor(
+            kind="recipe",
+            sequence=3,
+            snapshot=snapshot,
+            native="demos:storage:recipe-index-33",
+            authority_seed=OLD_SEED,
+            evidence="evidence-recipe-index-33",
+        )
+        unrelated["supersedesDescriptorHash"] = "ef" * 32
+        sign_descriptor(unrelated, OLD_SEED)
+        case["descriptors"].append(unrelated)
+        case["verifiedEvidenceValues"].append("evidence-recipe-index-33")
+        case["indexStorage"]["demos:storage:recipe-index-33"] = snapshot
+        case.update({
+            "mode": "historical",
+            "targetSequence": 3,
+            "targetDescriptorHash": descriptor_hash(unrelated),
+        })
+
     vectors.extend([
         bootstrap_vector("two-valid-successors-are-a-fork", "indeterminate", "transport order cannot choose a valid successor fork", successor_fork),
+        bootstrap_vector(
+            "valid-and-unavailable-successors-remain-unresolved", "indeterminate",
+            "proof availability cannot select one of two predecessor-authorized signed candidates",
+            valid_and_unavailable_successor,
+        ),
+        bootstrap_vector(
+            "invalid-successor-is-discarded", "pass",
+            "an invalid sibling candidate is discarded before the one valid successor advances",
+            valid_and_invalid_successor,
+        ),
         bootstrap_vector("key-only-sequence-one-fork", "indeterminate", "a key-only first-contact pin cannot choose between two valid roots", root_fork),
         bootstrap_vector(
             "latest-mode-rollback-is-rejected", "fail",
@@ -677,8 +757,18 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         ),
         bootstrap_vector(
             "historical-replay-uses-recorded-sequence", "pass",
-            "historical replay may resolve a retained immutable earlier snapshot",
+            "historical replay selects the exact retained sequence-and-descriptor-hash pair",
+            historical_root,
+        ),
+        bootstrap_vector(
+            "historical-replay-requires-descriptor-hash", "fail",
+            "a numeric registry sequence alone is not authenticated replay authority",
             lambda c: (add_successor(c), c.update({"mode": "historical", "targetSequence": 1})),
+        ),
+        bootstrap_vector(
+            "historical-replay-refuses-unrelated-descriptor", "indeterminate",
+            "an exact target hash outside the validated predecessor chain cannot be selected",
+            historical_unrelated_descriptor,
         ),
     ])
 
@@ -690,8 +780,8 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
 
     vectors.extend([
         bootstrap_vector(
-            "content-change-at-same-native-address", "fail",
-            "immutable snapshots cannot replace bytes at an accepted native address",
+            "content-change-at-same-native-address", "pass",
+            "a same-address content replacement is discarded and cannot advance the chain",
             same_native_changed_bytes,
         ),
         bootstrap_vector(
@@ -738,11 +828,30 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         case["descriptors"][0]["futurePolicyHint"]["mode"] = "replace"
         case["trustPin"]["descriptorHash"] = descriptor_hash(case["descriptors"][0])
 
+    def signed_unknown_nfc(case: dict[str, Any]) -> None:
+        case["descriptors"][0]["futurePolicyHint"] = {"label": "e\u0301"}
+        resign_root(case)
+
     vectors.extend([
         bootstrap_vector(
             "signed-unknown-member-is-preserved", "pass",
             "SIG-5 includes unknown members in the descriptor hash and signature",
             signed_unknown,
+        ),
+        bootstrap_vector(
+            "signed-unknown-member-is-nfc-canonical", "pass",
+            "descriptor hashing applies CF-1 NFC to signed unknown string values",
+            signed_unknown_nfc,
+        ),
+        bootstrap_vector(
+            "unsafe-integer-in-unknown-member-is-rejected", "fail",
+            "descriptor hashing rejects integers outside the JCS safe subset",
+            lambda c: c["descriptors"][0].update({"futureUnsafe": 9007199254740992}),
+        ),
+        bootstrap_vector(
+            "float-in-unknown-member-is-rejected", "fail",
+            "descriptor hashing rejects unsupported floating-point values fail closed",
+            lambda c: c["descriptors"][0].update({"futureUnsafe": 1.5}),
         ),
         bootstrap_vector(
             "unknown-member-mutation-without-resigning", "fail",

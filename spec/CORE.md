@@ -364,15 +364,23 @@ are exactly `key:` plus the 32 raw Ed25519 public-key bytes as 64 lower-case hex
 aliases and separate key-byte inputs are rejected.
 
 Two different valid successors of one predecessor are a fork. Under a key-only
-pin, two different valid sequence-1 descriptors are likewise a fork. Latest
-resolution becomes `indeterminate` and MUST NOT select by transport, time, or
-visibility; recovery requires a new out-of-band release pin. Latest-mode
-rollback to a lower accepted sequence is rejected. Historical replay uses the
-session's recorded sequence, unique descriptor hash, immutable index snapshot,
-and exact recipe/rail entry version. Unavailable or invalid bootstrap material
-yields `indeterminate` after invalid candidates are discarded and never permits
-fallback to an unpinned latest index. Recursive evidence that depends on the
-target registry is rejected.
+pin, two different valid sequence-1 descriptors are likewise a fork. A consumer
+MUST classify every predecessor-authorized signed candidate before advancing:
+invalid candidates are discarded; one valid candidate advances only when no
+competing candidate remains unresolved; an unavailable otherwise-valid
+candidate keeps the result `indeterminate`; and multiple valid candidates are a
+fork. Proof or snapshot availability MUST NOT select a signed branch. Latest
+resolution becomes `indeterminate` on a fork and MUST NOT select by transport,
+time, or visibility; recovery requires a new out-of-band release pin.
+Latest-mode rollback to a lower accepted sequence is rejected. Historical
+replay uses the session's recorded `(sequence, descriptorHash)` pair, selects
+only that exact descriptor from the predecessor-validated accepted chain, then
+uses its retained immutable index snapshot and exact recipe/rail entry version.
+A sequence alone, a same-sequence descriptor with another hash, or a descriptor
+outside that chain is not replay authority. Unavailable required bootstrap
+material yields `indeterminate` after invalid candidates are discarded and
+never permits fallback to an unpinned latest index. Recursive evidence that
+depends on the target registry is rejected.
 
 **Substrate-coupling status in v0.1.**
 
@@ -489,7 +497,9 @@ type SessionContext = {
   jobId: string
   listingRef: { listingId: string; version: number; contentHash: string }
   recipeRegistryVersion: number             // DACS-2 registry pinned at session start
+  recipeRegistryDescriptorHash?: string     // REQUIRED under PA-2; 64 lower-case hex paired with recipeRegistryVersion
   railRegistryVersion: number               // DACS-4 registry pinned at session start
+  railRegistryDescriptorHash?: string       // REQUIRED under PA-2; 64 lower-case hex paired with railRegistryVersion
   parties: SessionParty[]
   priorPhaseOutputs: Record<string, unknown> // accumulated contextDelta from completed phases
   signer: SubstrateSigner                   // substrate-specific signing capability
@@ -506,6 +516,13 @@ type PhaseHandlerResult = {
   errorClass?: "permanent" | "transient" | "counterparty" | "substrate" | "settlement-atomicity"
 }
 ```
+
+For a PA-2 registry, the version and descriptor-hash members are one
+authenticated pin and MUST be populated, persisted, and compared together. A
+handler MUST NOT resolve a numeric registry version without its paired hash or
+substitute a same-sequence descriptor. PA-1 in-code registries omit the
+corresponding descriptor-hash member. A missing or unresolvable PA-2 pair cannot
+fall back to current registry state.
 
 Conformance: phase handlers MUST accept a SessionContext and return a PhaseHandlerResult. On ok: true the orchestrator merges contextDelta into the corresponding PhaseEntry and records txRefs in the session event log; on ok: false the orchestrator classifies the failure per errorClass and applies the retry policy in chapter 10.
 

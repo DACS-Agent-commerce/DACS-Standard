@@ -3,8 +3,8 @@
   "spec": "CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3",
   "decisionModel": "A release-pinned sequence-one descriptor starts a non-recursive immutable registry-index chain; exact predecessor authorization, optional new-key acceptance, finality evidence, snapshot hashes, rollback, forks, and definition checks are independently enforced.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "4ae1d7204c4a89c7345a26c850f65886f92cfb1a4f4b1f97b9c743d0fcd7deb5",
-  "count": 40,
+  "hash": "87e3a2c62579e79f4ba8d31a3fb00eaaf7118b0faab9c0473d93ce6d3cb057f3",
+  "count": 47,
   "publicTestSeeds": {
     "oldAuthorityEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
     "newAuthorityEd25519": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -1237,8 +1237,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "new-key acceptance cannot substitute for predecessor delegation"
+      "expected": "pass",
+      "reason": "an invalid rotation is discarded and cannot replace the accepted root"
     },
     {
       "name": "rotation-missing-new-key-acceptance",
@@ -1356,8 +1356,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "predecessor delegation alone cannot prove control of the new key"
+      "expected": "pass",
+      "reason": "a rotation without new-key acceptance is discarded and the accepted root remains"
     },
     {
       "name": "sequence-skip-is-rejected",
@@ -1480,8 +1480,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "successors increment exactly once"
+      "expected": "pass",
+      "reason": "a sequence-skipping candidate is discarded and cannot advance the accepted chain"
     },
     {
       "name": "successor-registry-tuple-change",
@@ -1604,8 +1604,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "a successor cannot silently change the registry identity tuple"
+      "expected": "pass",
+      "reason": "a tuple-changing candidate is discarded and cannot advance the accepted chain"
     },
     {
       "name": "authority-key-alias-is-rejected",
@@ -1915,8 +1915,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "revocations are cumulative"
+      "expected": "pass",
+      "reason": "a successor with non-cumulative revocations is discarded"
     },
     {
       "name": "revocation-set-cannot-contain-duplicates",
@@ -2092,8 +2092,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "revocations are unique"
+      "expected": "pass",
+      "reason": "a successor with duplicate revocations is discarded"
     },
     {
       "name": "revocation-set-order-is-canonical",
@@ -2269,8 +2269,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "revocations are sorted"
+      "expected": "pass",
+      "reason": "a successor with non-canonical revocation order is discarded"
     },
     {
       "name": "revoked-predecessor-cannot-authorize",
@@ -2446,8 +2446,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "a revoked active predecessor cannot authorize a successor"
+      "expected": "pass",
+      "reason": "an invalid candidate that revokes its active authority is discarded"
     },
     {
       "name": "two-valid-successors-are-a-fork",
@@ -2613,6 +2613,335 @@
       },
       "expected": "indeterminate",
       "reason": "transport order cannot choose a valid successor fork"
+    },
+    {
+      "name": "valid-and-unavailable-successors-remain-unresolved",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "-GFjGTDGtDXrnpQuHonJYxWO03Yw3OA9-JiuZv-Tu6Jc9POKjyLmII2OltbuJYHozJqnCgNiSNxtC4B2vlCSCQ"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 2,
+            "nativeIndexAddress": "demos:storage:recipe-index-2",
+            "indexContentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-2",
+              "contentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-2"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-2",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-2"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-2",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "supersedesDescriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "cOyJnuJMLspV4roHk6YS3KL5zbZzGbSm23B8kWJ21Cqovh2kJ_JLb0Lak0w4trL_T5o3BtEhF7nXZcWH-8j9Cg"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 2,
+            "nativeIndexAddress": "demos:storage:recipe-index-22",
+            "indexContentHash": "619a75fbcc6c37b37d0bdf4ee675cc3b77d59f5a55f2d573af0084fdeae21138",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-22",
+              "contentHash": "619a75fbcc6c37b37d0bdf4ee675cc3b77d59f5a55f2d573af0084fdeae21138",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-22"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-22",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-22"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-22",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "supersedesDescriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "U_u_qhbCidIVCYgo9h7xXusffRdeV9WR3wXc_uG0ZULcGS7c7gyf5m9D7eFIM7CAuIKTRGbaRkiwCZ0wOGTqDA"
+            }
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1",
+          "evidence-recipe-index-2"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          },
+          "demos:storage:recipe-index-2": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 2,
+            "entries": []
+          },
+          "demos:storage:recipe-index-22": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 22,
+            "entries": []
+          }
+        },
+        "mode": "latest"
+      },
+      "expected": "indeterminate",
+      "reason": "proof availability cannot select one of two predecessor-authorized signed candidates"
+    },
+    {
+      "name": "invalid-successor-is-discarded",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "-GFjGTDGtDXrnpQuHonJYxWO03Yw3OA9-JiuZv-Tu6Jc9POKjyLmII2OltbuJYHozJqnCgNiSNxtC4B2vlCSCQ"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 2,
+            "nativeIndexAddress": "demos:storage:recipe-index-2",
+            "indexContentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-2",
+              "contentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-2"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-2",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-2"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-2",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "supersedesDescriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "cOyJnuJMLspV4roHk6YS3KL5zbZzGbSm23B8kWJ21Cqovh2kJ_JLb0Lak0w4trL_T5o3BtEhF7nXZcWH-8j9Cg"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 2,
+            "nativeIndexAddress": "demos:storage:recipe-index-22",
+            "indexContentHash": "619a75fbcc6c37b37d0bdf4ee675cc3b77d59f5a55f2d573af0084fdeae21138",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-22",
+              "contentHash": "619a75fbcc6c37b37d0bdf4ee675cc3b77d59f5a55f2d573af0084fdeae21138",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-22"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-22",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-22"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-22",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "supersedesDescriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "AA"
+            }
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1",
+          "evidence-recipe-index-2",
+          "evidence-recipe-index-22"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          },
+          "demos:storage:recipe-index-2": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 2,
+            "entries": []
+          },
+          "demos:storage:recipe-index-22": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 22,
+            "entries": []
+          }
+        },
+        "mode": "latest"
+      },
+      "expected": "pass",
+      "reason": "an invalid sibling candidate is discarded before the one valid successor advances"
     },
     {
       "name": "key-only-sequence-one-fork",
@@ -2911,10 +3240,295 @@
           }
         },
         "mode": "historical",
-        "targetSequence": 1
+        "targetSequence": 1,
+        "targetDescriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a"
       },
       "expected": "pass",
-      "reason": "historical replay may resolve a retained immutable earlier snapshot"
+      "reason": "historical replay selects the exact retained sequence-and-descriptor-hash pair"
+    },
+    {
+      "name": "historical-replay-requires-descriptor-hash",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "-GFjGTDGtDXrnpQuHonJYxWO03Yw3OA9-JiuZv-Tu6Jc9POKjyLmII2OltbuJYHozJqnCgNiSNxtC4B2vlCSCQ"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 2,
+            "nativeIndexAddress": "demos:storage:recipe-index-2",
+            "indexContentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-2",
+              "contentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-2"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-2",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-2"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-2",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "supersedesDescriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "cOyJnuJMLspV4roHk6YS3KL5zbZzGbSm23B8kWJ21Cqovh2kJ_JLb0Lak0w4trL_T5o3BtEhF7nXZcWH-8j9Cg"
+            }
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1",
+          "evidence-recipe-index-2"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          },
+          "demos:storage:recipe-index-2": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 2,
+            "entries": []
+          }
+        },
+        "mode": "historical",
+        "targetSequence": 1
+      },
+      "expected": "fail",
+      "reason": "a numeric registry sequence alone is not authenticated replay authority"
+    },
+    {
+      "name": "historical-replay-refuses-unrelated-descriptor",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "-GFjGTDGtDXrnpQuHonJYxWO03Yw3OA9-JiuZv-Tu6Jc9POKjyLmII2OltbuJYHozJqnCgNiSNxtC4B2vlCSCQ"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 2,
+            "nativeIndexAddress": "demos:storage:recipe-index-2",
+            "indexContentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-2",
+              "contentHash": "4993c4eda1c22ce0946c79ccec11a1880e81115536cfaacc2184ebf96b908853",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-2"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-2",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-2"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-2",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "supersedesDescriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "cOyJnuJMLspV4roHk6YS3KL5zbZzGbSm23B8kWJ21Cqovh2kJ_JLb0Lak0w4trL_T5o3BtEhF7nXZcWH-8j9Cg"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 3,
+            "nativeIndexAddress": "demos:storage:recipe-index-33",
+            "indexContentHash": "753d38e24d598c4639ecdb4494335e608173fe5c5ac9851e53a982a54df41c62",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-33",
+              "contentHash": "753d38e24d598c4639ecdb4494335e608173fe5c5ac9851e53a982a54df41c62",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-33"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-33",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-33"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-33",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "oFzguNM4WzVxI38HVgiFyJqFa01hAspCmXJWC7GLEcxjq9f0HWiQMSLaDJDSQUt6b8Ryo6-noLAGhuRhMxaBDA"
+            },
+            "supersedesDescriptorHash": "efefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef"
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1",
+          "evidence-recipe-index-2",
+          "evidence-recipe-index-33"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          },
+          "demos:storage:recipe-index-2": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 2,
+            "entries": []
+          },
+          "demos:storage:recipe-index-33": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 33,
+            "entries": []
+          }
+        },
+        "mode": "historical",
+        "targetSequence": 3,
+        "targetDescriptorHash": "bff3494fc8285359dc9ffd06aee76137e76950ce68db4961b9cf620eafb93cc6"
+      },
+      "expected": "indeterminate",
+      "reason": "an exact target hash outside the validated predecessor chain cannot be selected"
     },
     {
       "name": "content-change-at-same-native-address",
@@ -3029,8 +3643,8 @@
         },
         "mode": "latest"
       },
-      "expected": "fail",
-      "reason": "immutable snapshots cannot replace bytes at an accepted native address"
+      "expected": "pass",
+      "reason": "a same-address content replacement is discarded and cannot advance the chain"
     },
     {
       "name": "missing-index-snapshot-bytes",
@@ -3590,6 +4204,212 @@
       },
       "expected": "pass",
       "reason": "SIG-5 includes unknown members in the descriptor hash and signature"
+    },
+    {
+      "name": "signed-unknown-member-is-nfc-canonical",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "3a06d68ee4fbc7ace3c67e8c7e0a0fa1f7e05a838a16e76fd3c26c829845e882",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "PjkHayjPb6Z-xXhaDzK-cXmsBgmNkwFQCUkc-y4B_Ra5vR9q59pPLZjkEjYNmLpMsFZrWz3JgMx7ek4Q4lieBw"
+            },
+            "futurePolicyHint": {
+              "label": "é"
+            }
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          }
+        },
+        "mode": "latest"
+      },
+      "expected": "pass",
+      "reason": "descriptor hashing applies CF-1 NFC to signed unknown string values"
+    },
+    {
+      "name": "unsafe-integer-in-unknown-member-is-rejected",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "-GFjGTDGtDXrnpQuHonJYxWO03Yw3OA9-JiuZv-Tu6Jc9POKjyLmII2OltbuJYHozJqnCgNiSNxtC4B2vlCSCQ"
+            },
+            "futureUnsafe": 9007199254740992
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          }
+        },
+        "mode": "latest"
+      },
+      "expected": "fail",
+      "reason": "descriptor hashing rejects integers outside the JCS safe subset"
+    },
+    {
+      "name": "float-in-unknown-member-is-rejected",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "fa34a1d477d890d67e7d6d58531805fdb33f566ca204d5b0e571d1ad7d311a2a",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "-GFjGTDGtDXrnpQuHonJYxWO03Yw3OA9-JiuZv-Tu6Jc9POKjyLmII2OltbuJYHozJqnCgNiSNxtC4B2vlCSCQ"
+            },
+            "futureUnsafe": 1.5
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          }
+        },
+        "mode": "latest"
+      },
+      "expected": "fail",
+      "reason": "descriptor hashing rejects unsupported floating-point values fail closed"
     },
     {
       "name": "unknown-member-mutation-without-resigning",

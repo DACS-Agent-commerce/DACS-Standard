@@ -11,9 +11,42 @@ The format used per release:
 - **Fixed** — spec defects (rules that referenced undefined values, internal inconsistencies, addressing patterns that did not work on the named substrate).
 - **Governance** — changes to stewardship, working-group framing, or progressive-anchoring phase.
 
----
-
 ## [Unreleased]
+
+### Added — DACS-4 v0.6 pay-ap2 hardening
+
+- **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte
+  (`dacs-ap2-idem:v1:` + NFC(jobId) + `0x3a` + minimal decimal phaseIndex),
+  registers that preimage tag as a non-signature hash domain, and requires an
+  incapable provider to be refused at rail registration (#276).
+- **(AP2-7)** binds each AP2 `transaction_id` to one `(jobId, phaseIndex)`.
+  An exact-tuple retry resumes with the same AP2-6 key and can never create or
+  count a second payment; cross-job/cross-phase reuse rejects, and conflicting
+  stored bindings fail closed.
+- **Executable AP2 handler-safety candidates** cover idempotency-key bytes and
+  NFC; exact compact-JWS `transaction_id` derivation with `_sd_alg` selection;
+  separate CheckoutMandate + PaymentMandate admission before AP2-7/provider
+  side effects; exact-tuple retry/resume; cross-session/cross-phase replay;
+  the DACS checkout-signature profile; and split-credential registration.
+
+### Changed — DACS-4 v0.6 pay-ap2 composition
+
+- **(AP2-2)** keeps the universal provider-receipt rule bounded by the selected
+  SR-3 binding's authenticated property, while scoping consensus-anchored
+  fetch-and-hash (not validator-body-signing) to current Demos DAHR (#280).
+- **(AP2-3)** names the distinct privileged create/metadata credential and
+  relayed read-only status credential, and makes ability to provision the
+  latter a registration-time requirement (#282).
+- **Step 2** requires the handler to possess and verify separate CheckoutMandate
+  and PaymentMandate artifacts, derives `transaction_id` from the exact compact
+  checkout JWS using CheckoutMandate `_sd_alg` with SHA-256 fallback, and rejects
+  malformed, unsupported, or mismatched derivations before AP2-7 reservation or
+  provider submission (#284). DACS explicitly profiles the stricter branch of
+  AP2 v0.2's contradictory checkout-signature guidance and requires
+  non-deterministic signature generation (#281); DACS artifact algorithms are
+  unchanged.
+- **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
+  narrow credential-bound DAHR carve-out (#279).
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

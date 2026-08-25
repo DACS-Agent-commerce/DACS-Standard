@@ -219,7 +219,38 @@ def public_http_target(url):
         address = ipaddress.ip_address(hostname)
     except ValueError:
         return True
-    return address.is_global
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        address = address.ipv4_mapped
+    return not (
+        address.is_loopback
+        or address.is_private
+        or address.is_link_local
+        or address.is_multicast
+        or address.is_reserved
+        or address.is_unspecified
+        or not address.is_global
+    )
+
+
+def record_wallet_authorization(effects):
+    if effects is not None:
+        effects["walletAuthorizationCalls"] = effects.get("walletAuthorizationCalls", 0) + 1
+
+
+def reconciliation_identity(v):
+    agreement = v.get("agreement", {})
+    runtime = v.get("runtime", {})
+    refs = v.get("evidence", {}).get("paymentTxRefs", [])
+    selected = agreement.get("terms", {}).get("rail")
+    if not isinstance(selected, dict) or len(refs) != 1 or not isinstance(refs[0], dict):
+        return None
+    return {
+        "jobId": agreement.get("jobId"),
+        "phaseIndex": runtime.get("phaseIndex"),
+        "requirementHash": digest(selected),
+        "authorizationIdentity": runtime.get("payer", {}).get("paymentAddress"),
+        "settlementTransaction": refs[0].get("settlementTransaction"),
+    }
 
 
 def exact_atomic(amount, decimals):
@@ -287,7 +318,7 @@ def materialize_vector(data, vector):
     }
 
 
-def evaluate(v):
+def evaluate(v, effects=None):
     operation = v.get("operation")
     rail = v.get("railDefinition")
 
@@ -327,8 +358,8 @@ def evaluate(v):
     if operation == "retry":
         if not verify_artifact_signatures(v):
             return "fail", "signature"
-        if v.get("runtime", {}).get("retryWouldAuthorize"):
-            return "fail", "reauthorization"
+        if v.get("runtime", {}).get("reconciliationState") != reconciliation_identity(v):
+            return "fail", "reconciliation-binding"
         return "pass", "reconciliation-pending"
 
     if operation != "execute":
@@ -473,6 +504,11 @@ def evaluate(v):
     understood = set(capability.get("understoodActionExtensions", []))
     if not action_bearing.issubset(understood):
         return "fail", "unsupported-action-extension"
+
+    # This is the sole authorization site in the executable reference path.
+    # Every gate above is therefore mechanically pre-authorization, and retry
+    # returns through the reconciliation branch without reaching this call.
+    record_wallet_authorization(effects)
 
     try:
         response = decode_response_header(http.get("responseHeader"), version)
@@ -627,6 +663,10 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
             "bounded-fetch-ipv4-private-target",
             "bounded-fetch-ipv4-link-local-metadata-target",
             "bounded-fetch-ipv6-loopback-target",
+            "bounded-fetch-ipv4-shared-target",
+            "bounded-fetch-ipv4-multicast-target",
+            "bounded-fetch-ipv4-reserved-target",
+            "bounded-fetch-ipv4-mapped-ipv6-loopback-target",
             "bare-network-label",
             "numeric-version-replaced-by-string",
             "negative-asset-decimals",
@@ -657,7 +697,52 @@ class X402NegotiatedProtocolVectorTests(unittest.TestCase):
         )
         for name in pre_authorization:
             with self.subTest(vector=name):
-                self.assertFalse(self.by_name[name]["runtime"]["authorizationSubmitted"])
+                effects = {"walletAuthorizationCalls": 0}
+                evaluate(self.by_name[name], effects)
+                self.assertEqual(effects["walletAuthorizationCalls"], 0)
+
+    def test_authorization_counter_distinguishes_pre_and_post_authorization(self):
+        for name, want in (
+            ("protocol-v2-exact-success", 1),
+            ("ledger-unavailable-after-submission", 1),
+            ("challenge-resource-substitution", 0),
+        ):
+            with self.subTest(vector=name):
+                effects = {"walletAuthorizationCalls": 0}
+                evaluate(self.by_name[name], effects)
+                self.assertEqual(effects["walletAuthorizationCalls"], want)
+
+    def test_retry_reconciliation_never_calls_wallet(self):
+        names = (
+            "retry-indeterminate-remains-pending",
+            "retry-caller-reauthorization-request-is-ignored",
+            "retry-job-binding-mismatch",
+            "retry-phase-binding-mismatch",
+            "retry-requirement-binding-mismatch",
+            "retry-authorization-binding-mismatch",
+            "retry-transaction-binding-mismatch",
+        )
+        for name in names:
+            with self.subTest(vector=name):
+                effects = {"walletAuthorizationCalls": 0}
+                evaluate(self.by_name[name], effects)
+                self.assertEqual(effects["walletAuthorizationCalls"], 0)
+
+    def test_literal_public_target_classes_are_explicit(self):
+        rejected = (
+            "https://127.0.0.1/",
+            "https://10.0.0.1/",
+            "https://169.254.169.254/",
+            "https://100.64.0.1/",
+            "https://224.0.0.1/",
+            "https://240.0.0.1/",
+            "https://[::1]/",
+            "https://[::ffff:127.0.0.1]/",
+        )
+        for url in rejected:
+            with self.subTest(url=url):
+                self.assertFalse(public_http_target(url))
+        self.assertTrue(public_http_target("https://seller.example/pay"))
 
     def test_new_and_legacy_version_fields_are_not_interchangeable(self):
         new_ref = self.by_name["protocol-v2-exact-success"]["evidence"]["paymentTxRefs"][0]

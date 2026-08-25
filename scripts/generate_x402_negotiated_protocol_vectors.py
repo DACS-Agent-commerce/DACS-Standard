@@ -264,6 +264,13 @@ def make_base(version: int = 2) -> dict:
             "operatorConfigSource": "local-operator-policy",
             "authorizationSubmitted": False,
             "retryWouldAuthorize": False,
+            "reconciliationState": {
+                "jobId": "01M0NVBGYEANE562QQXD33C7WX",
+                "phaseIndex": 3,
+                "requirementHash": digest(ref),
+                "authorizationIdentity": BUYER_ADDRESS,
+                "settlementTransaction": SAFE_TX,
+            },
         },
         "capability": {
             "supportedTuples": [[version, "exact", "eip155:8453"]],
@@ -557,6 +564,10 @@ def build_vectors() -> list[dict]:
         ("ipv4-private", "https://10.0.0.1/pay"),
         ("ipv4-link-local-metadata", "https://169.254.169.254/latest/meta-data/"),
         ("ipv6-loopback", "https://[::1]/pay"),
+        ("ipv4-shared", "https://100.64.0.1/pay"),
+        ("ipv4-multicast", "https://224.0.0.1/pay"),
+        ("ipv4-reserved", "https://240.0.0.1/pay"),
+        ("ipv4-mapped-ipv6-loopback", "https://[::ffff:127.0.0.1]/pay"),
     ):
         def unsafe_public_target(v, target=unsafe_url):
             request = v["agreement"]["terms"]["rail"]["parameters"]["request"]
@@ -753,6 +764,14 @@ def build_vectors() -> list[dict]:
     add_case(vectors, "noncanonical-native-event-key", "error", "XN-8/SB-1",
              "a noncanonical event spelling cannot mint another SB-1 identity",
              noncanonical_event, authorization_submitted=True)
+
+    def uppercase_event(v):
+        value = f"evm:8453:{SAFE_TX.upper()}:7"
+        v["ledger"]["settlementEvent"] = value
+        v["evidence"]["paymentTxRefs"][0]["settlementEvent"] = value
+    add_case(vectors, "noncanonical-native-event-key-uppercase", "error", "XN-8/SB-1",
+             "an upper-case EVM hash cannot mint another SB-1 identity",
+             uppercase_event, authorization_submitted=True)
     add_case(vectors, "native-event-coordinate-substitution", "fail", "XN-8/SB-1",
              "a different signed event coordinate cannot match authenticated ledger data",
              lambda v: v["evidence"]["paymentTxRefs"][0].update({
@@ -762,6 +781,11 @@ def build_vectors() -> list[dict]:
              "the signed finality profile must repeat the selected scheme and network",
              lambda v: v["evidence"]["settlementFinality"]["schemeNetworkFinality"].update({
                  "network": "eip155:1"
+             }), authorization_submitted=True)
+    add_case(vectors, "finality-binding-profile-substitution", "fail", "XN-8",
+             "the finality binding profile must name the exact v0.7 DACS semantics",
+             lambda v: v["evidence"]["settlementFinality"]["schemeNetworkFinality"].update({
+                 "bindingProfile": "counterparty-profile:v1"
              }), authorization_submitted=True)
     add_case(vectors, "event-key-cross-rail-alias", "pass", "XN-8/SB-1",
              "EIP-155 x402 evidence emits the same evm event key as the direct rail")
@@ -829,12 +853,48 @@ def build_vectors() -> list[dict]:
              "indeterminate observation reconciles without a second authorization",
              retry_pending, operation="retry", authorization_submitted=True)
 
-    def retry_double_pay(v):
+    def retry_hostile_reauthorization_request(v):
         v["ledger"]["available"] = False
         v["runtime"]["retryWouldAuthorize"] = True
-    add_case(vectors, "retry-indeterminate-reauthorizes", "fail", "XN-11",
-             "indeterminate observation cannot authorize another payment",
-             retry_double_pay, operation="retry", authorization_submitted=True)
+    add_case(vectors, "retry-caller-reauthorization-request-is-ignored", "pass", "XN-11",
+             "a caller request cannot make reconciliation authorize another payment",
+             retry_hostile_reauthorization_request, operation="retry",
+             authorization_submitted=True, reason="reconciliation-pending")
+
+    def retry_job_mismatch(v):
+        v["agreement"]["jobId"] = "01M0NVBGYEANE562QQXD33C7WY"
+    add_case(vectors, "retry-job-binding-mismatch", "fail", "XN-11",
+             "reconciliation is bound to the original signed jobId",
+             retry_job_mismatch, operation="retry", authorization_submitted=True,
+             reason="reconciliation-binding")
+
+    def retry_phase_mismatch(v):
+        v["runtime"]["phaseIndex"] = 4
+    add_case(vectors, "retry-phase-binding-mismatch", "fail", "XN-11",
+             "reconciliation is bound to the original phase index",
+             retry_phase_mismatch, operation="retry", authorization_submitted=True,
+             reason="reconciliation-binding")
+
+    def retry_requirement_mismatch(v):
+        v["agreement"]["terms"]["rail"]["parameters"]["selection"]["asset"] = "0x" + "99" * 20
+    add_case(vectors, "retry-requirement-binding-mismatch", "fail", "XN-11",
+             "reconciliation is bound to the original complete selected requirement",
+             retry_requirement_mismatch, operation="retry", authorization_submitted=True,
+             reason="reconciliation-binding")
+
+    def retry_authorization_mismatch(v):
+        v["runtime"]["payer"]["paymentAddress"] = "0x" + "99" * 20
+    add_case(vectors, "retry-authorization-binding-mismatch", "fail", "XN-11",
+             "reconciliation is bound to the original authorization identity",
+             retry_authorization_mismatch, operation="retry", authorization_submitted=True,
+             reason="reconciliation-binding")
+
+    def retry_transaction_mismatch(v):
+        v["evidence"]["paymentTxRefs"][0]["settlementTransaction"] = "cd" * 32
+    add_case(vectors, "retry-transaction-binding-mismatch", "fail", "XN-11",
+             "reconciliation is bound to the retained transaction identity",
+             retry_transaction_mismatch, operation="retry", authorization_submitted=True,
+             reason="reconciliation-binding")
 
     return vectors
 

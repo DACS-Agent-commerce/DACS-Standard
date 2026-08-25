@@ -767,6 +767,10 @@ XN-10.
   definition, the selected rail reference, a PaymentRequired extension, a
   catalog, or another counterparty-controlled input, and changing them MUST NOT
   change `railId`, `railVersion`, or the agreement's selected requirement.
+  A tuple the implementation does not support is therefore a pre-authorization
+  `fail` / permanent handler result. A supported tuple whose scheme lacks a
+  DACS success binding follows the distinct XN-9 dispositions; implementations
+  MUST NOT choose between those dispositions locally.
 
 - **(XN-4) Exact challenge match.** The unpaid response MUST be an HTTP 402 with
   a well-formed `PaymentRequired` for the signed `x402Version`. The version
@@ -846,12 +850,15 @@ XN-10.
 - **(XN-8) Independent success floor.** A success-outcome `pay-x402` record
   using `x402:protocol` MUST carry exactly one `x402-protocol` reference and a
   `scheme-network-finality` record whose network and scheme equal the signed
-  selection. The verifier MUST resolve independently authenticated
+  selection. For the v0.7 `exact` binding, that record's `bindingProfile` MUST
+  equal the literal `dacs-x402-exact:v1`; a different, missing, or malformed
+  value is a resolved evidence contradiction and is `fail`. The verifier MUST
+  resolve independently authenticated
   scheme/network data for `settlementTransaction`, require the signed
   adapter-canonical `settlementEvent` to identify exactly one finalized payment
   event, and re-establish the XN-5 payer, payee, asset, amount, authorization,
-  and finality predicates. Missing authenticated data or a locally unsupported
-  network/profile is `indeterminate`; a resolved contradiction is `fail`; a
+  and finality predicates. Missing or temporarily unavailable authenticated
+  data is `indeterminate`; a resolved contradiction is `fail`; a
   malformed coordinate is `error`. A server/facilitator response, its hash, an
   ordinary HTTP acknowledgement, or a server-signed receipt extension alone
   MUST NOT produce `SettlementEvidence.outcome: "success"`, authorize delivery,
@@ -869,7 +876,12 @@ XN-10.
   MUST NOT produce DACS settlement success until a DACS binding profile defines
   price/maximum versus actual charge, authorization, event identity, and
   eventual finality. `batch-settlement` commitment acceptance is never eventual
-  financial settlement. When Permit2 or EIP-3009 is the selected authorization
+  financial settlement. In v0.7, a locally supported `batch-settlement` tuple
+  without an eventual-settlement binding is `indeterminate`; every other
+  locally supported scheme without a DACS success binding, including `upto`,
+  is a pre-authorization `fail` / permanent handler result. These dispositions
+  are protocol-defined and MUST NOT vary by adapter. When Permit2 or EIP-3009
+  is the selected authorization
   form, its SB-3 profile remains mandatory. Another authorization form uses its
   defined binding when one exists; otherwise the evidence MUST NOT claim SB-3,
   though independently verified SB-1/SB-2 baseline evidence may still satisfy
@@ -1344,11 +1356,11 @@ type SettlementFinalityRecord = {
 
   // REQUIRED iff model == "scheme-network-finality"; absent otherwise.
   // `bindingProfile` names DACS price/authorization/event/finality semantics,
-  // not a provider or facilitator. v0.7 success uses dacs-x402-exact:v1.
+  // not a provider or facilitator. v0.7 exact success requires this literal.
   schemeNetworkFinality?: {
     scheme: string
     network: string
-    bindingProfile: string
+    bindingProfile: "dacs-x402-exact:v1"
   }
 
   // Wall-clock unix ms at which the finality condition was observed to be met.

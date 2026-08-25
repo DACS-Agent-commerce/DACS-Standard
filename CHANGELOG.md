@@ -75,9 +75,12 @@ The format used per release:
   remain unchanged for already-pinned continuation and historical replay.
   Adds deterministic executable vectors for definition discrimination,
   selection ambiguity, every pre-authorization substitution surface,
-  v1/v2 hashing/version boundaries, local capability, exact decimal conversion,
-  party binding, independent-assurance downgrade, cross-rail event identity,
-  legacy replay, and retry safety.
+  bounded public-fetch literal classes, v1/v2 hashing/version boundaries, local
+  capability, exact decimal conversion, party binding, independent-assurance
+  downgrade, cross-rail event identity, legacy replay, and retained-state retry
+  safety. The executable harness now places one instrumented wallet-call site
+  after every pre-authorization gate and proves that rejected inputs and every
+  reconciliation retry make zero authorization calls.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

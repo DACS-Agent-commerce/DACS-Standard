@@ -27,6 +27,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
+| [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 36 | `fail` / `indeterminate` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -100,6 +101,31 @@ Regenerate, verify, and execute with:
 python3 scripts/generate_ap2_handler_safety_vectors.py --write
 python3 scripts/generate_ap2_handler_safety_vectors.py --check
 python3 -m unittest tests.test_ap2_handler_safety_vectors -v
+```
+
+### `alternative-payment-projection-v0.1.json` — §9.9.1 APR-1..APR-8
+
+36 candidate vectors make the Listing-only `pay-alternative` projection
+executable across DACS-1, DACS-3, DACS-4, and DACS-5. Deterministic Ed25519
+fixtures sign the Listing, complete DEM/x402 rail definitions, payee-bound
+Agreement, and evidence-bound bundle. The cases cover full-reference
+membership, optional snapshot-selected versions, same-snapshot registry
+resolution, supported non-recursive handlers, array-order independence,
+original-index projection, exact payout keys, and concrete evidence/bundle
+kinds.
+
+Negative and recovery cases reject malformed or repeated choice slots,
+concrete payment siblings, same-railId reference substitution, caller-supplied
+handler substitution, selected-rail RAV failure, signed in-job switching, and
+post-authorization or indeterminate fallback. The executable effects counter
+pins zero second-rail wallet authorizations on every refusal/retry path. A
+legacy reader refuses the unknown phase, while an ordinary repeated-payment
+Listing retains PIPE-5 behaviour. Regenerate and execute with:
+
+```sh
+python3 scripts/generate_alternative_payment_projection_vectors.py --write
+python3 scripts/generate_alternative_payment_projection_vectors.py --check
+python3 -m unittest tests.test_alternative_payment_projection_vectors -v
 ```
 
 ### `payload-attestation-binding-v0.1.json` — §9.6.3 DPA-1..DPA-9

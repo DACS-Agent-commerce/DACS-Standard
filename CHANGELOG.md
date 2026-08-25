@@ -48,6 +48,19 @@ The format used per release:
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
 
+### Added — signed alternative-payment projection
+
+- **One Listing, one buyer-selected payment handler** (DACS-1 §6.3.4,
+  DACS-3 §8.5.2, DACS-4 §9.9.1 APR-1..APR-8, DACS-5 §10.4.3; #340) — adds
+  the listing-only `pay-alternative` phase carrying complete
+  `PaymentRailRef` alternatives. Exactly one reference is selected into the
+  signed Agreement before commitment, its authenticated concrete handler is
+  projected at the original phase index, and evidence/bundles record that
+  concrete handler. Post-signature switching requires a fresh job and retries
+  never fall through to another rail after authorization or ambiguous
+  settlement. Legacy readers reject the unknown phase; ordinary and repeated
+  payment pipelines retain their prior meaning.
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4

@@ -13,39 +13,21 @@ surface before it can be fixed.
 
 ### Preferred channel — GitHub Private Vulnerability Reporting
 
-The *Security* tab → *Report a vulnerability*. This keeps the report private until a
-fix ships, and is the channel this policy is written around.
-
-> **Status on this repository: NOT YET ENABLED.** Enabling it needs elevated repository
-> security authority — repository admin, an organization owner, or a security manager —
-> under *Settings → Code security → Private vulnerability reporting*. Until then the
-> *Security* tab shows no reporting form here. `DACS-Agent-commerce/dacs-sdk` has it
-> enabled and is the working reference.
-
-### If Private Vulnerability Reporting is unavailable
-
-*Proposed interim guidance — maintainers should amend or replace this. It is added
-because the policy currently has no answer for this case, not because the answer below
-is settled.*
-
-Until the preferred channel is enabled and while no monitored security address is
-listed below, **do not post the finding publicly, and do not send it to a third-party
-reviewer.** Instead, open a public issue that contains only:
-
-- that you have a security finding against this repository,
-- its rough area (spec §, or "reference evaluator"), and
-- a request for a private channel.
-
-No reproduction, no vectors, no impact detail. That avoids publishing reproductions or
-exploit-enabling details while still putting the steward on the clock in public, which a
-silent private queue does not. Naming the rough area is itself a small signal; the
-judgement here is that it is a smaller one than either a full public write-up or an
-indefinitely stalled report.
+The *Security* tab → *Report a vulnerability*. **This is enabled on this repository** and is
+the preferred channel: it keeps the report private until a fix ships.
 
 ### Dedicated security contact
 
-*None currently published for this repository.* When the steward lists a monitored
-address here, it becomes a valid alternative to the *Security* tab.
+*None currently published for this repository.* If the steward lists a monitored address
+here, it becomes an alternative to the *Security* tab. Until then, the *Security* tab is the
+private channel.
+
+### If a private channel is ever unavailable
+
+Should the *Security* tab offer no reporting form on a repository in scope, do not post the
+finding publicly and do not route it through a third-party reviewer. Open a public issue
+saying only that you have a security finding and its rough area, and asking for a private
+channel — no reproduction, no vectors, no impact detail.
 
 A high-signal report names: the **affected component** (spec §, file path, or
 contract), the **impact** (what an attacker gains), a **minimal reproduction / PoC**

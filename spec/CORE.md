@@ -245,15 +245,20 @@ authorization predicate, a consumer MUST apply this algorithm:
   For example, a DACS-2 Vet record may support reversible progress on verified
   durable `accepted` when VPC-3 permits it, while DACS-4 PIPE-6 requires the
   agreement commitment to be `finalized` before an irreversible effect.
-- (SR2-12) **Timely direct delivery and retention.** A producer MUST make a
-  qualifying receipt available to every participant entitled by the calling
-  rule no later than the first applicable gate in the cross-stage table. It
-  MUST retain and re-deliver that receipt through terminalization, including a
-  failed or aborted session that never produces a finalized bundle. Delivery
-  after the first required gate is a producer conformance failure and MUST NOT
-  retroactively validate progress taken without the receipt. A forged or
-  mismatched candidate is discarded; if no qualifying carrier remains, the
-  resolution result is `indeterminate`, never authoritative absence.
+- (SR2-12) **Timely direct delivery and retention.** Once a qualifying receipt
+  exists, a producer MUST make it available to every participant entitled by
+  the calling rule no later than the first applicable gate in the cross-stage
+  table. It MUST retain and re-deliver that receipt through terminalization,
+  including a failed or aborted session that never produces a finalized
+  bundle. A substrate that never establishes the minimum required lifecycle
+  state leaves the producer and session blocked at that gate; the unavailable
+  receipt is not by itself producer non-conformance, but the producer MUST NOT
+  cross the gate or represent the state as established. Withholding an
+  existing qualifying receipt or delivering it only after the first required
+  gate is a producer conformance failure and MUST NOT retroactively validate
+  progress taken without the receipt. A forged or mismatched candidate is
+  discarded; if no qualifying carrier remains, the resolution result is
+  `indeterminate`, never authoritative absence.
 - (SR2-13) **Bounded public discovery.** Listings use §6.3.4–§6.3.6,
   revocations use `RevocationBinding`, and bundles use `BundleBinding`. Other
   session artifacts MAY be exchanged by verified receipt during the session

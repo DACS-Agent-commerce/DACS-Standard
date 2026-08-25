@@ -54,8 +54,9 @@ The format used per release:
   SR2-10..SR2-13; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3;
   Demos mapping §A.2; #242) — makes a verified `AnchorReceipt` the portable
   mapping carrier on write-input substrates without changing its v1 bytes,
-  requires call-site authority and lifecycle checks, timely direct delivery,
-  fail-closed absence, and bounded public discovery, and preserves finalized
+  requires call-site authority and lifecycle checks, timely direct delivery
+  once a qualifying receipt exists, fail-closed substrate non-admission and
+  absence, and bounded public discovery, and preserves finalized
   bundle references as the public audit path for session artifacts. Adds the
   distinct signed `RegistryBootstrapDescriptor` trust root for the recipe and
   rail index major lines, immutable content-sequenced snapshots, exact

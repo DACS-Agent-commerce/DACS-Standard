@@ -78,6 +78,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Signed Listing extension stripped or rejected by a closed-key verifier | implementation bug / minor-version skew | §B.7 SIG-5 + §11.1.2 additivity; signed Listing conformance vectors | mitigated |
 | Identity-bundle replay | network observer | §6.3.2 (session nonce) + §6.6 | mitigated |
 | Attestation-bundle replay across sessions | malicious counterparty | §10.11 (jobId bound into the bundle hash) | mitigated |
+| Pre-JID-1 participant or artifact mixed into a JID-1 session | version skew / malicious counterparty | CORE §11.1.2 corrective-profile admission + JID-1..JID-4; exact release/commit and complete module tuple authenticated before action; legacy replay cannot derive current addresses or authorize effects | mitigated when profile admission is authenticated; otherwise session refused |
 | Catalog poisoning | malicious infrastructure | §6.3.6 (clients dereference anchors) | mitigated |
 | Anchor-receipt forgery / state promotion | malicious infrastructure or writer | CORE §5.1 SR2-4..SR2-6 (binding-defined authenticated evidence; logical/native/hash/transaction/writer/nonce checks; block/finality proof) | mitigated subject to substrate evidence security |
 | Anchor snapshot reordering / false replacement | malicious infrastructure or stale observer | CORE §5.1 SR2-7 (binding-defined authenticated evidence ordering; `observedAt` never establishes precedence; replacement independently verified) | mitigated; unresolved conflicts remain indeterminate |

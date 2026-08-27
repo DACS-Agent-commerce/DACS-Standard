@@ -24,6 +24,7 @@ MISSING = object()
 HASH_ALGORITHMS = {
     "sha-256": hashlib.sha256,
 }
+JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
 
 
 def canonical_json(value):
@@ -33,8 +34,8 @@ def canonical_json(value):
 
 
 def derive_key(job_id, phase_index):
-    if not isinstance(job_id, str) or not job_id:
-        raise ValueError("jobId must be a non-empty string")
+    if not isinstance(job_id, str) or JOB_ID_RE.fullmatch(job_id) is None:
+        raise ValueError("jobId must satisfy JID-1")
     if type(phase_index) is not int or phase_index < 0:
         raise ValueError("phaseIndex must be a non-negative integer")
     preimage = (
@@ -148,7 +149,7 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
 
     def test_idempotency_keys_recompute_from_raw_inputs(self):
         cases = [case for case in self.data["vectors"] if case["op"] == "derive-idempotency-key"]
-        self.assertEqual(len(cases), 6)
+        self.assertEqual(len(cases), 7)
         for case in cases:
             with self.subTest(case=case["name"]):
                 if case["expected"] == "error":
@@ -160,18 +161,19 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                     self.assertRegex(derived, KEY_RE)
                     self.assertEqual(derived, case["expectedKey"])
 
-    def test_nfc_and_tuple_separation_are_load_bearing(self):
+    def test_jid_gate_and_tuple_separation_are_load_bearing(self):
         base = self.cases["ap2-key-base"]
         phase = self.cases["ap2-key-phase-separation"]
         job = self.cases["ap2-key-job-separation"]
-        nfc = self.cases["ap2-key-nfc-normalization"]
         self.assertNotEqual(base["expectedKey"], phase["expectedKey"])
         self.assertNotEqual(base["expectedKey"], job["expectedKey"])
-        self.assertNotEqual(nfc["jobId"], nfc["normalizedJobId"])
-        self.assertEqual(
-            derive_key(nfc["jobId"], nfc["phaseIndex"]),
-            derive_key(nfc["normalizedJobId"], nfc["phaseIndex"]),
-        )
+        for name in (
+            "ap2-key-noncanonical-unicode-error",
+            "ap2-key-overflow-job-error",
+        ):
+            case = self.cases[name]
+            with self.subTest(case=name), self.assertRaises(ValueError):
+                derive_key(case["jobId"], case["phaseIndex"])
 
     def test_transaction_ids_recompute_from_exact_compact_jws_bytes(self):
         cases = [

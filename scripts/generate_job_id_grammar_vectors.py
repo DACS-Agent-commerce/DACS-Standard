@@ -15,6 +15,15 @@ OUTPUT = (
 
 JOB = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 OTHER_JOB = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
+TEST_RELEASE_PIN = "0000000000000000000000000000000000000001"
+CORRECTIVE_TUPLE = {
+    "core": "0.3",
+    "dacs1": "0.7",
+    "dacs2": "0.5",
+    "dacs3": "0.4",
+    "dacs4": "0.7",
+    "dacs5": "0.5",
+}
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -344,11 +353,72 @@ def build() -> dict:
             other_job_id=JOB.lower(),
             want=invalid_no_effects,
         ),
+        {
+            "name": "matching-corrective-profile-admitted",
+            "operation": "profile-admit",
+            "expected": "pass",
+            "localProfile": {"releasePin": TEST_RELEASE_PIN,
+                             "moduleVersions": CORRECTIVE_TUPLE},
+            "peerProfile": {"releasePin": TEST_RELEASE_PIN,
+                            "moduleVersions": CORRECTIVE_TUPLE},
+            "note": "Exact authenticated release and complete module tuple admit the corrective profile.",
+            "want": {"profileAdmitted": True, "hashCalls": 0, "lookupCalls": 0},
+        },
+        {
+            "name": "missing-peer-profile-refuses",
+            "operation": "profile-admit",
+            "expected": "error",
+            "localProfile": {"releasePin": TEST_RELEASE_PIN,
+                             "moduleVersions": CORRECTIVE_TUPLE},
+            "peerProfile": None,
+            "note": "Missing authenticated peer profile refuses before job-specific action.",
+            "want": {"failureStage": "profile-admission", "hashCalls": 0,
+                     "lookupCalls": 0},
+        },
+        {
+            "name": "different-release-pin-refuses",
+            "operation": "profile-admit",
+            "expected": "error",
+            "localProfile": {"releasePin": TEST_RELEASE_PIN,
+                             "moduleVersions": CORRECTIVE_TUPLE},
+            "peerProfile": {"releasePin": "f" * 40,
+                            "moduleVersions": CORRECTIVE_TUPLE},
+            "note": "The same module tuple under a different immutable release is not inferred compatible.",
+            "want": {"failureStage": "profile-admission", "hashCalls": 0,
+                     "lookupCalls": 0},
+        },
+        {
+            "name": "different-module-tuple-refuses",
+            "operation": "profile-admit",
+            "expected": "error",
+            "localProfile": {"releasePin": TEST_RELEASE_PIN,
+                             "moduleVersions": CORRECTIVE_TUPLE},
+            "peerProfile": {"releasePin": TEST_RELEASE_PIN,
+                            "moduleVersions": {**CORRECTIVE_TUPLE, "core": "0.2"}},
+            "note": "A pre-JID-1 CORE tuple refuses even when a caller reuses the release field.",
+            "want": {"failureStage": "profile-admission", "hashCalls": 0,
+                     "lookupCalls": 0},
+        },
+        {
+            "name": "major-only-discriminator-refuses",
+            "operation": "profile-admit",
+            "expected": "error",
+            "localProfile": {"releasePin": TEST_RELEASE_PIN,
+                             "moduleVersions": CORRECTIVE_TUPLE},
+            "peerProfile": {"dacsVersion": "1"},
+            "note": "A major-only artifact discriminator cannot establish corrective-profile compatibility.",
+            "want": {"failureStage": "profile-admission", "hashCalls": 0,
+                     "lookupCalls": 0},
+        },
     ]
     return {
         "set": "job-id-grammar-v0.1",
         "spec": "CORE §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2",
         "grammar": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+        "correctiveProfile": {
+            "testOnlyReleasePin": TEST_RELEASE_PIN,
+            "moduleVersions": CORRECTIVE_TUPLE,
+        },
         "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
         "count": len(vectors),
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),

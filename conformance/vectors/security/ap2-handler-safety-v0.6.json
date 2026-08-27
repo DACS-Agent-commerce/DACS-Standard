@@ -1,9 +1,9 @@
 {
   "set": "ap2-handler-safety-v0.6",
-  "spec": "DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7",
+  "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE JID-1",
   "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, checkout/payment admission ordering, and retry/replay consumption are executed; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
-  "hash": "f85b678a1e91db0707a97a792134adb8d2ba87da57f715abd42a109d38dba745",
-  "count": 30,
+  "hash": "5fcc0bc1059f97c18362919b7be57490ef0cc43a4e912d5de415b62eb0151453",
+  "count": 31,
   "vectors": [
     {
       "name": "ap2-key-base",
@@ -33,14 +33,20 @@
       "expectedKey": "e255e8c5eacfbeadbefbeee884bad22bf2164894a890bb9a7ceb934d99062f3b"
     },
     {
-      "name": "ap2-key-nfc-normalization",
+      "name": "ap2-key-noncanonical-unicode-error",
       "op": "derive-idempotency-key",
       "jobId": "café-job",
       "phaseIndex": 0,
-      "expected": "pass",
-      "note": "decomposed and composed job identifiers derive identical bytes",
-      "expectedKey": "2128576ea9daf4765462705820c909c9f40cad744fa7b46298e495579c4eb184",
-      "normalizedJobId": "café-job"
+      "expected": "error",
+      "note": "a decomposed non-JID-1 identifier refuses before hashing"
+    },
+    {
+      "name": "ap2-key-overflow-job-error",
+      "op": "derive-idempotency-key",
+      "jobId": "81ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 0,
+      "expected": "error",
+      "note": "a 130-bit overflow-form ULID refuses before hashing"
     },
     {
       "name": "ap2-key-negative-phase-error",

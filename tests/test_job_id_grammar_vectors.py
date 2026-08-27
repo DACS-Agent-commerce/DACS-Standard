@@ -9,6 +9,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tests"))
+import dacs5_reference as DACS5_REFERENCE
+
 VECTORS = ROOT / "conformance/vectors/security/job-id-grammar-v0.1.json"
 GENERATOR = ROOT / "scripts/generate_job_id_grammar_vectors.py"
 CORE = ROOT / "spec/CORE.md"
@@ -17,6 +20,7 @@ WORKFLOW = ROOT / ".github/workflows/validate.yml"
 README = ROOT / "conformance/vectors/security/README.md"
 
 JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
+RELEASE_PIN_RE = re.compile(r"[0-9a-f]{40}\Z", re.ASCII)
 ROLES = {"buyer", "seller", "orchestrator"}
 KNOWN_ADDRESSES = {
     "buyer": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
@@ -71,6 +75,19 @@ def evaluate(vector):
             right = validate_job_id(vector.get("otherJobId"))
             equal = left.encode("ascii") == right.encode("ascii")
             return ("pass" if equal else "fail"), {**metrics, "equal": equal}
+        if operation == "profile-admit":
+            local = vector.get("localProfile")
+            peer = vector.get("peerProfile")
+            if (
+                not isinstance(local, dict)
+                or not isinstance(peer, dict)
+                or RELEASE_PIN_RE.fullmatch(str(local.get("releasePin", ""))) is None
+                or peer.get("releasePin") != local.get("releasePin")
+                or not isinstance(local.get("moduleVersions"), dict)
+                or peer.get("moduleVersions") != local.get("moduleVersions")
+            ):
+                raise ValueError("profile-admission")
+            return "pass", {**metrics, "profileAdmitted": True}
         raise ValueError("operation-validation")
     except ValueError as exc:
         return "error", {**metrics, "failureStage": str(exc)}
@@ -115,6 +132,24 @@ class JobIdGrammarVectorTests(unittest.TestCase):
                 self.assertEqual(expected, derive_bundle(job_id, role, metrics))
                 self.assertEqual({"hashCalls": 1, "lookupCalls": 0}, metrics)
 
+    def test_shared_dacs5_helper_gates_current_derivation_and_marks_legacy(self):
+        job_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        self.assertEqual(
+            KNOWN_ADDRESSES["buyer"],
+            DACS5_REFERENCE.logical_address(job_id, "buyer"),
+        )
+        for malformed in ("8" + job_id[1:], "cafe\u0301-job", "J"):
+            with self.subTest(jobId=malformed):
+                with self.assertRaisesRegex(ValueError, "job-id-validation"):
+                    DACS5_REFERENCE.logical_address(malformed, "buyer")
+
+        # Historical vector suites must name their frozen path explicitly; it
+        # cannot be mistaken for current JID-1 authority.
+        self.assertNotEqual(
+            DACS5_REFERENCE.legacy_logical_address("café-job", "buyer"),
+            DACS5_REFERENCE.legacy_logical_address("cafe\u0301-job", "buyer"),
+        )
+
     def test_invalid_spelling_never_reaches_hash_or_lookup(self):
         invalid = [
             vector
@@ -155,6 +190,19 @@ class JobIdGrammarVectorTests(unittest.TestCase):
         self.assertIsNotNone(JOB_ID_RE.fullmatch("7" + "Z" * 25))
         self.assertIsNone(JOB_ID_RE.fullmatch("8" + "0" * 25))
         self.assertIsNone(JOB_ID_RE.fullmatch("9" + "0" * 25))
+
+    def test_corrective_profile_gate_precedes_all_job_specific_effects(self):
+        cases = [
+            vector for vector in self.data["vectors"]
+            if vector["operation"] == "profile-admit"
+        ]
+        self.assertEqual(5, len(cases))
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                verdict, observed = evaluate(case)
+                self.assertEqual(case["expected"], verdict)
+                self.assertEqual(0, observed["hashCalls"])
+                self.assertEqual(0, observed["lookupCalls"])
 
     def test_normative_and_ci_surfaces_are_linked(self):
         core = CORE.read_text(encoding="utf-8")

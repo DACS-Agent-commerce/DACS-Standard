@@ -460,8 +460,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         ebfab = pair["copies"]["buyer"]
         fab = pair["copies"]["seller"]
         job_id = ebfab["jobId"]
-        buyer_address = R.logical_address(job_id, "buyer")
-        seller_address = R.logical_address(job_id, "seller")
+        buyer_address = R.legacy_logical_address(job_id, "buyer")
+        seller_address = R.legacy_logical_address(job_id, "seller")
         authority = {
             "listing": self.data["listing"],
             "publicKeys": self.pubkeys,
@@ -530,8 +530,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         seller = pair["copies"]["seller"]
         job_id = buyer["jobId"]
         addresses = {
-            "buyer": R.logical_address(job_id, "buyer"),
-            "seller": R.logical_address(job_id, "seller"),
+            "buyer": R.legacy_logical_address(job_id, "buyer"),
+            "seller": R.legacy_logical_address(job_id, "seller"),
         }
 
         def authority_for(bundle, *, valid=True):

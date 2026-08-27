@@ -33,7 +33,11 @@ open-ended questions.
 - Draft phase uses `v0.MINOR` (v0.1, v0.2, …); `vMAJOR.MINOR` from v1.0 onward.
   Each per-stage standard versions independently from the shared v0.1 baseline.
 - Breaking changes bump the major version; additive non-breaking changes bump the
-  minor version; editorial-only changes do not bump the version.
+  minor version; editorial-only changes do not bump the version. The only exception
+  is CORE §11.1.2's declared pre-v1 corrective boundary: while the affected document
+  is Draft and below v1.0, the steward may publish a breaking v0.x repair only with
+  an exact coordinated-profile pin, explicit migration limits, and refusal of mixed
+  corrective/pre-corrective live operation.
 - Every normative change is recorded in [CHANGELOG.md](./CHANGELOG.md) with the
   section numbers it affects, so implementers can scan against their own code.
 

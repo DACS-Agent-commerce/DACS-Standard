@@ -22,6 +22,7 @@ COMPACT_JWS_RE = re.compile(
 HASH_ALGORITHMS = {
     "sha-256": hashlib.sha256,
 }
+JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
 
 
 def canonical_json(value: object) -> bytes:
@@ -31,8 +32,8 @@ def canonical_json(value: object) -> bytes:
 
 
 def derive_key(job_id: str, phase_index: int) -> str:
-    if not isinstance(job_id, str) or not job_id:
-        raise ValueError("jobId must be a non-empty string")
+    if not isinstance(job_id, str) or JOB_ID_RE.fullmatch(job_id) is None:
+        raise ValueError("jobId must satisfy JID-1")
     if type(phase_index) is not int or phase_index < 0:
         raise ValueError("phaseIndex must be a non-negative integer")
     preimage = (
@@ -89,8 +90,8 @@ def transaction_id_case(
     return case
 
 
-def key_case(name: str, job_id: object, phase_index: object, expected: str, note: str,
-             *, normalized_job_id: str | None = None) -> dict[str, object]:
+def key_case(name: str, job_id: object, phase_index: object, expected: str,
+             note: str) -> dict[str, object]:
     case: dict[str, object] = {
         "name": name,
         "op": "derive-idempotency-key",
@@ -101,8 +102,6 @@ def key_case(name: str, job_id: object, phase_index: object, expected: str, note
     }
     if expected == "pass":
         case["expectedKey"] = derive_key(job_id, phase_index)  # type: ignore[arg-type]
-    if normalized_job_id is not None:
-        case["normalizedJobId"] = normalized_job_id
     return case
 
 
@@ -153,9 +152,12 @@ def vectors() -> list[dict[str, object]]:
             "a different job receives a distinct provider key at the same phase index",
         ),
         key_case(
-            "ap2-key-nfc-normalization", "cafe\u0301-job", 0, "pass",
-            "decomposed and composed job identifiers derive identical bytes",
-            normalized_job_id="caf\u00e9-job",
+            "ap2-key-noncanonical-unicode-error", "cafe\u0301-job", 0, "error",
+            "a decomposed non-JID-1 identifier refuses before hashing",
+        ),
+        key_case(
+            "ap2-key-overflow-job-error", "8" + job_a[1:], 0, "error",
+            "a 130-bit overflow-form ULID refuses before hashing",
         ),
         key_case(
             "ap2-key-negative-phase-error", job_a, -1, "error",
@@ -425,7 +427,7 @@ def render() -> str:
     cases = vectors()
     document = {
         "set": "ap2-handler-safety-v0.6",
-        "spec": "DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7",
+        "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE JID-1",
         "scope": (
             "candidate handler predicates: idempotency-key and transaction-id derivation, "
             "checkout/payment admission ordering, and retry/replay consumption are executed; "

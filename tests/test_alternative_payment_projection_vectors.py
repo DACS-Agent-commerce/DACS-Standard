@@ -278,6 +278,7 @@ def verify_prior_payment_context(vector):
     ) if isinstance(prior_selection, dict) else False
     if (
         disposition.get("priorJobId") != prior_agreement.get("jobId")
+        or disposition.get("replacementJobId") != agreement.get("jobId")
         or disposition.get("priorAgreementRef") != expected_agreement_ref
         or prior_agreement.get("listingRef") != agreement.get("listingRef")
         or canonical_key(disposition.get("priorSelection")) != canonical_key(prior_selection)
@@ -674,8 +675,22 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
         for vector in (closed, terminal, open_prior, ap2_open):
             context = vector["runtime"]["priorPaymentContext"]
             self.assertNotEqual(vector["agreement"]["jobId"], context["agreement"]["jobId"])
+            self.assertEqual(
+                context["disposition"]["replacementJobId"],
+                vector["agreement"]["jobId"],
+            )
             self.assertIn("priorPaymentDispositionRef", vector["agreement"]["terms"])
             self.assertNotIn("requestedJobId", vector["runtime"])
+
+        reused = self.by_name["fresh-job-disposition-reuse-rejected"]
+        self.assertNotEqual(
+            reused["runtime"]["priorPaymentContext"]["disposition"]["replacementJobId"],
+            reused["agreement"]["jobId"],
+        )
+        self.assertEqual(
+            verify_prior_payment_context(reused),
+            ("fail", "prior-disposition-binding"),
+        )
 
     def test_prior_disposition_signature_writer_and_finality_are_load_bearing(self):
         vector = copy.deepcopy(self.by_name["post-signature-switch-with-fresh-job"])
@@ -731,6 +746,7 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
         self.assertIn("fresh `jobId`", combined)
         self.assertIn("make zero authorization calls on another alternative", combined)
         self.assertIn("PriorPaymentDisposition", combined)
+        self.assertIn("replacementJobId", combined)
         self.assertIn("dacs-prior-payment-disposition:v1:", combined)
 
 

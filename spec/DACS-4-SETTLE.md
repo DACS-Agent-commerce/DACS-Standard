@@ -1189,6 +1189,7 @@ type PriorPaymentDisposition = {
   priorPaymentDispositionVersion: "1"
   dispositionId: string
   priorJobId: string
+  replacementJobId: string
   priorAgreementRef: AttestationRef
   priorSelection: PaymentRailRef
   priorPhaseIndex: number
@@ -1207,7 +1208,7 @@ the CORE §B.2 canonical-form template with `signature` omitted and is signed as
 `"dacs-prior-payment-disposition:v1:" || disposition_hash`. It is anchored via
 SR-2 at
 `dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}`;
-`priorJobId` follows the applicable CORE job-identifier profile,
+`priorJobId` and `replacementJobId` follow the applicable CORE job-identifier profile,
 `priorPhaseIndex` is minimal unsigned decimal, and `dispositionId` is exactly
 64 lowercase hexadecimal characters, so none introduces a CF-4 delimiter.
 Its signer and SR-2 writer MUST be the prior payment phase's
@@ -1284,8 +1285,12 @@ not a caller-supplied identity.
   that reference and the exact prior Agreement; verify both content hashes,
   the prior Agreement signatures, the disposition signature, its finalized
   SR-2 receipt, and the authenticated prior phase-orchestrator writer; and
-  require exact equality for `priorJobId`, `priorAgreementRef`, the complete
-  prior `terms.rail`, and the prior payment `phaseIndex`. Missing or
+  require exact equality for `priorJobId`, `replacementJobId` against the new
+  Agreement's `jobId`, `priorAgreementRef`, the complete prior `terms.rail`,
+  and the prior payment `phaseIndex`. A disposition authorizes only that one
+  signed replacement job and MUST NOT authorize any other fresh `jobId`;
+  byte-identical replay for the same replacement remains governed by the
+  replacement job's ordinary idempotency rules. Missing or
   unavailable otherwise-consistent authority is `indeterminate`; a resolved
   contradiction rejects. A caller-supplied `priorJobId`, prior rail, requested
   new job, boolean, or unsigned state is inert and MUST NOT substitute.

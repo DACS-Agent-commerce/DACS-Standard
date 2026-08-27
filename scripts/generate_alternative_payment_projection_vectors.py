@@ -19,6 +19,7 @@ OUTPUT = ROOT / "conformance/vectors/security/alternative-payment-projection-v0.
 JOB_DEM = "01M0Q4K8X5D9YJKC3VT7H2N6PA"
 JOB_X402 = "01M0Q4K8X5D9YJKC3VT7H2N6PB"
 JOB_AP2 = "01M0Q4K8X5D9YJKC3VT7H2N6PC"
+JOB_REPLACEMENT_REUSE = "01M0Q4K8X5D9YJKC3VT7H2N6PD"
 SELLER = "did:demos:agent:" + "22" * 32
 BUYER = "did:demos:agent:" + "11" * 32
 STEWARD = "did:demos:agent:" + "44" * 32
@@ -443,6 +444,7 @@ def attach_prior_payment_context(
             "priorPaymentDispositionVersion": "1",
             "dispositionId": DISPOSITION_ID,
             "priorJobId": prior_job_id,
+            "replacementJobId": value["agreement"]["jobId"],
             "priorAgreementRef": {
                 "anchor": {"kind": "https", "locator": ""},
                 "contentHash": "",
@@ -717,6 +719,14 @@ def build_cases() -> list[dict]:
     add_case(cases, "fresh-job-disposition-selection-mismatch", "fail", "APR-6",
              "the signed disposition must bind the exact prior Agreement selection",
              mismatched_disposition, base="x402", reason="prior-disposition-binding")
+
+    def reused_disposition_for_another_job(v):
+        attach_prior_payment_context(v, "closed-before-authorization")
+        v["agreement"]["jobId"] = JOB_REPLACEMENT_REUSE
+    add_case(cases, "fresh-job-disposition-reuse-rejected", "fail", "APR-6",
+             "one signed disposition is bound to one replacement job and cannot authorize another",
+             reused_disposition_for_another_job, base="x402",
+             reason="prior-disposition-binding")
 
     def unfinalized_disposition(v):
         attach_prior_payment_context(v, "closed-before-authorization")

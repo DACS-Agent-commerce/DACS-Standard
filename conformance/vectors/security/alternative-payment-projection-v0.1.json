@@ -1254,8 +1254,8 @@
       }
     }
   },
-  "count": 44,
-  "hash": "f33c3ae599f5319b1901688b41c5741b0452fbe9d8bb8a4bac86cf7e720ac16e",
+  "count": 45,
+  "hash": "561e7e102c1ea40c5d811c25a1c80101b691ba7b24a4f179e6499c7f78013794",
   "vectors": [
     {
       "name": "select-dem-projects-pay-dem",
@@ -3346,7 +3346,7 @@
             0,
             "value"
           ],
-          "value": "XSjrLzVhy0bqhjKtkazPZ0fTl8qdOLT2hzaoKHuiHJ2_yPjE3_uw42Otpfvqn1RJqtGxI5eq8WfcCsE1SbwyAw"
+          "value": "vHlMdTtlCHnlGX_PFXP3mOGF861zZWI1lXxZbdJLtFY67SsB3X9lUl_IHASh9RDh0uHW5EVskuLHSpxsrmwbCA"
         },
         {
           "op": "replace",
@@ -3356,7 +3356,7 @@
             1,
             "value"
           ],
-          "value": "HnX8AE7hM7oZRe__V60taUNGQWf1hs0tNsvnLGhawA936yzYmGUiaBCIKDlDJWZdSbNnSJQYLzFeTei_cycSCQ"
+          "value": "8wY9jxy5U1-P-3ZJIukAO8n7oDE67nBzFovcQT3qgA855I8Q1vAjk7W4iaE9PWkCfzOInURpypi-2pL2j-2RAA"
         },
         {
           "op": "add",
@@ -3370,7 +3370,7 @@
               "kind": "storage-program",
               "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
             },
-            "contentHash": "a6af4bc36b2b5f3d808982c963b732b8ec0a0d4ff7fadb37a389c2d888e59a8d",
+            "contentHash": "de3b854e88112e4cd7b6d47bba004b2b95813d99d2ec8eea95f06c1b3f43a0ad",
             "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
           }
         },
@@ -3381,7 +3381,7 @@
             "agreementRef",
             "contentHash"
           ],
-          "value": "331607a08788bbbd1cef504e0d261fe8ff2debfdc76fc867187d74a7c2a9c2c8"
+          "value": "73198b1f25e7c63fb25649b1f7ec0332492f42db5f82f509b188055439547b55"
         },
         {
           "op": "replace",
@@ -3391,7 +3391,7 @@
             0,
             "value"
           ],
-          "value": "i97RS2g8o04nS1prmaUZdOxN92ElJP3eeuu1u-VtYnyvy08nrRsxxDj3hAujKbNKsRGPj_7YCpSAcyEqWBvGAw"
+          "value": "fFh-5hIVlgwWcAvO4wZzOpincRn0J0ZD7yshfN9sGwxQIxe4s7vk7_p87xV7YrV9tjNBsSdpfWTOYxpS_XVLBQ"
         },
         {
           "op": "replace",
@@ -3401,7 +3401,7 @@
             1,
             "value"
           ],
-          "value": "Xa24DpfMavKF_2P6KU5HTCynS3dJNgVQq2sGlnT6YkOCPazvnBa9jKz8UL0ts2_oCbDdeWb6iRWweORe07n4CA"
+          "value": "BOoSo7nzM88iiced9cRtlvPBq9ZGRudrWlFfcZ68GlKGpzeMD42j5AenE8_tzGZe3Y8ALq663MqU7BcVYspoAQ"
         },
         {
           "op": "replace",
@@ -3470,6 +3470,7 @@
               "priorPaymentDispositionVersion": "1",
               "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
               "priorAgreementRef": {
                 "anchor": {
                   "kind": "https",
@@ -3488,14 +3489,14 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-                "value": "LUSYxAOKZ-dXY4ibeDWwfr0iWFgzUhYMjfIhFSfrPmo35645JnDb3Yw_a1tJXToI8zgfuAjw9UJrUjOHBsxVDQ"
+                "value": "7w3-JQoxWQTLn23YxGr1zcppMVSwOntFj9X8lMTXXNkDW0hiEGb0NJcBGpngUU9jYT-sidK_jtyDaF-LVZAjCQ"
               }
             },
             "resolution": {
               "authorityAuthenticated": true,
               "status": "finalized",
               "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-              "contentHash": "a6af4bc36b2b5f3d808982c963b732b8ec0a0d4ff7fadb37a389c2d888e59a8d",
+              "contentHash": "de3b854e88112e4cd7b6d47bba004b2b95813d99d2ec8eea95f06c1b3f43a0ad",
               "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "authorizationJournalClosed": true,
               "reconciliationEvidenceVerified": false
@@ -3520,7 +3521,7 @@
             0,
             "value"
           ],
-          "value": "zwE-MjnKxBjH-FH66MoksxGROf5XU93V4eNLew8h-qO93X173WZw4Zg1HIqBPfWclAV9uBPHgeaYfViLodPyAw"
+          "value": "tOfkTtoAKVueLi6PUcUjPE2XfmmqRO99qc5sGehB9Gcj6hjUHWjLBhxulUFJkOk5f16vQTNOUTrC4j3wUn9IDA"
         },
         {
           "op": "replace",
@@ -3530,7 +3531,7 @@
             1,
             "value"
           ],
-          "value": "aZnyqRtH4N3OJRQ-hECsKnEgUFnoRTzFPh6BoqtqxPneaXI1ff0h8j_OAZV_zcyqk0ydgDuZQVBWJ18SBMlXBA"
+          "value": "9oCiT5xRM8kEOIQazAnHSQYKuVH-ZxUCtm3QTOQr4a0c4kBZX4NV8GgxI4kyQ-zG5xZqmDlsdW_P_U5rXKP2CA"
         },
         {
           "op": "add",
@@ -3544,7 +3545,7 @@
               "kind": "storage-program",
               "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
             },
-            "contentHash": "ed2dc66be7b67747fa7d98dbf1f289003a093e918231ee3c8089082bf63f34d4",
+            "contentHash": "ec9f088c3bc33b77dd7552d48fa6679a1107cf942a7ff2c333f1bb6e250e5d2c",
             "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
           }
         },
@@ -3555,7 +3556,7 @@
             "agreementRef",
             "contentHash"
           ],
-          "value": "c8f37cc02e77d1379a91d5a20849d69f5adba33b23ef2e81a04db1687c18fc42"
+          "value": "bca5ddbb1fec0c45c29c3b1c46d4a9e00b218183463817de5b0744665a8ffcb4"
         },
         {
           "op": "replace",
@@ -3565,7 +3566,7 @@
             0,
             "value"
           ],
-          "value": "hiQD1Nc2aQj_-El5dD3AkqxWLZ0rxAXf0WA-goCUDiiZHq0L5ezzAMTr5IIP_VF5_lao-NJcYinO5_jXao0tCw"
+          "value": "iUUOIWs2iqQS-f-bTMX1xc4Sf23Ms62czppIS6jPFrmMBPSxpxk0cbFJd0IsI1VAqCxd2Z5WreKGjTNBwKXtBw"
         },
         {
           "op": "replace",
@@ -3575,7 +3576,7 @@
             1,
             "value"
           ],
-          "value": "5qH7UJOEnTaODRhmgujxD-ERVhc6kda3IVuTsCKq2_AVz8WfgiZstQm4FgtA1CBVc7xBb5NTRTr_JO9RU5DFDg"
+          "value": "k4h076AwYUk7wMZiH6Zqnn-nT9dq2fghuKeteH7twSOMYGDlsmDSjONzN9BRNIcmNSsvWiyFbkvr3X4G188nDA"
         },
         {
           "op": "replace",
@@ -3644,6 +3645,7 @@
               "priorPaymentDispositionVersion": "1",
               "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
               "priorAgreementRef": {
                 "anchor": {
                   "kind": "https",
@@ -3671,14 +3673,14 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-                "value": "Xu7uE8N4SuDYMxhQ3BsBkvyfoiH3zYjSo5YT2eEmy4e2x8djgSceTHuvdwcGMLFV15ITwdATMexoCzXzFEvjBg"
+                "value": "hStSkgQPeAZrWZXH_JPK-7wOnfgYkClINXMfrlBgvLvZxOvlY2Lj8Xby8vVi_90obF1fC6e6bacCdLZLpSoXAg"
               }
             },
             "resolution": {
               "authorityAuthenticated": true,
               "status": "finalized",
               "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-              "contentHash": "ed2dc66be7b67747fa7d98dbf1f289003a093e918231ee3c8089082bf63f34d4",
+              "contentHash": "ec9f088c3bc33b77dd7552d48fa6679a1107cf942a7ff2c333f1bb6e250e5d2c",
               "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "authorizationJournalClosed": false,
               "reconciliationEvidenceVerified": true
@@ -3779,7 +3781,7 @@
             0,
             "value"
           ],
-          "value": "71S7T0kr8gCSQmz4RntA6QUl9xBs0CGLh7oNEAwNNSvXNx0O2RyGPeSMLw1WH1VaXsqFFKz44qm6FtiOw0MyCw"
+          "value": "IOYGXHicGZE32SKGRQzFzDApcQ8xYg5g9qB_AiAdMkCW6IrdL0L424_8DEkmbkC2zUnuAbViaPeKMLrK39OWDA"
         },
         {
           "op": "replace",
@@ -3789,7 +3791,7 @@
             1,
             "value"
           ],
-          "value": "H3_GJN-I54fJprGRi2rIyOpt8QH4L9GEc6GFqriTMB0ltBwJ5QrQXGTv6occwdeL1WEYxNqTLN4FM6h7vTVyAA"
+          "value": "2ieZb2C5cOCTKZmxaXe3d4FQqE7j47UMtEUFkDi9QUMU_-qFaWmgIzcQYXCVPvmqPeH9eulVn5xH3JkWRJXwDQ"
         },
         {
           "op": "add",
@@ -3803,7 +3805,7 @@
               "kind": "storage-program",
               "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
             },
-            "contentHash": "f544639bd03cc83af91e162dc687d1f6ea5e87ed821621a720b68352b6eaeb68",
+            "contentHash": "2745c1ce656b04358c474d56457fdd4bcfba824c09476de42026f3a5c4b1fcf2",
             "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
           }
         },
@@ -3814,7 +3816,7 @@
             "agreementRef",
             "contentHash"
           ],
-          "value": "fe9484ccfc951948fcb5d404572b3f7237ccba7f7216492ae691744881cd6d90"
+          "value": "338d4428a4f35fb66b156213477122da95389e9fdf8f694d7d3ea5eb103a7a30"
         },
         {
           "op": "replace",
@@ -3824,7 +3826,7 @@
             0,
             "value"
           ],
-          "value": "SYdUfE1uAltrN12-FPfxYgUtY3m6JobsC4t9L7lc9nGg7-dDElhxaLw3fx-lSh8JbkFavwjkGTB9iS_pXqWmAg"
+          "value": "KB2pNWEB5WJUwSQlKBPXs-X-pbk3z9fVl_RaraTYlvGXCNVyvQgEzPaE-RB6FlF5RrSZoA0QLs3vcvpQ0HPgBw"
         },
         {
           "op": "replace",
@@ -3834,7 +3836,7 @@
             1,
             "value"
           ],
-          "value": "tHD1D4ZKDcMLjWvOne-VuPB5ksARuLCYza8irWDV3UJkApQMJ6sfpnMeaRi1Fc5Te1sc8QcRnH3LCaU1gxhoCA"
+          "value": "Suyrdcs0WdQyFGkPb4Uc2GttlZeRlK4YsNJl8mW-y_9ahoWU9TffX86_XqDEWESLyMXkq-O8d1VwN4hSsbLnCA"
         },
         {
           "op": "replace",
@@ -3903,6 +3905,7 @@
               "priorPaymentDispositionVersion": "1",
               "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
               "priorAgreementRef": {
                 "anchor": {
                   "kind": "https",
@@ -3924,14 +3927,206 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-                "value": "BaarCNTdxl0EB3dJxHCJYNCF-bNSO5DdpzAK0g48BAJmpNmkMkR8-luZAI8xL5a4FeU9aUALieOPgUuOhwKaBA"
+                "value": "wnB7vNtzMVQb6uhIDEMSsgMVcUsXuhDZkORVq3r75sUAvaLL7AcBIQnbp6mpegM31MHf1LKGZrW2uvr6L5QeBw"
               }
             },
             "resolution": {
               "authorityAuthenticated": true,
               "status": "finalized",
               "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-              "contentHash": "f544639bd03cc83af91e162dc687d1f6ea5e87ed821621a720b68352b6eaeb68",
+              "contentHash": "2745c1ce656b04358c474d56457fdd4bcfba824c09476de42026f3a5c4b1fcf2",
+              "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "authorizationJournalClosed": true,
+              "reconciliationEvidenceVerified": false
+            }
+          }
+        }
+      ],
+      "expectedReason": "prior-disposition-binding"
+    },
+    {
+      "name": "fresh-job-disposition-reuse-rejected",
+      "expected": "fail",
+      "rule": "APR-6",
+      "operation": "execute",
+      "note": "one signed disposition is bound to one replacement job and cannot authorize another",
+      "base": "x402",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "jobId"
+          ],
+          "value": "01M0Q4K8X5D9YJKC3VT7H2N6PD"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "pexENY0YCSWuQfFF5d4d2OFzy-aD3ov8bHVbPiSTgKhvqZ4iy_ctuF-D2Bs0in5atGBPE04beYmcPfOmRm9nAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "4KfGm4lcV5qh9enC_KaRlaFtgidYfe4DIAncaY8n_rElFeFYgYGXy36efb70tNekC3wwmGOQRS5Ot6v_B9p4AA"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "priorPaymentDispositionRef"
+          ],
+          "value": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
+            },
+            "contentHash": "de3b854e88112e4cd7b6d47bba004b2b95813d99d2ec8eea95f06c1b3f43a0ad",
+            "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "agreementRef",
+            "contentHash"
+          ],
+          "value": "ef08452e259935ded361bc47f92b9681bca59b5eff183ef0f257530627d5a77c"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "jobId"
+          ],
+          "value": "01M0Q4K8X5D9YJKC3VT7H2N6PD"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Sh_X0CjPF4liCOLjkFuZdlXGXfreiVDpn8MSgwXIR777gLqlKotxnx2hbqCm4Nzy_mrNAMBpzyMVQgawD_yBAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "bundle",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "5ts_A439gELnn62s0lYsSRNGsZXzwvPKGmZYhIIpB0Pgs95LEPZ4z6oq2fZcnOD2HqwzVw9eLSPRttrOfORMCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "priorPaymentContext"
+          ],
+          "value": {
+            "agreement": {
+              "payeeBoundAgreementVersion": "1",
+              "jobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "listingRef": {
+                "listingId": "apr-340",
+                "version": 1,
+                "contentHash": "fd2d8d7559e20504ab1f563a0cbc5a23039aedb70dfd1a3b20de38b2a1360074"
+              },
+              "parties": [
+                {
+                  "role": "buyer",
+                  "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "bundleHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                {
+                  "role": "seller",
+                  "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "bundleHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                }
+              ],
+              "terms": {
+                "price": {
+                  "amount": "1",
+                  "currency": "DEM"
+                },
+                "rail": {
+                  "railId": "demos-native:DEM",
+                  "railVersion": 1
+                },
+                "payoutBindings": [
+                  {
+                    "railId": "demos-native:DEM",
+                    "phaseIndex": 2,
+                    "payeeAddress": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+                  }
+                ]
+              },
+              "derivedFromPattern": "fixed-price",
+              "generatedAt": 1787616001000,
+              "signatures": [
+                {
+                  "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+                  "algorithm": "ed25519",
+                  "value": "1HHiXbleGLcUletLh9_iMGf6IgE0Tq_EHDRli83YhqGWD4zuwekxtMs70aboTIlnWxMktRW2SpA23tAFIJU6DQ"
+                },
+                {
+                  "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+                  "algorithm": "ed25519",
+                  "value": "7jjWCQP-7IiHGpwB9Vq52vFQk_ZMrHiyxXSEs3jGk_QtTn_m-sISE2Y7o-ictKtduS3QuSVpK3rnvWCu2dW7Dw"
+                }
+              ]
+            },
+            "executionAuthority": {
+              "status": "verified",
+              "phaseOrchestratorClaim": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "disposition": {
+              "priorPaymentDispositionVersion": "1",
+              "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
+              "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
+              "priorAgreementRef": {
+                "anchor": {
+                  "kind": "https",
+                  "locator": "https://buyer.example/agreements/01M0Q4K8X5D9YJKC3VT7H2N6PA"
+                },
+                "contentHash": "b2ae3678db10e54687e56a22a077b81a9e031223bde0de90e00a0672ad20a94b"
+              },
+              "priorSelection": {
+                "railId": "demos-native:DEM",
+                "railVersion": 1
+              },
+              "priorPhaseIndex": 2,
+              "disposition": "closed-before-authorization",
+              "reconciliationEvidenceRefs": [],
+              "observedAt": 1787616002000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+                "value": "7w3-JQoxWQTLn23YxGr1zcppMVSwOntFj9X8lMTXXNkDW0hiEGb0NJcBGpngUU9jYT-sidK_jtyDaF-LVZAjCQ"
+              }
+            },
+            "resolution": {
+              "authorityAuthenticated": true,
+              "status": "finalized",
+              "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+              "contentHash": "de3b854e88112e4cd7b6d47bba004b2b95813d99d2ec8eea95f06c1b3f43a0ad",
               "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "authorizationJournalClosed": true,
               "reconciliationEvidenceVerified": false
@@ -3957,7 +4152,7 @@
             0,
             "value"
           ],
-          "value": "XSjrLzVhy0bqhjKtkazPZ0fTl8qdOLT2hzaoKHuiHJ2_yPjE3_uw42Otpfvqn1RJqtGxI5eq8WfcCsE1SbwyAw"
+          "value": "vHlMdTtlCHnlGX_PFXP3mOGF861zZWI1lXxZbdJLtFY67SsB3X9lUl_IHASh9RDh0uHW5EVskuLHSpxsrmwbCA"
         },
         {
           "op": "replace",
@@ -3967,7 +4162,7 @@
             1,
             "value"
           ],
-          "value": "HnX8AE7hM7oZRe__V60taUNGQWf1hs0tNsvnLGhawA936yzYmGUiaBCIKDlDJWZdSbNnSJQYLzFeTei_cycSCQ"
+          "value": "8wY9jxy5U1-P-3ZJIukAO8n7oDE67nBzFovcQT3qgA855I8Q1vAjk7W4iaE9PWkCfzOInURpypi-2pL2j-2RAA"
         },
         {
           "op": "add",
@@ -3981,7 +4176,7 @@
               "kind": "storage-program",
               "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
             },
-            "contentHash": "a6af4bc36b2b5f3d808982c963b732b8ec0a0d4ff7fadb37a389c2d888e59a8d",
+            "contentHash": "de3b854e88112e4cd7b6d47bba004b2b95813d99d2ec8eea95f06c1b3f43a0ad",
             "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
           }
         },
@@ -3992,7 +4187,7 @@
             "agreementRef",
             "contentHash"
           ],
-          "value": "331607a08788bbbd1cef504e0d261fe8ff2debfdc76fc867187d74a7c2a9c2c8"
+          "value": "73198b1f25e7c63fb25649b1f7ec0332492f42db5f82f509b188055439547b55"
         },
         {
           "op": "replace",
@@ -4002,7 +4197,7 @@
             0,
             "value"
           ],
-          "value": "i97RS2g8o04nS1prmaUZdOxN92ElJP3eeuu1u-VtYnyvy08nrRsxxDj3hAujKbNKsRGPj_7YCpSAcyEqWBvGAw"
+          "value": "fFh-5hIVlgwWcAvO4wZzOpincRn0J0ZD7yshfN9sGwxQIxe4s7vk7_p87xV7YrV9tjNBsSdpfWTOYxpS_XVLBQ"
         },
         {
           "op": "replace",
@@ -4012,7 +4207,7 @@
             1,
             "value"
           ],
-          "value": "Xa24DpfMavKF_2P6KU5HTCynS3dJNgVQq2sGlnT6YkOCPazvnBa9jKz8UL0ts2_oCbDdeWb6iRWweORe07n4CA"
+          "value": "BOoSo7nzM88iiced9cRtlvPBq9ZGRudrWlFfcZ68GlKGpzeMD42j5AenE8_tzGZe3Y8ALq663MqU7BcVYspoAQ"
         },
         {
           "op": "replace",
@@ -4081,6 +4276,7 @@
               "priorPaymentDispositionVersion": "1",
               "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
               "priorAgreementRef": {
                 "anchor": {
                   "kind": "https",
@@ -4099,14 +4295,14 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-                "value": "LUSYxAOKZ-dXY4ibeDWwfr0iWFgzUhYMjfIhFSfrPmo35645JnDb3Yw_a1tJXToI8zgfuAjw9UJrUjOHBsxVDQ"
+                "value": "7w3-JQoxWQTLn23YxGr1zcppMVSwOntFj9X8lMTXXNkDW0hiEGb0NJcBGpngUU9jYT-sidK_jtyDaF-LVZAjCQ"
               }
             },
             "resolution": {
               "authorityAuthenticated": true,
               "status": "included",
               "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-              "contentHash": "a6af4bc36b2b5f3d808982c963b732b8ec0a0d4ff7fadb37a389c2d888e59a8d",
+              "contentHash": "de3b854e88112e4cd7b6d47bba004b2b95813d99d2ec8eea95f06c1b3f43a0ad",
               "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "authorizationJournalClosed": true,
               "reconciliationEvidenceVerified": false
@@ -4132,7 +4328,7 @@
             0,
             "value"
           ],
-          "value": "G7Z_mp7P2D7V_Co08p8jAiX4EpY5_ZgWxPSgvFxiQIkVogIcsP9k8gucFekBICULEYEIziXmjmx_W2xnv9V1CQ"
+          "value": "oSYUWeoqpDek0Ta3TAXfR9kyKXVzgs22pWo0mNZ79jPl3GZp8M_L_Dkn0iGpDGme0o6Oxve74LHoA6A3B6MgBw"
         },
         {
           "op": "replace",
@@ -4142,7 +4338,7 @@
             1,
             "value"
           ],
-          "value": "P3aeynSbEjb4s38qP9RzeaN0R_yiQ_xh6KMTsnDFqy775vljccKkopi18wUcX3cjvTVhzwGGZ2gkbDn8wExEDg"
+          "value": "itNz7iAH-Wztl0v4ylzqyBO7N4IuaQx3chLUbU9vBuo7FMZq2TSdNMX05dhzP83rXpUslakZrbYqTp28VecYAQ"
         },
         {
           "op": "add",
@@ -4156,7 +4352,7 @@
               "kind": "storage-program",
               "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
             },
-            "contentHash": "e79ce69fd86a9e8a49d45bf6eb5ebbdcb58fdaca20b8f85a21ee46555d38f26a",
+            "contentHash": "63a50d869aeef03ed452728035e7cba04c8366a009ee6a3618738549c8ca7605",
             "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
           }
         },
@@ -4167,7 +4363,7 @@
             "agreementRef",
             "contentHash"
           ],
-          "value": "8bc542cc453e260e92364b9177821596931e0132715986cab3b331ac1d49dfe6"
+          "value": "535795cc0e12c9d1b4de9c05efe709033e055c27e60a2c8986fb150efd60ba1d"
         },
         {
           "op": "replace",
@@ -4177,7 +4373,7 @@
             0,
             "value"
           ],
-          "value": "K29lbgJP48Xd827T0OVld3PbSn27gleMYqOG0z2dvk85AJoghGXNPtmTupUEtdtfbyWv73gvsYVXJdDvq1C0Cg"
+          "value": "d7iSrQii1EGr6YGRPYSUOUILZyhL_vsMCIKrXQnRnFjzxSVOpwtvsaavfT7-i83t9SJllPheAJIUa8zr4Ib2Bg"
         },
         {
           "op": "replace",
@@ -4187,7 +4383,7 @@
             1,
             "value"
           ],
-          "value": "VA0c6b8o7jioNvZ309kTJ9ZkicOcZNIDKnL3Nsb-n9puxYP7MVP94VsH70fhwIFec-Z1lodNTj2n8QMIiSvEDg"
+          "value": "RIoNhsih26J9vdgAHgUZqx75hNKaLrz-AaYIXAw9akcrCYErrVBlaIBF7QKnbKU24-XdbmtlIuuT_Ffzw4g_Dg"
         },
         {
           "op": "replace",
@@ -4256,6 +4452,7 @@
               "priorPaymentDispositionVersion": "1",
               "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
               "priorAgreementRef": {
                 "anchor": {
                   "kind": "https",
@@ -4274,14 +4471,14 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-                "value": "sD5a3PEb1BbOzqD8JfoQUD_QOHirL8jF25y1x1YKnuOo9HigCYH21388f7ny7uq8yACyG1axGT3CIiGYcUQeCg"
+                "value": "d8UzgOMzmL9Z7Yx5geojtpv6WaGraP2dCH0HnKDWaiASzBsptWGjPA27D788pwrl25LG__AwxcoriIDVt6QZAQ"
               }
             },
             "resolution": {
               "authorityAuthenticated": true,
               "status": "finalized",
               "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-              "contentHash": "e79ce69fd86a9e8a49d45bf6eb5ebbdcb58fdaca20b8f85a21ee46555d38f26a",
+              "contentHash": "63a50d869aeef03ed452728035e7cba04c8366a009ee6a3618738549c8ca7605",
               "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "authorizationJournalClosed": false,
               "reconciliationEvidenceVerified": false
@@ -4373,7 +4570,7 @@
             0,
             "value"
           ],
-          "value": "eLmCMfB8Co07CY8zpPvtYp0wi-DYmcrxwAuFKrBBoUrq6cO5iHRCs7B-k2FEd2gqRd_BvrzVH4TUqH4qJr89CQ"
+          "value": "qjgRbeNr7UHC_-Iu-AoBKytqcdwOcbW0iz3wJB5I3awBLqE986lAKGjt1XHKb6Xla45G7Cmnbg5MoI5gwt7NBg"
         },
         {
           "op": "replace",
@@ -4383,7 +4580,7 @@
             1,
             "value"
           ],
-          "value": "nOpg1fztwXsBhU0yc-Be5IvDMvfQBNvfIz8rPabFJIFzJ5-xaXgRlUI9ew-kmqqYMGYEYnzrLd08vA9GotnOBg"
+          "value": "5XokEm9FS0xihGM_aB-prBpmmvRtP7l0WxRrvNOLvitEWPWX5FJOS8jERU5RqWIm_7YgIdv1KqS9ZI4v-nA5Aw"
         },
         {
           "op": "add",
@@ -4397,7 +4594,7 @@
               "kind": "storage-program",
               "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
             },
-            "contentHash": "e919be219e8ce6663de73d4068c4817e09365943252b9fba422d970b6a27589e",
+            "contentHash": "c18a8bf304b4caa6283b5674fecfcba5325a6b2e6fa3ab1f7c94368f55d957aa",
             "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
           }
         },
@@ -4408,7 +4605,7 @@
             "agreementRef",
             "contentHash"
           ],
-          "value": "d6481a5394a446af86e42a6d9e3652f0b744802ab3e646e3257a9b5009203c55"
+          "value": "8968dbc4e3a5227d5868c91e7848172a0b957f67fec277abb7f4b3e6c223a7d1"
         },
         {
           "op": "replace",
@@ -4418,7 +4615,7 @@
             0,
             "value"
           ],
-          "value": "b2jfZdYKtB81clHC6l7frgyMobfGjHK-i_dxFYxKvqOmDUCO1f3skMNOA4ZksFHiHA4hwTGrRCu4UusfY_4gAA"
+          "value": "WNqYeWvgVD8BzyFSBkg-rpN-uyTn34gwXrtv_9GRD_kneOQidzeHv0DCbFmtKKomUoItqPwegJmQ-n6N7Y5eCA"
         },
         {
           "op": "replace",
@@ -4428,7 +4625,7 @@
             1,
             "value"
           ],
-          "value": "loB6t0kjY7v5-N3mHylzPoQusARKM6u6qa-HAV2E1N4vYxAaDT0VUwGxJgBKfHFrqwYLhAjuUlQCq8iEy8pWAA"
+          "value": "iu-Xvtkft3IJ9YGB0xbTHSHiLN34if-kC_3x8YZXYtmmH0xvj8XrEqn_U7K5ZS6Hq9mfFndO_fvCCc5Co8ExBg"
         },
         {
           "op": "replace",
@@ -4497,6 +4694,7 @@
               "priorPaymentDispositionVersion": "1",
               "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PA",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
               "priorAgreementRef": {
                 "anchor": {
                   "kind": "https",
@@ -4524,14 +4722,14 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-                "value": "O4eYoEvi83VwnmCT8sRsmha61aMLtp1Tk2V7_hfIytPGD9QMdjBAbQFMBhwrzPa34QyyNedXxdDipLJq7llADg"
+                "value": "GSSa3dJI7NY_MvQ6T2tDnJSNhjLz0H5afyGqkmPN7oMict7RfKCqrPaJDJlfvnoO662QI4VBw3rF7J9qR41aBw"
               }
             },
             "resolution": {
               "authorityAuthenticated": true,
               "status": "finalized",
               "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-              "contentHash": "e919be219e8ce6663de73d4068c4817e09365943252b9fba422d970b6a27589e",
+              "contentHash": "c18a8bf304b4caa6283b5674fecfcba5325a6b2e6fa3ab1f7c94368f55d957aa",
               "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PA:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "authorizationJournalClosed": false,
               "reconciliationEvidenceVerified": false
@@ -4557,7 +4755,7 @@
             0,
             "value"
           ],
-          "value": "cml3ngJoe3gx4s8C3pe2F2iXNcGchmtgrxoEJ3GhEtnQ_gjfN9gO0AUY4B0qzkqm40SUHD8fiJ2C2Vem0k9ODg"
+          "value": "rrfIj2_lhyFdsvfIPmlsKJ_AEWUJRxx8sF8itfv8pdqoJNAKmdHiTe6WXRkXrDe_m8xT9uBqg1ALpKQULp7eBQ"
         },
         {
           "op": "replace",
@@ -4567,7 +4765,7 @@
             1,
             "value"
           ],
-          "value": "VkB3Oox3ZkBGZvqoHzR3zZ6uWco0Rc2o8isqwTGf7h1o2huezZYCxuiDdX1f333vrWWmgMSCu3mHVpC9AHXUCA"
+          "value": "mgDHGJpS2OMSLdwfG8dCZcCeljHYDjQgxh_AyYv2WKuX9mIi2lD7RBFaa2yeuHJ_2mk99O33upRlV-uvXankBA"
         },
         {
           "op": "add",
@@ -4581,7 +4779,7 @@
               "kind": "storage-program",
               "locator": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PC:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d"
             },
-            "contentHash": "ded3f68759a1807f7f678d096c016647ecde3eda204de3a4274f45696c58dd38",
+            "contentHash": "6eb37e2ca7b2e239d830da64ae74c1d649aee487a0c548c56584d52ebd459ecd",
             "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555"
           }
         },
@@ -4592,7 +4790,7 @@
             "agreementRef",
             "contentHash"
           ],
-          "value": "1d6e7bb7c6294df09a24764abfa50ccc3cac36d72252d24d27b1294dc62feb53"
+          "value": "0f14508e97af5d4a2439c733c9c21d54c0468a1b8b9f3fa01ead985ac1979b9a"
         },
         {
           "op": "replace",
@@ -4602,7 +4800,7 @@
             0,
             "value"
           ],
-          "value": "9WWTLNwxrWe5YY9eVFqOoQ7bt0MgukP-Q2-gHwpJZSf5IG8EJqNFb-dJStXIFSH5Yb_CJ39JKFbprpt40lDaAQ"
+          "value": "RrCHZrXgoSEaBEqNeZkq9ERVji4DMFgqMAmw1QvvYwMjIS8YB6RdLA51JeHnN7gRV1DAPIM5lriGN9CANP6_Dg"
         },
         {
           "op": "replace",
@@ -4612,7 +4810,7 @@
             1,
             "value"
           ],
-          "value": "ZahmgNBQcoFxofthmqVZ4eNVbHLsEUIhYhTA5FJcrdCkvcc1Soewqbi7tyrlr4c356JzfLFFByPDEKgQrjHmAQ"
+          "value": "204keMNz3ZGlV6GIaxISt08nPcnDIqyUurbQXd3wqZYkmSUodWR5Mh5R1Z1pSOmksLzamBpNPdDjurG5tQdiAw"
         },
         {
           "op": "replace",
@@ -4684,6 +4882,7 @@
               "priorPaymentDispositionVersion": "1",
               "dispositionId": "b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "priorJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PC",
+              "replacementJobId": "01M0Q4K8X5D9YJKC3VT7H2N6PB",
               "priorAgreementRef": {
                 "anchor": {
                   "kind": "https",
@@ -4714,14 +4913,14 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-                "value": "UT69Y1MMHdTiB8ss3To-wXacbx_v211iDOloCn1CC07piYf1gLF8w70lnSycbo-ytT5NOTUSd8U-ohOuy3vuBQ"
+                "value": "0svngy3E2M2_f2jWCZNz95k4mCJfrsUfaqD3omSQglrzfJJtz613ibTkRVVI4rtYswTBIgvrTT5omgvVH0GyDA"
               }
             },
             "resolution": {
               "authorityAuthenticated": true,
               "status": "finalized",
               "writer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
-              "contentHash": "ded3f68759a1807f7f678d096c016647ecde3eda204de3a4274f45696c58dd38",
+              "contentHash": "6eb37e2ca7b2e239d830da64ae74c1d649aee487a0c548c56584d52ebd459ecd",
               "logicalAddress": "dacs4:payment-disposition:01M0Q4K8X5D9YJKC3VT7H2N6PC:2:b544686a90acbbce3d42bc7c66b20089050f77947080e19a2ca6d7ed33393c8d",
               "authorizationJournalClosed": false,
               "reconciliationEvidenceVerified": false

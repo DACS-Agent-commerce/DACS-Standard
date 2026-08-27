@@ -26,7 +26,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
-| [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 44 | `fail` / `indeterminate` / `pass` |
+| [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |

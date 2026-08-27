@@ -3,8 +3,8 @@
   "spec": "DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef",
   "tier": "golden",
   "description": "Exact positive and negative wire-shape cases for every normative AttestationRef anchor kind and every ChainTxRef discriminator.",
-  "count": 23,
-  "hash": "155ef1e2ab1aa0dbb4dba23d1e1ee20b854bab8034029b4ebd0c87ad4014f858",
+  "count": 25,
+  "hash": "49a7db16203efe8fe6e534cb51eb71b07f3bc1192196dd29616e28166a4bb562",
   "vectors": [
     {
       "name": "attestation-storage-program",
@@ -158,6 +158,36 @@
         "chainId": 8453,
         "logIndex": 2,
         "protocolVersion": "2"
+      }
+    },
+    {
+      "name": "txref-x402-protocol",
+      "type": "ChainTxRef",
+      "expected": "pass",
+      "value": {
+        "kind": "x402-protocol",
+        "httpResource": "https://merchant.test/resource/274",
+        "paymentRequiredHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "x402Version": 2,
+        "settlementNetwork": "eip155:8453",
+        "settlementTransaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "settlementEvent": "evm:8453:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:2"
+      }
+    },
+    {
+      "name": "txref-x402-protocol-string-version",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "x402-protocol",
+        "httpResource": "https://merchant.test/resource/274",
+        "paymentRequiredHash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "paymentReceiptHash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "x402Version": "2",
+        "settlementNetwork": "eip155:8453",
+        "settlementTransaction": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "settlementEvent": "evm:8453:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:2"
       }
     },
     {

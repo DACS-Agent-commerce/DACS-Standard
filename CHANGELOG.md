@@ -48,6 +48,40 @@ The format used per release:
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
 
+### Added — DACS-3 v0.5 / DACS-4 v0.7
+
+- **Provider-neutral negotiated x402 rail** (DACS-3 §8.5.2; DACS-4 §9.3,
+  §9.4.3, §9.5.1, §9.5.7 XN-1..XN-11, §9.5.8; #274) — replaces the
+  unresolvable new-session use of seller-specific `x402:default` with a
+  discriminated `x402:protocol` definition that fixes protocol behaviour but
+  carries no provider, facilitator, resource URL, asset, network, scheme
+  allowlist, wallet, RPC, or credentials. The exact request and selected
+  requirement are covered by complete-reference JCS equality from the signed
+  Listing into a payee-bound Agreement; local implementations separately
+  declare `(x402Version, scheme, network)` capability. Before authorization the
+  handler obtains and matches one version-shaped challenge over method, URL,
+  body, version, scheme, CAIP-2 network, asset/decimals, exact amount, signed
+  payout destination, timeout, `extra`, and the complete top-level extensions
+  object, with redirects and post-signature parameter merging prohibited. New
+  `x402-protocol` evidence uses numeric `x402Version`, commits to both complete
+  PaymentRequired and settlement-response objects, carries a native
+  adapter-canonical event identifier, and can report success only after
+  independent asset/authorization/transfer/finality verification. `exact` is
+  the defined v0.7 scheme binding; other schemes remain protocol-valid but
+  cannot claim DACS success without their own binding profile. A receipt or
+  signed acknowledgement alone is diagnostic, never successful settlement.
+  The steward publishes `x402:default` disabled/deprecated for new sessions;
+  its static definition, string `protocolVersion`, and signed evidence bytes
+  remain unchanged for already-pinned continuation and historical replay.
+  Adds deterministic executable vectors for definition discrimination,
+  selection ambiguity, every pre-authorization substitution surface,
+  bounded public-fetch literal classes, v1/v2 hashing/version boundaries, local
+  capability, exact decimal conversion, party binding, independent-assurance
+  downgrade, cross-rail event identity, legacy replay, and retained-state retry
+  safety. The executable harness now places one instrumented wallet-call site
+  after every pre-authorization gate and proves that rejected inputs and every
+  reconciliation retry make zero authorization calls.
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4

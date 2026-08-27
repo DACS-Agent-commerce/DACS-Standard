@@ -4,13 +4,13 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.6** (on the common DACS v0.1 baseline; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.7** (on the common DACS v0.1 baseline; v0.7 adds the provider-neutral negotiated `x402:protocol` rail, complete agreement-signed request/selection binding, numeric-version generic settlement evidence, local capability separation, and an independent-verification success floor while preserving `x402:default` bytes for replay; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
 DACS-4 specifies how value is exchanged and the deliverable provided once a DACS-3 agreement is committed. It defines:
 
-- A **payment rail registry** — a versioned, anchored set of payment rails. Each rail is a typed envelope identifying the chain or network, the asset, the settlement contract or protocol, and any rail-specific parameters.
+- A **payment rail registry** — a versioned, anchored set of payment rails. A static rail identifies its network, asset, settlement contract/protocol, and parameters; a negotiated-protocol rail fixes provider-neutral resolution and verification behaviour while the signed agreement selects the exact request and requirement.
 - A **closed set of payment phases** (DACS-4 phase types) — pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc, pay-cross-chain-liquidity-tank, pay-ap2, pay-x402, pay-dem. Each is a phase with a uniform PhaseHandlerResult shape.
 - A **closed set of delivery phases** — deliver-storage-program, deliver-entitlement, deliver-attested-payload. Each produces SettlementEvidence the rest of the stack consumes.
 - A **payload-attestation record** — a signed, addressable binding from exact delivered bytes and method-native proof to the job, committed agreement, DeliverableSpec, verification method, and immutable attempt number.
@@ -37,13 +37,48 @@ A second motivation is **scope discipline**: DACS-4 does not specify new payment
 These types are referenced by DACS-1 (listings), DACS-3 (agreements), DACS-4 (this chapter), and DACS-5 (session record).
 
 ```
-type PaymentRailRef = {
+type PaymentRailRef = StaticPaymentRailRef | X402ProtocolPaymentRailRef
 
-  railId: string                       // e.g. "evm-erc20:1:USDC" or "demos:cross-chain-tank:USDC"
+type StaticPaymentRailRef = {
+
+  railId: string                       // e.g. "evm-erc20:1:USDC" or "demos:cross-chain-tank:USDC"; MUST NOT equal "x402:protocol"
 
   railVersion?: number                 // pinned at session start if set
 
   parameters?: Record<string, unknown>
+
+}
+
+type X402ProtocolPaymentRailRef = {
+
+  railId: "x402:protocol"
+
+  railVersion: number                  // REQUIRED: exact provider-neutral definition pinned for the session
+
+  parameters: X402ProtocolRailParameters
+
+}
+
+type X402ProtocolRailParameters = {
+
+  request: {
+    method: string                     // canonical upper-case HTTP method
+    url: string                        // exact absolute HTTPS target; no userinfo or fragment
+    bodyHash?: string                  // sha256 lowerhex of exact request-body bytes; required iff a body is sent
+  }
+
+  selection: {
+    x402Version: number                // positive safe integer; copied from PaymentRequired.x402Version
+    scheme: string                     // x402 scheme token; "exact" is the v0.7 success profile
+    network: string                    // CAIP-2 namespace:reference
+    asset: string                      // exact PaymentRequirements.asset value
+    assetDecimals: number              // independently established by the selected scheme/network adapter
+    currency: string                   // MUST equal agreement.terms.price.currency
+    maxTimeoutSeconds: number
+    extra: Record<string, unknown>     // complete PaymentRequirements.extra object
+  }
+
+  paymentRequiredExtensions?: Record<string, unknown>   // complete top-level PaymentRequired.extensions object; presence is significant
 
 }
 
@@ -111,6 +146,8 @@ type ChainTxRef =
 
   | { kind: "x402-event"; httpResource: string; paymentReceiptHash: string; settlementTxHash: string; chainId: number; logIndex: number; protocolVersion: string }   // current on-chain pay-x402 evidence; receipt and settling Transfer event share one signed arm (SB-1)
 
+  | { kind: "x402-protocol"; httpResource: string; paymentRequiredHash: string; paymentReceiptHash: string; x402Version: number; settlementNetwork: string; settlementTransaction: string; settlementEvent: string }   // negotiated x402:protocol success evidence; adapter-canonical transaction/event identity is independently verified (XN-7..XN-9)
+
   | { kind: "htlc-lock"; chainId: number; contractAddress: string; lockTxHash: string }
 
   | { kind: "htlc-reveal"; chainId: number; contractAddress: string; revealTxHash: string }   // the payer's destination claim, which reveals the preimage on-chain
@@ -145,14 +182,12 @@ A versioned, anchored set of payment rails. Each rail entry describes one settle
 #### 9.4.1 Rail schema
 
 ```
-type RailDefinition = {
+type RailDefinition = StaticRailDefinition | X402ProtocolRailDefinition
+
+type RailDefinitionBase = {
   railVersion: number
   railId: string                       // canonical id; lowercase ASCII; max 64 chars
-  railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
-  asset: AssetSpec                     // what is being transferred
-  network: NetworkSpec                 // where it lives
   phaseHandler: PhaseType              // which pay-* phase handles it
-  parameters: Record<string, unknown>  // rail-type-specific
   availability: RailAvailability       // operational status (see §9.4.4)
   governance: {
     proposedBy: ClaimReference;
@@ -164,6 +199,18 @@ type RailDefinition = {
     deprecationReason?: string                              // required when deprecated is true
   }
   signature: RailSignature             // steward's signature (see §9.4.3)
+}
+type StaticRailDefinition = RailDefinitionBase & {
+  railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
+  asset: AssetSpec                     // what is being transferred
+  network: NetworkSpec                 // where it lives
+  parameters: Record<string, unknown>  // rail-type-specific
+}
+type X402ProtocolRailDefinition = RailDefinitionBase & {
+  railId: "x402:protocol"
+  railType: "x402"
+  phaseHandler: "pay-x402"
+  resolution: { kind: "x402-payment-required" }
 }
 type RailAvailability =
   | "live"            // settlement path runs end-to-end against the network today
@@ -214,7 +261,8 @@ The v0.1 registry contains rail entries for the most-used settlement paths in pr
 | ap2:visa-direct | pay-ap2 | AP2 mandate to Visa Direct |
 | ap2:mastercard-send | pay-ap2 | AP2 mandate to Mastercard Send |
 | ap2:stripe-paymentintents | pay-ap2 | AP2 mandate to Stripe PaymentIntents |
-| x402:default | pay-x402 | Generic x402 HTTP 402 micropayment |
+| x402:protocol | pay-x402 | Provider-neutral negotiated x402 protocol; the exact request and requirement are agreement-signed (§9.5.7). |
+| x402:default | pay-x402 | Legacy static x402 entry; retained only for pinned historical replay and disabled for new sessions (XN-10). |
 
 **v0.1 cross-chain settlement scope.** `pay-cross-chain-liquidity-tank` is supported **only** for the live tank routes: ETH Sepolia ↔ Polygon Amoy testnet, USDC, EVM-source unidirectional. All other tank rails are 🟡 to-add. v0.1 keeps both `pay-cross-chain-liquidity-tank` and `pay-cross-chain-htlc` first-class.
 
@@ -228,10 +276,11 @@ Maturity by rail:
 | --- | --- |
 | `pay-evm-erc20`, `pay-solana-spl`, `pay-cross-chain-htlc` | Reference-backed: exercised by the reference implementation, with §14 conformance vectors |
 | `pay-cross-chain-liquidity-tank` | Partially live: only the Phase-1 testnet route (ETH Sepolia → Polygon Amoy, USDC, unidirectional); other routes to-add |
-| `pay-x402` | Exercised by the reference implementation; §14 conformance vector present (`settlement-x402-pass`); **not** `operator_gated` (see note) |
+| `pay-x402` / `x402:protocol` | Provider-neutral protocol profile specified in v0.7; implementation support is declared locally per `(x402Version, scheme, network)` and exercised by §14 negotiated-rail vectors. |
+| `pay-x402` / legacy `x402:default` | Historical path exercised by the reference implementation and `settlement-x402-pass`; disabled for new sessions and retained for byte-stable replay only. |
 | `pay-ap2` | Specified, not yet reference-backed: no live settlement path, no §14 conformance vector; `operator_gated` (see note) |
 
-> **Note (non-normative).** *pay-x402* (§9.5.7) — x402 settles a gasless USDC transfer **on its settlement chain** (e.g. Base), so a current `pay-x402` `SettlementEvidence` record is chain-verifiable against the settlement chain through the signed `x402-event` transaction hash, chain ID, and log index, exactly like the `evm-event` rail. The reference implementation runs x402 end-to-end as a primary rail: a buyer-side x402 client signing an EIP-3009/Permit2 authorisation and settling USDC on Base. It therefore meets the live-path + reference-implementation bar, and now has parity with the rails above, including a §14 conformance vector (`settlement-x402-pass`).
+> **Note (non-normative).** *pay-x402* (§9.5.7) — `x402:protocol` does not imply one settlement chain or asset. An independently verified EVM exact settlement remains chain-verifiable, but another locally supported CAIP-2 network uses that scheme/network adapter's authenticated event and finality rules. The historical Base/USDC implementation and `settlement-x402-pass` vector exercise the frozen static `x402:default` shape; they do not establish conformance to the negotiated v0.7 profile.
 >
 > *pay-ap2* (§9.5.6) — the handler procedure, registry entries, and evidence shape are defined, but there is no live path. `pay-ap2` settles **off-chain** (a provider receipt, not chain-verifiable) and requires AP2 provider onboarding (Visa Direct / Mastercard Send / Stripe PaymentIntents); AP2 itself was donated to the FIDO Alliance only in April 2026. Bringing it to reference-backed status — a live path plus conformance vectors — is roadmap work.
 
@@ -243,11 +292,22 @@ A conforming rail author MUST:
 - (RD-2) anchor the rail via SR-2 at the canonical address;
 - (RD-3) specify railVersion as monotonically increasing per railId;
 - (RD-4) specify supersedes when replacing a prior rail with the same railId;
-- (RD-5) ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected). For an `erc20` or `native-evm` asset on an `evm` network, `asset.chainId` and `network.chainId` MUST be the same positive integer; a mismatch MUST be rejected before the rail can participate in PB-2.
+- (RD-5) for a `StaticRailDefinition`, ensure the railType matches the asset and network kinds (an evm-erc20 rail with a Solana asset MUST be rejected). For an `erc20` or `native-evm` asset on an `evm` network, `asset.chainId` and `network.chainId` MUST be the same positive integer; a mismatch MUST be rejected before the rail can participate in PB-2. An `X402ProtocolRailDefinition` instead MUST match its complete discriminated arm exactly; it has no static asset or network to compare.
 - (RD-6) keep `phaseHandler` invariant across every version sharing a `railId`.
   A registry update that would change that handler MUST use a new `railId`;
   the steward and registry-index publisher MUST reject a same-`railId` handler
   change.
+
+- (XN-1) **Provider-neutral protocol definition.** The canonical
+  `x402:protocol` entry MUST be an `X402ProtocolRailDefinition` and MUST NOT
+  carry `asset`, `network`, static rail `parameters`, a resource or facilitator
+  URL, a provider name, credentials, a wallet, an RPC endpoint, or an asset,
+  network, provider, facilitator, or scheme allowlist. Its signed global scope
+  fixes only `pay-x402` dispatch, `x402-payment-required` resolution, registry
+  availability/governance, and the XN verification contract below. A
+  definition that combines either discriminated arm's fields with the other
+  arm is malformed and MUST be rejected; a consumer MUST NOT coerce it into a
+  static rail by inventing placeholder asset or network values.
 
 A consumer MUST resolve a rail by:
 
@@ -339,7 +399,7 @@ dacs4:payment:01J8ME0SXKQ4T9V2RC5HJ6WX7D:evm-erc20%3A8453%3AUSDC:3:resolved
 
 For the HTLC-9 asymmetric-open sub-case, the handler signals the open state and the orchestrator routes the session to the non-terminal `settle-asymmetric` state (§10.3.1, ST-8). A terminal `settlement-atomicity` outcome — the `settle-failed` state — is reached only after the ST-8 recovery window expires unresolved.
 
-**(PC-5)** before settling, `amount.currency` MUST resolve to `rail.asset` (reject a mismatch as `ok: false` / `errorClass: "permanent"`), per AssetSpec kind:
+**(PC-5)** before settling, `amount.currency` MUST resolve to the pinned payment asset (reject a mismatch as `ok: false` / `errorClass: "permanent"`). For a `StaticRailDefinition`, resolve through `rail.asset` per AssetSpec kind:
 
 | AssetSpec kind | `amount.currency` must equal |
 | --- | --- |
@@ -347,7 +407,11 @@ For the HTLC-9 asymmetric-open sub-case, the handler signals the open state and 
 | fiat-via-ap2 | `rail.asset.isoCurrency` |
 | stablecoin-cross-chain | `rail.asset.canonicalSymbol` |
 
-Handlers MUST NOT settle a payment whose `amount.currency` does not resolve under this mapping.
+For an `X402ProtocolRailDefinition`, the selected
+`agreement.terms.rail.parameters.selection.currency` MUST equal
+`amount.currency`; asset precision and the exact wire amount are then verified
+under XN-5. Handlers MUST NOT settle a payment whose `amount.currency` does not
+resolve under the applicable arm.
 
 **(PC-6)** when outcome is `success`, populate `settlementFinality` (the finality model and parameters actually applied) in the produced SettlementEvidence — REQUIRED on any `success`-outcome payment evidence record, and absent on delivery evidence records.
 
@@ -374,11 +438,11 @@ Two guards:
 type PaymentPhaseInput = {
   jobId: string
   agreement: AgreementArtifact         // pinned by the listing's agreement commitment phase
-  rail: RailDefinition                 // pinned at session start
+  rail: RailDefinition                 // pinned provider-neutral/static definition; exact PaymentRailRef remains in agreement.terms.rail
   payer: {
     bundleHash: string
     primaryClaim: ClaimReference
-    payingKey: ClaimReference          // MUST appear in payer's bundle.claims
+    payingKey: ClaimReference          // MUST appear in the resolved, presentation-verified payer bundle
   }
   payee: {
     bundleHash: string
@@ -405,13 +469,18 @@ The legacy `AgreementDocument` remains valid with its pre-PB behaviour: PB-1 thr
   For an EVM rail, implementations MUST derive tier-2 chain applicability as
   follows:
 
-  1. The pinned `RailDefinition` has an EIP-155 settlement chain iff its
-     `network` is `{ kind: "evm", chainId }` and the definition has passed
-     RD-5. Its canonical chain identifier is
-     `eip155:` followed by the minimal decimal spelling of `chainId`.
-     A rail whose pinned definition exposes no single EIP-155 chain has no EVM
-     tier-2 claim applicable under this predicate. A chain learned only from a
-     later receipt or provider response MUST NOT retroactively change the
+  1. The pinned settlement selection has an EIP-155 settlement chain iff
+     either (a) its `StaticRailDefinition.network` is
+     `{ kind: "evm", chainId }` and the definition has passed RD-5, or (b) it
+     is the `x402:protocol` definition and the complete agreement-signed
+     `X402ProtocolPaymentRailRef.parameters.selection.network` is exactly
+     `eip155:<chainId>`, where `<chainId>` is a positive minimal-decimal safe
+     integer. Its canonical chain identifier is `eip155:` followed by that
+     minimal decimal spelling. The negotiated arm is eligible only after the
+     complete selected reference passes XN-2; a rail/selection exposing no
+     single EIP-155 chain has no EVM tier-2 claim applicable under this
+     predicate. A chain learned only from a later challenge, receipt, provider
+     response, redirect, or ledger lookup MUST NOT retroactively change the
      bundle-derived tier.
   2. A pinned-bundle `cci-xm` claim has an EIP-155 settlement chain iff it
      conforms to the DACS-1 EVM settlement-chain profile. Its scheme is
@@ -623,20 +692,255 @@ Payment via an AP2 mandate to a card network or banking provider.
 
 #### 9.5.7 pay-x402
 
-Payment via x402 HTTP 402 micropayment to an HTTP resource.
+Payment via an x402 HTTP 402 challenge. Current sessions use the negotiated,
+provider-neutral `x402:protocol` rail. The frozen static `x402:default` path is
+retained only for already-pinned sessions and historical evidence replay under
+XN-10.
 
-**Procedure.**
+**Negotiated protocol procedure.**
 
-1. Resolve rail; verify `network.kind == "x402-resource"`.
-2. Construct an x402 payment payload (signed authorisation per x402 spec); the authorisation MUST carry the session binding defined by SB-3 (§9.5.8) — the signed Permit2 witness or the byte-exact EIP-3009 nonce — so the verifier can bind the settlement to this session. Submit the GET request to the resource with x402 headers.
-3. Receive the paid resource response. Select, decode, and validate its x402 settlement-response header under X402-1..X402-4. Read the on-chain settlement transaction and network from that response.
-4. Identify the exact settling transfer event and construct SettlementEvidence with an `x402-event` txRef carrying `httpResource`, the X402-2 `paymentReceiptHash`, `protocolVersion`, `settlementTxHash`, `chainId`, and `logIndex`. These values are one signed event-level reference. A successful `pay-x402` handler that cannot identify one settling event MUST NOT emit success evidence; it follows the reconciliation/failure rules below instead.
-5. Anchor via SR-2; return success.
+1. Resolve and pin the `x402:protocol` definition and the exact complete
+   `X402ProtocolPaymentRailRef` selected by the agreement. Apply XN-2 and XN-3
+   before contacting the resource.
+2. Issue the agreement-bound request with no payment authorization. Require a
+   version-shaped HTTP 402 `PaymentRequired`, retain the complete object as
+   received, and apply XN-4 through XN-6. No wallet or signing operation may occur before all of those gates pass.
+3. Construct the x402 `PaymentPayload` from the one matched requirement. For an
+   EIP-3009 or Permit2 authorization, apply the applicable SB-3 binding. Submit
+   the paid request with the same method, URL, and body bytes as the unpaid
+   request.
+4. Decode the version-selected settlement-response header, retain the complete
+   response object, compute both XN-7 hashes, and reconcile its version,
+   network, transaction, payer, and exact-scheme amount with the selected
+   requirement and agreement.
+5. Independently verify the adapter-canonical settlement transaction/event and
+   finality under XN-8/XN-9. Only then construct success-outcome
+   `SettlementEvidence` with one `x402-protocol` reference and
+   `settlementFinality.model == "scheme-network-finality"`; anchor via SR-2 and
+   return success. If payment may have been submitted but verification is
+   unavailable, retain a reconciliation-pending state and apply XN-11; do not
+   infer that another authorization is safe.
 
-- **(X402-1) Versioned receipt selection.** For a success-outcome record, `protocolVersion` MUST be the negotiated x402 version as a minimal unsigned-decimal string. Version `"1"` selects `X-PAYMENT-RESPONSE`; version `"2"` selects `PAYMENT-RESPONSE`. The handler MUST base64-decode the selected header, parse its JSON as that version's `SettlementResponse`, require `success == true`, and retain every received member, including `extensions` and unrecognised members. A handler MUST refuse a protocol version whose settlement-response header or schema it does not implement.
+- **(XN-2) Signed selection identity and shape.** A listing MAY contain
+  multiple canonically distinct `X402ProtocolPaymentRailRef` values. It MUST
+  reject duplicate full-reference CORE §B.2 JCS bytes under DACS-1 LRR-1. The
+  committed agreement MUST select exactly one listing member by equality of the
+  complete canonical `PaymentRailRef`, including `railVersion` and every
+  `parameters` member; `railId` is only the handler dispatch key. Selection of
+  the first matching `railId`, parameter merging, defaults supplied after
+  signature, or a resolution-relevant value outside the enclosing agreement's
+  signed scope is non-conforming. A `StaticPaymentRailRef` whose `railId` is
+  `x402:protocol` is malformed; a consumer MUST NOT use the static arm's
+  optional fields to bypass the negotiated shape. A current `x402:protocol`
+  session MUST use a `PayeeBoundAgreementDocument`; the agreement buyer and
+  seller MUST each occur exactly once in `parties`, and the applicable
+  `(railId, phaseIndex)` payout binding MUST satisfy PB-1. The request method
+  MUST be a non-empty upper-case HTTP token. The URL MUST be an absolute HTTPS
+  URL with a non-empty host and no userinfo or fragment and is compared as the
+  exact signed string. A present `bodyHash` MUST be exactly 64 lower-case
+  hexadecimal digits. The selection's
+  `x402Version` and `maxTimeoutSeconds` MUST be positive safe integers;
+  `assetDecimals` MUST be a non-negative safe integer; `scheme`, `network`,
+  `asset`, and `currency` MUST be non-empty strings; `network` MUST have the
+  CAIP-2 `namespace:reference` form; and `extra` plus any
+  `paymentRequiredExtensions` MUST be JSON objects valid under CORE §B.2.
+  URL syntax validation is not permission to connect. Both the unpaid and paid
+  requests, including every retry or retained replay, MUST apply the complete
+  DACS-1 §6.3.6 bounded server-fetch requirements immediately before each new
+  connection: validate every resolved address as public, pin the connection to
+  a validated address, repeat resolution and validation for each connection,
+  refuse redirects, omit ambient credentials, and enforce finite connection,
+  whole-request, and decoded-response-size bounds. A non-public target MAY be
+  used only through an explicit out-of-band operator allowlist that the
+  listing, agreement, challenge, and other counterparty-controlled content
+  cannot modify.
+
+- **(XN-3) Capability and operator separation.** Before the unpaid request, the
+  executing implementation MUST establish local support for the exact
+  `(x402Version, scheme, network)` and for a DACS scheme-binding profile capable
+  of independently verifying that network. Unsupported local capability is
+  `ok: false` / `errorClass: "permanent"` with reason
+  `x402-capability-unsupported`; it is not proof that the signed offer or
+  provider is globally invalid. Facilitator endpoints and credentials, wallet
+  selection, RPC endpoints, API keys, and routing preferences MUST remain
+  trusted local configuration. They MUST NOT be read from the global protocol
+  definition, the selected rail reference, a PaymentRequired extension, a
+  catalog, or another counterparty-controlled input, and changing them MUST NOT
+  change `railId`, `railVersion`, or the agreement's selected requirement.
+  A tuple the implementation does not support is therefore a pre-authorization
+  `fail` / permanent handler result. A supported tuple whose scheme lacks a
+  DACS success binding follows the distinct XN-9 dispositions; implementations
+  MUST NOT choose between those dispositions locally.
+
+- **(XN-4) Exact challenge match.** The unpaid response MUST be an HTTP 402 with
+  a well-formed `PaymentRequired` for the signed `x402Version`. The version
+  adapter preserves the complete raw object for hashing, and exposes one
+  comparison surface: v2 uses top-level `resource.url` and
+  `PaymentRequirements.amount`; v1 maps the selected member's `resource` to the
+  URL and `maxAmountRequired` to `amount` without rewriting the retained object.
+  `PaymentRequired.x402Version` and the effective resource URL MUST equal the
+  signed selection. Exactly one `accepts` member MUST match the signed
+  `scheme`, CAIP-2 `network`, `asset`, `maxTimeoutSeconds`, and complete
+  CORE §B.2 JCS `extra` object, plus the amount and destination derived by XN-5.
+  Zero or multiple matches, a non-parseable/non-version-shaped 402 body, a bare
+  network label, or any mismatch MUST reject before authorization. For v2, the
+  presence and complete JCS value of top-level `PaymentRequired.extensions`
+  MUST equal `paymentRequiredExtensions`; omitted and `{}` are distinct. A v1
+  selection MUST omit `paymentRequiredExtensions`.
+
+- **(XN-5) Exact amount and signed parties.** v0.7 defines DACS settlement
+  success only for `selection.scheme == "exact"`. The handler MUST require
+  `selection.currency == agreement.terms.price.currency`, independently
+  establish that `selection.assetDecimals` is correct for the selected asset
+  through its scheme/network adapter, and convert the CD-1 agreement amount to
+  atomic units by exact decimal shifting. Excess fractional precision,
+  rounding, floating-point conversion, overflow, a non-canonical unsigned
+  atomic amount, or inequality with the matched requirement's `amount` MUST
+  reject before authorization. The matched requirement's `payTo` MUST equal the
+  PB-1 payout binding for this `(x402:protocol, phaseIndex)`. The
+  `PaymentPhaseInput` payer and payee MUST equal the signed agreement buyer and
+  seller respectively. Before signing, the handler MUST resolve the buyer's
+  exact pinned `bundleHash`, recompute that DACS-1 bundle hash, verify its
+  presentation (including the session-nonce match where the bundle is presented
+  for this session), and require `payingKey` to identify exactly one claim in
+  that bundle. The selected scheme/network adapter MUST then independently
+  validate the claim's native control proof and derive or recover the
+  authorization payer address from the proven key under that network's native
+  rules. That derived address MUST equal the payer used by the authorization;
+  string equality between `payingKey` and `primaryClaim`, a caller-supplied or
+  echoed address, bundle membership without a valid control proof, or a
+  signature under a key that derives a different address is insufficient.
+  After settlement, the adapter MUST independently establish that the
+  authenticated event debits that same derived payer and credits the signed
+  `payTo` in the selected asset for exactly the selected atomic amount. An
+  unsigned legacy `PaymentPhaseInput.payee.payeeAddress`, server-returned
+  payer/payee, or local wallet default cannot substitute for these signed
+  bindings.
+
+- **(XN-6) Complete extension and request binding.** The handler MUST preserve
+  and compare the complete `PaymentRequirements.extra` and top-level
+  `PaymentRequired.extensions` objects under XN-4. It MUST validate every
+  extension or `extra` member that can influence authorization, request
+  execution, settlement, destination, fees, or follow-on actions; an
+  action-bearing member unsupported by the selected adapter MUST reject before
+  signing. Descriptive members MAY be ignored semantically but remain bound by
+  whole-object equality and the XN-7 challenge hash. If `request.bodyHash` is
+  present, both unpaid and paid requests MUST carry identical body bytes whose
+  SHA-256 equals it; if absent, both requests MUST have no body. Redirects MUST
+  NOT be followed, and an effective method, URL, or body change requires a new
+  listing/agreement rather than an override. The paid request MUST differ from
+  the validated unpaid request only by x402 authorization transport fields and
+  other version-defined payment headers.
+
+- **(XN-7) Numeric-version evidence and canonical commitments.** Before
+  hashing either received object, apply CORE §B.2 CF-1 recursively to every
+  JSON string value, then compute:
+
+  ```text
+  paymentRequiredHash = lowerhex(SHA-256(UTF8(JCS(nfcPaymentRequired))))
+  paymentReceiptHash  = lowerhex(SHA-256(UTF8(JCS(nfcSettlementResponse))))
+  ```
+
+  Both values MUST be exactly 64 lower-case hexadecimal digits without `0x`.
+  The preimages are the complete version-shaped decoded objects, including
+  extensions and unrecognised members—not base64/header text, a normalized
+  cross-version projection, a subset of fields, a transaction receipt, or the
+  transaction identifier alone. Numeric `x402Version` in the
+  `x402-protocol` reference MUST equal the signed selection and the received
+  `PaymentRequired.x402Version`; the settlement response is selected by that
+  version's exact header/schema and does not acquire a synthetic version
+  member. `httpResource` MUST equal the exact signed URL;
+  `settlementNetwork` and `settlementTransaction` MUST equal the successful
+  response and the selected network. Version 1 selects
+  `X-PAYMENT-RESPONSE`; version 2 selects `PAYMENT-RESPONSE`; an unsupported
+  version/header/schema, invalid base64/JSON, non-success response, missing
+  complete object, non-canonical stored hash, or recomputed mismatch MUST NOT
+  produce success evidence.
+
+- **(XN-8) Independent success floor.** A success-outcome `pay-x402` record
+  using `x402:protocol` MUST carry exactly one `x402-protocol` reference and a
+  `scheme-network-finality` record whose network and scheme equal the signed
+  selection. For the v0.7 `exact` binding, that record's `bindingProfile` MUST
+  equal the literal `dacs-x402-exact:v1`; a different, missing, or malformed
+  value is a resolved evidence contradiction and is `fail`. The verifier MUST
+  resolve independently authenticated
+  scheme/network data for `settlementTransaction`, require the signed
+  adapter-canonical `settlementEvent` to identify exactly one finalized payment
+  event, and re-establish the XN-5 payer, payee, asset, amount, authorization,
+  and finality predicates. Missing or temporarily unavailable authenticated
+  data is `indeterminate`; a resolved contradiction is `fail`; a
+  malformed coordinate is `error`. A server/facilitator response, its hash, an
+  ordinary HTTP acknowledgement, or a server-signed receipt extension alone
+  MUST NOT produce `SettlementEvidence.outcome: "success"`, authorize delivery,
+  satisfy a terminal bundle, or contribute payment volume/reputation. Such an
+  acknowledgement MAY be retained outside successful SettlementEvidence as
+  explicitly lower-assurance diagnostic material; it is not independent
+  settlement proof.
+
+- **(XN-9) Open protocol, defined scheme bindings.** DACS does not register or
+  approve providers, facilitators, assets, or networks for `x402:protocol`.
+  The `exact` scheme binding is defined by XN-4..XN-8 for any network whose
+  local adapter can independently establish asset metadata, authorization,
+  transfer semantics, an adapter-canonical event coordinate, and finality.
+  `upto`, `batch-settlement`, and every other scheme remain protocol-valid but
+  MUST NOT produce DACS settlement success until a DACS binding profile defines
+  price/maximum versus actual charge, authorization, event identity, and
+  eventual finality. `batch-settlement` commitment acceptance is never eventual
+  financial settlement. In v0.7, a locally supported `batch-settlement` tuple
+  without an eventual-settlement binding is `indeterminate`; every other
+  locally supported scheme without a DACS success binding, including `upto`,
+  is a pre-authorization `fail` / permanent handler result. These dispositions
+  are protocol-defined and MUST NOT vary by adapter. When Permit2 or EIP-3009
+  is the selected authorization
+  form, its SB-3 profile remains mandatory. Another authorization form uses its
+  defined binding when one exists; otherwise the evidence MUST NOT claim SB-3,
+  though independently verified SB-1/SB-2 baseline evidence may still satisfy
+  the `exact` profile.
+
+- **(XN-10) Legacy boundary and disabled default.** The registry steward MUST
+  publish a superseding `x402:default` revision with
+  `availability: "disabled"`, `governance.deprecated: true`, and a
+  `deprecationReason` directing new sessions to `x402:protocol`. Regardless of
+  a requested legacy `railVersion` or that version's historical `availability`,
+  a v0.7 orchestrator MUST NOT start a new or replacement session with
+  `railId == "x402:default"`; pinning the earlier live revision is not a bypass.
+  RAV-R2 enforces the same result for the superseding disabled revision. An
+  already pinned in-flight session MAY finish under its pinned definition, and
+  historical evidence remains verified over its original signed bytes.
+  `x402:default` evidence uses the frozen `x402`/`x402-event` arms and string
+  `protocolVersion` under X402-1..X402-4; `x402:protocol` evidence MUST use the
+  distinct `x402-protocol` arm and numeric `x402Version` and MUST NOT emit
+  `protocolVersion`. The semantic versions `"2"` and `2` may identify the same
+  upstream version only for version selection; a verifier MUST NOT rewrite,
+  re-canonicalise, re-hash, or re-sign committed legacy evidence.
+
+- **(XN-11) Retry and reconciliation safety.** After an authorization may have
+  been submitted, timeout, response loss, unavailable ledger data, or an
+  indeterminate adapter result MUST NOT authorize another payment. The handler
+  MUST reconcile using the original `(jobId, phaseIndex)`, selected complete
+  requirement, scheme-defined authorization identity, and any known
+  transaction/event reference. A proven finalized match resumes evidence
+  construction and PC-7 catch-up; a proven terminal non-settlement follows the
+  scheme profile; an indeterminate result stays pending. The handler MUST NOT
+  switch provider, facilitator, scheme, network, asset, resource, destination,
+  or authorization identity inside the session and MUST NOT manufacture a new
+  requirement or nonce to escape reconciliation.
+
+**Legacy static procedure and receipt rules.** The following frozen rules apply
+only to an already-pinned `x402:default` session or historical evidence. They do
+not authorize a new session under XN-10.
+
+1. Resolve the pinned static rail and verify `network.kind == "x402-resource"`.
+2. Construct the x402 payment payload and apply the applicable SB-3 binding;
+   submit the request to the pinned resource.
+3. Receive the paid resource response and apply X402-1..X402-4.
+4. Identify the exact settling transfer event and construct an `x402-event`
+   reference; anchor via SR-2 and return success.
+
+- **(X402-1) Versioned receipt selection.** For a success-outcome legacy record, `protocolVersion` MUST be the negotiated x402 version as a minimal unsigned-decimal string. Version `"1"` selects `X-PAYMENT-RESPONSE`; version `"2"` selects `PAYMENT-RESPONSE`. The handler MUST base64-decode the selected header, parse its JSON as that version's `SettlementResponse`, require `success == true`, and retain every received member, including `extensions` and unrecognised members. A handler MUST refuse a protocol version whose settlement-response header or schema it does not implement.
 - **(X402-2) Canonical receipt hash.** Before hashing, the handler MUST apply CORE §B.2 CF-1 to the complete X402-1 object. It MUST recursively NFC-normalise every JSON string value. It MUST then set `paymentReceiptHash = lowerhex(SHA-256(UTF8(JCS(nfcSettlementResponse))))`, where `nfcSettlementResponse` is that normalised object and JCS is RFC 8785. The value MUST be exactly 64 lower-case hexadecimal digits without `0x`. The base64 header text, decoded non-canonical JSON bytes, an on-chain transaction receipt, and `settlementTxHash` alone are not conforming preimages.
 - **(X402-3) Receipt/evidence consistency.** A successful response's `transaction` MUST equal `settlementTxHash` when that field is recorded. Its `network` MUST map to `chainId` when that field is recorded: directly from v2 `eip155:{chainId}`, or through the registered v1 legacy-network mapping. A mismatch MUST reject the evidence; it MUST NOT be repaired by hashing a different receipt interpretation.
-- **(X402-4) Verification and invalid input.** A verifier presented with the response header MUST independently apply X402-1 and X402-2 and compare the resulting 32 bytes. Invalid base64, invalid JSON/schema, a non-success response, a non-canonical stored hash, or a hash mismatch MUST be rejected. A handler without the complete successful response object MUST NOT emit success-outcome `pay-x402` evidence.
+- **(X402-4) Verification and invalid input.** A verifier presented with the response header MUST independently apply X402-1 and X402-2 and compare the resulting 32 bytes. Invalid base64, invalid JSON/schema, a non-success response, a non-canonical stored hash, or a hash mismatch MUST be rejected. A handler without the complete successful response object MUST NOT emit success-outcome legacy `pay-x402` evidence.
 
 > **Note (non-normative) — what pay-x402 adds beyond bare x402.** A direct x402 transaction produces a receipt the client and server hold off-chain; there is no anchored audit trail and the transaction is not bound to a DACS session. pay-x402 binds the x402 transaction into a DACS session by:
 >
@@ -650,10 +954,13 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 
 **Failure modes.**
 
-- server-side x402 endpoint rejects (insufficient payment, unsupported scheme) → `counterparty`
+- challenge is malformed or differs from the signed selection before authorization → `counterparty`
+- local version/scheme/network capability is unsupported before authorization → `permanent` with `x402-capability-unsupported`, not `counterparty`
+- server-side x402 endpoint rejects a conforming submitted payment → `counterparty`
 - HTTP error after payment submitted → `transient` (retry only through the rail's idempotency/reconciliation path; for EIP-3009, use the derived-nonce rule below)
 - malformed, non-success, hash-mismatched, or transaction/network-inconsistent settlement response → `permanent`
 - signed receipt extension present but its signature invalid → `permanent`
+- independent settlement verification unavailable after possible submission → reconciliation-pending / `indeterminate`; never a second authorization and never success
 - EIP-3009 nonce already used or cancelled and not reconcilable to this phase's completed transfer → `permanent`
 
 #### 9.5.8 Session-bound settlement evidence (SB-1..SB-3)
@@ -664,17 +971,34 @@ A cross-chain HTLC settlement is bound to its session by the jobId-derived preim
 
   Before projecting any SB-1 identity, a consumer MUST compare the complete PC-2 logical-address tuple, not only its terminal phase-index segment. The address `jobId` MUST equal the signed `SettlementEvidence.jobId`; the CF-4-decoded `railId` MUST equal the rail selected by the authenticated agreement and phase context; and `phaseIndex` MUST equal that pay phase's authenticated `BundlePhaseEntry.index`. The optional `:resolved` segment does not change this tuple and is valid only for an ST-8 superseding record. A well-formed tuple mismatch is `fail` and the evidence MUST be rejected before projection. A malformed or non-canonical address, including a non-CF-4 rail segment, is `error`. The evidence signature, a matching transaction event, an outer SR-2 receipt, or a caller/indexer annotation MUST NOT substitute for this address-binding check.
 
-  For a success-outcome `pay-evm-erc20`, `pay-solana-spl`, or on-chain `pay-x402` record produced under DACS-4 v0.6 or later, the applicable event/instruction index MUST be inside the signed `SettlementEvidence` scope. The producer MUST use `evm-event`, `solana-instruction`, or `x402-event`, respectively. It MUST NOT emit the legacy `evm`, `solana`, or `x402` arm for new success evidence on those paths. The distinct `kind` values are an additive type boundary: a legacy reader that does not implement them rejects the new arm as unsupported before acting, and a current reader MUST NOT strip or substitute the discriminator and retry verification as a legacy arm.
+  For a success-outcome `pay-evm-erc20`, `pay-solana-spl`, or legacy-static
+  on-chain `pay-x402` record produced under DACS-4 v0.6 or later, the applicable
+  event/instruction index MUST be inside the signed `SettlementEvidence` scope.
+  The producer MUST use `evm-event`, `solana-instruction`, or `x402-event`,
+  respectively. It MUST NOT emit the legacy `evm`, `solana`, or `x402` arm for
+  new success evidence on those paths. A DACS-4 v0.7 `x402:protocol` producer
+  instead MUST use `x402-protocol`; its signed `settlementEvent` is the complete
+  adapter-canonical native SB-1 event identifier required by XN-8/XN-9. The
+  distinct `kind` values are additive type boundaries: a reader that does not
+  implement one rejects it as unsupported before acting, and a current reader
+  MUST NOT strip or substitute the discriminator and retry verification as
+  another arm.
 
-  Before accepting the evidence, a verifier MUST resolve independently authenticated ledger data at the referenced transaction and establish that the signed `logIndex` or `instructionIndex` selects the transfer committed by the evidence and agreement: the selected asset/program or token contract, payer, agreement-authorized payee destination (PB-1 when applicable), and exact `paymentAmount` MUST match. For x402, X402-1..X402-4 MUST additionally bind the same transaction and network to the signed receipt. A missing ledger result is `indeterminate`; a resolved index whose event does not match is `fail`; a missing, non-integer, negative, non-safe-integer, or otherwise malformed signed coordinate is `error`. An event index supplied outside the signed evidence is never authority and MUST NOT repair a current arm.
+  Before accepting the evidence, a verifier MUST resolve independently authenticated ledger data at the referenced transaction and establish that the signed `logIndex` or `instructionIndex` selects the transfer committed by the evidence and agreement: the selected asset/program or token contract, payer, agreement-authorized payee destination (PB-1 when applicable), and exact `paymentAmount` MUST match. For legacy static x402, X402-1..X402-4 MUST additionally bind the same transaction and network to the signed receipt. For `x402:protocol`, XN-2..XN-9 MUST bind the signed selection, challenge, response, complete `settlementEvent`, and independently verified finality. A missing ledger result is `indeterminate`; a resolved index/event whose transfer does not match is `fail`; a missing or malformed signed coordinate/event identifier is `error`. An event index or identifier supplied outside the signed evidence is never authority and MUST NOT repair a current arm.
 
   After signature, shape, anchor-address, and ledger-event verification, the consumer deterministically projects the verified signed arm to `settlement-tx-id`:
 
   - **`evm-event` / `x402-event`:** `evm:{chainId}:{txHash}:{logIndex}` (for `x402-event`, `txHash` is `settlementTxHash`)
   - **`solana-instruction`:** `solana:{cluster}:{signature}:{instructionIndex}`
+  - **`x402-protocol`:** the verified signed `settlementEvent` string. The
+    applicable scheme/network adapter MUST emit the same native DACS event key
+    as a direct rail over that ledger: EIP-155 exact uses the `evm:` form above;
+    Solana exact uses the `solana:` form above. A future ledger profile MUST
+    define a canonical collision-resistant native namespace and MUST define
+    cross-rail alias collapse before it can produce success.
   - **demos (`pay-dem`):** `demos:{txHash}` — a single native transfer is one settlement, so no event/instruction index is needed (§9.5.9)
 
-  The key is the uniqueness defence, so it MUST be byte-identical across implementations. `chainId`, `logIndex`, and `instructionIndex` MUST be non-negative safe integers and are rendered as minimal base-10 ASCII (`chainId` MUST additionally be greater than zero). EVM hashes are rendered as exactly 64 lower-case hexadecimal digits without `0x`; a verified legacy spelling with `0x` or upper-case characters collapses to that form. A current producer MUST emit the canonical spelling. A Solana signature is base58 that MUST decode to exactly 64 bytes. A reference that cannot produce this canonical form is malformed and yields `error`; it MUST NOT mint a distinct key. Event/instruction-level identity is required for batched transfers and for ERC-4337, where the settling `Transfer(from=payerAccount,…)` is one event among several in a bundler transaction.
+  The key is the uniqueness defence, so it MUST be byte-identical across implementations. `chainId`, `logIndex`, and `instructionIndex` MUST be non-negative safe integers and are rendered as minimal base-10 ASCII (`chainId` MUST additionally be greater than zero). EVM hashes are rendered as exactly 64 lower-case hexadecimal digits without `0x`; a verified legacy spelling with `0x` or upper-case characters collapses to that form. A current producer MUST emit the canonical spelling. A Solana signature is base58 that MUST decode to exactly 64 bytes. An `x402-protocol.settlementEvent` MUST already be in the adapter's canonical producer form; a spelling that normalizes to another native key is non-canonical and yields `error`, not a second identity. A reference that cannot produce its applicable canonical form is malformed and yields `error`; it MUST NOT mint a distinct key. Event/instruction-level identity is required for batched transfers and for ERC-4337, where the settling `Transfer(from=payerAccount,…)` is one event among several in a bundler transaction.
 
   **Legacy read/replay.** The `evm`, `solana`, and `x402` arms are frozen historical shapes; current consumers continue to verify their original `dacs-evidence:v1:` signed bytes and MUST NOT rewrite or re-sign them. Because those arms do not sign an event coordinate, a consumer may derive an event-level key only by resolving independently authenticated ledger data and applying the same asset, payer, payee, amount, and x402 receipt checks above. Exactly one matching event permits that event's authenticated index to be projected. No matching event is `fail`; unavailable ledger data or more than one matching event is `indeterminate`. A caller-supplied index, cache annotation, or indexer field that is not itself authenticated ledger evidence MUST be ignored and cannot disambiguate the record. Legacy evidence that remains `indeterminate` is replayable as history but is not countable under SB-2 and cannot satisfy a final verification gate.
 - **(SB-2) Cross-session uniqueness.** A consumer that aggregates settlement evidence across sessions — including the DACS-5 reputation reconciliation (§10.5.1) — MUST NOT count one `settlement-tx-id` under more than one `(jobId, phaseIndex)`. A second binding of the same id is rejected for the later record (earlier `observedAt` wins; ties broken by lower evidence hash). The check is scoped to the consumer's own evidence set; a global cross-network uniqueness index is out of scope. This closes the double-count threat on every rail with no on-chain change.
@@ -1026,7 +1350,8 @@ type SettlementFinalityRecord = {
 
   model: "block-depth"          // EVM / UTXO: wait for N blocks (finalityBlocks from rail.parameters)
        | "commitment-level"     // Solana: wait for a named commitment (commitmentLevel from rail.parameters)
-       | "provider-receipt"     // Fiat (AP2). Historical pre-v0.6 x402 evidence may retain this model for replay; current x402 success evidence uses block-depth over its signed x402-event.
+       | "provider-receipt"     // Fiat (AP2). Historical pre-v0.6 x402 evidence may retain this model for replay; legacy-static on-chain x402 uses block-depth.
+       | "scheme-network-finality"  // negotiated x402:protocol: finality independently verified by the selected DACS scheme/network adapter (XN-8/XN-9)
        | "htlc-reveal"          // Cross-chain HTLC: the payee's source-side claim (htlc-claim) landed against the revealed preimage — the decisive success tx; the payer's destination claim revealed the preimage earlier. (Model token retained as "htlc-reveal" for back-compat.)
        | "liquidity-tank"       // Native bridge liquidity-tank: bridge status transitions to "completed"
        | "bft-final"            // Native Demos (pay-dem, §9.5.9): the tx reached the terminal "included" state. Demos has deterministic BFT finality — inclusion is final, no block-depth or commitment tier applies.
@@ -1039,10 +1364,19 @@ type SettlementFinalityRecord = {
   // Sourced from rail.parameters.commitmentLevel; echoed here so the evidence record is self-describing.
   finalityCommitmentLevel?: "processed" | "confirmed" | "finalized"
 
+  // REQUIRED iff model == "scheme-network-finality"; absent otherwise.
+  // `bindingProfile` names DACS price/authorization/event/finality semantics,
+  // not a provider or facilitator. v0.7 exact success requires this literal.
+  schemeNetworkFinality?: {
+    scheme: string
+    network: string
+    bindingProfile: "dacs-x402-exact:v1"
+  }
+
   // Wall-clock unix ms at which the finality condition was observed to be met.
   // For block-depth: block timestamp of the Nth confirmation block.
   // For commitment-level: timestamp at which the commitment level was reached.
-  // For provider-receipt / htlc-reveal / liquidity-tank: timestamp of the decisive event
+  // For provider-receipt / scheme-network-finality / htlc-reveal / liquidity-tank: timestamp of the decisive event
   // (for htlc-reveal: the payee's source-side htlc-claim confirmation — the same event that flips outcome to success).
   finalityObservedAt: number
 
@@ -1128,7 +1462,7 @@ SettlementAmendment is anchored via SR-2 at dacs4:amendment:{jobId}:{evidenceHas
 A consumer MAY reconcile a DACS-3 `feeSchedule` disclosure (§8.5.3) against actual settlement. The reconciliation is **informational and non-gating**: it MUST NOT block, revert, or retry settlement, MUST NOT alter any `outcome`, and MUST NOT book a fault. It **observes** the disclosed-vs-actual gap; it does NOT reallocate funds — who effectively bears a gap is determined by `priceBasis` and the rail's fund flow, not by this rule.
 
 - (FR-1) **Scope.** Only a `kind == "network"` item is reconcilable — against `SettlementEvidence.paymentFee` (the chain/provider fee). `platform` / `processing` / `spread` / `subscription` items are off-chain and remain disclosure-only (the signed pre-commit record is the artifact).
-- (FR-2) **`rateBps → amount` (canonical).** A `rateBps` item resolves to `amount = price.amount × rateBps ÷ 10000`, computed as a canonical decimal (rule CD-1, CORE §B.2) **rounded half-up to the settlement asset's decimal precision** (the rail `AssetSpec.decimals`). Two implementations MUST derive an identical amount.
+- (FR-2) **`rateBps → amount` (canonical).** A `rateBps` item resolves to `amount = price.amount × rateBps ÷ 10000`, computed as a canonical decimal (rule CD-1, CORE §B.2) **rounded half-up to the settlement asset's decimal precision** (`StaticRailDefinition.asset.decimals`, or the independently verified agreement-signed `selection.assetDecimals` for `x402:protocol`). Two implementations MUST derive an identical amount.
 - (FR-3) **Expected total via `priceBasis`.** The expected payer-total MUST be computed according to the disclosure's `priceBasis` (inclusive vs exclusive); two consumers MUST NOT disagree on whether a schedule reconciles because they assumed different bases.
 - (FR-4) **Verdict — do-not-collapse** (mirroring the §7.5.1 decision semantics):
   - *reconciles* — the actual `network` fee is within the item's `toleranceBps` of the disclosed estimate (absent `toleranceBps` ⇒ exact), and any `fixed` / `rateBps`-derived amount matches **exactly** after FR-2 rounding (these are deterministic — no tolerance applies to them).
@@ -1183,17 +1517,23 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 
 | Role | Requirements |
 | --- | --- |
-| Rail author | RD-1 through RD-6 |
+| Rail author | RD-1 through RD-6; XN-1 for `x402:protocol` |
 | Listing publisher / reader | DACS-1 §6.3.4 LRR-1 through LRR-6 |
 | Orchestrator (rail selection) | RAV-R1 through RAV-R5 |
-| Payment phase handler | PC-1 through PC-7; PB-1 through PB-3 for payee-bound agreements; phase-specific procedure |
+| Payment phase handler | PC-1 through PC-7; PB-1 through PB-3 for payee-bound agreements; XN-2 through XN-11 for `x402:protocol`; phase-specific procedure |
 | Delivery phase handler | §9.6 per-kind procedure; DPA-1 through DPA-9 for attested payloads; SettlementEvidence emission |
 | Pipeline executor | PIPE-1 through PIPE-5 |
-| SettlementEvidence consumer | Canonical hash recomputation; signature validation; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (amendment chain following) |
+| SettlementEvidence consumer | Canonical hash recomputation; signature validation; XN-7 through XN-10 for negotiated x402; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (amendment chain following) |
 
 ### 9.11 Rationale
 
-**Closed rail registry vs open.** Open registries make conformance untestable (a listing could name a rail no orchestrator implements). The closed v0.1 set covers the dominant production paths; new rails ship via the DACS-4 version process under the registry steward.
+**Closed rail handlers, open negotiated protocol.** The registry remains closed
+over behaviour/handler definitions so a listing cannot invent semantics. The
+`x402:protocol` handler is one registered definition whose agreement-signed
+selection is deliberately open over providers, facilitators, assets, networks,
+and upstream scheme tokens. Local capability plus the DACS scheme-binding
+contract determines executability; the global registry is not a provider or
+asset allowlist.
 
 **Uniform SettlementEvidence vs rail-specific evidence shapes.** Rail-specific shapes would force every downstream consumer (DACS-5, auditors, analytics) to handle N shapes. The uniform shape with a discriminated txRefs union keeps consumption simple while preserving per-rail detail.
 
@@ -1244,6 +1584,16 @@ and reinterpret the record as a legacy arm. A current reader continues to
 verify historical `dacs-evidence:v1:` bytes unchanged and applies SB-1's
 exactly-one-authenticated-match rule without rewriting the signed artifact.
 
+**Negotiated x402 across minor versions.** DACS-4 v0.7 adds the distinct
+`X402ProtocolRailDefinition`, `X402ProtocolPaymentRailRef`, `x402-protocol`
+transaction-reference arm, and `scheme-network-finality` model. A pre-v0.7
+reader rejects those unknown action-bearing types before authorization or
+settlement admission; it MUST NOT remove `resolution`, `parameters`,
+`x402Version`, or the new discriminator and retry as `x402:default`. Historical
+`x402:default` rail/evidence bytes retain their static asset/network,
+`protocolVersion: string`, and X402-1..X402-4 replay semantics. XN-10 prohibits
+cross-shape rewriting.
+
 **ERC-20.** pay-evm-erc20 uses the standard ERC-20 transfer interface; any compliant ERC-20 token works. The rail registry pins specific tokens (e.g. USDC) per chain to avoid scam-token substitution.
 
 **SPL.** pay-solana-spl uses the standard SPL TransferChecked instruction; any compliant SPL token works. The rail registry pins specific mints per cluster.
@@ -1252,7 +1602,13 @@ exactly-one-authenticated-match rule without rewriting the signed artifact.
 
 **AP2.** Compatible with AP2 spec as donated to the FIDO Alliance in April 2026 and subsequent FIDO Alliance versions. Per-provider rail entries (ap2:visa-direct, ap2:mastercard-send, ap2:stripe-paymentintents) pin provider-specific parameters.
 
-**x402.** Compatible with x402 spec as published by Coinbase / Cloudflare / Anthropic. The pay-x402 rail handler is provider-agnostic; specific x402 servers may add parameters via the generic parameters field.
+**x402.** Compatible with the version-shaped x402 `PaymentRequired`,
+`PaymentRequirements`, `PaymentPayload`, and settlement-response contracts.
+`x402:protocol` keeps provider/facilitator/network/asset selection outside the
+global definition: the exact request and semantic selection are carried in the
+signed `PaymentRailRef`, and operator secrets/routing remain local. The generic
+`PaymentRailRef.parameters` behavior applies only to static rails; it is not a
+post-signature override surface for the negotiated arm.
 
 **ERC-8183 escrow (future).** ERC-8183 introduces an EVM-native escrow primitive for job-style transactions. A future v0.2 rail (pay-evm-erc8183) will compose ERC-8183 escrow with DACS-4 evidence; v0.1 does not include it.
 
@@ -1286,7 +1642,25 @@ identity or attributing counterparty fault.
 
 **Payee-destination substitution.** *Threat:* a tampered listing, compromised negotiation channel, or malicious orchestrator substitutes `payeeAddress` so funds go to an attacker while every identity check passes. *Mitigation:* for `PayeeBoundAgreementDocument`, PB-1 carries the destination inside the co-signed artifact (a substituted address breaks the agreement hash; an honest payee never co-signs an attacker's address), and PB-2 binds it to the vetted identity by the strongest applicable tier — intrinsic, control-proven `cci-xm:` linkage (§6.3.2 step (6)), or the payee's own agreement signature; applicable-but-unresolvable pauses rather than paying (§9.5.1). The distinct artifact and phase make older readers reject before settlement rather than ignore PB. *Residual:* a legacy `AgreementDocument` has no PB guarantee; a payee asserting a tier-3 address it does not control bears the payee-side risk, visible via the recorded binding tier.
 
-**x402 payment-receipt forgery.** *Threat:* a server claims payment it did not receive. *Mitigation:* current x402 success evidence signs an `x402-event` and independently verifies the selected transfer against the settlement chain — like the `evm-event` rail, not server- or facilitator-forgeable (§9.5.7). A facilitator receipt remains supplementary and must bind the same transaction/network under X402-1..X402-4. Historical receipt-only evidence remains replayable under its signed bytes but cannot establish an event-level SB-1 identity without a uniquely matching authenticated chain event. Buyer-side x402 wallets SHOULD keep a local record of submitted payments.
+**x402 payment-receipt forgery.** *Threat:* a server claims payment it did not receive. *Mitigation:* negotiated success evidence signs `x402-protocol` challenge/receipt commitments plus the native `settlementEvent` and independently verifies the selected transfer/finality under XN-7..XN-9. The legacy static path signs `x402-event` and applies X402-1..X402-4. In either path a facilitator receipt is supplementary, not server- or facilitator-forgeable proof of settlement. Historical receipt-only evidence remains replayable under its signed bytes but cannot establish an event-level SB-1 identity without a uniquely matching authenticated event. Buyer-side x402 wallets SHOULD keep a local record of submitted payments.
+
+**x402 global-endpoint and challenge substitution.** *Threat:* a supposedly
+generic registry entry pins one seller endpoint, or a resource changes the
+method, URL, body, version, scheme, network, asset, amount, destination,
+timeout, `extra`, or extensions after agreement and before authorization.
+*Mitigation:* XN-1 keeps the global arm provider-neutral; XN-2 places every
+resolution input inside the co-signed agreement; XN-4..XN-6 require one exact
+challenge match and prohibit redirect/effective-request changes before wallet
+use. *Residual:* endpoint availability remains a seller operational concern; a
+dead signed endpoint fails or stays transient and cannot be silently replaced
+inside the session.
+
+**x402 acknowledgement downgrade.** *Threat:* a server/facilitator response or
+signed extension is presented as finalized payment without independent
+settlement proof. *Mitigation:* XN-7 commits to both complete received objects,
+XN-8 requires independently authenticated event/finality verification before
+success, and XN-9 keeps non-final batch commitment distinct. Diagnostic
+acknowledgements never authorize delivery, bundles, volume, or reputation.
 
 **Delivery non-delivery.** *Threat:* seller signals payment received, never delivers. *Mitigation:* outside DACS-4’s remit; this is a DACS-3 / DACS-5 issue (the deliver-* phase MUST return ok: false on missing deliverable; DACS-5 records the failure; reputation impact accrues). Listings handling expensive non-recoverable deliveries SHOULD order the pipeline to shift the risk they care about — deliver-then-pay or pay-then-deliver (§9.9) — accepting the residual counterparty risk each implies. A true escrow that gates release on demonstrable delivery (lock → deliver → release) is **not expressible in v0.1** (§9.9): `pay-cross-chain-htlc` is an atomic swap with no mid-lock suspension point, and delivery-gated escrow is roadmapped to the ERC-8183 job-escrow rail.
 
@@ -1302,7 +1676,7 @@ than being silently upgraded to independent authority evidence.
 
 **Refund laundering.** *Threat:* a seller refunds to quietly unwind a failed delivery without recording failure. *Mitigation:* SettlementAmendments are anchored, signed, and included in DACS-5 bundles, so the trail shows both the original payment and the later refund; reputation derivation MUST treat refunded sessions appropriately. The inverse — a refund against a non-existent/failure-outcome record, or an over-refund — is guarded by AMEND-1..4 (§9.7.1).
 
-**Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Rail authors MUST specify `decimals` exactly, and phase handlers MUST validate `amount.amount` precision against `rail.asset.decimals` (excess precision is an error).
+**Decimal-overflow in cross-decimal pay paths.** *Threat:* converting `amount.amount` to on-chain integer units overflows or mis-rounds. *Mitigation:* the §9.5.2/§9.5.3 procedures mandate string-decimal arithmetic with no float, and `PriceTerm.amount` is canonical per CD-1 (CORE §B.2). Static rail authors MUST specify `asset.decimals` exactly; an x402 adapter independently verifies the agreement-signed `selection.assetDecimals` under XN-5. Phase handlers validate precision against the applicable value, and excess precision is an error rather than a rounded payment.
 
 **Pinned-rail vs latest-rail at settle time.** *Threat:* the rail registry changes between agreement commit and settle execution. *Mitigation:* the rail is pinned at session start (per railRegistryVersion in SessionContext). Settle MUST use the pinned rail definition, even if the registry has since superseded it.
 
@@ -1317,7 +1691,7 @@ A single-table summary of phase types, their parameters (from listing PhaseStep)
 | pay-cross-chain-htlc | {rail: railId}; rail.parameters.timelockSourceSec, timelockDestSec, sourceFinalitySec, and safetyWindowSec required, with timelockSourceSec > timelockDestSec + sourceFinalitySec + safetyWindowSec (HTLC-7 — the margin covers the payee reaching SOURCE-chain finality after the reveal; evaluated against the pinned params, not runtime latency), under the source-lock-finality epoch (HTLC-8) | htlc-lock + htlc-reveal + htlc-claim (source) |
 | pay-cross-chain-liquidity-tank | {rail: railId} | liquidity-tank |
 | pay-ap2 | {rail: railId}; rail.parameters.providerEndpoint required | ap2 (txRef carries `protocolVersion`, required) |
-| pay-x402 | {rail: railId} | x402-event (`protocolVersion`, receipt hash, settlement transaction, chain, and log index required; legacy read: x402) |
+| pay-x402 | {rail: railId}; `x402:protocol` takes the exact request/selection from agreement.terms.rail.parameters | x402-protocol (numeric `x402Version`, challenge + receipt hashes, CAIP-2 network, transaction, adapter-canonical native event); pinned legacy-static read/continuation: x402-event / x402 |
 | deliver-storage-program | none (driven by listing.offering.deliverable) | n/a (deliverableContentHash + deliverableAnchor instead) |
 | deliver-entitlement | none (driven by listing.offering.deliverable) | n/a |
 | deliver-attested-payload | none (driven by listing.offering.deliverable; verificationMethod conditionally required by DPA-1) | deliverableContentHash + deliverableAnchor + attestationRef → PayloadAttestationRecord (DPA-6) |

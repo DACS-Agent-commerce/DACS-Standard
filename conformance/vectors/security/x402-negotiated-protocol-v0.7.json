@@ -1,0 +1,6697 @@
+{
+  "set": "x402-negotiated-protocol-v0.7",
+  "spec": "§8.5.2 / §9.3 / §9.4.3 XN-1 / §9.5.1 PB-2 / §9.5.7 XN-2..XN-11 / §9.5.8 SB-1",
+  "upstream": {
+    "repository": "x402-foundation/x402",
+    "commit": "230e6a9a7eebce22c911a0687d6f4e6d1ac019f7",
+    "v2Types": "typescript/packages/core/src/types/payments.ts",
+    "v1Types": "typescript/packages/core/src/types/v1/index.ts"
+  },
+  "fixtureModel": {
+    "materialization": "deep-copy fixtures[vector.base], then apply vector.patch in order",
+    "path": "array of object member names or zero-based array indexes",
+    "operations": [
+      "add",
+      "remove",
+      "replace"
+    ],
+    "signatureRule": "patches include every changed deterministic signature; runners do not re-sign"
+  },
+  "fixtures": {
+    "v1": {
+      "railDefinition": {
+        "railVersion": 1,
+        "railId": "x402:protocol",
+        "railType": "x402",
+        "phaseHandler": "pay-x402",
+        "resolution": {
+          "kind": "x402-payment-required"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+          "acceptedAt": 1787443200000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+          "value": "jjWtP_u4Z2neruVVxpzV55Bmvu4HGH_OBBY7-fW_7kwxaSwrcJXhiDUaMLAjVNTMxQ-zV336XOCb6RV5BWfrAw"
+        }
+      },
+      "buyerBundle": {
+        "bundleVersion": "1",
+        "presentedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "presentedAt": 1787443199000,
+        "sessionNonce": "0c2ee5f931ed2ebec6f41f73af753000",
+        "claims": [
+          {
+            "ref": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "metadata": {
+              "testRole": "buyer"
+            }
+          },
+          {
+            "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+            "metadata": {
+              "algorithm": "ecdsa-secp256k1",
+              "publicKey": "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "signature": "zlnxK5V5aeWdxiZmHjAqKnYbQyCBJdcMsRACzOOX4O-a-VXRzdLwAn_HVwOEjc47FHXySlbr55KBY5gehQXkAw"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+              "signature": "MEUCIQC2CCVf7g2JILTVDi4zjIkjkonznEbhxG6HOVU3TcU3owIgL5wjHjizhv6TFaevLq5KXTpWnLxF4WAlwD6Yy08DouA"
+            }
+          ]
+        }
+      },
+      "listing": {
+        "dacsVersion": "1",
+        "listingVersion": 1,
+        "listingId": "x402-274",
+        "acceptedRails": [
+          {
+            "railId": "x402:protocol",
+            "railVersion": 1,
+            "parameters": {
+              "request": {
+                "method": "GET",
+                "url": "https://seller.example/dacs/resource?job=274"
+              },
+              "selection": {
+                "x402Version": 1,
+                "scheme": "exact",
+                "network": "eip155:8453",
+                "asset": "0x3333333333333333333333333333333333333333",
+                "assetDecimals": 6,
+                "currency": "USDC",
+                "maxTimeoutSeconds": 60,
+                "extra": {
+                  "name": "USDC",
+                  "version": "2",
+                  "verifyingContract": "0x6666666666666666666666666666666666666666"
+                }
+              }
+            }
+          }
+        ],
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+          "value": "0YMj4SAmp7WwY_Fm9ntNb0vaZY87agjn0WyRJuquT90KMkYLX78UqJpoTybrX8ymbmseK23FWMPYDJNDLV5dAA"
+        }
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "01M0NVBGYEANE562QQXD33C7WX",
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "343e13d9b053f89a5ee64079959d3c10a46e4ff9fc63cb0b4ed7812425e38949",
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        ],
+        "terms": {
+          "price": {
+            "amount": "1.25",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "x402:protocol",
+            "railVersion": 1,
+            "parameters": {
+              "request": {
+                "method": "GET",
+                "url": "https://seller.example/dacs/resource?job=274"
+              },
+              "selection": {
+                "x402Version": 1,
+                "scheme": "exact",
+                "network": "eip155:8453",
+                "asset": "0x3333333333333333333333333333333333333333",
+                "assetDecimals": 6,
+                "currency": "USDC",
+                "maxTimeoutSeconds": 60,
+                "extra": {
+                  "name": "USDC",
+                  "version": "2",
+                  "verifyingContract": "0x6666666666666666666666666666666666666666"
+                }
+              }
+            }
+          },
+          "payoutBindings": [
+            {
+              "railId": "x402:protocol",
+              "phaseIndex": 3,
+              "payeeAddress": "0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        "signatures": [
+          {
+            "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "algorithm": "ed25519",
+            "value": "XwdlZptNZjbkokxak_VNuGRsTljojXRRyo3XBO5AHE3Q7XeGo2K27W2D5beYfZjM-1MeRGUEdseBGim9NRNsDA"
+          },
+          {
+            "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "algorithm": "ed25519",
+            "value": "ywz8nXEKETWDwisCtJqX8r1jqxWzchv-9-RokGylSBUX7-poy1g-jID0FpsWneJ_WKqeHmPipXaGw0qnpRi9DA"
+          }
+        ]
+      },
+      "runtime": {
+        "phaseIndex": 3,
+        "issuedBuyerSessionNonce": "0c2ee5f931ed2ebec6f41f73af753000",
+        "selectedRailRef": {
+          "railId": "x402:protocol",
+          "railVersion": 1,
+          "parameters": {
+            "request": {
+              "method": "GET",
+              "url": "https://seller.example/dacs/resource?job=274"
+            },
+            "selection": {
+              "x402Version": 1,
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "asset": "0x3333333333333333333333333333333333333333",
+              "assetDecimals": 6,
+              "currency": "USDC",
+              "maxTimeoutSeconds": 60,
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              }
+            }
+          }
+        },
+        "payer": {
+          "bundleHash": "343e13d9b053f89a5ee64079959d3c10a46e4ff9fc63cb0b4ed7812425e38949",
+          "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "payingKey": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+          "paymentAddress": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+        },
+        "payee": {
+          "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+          "payeeAddress": "0x2222222222222222222222222222222222222222"
+        },
+        "requestBodyBase64": "",
+        "effectiveUrl": "https://seller.example/dacs/resource?job=274",
+        "redirected": false,
+        "operatorConfigSource": "local-operator-policy",
+        "authorizationSubmitted": false,
+        "retryWouldAuthorize": false,
+        "reconciliationState": {
+          "jobId": "01M0NVBGYEANE562QQXD33C7WX",
+          "phaseIndex": 3,
+          "requirementHash": "3719c5a8dd65552e65f119324d2833b3038aca532a959ab40fcb34e32880e25c",
+          "authorizationIdentity": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+          "settlementTransaction": "abababababababababababababababababababababababababababababababab"
+        }
+      },
+      "capability": {
+        "supportedTuples": [
+          [
+            1,
+            "exact",
+            "eip155:8453"
+          ]
+        ],
+        "bindingProfiles": [
+          "dacs-x402-exact:v1"
+        ],
+        "understoodActionExtensions": [
+          "payment-identifier"
+        ],
+        "assetMetadata": {
+          "network": "eip155:8453",
+          "asset": "0x3333333333333333333333333333333333333333",
+          "decimals": 6
+        }
+      },
+      "http": {
+        "status": 402,
+        "paymentRequired": {
+          "x402Version": 1,
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "payTo": "0x2222222222222222222222222222222222222222",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              },
+              "maxAmountRequired": "1250000",
+              "resource": "https://seller.example/dacs/resource?job=274",
+              "description": "DACS #274 resource",
+              "mimeType": "application/json",
+              "outputSchema": {}
+            }
+          ]
+        },
+        "responseHeader": {
+          "name": "X-PAYMENT-RESPONSE",
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyJ9"
+        },
+        "actionBearingExtensions": []
+      },
+      "ledger": {
+        "available": true,
+        "network": "eip155:8453",
+        "transaction": "abababababababababababababababababababababababababababababababab",
+        "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7",
+        "scheme": "exact",
+        "asset": "0x3333333333333333333333333333333333333333",
+        "assetDecimals": 6,
+        "amount": "1250000",
+        "payer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+        "payTo": "0x2222222222222222222222222222222222222222",
+        "authorization": "eip-3009",
+        "sessionBound": true,
+        "finalized": true
+      },
+      "evidence": {
+        "evidenceVersion": "1",
+        "jobId": "01M0NVBGYEANE562QQXD33C7WX",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402-protocol",
+            "httpResource": "https://seller.example/dacs/resource?job=274",
+            "paymentRequiredHash": "882f303a5dbe7c6e28c8e0acf1f63066bc717f9f2ffe4ec19dc112418e6e3a0e",
+            "paymentReceiptHash": "65a84ba136f584a3b50f67fcfd8e59c0d1259ce68cc5df9e6af9fe995178b83c",
+            "x402Version": 1,
+            "settlementNetwork": "eip155:8453",
+            "settlementTransaction": "abababababababababababababababababababababababababababababababab",
+            "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "1.25",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "scheme-network-finality",
+          "schemeNetworkFinality": {
+            "scheme": "exact",
+            "network": "eip155:8453",
+            "bindingProfile": "dacs-x402-exact:v1"
+          },
+          "finalityObservedAt": 1787443201000
+        },
+        "observedAt": 1787443201000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+          "value": "Q2ZWiEUtf84KaH5kIzqSzyJ20Q0MuZE8dkDCG8IsrEqi_WypUB_papl8Gih2AFpzvqu12erki5AQ6rbyu5D0DQ"
+        }
+      },
+      "keys": {
+        "buyer": "KioqZ3nl0zmZmP3k3jxMBmUnVavs3hQGNBA-dXscXcI",
+        "seller": "Sg2dbnTiJSzMA4u4sP9DTtYetewp2niiAa2tDXDw1CI",
+        "steward": "lwhD2yqHYEseeCd7a7XrYf_vMJ-53G9h_rOJMNj8XUg",
+        "orchestrator": "PIVR721dJUVi-nKVt1ImkZ4TnciFwD4HM35t5rLbxTc"
+      }
+    },
+    "v2": {
+      "railDefinition": {
+        "railVersion": 1,
+        "railId": "x402:protocol",
+        "railType": "x402",
+        "phaseHandler": "pay-x402",
+        "resolution": {
+          "kind": "x402-payment-required"
+        },
+        "availability": "live",
+        "governance": {
+          "proposedBy": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+          "acceptedAt": 1787443200000,
+          "anchoring": "single-signer"
+        },
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
+          "value": "jjWtP_u4Z2neruVVxpzV55Bmvu4HGH_OBBY7-fW_7kwxaSwrcJXhiDUaMLAjVNTMxQ-zV336XOCb6RV5BWfrAw"
+        }
+      },
+      "buyerBundle": {
+        "bundleVersion": "1",
+        "presentedBy": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+        "presentedAt": 1787443199000,
+        "sessionNonce": "0c2ee5f931ed2ebec6f41f73af753000",
+        "claims": [
+          {
+            "ref": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "metadata": {
+              "testRole": "buyer"
+            }
+          },
+          {
+            "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+            "metadata": {
+              "algorithm": "ecdsa-secp256k1",
+              "publicKey": "0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+              "signature": "zlnxK5V5aeWdxiZmHjAqKnYbQyCBJdcMsRACzOOX4O-a-VXRzdLwAn_HVwOEjc47FHXySlbr55KBY5gehQXkAw"
+            },
+            {
+              "ref": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+              "signature": "MEUCIQC2CCVf7g2JILTVDi4zjIkjkonznEbhxG6HOVU3TcU3owIgL5wjHjizhv6TFaevLq5KXTpWnLxF4WAlwD6Yy08DouA"
+            }
+          ]
+        }
+      },
+      "listing": {
+        "dacsVersion": "1",
+        "listingVersion": 1,
+        "listingId": "x402-274",
+        "acceptedRails": [
+          {
+            "railId": "x402:protocol",
+            "railVersion": 1,
+            "parameters": {
+              "request": {
+                "method": "GET",
+                "url": "https://seller.example/dacs/resource?job=274"
+              },
+              "selection": {
+                "x402Version": 2,
+                "scheme": "exact",
+                "network": "eip155:8453",
+                "asset": "0x3333333333333333333333333333333333333333",
+                "assetDecimals": 6,
+                "currency": "USDC",
+                "maxTimeoutSeconds": 60,
+                "extra": {
+                  "name": "USDC",
+                  "version": "2",
+                  "verifyingContract": "0x6666666666666666666666666666666666666666"
+                }
+              },
+              "paymentRequiredExtensions": {
+                "payment-identifier": {
+                  "required": true
+                }
+              }
+            }
+          }
+        ],
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+          "value": "VrYvuYYyO74mI9QZH9BBgOm2NpNTkp6S8AfdLp5kHfe55MTujB8WNYeRG1NNuBwFhpPDIKhEXZV393Kz2zhgBA"
+        }
+      },
+      "agreement": {
+        "payeeBoundAgreementVersion": "1",
+        "jobId": "01M0NVBGYEANE562QQXD33C7WX",
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "343e13d9b053f89a5ee64079959d3c10a46e4ff9fc63cb0b4ed7812425e38949",
+            "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        ],
+        "terms": {
+          "price": {
+            "amount": "1.25",
+            "currency": "USDC"
+          },
+          "rail": {
+            "railId": "x402:protocol",
+            "railVersion": 1,
+            "parameters": {
+              "request": {
+                "method": "GET",
+                "url": "https://seller.example/dacs/resource?job=274"
+              },
+              "selection": {
+                "x402Version": 2,
+                "scheme": "exact",
+                "network": "eip155:8453",
+                "asset": "0x3333333333333333333333333333333333333333",
+                "assetDecimals": 6,
+                "currency": "USDC",
+                "maxTimeoutSeconds": 60,
+                "extra": {
+                  "name": "USDC",
+                  "version": "2",
+                  "verifyingContract": "0x6666666666666666666666666666666666666666"
+                }
+              },
+              "paymentRequiredExtensions": {
+                "payment-identifier": {
+                  "required": true
+                }
+              }
+            }
+          },
+          "payoutBindings": [
+            {
+              "railId": "x402:protocol",
+              "phaseIndex": 3,
+              "payeeAddress": "0x2222222222222222222222222222222222222222"
+            }
+          ]
+        },
+        "signatures": [
+          {
+            "party": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+            "algorithm": "ed25519",
+            "value": "bQNBaKOgxXqD5yOqRUnImyWChJ6LDoXdYEyqxox0DFgO2OFh_wJIWoVTKV60oaxef1uZEtFRpv5hgoKzaBIOAw"
+          },
+          {
+            "party": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+            "algorithm": "ed25519",
+            "value": "f9JUpAk9XpfHbP6UwGKMq16t0Oihf_32TccLowg9N8mScrDx2ZHqVuuuDr7MjgcEEJBj-I9CD9xg7L0O7yRuAA"
+          }
+        ]
+      },
+      "runtime": {
+        "phaseIndex": 3,
+        "issuedBuyerSessionNonce": "0c2ee5f931ed2ebec6f41f73af753000",
+        "selectedRailRef": {
+          "railId": "x402:protocol",
+          "railVersion": 1,
+          "parameters": {
+            "request": {
+              "method": "GET",
+              "url": "https://seller.example/dacs/resource?job=274"
+            },
+            "selection": {
+              "x402Version": 2,
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "asset": "0x3333333333333333333333333333333333333333",
+              "assetDecimals": 6,
+              "currency": "USDC",
+              "maxTimeoutSeconds": 60,
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              }
+            },
+            "paymentRequiredExtensions": {
+              "payment-identifier": {
+                "required": true
+              }
+            }
+          }
+        },
+        "payer": {
+          "bundleHash": "343e13d9b053f89a5ee64079959d3c10a46e4ff9fc63cb0b4ed7812425e38949",
+          "primaryClaim": "did:demos:agent:1111111111111111111111111111111111111111111111111111111111111111",
+          "payingKey": "cci-xm:evm:8453:0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+          "paymentAddress": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf"
+        },
+        "payee": {
+          "primaryClaim": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+          "payeeAddress": "0x2222222222222222222222222222222222222222"
+        },
+        "requestBodyBase64": "",
+        "effectiveUrl": "https://seller.example/dacs/resource?job=274",
+        "redirected": false,
+        "operatorConfigSource": "local-operator-policy",
+        "authorizationSubmitted": false,
+        "retryWouldAuthorize": false,
+        "reconciliationState": {
+          "jobId": "01M0NVBGYEANE562QQXD33C7WX",
+          "phaseIndex": 3,
+          "requirementHash": "6458b2ea4eef3b82e7e3090c0214a3e05aaa9b7fa333fc32178b610821d8b5ef",
+          "authorizationIdentity": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+          "settlementTransaction": "abababababababababababababababababababababababababababababababab"
+        }
+      },
+      "capability": {
+        "supportedTuples": [
+          [
+            2,
+            "exact",
+            "eip155:8453"
+          ]
+        ],
+        "bindingProfiles": [
+          "dacs-x402-exact:v1"
+        ],
+        "understoodActionExtensions": [
+          "payment-identifier"
+        ],
+        "assetMetadata": {
+          "network": "eip155:8453",
+          "asset": "0x3333333333333333333333333333333333333333",
+          "decimals": 6
+        }
+      },
+      "http": {
+        "status": 402,
+        "paymentRequired": {
+          "x402Version": 2,
+          "resource": {
+            "url": "https://seller.example/dacs/resource?job=274",
+            "description": "DACS #274 resource",
+            "mimeType": "application/json"
+          },
+          "accepts": [
+            {
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "payTo": "0x2222222222222222222222222222222222222222",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              },
+              "amount": "1250000"
+            }
+          ],
+          "extensions": {
+            "payment-identifier": {
+              "required": true
+            }
+          }
+        },
+        "responseHeader": {
+          "name": "PAYMENT-RESPONSE",
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        "actionBearingExtensions": [
+          "payment-identifier"
+        ]
+      },
+      "ledger": {
+        "available": true,
+        "network": "eip155:8453",
+        "transaction": "abababababababababababababababababababababababababababababababab",
+        "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7",
+        "scheme": "exact",
+        "asset": "0x3333333333333333333333333333333333333333",
+        "assetDecimals": 6,
+        "amount": "1250000",
+        "payer": "0x7e5f4552091a69125d5dfcb7b8c2659029395bdf",
+        "payTo": "0x2222222222222222222222222222222222222222",
+        "authorization": "eip-3009",
+        "sessionBound": true,
+        "finalized": true
+      },
+      "evidence": {
+        "evidenceVersion": "1",
+        "jobId": "01M0NVBGYEANE562QQXD33C7WX",
+        "phase": "pay-x402",
+        "outcome": "success",
+        "paymentTxRefs": [
+          {
+            "kind": "x402-protocol",
+            "httpResource": "https://seller.example/dacs/resource?job=274",
+            "paymentRequiredHash": "66fc4a4b33fc50defdf940aa93518668d2db8bf261820824794f5ddbd75b0c51",
+            "paymentReceiptHash": "f4a4cd6929c5ae98e330f073ceb217b4ca7ba981a3b9320686a22c1544758e24",
+            "x402Version": 2,
+            "settlementNetwork": "eip155:8453",
+            "settlementTransaction": "abababababababababababababababababababababababababababababababab",
+            "settlementEvent": "evm:8453:abababababababababababababababababababababababababababababababab:7"
+          }
+        ],
+        "paymentAmount": {
+          "amount": "1.25",
+          "currency": "USDC"
+        },
+        "settlementFinality": {
+          "model": "scheme-network-finality",
+          "schemeNetworkFinality": {
+            "scheme": "exact",
+            "network": "eip155:8453",
+            "bindingProfile": "dacs-x402-exact:v1"
+          },
+          "finalityObservedAt": 1787443201000
+        },
+        "observedAt": 1787443201000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:5555555555555555555555555555555555555555555555555555555555555555",
+          "value": "2Wy0mB-YWdB-sp4KQ7ysbaCTafMh7SvNVDc7D_UdFBdtmO3KlTz-Qx8LWr1UUtKdI2_dZNG6JmS7yQmzdPikAA"
+        }
+      },
+      "keys": {
+        "buyer": "KioqZ3nl0zmZmP3k3jxMBmUnVavs3hQGNBA-dXscXcI",
+        "seller": "Sg2dbnTiJSzMA4u4sP9DTtYetewp2niiAa2tDXDw1CI",
+        "steward": "lwhD2yqHYEseeCd7a7XrYf_vMJ-53G9h_rOJMNj8XUg",
+        "orchestrator": "PIVR721dJUVi-nKVt1ImkZ4TnciFwD4HM35t5rLbxTc"
+      }
+    }
+  },
+  "count": 95,
+  "hash": "b6b85fc50c322949290e6171c41e3b2a9e03a3e9c56b663a3b2e92459af2d10b",
+  "vectors": [
+    {
+      "name": "protocol-v2-exact-success",
+      "expected": "pass",
+      "rule": "XN-1..XN-9",
+      "operation": "execute",
+      "note": "provider-neutral v2 exact selection reaches independently verified finality",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "protocol-v1-exact-success",
+      "expected": "pass",
+      "rule": "XN-4/XN-7",
+      "operation": "execute",
+      "note": "numeric version 1 maps legacy PaymentRequired fields without rewriting the hash preimage",
+      "base": "v1",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "independent-provider-same-protocol-rules",
+      "expected": "pass",
+      "rule": "XN-1..XN-4",
+      "operation": "execute",
+      "note": "a second seller endpoint needs no provider-specific global rail entry",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "4JtPLs6scK_kw8MAjSa4_jC18FiHxPLpXetLIH46SQSJsw1-Fy3jyNHHb0GwJsbOmYVzZhg5NgfQRtN5_u0QDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "aMdxuWag9VDu3h8LqvWOeTXDrBJpH7_zJd0z3VTeNnLB7OPfLutUIgKhR80l9owJ4y2tyBdAaTPKBQJqh-Q8Cg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "83d210c22d7ca98b9582665f23026037d82aa1a0e44f994d2173dd533aa2f6f8"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "2M5ihlXFBwBCko8DJxIEc2OfoLUHM6Yw9UTnjNPAB_zRxsTPiBj9HtZIq-D9kZETCb67UGRHpXZZtKWfjlShBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "_aNWSH7VttQznxzEyUpmc8ZhAqfVQ3W-iDNnxn3FifW3sB4mte9kbVoeB3yXzD_pOwkihThv9H6Iv6yWnCl-CQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://independent-seller.example/pay/274"
+        }
+      ]
+    },
+    {
+      "name": "protocol-v2-solana-exact-success",
+      "expected": "pass",
+      "rule": "XN-3/XN-8/XN-9/SB-1",
+      "operation": "execute",
+      "note": "a non-EVM CAIP-2 network succeeds through its local exact adapter without a registry addition",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "parties",
+            0,
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "5ZyviUjkvUlly1qi6-rERI5DA0OMpXI43EkMFOzPaKc6PX8VPm9t-ZQdR5Af267o6MBTfFZ-fkExOvcJRoFiCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "_LDjrvHnjzudUxMqNMi7sHMWQ9-xx2m-34jSGF8UmCHTdQfcri10rHbo52DMegb8X1IUuTafssaiHW6NuPbzDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "payoutBindings",
+            0,
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "algorithm"
+          ],
+          "value": "ed25519"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "metadata",
+            "publicKey"
+          ],
+          "value": "PCOjnRpQN0vCcoKcDVU7Bk5NfrBeIibXRa6Du1WRzQ4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "claims",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            0,
+            "signature"
+          ],
+          "value": "LCyZRHh3dZsJv7zBrDifn1L4D5jyaa90sOFbv3NpChXUT9xdF_6AV6frCg9_yvTX6hGaIMAHgnZxGyGgOwgcCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "ref"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "buyerBundle",
+            "presentation",
+            "signatures",
+            1,
+            "signature"
+          ],
+          "value": "Jgu141BVWeH7D6tPR_JWZfAerYNIwR2izxYOviZu1STntC-i9pqiergfNeqQnMu8wTHIwE17yXJRmtBygFyUCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            2
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "74db93b879a21a9d016b8a7c271319bb99f9ed30c329ecb3598ec70a97682a52"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "87a82a83a3d0e48fc89379759ee06f9831c96551d030cada33b1fae2c0644f3d"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "AMbvVtd2rIqF2CYzTvid3-Do5_zuxv16wFNFEuVEPa5I5syzg_xg471nbpwR6chKS_AGDoOOTOLmj9Sw3ciVDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjUza3l2MmJpVE1aQnk4ZzJjeGhQcFNLVkhZenFqVmVyOG1HUHVxaUUzazZaIiwidHJhbnNhY3Rpb24iOiIxMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTExIiwibmV0d29yayI6InNvbGFuYTpFdFdUUkFCWmFZcTZpTWZlWUtvdVJ1MTY2VlUyeHFhMSIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "authorization"
+          ],
+          "value": "solana-transfer"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "sessionBound"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "solana:devnet:1111111111111111111111111111111111111111111111111111111111111111:4"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "transaction"
+          ],
+          "value": "1111111111111111111111111111111111111111111111111111111111111111"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "bLRgJoIqIAmiv8sKFuisAHSY4S9er41g6r_cShLV1zY6GzUPWrkG_u8aOt72w9pG44LNzy5_XVTURNejASsJBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "55555555555555555555555555555555555555555555"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "bundleHash"
+          ],
+          "value": "2bdbc7bf58d8ba2a93bc63072ea7ef7bbec57d8a3cf5e56adf713d8b49d6de2f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "cci-xm:solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1:53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "53kyv2biTMZBy8g2cxhPpSKVHYzqjVer8mGPuqiE3k6Z"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "name"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "verifyingContract"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "feePayer"
+          ],
+          "value": "seller"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "extra",
+            "mint"
+          ],
+          "value": "33333333333333333333333333333333333333333333"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"
+        }
+      ]
+    },
+    {
+      "name": "definition-hybrid-static-asset",
+      "expected": "error",
+      "rule": "XN-1",
+      "operation": "validate-definition",
+      "note": "protocol arm cannot carry a static asset",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "gVd8No4ZNWnN_eeGot5UrxvzeXMH81o0APM_WJDsOwlsS0hUhR6jSpYHUf1mhtM-5szroDsB3aYX9NKXJyD8AQ"
+        }
+      ]
+    },
+    {
+      "name": "definition-global-resource-url",
+      "expected": "error",
+      "rule": "XN-1",
+      "operation": "validate-definition",
+      "note": "global protocol definition cannot pin one seller resource",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "resourceBaseUrl"
+          ],
+          "value": "https://seller.example/dacs/resource?job=274"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "MkQhjxDsg6nBXtsVxq6I9KOpq7KhZA_abtufoSm4YAuOOGg10OmPkqH-lS4rrAW0TJ3agYZprB4sXMPB8IfLDg"
+        }
+      ]
+    },
+    {
+      "name": "definition-global-provider-allowlist",
+      "expected": "error",
+      "rule": "XN-1",
+      "operation": "validate-definition",
+      "note": "global protocol definition cannot approve providers",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "providers"
+          ],
+          "value": [
+            "facilitator.example"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "fmxjob4aBuByyEVLxRGvZvlvWZC6NsJzLxfJiscHw7WWfGcy5k8IUpyQj25eXX-l3MbZS2eiKRmWlNqk9eKnAw"
+        }
+      ]
+    },
+    {
+      "name": "definition-global-operator-credential",
+      "expected": "error",
+      "rule": "XN-1/XN-3",
+      "operation": "validate-definition",
+      "note": "operator secrets cannot enter the signed protocol definition",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "apiKey"
+          ],
+          "value": "secret"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "UQuIV-2frTGUDG04k1mX4thwsmrhQlpFqGARVyw8CyOLdN87iez8lp85nR4ff28YvgOeS2hUAZ89Y3bGky2oDQ"
+        }
+      ]
+    },
+    {
+      "name": "listing-duplicate-canonical-ref",
+      "expected": "fail",
+      "rule": "XN-2/LRR-1",
+      "operation": "execute",
+      "note": "duplicate full-canonical refs reject",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "ZsRdDw6Cc3ReDzIVdQRlAFvaCsErjKXNn0OCd7sD_mJapBvNvPM207wswp7AQNbq0eXzPY5XJ6v-eH5JqkNLCQ"
+        }
+      ]
+    },
+    {
+      "name": "listing-same-id-selects-complete-second-ref",
+      "expected": "pass",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "the complete agreed ref is selected even when it is not the first matching railId",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:1",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "qMqCP-2TTH0BKo19smCMlN6kKHYI2tCmf9QQgVV_IExmAiAkBWEltdTKn10Y5fwG3ZImn_XiXsC8Dp6v8VMkDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "runtime-first-matching-railid",
+      "expected": "fail",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "runtime selection of the first same-ID ref is non-conforming",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails"
+          ],
+          "value": [
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:1",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            },
+            {
+              "railId": "x402:protocol",
+              "railVersion": 1,
+              "parameters": {
+                "request": {
+                  "method": "GET",
+                  "url": "https://seller.example/dacs/resource?job=274"
+                },
+                "selection": {
+                  "x402Version": 2,
+                  "scheme": "exact",
+                  "network": "eip155:8453",
+                  "asset": "0x3333333333333333333333333333333333333333",
+                  "assetDecimals": 6,
+                  "currency": "USDC",
+                  "maxTimeoutSeconds": 60,
+                  "extra": {
+                    "name": "USDC",
+                    "version": "2",
+                    "verifyingContract": "0x6666666666666666666666666666666666666666"
+                  }
+                },
+                "paymentRequiredExtensions": {
+                  "payment-identifier": {
+                    "required": true
+                  }
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "qMqCP-2TTH0BKo19smCMlN6kKHYI2tCmf9QQgVV_IExmAiAkBWEltdTKn10Y5fwG3ZImn_XiXsC8Dp6v8VMkDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "eip155:1"
+        }
+      ]
+    },
+    {
+      "name": "agreement-ref-not-full-jcs-member",
+      "expected": "fail",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "a co-signed partial/changed ref not in the Listing rejects",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "2f4r6fQEmRrduj-EFGXy9thNmWOXfS0DmqftE2gORxHr8ITy1rF4DW5r05D-X-30kSayvDOG6zsI58ju7AoMAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "cjkJtllFMKL1jRiMPakOsuU3Hq2m7c3nbh90IPQay5c4YrZfQoPvcLAXhKCOZLdvq2rdVyZ1886C3pvEngWNBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "maxTimeoutSeconds"
+          ],
+          "value": 61
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "maxTimeoutSeconds"
+          ],
+          "value": 61
+        }
+      ]
+    },
+    {
+      "name": "protocol-legacy-agreement-artifact",
+      "expected": "fail",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "x402:protocol requires PayeeBoundAgreementDocument",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "agreement",
+            "payeeBoundAgreementVersion"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "agreementVersion"
+          ],
+          "value": "1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "6h0ayCz5wtytMXwjqJQD7ggzsPMQ62XE8ZnSYJzoda2-EngIvpND1QTTTkwd6YJpX2-8dF2jM1twvfTD6XnpCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "kGWYVt67vDC3DAcbKijZywe1CPnk3jMnIl3B4Hba9Cih7qGGBavORqOLZX2WmaFNlMTH5-nTKJWaSsm-W47VAg"
+        }
+      ]
+    },
+    {
+      "name": "unsigned-runtime-url-override",
+      "expected": "fail",
+      "rule": "XN-2/XN-6",
+      "operation": "execute",
+      "note": "a runtime URL beside the signed rail ref cannot override it",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://attacker.example/pay"
+        }
+      ]
+    },
+    {
+      "name": "lowercase-request-method",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "method must be the canonical uppercase token",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Up8BWFmtPPEOLX8A1RdRax1k6TTdbKAz-D_BTBhCV7iBV5QK20Vfb20rK_AVE8pa3h5thP9nalJ3nx8dMf9uBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "ZiCM4JvNu9XZDPSWw28z-l9LgGeo_GwvxGeS_Ggb2Raq3IeF5k2Ezmsj41msywo2VLdfDPIg5scdRLcBZLVMBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "method"
+          ],
+          "value": "get"
+        }
+      ]
+    },
+    {
+      "name": "non-https-request-url",
+      "expected": "error",
+      "rule": "XN-2",
+      "operation": "execute",
+      "note": "payable target must be absolute HTTPS",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "5ycOVJ3rW6xlf-S55t4syvS3QBNdDqQR1ra5qFoZi47Cn-NLamXKURs5iHVrH_rkDKD3J_wt_9cXOoM1fuzrBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "h-KJB3p-Tpv4itFK-8s91-b2rqyr8TXk3o9_3yIUcr7TlWKQz_L_k5fXGWhIsu1_ae6-jQwD_maau1PywYn-BQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "http://seller.example/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-localhost-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "n6QnO81GtY3G7vvsUIaUhAPvzfHbhP0twY0fCj10A2m7QcAV-TOPCgnXV6J0i9zC3c1E2DH8vxuRg637VTvdAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "JJR5dFnRqlkvSRAWACvc4rXtXRsPZ9XvXpnRkyC2lkdjYxrVk7p5kZQk7R81kESsZIkUyzuzyFrzPPT17mmTBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "nNf18ofBI2nOX7hA-h5IerBQq2rKxNgoOhBiX43YDp77fbRAdt3LF9GBd5ufUvy_nfWKCclzZAFl12xXGwONAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "mSyHEdK2dUuSyQn3ppuOVkkkt5H7TAAV-3ljLds5KelKQmxPlPhsZvu0ThTCp7JMtrPiqvgZqAXbNvYhTLXVBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://localhost/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://localhost/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "AvNgIdWms2rLef6mI0-8KR-o_62BFboZ5k9n-54-3Ne39oifxmSCr62atuJjAcLXwMErhZnHFrZOpiUvnWOlBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "t-WDVNMIvimfre9DE_epzZ8l9nZmwXTz9TOOkq23gp0hdxJREs8cVC7nqzZD6Lf44ZN8MObk7qpHfgUYszD-Dw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://127.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "tZFJDCL0syySq2sFmAZl0I6fThAsmhgSSOf4ex41b0Lxs6p17JzjlItsZIFkr13Ckbutyt5HvZnBFTLD7lmtAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://127.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "MkkuIbt-vRI_PiO4oi8X9F8FHQVJCj_QHHZeLfr86Msf8_3PTHhOPKvaNfkjqQ4-ln3o3CLtsBTi5PcqZXKcBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://127.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://127.0.0.1/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-private-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Zkj0nKR0rG8VlajWVHTIDGlx9Jx9ptxItdtT7XhVO9cpwhYgx8Gb7-3pYHMzkwzpgZ_RlBwj3mL4nP60rceGAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "YwRkvXNkQoarMfGDJ12Ydteu8wTVgOXeKMRvD88_nIrtflzoTrAEjzJzySSyO3bW4Xzh5pXt9lSi93GOkCbdAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://10.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://10.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "SOUNPODm98rOiHAL1zkxIe8sFj_WTZZht9nCPJyhhyQQ2FA4WLa9TGWtwIVSd9dc42YIyHd8JiPZBVak0EwCDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://10.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://10.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "gRnGhUNQ_sjPZOZuL6oVQ8yAWTLh5waEN7Ptkbm3Z5DWvqQzq90Q0nT3GpQDl5HoGcy8c4hHeim-_l1wS94wDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://10.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://10.0.0.1/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-link-local-metadata-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "96AcR5TW_BGiLdaJkXYzyLHSCm3e4kPjjmrHBY4cTwDaB4l9CcuqkUf9ToIvzd4wypdR52e8wrzkFni2tFD0Dg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "EIugeJAKHraJcy9fEARHWhr2XLPJmwLGELmcps43X1QtMLGo-iU6EjhcKe7N_0JHBbA3uj3JK8wr05G5izkECA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "8VwYF6pazSeuafQgG0upCTYQ-tLytfjapwSnGsK51QamP2cC8WalM634CgGFqXZliefXoL9EP44ZQEJivQyMCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "rGi_tmmJyCZXWrySmODCxIq6SUCEzU_AQ6NplIppVkaWAu3lzjkyO8t_UylAwxXiqnKo0wUmtDU_SxfKa5XjBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.169.254/latest/meta-data/"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-link-local-only-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "rd856dDHbOhr8EF5nnxC24XB3aH72lpcF4ZFxyxmZd41ty4Bohoe1pB5HTZ7pysS3n3ioTgI6klQ3NUbWpQ7CA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "tWBTR8i5ySdlJq6mNL7_gaEFLKS4iwTL3raGfiYXJpgRhZ2n43x6GUnDkb0GqXNqY805es3tlCizY3wOw9FzAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.1.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://169.254.1.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "oReH0dfIhS-wLLVBNirB3e6O2BPrspLxtNN5HS-by_LUVU0ZfW-qC1CY-MjdLwizoBliXIzjIT0MrKdty0M3Cw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://169.254.1.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.1.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "aNrqZoykVIbX_MCl88C2yzaTInIqQov0HyCyt0XIfPpCwX0DZp9WusBhiUS-yGN1_Bb0swnEnqKXHyI9UtXJCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://169.254.1.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://169.254.1.1/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv6-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "4hmC-XjnkUwt4dicu5E1DbilWMj19_m2XA4axjwvKeM1ROh2zqGRAYTALbfYYPD0-JJnLA5xEWyVkXMwvA0WDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "SUDk9tfO-utd2U6KxPaOgVMH8m1yu3o9RcBq3lGsM0y_QSffcMB6EobAzWoHbR3f63W7nO4xzfKP11CKipEoBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "ZTBI2Xvt2LgeWI20tAxi35nX-k0H7FXq0R5D-9pdbPBeI1xT5M_ZwQ0aU9q-OkDkCBu3vUma8dFYfd7H9WVoCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "-QJZ2K8oWGhfFaChQzy-aZ7tLsff1zh0QkJXXP8GjU3KyjLWiHkZmiGxMgks1zO2j4muPDBlLNHRCG9pxK_EAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::1]/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-multicast-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "hFTuLtJhlGIf1jzltcex3esFbn3IOInBw5bVNWETfPqGb77Ii5MAvODfCie0GrvUoxfrqzNeY9Ns8XTtQU1MAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "hWz5qCms3RMgoBvFisCHK7bmC_Z2rbXu_zHTvAqNUkbq3heXY1KOBJoIu-ZDY93SbX9_MOfyAWAF1L8ryIq2AQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://224.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://224.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "41-C34oxsfDq56HoJeHsopfMx5LE5nSb1IOTAQ6Ea9w5Zw72UT2TwQ98qsYvm_FmPAVBaVPzMSuZVEn6RbgiCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://224.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://224.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "tAZm1Y7Dlvz76Td3DUbkAWWz3xrMTTlzKpJtcEA0y6tgSY-5r5HVVUv6oC04TAv1cEAAi1u8I4eTRxdL3ZezCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://224.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://224.0.0.1/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-multicast-ssdp-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "lF3nKtbunxuRSxx7pyeegVtLawy48_HHndhXiqDp4TmBfYFBkVgBGxQ-1FmeuQEeye7qgn-YmVCX8faiTzInBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "lcEs1YUd1eRnZUtVhujmEL44zMgd3b3cL0ZeAkIV5HcTcL7LkI7vRJnVgI5np_q6cpsFsgIBand7uKSFrK4iBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://239.255.255.250/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://239.255.255.250/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "SwvxiIes2quDx2vnWttKvUpqVfmIMDq4Or_dxLj_bC1E_W3GgdDaJPVZOVVIYcRGo8B6No2XdCvtMoSydgbRDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://239.255.255.250/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://239.255.255.250/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "jpK662yeNY-Em-lIXJD7HVPIEyhnIGQlfj2c5LeSuds3ftCa0Kaf_JqEigC6b6Nm9B7z7ibaL7uLMWIftWlLAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://239.255.255.250/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://239.255.255.250/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv6-multicast-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "YIUJVadM5-3s6ePQCoFd6Oil0T-KyNaD93vxPsy2mda0FbpAzPlnpo0mt-GGtaX9o_SyfCArKFYwzfXWzBZcAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Kr2C3qB3iijzpogkdfSWCFQ7qJW82OqKlxxDUqQN_WWgKIKUCo8YTXKg2ZsUD_JlmmaDwpj5vuNNbwPCGEQOCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[ff02::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[ff02::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "54CTC76D9233M5Cw1e-gPxumRa77qGWPT3CFkYscwfF8MOU98pQTGqPg9lh3Bz1TNsjXjdt2ZewNol6f0lmEAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[ff02::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[ff02::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "42HSYYS72HHIBu_FLDKm9nennWN2MTpn3nuA0ncLFjUEDW-D6JKBcYj9s-Dot1Rsv3K-2dED8l3I8jOpTC1hCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[ff02::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[ff02::1]/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-shared-address-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "tV7EvCnc8M46Q6Jrrj5vyq-GBU3gdsxlHhiL-iAXWMbjYFfQzfnjOLDQYkTVV0j5lx_9rhKVpOzfnb6covU3Dw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "pPYgOVTn3ad5TuzcGnbgQ4hsstOhGfQJ_HSF2oZ1zf9jHCsGj8k9MmqvwPoNhP6CJRMs8hlw3PfzD7ZXx73oCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://100.64.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://100.64.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "RCEG_JZOfoAmyoqj3Dh-vyMtYNDZr94e8ByVcklGf7eq_HgLgcg7GOHUMOU5zrALYLWz6_CcbR89Pi1RXZ3rAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://100.64.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://100.64.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "qh9lJwjdKNMPde7IxJhb2kWCU2AR9_IJi0dGlxBMF0K_9wLLGebYZcep6W1hswTQLAE8o5VF06WELj2kFshOCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://100.64.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://100.64.0.1/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-unspecified-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "3aqv95yYbP-bI8uzXNU68MEPquRVG9Gl1fFht6p9_h1K_gXV2iHYDBHXNce74ZhOms2ppM9W_r34zMr2F6ktDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "SJUWqC25NMC_AakC7ibEgmJxGpZ6YUAsgItG_EAfJQTCAKC0fy0sm8CwsbKGaQdXklAcuMg42EA_We5QaoifCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0.0.0.0/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://0.0.0.0/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "L8ixfauGa47vV1xw0xj-1tQuuT1p-sKFJsiCeNx1W21M_JX2av8Y1A80Tfl0os9aimeH-ff2_GRg7dev44SYDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://0.0.0.0/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0.0.0.0/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "h1hNIhiQZPviMu4OWwRUvM4sneN4BXNDEFknhMvbaSFzENEJZS0oTAUVbby3EAw8H-r9eGdcVIJ3sjSvZgwjCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://0.0.0.0/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://0.0.0.0/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-reserved-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "CcmqhxAfn6xtjNPh-YVk_gEtwAvVpNeebj-tFviF6--MUcU6DVrp4vENBbOfNVusXSUu3PKjvcDlhLpPESPyDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "4jD-ZT9el7VP0sqyS9TDXptM64z11f59snoxyPwBZJM-Q2uu7Pnkt-UKBchVPJXWxrKe0Xwk94Lp5s7IEDQdCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://240.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://240.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "0_i54CWTjLs8YGJalwGOC6wuC_dLWUkQLamp041CXH8bzBFLpRExJdnQyfz450Xmw9zNisnZ5BLYSBeanMnWBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://240.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://240.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "jo-j2cEZCPe43wmUqqWUzEri-xZGUU8UoNrgPvFx1mgf6y3ktp_bU-4Th7Ka17951HeNRaRSNP18Y4Y5hjSkDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://240.0.0.1/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://240.0.0.1/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-broadcast-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "BUJqEbsTMzHXJTZYCftVZTajATrPgjOduh5R1Xh3I-PgPJxrqPGw6BMm4X9AWpsLY3DYLSBhMAcYEx9xxjm6Cg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "bPNHVS6LkSOQHUZt0LF2ziBBjVc9tKAlIWM_1I3cO-eR_FyXkQQqmTPS81-R_KFA5QWV4gX_5xYcQEiwPRwgCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://255.255.255.255/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://255.255.255.255/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "6Zs5mVa9_bxHQzFrQZb6PHTpFPfZHLWajfiQJhm34yHrkAZ-rbto7uopsh_rx7lwkfjznYL7Aslrb1AzYlBmCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://255.255.255.255/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://255.255.255.255/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "Nz5djOA5yuFGLlkk2I2G1Z54EE9VzPEC_bBKNk8A4M0Ug3JrKI6QC1VaQ6NtAxb9DZZpVJ6VrmUF6imIr-1gBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://255.255.255.255/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://255.255.255.255/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv6-aws-imds-metadata-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "WAtR_6MJtBOGaM9mfz-DIk_8hUIVibSULjQ2aN2MhMAjjRlYFhyAsGQwavkNudzuE2rptMZf6TwAvhgB1P-YAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "DPNq0CHuyoqmooVik-jhgHuKGsrTLnyrBrlh56UtB8szElCKxK_NFmyuoPcJc7c9buR_-YflrIVXReyhsnEDDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "54PGysJfOt_AOTfSna5rn5KVkBkzHp6Av5WUtAL2Fy6OJcafNJ3Kx8kwL600rGE2zNjHCJjao0wdDtiKUHAfAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "LdgWDMJIOzXWHkXhJzfChnCwOH27C0AHfgwCmjrIy1hV_3jtHanViNCcJbM3NFg9u0_1EDjz5hElxXgcaj5EDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[fd00:ec2::254]/latest/meta-data/"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv6-unique-local-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "BzArWCI-riVIGb8y3M9wr0yjg6YMVOdH42XD3zKjd-BsQNApq96SIFNzMnr4H_7aIl2vt2WLt9BsTK9jAZhxDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "jYvLR1qxQVlWljERUn_7NirGt4s1lqwt6w_xXtUQtCIHQprsxYe2yRHzoadmo_MiXKf4FvLNwZ6ho01qBsyEBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[fc00::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[fc00::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "Ux165ZMGoz28Tv2Dm8RV_qr9gyz0oDO8JYE-UMrdZNFkvImn4soky6GrkPO19PKpDu_MCDmvDAD84bIGnk9_Dg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[fc00::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[fc00::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "llF-57jT_labQqDX0NKXuDtyJ4LSjvlKSOtLmE7pxtac727Axi55glyUaMiOuTsOkBeb_H__8ispIuLHtoPUDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[fc00::1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[fc00::1]/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-mapped-loopback-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "LjVjwO7KTF32OS7I1BUQB70JNvtfvTNIFEv8xcmYECJ8usctc6YOySx8V5Uxj_A7udruCUrBAXKXH9Qh154ECQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "CIhEYgEFN0L6JwFigBYm5OAJfcx1X3aNHbspYsGlVae9ADTwgE570wlWHjgBdayDeEIV3JJ0VLSgSgFFVHCACw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "bTW53Pq8PtFGf9sTUBVGooYyyeuucxq7JFTjo_-dDviCll5tbt5wG_b0V7M2BdCxXBxktbsEhfyR2IwVvRulAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "ofbzTDVmE_FAc3Lq3KhDx6xyfaE--jOm2IPI-mtNmz114WGvdo8IJe8ex1SCiShVnrSo9pDVDB1-0BLgW6wMDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:127.0.0.1]/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-mapped-metadata-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "dl3Yow3WWraSKY8C4tBDnp3nu5XwdTt1EONoxwuE5u3XrgJdi13dv3LGpwihJagiCgQsKevRAKcEwFlliy4ZCg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Q2vfW33_SlTbe47T9Qp7B4ngxvdS-6hj8za2ZJh_D82K7dVy4G6jRwzlIMvlNJbPkskxCBRCZDA2ZbQxmXY6AA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "bc-1THQB-xjbFka-WGw8x1hNQrx7-gaVf40t7Jj2QK9YIGfl185F_gt82K5gz4j_ZZ4OQUGaAB70FaDYc22IAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "tl1iutoENe-3tnwpzp2IEcy3e7Fxxc_YE0-yW8Z6nk0RrNyGauGlcqYRRAyv1gEBqCQB4U-gP12sQuo8mNvkBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:169.254.169.254]/pay"
+        }
+      ]
+    },
+    {
+      "name": "bounded-fetch-ipv4-mapped-multicast-target",
+      "expected": "fail",
+      "rule": "XN-2/DACS-1-6.3.6",
+      "operation": "execute",
+      "note": "a counterparty-selected non-public payable target is rejected",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "AAkmmeJsvhPpfweYG9AIWdiS9kAGTU3Tj21wuf-m2BxeztFbmAP4UV0a7nIwoCd8TMcfco4fIg51s8cLKaA7Cg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "FdYjFY1NFh5fOzby1j8pX09j6_81IiRjMRZJDgA-Q1m7DcBY6QZrxQ9HSfJRo1V4LhOQ9tVLR52efy-ALqQJBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "httpResource"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "XmE9qY7IlbCE2KuIzzBt4ZSdzPvJK_iqN6iw8uNKUCaE43TEFDq1l2csKL77lW-dX4cK9-wKLDHlwdZUeSlDBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "NYx5X-5way_o_xMWEgPVupqmrg4hulLVgF5glMrZWgA3X74D-EbVEmsPhCe3khA3xlKBRQMe3LrcyRmeGY0dCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "url"
+          ],
+          "value": "https://[::ffff:224.0.0.1]/pay"
+        }
+      ]
+    },
+    {
+      "name": "bare-network-label",
+      "expected": "error",
+      "rule": "XN-2/XN-4",
+      "operation": "execute",
+      "note": "a bare network label is not CAIP-2",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "dgOHZCM8wWD5oMcbnzHQSTflZ2B5hqiGJxRWVNrDqLRExlFl8gI-pon3tXiu5HG1Kok8HMm9p0uYUI1PgEEuAg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "dm1-hlgKnBH9cPlfIWfPwH1_iCAz-iv5z5MoQqOyJW52yGjD3MBKBvJR5_SUjLqlDUwXDIAX5NDzCdPGybCxDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "network"
+          ],
+          "value": "base"
+        }
+      ]
+    },
+    {
+      "name": "numeric-version-replaced-by-string",
+      "expected": "error",
+      "rule": "XN-2/XN-7",
+      "operation": "execute",
+      "note": "new evidence and selection use a number, never protocolVersion-style text",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "7raMu_MYiCjk5a1w8dnUJwe8eZqK6FaGfe3_Xf0wJD6rjl0YoAuPau4Y1M8tD_DBF54-eHjxRNxMPUw8jxtVBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "Nm20OpxWWQSiCqk1KMrceEwmBfWam3Ixrauqnkdn3Hm3UbPrEPhJIMh0EEUR_X8TBUbHAnfEqvytlIWecuePDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "x402Version"
+          ],
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "name": "negative-asset-decimals",
+      "expected": "error",
+      "rule": "XN-2/XN-5",
+      "operation": "execute",
+      "note": "assetDecimals is a non-negative safe integer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "968QyoMMbM9YfZZ4NAM7UiyDG2CcTpc_gvIBJ6piAFINDypbxvINjdwZcpqp_ZgPg4ImkulXDJFxwn1r4-enCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "d66QUBY4rIaYOizG3TMJDpCuQKH2scfwT2CcTKurDL_dOJGp1ZNiL4tnRqqr3deJ1zhok1L8-yDKQCpfqkNPBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "assetDecimals"
+          ],
+          "value": -1
+        }
+      ]
+    },
+    {
+      "name": "unsupported-local-capability",
+      "expected": "fail",
+      "rule": "XN-3",
+      "operation": "execute",
+      "note": "unsupported tuple fails locally before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples"
+          ],
+          "value": []
+        }
+      ],
+      "expectedReason": "x402-capability-unsupported"
+    },
+    {
+      "name": "counterparty-operator-config",
+      "expected": "error",
+      "rule": "XN-3",
+      "operation": "execute",
+      "note": "operator configuration must come from trusted local policy",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "operatorConfigSource"
+          ],
+          "value": "payment-required-extension"
+        }
+      ]
+    },
+    {
+      "name": "operator-routing-change-preserves-rail-identity",
+      "expected": "pass",
+      "rule": "XN-3",
+      "operation": "execute",
+      "note": "changing local facilitator/RPC routing does not change the signed rail identity",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "facilitator"
+          ],
+          "value": "https://facilitator-b.example"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "rpc"
+          ],
+          "value": "https://rpc-b.example"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "non-402-response-before-authorization",
+      "expected": "fail",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "a normal 200 response is not an x402 challenge",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "status"
+          ],
+          "value": 200
+        }
+      ]
+    },
+    {
+      "name": "challenge-resource-substitution",
+      "expected": "fail",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "resource URL substitution rejects before signing",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "resource",
+            "url"
+          ],
+          "value": "https://attacker.example/pay"
+        }
+      ]
+    },
+    {
+      "name": "challenge-selects-exact-not-first-accept",
+      "expected": "pass",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "the one exact requirement is selected even when accepts[0] is different",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "ef534c388450614044813565e177053db20f9648a6f50a56f432a014adac2019"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "xToPZ5_DvL_ODXSOE4awdruzPot_dj2RERSpkP3rgm5tidXrIN02RxSPp-gV0kGsCpM0gxr0NWD30tZ268-SCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts"
+          ],
+          "value": [
+            {
+              "scheme": "exact",
+              "network": "eip155:1",
+              "payTo": "0x2222222222222222222222222222222222222222",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              },
+              "amount": "1250000"
+            },
+            {
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "payTo": "0x2222222222222222222222222222222222222222",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              },
+              "amount": "1250000"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "challenge-duplicate-exact-accepts",
+      "expected": "fail",
+      "rule": "XN-4",
+      "operation": "execute",
+      "note": "multiple exact matches are ambiguous",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "06add7b1f22f3f210dbd774963fe5eb24ea53ae4af92f58856c4b6176318655a"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "zdDe2vy0CG8lZ0_MG1Yl-6Qf5rjJcG9jqlH9EAXaPJqJDPrVSJx1gCEJQi1gG-bhT4bWuEyNfU_C18ar9Le_Cg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts"
+          ],
+          "value": [
+            {
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "payTo": "0x2222222222222222222222222222222222222222",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              },
+              "amount": "1250000"
+            },
+            {
+              "scheme": "exact",
+              "network": "eip155:8453",
+              "payTo": "0x2222222222222222222222222222222222222222",
+              "maxTimeoutSeconds": 60,
+              "asset": "0x3333333333333333333333333333333333333333",
+              "extra": {
+                "name": "USDC",
+                "version": "2",
+                "verifyingContract": "0x6666666666666666666666666666666666666666"
+              },
+              "amount": "1250000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "challenge-network-substitution",
+      "expected": "fail",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "network substitution rejects before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "network"
+          ],
+          "value": "eip155:1"
+        }
+      ]
+    },
+    {
+      "name": "challenge-asset-substitution",
+      "expected": "fail",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "asset substitution rejects before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "asset"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "name": "challenge-timeout-substitution",
+      "expected": "fail",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "maxTimeoutSeconds substitution rejects before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "maxTimeoutSeconds"
+          ],
+          "value": 61
+        }
+      ]
+    },
+    {
+      "name": "challenge-amount-substitution",
+      "expected": "fail",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "amount substitution rejects before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "amount"
+          ],
+          "value": "1250001"
+        }
+      ]
+    },
+    {
+      "name": "challenge-payto-substitution",
+      "expected": "fail",
+      "rule": "XN-4/XN-5",
+      "operation": "execute",
+      "note": "payTo substitution rejects before authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "payTo"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "name": "challenge-extra-substitution",
+      "expected": "fail",
+      "rule": "XN-4/XN-6",
+      "operation": "execute",
+      "note": "the complete PaymentRequirements.extra object is bound",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "extra",
+            "spender"
+          ],
+          "value": "attacker"
+        }
+      ]
+    },
+    {
+      "name": "challenge-extension-substitution",
+      "expected": "fail",
+      "rule": "XN-4/XN-6",
+      "operation": "execute",
+      "note": "the complete top-level extensions object is bound",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier",
+            "required"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "challenge-extension-absent-vs-empty",
+      "expected": "fail",
+      "rule": "XN-4/XN-6",
+      "operation": "execute",
+      "note": "omitted and empty extensions are distinct",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "http",
+            "paymentRequired",
+            "extensions",
+            "payment-identifier"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "payment-required-unknown-member-preserved",
+      "expected": "pass",
+      "rule": "XN-6/XN-7",
+      "operation": "execute",
+      "note": "an unrecognised descriptive member remains in the complete challenge commitment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "e8b8c80242a8c4e33fb7e797bc3d827e606313954a532ac3a7dcb2283516062f"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "yT4OBytdONmtKWXrqeUYhtBzCa5H5J8XE1SMrhYC52vDUp8lEBaNL_suHEt2MBLsbqjaCnH0x3J8_t38ursAAg"
+        },
+        {
+          "op": "add",
+          "path": [
+            "http",
+            "paymentRequired",
+            "futureDescription"
+          ],
+          "value": {
+            "label": "v3-readable"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "unsupported-action-bearing-extension",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "an action-bearing extension the adapter cannot validate rejects before signing",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "understoodActionExtensions"
+          ],
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "redirected-payable-resource",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "redirect following cannot change the signed payable target",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "effectiveUrl"
+          ],
+          "value": "https://cdn.example/pay"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "redirected"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "body-sent-without-signed-hash",
+      "expected": "fail",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "an absent bodyHash requires no request body",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "requestBodyBase64"
+          ],
+          "value": "e30g"
+        }
+      ]
+    },
+    {
+      "name": "signed-request-body-hash",
+      "expected": "pass",
+      "rule": "XN-6",
+      "operation": "execute",
+      "note": "exact body bytes match the signed sha256",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "QOrWQAeLPjEZ6be8nbWg8eC9cLar0rfoSq32xc4oaL7bbB2n5tYfgLNI8kRC23iiNXUjirZyeUcZHzuCd5kvAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "QLadX9CwNzKLrtEUiNafLA61xyVRr8Vc8Cxv3xTuHQi-ARjjwJ8yo-eBLRsqzxEaG_WxYNWRo5SSLi5e76hJDQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "request",
+            "bodyHash"
+          ],
+          "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        },
+        {
+          "op": "add",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "request",
+            "bodyHash"
+          ],
+          "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "_2oi2vHFrBj5cdjj7m-8rzsbz9EOqE_GoXUERoRI2y2r2-pQzJV1FebxlyuBVJD0KSMkJyjDWwYjdZSU5pY_AQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "requestBodyBase64"
+          ],
+          "value": "eyJqb2IiOiIyNzQifQ=="
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "request",
+            "bodyHash"
+          ],
+          "value": "12bce23833a114a19c8738e9c3c89b2515873deeb13bcd06fdf5993ecbd2dbb5"
+        }
+      ]
+    },
+    {
+      "name": "asset-decimals-adapter-mismatch",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "signed decimals must match independent asset metadata",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "assetMetadata",
+            "decimals"
+          ],
+          "value": 18
+        }
+      ]
+    },
+    {
+      "name": "agreement-price-excess-precision",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "exact conversion never rounds excess fractional precision",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "S9bm7FrJnEW75GhAW6XmUlPnrJ6sdK-f8pL0icKlayVZWgmzlDpuCJPKIFGPR9Hh2QUdw_7NxYSMVjhgMdw2Dg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "4w0-Q4Q5CY-DvILMhlU7zntIV3Gw679Ez-mSxHJHFB4fU47jjGznlFTXUS-2-Jo0lFbxPd5cAOOwYGqdOMd9Bw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "price",
+            "amount"
+          ],
+          "value": "1.0000001"
+        }
+      ]
+    },
+    {
+      "name": "runtime-payer-not-agreement-buyer",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "runtime payer must resolve to the signed buyer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "primaryClaim"
+          ],
+          "value": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "name": "runtime-paying-key-not-buyer-controlled",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "the payment authorization key must be controlled by the signed buyer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "payingKey"
+          ],
+          "value": "did:demos:agent:9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "name": "runtime-payer-address-not-derived-from-paying-key",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "an attacker address cannot replace the address independently derived from the signed bundle payment key",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "name": "runtime-payee-not-signed-destination",
+      "expected": "fail",
+      "rule": "XN-5",
+      "operation": "execute",
+      "note": "an unsigned runtime payee cannot replace the payout binding",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        }
+      ]
+    },
+    {
+      "name": "ledger-payer-substitution",
+      "expected": "fail",
+      "rule": "XN-5/XN-8",
+      "operation": "execute",
+      "note": "authenticated event payer must be the buyer-controlled authorization payer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payer"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "ledger-payee-substitution",
+      "expected": "fail",
+      "rule": "XN-5/XN-8",
+      "operation": "execute",
+      "note": "authenticated event destination must be the signed payout binding",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "payTo"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "payment-required-hash-substitution",
+      "expected": "fail",
+      "rule": "XN-7",
+      "operation": "execute",
+      "note": "stored challenge hash must recompute from the complete object",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ],
+          "value": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "0Dut4yyMgN912NgUirBmPmEyiD2mbkMRZdLcJoLOBoqj0c0wwK-pRcXw2WZZGLeTxnrvQG3tC85wh9A60LyIAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "payment-receipt-hash-substitution",
+      "expected": "fail",
+      "rule": "XN-7",
+      "operation": "execute",
+      "note": "stored receipt hash must recompute from the complete response",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "qMCjc_6Bm7IJRhSxBdvWkRwV1WWMNOgKjmm--FPTzFv98uoNsLdRGrCh_QznUM8biKzBP876axbDNkbUn6FnCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "wrong-version-response-header",
+      "expected": "error",
+      "rule": "XN-7",
+      "operation": "execute",
+      "note": "numeric version selects one exact response header",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "name"
+          ],
+          "value": "X-PAYMENT-RESPONSE"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "response-network-substitution",
+      "expected": "fail",
+      "rule": "XN-7",
+      "operation": "execute",
+      "note": "a fully rehashed response still cannot change the signed network",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "232908b134e238e57393f1fe7592a152494e189f1573383afcfcb56ec2ea2790"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "Az4SBkWhSKP7_AVDdGVV0sLHZGuRAYmoHAMRKROi-tFRR255GHv8UsFmpcGUx2Cobwb2txkHk2E_d694SXIcAA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6MSIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "response-transaction-substitution",
+      "expected": "fail",
+      "rule": "XN-7",
+      "operation": "execute",
+      "note": "a fully rehashed response cannot change the signed settlement transaction",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "45d3cda866a7febfb87791ae36a56b3567589389cfdb78ba6d837ba00f241a5c"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "VJFxWUTo2WhKdhMyIHOTPLbeB6yb9i6RvAuJ6JcT7Pf8mpJMa6n8J3QQQBLN2SDnsIN20O1VSLJUO6AV1YWTBg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4N2U1ZjQ1NTIwOTFhNjkxMjVkNWRmY2I3YjhjMjY1OTAyOTM5NWJkZiIsInRyYW5zYWN0aW9uIjoiY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZGNkY2RjZCIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "response-payer-substitution",
+      "expected": "fail",
+      "rule": "XN-5/XN-7",
+      "operation": "execute",
+      "note": "the settlement response payer must be the buyer-controlled payer",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentReceiptHash"
+          ],
+          "value": "327205147981fa15421d6ee1bb1a512d4746173ce2760d21045ef0ed5143ec74"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "bIt7HPtM48jgPIvD1S2apy9cn_R0FKrtawJwhs8Iui4hzyqZSbXN-N8cfA7gRe2G_P_27korExZ4v6JQqhhhBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "responseHeader",
+            "value"
+          ],
+          "value": "eyJzdWNjZXNzIjp0cnVlLCJwYXllciI6IjB4OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OTk5OSIsInRyYW5zYWN0aW9uIjoiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYmFiYWJhYiIsIm5ldHdvcmsiOiJlaXAxNTU6ODQ1MyIsImV4dGVuc2lvbnMiOnsicGF5bWVudC1pZGVudGlmaWVyIjoicGF5bWVudC0yNzQifX0="
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "new-evidence-uses-legacy-protocolversion",
+      "expected": "error",
+      "rule": "XN-7/XN-10",
+      "operation": "execute",
+      "note": "x402-protocol evidence cannot emit legacy protocolVersion",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "x402Version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "protocolVersion"
+          ],
+          "value": "2"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "V39t-n2RPu0TytHATG2HTWpntBPoA0QdEZ0YfOB1Mrg1O1cIeOeTNDagPTKH8ANaSgYJUvnDG0EUIx1Rgj6BDg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "ledger-unavailable-after-submission",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-11",
+      "operation": "execute",
+      "note": "receipt acknowledgement without authenticated ledger data is not success",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "acknowledgement-only-no-transaction",
+      "expected": "indeterminate",
+      "rule": "XN-8",
+      "operation": "execute",
+      "note": "a signed/hashed server acknowledgement alone cannot produce success",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "ledger-event-amount-mismatch",
+      "expected": "fail",
+      "rule": "XN-5/XN-8",
+      "operation": "execute",
+      "note": "the authenticated event amount must be exact",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "amount"
+          ],
+          "value": "1249999"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "ledger-not-final",
+      "expected": "indeterminate",
+      "rule": "XN-8",
+      "operation": "execute",
+      "note": "included but non-final settlement is not success",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "finalized"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "noncanonical-native-event-key",
+      "expected": "error",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "a noncanonical event spelling cannot mint another SB-1 identity",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "4YrceVrRuBEYYW5nXhTt_6S82kpyJ95JVmiDUN27oYwbONDlfQwWnmLEsMGPxJVs29RjqfMyFQ7mP0Ux0nNvCw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:0xabababababababababababababababababababababababababababababababab:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "noncanonical-native-event-key-uppercase",
+      "expected": "error",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "an upper-case EVM hash cannot mint another SB-1 identity",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "c221AmCCL9kbeUY_aq8Ved-dhCOwLtl1W4sU2HXoFbnYMkYnbz-RcaKnEKK2bBF0D3_axjuh3aciI0x1ZKfMBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "settlementEvent"
+          ],
+          "value": "evm:8453:ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB:7"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "native-event-coordinate-substitution",
+      "expected": "fail",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "a different signed event coordinate cannot match authenticated ledger data",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ],
+          "value": "evm:8453:abababababababababababababababababababababababababababababababab:8"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "vbJhy9t2PxmSr8pB1GpbjGW3HmuUb-VdADq04bXhoh__79ONMWj4TDWBivuPpxT3zG6eegfMRYjnfFS_Xa-JAw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "finality-profile-network-substitution",
+      "expected": "fail",
+      "rule": "XN-8",
+      "operation": "execute",
+      "note": "the signed finality profile must repeat the selected scheme and network",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "network"
+          ],
+          "value": "eip155:1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "2-WqKTC7s9Eynu1m7sBklHTV_471dAEHOI84RjdlKOHFXV-U_m0s__ekeQLHorzvjrp2C53OwlI0XwQnkxwlBA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "finality-binding-profile-substitution",
+      "expected": "fail",
+      "rule": "XN-8",
+      "operation": "execute",
+      "note": "the finality binding profile must name the exact v0.7 DACS semantics",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "settlementFinality",
+            "schemeNetworkFinality",
+            "bindingProfile"
+          ],
+          "value": "counterparty-profile:v1"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "4WAMVCjBNNOrcduWwkbntn653buCrZqBFyVk0BFOamexYZ7hq5NavrhfEDUt8eUxhknhqWtqHGjXh8CHYGBsDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "event-key-cross-rail-alias",
+      "expected": "pass",
+      "rule": "XN-8/SB-1",
+      "operation": "execute",
+      "note": "EIP-155 x402 evidence emits the same evm event key as the direct rail",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "upto-has-no-dacs-success-profile",
+      "expected": "fail",
+      "rule": "XN-9",
+      "operation": "execute",
+      "note": "upto is protocol-valid but cannot use exact success semantics",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "2MgjO6eFqu6OjRlwy2EM8by4HQWxw6uKNEvH3uIGhxwkTJpBMoaBoDlONQwrD7N7Jv_0YrX58OzHFvWd2GuGDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "jaRC18kcfRgps5Su4G9Jlbme_GeZdwOaxT0Lh-7Z-zIG7XbEyMbR_--RKHDGbSXyPm5KgMucHjl-balV0rPdAQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "scheme"
+          ],
+          "value": "upto"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            1
+          ],
+          "value": "upto"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "scheme"
+          ],
+          "value": "upto"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "scheme"
+          ],
+          "value": "upto"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "-lIBYV1yJ08TTxMewj4dT3Y8ZXcvn9jDGnX1OqvHN7NazD8KBTJpQ6gGXU0k7q4eWdLOZDGC2WYekBFeHGsVDQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "scheme"
+          ],
+          "value": "upto"
+        }
+      ],
+      "expectedReason": "x402-capability-unsupported"
+    },
+    {
+      "name": "batch-commitment-is-not-financial-settlement",
+      "expected": "indeterminate",
+      "rule": "XN-8/XN-9",
+      "operation": "execute",
+      "note": "batch commitment acknowledgement stays distinct from eventual settlement",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "ledger"
+          ]
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "3CMe5xZ2LBdNmTv5e9485NMpo4mfqzrTsosf12TgtX-r4iTAfjdRH7jiOK0kKGWgYsx3neAB2dm28AqIRQd2Cw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "ZQfp2pJ15K3Zv6tAdW2J9g8PCvU8l7oXumgLFL5h3AtVt7nzUPveAlSW0ZzRJenauFI38A1YzjyrSXpKk7FFDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "scheme"
+          ],
+          "value": "batch-settlement"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capability",
+            "supportedTuples",
+            0,
+            1
+          ],
+          "value": "batch-settlement"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "http",
+            "paymentRequired",
+            "accepts",
+            0,
+            "scheme"
+          ],
+          "value": "batch-settlement"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "acceptedRails",
+            0,
+            "parameters",
+            "selection",
+            "scheme"
+          ],
+          "value": "batch-settlement"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "listing",
+            "signature",
+            "value"
+          ],
+          "value": "4jwdF_DUFoZrJNNM_tBskETwoVU6fhJmvE4yuo3HOSfTZ2CxfhbaTba_3RStSCTGtpsQBfDWhExL_mCIO_uDCA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "selectedRailRef",
+            "parameters",
+            "selection",
+            "scheme"
+          ],
+          "value": "batch-settlement"
+        }
+      ]
+    },
+    {
+      "name": "legacy-default-new-session-disabled",
+      "expected": "fail",
+      "rule": "XN-10/RAV-R2",
+      "operation": "new-session",
+      "note": "x402:default cannot start a new session",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "availability"
+          ],
+          "value": "disabled"
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "governance",
+            "deprecated"
+          ],
+          "value": true
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "governance",
+            "deprecationReason"
+          ],
+          "value": "Use x402:protocol for new sessions"
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "governance",
+            "supersedes"
+          ],
+          "value": 1
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railVersion"
+          ],
+          "value": 2
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "FQj3F8cO-Zn6GN1wNK1QYFODMqyz0JmgRl13wtpbDDAevuminBJ3YH2VcfXGrNYcbDAvln1J6AgF08VBvEI0Ag"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "sessionState"
+          ],
+          "value": "new"
+        }
+      ]
+    },
+    {
+      "name": "legacy-default-pinned-live-new-session",
+      "expected": "fail",
+      "rule": "XN-10",
+      "operation": "new-session",
+      "note": "pinning the historical live revision cannot bypass the new-session prohibition",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "governance",
+            "acceptedAt"
+          ],
+          "value": 1787356800000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "_ONmJM0xMj0UEPEesxoSFWAL0dsWW4D1kAlrt7g96rKy4FEVBIDVmLZ3sdXm79kelgiQHoPJ0HX2UKtqP80VCQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "sessionState"
+          ],
+          "value": "new"
+        }
+      ]
+    },
+    {
+      "name": "legacy-default-string-version-replay",
+      "expected": "pass",
+      "rule": "XN-10/X402-1",
+      "operation": "legacy-replay",
+      "note": "historical bytes keep protocolVersion string and legacy discriminator",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "x402Version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "chainId"
+          ],
+          "value": 8453
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "logIndex"
+          ],
+          "value": 7
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "protocolVersion"
+          ],
+          "value": "2"
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTxHash"
+          ],
+          "value": "abababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "kind"
+          ],
+          "value": "x402-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "tB-NUWW_hPBnG2PpSDiS8BleLOqYGFSperOkaT-zFB_IMvSTZtilGr_FcPFYvjKdqOQswxa_nF7dlr98CLkeCw"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "governance",
+            "acceptedAt"
+          ],
+          "value": 1787356800000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "_ONmJM0xMj0UEPEesxoSFWAL0dsWW4D1kAlrt7g96rKy4FEVBIDVmLZ3sdXm79kelgiQHoPJ0HX2UKtqP80VCQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "legacy-default-pinned-in-flight-continuation",
+      "expected": "pass",
+      "rule": "XN-10",
+      "operation": "legacy-continuation",
+      "note": "an already-pinned historical session may finish without rewriting its evidence",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "paymentRequiredHash"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementEvent"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementNetwork"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ]
+        },
+        {
+          "op": "remove",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "x402Version"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "chainId"
+          ],
+          "value": 8453
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "logIndex"
+          ],
+          "value": 7
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "protocolVersion"
+          ],
+          "value": "2"
+        },
+        {
+          "op": "add",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTxHash"
+          ],
+          "value": "abababababababababababababababababababababababababababababababab"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "kind"
+          ],
+          "value": "x402-event"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "tB-NUWW_hPBnG2PpSDiS8BleLOqYGFSperOkaT-zFB_IMvSTZtilGr_FcPFYvjKdqOQswxa_nF7dlr98CLkeCw"
+        },
+        {
+          "op": "remove",
+          "path": [
+            "railDefinition",
+            "resolution"
+          ]
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "asset"
+          ],
+          "value": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3333333333333333333333333333333333333333",
+            "symbol": "USDC",
+            "decimals": 6
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "network"
+          ],
+          "value": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/dacs/resource?job=274"
+          }
+        },
+        {
+          "op": "add",
+          "path": [
+            "railDefinition",
+            "parameters"
+          ],
+          "value": {
+            "authorization": "eip-3009"
+          }
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "governance",
+            "acceptedAt"
+          ],
+          "value": 1787356800000
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "railId"
+          ],
+          "value": "x402:default"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "railDefinition",
+            "signature",
+            "value"
+          ],
+          "value": "_ONmJM0xMj0UEPEesxoSFWAL0dsWW4D1kAlrt7g96rKy4FEVBIDVmLZ3sdXm79kelgiQHoPJ0HX2UKtqP80VCQ"
+        },
+        {
+          "op": "add",
+          "path": [
+            "runtime",
+            "sessionState"
+          ],
+          "value": "in-flight"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "retry-indeterminate-remains-pending",
+      "expected": "pass",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "indeterminate observation reconciles without a second authorization",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "retry-caller-reauthorization-request-is-ignored",
+      "expected": "pass",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "a caller request cannot make reconciliation authorize another payment",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "ledger",
+            "available"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "retryWouldAuthorize"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "reconciliation-pending"
+    },
+    {
+      "name": "retry-job-binding-mismatch",
+      "expected": "fail",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "reconciliation is bound to the original signed jobId",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "jobId"
+          ],
+          "value": "01M0NVBGYEANE562QQXD33C7WY"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "Gv3nvm98-eer2Rj-uHatl4P9xp5UHQ1Yp7NSpBu9vcLKL7KSiA7p68PhpqJOgul8egYAri2oRviE3rbj0l3zDA"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "UMvmgTlaoKZlQ7U8kwOa3WP9exRbg3evKszhEkD04EZ325J3Wi2WoDSmGzqXQLbZeydP7ZUYNhSTqkwtIyTvBQ"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "reconciliation-binding"
+    },
+    {
+      "name": "retry-phase-binding-mismatch",
+      "expected": "fail",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "reconciliation is bound to the original phase index",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "phaseIndex"
+          ],
+          "value": 4
+        }
+      ],
+      "expectedReason": "reconciliation-binding"
+    },
+    {
+      "name": "retry-requirement-binding-mismatch",
+      "expected": "fail",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "reconciliation is bound to the original complete selected requirement",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            0,
+            "value"
+          ],
+          "value": "RUmCqAGPZvGa3ynQt2rCZj8ukBWEz2zS-KBrETPaA4drBnfXu4UffYlONINgDjllbmIJ8k6LOUOlMzMqmfReDw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "signatures",
+            1,
+            "value"
+          ],
+          "value": "M7jHU8Nk2InXdbd92OBAnI4OG-jZZpKcn4UaGiV-brh2c4QYpLQCzUhdHbmiJLGN-lh6wVA-2LedcfuOW_YwBw"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "agreement",
+            "terms",
+            "rail",
+            "parameters",
+            "selection",
+            "asset"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "reconciliation-binding"
+    },
+    {
+      "name": "retry-authorization-binding-mismatch",
+      "expected": "fail",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "reconciliation is bound to the original authorization identity",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "payer",
+            "paymentAddress"
+          ],
+          "value": "0x9999999999999999999999999999999999999999"
+        }
+      ],
+      "expectedReason": "reconciliation-binding"
+    },
+    {
+      "name": "retry-transaction-binding-mismatch",
+      "expected": "fail",
+      "rule": "XN-11",
+      "operation": "retry",
+      "note": "reconciliation is bound to the retained transaction identity",
+      "base": "v2",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "paymentTxRefs",
+            0,
+            "settlementTransaction"
+          ],
+          "value": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "signature",
+            "value"
+          ],
+          "value": "g6dorw-fRGaok3zPARlat2OsohXKNfMoF1b76GlWDdkNxaDK_l_SOwnzjnHOimeshrh9M5TuR9-SXsXFvhp2Cg"
+        },
+        {
+          "op": "replace",
+          "path": [
+            "runtime",
+            "authorizationSubmitted"
+          ],
+          "value": true
+        }
+      ],
+      "expectedReason": "reconciliation-binding"
+    }
+  ]
+}

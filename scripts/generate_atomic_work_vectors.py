@@ -97,18 +97,31 @@ SEEDS = {
     "seller": bytes.fromhex("33" * 32),
     "orchestrator": bytes.fromhex("44" * 32),
     "payer": bytes.fromhex("55" * 32),
+    "alternate-seller": bytes.fromhex("66" * 32),
 }
 CLAIMS = {role: f"did:dacs:test:{role}" for role in SEEDS}
 PUBLIC_KEYS = {
     CLAIMS[role]: ref.b64u(ref.ed25519_public_key(seed))
     for role, seed in SEEDS.items()
+    if role != "alternate-seller"
 }
+ALTERNATE_SELLER_PUBLIC_KEY = ref.b64u(
+    ref.ed25519_public_key(SEEDS["alternate-seller"])
+)
 TEST_RAIL_ID = "demos-native:DEM"
 COMPOSED_PROOF_RESERVATION_BYTES = 19_000
 
 
 def claim(role: str) -> str:
     return CLAIMS[role]
+
+
+def role_for_claim(value: str) -> str:
+    return next(role for role, candidate in CLAIMS.items() if candidate == value)
+
+
+def seed_for_claim(value: str) -> bytes:
+    return SEEDS[role_for_claim(value)]
 
 
 def mutate(value: Any, path: list[Any], replacement: Any) -> Any:
@@ -201,10 +214,10 @@ def encoded_evidence(
     return {"kind": kind, "value": ref.b64u(ref.jcs_bytes(signed))}
 
 
-def role_roster() -> list[dict[str, Any]]:
+def role_roster(seller_role: str = "seller") -> list[dict[str, Any]]:
     return [
         {"role": "buyer", "signer": claim("buyer")},
-        {"role": "seller", "signer": claim("seller")},
+        {"role": "seller", "signer": claim(seller_role)},
         {"role": "orchestrator", "signer": claim("orchestrator")},
         {"role": "payer", "signer": claim("payer"), "nativeAccount": "dem-test-payer"},
     ]
@@ -217,8 +230,14 @@ def identity_bundle(role: str, extra_claims: list[str] | None = None) -> dict[st
         record: dict[str, Any] = {"ref": value}
         if value == CLAIMS["payer"]:
             record["metadata"] = {"nativeAccount": "dem-test-payer"}
-        elif value == CLAIMS["seller"]:
-            record["metadata"] = {"nativeAccount": "dem-test-seller"}
+        elif value in {CLAIMS["seller"], CLAIMS["alternate-seller"]}:
+            record["metadata"] = {
+                "nativeAccount": (
+                    "dem-test-seller"
+                    if value == CLAIMS["seller"]
+                    else "dem-test-alternate-seller"
+                )
+            }
         claim_records.append(record)
     unsigned: dict[str, Any] = {
         "bundleVersion": "1", "presentedBy": CLAIMS[role],
@@ -242,7 +261,7 @@ def composite_verification_record(job_id: str, role: str) -> dict[str, Any]:
     bundle = (
         identity_bundle("buyer", [CLAIMS["payer"]])
         if role == "buyer"
-        else identity_bundle("seller")
+        else identity_bundle(role)
     )
     value = {
         "recordVersion": "1",
@@ -345,10 +364,11 @@ def agreement_document(
     vet_records: dict[str, dict[str, Any]] | None = None,
     vet_ref_overrides: dict[str, dict[str, Any]] | None = None,
     omit_vet_refs: set[str] | None = None,
+    seller_role: str = "seller",
 ) -> dict[str, Any]:
     listing = listing_fixture(job_id, payee_bound=payee_bound)
     buyer_bundle = identity_bundle("buyer", [CLAIMS["payer"]])
-    seller_bundle = listing["seller"]["identity"]
+    seller_bundle = identity_bundle(seller_role)
     deliverable = listing["offering"]["deliverable"]
     delivery_bytes = b"deterministic-result-v1"
     vet_records = vet_records or {
@@ -364,7 +384,7 @@ def agreement_document(
         "listingRef": {"listingId": listing["listingId"], "version": 1, "contentHash": listing_hash(listing)},
         "parties": [
             {"role": "buyer", "bundleHash": ref._identity_bundle_hash(buyer_bundle), "primaryClaim": CLAIMS["buyer"], "vetRecordRef": copy.deepcopy(vet_ref_overrides.get("buyer", vet_record_ref(job_id, "buyer", vet_records["buyer"])))},
-            {"role": "seller", "bundleHash": ref._identity_bundle_hash(seller_bundle), "primaryClaim": CLAIMS["seller"], "vetRecordRef": copy.deepcopy(vet_ref_overrides.get("seller", vet_record_ref(job_id, "seller", vet_records["seller"])))},
+            {"role": "seller", "bundleHash": ref._identity_bundle_hash(seller_bundle), "primaryClaim": CLAIMS[seller_role], "vetRecordRef": copy.deepcopy(vet_ref_overrides.get("seller", vet_record_ref(job_id, seller_role, vet_records["seller"])))},
         ],
         "terms": {
             "price": {"amount": "10", "currency": "DEM"},
@@ -405,7 +425,7 @@ def agreement_document(
         {"party": CLAIMS[role], "algorithm": "ed25519", "value": ref.b64u(
             ref.ed25519_sign(SEEDS[role], agreement_domain + digest.encode("ascii"))
         )}
-        for role in ("buyer", "seller")
+        for role in ("buyer", seller_role)
     ]
     return unsigned
 
@@ -538,6 +558,8 @@ def portable_session_context_source(intent: dict[str, Any]) -> dict[str, Any]:
     agreement_parties = {
         party["role"]: party for party in agreement["parties"]
     }
+    seller_claim = agreement_parties["seller"]["primaryClaim"]
+    seller_role = role_for_claim(seller_claim)
     return {
         "jobId": intent["jobId"],
         "listingRef": copy.deepcopy(agreement["listingRef"]),
@@ -546,8 +568,8 @@ def portable_session_context_source(intent: dict[str, Any]) -> dict[str, Any]:
         "parties": [
             {
                 "role": "seller",
-                "bundleHash": ref._identity_bundle_hash(identity_bundle("seller")),
-                "primaryClaim": CLAIMS["seller"],
+                "bundleHash": ref._identity_bundle_hash(identity_bundle(seller_role)),
+                "primaryClaim": seller_claim,
                 **({
                     "vetRecordRef": copy.deepcopy(
                         agreement_parties["seller"]["vetRecordRef"]
@@ -615,11 +637,20 @@ def atomic_payment_session_context(intent: dict[str, Any]) -> dict[str, Any]:
 def payment_phase_input(intent: dict[str, Any]) -> dict[str, Any]:
     agreement = intent["operations"][2]["payload"]["artifact"]
     buyer_bundle = identity_bundle("buyer", [CLAIMS["payer"]])
+    seller_party = next(
+        party for party in agreement["parties"] if party["role"] == "seller"
+    )
+    seller_role = role_for_claim(seller_party["primaryClaim"])
+    transfer = next(
+        operation for operation in intent["operations"]
+        if operation.get("kind") == "native-dem-transfer"
+    )
+    payee_address = transfer["payload"]["to"]
     return {
         "jobId": intent["jobId"], "agreement": copy.deepcopy(agreement),
         "rail": rail_definition(intent["railId"]),
         "payer": {"bundleHash": ref._identity_bundle_hash(buyer_bundle), "primaryClaim": CLAIMS["buyer"], "payingKey": CLAIMS["payer"]},
-        "payee": {"bundleHash": agreement["parties"][1]["bundleHash"], "primaryClaim": CLAIMS["seller"], "payeeAddress": "dem-test-seller"},
+        "payee": {"bundleHash": seller_party["bundleHash"], "primaryClaim": seller_party["primaryClaim"], "payeeAddress": payee_address},
         "amount": {"amount": "10", "currency": "DEM"},
         "atomicSessionContext": atomic_payment_session_context(intent),
     }
@@ -633,11 +664,15 @@ def authorization_authority(intent: dict[str, Any]) -> dict[str, Any]:
     rail_index, rail_index_receipt, rail_receipt = rail_registry_material(rail)
     session_source = portable_session_context_source(intent)
     atomic_context = atomic_payment_session_context(intent)
+    seller_party = next(
+        party for party in agreement["parties"] if party["role"] == "seller"
+    )
+    seller_role = role_for_claim(seller_party["primaryClaim"])
     return {
         "agreement": copy.deepcopy(agreement),
         "listing": listing_fixture(intent["jobId"], payee_bound=payee_bound),
         "payerBundle": identity_bundle("buyer", [CLAIMS["payer"]]),
-        "payeeBundle": identity_bundle("seller"),
+        "payeeBundle": identity_bundle(seller_role),
         "paymentPhaseInput": payment_phase_input(intent),
         "finalityCommitment": copy.deepcopy(record),
         "commitmentReceipt": commitment_anchor_receipt(record),
@@ -692,40 +727,48 @@ def purchase_intent(
     agreement_domain: bytes | None = None,
     vet_ref_overrides: dict[str, dict[str, Any]] | None = None,
     omit_agreement_vet_refs: set[str] | None = None,
+    gate_mode: str = "co-final", seller_role: str = "seller",
 ) -> dict[str, Any]:
     buyer_vet = composite_verification_record(job_id, "buyer")
-    seller_vet = composite_verification_record(job_id, "seller")
+    seller_vet = composite_verification_record(job_id, seller_role)
+    payee_account = (
+        "dem-test-seller"
+        if seller_role == "seller"
+        else "dem-test-alternate-seller"
+    )
     agreement = agreement_document(
         job_id, payee_bound=payee_bound, payout_address=payout_address,
         payout_bindings=payout_bindings, agreement_domain=agreement_domain,
         vet_records={"buyer": buyer_vet, "seller": seller_vet},
         vet_ref_overrides=vet_ref_overrides,
         omit_vet_refs=omit_agreement_vet_refs,
+        seller_role=seller_role,
     )
     commitment = finality_commitment(job_id, agreement)
     slot_key = {"networkId": "demos:testnet-atomic", "railId": TEST_RAIL_ID, "jobId": job_id, "phaseIndex": 2}
     conflict = {
         **slot_key, "agreementHash": ref._agreement_hash(agreement),
         "commitmentLogicalAddress": f"dacs3:commit:{job_id}",
-        "payer": "dem-test-payer", "payee": "dem-test-seller", "asset": "DEM", "amount": "10",
+        "payer": "dem-test-payer", "payee": payee_account, "asset": "DEM", "amount": "10",
     }
     result = {
         "workVersion": "1",
         "executionProfile": "demos-bft-work/1",
         "profile": "dacs-purchase-v1",
+        "gateMode": gate_mode,
         "networkId": "demos:testnet-atomic",
         "railId": TEST_RAIL_ID,
         "jobId": job_id,
         "phaseIndex": 2,
         "expiresAt": 1_800_000_060_000,
-        "roleRoster": role_roster(),
+        "roleRoster": role_roster(seller_role),
         "operations": [
             {"operationId": "buyer-vet", "kind": "storage-program-put", "critical": True, "dependsOn": [], "requiredRoles": ["orchestrator"], "payload": {"artifact": buyer_vet, "logicalAddress": f"dacs2:composite:{job_id}:{ref.cf4_encode(buyer_vet['evaluatedParty'])}", "writeCondition": {"kind": "create-only"}}},
             {"operationId": "seller-vet", "kind": "storage-program-put", "critical": True, "dependsOn": [], "requiredRoles": ["orchestrator"], "payload": {"artifact": seller_vet, "logicalAddress": f"dacs2:composite:{job_id}:{ref.cf4_encode(seller_vet['evaluatedParty'])}", "writeCondition": {"kind": "create-only"}}},
             {"operationId": "agreement", "kind": "assert-artifact", "critical": True, "dependsOn": ["buyer-vet", "seller-vet"], "requiredRoles": ["orchestrator"], "payload": {"artifact": agreement}},
             {"operationId": "commitment", "kind": "storage-program-put", "critical": True, "dependsOn": ["agreement"], "requiredRoles": ["orchestrator"], "payload": {"artifact": commitment, "logicalAddress": f"dacs3:commit:{job_id}", "writeCondition": {"kind": "create-only"}}},
             {"operationId": "payment-slot", "kind": "payment-slot-cas", "critical": True, "dependsOn": ["commitment"], "requiredRoles": ["payer"], "payload": {"slotKey": slot_key, "expected": {"state": expected_state, "generation": generation}, "conflictDigest": ref.conflict_digest(conflict)}},
-            {"operationId": "payment", "kind": "native-dem-transfer", "critical": True, "dependsOn": ["payment-slot"], "requiredRoles": ["payer"], "payload": {"from": "dem-test-payer", "to": "dem-test-seller", "asset": "DEM", "amount": "10"}},
+            {"operationId": "payment", "kind": "native-dem-transfer", "critical": True, "dependsOn": ["payment-slot"], "requiredRoles": ["payer"], "payload": {"from": "dem-test-payer", "to": payee_account, "asset": "DEM", "amount": "10"}},
         ],
     }
     if prior_failure is not None:
@@ -734,13 +777,15 @@ def purchase_intent(
 
 
 def completion_intent(
-    purchase_receipt: dict[str, Any], job_id: str = "01K1DPA0000000000000000000"
+    purchase_receipt: dict[str, Any], job_id: str = "01K1DPA0000000000000000000",
+    *, gate_mode: str = "co-final",
 ) -> dict[str, Any]:
     delivery_bytes = b"deterministic-result-v1"
     return {
         "workVersion": "1",
         "executionProfile": "demos-bft-work/1",
         "profile": "dacs-completion-v1",
+        "gateMode": gate_mode,
         "networkId": "demos:testnet-atomic",
         "railId": TEST_RAIL_ID,
         "jobId": job_id,
@@ -809,7 +854,9 @@ def authorizations(intent: dict[str, Any]) -> list[dict[str, Any]]:
                 "role": role,
                 "signer": roster[role],
             }
-            result.append(ref.sign_authorization(envelope, SEEDS[role]))
+            result.append(ref.sign_authorization(
+                envelope, seed_for_claim(roster[role])
+            ))
     return result
 
 
@@ -1375,7 +1422,9 @@ def identity_vectors() -> list[dict[str, Any]]:
 
 
 def authorization_vectors() -> list[dict[str, Any]]:
-    intent = purchase_intent()
+    # Exercise the ordinary finalized-commitment authority chain on this
+    # focused surface; composed admission separately covers co-final mode.
+    intent = purchase_intent(gate_mode="sequential")
     auths = authorizations(intent)
     authority = authorization_authority(intent)
     base = {"intent": intent, "authorizations": auths, "publicKeys": PUBLIC_KEYS, "authority": authority}
@@ -2138,8 +2187,33 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
         **completion_base, "listing": resign_listing(wrong_completion_listing)
     }
     composed_purchase = composed_purchase_admission(purchase, purchase_receipt)
+    sequential_purchase = purchase_intent(gate_mode="sequential")
+    sequential_purchase_receipt = final_receipt(sequential_purchase)
+    composed_sequential_purchase = composed_purchase_admission(
+        sequential_purchase, sequential_purchase_receipt
+    )
+    mismatched_gate_copy = copy.deepcopy(composed_purchase)
+    mismatched_gate_copy["authority"]["gateMode"] = "sequential"
+    alternate_seller_purchase = purchase_intent(
+        seller_role="alternate-seller"
+    )
+    alternate_seller_receipt = final_receipt(alternate_seller_purchase)
+    alternate_seller_admission = composed_purchase_admission(
+        alternate_seller_purchase, alternate_seller_receipt
+    )
+    alternate_seller_admission["publicKeys"] = {
+        **PUBLIC_KEYS,
+        CLAIMS["alternate-seller"]: ALTERNATE_SELLER_PUBLIC_KEY,
+    }
     composed_completion = composed_completion_admission(
         purchase, purchase_receipt, completion, final_receipt(completion)
+    )
+    mismatched_completion = completion_intent(
+        purchase_receipt, gate_mode="sequential"
+    )
+    mismatched_completion_admission = composed_completion_admission(
+        purchase, purchase_receipt, mismatched_completion,
+        final_receipt(mismatched_completion),
     )
     failed_purchase = purchase_intent()
     failed_purchase_receipt = final_receipt(
@@ -2202,9 +2276,13 @@ def purchase_completion_vectors() -> list[dict[str, Any]]:
     )
     return [
         vector("awp-purchase-composed-admission", ["AWP-3", "AWP-5", "AWP-6", "AWP-7", "AWP-10", "AWP-11", "AWP-12"], "purchase-admission", composed_purchase, "pass", "One fail-closed verifier consumes exact shape, authenticated authority, authorization, slot, winner, receipt, and settlement; co-final admission does not require a standalone commitment receipt.", boundary_rules=["AWP-12"]),
+        vector("awp-purchase-signed-sequential-admission", ["AWP-6", "AWP-7", "AWP-12"], "purchase-admission", composed_sequential_purchase, "pass", "A signed sequential gate selection is admitted only with the independently verified finalized commitment AnchorReceipt required before payment.", boundary_rules=["AWP-12"]),
+        vector("awp-purchase-caller-gate-mode-mismatch", ["AWP-6"], "purchase-admission", mismatched_gate_copy, "fail", "An unsigned caller authority copy cannot change the proof path selected by the signed Work intent."),
+        vector("awp-purchase-agreement-seller-differs-from-listing", ["AWP-7"], "purchase-admission", alternate_seller_admission, "fail", "A fully re-signed Work and Agreement from another seller cannot substitute for the seller identity that published the pinned Listing."),
         vector("awp-purchase-composed-retry-admission", ["AWP-5", "AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry, "pass", "A complete retry proves the prior rolled-back Work receipt, advances generation N to N+1, and carries that same generation through the terminal receipt and settlement."),
         vector("awp-purchase-composed-retry-generation-skip", ["AWP-10", "AWP-11", "AWS-10", "AWS-11"], "purchase-admission", composed_retry_generation_skip, "fail", "A retry cannot skip a generation or present a slot transition that differs from its terminal receipt."),
         vector("awp-completion-composed-admission", ["AWP-13", "AWP-14", "AWP-15", "AWP-16"], "completion-admission", composed_completion, "pass", "One Completion verifier consumes the finalized Purchase and exact authority context through delivery settlement."),
+        vector("awp-completion-gate-mode-differs-from-purchase", ["AWP-13"], "completion-admission", mismatched_completion_admission, "fail", "A signed Completion intent cannot reinterpret the commitment proof path selected by its verified Purchase intent."),
         vector("awp-composed-profile-empty-required-roles", ["AWP-5", "AWP-15"], "purchase-admission", empty_required_roles, "fail", "Exact profile shape is enforced before an empty requiredRoles list can erase authorization requirements.", boundary_rules=["AWP-5", "AWP-15"]),
         vector("awp-composed-common-receipt-missing", ["AWP-11", "AWP-12"], "purchase-admission", missing_common_receipt, "indeterminate", "Co-final admission without its resulting common BFT receipt remains unavailable; it cannot retroactively switch payment paths.", boundary_rules=["AWP-12"]),
         vector("awp-composed-winner-receipt-mismatch", ["AWP-10", "AWP-11"], "purchase-admission", wrong_composed_winner, "fail", "The finalized receipt winner must equal the ledger-authenticated attempt ID and native transaction reference."),
@@ -2537,8 +2615,8 @@ def composed_purchase_admission(
     failure_receipt: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     authority = authorization_authority(intent)
-    authority["gateMode"] = "co-final"
-    authority.pop("commitmentReceipt", None)
+    if intent["gateMode"] == "co-final":
+        authority.pop("commitmentReceipt", None)
     slot_payload = intent["operations"][4]["payload"]
     slot_key = copy.deepcopy(slot_payload["slotKey"])
     is_retry = failure_intent is not None or failure_receipt is not None
@@ -2613,8 +2691,8 @@ def composed_completion_admission(
     intent: dict[str, Any], receipt: dict[str, Any],
 ) -> dict[str, Any]:
     authority = authorization_authority(purchase)
-    authority["gateMode"] = "co-final"
-    authority.pop("commitmentReceipt", None)
+    if purchase["gateMode"] == "co-final":
+        authority.pop("commitmentReceipt", None)
     authority["purchaseIntent"] = purchase
     evidence = settlement_evidence(intent, receipt, "delivery")
     evidence_address = ref.atomic_evidence_address(evidence)
@@ -3329,6 +3407,15 @@ def build_sets() -> dict[str, dict[str, Any]]:
 
     result = {}
     for name, vectors in built_vectors.items():
+        disclosed_roles = [
+            role for role in SEEDS
+            if role != "alternate-seller"
+            or name == "atomic-work-purchase-completion-v0.1"
+        ]
+        disclosed_public_keys = {
+            CLAIMS[role]: ref.b64u(ref.ed25519_public_key(SEEDS[role]))
+            for role in disclosed_roles
+        }
         polarity = {"acceptance": set(), "rejection": set(), "boundary": set()}
         for item in vectors:
             if item["caseClass"] == "acceptance":
@@ -3347,8 +3434,8 @@ def build_sets() -> dict[str, dict[str, Any]]:
                 "status": "candidate — no Demos runtime guarantee and no second-implementation cross-run yet",
                 "syntheticProofProfile": "demos-bft-proof/test-1 fixtures define outputHash as SHA-256(JCS(storageOutput)), SHA-256(JCS(native transfer payload)), or SHA-256(JCS({accepted:true,operationId})); effectsRoot is SHA-256(JCS({pre,post})). These are test-only formulas, not production Demos wire claims.",
             },
-            "publicKeys": PUBLIC_KEYS,
-            "seeds": {role: seed.hex() for role, seed in SEEDS.items()},
+            "publicKeys": disclosed_public_keys,
+            "seeds": {role: SEEDS[role].hex() for role in disclosed_roles},
             "count": len(vectors),
             "hash": ref.vector_hash(vectors),
             "coverage": {

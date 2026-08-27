@@ -30,7 +30,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 297)
+        self.assertEqual(vector_count, 301)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -431,6 +431,12 @@ class AtomicWorkVectorTests(unittest.TestCase):
             "pass",
         )
         self.assertEqual(
+            ref.evaluate_vector(
+                by_name["awp-purchase-signed-sequential-admission"]
+            )[0],
+            "pass",
+        )
+        self.assertEqual(
             ref.evaluate_vector(by_name["awp-completion-composed-admission"])[0],
             "pass",
         )
@@ -451,6 +457,9 @@ class AtomicWorkVectorTests(unittest.TestCase):
             ("awp-purchase-composed-retry-generation-skip", "fail"),
             ("awp-composed-slot-cross-work-substitution", "fail"),
             ("awp-composed-capability-limit-enforced", "fail"),
+            ("awp-purchase-caller-gate-mode-mismatch", "fail"),
+            ("awp-purchase-agreement-seller-differs-from-listing", "fail"),
+            ("awp-completion-gate-mode-differs-from-purchase", "fail"),
         ):
             with self.subTest(name=name):
                 self.assertEqual(ref.evaluate_vector(by_name[name])[0], verdict)

@@ -188,6 +188,22 @@ def main() -> int:
         malformed_roster_signer,
     )
 
+    missing_gate_mode = deepcopy(identity["input"]["intent"])
+    del missing_gate_mode["gateMode"]
+    expect_invalid(
+        "atomic-dacs-work-intent-v1.schema.json",
+        "signed commitment gate mode is required",
+        missing_gate_mode,
+    )
+
+    unknown_gate_mode = deepcopy(identity["input"]["intent"])
+    unknown_gate_mode["gateMode"] = "caller-default"
+    expect_invalid(
+        "atomic-dacs-work-intent-v1.schema.json",
+        "signed commitment gate mode is closed",
+        unknown_gate_mode,
+    )
+
     boolean_authorization_phase = deepcopy(authorization_fixture)
     boolean_authorization_phase["phaseIndex"] = True
     expect_invalid(

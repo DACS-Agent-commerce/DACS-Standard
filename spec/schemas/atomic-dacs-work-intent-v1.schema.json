@@ -7,6 +7,7 @@
     "workVersion",
     "executionProfile",
     "profile",
+    "gateMode",
     "networkId",
     "railId",
     "jobId",
@@ -20,6 +21,9 @@
     "executionProfile": { "type": "string", "minLength": 1 },
     "profile": {
       "enum": ["dacs-purchase-v1", "dacs-completion-v1"]
+    },
+    "gateMode": {
+      "enum": ["co-final", "sequential"]
     },
     "networkId": { "type": "string", "minLength": 1 },
     "railId": { "type": "string", "minLength": 1 },

@@ -32,7 +32,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`atomic-work-authorization-v0.1.json`](atomic-work-authorization-v0.1.json) | CORE §5.2 AW-30..AW-38 | 46 | `fail` / `indeterminate` / `pass` |
 | [`atomic-work-execution-recovery-v0.1.json`](atomic-work-execution-recovery-v0.1.json) | CORE §5.2 AW-39..AW-75 | 73 | `fail` / `indeterminate` / `pass` |
 | [`atomic-work-identity-v0.1.json`](atomic-work-identity-v0.1.json) | CORE §5.2 AW-1..AW-29, AW-76..AW-77 | 52 | `fail` / `pass` |
-| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 43 | `fail` / `indeterminate` / `pass` |
+| [`atomic-work-purchase-completion-v0.1.json`](atomic-work-purchase-completion-v0.1.json) | DACS-3 §8.6.1 AWP-1..AWP-21 | 47 | `fail` / `indeterminate` / `pass` |
 | [`atomic-work-settlement-slot-v0.1.json`](atomic-work-settlement-slot-v0.1.json) | DACS-4 §9.5.10 and §9.7.3 AWS-1..AWS-29 | 68 | `error` / `fail` / `indeterminate` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |

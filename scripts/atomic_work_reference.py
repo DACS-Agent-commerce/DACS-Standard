@@ -2162,6 +2162,17 @@ def _verify_agreement_listing(
         "contentHash": listing_hash,
     }):
         raise Invalid("Agreement does not pin exact Listing")
+    agreement_sellers = [
+        party for party in agreement.get("parties", [])
+        if isinstance(party, dict) and party.get("role") == "seller"
+    ]
+    listing_seller = listing.get("seller", {}).get("identity", {}).get(
+        "presentedBy"
+    )
+    if len(agreement_sellers) != 1 or not claim_equal(
+        agreement_sellers[0].get("primaryClaim"), listing_seller
+    ):
+        raise Invalid("Agreement seller differs from pinned Listing publisher")
     terms = agreement.get("terms", {})
     price = terms.get("price", {})
     listing_price = listing.get("pricing", {}).get("price", {})
@@ -2519,7 +2530,13 @@ def _verified_authority_context(
         commitment, signed_commitment
     ):
         raise Invalid("authority differs from exact agreement/commitment signed in Purchase Work")
-    gate_mode = authority.get("gateMode", "sequential")
+    gate_mode = source_intent["gateMode"]
+    if intent.get("profile") == "dacs-completion-v1" and intent.get(
+        "gateMode"
+    ) != gate_mode:
+        raise Invalid("Completion gate mode differs from verified Purchase intent")
+    if "gateMode" in authority and authority.get("gateMode") != gate_mode:
+        raise Invalid("caller gate mode differs from signed Work intent")
     commitment_receipt = authority.get("commitmentReceipt")
     effective_timestamp = consensus_timestamp
     if gate_mode == "sequential" and isinstance(commitment_receipt, dict):

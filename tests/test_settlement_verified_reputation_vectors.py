@@ -159,7 +159,8 @@ class SettlementVerifiedReputationVectorTests(unittest.TestCase):
 
     def test_new_discriminators_preserve_released_v1_meaning(self):
         text = SPEC.read_text(encoding="utf-8")
-        self.assertIn("**DACS-5 v0.4**", text)
+        self.assertIn("**DACS-5 v0.5**", text)
+        self.assertIn("v0.4 adds", text)
         self.assertIn('settlementVerifiedDerivationVersion: "1"', text)
         self.assertIn('replayableSettlementVerifiedDerivationVersion: "1"', text)
         self.assertIn("Existing discriminators retain their released meaning.", text)

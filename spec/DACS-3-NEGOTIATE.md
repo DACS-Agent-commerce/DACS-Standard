@@ -785,7 +785,10 @@ CA-1, SR2-8, and DACS-4 PIPE-6, not a reinterpretation of any of those rules.
   It MUST consume the pinned signed Listing and one real `AgreementArtifact`
   selected by its existing discriminator and signature domain; a synthetic
   summary of price, rail, or deliverable values MUST NOT substitute for either
-  artifact.
+  artifact. For the fixed-price profile, the Agreement's seller
+  `primaryClaim` MUST equal `listing.seller.identity.presentedBy` under CORE
+  CF-3 ClaimReference identity equality before payment admission; an
+  independently valid Agreement signed by a different seller MUST be rejected.
 - (AWP-8) The node MUST evaluate §8.5.2 checks 5 and 6 with the consensus
   timestamp that becomes the finalized Work receipt's `blockRef.timestamp`.
 - (AWP-9) A client, signer, RPC, Indexer, `createdAt`, or `observedAt` timestamp
@@ -815,6 +818,14 @@ submission:
   address, content hash, transaction, writer, nonce, and finality profile. Its
   binding-defined evidence, not its fields alone, MUST establish that finality.
   A later Work receipt cannot retroactively satisfy this pre-sign gate.
+
+The selected path is the signed `AtomicDacsWorkIntentV1.gateMode`. A verifier
+MUST derive the effective mode exclusively from that field. It MUST NOT default
+the mode from absent caller state or accept an RPC, SDK, or caller authority
+copy that differs from the signed value. A Completion intent MUST repeat the
+verified Purchase intent's mode. Therefore switching paths requires a newly
+authorized Work intent; changing an unsigned request field cannot reinterpret
+an existing Work.
 
 If a Work was admitted under the co-finality path and its common receipt or
 proof later becomes unavailable, the outcome is `indeterminate` until that

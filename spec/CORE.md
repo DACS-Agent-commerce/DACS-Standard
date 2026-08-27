@@ -330,6 +330,7 @@ type AtomicDacsWorkIntentV1 = {
   workVersion: "1"
   executionProfile: string
   profile: "dacs-purchase-v1" | "dacs-completion-v1"
+  gateMode: "co-final" | "sequential"
   networkId: string
   railId: string
   jobId: string

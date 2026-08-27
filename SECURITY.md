@@ -11,13 +11,23 @@ a reference implementation, or the substrate primitives DACS depends on, **pleas
 report it privately**. Publicly filing an exploitable issue exposes an attack
 surface before it can be fixed.
 
-Use either channel:
+### Preferred channel — GitHub Private Vulnerability Reporting
 
-1. **GitHub Private Vulnerability Reporting** — the *Security* tab → *Report a
-   vulnerability* (enable "Private vulnerability reporting" in repo settings if not
-   already on). This keeps the report private until a fix ships.
-2. **A dedicated security contact** — a monitored address (e.g. `security@kynesys…`)
-   listed here by the steward.
+The *Security* tab → *Report a vulnerability*. **This is enabled on this repository** and is
+the preferred channel: it keeps the report private until a fix ships.
+
+### Dedicated security contact
+
+*None currently published for this repository.* If the steward lists a monitored address
+here, it becomes an alternative to the *Security* tab. Until then, the *Security* tab is the
+private channel.
+
+### If a private channel is ever unavailable
+
+Should the *Security* tab offer no reporting form on a repository in scope, do not post the
+finding publicly and do not route it through a third-party reviewer. Open a public issue
+saying only that you have a security finding and its rough area, and asking for a private
+channel — no reproduction, no vectors, no impact detail.
 
 A high-signal report names: the **affected component** (spec §, file path, or
 contract), the **impact** (what an attacker gains), a **minimal reproduction / PoC**

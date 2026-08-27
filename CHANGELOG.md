@@ -58,8 +58,12 @@ The format used per release:
   projected at the original phase index, and evidence/bundles record that
   concrete handler. Post-signature switching requires a fresh job and retries
   never fall through to another rail after authorization or ambiguous
-  settlement. Legacy readers reject the unknown phase; ordinary and repeated
-  payment pipelines retain their prior meaning.
+  settlement. A claimed fresh-job replacement is now signed through
+  `priorPaymentDispositionRef` and can authorize only from an authenticated,
+  finalized `PriorPaymentDisposition` that durably closed before authorization
+  or proves the prior authorization cannot settle. Legacy readers reject the
+  unknown phase; ordinary and repeated payment pipelines retain their prior
+  meaning.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

@@ -4,7 +4,7 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.7** (on the common DACS v0.1 baseline; v0.7 adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and forbids in-job selection changes or ambiguous-settlement fallback; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.7** (on the common DACS v0.1 baseline; v0.7 adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
@@ -1184,7 +1184,35 @@ type AlternativePaymentPhase = {
     alternatives: PaymentRailRef[]
   }
 }
+
+type PriorPaymentDisposition = {
+  priorPaymentDispositionVersion: "1"
+  dispositionId: string
+  priorJobId: string
+  priorAgreementRef: AttestationRef
+  priorSelection: PaymentRailRef
+  priorPhaseIndex: number
+  disposition: "closed-before-authorization"
+             | "authorization-pending"
+             | "settlement-indeterminate"
+             | "closed-cannot-settle"
+  reconciliationEvidenceRefs?: AttestationRef[]
+  observedAt: number
+  signature: ComponentSignature // authenticated prior phase orchestrator
+}
 ```
+
+`PriorPaymentDisposition` is the typed cross-job carrier for APR-6. It follows
+the CORE §B.2 canonical-form template with `signature` omitted and is signed as
+`"dacs-prior-payment-disposition:v1:" || disposition_hash`. It is anchored via
+SR-2 at
+`dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}`;
+`priorJobId` follows the applicable CORE job-identifier profile,
+`priorPhaseIndex` is minimal unsigned decimal, and `dispositionId` is exactly
+64 lowercase hexadecimal characters, so none introduces a CF-4 delimiter.
+Its signer and SR-2 writer MUST be the prior payment phase's
+orchestrator recovered from authenticated prior-session execution authority,
+not a caller-supplied identity.
 
 - (APR-1) **Signed listing shape and cardinality.** A Listing using
   `pay-alternative` MUST contain exactly one such phase, MUST contain no
@@ -1248,10 +1276,35 @@ type AlternativePaymentPhase = {
   selected rail and original `(jobId, railId, phaseIndex)` identity. They MUST
   make zero authorization calls on another alternative and MUST NOT infer
   fallback safety from non-observation, rejection, array order, or availability
-  change. Allocating a fresh `jobId` MUST NOT relabel or bypass this recovery
-  rule: a separately authorized replacement purchase is permitted only before
-  authorization of the prior selection, or after authoritative reconciliation
-  has conclusively established that the prior authorization cannot settle.
+  change.
+
+  A fresh-job Agreement is an APR replacement only when its signed
+  `terms.priorPaymentDispositionRef` is present. Before accepting its
+  commitment or making any authorization call, the orchestrator MUST resolve
+  that reference and the exact prior Agreement; verify both content hashes,
+  the prior Agreement signatures, the disposition signature, its finalized
+  SR-2 receipt, and the authenticated prior phase-orchestrator writer; and
+  require exact equality for `priorJobId`, `priorAgreementRef`, the complete
+  prior `terms.rail`, and the prior payment `phaseIndex`. Missing or
+  unavailable otherwise-consistent authority is `indeterminate`; a resolved
+  contradiction rejects. A caller-supplied `priorJobId`, prior rail, requested
+  new job, boolean, or unsigned state is inert and MUST NOT substitute.
+
+  Only `closed-before-authorization` and `closed-cannot-settle` permit the
+  replacement authorization. Issuing `closed-before-authorization` MUST be one
+  atomic durable transition that permanently closes the prior
+  `(jobId, railRefHash, phaseIndex)` authorization key before the disposition
+  is signed; the old handler MUST thereafter refuse authorization for that
+  tuple. `closed-cannot-settle` MUST carry one or more
+  `reconciliationEvidenceRefs`, each independently resolved and verified under
+  the selected prior handler's authoritative terminal-reconciliation rules,
+  and those proofs MUST conclusively establish that no prior authorization can
+  settle. `authorization-pending`, `settlement-indeterminate`, a missing proof,
+  non-observation, rejection, or an unfinalized disposition permits zero calls
+  on the replacement rail. An Agreement without
+  `priorPaymentDispositionRef` is an independent purchase, not a claimed
+  fallback; APR-6 does not pretend that two intentionally independent jobs can
+  be globally distinguished by Listing identity alone.
 - (APR-7) **Independent audit projection.** A DACS-5 consumer validating a
   bundle for an APR Listing MUST resolve and verify the exact signed Listing,
   signed Agreement, and selected pinned RailDefinition, rerun APR-1 through

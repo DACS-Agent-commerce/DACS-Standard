@@ -18,21 +18,35 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/vectors/security/alternative-payment-projection-v0.1.json"
 JOB_DEM = "01M0Q4K8X5D9YJKC3VT7H2N6PA"
 JOB_X402 = "01M0Q4K8X5D9YJKC3VT7H2N6PB"
+JOB_AP2 = "01M0Q4K8X5D9YJKC3VT7H2N6PC"
 SELLER = "did:demos:agent:" + "22" * 32
 BUYER = "did:demos:agent:" + "11" * 32
 STEWARD = "did:demos:agent:" + "44" * 32
+ORCHESTRATOR = "did:demos:agent:" + "55" * 32
 SEEDS = {
     "seller": hashlib.sha256(b"DACS #340 seller").digest(),
     "buyer": hashlib.sha256(b"DACS #340 buyer").digest(),
     "steward": hashlib.sha256(b"DACS #340 steward").digest(),
+    "orchestrator": hashlib.sha256(b"DACS #340 orchestrator").digest(),
 }
-CLAIMS = {"seller": SELLER, "buyer": BUYER, "steward": STEWARD}
+CLAIMS = {
+    "seller": SELLER,
+    "buyer": BUYER,
+    "steward": STEWARD,
+    "orchestrator": ORCHESTRATOR,
+}
 DEM_REF = {"railId": "demos-native:DEM", "railVersion": 1}
 X402_REF = {
     "railId": "x402:default",
     "railVersion": 1,
     "parameters": {"resource": "https://seller.example/pay/340"},
 }
+AP2_REF = {
+    "railId": "ap2:checkout",
+    "railVersion": 1,
+    "parameters": {"provider": "example-payments"},
+}
+DISPOSITION_ID = hashlib.sha256(b"DACS #340 prior payment disposition").hexdigest()
 CASE_FIELDS = {
     "name", "expected", "expectedReason", "rule", "operation", "note", "base",
 }
@@ -71,7 +85,7 @@ def rail_definition(ref: dict, handler: str) -> dict:
         asset = {"kind": "native-dem", "symbol": "DEM", "decimals": 9}
         network = {"kind": "demos"}
         parameters = {"transfer": "native"}
-    else:
+    elif handler == "pay-x402":
         rail_type = "x402"
         asset = {
             "kind": "erc20",
@@ -85,6 +99,21 @@ def rail_definition(ref: dict, handler: str) -> dict:
             "resourceBaseUrl": ref.get("parameters", {}).get("resource", "https://seller.example/pay/340"),
         }
         parameters = {"authorization": "eip-3009"}
+    else:
+        rail_type = "ap2"
+        asset = {
+            "kind": "fiat-via-ap2",
+            "isoCurrency": "USD",
+            "provider": "example-payments",
+        }
+        network = {
+            "kind": "ap2-provider",
+            "providerEndpoint": "https://provider.example/ap2",
+        }
+        parameters = {
+            "providerReceiptAttested": True,
+            "idempotencyKeys": True,
+        }
     return {
         "railVersion": ref["railVersion"],
         "railId": ref["railId"],
@@ -116,9 +145,13 @@ def effective_pipeline(listing: dict, selected_ref: dict, handler: str) -> list[
 
 
 def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict:
-    selected_ref = copy.deepcopy(DEM_REF if selected == "dem" else X402_REF)
-    handler = "pay-dem" if selected == "dem" else "pay-x402"
-    job_id = JOB_DEM if selected == "dem" else JOB_X402
+    selection = {
+        "dem": (DEM_REF, "pay-dem", JOB_DEM, "DEM"),
+        "x402": (X402_REF, "pay-x402", JOB_X402, "USDC"),
+        "ap2": (AP2_REF, "pay-ap2", JOB_AP2, "USD"),
+    }[selected]
+    selected_ref = copy.deepcopy(selection[0])
+    handler, job_id, currency = selection[1:]
     if ordinary_repeated:
         pipeline = [
             {"kind": "negotiate-fixed-price"},
@@ -135,12 +168,20 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
             {
                 "kind": "pay-alternative",
                 "parameters": {
-                    "alternatives": [copy.deepcopy(DEM_REF), copy.deepcopy(X402_REF)]
+                    "alternatives": [
+                        copy.deepcopy(DEM_REF),
+                        copy.deepcopy(X402_REF),
+                        copy.deepcopy(AP2_REF),
+                    ]
                 },
             },
             {"kind": "deliver-storage-program"},
         ]
-        accepted = [copy.deepcopy(DEM_REF), copy.deepcopy(X402_REF)]
+        accepted = [
+            copy.deepcopy(DEM_REF),
+            copy.deepcopy(X402_REF),
+            copy.deepcopy(AP2_REF),
+        ]
     listing = {
         "dacsVersion": "1",
         "listingVersion": 1,
@@ -151,6 +192,7 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
     definitions = {
         digest(DEM_REF): rail_definition(DEM_REF, "pay-dem"),
         digest(X402_REF): rail_definition(X402_REF, "pay-x402"),
+        digest(AP2_REF): rail_definition(AP2_REF, "pay-ap2"),
     }
     resolutions = [
         {
@@ -179,7 +221,7 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
             {"role": "seller", "primaryClaim": SELLER, "bundleHash": "bb" * 32},
         ],
         "terms": {
-            "price": {"amount": "1", "currency": "DEM" if selected == "dem" else "USDC"},
+            "price": {"amount": "1", "currency": currency},
             "rail": selected_ref,
             "payoutBindings": [
                 {
@@ -206,13 +248,11 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
         "runtime": {
             "listingPublisherClaim": SELLER,
             "readerSupportsPayAlternative": True,
-            "supportedHandlers": ["pay-dem", "pay-x402"],
+            "supportedHandlers": ["pay-dem", "pay-x402", "pay-ap2"],
             "projectedStep": copy.deepcopy(projected[2]) if not ordinary_repeated else None,
             "agreementSignatureProduced": True,
-            "priorSelection": None,
-            "priorJobId": None,
+            "priorPaymentContext": None,
             "requestedAlternative": None,
-            "requestedJobId": None,
             "authorizationState": "not-requested",
             "reconciliation": {
                 "jobId": job_id,
@@ -243,6 +283,28 @@ def make_base(selected: str = "dem", *, ordinary_repeated: bool = False) -> dict
     return value
 
 
+def sign_agreement(agreement: dict, listing: dict, *, produce_signatures: bool) -> str:
+    agreement["listingRef"] = {
+        "listingId": listing["listingId"],
+        "version": listing["listingVersion"],
+        "contentHash": digest(unsigned(listing, "signature")),
+    }
+    agreement.pop("signatures", None)
+    if produce_signatures:
+        body = unsigned(agreement, "signatures")
+        agreement["signatures"] = [
+            {
+                "party": CLAIMS[role],
+                "algorithm": "ed25519",
+                "value": signature(role, "dacs-payee-bound-agreement:v1:", body),
+            }
+            for role in ("buyer", "seller")
+        ]
+    else:
+        agreement["signatures"] = []
+    return digest(unsigned(agreement, "signatures"))
+
+
 def sign_all(value: dict) -> None:
     for resolution in value.get("registry", {}).get("resolutions", []):
         definition = resolution.get("definition")
@@ -262,28 +324,56 @@ def sign_all(value: dict) -> None:
             "signer": SELLER,
             "value": signature("seller", "dacs-listing:v1:", listing),
         }
-    listing_hash = digest(unsigned(listing, "signature"))
-
     agreement = value.get("agreement")
-    agreement["listingRef"] = {
-        "listingId": listing["listingId"],
-        "version": listing["listingVersion"],
-        "contentHash": listing_hash,
-    }
-    agreement.pop("signatures", None)
-    if value.get("runtime", {}).get("agreementSignatureProduced"):
-        body = unsigned(agreement, "signatures")
-        agreement["signatures"] = [
-            {
-                "party": CLAIMS[role],
-                "algorithm": "ed25519",
-                "value": signature(role, "dacs-payee-bound-agreement:v1:", body),
-            }
-            for role in ("buyer", "seller")
-        ]
-    else:
-        agreement["signatures"] = []
-    agreement_hash = digest(unsigned(agreement, "signatures"))
+    prior_context = value.get("runtime", {}).get("priorPaymentContext")
+    if isinstance(prior_context, dict):
+        prior_agreement = prior_context["agreement"]
+        prior_agreement_hash = sign_agreement(
+            prior_agreement, listing, produce_signatures=True
+        )
+        disposition = prior_context["disposition"]
+        disposition["priorAgreementRef"] = {
+            "anchor": {
+                "kind": "https",
+                "locator": (
+                    "https://buyer.example/agreements/"
+                    f"{prior_agreement['jobId']}"
+                ),
+            },
+            "contentHash": prior_agreement_hash,
+        }
+        disposition.pop("signature", None)
+        disposition["signature"] = {
+            "algorithm": "ed25519",
+            "signer": ORCHESTRATOR,
+            "value": signature(
+                "orchestrator", "dacs-prior-payment-disposition:v1:", disposition
+            ),
+        }
+        disposition_hash = digest(unsigned(disposition, "signature"))
+        disposition_ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": (
+                    "dacs4:payment-disposition:"
+                    f"{disposition['priorJobId']}:"
+                    f"{disposition['priorPhaseIndex']}:"
+                    f"{disposition['dispositionId']}"
+                ),
+            },
+            "contentHash": disposition_hash,
+            "signer": ORCHESTRATOR,
+        }
+        prior_context["resolution"].update({
+            "contentHash": disposition_hash,
+            "logicalAddress": disposition_ref["anchor"]["locator"],
+        })
+        agreement["terms"]["priorPaymentDispositionRef"] = disposition_ref
+    agreement_hash = sign_agreement(
+        agreement,
+        listing,
+        produce_signatures=value.get("runtime", {}).get("agreementSignatureProduced"),
+    )
 
     bundle = value.get("bundle")
     if isinstance(bundle, dict):
@@ -303,6 +393,78 @@ def sign_all(value: dict) -> None:
         ]
 
 
+def attach_prior_payment_context(
+    value: dict,
+    disposition: str,
+    *,
+    prior_ref: dict = DEM_REF,
+    prior_handler: str = "pay-dem",
+) -> None:
+    prior_agreement = copy.deepcopy(value["agreement"])
+    prior_job_id = {
+        DEM_REF["railId"]: JOB_DEM,
+        X402_REF["railId"]: JOB_X402,
+        AP2_REF["railId"]: JOB_AP2,
+    }[prior_ref["railId"]]
+    prior_agreement["jobId"] = prior_job_id
+    prior_agreement["terms"].pop("priorPaymentDispositionRef", None)
+    prior_agreement["terms"]["rail"] = copy.deepcopy(prior_ref)
+    prior_agreement["terms"]["price"]["currency"] = {
+        "pay-dem": "DEM",
+        "pay-x402": "USDC",
+        "pay-ap2": "USD",
+    }[prior_handler]
+    prior_agreement["terms"]["payoutBindings"] = [{
+        "railId": prior_ref["railId"],
+        "phaseIndex": 2,
+        "payeeAddress": SELLER,
+    }]
+    evidence_refs = []
+    if disposition in {
+        "authorization-pending",
+        "settlement-indeterminate",
+        "closed-cannot-settle",
+    }:
+        evidence_refs = [{
+            "anchor": {
+                "kind": "https",
+                "locator": "https://authority.example/reconciliation/340",
+            },
+            "contentHash": "ee" * 32,
+            "signer": STEWARD,
+        }]
+    value["runtime"]["priorPaymentContext"] = {
+        "agreement": prior_agreement,
+        "executionAuthority": {
+            "status": "verified",
+            "phaseOrchestratorClaim": ORCHESTRATOR,
+        },
+        "disposition": {
+            "priorPaymentDispositionVersion": "1",
+            "dispositionId": DISPOSITION_ID,
+            "priorJobId": prior_job_id,
+            "priorAgreementRef": {
+                "anchor": {"kind": "https", "locator": ""},
+                "contentHash": "",
+            },
+            "priorSelection": copy.deepcopy(prior_ref),
+            "priorPhaseIndex": 2,
+            "disposition": disposition,
+            "reconciliationEvidenceRefs": evidence_refs,
+            "observedAt": 1787616002000,
+        },
+        "resolution": {
+            "authorityAuthenticated": True,
+            "status": "finalized",
+            "writer": ORCHESTRATOR,
+            "contentHash": "",
+            "logicalAddress": "",
+            "authorizationJournalClosed": disposition == "closed-before-authorization",
+            "reconciliationEvidenceVerified": disposition == "closed-cannot-settle",
+        },
+    }
+
+
 def set_selection(value: dict, ref: dict, handler: str, *, job_id: str | None = None) -> None:
     agreement = value["agreement"]
     agreement["terms"]["rail"] = copy.deepcopy(ref)
@@ -313,7 +475,11 @@ def set_selection(value: dict, ref: dict, handler: str, *, job_id: str | None = 
         index for index, phase in enumerate(pipeline)
         if phase["kind"].startswith("pay-")
     ]
-    agreement["terms"]["price"]["currency"] = "DEM" if handler == "pay-dem" else "USDC"
+    agreement["terms"]["price"]["currency"] = {
+        "pay-dem": "DEM",
+        "pay-x402": "USDC",
+        "pay-ap2": "USD",
+    }[handler]
     agreement["terms"]["payoutBindings"] = [
         {
             "railId": ref["railId"],
@@ -342,10 +508,8 @@ def set_selection(value: dict, ref: dict, handler: str, *, job_id: str | None = 
 def add_case(cases: list[dict], name: str, expected: str, rule: str, note: str,
              mutate=None, *, base: str = "dem", operation: str = "execute",
              reason: str | None = None) -> None:
-    value = make_base(
-        "x402" if base == "x402" else "dem",
-        ordinary_repeated=base == "repeated",
-    )
+    selected = base if base in {"dem", "x402", "ap2"} else "dem"
+    value = make_base(selected, ordinary_repeated=base == "repeated")
     if mutate:
         mutate(value)
     sign_all(value)
@@ -370,6 +534,9 @@ def build_cases() -> list[dict]:
     add_case(cases, "select-x402-projects-pay-x402", "pass", "APR-1..APR-5",
              "the complete x402 ref projects to pay-x402 at the original phase index",
              base="x402")
+    add_case(cases, "select-ap2-projects-pay-ap2", "pass", "APR-1..APR-6/AP2",
+             "the complete AP2 ref projects to pay-ap2 without changing AP2 authorization semantics",
+             base="ap2")
 
     def reorder(v):
         v["listing"]["pipeline"][2]["parameters"]["alternatives"].reverse()
@@ -499,12 +666,14 @@ def build_cases() -> list[dict]:
              "DACS-5 recomputes rather than trusting another concrete handler",
              lambda v: v["bundle"]["phaseSummary"][2].update({"kind": "pay-x402"}),
              operation="verify-bundle", reason="bundle-effective-pipeline")
+    add_case(cases, "bundle-concrete-handler-admitted", "pass", "APR-5/APR-7",
+             "DACS-5 admits a valid bundle after independently recomputing pay-x402",
+             base="x402", operation="verify-bundle")
 
     def pre_signature_reselection(v):
         set_selection(v, X402_REF, "pay-x402")
         v["runtime"].update({
             "agreementSignatureProduced": False,
-            "priorSelection": copy.deepcopy(DEM_REF),
             "requestedAlternative": copy.deepcopy(X402_REF),
         })
     add_case(cases, "pre-signature-reselection-allowed", "pass", "APR-6",
@@ -518,14 +687,52 @@ def build_cases() -> list[dict]:
              signed_switch, operation="retry", reason="fresh-job-required")
 
     def fresh_job(v):
-        set_selection(v, X402_REF, "pay-x402", job_id=JOB_X402)
-        v["runtime"].update({
-            "priorSelection": copy.deepcopy(DEM_REF),
-            "priorJobId": JOB_DEM,
-        })
+        attach_prior_payment_context(v, "closed-before-authorization")
     add_case(cases, "post-signature-switch-with-fresh-job", "pass", "APR-6",
-             "a new signed Agreement under a fresh job may select x402",
+             "a fresh-job x402 replacement is authorized by a finalized durable pre-authorization closure",
              fresh_job, base="x402")
+
+    def conclusive_no_settlement(v):
+        attach_prior_payment_context(v, "closed-cannot-settle")
+    add_case(cases, "fresh-job-after-conclusive-no-settlement", "pass", "APR-6",
+             "a proof-backed terminal reconciliation disposition permits the replacement",
+             conclusive_no_settlement, base="x402")
+
+    def missing_disposition(v):
+        v["agreement"]["terms"]["priorPaymentDispositionRef"] = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payment-disposition:missing",
+            },
+            "contentHash": "aa" * 32,
+            "signer": ORCHESTRATOR,
+        }
+    add_case(cases, "fresh-job-replacement-missing-disposition", "indeterminate", "APR-6",
+             "a signed replacement reference without resolvable disposition authority cannot authorize",
+             missing_disposition, base="x402", reason="prior-disposition-unavailable")
+
+    def mismatched_disposition(v):
+        attach_prior_payment_context(v, "closed-before-authorization")
+        v["runtime"]["priorPaymentContext"]["disposition"]["priorSelection"] = copy.deepcopy(X402_REF)
+    add_case(cases, "fresh-job-disposition-selection-mismatch", "fail", "APR-6",
+             "the signed disposition must bind the exact prior Agreement selection",
+             mismatched_disposition, base="x402", reason="prior-disposition-binding")
+
+    def unfinalized_disposition(v):
+        attach_prior_payment_context(v, "closed-before-authorization")
+        v["runtime"]["priorPaymentContext"]["resolution"]["status"] = "included"
+    add_case(cases, "fresh-job-unfinalized-disposition", "indeterminate", "APR-6",
+             "an included but unfinalized disposition permits no replacement authorization",
+             unfinalized_disposition, base="x402", reason="prior-disposition-unfinalized")
+
+    def missing_terminal_proof(v):
+        attach_prior_payment_context(v, "closed-cannot-settle")
+        context = v["runtime"]["priorPaymentContext"]
+        context["disposition"]["reconciliationEvidenceRefs"] = []
+        context["resolution"]["reconciliationEvidenceVerified"] = False
+    add_case(cases, "fresh-job-cannot-settle-proof-missing", "fail", "APR-6",
+             "cannot-settle requires independently verified terminal reconciliation evidence",
+             missing_terminal_proof, base="x402", reason="prior-disposition-proof")
 
     def post_authorization(v):
         v["runtime"].update({
@@ -546,14 +753,18 @@ def build_cases() -> list[dict]:
              indeterminate_fallback, operation="retry", reason="fallback-forbidden")
 
     def fresh_job_indeterminate_fallback(v):
-        v["runtime"].update({
-            "authorizationState": "indeterminate",
-            "requestedAlternative": copy.deepcopy(X402_REF),
-            "requestedJobId": JOB_X402,
-        })
+        attach_prior_payment_context(v, "settlement-indeterminate")
     add_case(cases, "fresh-job-cannot-mask-indeterminate-fallback", "fail", "APR-6",
-             "a new job identifier cannot relabel recovery while the first rail is ambiguous",
-             fresh_job_indeterminate_fallback, operation="retry", reason="fallback-forbidden")
+             "a genuine fresh-job x402 Agreement cannot mask an authenticated indeterminate DEM disposition",
+             fresh_job_indeterminate_fallback, base="x402", reason="prior-payment-open")
+
+    def fresh_job_ap2_authorization_pending(v):
+        attach_prior_payment_context(
+            v, "authorization-pending", prior_ref=AP2_REF, prior_handler="pay-ap2"
+        )
+    add_case(cases, "fresh-job-cannot-mask-ap2-authorization", "fail", "APR-6/AP2",
+             "AP2 mandate submission remains authorization even before capture or irreversibility",
+             fresh_job_ap2_authorization_pending, base="x402", reason="prior-payment-open")
     add_case(cases, "same-rail-retry-reconciles-without-authorization", "pass", "APR-6",
              "retry retains the selected tuple and performs reconciliation only",
              lambda v: v["runtime"].update({"authorizationState": "indeterminate"}),
@@ -615,6 +826,7 @@ def build() -> dict:
     fixtures = {
         "dem": make_base("dem"),
         "x402": make_base("x402"),
+        "ap2": make_base("ap2"),
         "repeated": make_base("dem", ordinary_repeated=True),
     }
     vectors = [compact_case(case, fixtures) for case in build_cases()]

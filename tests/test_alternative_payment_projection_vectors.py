@@ -141,8 +141,7 @@ def verify_definition(vector, definition):
     )
 
 
-def verify_agreement(vector):
-    agreement = vector.get("agreement")
+def verify_agreement_document(vector, agreement):
     if not isinstance(agreement, dict):
         return False
     body = unsigned(agreement, "signatures")
@@ -163,6 +162,10 @@ def verify_agreement(vector):
         )
         for role in ("buyer", "seller")
     )
+
+
+def verify_agreement(vector):
+    return verify_agreement_document(vector, vector.get("agreement"))
 
 
 def verify_bundle(vector):
@@ -187,6 +190,121 @@ def verify_bundle(vector):
 
 def canonical_key(value):
     return jcs_canonicalize(value)
+
+
+def verify_prior_payment_context(vector):
+    agreement = vector["agreement"]
+    disposition_ref = agreement.get("terms", {}).get("priorPaymentDispositionRef")
+    if disposition_ref is None:
+        return "pass", None
+    context = vector.get("runtime", {}).get("priorPaymentContext")
+    if not isinstance(context, dict):
+        return "indeterminate", "prior-disposition-unavailable"
+    resolution = context.get("resolution")
+    authority = context.get("executionAuthority")
+    if not isinstance(resolution, dict) or not resolution.get("authorityAuthenticated"):
+        return "indeterminate", "prior-disposition-unavailable"
+    if resolution.get("status") != "finalized":
+        return "indeterminate", "prior-disposition-unfinalized"
+    if not isinstance(authority, dict) or authority.get("status") != "verified":
+        return "indeterminate", "prior-disposition-unavailable"
+
+    prior_agreement = context.get("agreement")
+    disposition = context.get("disposition")
+    if not verify_agreement_document(vector, prior_agreement):
+        return "fail", "prior-agreement-signature"
+    if not isinstance(disposition, dict):
+        return "fail", "prior-disposition-shape"
+    disposition_id = disposition.get("dispositionId")
+    if (
+        not isinstance(disposition_id, str)
+        or len(disposition_id) != 64
+        or any(character not in "0123456789abcdef" for character in disposition_id)
+    ):
+        return "fail", "prior-disposition-shape"
+    orchestrator_claim = authority.get("phaseOrchestratorClaim")
+    if resolution.get("writer") != orchestrator_claim:
+        return "fail", "prior-disposition-authority"
+    if not verify_signature(
+        unsigned(disposition, "signature"),
+        disposition.get("signature"),
+        vector["keys"]["orchestrator"],
+        "dacs-prior-payment-disposition:v1:",
+        signer=orchestrator_claim,
+    ):
+        return "fail", "prior-disposition-signature"
+
+    disposition_hash = digest(unsigned(disposition, "signature"))
+    expected_address = (
+        "dacs4:payment-disposition:"
+        f"{disposition.get('priorJobId')}:"
+        f"{disposition.get('priorPhaseIndex')}:"
+        f"{disposition_id}"
+    )
+    expected_ref = {
+        "anchor": {"kind": "storage-program", "locator": expected_address},
+        "contentHash": disposition_hash,
+        "signer": orchestrator_claim,
+    }
+    if disposition_ref != expected_ref:
+        return "fail", "prior-disposition-ref"
+    if (
+        resolution.get("contentHash") != disposition_hash
+        or resolution.get("logicalAddress") != expected_address
+    ):
+        return "fail", "prior-disposition-anchor"
+
+    prior_agreement_hash = digest(unsigned(prior_agreement, "signatures"))
+    expected_agreement_ref = {
+        "anchor": {
+            "kind": "https",
+            "locator": (
+                "https://buyer.example/agreements/"
+                f"{prior_agreement.get('jobId')}"
+            ),
+        },
+        "contentHash": prior_agreement_hash,
+    }
+    prior_selection = prior_agreement.get("terms", {}).get("rail")
+    if not ref_shape(prior_selection) or not ref_shape(disposition.get("priorSelection")):
+        return "fail", "prior-disposition-binding"
+    bindings = prior_agreement.get("terms", {}).get("payoutBindings")
+    phase_index = disposition.get("priorPhaseIndex")
+    binding_matches = isinstance(bindings, list) and any(
+        isinstance(binding, dict)
+        and binding.get("railId") == prior_selection.get("railId")
+        and binding.get("phaseIndex") == phase_index
+        for binding in bindings
+    ) if isinstance(prior_selection, dict) else False
+    if (
+        disposition.get("priorJobId") != prior_agreement.get("jobId")
+        or disposition.get("priorAgreementRef") != expected_agreement_ref
+        or prior_agreement.get("listingRef") != agreement.get("listingRef")
+        or canonical_key(disposition.get("priorSelection")) != canonical_key(prior_selection)
+        or not binding_matches
+        or agreement.get("jobId") == prior_agreement.get("jobId")
+        or canonical_key(agreement.get("terms", {}).get("rail"))
+        == canonical_key(prior_selection)
+    ):
+        return "fail", "prior-disposition-binding"
+
+    state = disposition.get("disposition")
+    evidence_refs = disposition.get("reconciliationEvidenceRefs")
+    if state in {"authorization-pending", "settlement-indeterminate"}:
+        return "fail", "prior-payment-open"
+    if state == "closed-before-authorization":
+        if evidence_refs or not resolution.get("authorizationJournalClosed"):
+            return "fail", "prior-disposition-proof"
+        return "pass", None
+    if state == "closed-cannot-settle":
+        if (
+            not isinstance(evidence_refs, list)
+            or not evidence_refs
+            or not resolution.get("reconciliationEvidenceVerified")
+        ):
+            return "fail", "prior-disposition-proof"
+        return "pass", None
+    return "fail", "prior-disposition-state"
 
 
 def listing_gate(vector):
@@ -389,16 +507,15 @@ def evaluate(vector, effects=None):
         return "pass", None
 
     selected = agreement["terms"]["rail"]
-    prior_selection = vector["runtime"].get("priorSelection")
-    prior_job_id = vector["runtime"].get("priorJobId")
-    if prior_selection is not None and canonical_key(prior_selection) != canonical_key(selected):
-        if prior_job_id == agreement["jobId"]:
-            return "fail", "fresh-job-required"
     requested = vector["runtime"].get("requestedAlternative")
     if requested is not None and canonical_key(requested) != canonical_key(selected):
         if vector["runtime"].get("authorizationState") in {"submitted", "indeterminate"}:
             return "fail", "fallback-forbidden"
         return "fail", "fresh-job-required"
+
+    verdict, reason = verify_prior_payment_context(vector)
+    if verdict != "pass":
+        return verdict, reason
 
     if operation == "retry":
         reconciliation = vector["runtime"].get("reconciliation")
@@ -523,16 +640,63 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
     def test_projection_preserves_index_and_array_order_is_not_selection(self):
         dem = self.by_name["select-dem-projects-pay-dem"]
         x402 = self.by_name["select-x402-projects-pay-x402"]
+        ap2 = self.by_name["select-ap2-projects-pay-ap2"]
         reordered = self.by_name["alternative-array-order-does-not-select"]
         self.assertEqual(dem["runtime"]["projectedStep"]["kind"], "pay-dem")
         self.assertEqual(x402["runtime"]["projectedStep"]["kind"], "pay-x402")
+        self.assertEqual(ap2["runtime"]["projectedStep"]["kind"], "pay-ap2")
         self.assertEqual(reordered["agreement"]["terms"]["rail"], x402["agreement"]["terms"]["rail"])
         self.assertNotEqual(
             reordered["listing"]["pipeline"][2]["parameters"]["alternatives"],
             x402["listing"]["pipeline"][2]["parameters"]["alternatives"],
         )
-        for vector in (dem, x402, reordered):
+        for vector in (dem, x402, ap2, reordered):
             self.assertEqual(vector["agreement"]["terms"]["payoutBindings"][0]["phaseIndex"], 2)
+
+    def test_valid_bundle_and_authenticated_cross_job_dispositions_are_discriminating(self):
+        bundle = self.by_name["bundle-concrete-handler-admitted"]
+        self.assertEqual(evaluate(bundle), ("pass", None))
+
+        closed = self.by_name["post-signature-switch-with-fresh-job"]
+        terminal = self.by_name["fresh-job-after-conclusive-no-settlement"]
+        open_prior = self.by_name["fresh-job-cannot-mask-indeterminate-fallback"]
+        ap2_open = self.by_name["fresh-job-cannot-mask-ap2-authorization"]
+        self.assertEqual(verify_prior_payment_context(closed), ("pass", None))
+        self.assertEqual(verify_prior_payment_context(terminal), ("pass", None))
+        self.assertEqual(
+            verify_prior_payment_context(open_prior),
+            ("fail", "prior-payment-open"),
+        )
+        self.assertEqual(
+            verify_prior_payment_context(ap2_open),
+            ("fail", "prior-payment-open"),
+        )
+        for vector in (closed, terminal, open_prior, ap2_open):
+            context = vector["runtime"]["priorPaymentContext"]
+            self.assertNotEqual(vector["agreement"]["jobId"], context["agreement"]["jobId"])
+            self.assertIn("priorPaymentDispositionRef", vector["agreement"]["terms"])
+            self.assertNotIn("requestedJobId", vector["runtime"])
+
+    def test_prior_disposition_signature_writer_and_finality_are_load_bearing(self):
+        vector = copy.deepcopy(self.by_name["post-signature-switch-with-fresh-job"])
+        vector["runtime"]["priorPaymentContext"]["disposition"]["observedAt"] += 1
+        self.assertEqual(
+            verify_prior_payment_context(vector),
+            ("fail", "prior-disposition-signature"),
+        )
+
+        vector = copy.deepcopy(self.by_name["post-signature-switch-with-fresh-job"])
+        vector["runtime"]["priorPaymentContext"]["resolution"]["writer"] = vector["keys"]["buyer"]
+        self.assertEqual(
+            verify_prior_payment_context(vector),
+            ("fail", "prior-disposition-authority"),
+        )
+
+        unfinalized = self.by_name["fresh-job-unfinalized-disposition"]
+        self.assertEqual(
+            verify_prior_payment_context(unfinalized),
+            ("indeterminate", "prior-disposition-unfinalized"),
+        )
 
     def test_retry_never_authorizes_a_second_rail(self):
         for vector in self.vectors:
@@ -566,6 +730,8 @@ class AlternativePaymentProjectionVectorTests(unittest.TestCase):
         self.assertIn("listing-only `pay-alternative`", combined)
         self.assertIn("fresh `jobId`", combined)
         self.assertIn("make zero authorization calls on another alternative", combined)
+        self.assertIn("PriorPaymentDisposition", combined)
+        self.assertIn("dacs-prior-payment-disposition:v1:", combined)
 
 
 if __name__ == "__main__":

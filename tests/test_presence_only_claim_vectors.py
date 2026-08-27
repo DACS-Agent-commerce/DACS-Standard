@@ -510,7 +510,7 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         for text in (
             "It MUST NOT call a verification recipe, create a `VerifyResult`, or add a `VerifyResultRef`",
             "the reliance decision is `indeterminate` until the bundle is available",
-            "aggregate(record, requirement, exactBundle)",
+            "aggregate(record, recordRef, requirement, authority, recipeRegistryResolver)",
         ):
             self.assertIn(text, dacs2)
 

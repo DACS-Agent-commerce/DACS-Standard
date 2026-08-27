@@ -97,11 +97,11 @@ class Round12ReplayCompletenessTests(unittest.TestCase):
         return lambda address: by_address.get(address)
 
     def validate(self, d, pk=None):
-        return R.validate_resolution_context(d, self._dr(), self._ev, pk,
+        return R.validate_legacy_resolution_context(d, self._dr(), self._ev, pk,
                                              anchor_deref=self._anchor(d))
 
     def replay(self, d, pk=None):
-        return R.replay_receipt(d, self._dr(), self.v["party"], self.v["window"][0],
+        return R.replay_legacy_receipt(d, self._dr(), self.v["party"], self.v["window"][0],
                                 self.v["window"][1], evidence_deref=self._ev, pubkeys=pk,
                                 anchor_deref=self._anchor(d))
 

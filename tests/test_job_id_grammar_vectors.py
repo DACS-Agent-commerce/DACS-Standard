@@ -27,6 +27,52 @@ KNOWN_ADDRESSES = {
     "seller": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
     "orchestrator": "stor-4cadaaae064cc2257f3e101842e4ae24fd4a481fdb7dea35082f30e7ad2311d0",
 }
+AUTHORITATIVE_RELEASE_PIN = "0000000000000000000000000000000000000001"
+AUTHORITATIVE_MODULE_VERSIONS = {
+    "core": "0.3",
+    "dacs1": "0.7",
+    "dacs2": "0.5",
+    "dacs3": "0.4",
+    "dacs4": "0.7",
+    "dacs5": "0.5",
+}
+AUTHORITATIVE_LOCAL_PROFILE = {
+    "releasePin": AUTHORITATIVE_RELEASE_PIN,
+    "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
+}
+# These opaque references model profiles whose provenance and peer identity have
+# already been authenticated by the implementation. Vector-supplied profile
+# objects are deliberately never trusted as admission authority.
+AUTHENTICATED_PEER_PROFILES = {
+    "fixture:peer-current": {
+        "releasePin": AUTHORITATIVE_RELEASE_PIN,
+        "moduleVersions": dict(AUTHORITATIVE_MODULE_VERSIONS),
+    },
+    "fixture:peer-wrong-pin": {
+        "releasePin": "f" * 40,
+        "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
+    },
+    "fixture:peer-partial-tuple": {
+        "releasePin": AUTHORITATIVE_RELEASE_PIN,
+        "moduleVersions": {
+            key: value
+            for key, value in AUTHORITATIVE_MODULE_VERSIONS.items()
+            if key != "dacs5"
+        },
+    },
+    "fixture:peer-extra-tuple": {
+        "releasePin": AUTHORITATIVE_RELEASE_PIN,
+        "moduleVersions": {
+            **AUTHORITATIVE_MODULE_VERSIONS,
+            "future": "0.1",
+        },
+    },
+    "fixture:peer-non-string-pin": {
+        "releasePin": 1,
+        "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
+    },
+    "fixture:peer-major-only": {"dacsVersion": "1"},
+}
 
 
 def canonical_bytes(value):
@@ -48,6 +94,38 @@ def derive_bundle(job_id, role, metrics):
     metrics["hashCalls"] += 1
     preimage = validated.encode("ascii") + b"-bundle-" + role.encode("ascii")
     return "stor-" + hashlib.sha256(preimage).hexdigest()
+
+
+def is_exact_corrective_profile(profile):
+    if not isinstance(profile, dict):
+        return False
+    release_pin = profile.get("releasePin")
+    module_versions = profile.get("moduleVersions")
+    return (
+        isinstance(release_pin, str)
+        and RELEASE_PIN_RE.fullmatch(release_pin) is not None
+        and release_pin == AUTHORITATIVE_RELEASE_PIN
+        and isinstance(module_versions, dict)
+        and set(module_versions) == set(AUTHORITATIVE_MODULE_VERSIONS)
+        and all(isinstance(value, str) for value in module_versions.values())
+        and module_versions == AUTHORITATIVE_MODULE_VERSIONS
+    )
+
+
+def admit_authenticated_profile(vector):
+    # Raw profile objects are attacker-controlled vector inputs, even if their
+    # bytes happen to copy the locally configured profile exactly.
+    if "localProfile" in vector or "peerProfile" in vector:
+        raise ValueError("profile-admission")
+    peer_ref = vector.get("peerProfileRef")
+    if not isinstance(peer_ref, str):
+        raise ValueError("profile-admission")
+    peer = AUTHENTICATED_PEER_PROFILES.get(peer_ref)
+    if (
+        not is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE)
+        or not is_exact_corrective_profile(peer)
+    ):
+        raise ValueError("profile-admission")
 
 
 def evaluate(vector):
@@ -76,17 +154,7 @@ def evaluate(vector):
             equal = left.encode("ascii") == right.encode("ascii")
             return ("pass" if equal else "fail"), {**metrics, "equal": equal}
         if operation == "profile-admit":
-            local = vector.get("localProfile")
-            peer = vector.get("peerProfile")
-            if (
-                not isinstance(local, dict)
-                or not isinstance(peer, dict)
-                or RELEASE_PIN_RE.fullmatch(str(local.get("releasePin", ""))) is None
-                or peer.get("releasePin") != local.get("releasePin")
-                or not isinstance(local.get("moduleVersions"), dict)
-                or peer.get("moduleVersions") != local.get("moduleVersions")
-            ):
-                raise ValueError("profile-admission")
+            admit_authenticated_profile(vector)
             return "pass", {**metrics, "profileAdmitted": True}
         raise ValueError("operation-validation")
     except ValueError as exc:
@@ -150,6 +218,60 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             DACS5_REFERENCE.legacy_logical_address("cafe\u0301-job", "buyer"),
         )
 
+    def test_real_bb5_consumer_defaults_to_current_profile(self):
+        legacy_job = "not-a-current-job"
+        binding = {
+            "bindingVersion": "1",
+            "jobId": legacy_job,
+            "role": "seller",
+            "signer": "did:demos:agent:" + "22" * 32,
+            "logicalAddress": DACS5_REFERENCE.legacy_logical_address(
+                legacy_job, "seller"
+            ),
+            "nativeAddress": "stor-native-legacy",
+            "bundleContentHash": "aa" * 32,
+            "signature": {
+                "signer": "did:demos:agent:" + "22" * 32,
+                "algorithm": "ed25519",
+                "value": "fixture-only",
+            },
+        }
+        current = DACS5_REFERENCE.verify_binding(
+            binding,
+            None,
+            expected_jobid=legacy_job,
+            expected_role="seller",
+        )
+        self.assertFalse(current["ok"])
+        self.assertIn("job-id-validation", current["reason"])
+
+        archival = DACS5_REFERENCE.verify_legacy_binding(
+            binding,
+            None,
+            expected_jobid=legacy_job,
+            expected_role="seller",
+        )
+        self.assertTrue(archival["ok"])
+
+        resolver_calls = []
+
+        def permissive_resolver(job_id, role):
+            resolver_calls.append((job_id, role))
+            return "attacker-selected-address"
+
+        address_ok, address_reason = DACS5_REFERENCE._post_fetch_address_valid(
+            {"jobId": legacy_job},
+            "attacker-selected-address",
+            "seller",
+            "aa" * 32,
+            None,
+            expected_jobid=legacy_job,
+            pure_mapping_resolver=permissive_resolver,
+        )
+        self.assertFalse(address_ok)
+        self.assertIn("job-id-validation", address_reason)
+        self.assertEqual([], resolver_calls)
+
     def test_invalid_spelling_never_reaches_hash_or_lookup(self):
         invalid = [
             vector
@@ -196,7 +318,7 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             vector for vector in self.data["vectors"]
             if vector["operation"] == "profile-admit"
         ]
-        self.assertEqual(5, len(cases))
+        self.assertEqual(9, len(cases))
         for case in cases:
             with self.subTest(case=case["name"]):
                 verdict, observed = evaluate(case)

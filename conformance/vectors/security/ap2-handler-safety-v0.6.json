@@ -1,9 +1,9 @@
 {
   "set": "ap2-handler-safety-v0.6",
-  "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE JID-1",
-  "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, checkout/payment admission ordering, and retry/replay consumption are executed; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
-  "hash": "5fcc0bc1059f97c18362919b7be57490ef0cc43a4e912d5de415b62eb0151453",
-  "count": 31,
+  "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
+  "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, authenticated synthetic-profile and JID/phase admission ordering, checkout/payment admission, and retry/replay consumption are executed; the fixture release pin is not a published release or live deployment profile; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
+  "hash": "20fa4abe59ca8ba90130bd077802b9567e74254bc95f8e353c3c1fd44a2b254d",
+  "count": 36,
   "vectors": [
     {
       "name": "ap2-key-base",
@@ -112,6 +112,9 @@
     },
     {
       "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
       "checkoutMandatePresent": true,
       "checkoutMandateVerified": true,
       "paymentMandatePresent": true,
@@ -124,14 +127,20 @@
       "caseClass": "positive",
       "expected": "pass",
       "want": {
-        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 1,
         "reserveAp2Binding": true,
-        "submitProviderPayment": true
+        "submitProviderPayment": true,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
       "note": "separate verified CheckoutMandate and PaymentMandate artifacts with a matching digest admit side effects"
     },
     {
       "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
       "checkoutMandatePresent": true,
       "checkoutMandateVerified": true,
       "paymentMandatePresent": true,
@@ -144,14 +153,20 @@
       "caseClass": "negative",
       "expected": "fail",
       "want": {
-        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
         "reserveAp2Binding": false,
-        "submitProviderPayment": false
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
       "note": "a PaymentMandate mismatch rejects before AP2-7 reservation or provider submission"
     },
     {
       "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
       "checkoutMandatePresent": false,
       "checkoutMandateVerified": false,
       "paymentMandatePresent": true,
@@ -164,6 +179,9 @@
       "caseClass": "negative",
       "expected": "fail",
       "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -171,6 +189,9 @@
     },
     {
       "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
       "checkoutMandatePresent": true,
       "checkoutMandateVerified": true,
       "paymentMandatePresent": false,
@@ -183,6 +204,9 @@
       "caseClass": "negative",
       "expected": "fail",
       "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -190,6 +214,9 @@
     },
     {
       "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
       "checkoutMandatePresent": true,
       "checkoutMandateVerified": true,
       "paymentMandatePresent": true,
@@ -202,6 +229,9 @@
       "caseClass": "negative",
       "expected": "fail",
       "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -209,6 +239,9 @@
     },
     {
       "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
       "checkoutMandatePresent": true,
       "checkoutMandateVerified": true,
       "paymentMandatePresent": true,
@@ -222,10 +255,149 @@
       "_sd_alg": "dacs-unknown-hash",
       "expected": "error",
       "want": {
+        "hashCalls": 1,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
       "note": "unsupported digest selection fails before AP2-7 reservation or provider submission"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "café-job",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-noncanonical-job-errors",
+      "caseClass": "negative",
+      "expected": "error",
+      "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "a non-JID-1 session refuses before hashes, resolution, metadata, binding, or provider calls"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "81ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-overflow-job-errors",
+      "caseClass": "boundary",
+      "expected": "error",
+      "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "an overflow-form ULID refuses before every modeled job-specific effect"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": -1,
+      "peerProfileRef": "fixture:peer-current",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-negative-phase-errors",
+      "caseClass": "boundary",
+      "expected": "error",
+      "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "an invalid phase index refuses before every modeled job-specific effect"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-unverified",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-unauthenticated-profile-refuses",
+      "caseClass": "negative",
+      "expected": "fail",
+      "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "an unauthenticated peer profile reference refuses before protocol action"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerProfileRef": "fixture:peer-current",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-admission-caller-profile-refuses",
+      "caseClass": "negative",
+      "peerProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false
+      },
+      "note": "matching caller-supplied profile bytes do not substitute for authenticated peer evidence"
     },
     {
       "name": "ap2-first-presentation-binds",

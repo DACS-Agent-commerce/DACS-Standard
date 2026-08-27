@@ -1,9 +1,10 @@
 {
   "set": "job-id-grammar-v0.1",
-  "spec": "CORE §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2",
+  "spec": "CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2",
   "grammar": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
-  "correctiveProfile": {
-    "testOnlyReleasePin": "0000000000000000000000000000000000000001",
+  "syntheticProfileAdmissionFixture": {
+    "scope": "candidate conformance fixture only; not a published release or live deployment profile",
+    "implementationOwnedReleasePin": "0000000000000000000000000000000000000001",
     "moduleVersions": {
       "core": "0.3",
       "dacs1": "0.7",
@@ -11,11 +12,12 @@
       "dacs3": "0.4",
       "dacs4": "0.7",
       "dacs5": "0.5"
-    }
+    },
+    "peerEvidence": "peerProfileRef is resolved only through implementation-owned authenticated fixture state"
   },
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "count": 36,
-  "hash": "8ddcab136102a80ebb26215908445aa27273d0c58e46656e64b0e0cb7c958bbf",
+  "count": 40,
+  "hash": "3d1b25f9b33876c8370462df922dabef0922b9c6ec1dda61bad2aaa002025999",
   "vectors": [
     {
       "name": "canonical-ulid",
@@ -412,32 +414,11 @@
       }
     },
     {
-      "name": "matching-corrective-profile-admitted",
+      "name": "authenticated-corrective-profile-admitted",
       "operation": "profile-admit",
       "expected": "pass",
-      "localProfile": {
-        "releasePin": "0000000000000000000000000000000000000001",
-        "moduleVersions": {
-          "core": "0.3",
-          "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
-          "dacs4": "0.7",
-          "dacs5": "0.5"
-        }
-      },
-      "peerProfile": {
-        "releasePin": "0000000000000000000000000000000000000001",
-        "moduleVersions": {
-          "core": "0.3",
-          "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
-          "dacs4": "0.7",
-          "dacs5": "0.5"
-        }
-      },
-      "note": "Exact authenticated release and complete module tuple admit the corrective profile.",
+      "peerProfileRef": "fixture:peer-current",
+      "note": "An implementation-authenticated peer reference resolves to the exact synthetic release and complete module tuple.",
       "want": {
         "profileAdmitted": true,
         "hashCalls": 0,
@@ -448,18 +429,6 @@
       "name": "missing-peer-profile-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "localProfile": {
-        "releasePin": "0000000000000000000000000000000000000001",
-        "moduleVersions": {
-          "core": "0.3",
-          "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
-          "dacs4": "0.7",
-          "dacs5": "0.5"
-        }
-      },
-      "peerProfile": null,
       "note": "Missing authenticated peer profile refuses before job-specific action.",
       "want": {
         "failureStage": "profile-admission",
@@ -468,32 +437,11 @@
       }
     },
     {
-      "name": "different-release-pin-refuses",
+      "name": "unauthenticated-peer-profile-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "localProfile": {
-        "releasePin": "0000000000000000000000000000000000000001",
-        "moduleVersions": {
-          "core": "0.3",
-          "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
-          "dacs4": "0.7",
-          "dacs5": "0.5"
-        }
-      },
-      "peerProfile": {
-        "releasePin": "ffffffffffffffffffffffffffffffffffffffff",
-        "moduleVersions": {
-          "core": "0.3",
-          "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
-          "dacs4": "0.7",
-          "dacs5": "0.5"
-        }
-      },
-      "note": "The same module tuple under a different immutable release is not inferred compatible.",
+      "peerProfileRef": "fixture:peer-unverified",
+      "note": "A caller-provided reference with no authenticated peer evidence refuses.",
       "want": {
         "failureStage": "profile-admission",
         "hashCalls": 0,
@@ -501,10 +449,10 @@
       }
     },
     {
-      "name": "different-module-tuple-refuses",
+      "name": "caller-supplied-matching-profile-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "localProfile": {
+      "peerProfile": {
         "releasePin": "0000000000000000000000000000000000000001",
         "moduleVersions": {
           "core": "0.3",
@@ -515,18 +463,7 @@
           "dacs5": "0.5"
         }
       },
-      "peerProfile": {
-        "releasePin": "0000000000000000000000000000000000000001",
-        "moduleVersions": {
-          "core": "0.2",
-          "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
-          "dacs4": "0.7",
-          "dacs5": "0.5"
-        }
-      },
-      "note": "A pre-JID-1 CORE tuple refuses even when a caller reuses the release field.",
+      "note": "Matching caller-supplied bytes are not authenticated peer evidence.",
       "want": {
         "failureStage": "profile-admission",
         "hashCalls": 0,
@@ -534,23 +471,58 @@
       }
     },
     {
-      "name": "major-only-discriminator-refuses",
+      "name": "authenticated-different-release-pin-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "localProfile": {
-        "releasePin": "0000000000000000000000000000000000000001",
-        "moduleVersions": {
-          "core": "0.3",
-          "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
-          "dacs4": "0.7",
-          "dacs5": "0.5"
-        }
-      },
-      "peerProfile": {
-        "dacsVersion": "1"
-      },
+      "peerProfileRef": "fixture:peer-wrong-pin",
+      "note": "Authenticated evidence for a different immutable release is not inferred compatible.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "authenticated-partial-module-tuple-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "peerProfileRef": "fixture:peer-partial-tuple",
+      "note": "Authenticated evidence must carry the complete coordinated module tuple.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "authenticated-extra-module-tuple-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "peerProfileRef": "fixture:peer-extra-tuple",
+      "note": "An extra tuple member is not byte-exact equality with the configured profile.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "authenticated-non-string-release-pin-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "peerProfileRef": "fixture:peer-non-string-pin",
+      "note": "A non-string value cannot be coerced into an immutable release pin.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "authenticated-major-only-discriminator-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "peerProfileRef": "fixture:peer-major-only",
       "note": "A major-only artifact discriminator cannot establish corrective-profile compatibility.",
       "want": {
         "failureStage": "profile-admission",

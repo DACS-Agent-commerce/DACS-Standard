@@ -286,7 +286,8 @@ def verify_sig(pubkey_bytes, domain, content_hash, sig_value):
         return False
 
 
-def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_content_hash=None):
+def _verify_binding(binding, pubkeys, *, expected_jobid, expected_role,
+                    expected_content_hash=None, address_deriver):
     """BB-4 + targeted BB-5 checks on a BundleBinding, for receipt replay (round-6 blocker #2).
 
     Structural checks ALWAYS run (both modes, pre-crypto): (round-11) the §B.7/§10.4.2 BundleBinding
@@ -339,9 +340,11 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
         return {"ok": False, "reason": "BB-5: binding.jobId != %r" % (expected_jobid,)}
     if binding.get("role") != expected_role:
         return {"ok": False, "reason": "BB-5: binding.role != %r" % (expected_role,)}
-    # This reference predicate replays the frozen pre-JID-1 vector corpus. A
-    # current-profile consumer calls logical_address() and rejects before hash.
-    if binding.get("logicalAddress") != legacy_logical_address(binding.get("jobId"), binding.get("role")):
+    try:
+        expected_address = address_deriver(binding.get("jobId"), binding.get("role"))
+    except ValueError as exc:
+        return {"ok": False, "reason": "BB-5 check 5: %s" % (exc,)}
+    if binding.get("logicalAddress") != expected_address:
         return {"ok": False, "reason": "BB-5 check 5: logicalAddress != derive(jobId, role)"}
     if expected_content_hash is not None and binding.get("bundleContentHash") != expected_content_hash:
         return {"ok": False, "reason": "BB-5 check 8: binding.bundleContentHash != expected"}
@@ -359,6 +362,32 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
         if not verify_sig(pk, BINDING_DOMAIN, binding_hash(binding), sig.get("value", "")):
             return {"ok": False, "reason": "BB-4: binding signature does not verify"}
     return {"ok": True, "reason": "binding valid"}
+
+
+def verify_binding(binding, pubkeys, *, expected_jobid, expected_role,
+                   expected_content_hash=None):
+    """Verify a current-profile BB-5 binding; JID-1 runs before derivation."""
+    return _verify_binding(
+        binding,
+        pubkeys,
+        expected_jobid=expected_jobid,
+        expected_role=expected_role,
+        expected_content_hash=expected_content_hash,
+        address_deriver=logical_address,
+    )
+
+
+def verify_legacy_binding(binding, pubkeys, *, expected_jobid, expected_role,
+                          expected_content_hash=None):
+    """Replay only the frozen pre-JID-1 corpus; never current action authority."""
+    return _verify_binding(
+        binding,
+        pubkeys,
+        expected_jobid=expected_jobid,
+        expected_role=expected_role,
+        expected_content_hash=expected_content_hash,
+        address_deriver=legacy_logical_address,
+    )
 
 
 def is_fab(bundle):
@@ -1541,8 +1570,9 @@ def _post_fetch_valid(fetched, binding, pubkeys):
     return (True, "ok")
 
 
-def _post_fetch_address_valid(fetched, resolved_address, expected_role, expected_content_hash, pubkeys,
-                              expected_jobid=None, pure_mapping_resolver=None):
+def _post_fetch_address_valid_with_profile(
+        fetched, resolved_address, expected_role, expected_content_hash, pubkeys,
+        expected_jobid=None, *, pure_mapping_resolver, job_id_validator):
     """Pure-mapping equivalent of BB-5 post-fetch validation.
 
     The role is authenticated by recomputing its deterministic logical/native address from the
@@ -1556,8 +1586,11 @@ def _post_fetch_address_valid(fetched, resolved_address, expected_role, expected
         return (False, "pure-mapping check: fetched.jobId must be a string")
     if expected_jobid is not None and job_id != expected_jobid:
         return (False, "pure-mapping check: fetched.jobId != expected jobId")
-    expected_address = (pure_mapping_resolver(job_id, expected_role)
-                        if pure_mapping_resolver is not None else legacy_logical_address(job_id, expected_role))
+    try:
+        job_id_validator(job_id)
+        expected_address = pure_mapping_resolver(job_id, expected_role)
+    except ValueError as exc:
+        return (False, "pure-mapping check: %s" % (exc,))
     if resolved_address != expected_address:
         return (False, "pure-mapping check: resolvedAddress != mapped address for fetched (jobId, role)")
     if fetched.get("anchoredByRole") != expected_role:
@@ -1581,6 +1614,50 @@ def _post_fetch_address_valid(fetched, resolved_address, expected_role, expected
     if bundle_hash(fetched) != expected_content_hash:
         return (False, "pure-mapping check: recomputed §10.4.1 hash != expected contentHash")
     return (True, "ok")
+
+
+def _post_fetch_address_valid(fetched, resolved_address, expected_role,
+                              expected_content_hash, pubkeys,
+                              expected_jobid=None,
+                              pure_mapping_resolver=None):
+    """Validate a current-profile address arm; JID-1 precedes every resolver."""
+    resolver = (
+        pure_mapping_resolver
+        if pure_mapping_resolver is not None
+        else logical_address
+    )
+    return _post_fetch_address_valid_with_profile(
+        fetched,
+        resolved_address,
+        expected_role,
+        expected_content_hash,
+        pubkeys,
+        expected_jobid=expected_jobid,
+        pure_mapping_resolver=resolver,
+        job_id_validator=validate_current_job_id,
+    )
+
+
+def _post_fetch_legacy_address_valid(fetched, resolved_address, expected_role,
+                                     expected_content_hash, pubkeys,
+                                     expected_jobid=None,
+                                     pure_mapping_resolver=None):
+    """Replay the frozen pre-JID-1 address arm through an explicit legacy path."""
+    resolver = (
+        pure_mapping_resolver
+        if pure_mapping_resolver is not None
+        else legacy_logical_address
+    )
+    return _post_fetch_address_valid_with_profile(
+        fetched,
+        resolved_address,
+        expected_role,
+        expected_content_hash,
+        pubkeys,
+        expected_jobid=expected_jobid,
+        pure_mapping_resolver=resolver,
+        job_id_validator=lambda job_id: job_id,
+    )
 
 
 def _role_evidence_locator(role_evidence):
@@ -2607,8 +2684,9 @@ def _bundle_shape_ok(bundle):
     return (True, None)
 
 
-def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None, anchor_deref=None,
-                                pure_mapping_resolver=None):
+def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=None,
+                                 anchor_deref=None, pure_mapping_resolver=None,
+                                 *, binding_verifier, address_validator):
     """Executable replay validation of every authenticated copy in a ReplayableReputationDerivation
     (round-6 blocker #2). For each entry: re-verify roleEvidence (BB-4/BB-5 via verify_binding);
     reproduce BB-6 selection over bb6Context; on a present disposition dereference counterpartyRef,
@@ -2676,9 +2754,13 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
         # (1) roleEvidence re-verification + (2) BB-6 reproduction.
         if re_.get("kind") == "binding":
             auth_binding = re_.get("binding") or {}
-            vb = verify_binding(auth_binding, pubkeys,
-                                expected_jobid=expected_job, expected_role=role,
-                                expected_content_hash=ch)
+            vb = binding_verifier(
+                auth_binding,
+                pubkeys,
+                expected_jobid=expected_job,
+                expected_role=role,
+                expected_content_hash=ch,
+            )
             if not vb["ok"]:
                 reasons.append("%s: roleEvidence %s" % (ch, vb["reason"]))
                 continue
@@ -2730,7 +2812,12 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             #    surface resolution) is not replayable; a malformed AUTHORIZED candidate fails the receipt closed.
             bad_candidate = None
             for cand in survivors:
-                vbc = verify_binding(cand, pubkeys, expected_jobid=expected_job, expected_role=role)
+                vbc = binding_verifier(
+                    cand,
+                    pubkeys,
+                    expected_jobid=expected_job,
+                    expected_role=role,
+                )
                 if not vbc["ok"]:
                     bad_candidate = (cand.get("nativeAddress"), vbc["reason"])
                     break
@@ -2802,7 +2889,7 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             # canonical bytes but a different (unhashed) anchoredByRole value.
             auth = anchored[native]
         else:
-            pf_auth_ok, pf_auth_reason = _post_fetch_address_valid(
+            pf_auth_ok, pf_auth_reason = address_validator(
                 auth, re_.get("resolvedAddress"), role, ch, pubkeys,
                 expected_jobid=expected_job,
                 pure_mapping_resolver=pure_mapping_resolver)
@@ -2833,15 +2920,19 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
                 continue
             if cre.get("kind") == "binding":
                 cp_binding = cre.get("binding") or {}
-                vb2 = verify_binding(cp_binding, pubkeys,
-                                     expected_jobid=expected_job, expected_role=other,
-                                     expected_content_hash=cref.get("contentHash"))
+                vb2 = binding_verifier(
+                    cp_binding,
+                    pubkeys,
+                    expected_jobid=expected_job,
+                    expected_role=other,
+                    expected_content_hash=cref.get("contentHash"),
+                )
                 if not vb2["ok"]:
                     reasons.append("%s: counterpartyRoleEvidence %s" % (ch, vb2["reason"]))
                     continue
                 pf_cp_ok, pf_cp_reason = _post_fetch_valid(cp, cp_binding, pubkeys)
             else:
-                pf_cp_ok, pf_cp_reason = _post_fetch_address_valid(
+                pf_cp_ok, pf_cp_reason = address_validator(
                     cp, cre.get("resolvedAddress"), other, cref.get("contentHash"), pubkeys,
                     expected_jobid=expected_job, pure_mapping_resolver=pure_mapping_resolver)
             if not pf_cp_ok:
@@ -2864,7 +2955,12 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
             if not isinstance(ab, dict):
                 reasons.append("%s: absent disposition missing absenceBinding" % ch)
                 continue
-            vb3 = verify_binding(ab, pubkeys, expected_jobid=expected_job, expected_role=other)
+            vb3 = binding_verifier(
+                ab,
+                pubkeys,
+                expected_jobid=expected_job,
+                expected_role=other,
+            )
             if not vb3["ok"]:
                 reasons.append("%s: absenceBinding %s" % (ch, vb3["reason"]))
                 continue
@@ -2874,8 +2970,47 @@ def validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys=
     return (not reasons, reasons)
 
 
-def replay_receipt(derivation, deref, party, window_start, window_end, evidence_deref=None, pubkeys=None,
-                   anchor_deref=None, pure_mapping_resolver=None, ebfab_authority_resolver=None):
+def validate_resolution_context(derivation, deref, evidence_deref=None,
+                                pubkeys=None, anchor_deref=None,
+                                pure_mapping_resolver=None):
+    """Validate current-profile replay context; JID-1 is the default authority."""
+    return _validate_resolution_context(
+        derivation,
+        deref,
+        evidence_deref,
+        pubkeys,
+        anchor_deref=anchor_deref,
+        pure_mapping_resolver=pure_mapping_resolver,
+        binding_verifier=verify_binding,
+        address_validator=_post_fetch_address_valid,
+    )
+
+
+def validate_legacy_resolution_context(derivation, deref, evidence_deref=None,
+                                       pubkeys=None, anchor_deref=None,
+                                       pure_mapping_resolver=None):
+    """Replay only frozen pre-JID-1 context under explicitly selected semantics."""
+    resolver = (
+        pure_mapping_resolver
+        if pure_mapping_resolver is not None
+        else legacy_logical_address
+    )
+    return _validate_resolution_context(
+        derivation,
+        deref,
+        evidence_deref,
+        pubkeys,
+        anchor_deref=anchor_deref,
+        pure_mapping_resolver=resolver,
+        binding_verifier=verify_legacy_binding,
+        address_validator=_post_fetch_legacy_address_valid,
+    )
+
+
+def _replay_receipt(derivation, deref, party, window_start, window_end,
+                    evidence_deref=None, pubkeys=None, anchor_deref=None,
+                    pure_mapping_resolver=None, ebfab_authority_resolver=None,
+                    *, binding_verifier, address_validator):
     """§10.5.3 (4) + round-6 blocker #2: re-run derive() over deref(bundleRefs) AND execute the
     full per-copy validation (validate_resolution_context) — roleEvidence BB-4/BB-5, BB-6
     reproduction, §10.4.3 divergence against the dereferenced counterparty, and the absence
@@ -2894,9 +3029,11 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     ok_m, _reasons_m = receipt_required_members_present(derivation)
     if not ok_m:
         return (False, None)
-    ok, _reasons = validate_resolution_context(
+    ok, _reasons = _validate_resolution_context(
         derivation, deref, evidence_deref, pubkeys, anchor_deref=anchor_deref,
-        pure_mapping_resolver=pure_mapping_resolver)
+        pure_mapping_resolver=pure_mapping_resolver,
+        binding_verifier=binding_verifier,
+        address_validator=address_validator)
     if not ok:
         return (False, None)
     tagged = []
@@ -2968,3 +3105,49 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     same = (canonical(replayed["metrics"]) == canonical(derivation["metrics"])
             and replayed["bundleCount"] == derivation["bundleCount"])
     return (same, replayed)
+
+
+def replay_receipt(derivation, deref, party, window_start, window_end,
+                   evidence_deref=None, pubkeys=None, anchor_deref=None,
+                   pure_mapping_resolver=None, ebfab_authority_resolver=None):
+    """Replay a current-profile receipt; JID-1 is enforced before derivation."""
+    return _replay_receipt(
+        derivation,
+        deref,
+        party,
+        window_start,
+        window_end,
+        evidence_deref,
+        pubkeys,
+        anchor_deref,
+        pure_mapping_resolver,
+        ebfab_authority_resolver,
+        binding_verifier=verify_binding,
+        address_validator=_post_fetch_address_valid,
+    )
+
+
+def replay_legacy_receipt(derivation, deref, party, window_start, window_end,
+                          evidence_deref=None, pubkeys=None, anchor_deref=None,
+                          pure_mapping_resolver=None,
+                          ebfab_authority_resolver=None):
+    """Replay only a frozen pre-JID-1 receipt through an explicit archival API."""
+    resolver = (
+        pure_mapping_resolver
+        if pure_mapping_resolver is not None
+        else legacy_logical_address
+    )
+    return _replay_receipt(
+        derivation,
+        deref,
+        party,
+        window_start,
+        window_end,
+        evidence_deref,
+        pubkeys,
+        anchor_deref,
+        resolver,
+        ebfab_authority_resolver,
+        binding_verifier=verify_legacy_binding,
+        address_validator=_post_fetch_legacy_address_valid,
+    )

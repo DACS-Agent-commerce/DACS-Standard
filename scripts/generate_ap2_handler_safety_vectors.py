@@ -114,6 +114,27 @@ def binding(transaction_id: str, job_id: str, phase_index: int, state: str) -> d
     }
 
 
+def admission_want(
+    *,
+    hash_calls: int = 0,
+    resolver_calls: int = 0,
+    metadata_calls: int = 0,
+    reserve: bool = False,
+    submit: bool = False,
+    derived_transaction_id: object = MISSING,
+) -> dict[str, object]:
+    want: dict[str, object] = {
+        "hashCalls": hash_calls,
+        "resolverCalls": resolver_calls,
+        "metadataCalls": metadata_calls,
+        "reserveAp2Binding": reserve,
+        "submitProviderPayment": submit,
+    }
+    if derived_transaction_id is not MISSING:
+        want["derivedTransactionId"] = derived_transaction_id
+    return want
+
+
 def vectors() -> list[dict[str, object]]:
     job_a = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
     job_b = "01ARZ3NDEKTSV4RRFFQ69G5FAW"
@@ -129,6 +150,9 @@ def vectors() -> list[dict[str, object]]:
     changed_signature_tx = derive_transaction_id(changed_signature_jws)
     admission_common: dict[str, object] = {
         "op": "checkout-payment-admission",
+        "jobId": job_a,
+        "phaseIndex": 3,
+        "peerProfileRef": "fixture:peer-current",
         "checkoutMandatePresent": True,
         "checkoutMandateVerified": True,
         "paymentMandatePresent": True,
@@ -210,11 +234,14 @@ def vectors() -> list[dict[str, object]]:
             "name": "ap2-admission-complete-chain-match",
             "caseClass": "positive",
             "expected": "pass",
-            "want": {
-                "derivedTransactionId": tx,
-                "reserveAp2Binding": True,
-                "submitProviderPayment": True,
-            },
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                metadata_calls=1,
+                reserve=True,
+                submit=True,
+                derived_transaction_id=tx,
+            ),
             "note": (
                 "separate verified CheckoutMandate and PaymentMandate artifacts with a "
                 "matching digest admit side effects"
@@ -226,11 +253,11 @@ def vectors() -> list[dict[str, object]]:
             "caseClass": "negative",
             "paymentTransactionId": changed_signature_tx,
             "expected": "fail",
-            "want": {
-                "derivedTransactionId": tx,
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                derived_transaction_id=tx,
+            ),
             "note": (
                 "a PaymentMandate mismatch rejects before AP2-7 reservation or provider "
                 "submission"
@@ -243,10 +270,7 @@ def vectors() -> list[dict[str, object]]:
             "checkoutMandatePresent": False,
             "checkoutMandateVerified": False,
             "expected": "fail",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(),
             "note": "a standalone PaymentMandate is not a complete AP2 checkout chain",
         },
         {
@@ -256,10 +280,7 @@ def vectors() -> list[dict[str, object]]:
             "paymentMandatePresent": False,
             "paymentMandateVerified": False,
             "expected": "fail",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(),
             "note": "a CheckoutMandate alone cannot authorize payment",
         },
         {
@@ -269,10 +290,7 @@ def vectors() -> list[dict[str, object]]:
             "algorithm": "Ed25519",
             "signatureGeneration": "deterministic",
             "expected": "fail",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(),
             "note": "the DACS strict signature profile is enforced before either side effect",
         },
         {
@@ -281,11 +299,63 @@ def vectors() -> list[dict[str, object]]:
             "caseClass": "boundary",
             "_sd_alg": "dacs-unknown-hash",
             "expected": "error",
-            "want": {
-                "reserveAp2Binding": False,
-                "submitProviderPayment": False,
-            },
+            "want": admission_want(hash_calls=1, resolver_calls=1),
             "note": "unsupported digest selection fails before AP2-7 reservation or provider submission",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-noncanonical-job-errors",
+            "caseClass": "negative",
+            "jobId": "cafe\u0301-job",
+            "expected": "error",
+            "want": admission_want(),
+            "note": "a non-JID-1 session refuses before hashes, resolution, metadata, binding, or provider calls",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-overflow-job-errors",
+            "caseClass": "boundary",
+            "jobId": "8" + job_a[1:],
+            "expected": "error",
+            "want": admission_want(),
+            "note": "an overflow-form ULID refuses before every modeled job-specific effect",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-negative-phase-errors",
+            "caseClass": "boundary",
+            "phaseIndex": -1,
+            "expected": "error",
+            "want": admission_want(),
+            "note": "an invalid phase index refuses before every modeled job-specific effect",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-unauthenticated-profile-refuses",
+            "caseClass": "negative",
+            "peerProfileRef": "fixture:peer-unverified",
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "an unauthenticated peer profile reference refuses before protocol action",
+        },
+        {
+            **admission_common,
+            "name": "ap2-admission-caller-profile-refuses",
+            "caseClass": "negative",
+            "peerProfile": {
+                "releasePin": "0000000000000000000000000000000000000001",
+                "moduleVersions": {
+                    "core": "0.3",
+                    "dacs1": "0.7",
+                    "dacs2": "0.5",
+                    "dacs3": "0.4",
+                    "dacs4": "0.7",
+                    "dacs5": "0.5",
+                },
+            },
+            "expected": "fail",
+            "want": admission_want(),
+            "note": "matching caller-supplied profile bytes do not substitute for authenticated peer evidence",
         },
         {
             "name": "ap2-first-presentation-binds",
@@ -427,10 +497,12 @@ def render() -> str:
     cases = vectors()
     document = {
         "set": "ap2-handler-safety-v0.6",
-        "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE JID-1",
+        "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
         "scope": (
             "candidate handler predicates: idempotency-key and transaction-id derivation, "
-            "checkout/payment admission ordering, and retry/replay consumption are executed; "
+            "authenticated synthetic-profile and JID/phase admission ordering, checkout/payment "
+            "admission, and retry/replay consumption are executed; the fixture release pin is "
+            "not a published release or live deployment profile; "
             "provider capability, mandate cryptographic verification, and signature generation "
             "are modeled inputs"
         ),

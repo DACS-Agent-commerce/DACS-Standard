@@ -210,7 +210,7 @@ def _anchor_deref(p, address):
 def vrc(p):
     """Run validate_resolution_context over a receipt-factory dict. A raised exception here fails
     the test (that is exactly the 'no exception escapes' assertion)."""
-    return R.validate_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
+    return R.validate_legacy_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
                                          lambda x: p["ev"].get(x), PUBKEYS,
                                          anchor_deref=lambda x: _anchor_deref(p, x))
 
@@ -220,7 +220,7 @@ def vrc_mode(p, pubkeys):
     explicit-null slip was STRUCTURAL-mode-only (pubkeys=None): crypto (PUBKEYS) already refused a
     null member via SIG-6 / algorithm-dispatch / signer-mismatch, so a crypto-only predicate (the
     grid oracle, and the plain `vrc` above) could not reach the slip."""
-    return R.validate_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
+    return R.validate_legacy_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
                                          lambda x: p["ev"].get(x), pubkeys,
                                          anchor_deref=lambda x: _anchor_deref(p, x))
 
@@ -230,7 +230,7 @@ def vb_role_binding(p, pubkeys):
     (expected_content_hash = entry contentHash). The STRUCTURAL tier of the B1.4 null pins."""
     e = p["deriv"]["resolutionContext"][0]
     b = e["roleEvidence"]["binding"]
-    return R.verify_binding(b, pubkeys, expected_jobid=b["jobId"],
+    return R.verify_legacy_binding(b, pubkeys, expected_jobid=b["jobId"],
                             expected_role=e["resolvedRole"], expected_content_hash=p["h"])
 
 
@@ -261,7 +261,7 @@ def make_fab_ps(job, anchored, sign_roles, ps):
 def build_divergence_present(job, winner_ps, cp_ps):
     """A present receipt over TWO distinct signed FAB copies reaching divergence(auth=A, cp=B): winner
     A (anchored seller) carries winner_ps, counterparty B (anchored buyer) carries cp_ps. Returns a
-    receipt-factory dict (deriv/deref/ev/h) usable with vrc / vrc_mode / R.replay_receipt. B2 pins."""
+    receipt-factory dict (deriv/deref/ev/h) usable with vrc / vrc_mode / R.replay_legacy_receipt. B2 pins."""
     A = make_fab_ps(job, "seller", ["buyer", "seller"], winner_ps)
     hA = bundle_hash(A)
     role_bind = make_binding(job, "seller", "seller", native_address(job, "seller", 0), hA)
@@ -891,7 +891,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
 
     # ---- B2 (round-13): phaseSummary bool-index (Limb A) + dup-index (Limb B) + divergence control -
     def _replay(self, p):
-        return R.replay_receipt(p["deriv"], lambda x: p["deref"].get(x), CLAIM["seller"],
+        return R.replay_legacy_receipt(p["deriv"], lambda x: p["deref"].get(x), CLAIM["seller"],
                                 FINALISED_AT - 1, FINALISED_AT + 1,
                                 evidence_deref=lambda x: p["ev"].get(x), pubkeys=PUBKEYS,
                                 anchor_deref=lambda x: _anchor_deref(p, x))

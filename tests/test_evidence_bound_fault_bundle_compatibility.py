@@ -421,14 +421,14 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
 
         missing = copy.deepcopy(receipt)
         missing["resolutionContext"][0].pop("resolvedJobId")
-        ok, reasons = R.validate_resolution_context(
+        ok, reasons = R.validate_legacy_resolution_context(
             missing, lambda _h: valid, anchor_deref=lambda _address: valid)
         self.assertFalse(ok)
         self.assertTrue(any("resolvedJobId must be a non-empty string" in reason for reason in reasons))
 
         mismatch = copy.deepcopy(receipt)
         mismatch["resolutionContext"][0]["resolvedJobId"] = "another-job"
-        ok, reasons = R.validate_resolution_context(
+        ok, reasons = R.validate_legacy_resolution_context(
             mismatch, lambda _h: valid, anchor_deref=lambda _address: valid)
         self.assertFalse(ok)
         self.assertTrue(any("winner copy jobId != trusted resolvedJobId" in reason for reason in reasons))
@@ -442,7 +442,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             with self.subTest(keys=sorted(mutation)):
                 self.assertFalse(R._require_supported_replay_derivation(mutation)["ok"])
                 self.assertEqual(
-                    R.replay_receipt(
+                    R.replay_legacy_receipt(
                         mutation,
                         lambda _h: valid,
                         "did:demos:buyer",
@@ -513,8 +513,8 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "pubkeys": self.pubkeys,
             "anchor_deref": lambda address: by_address.get(address),
         }
-        self.assertEqual(R.replay_receipt(*replay_args, **replay_kwargs), (False, None))
-        same, replayed = R.replay_receipt(
+        self.assertEqual(R.replay_legacy_receipt(*replay_args, **replay_kwargs), (False, None))
+        same, replayed = R.replay_legacy_receipt(
             *replay_args,
             **replay_kwargs,
             ebfab_authority_resolver=lambda _bundle, _entry: authority,
@@ -591,7 +591,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
             "pubkeys": self.pubkeys,
             "anchor_deref": lambda address: by_address.get(address),
         }
-        same, replayed = R.replay_receipt(
+        same, replayed = R.replay_legacy_receipt(
             *replay_args,
             **replay_kwargs,
             ebfab_authority_resolver=lambda bundle, _entry: authority_for(bundle),
@@ -599,7 +599,7 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
         self.assertTrue(same)
         self.assertEqual(replayed["bundleCount"], 1)
         self.assertEqual(
-            R.replay_receipt(
+            R.replay_legacy_receipt(
                 *replay_args,
                 **replay_kwargs,
                 ebfab_authority_resolver=lambda bundle, _entry: authority_for(

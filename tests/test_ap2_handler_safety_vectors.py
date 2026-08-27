@@ -25,6 +25,21 @@ HASH_ALGORITHMS = {
     "sha-256": hashlib.sha256,
 }
 JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
+AUTHORITATIVE_RELEASE_PIN = "0000000000000000000000000000000000000001"
+AUTHORITATIVE_MODULE_VERSIONS = {
+    "core": "0.3",
+    "dacs1": "0.7",
+    "dacs2": "0.5",
+    "dacs3": "0.4",
+    "dacs4": "0.7",
+    "dacs5": "0.5",
+}
+AUTHENTICATED_PEER_PROFILES = {
+    "fixture:peer-current": {
+        "releasePin": AUTHORITATIVE_RELEASE_PIN,
+        "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
+    },
+}
 
 
 def canonical_json(value):
@@ -92,11 +107,43 @@ def evaluate_signature_policy(case):
     )
 
 
+def admits_current_profile(case):
+    if "localProfile" in case or "peerProfile" in case:
+        return False
+    peer_ref = case.get("peerProfileRef")
+    if not isinstance(peer_ref, str):
+        return False
+    peer = AUTHENTICATED_PEER_PROFILES.get(peer_ref)
+    if not isinstance(peer, dict):
+        return False
+    pin = peer.get("releasePin")
+    modules = peer.get("moduleVersions")
+    return (
+        isinstance(pin, str)
+        and pin == AUTHORITATIVE_RELEASE_PIN
+        and isinstance(modules, dict)
+        and set(modules) == set(AUTHORITATIVE_MODULE_VERSIONS)
+        and all(isinstance(value, str) for value in modules.values())
+        and modules == AUTHORITATIVE_MODULE_VERSIONS
+    )
+
+
 def evaluate_checkout_payment_admission(case):
     no_effects = {
+        "hashCalls": 0,
+        "resolverCalls": 0,
+        "metadataCalls": 0,
         "reserveAp2Binding": False,
         "submitProviderPayment": False,
     }
+    if not admits_current_profile(case):
+        return "fail", None, no_effects
+    job_id = case.get("jobId")
+    phase_index = case.get("phaseIndex")
+    if not isinstance(job_id, str) or JOB_ID_RE.fullmatch(job_id) is None:
+        return "error", None, no_effects
+    if type(phase_index) is not int or phase_index < 0:
+        return "error", None, no_effects
     if not all(
         case.get(field) is True
         for field in (
@@ -109,15 +156,20 @@ def evaluate_checkout_payment_admission(case):
         return "fail", None, no_effects
     if evaluate_signature_policy(case) != "pass":
         return "fail", None, no_effects
+    effects = dict(no_effects)
+    effects["resolverCalls"] += 1
     try:
+        derive_key(job_id, phase_index)
+        effects["hashCalls"] += 1
         transaction_id = derive_transaction_id(
             case.get("checkoutJws"), case.get("_sd_alg", MISSING)
         )
+        effects["hashCalls"] += 1
     except ValueError:
-        return "error", None, no_effects
-    effects = dict(no_effects)
+        return "error", None, effects
     if case.get("paymentTransactionId") != transaction_id:
         return "fail", transaction_id, effects
+    effects["metadataCalls"] += 1
     effects["reserveAp2Binding"] = True
     effects["submitProviderPayment"] = True
     return "pass", transaction_id, effects
@@ -228,23 +280,48 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             case for case in self.data["vectors"]
             if case["op"] == "checkout-payment-admission"
         ]
-        self.assertEqual(len(cases), 6)
+        self.assertEqual(len(cases), 11)
         for case in cases:
             with self.subTest(case=case["name"]):
                 verdict, derived, effects = evaluate_checkout_payment_admission(case)
                 self.assertEqual(verdict, case["expected"])
-                self.assertEqual(
-                    effects["reserveAp2Binding"],
-                    case["want"]["reserveAp2Binding"],
-                )
-                self.assertEqual(
-                    effects["submitProviderPayment"],
-                    case["want"]["submitProviderPayment"],
-                )
+                for effect in (
+                    "hashCalls",
+                    "resolverCalls",
+                    "metadataCalls",
+                    "reserveAp2Binding",
+                    "submitProviderPayment",
+                ):
+                    self.assertEqual(effects[effect], case["want"][effect], effect)
                 if "derivedTransactionId" in case["want"]:
                     self.assertEqual(derived, case["want"]["derivedTransactionId"])
                 else:
                     self.assertIsNone(derived)
+
+    def test_profile_and_session_gates_precede_every_modeled_effect(self):
+        for name in (
+            "ap2-admission-noncanonical-job-errors",
+            "ap2-admission-overflow-job-errors",
+            "ap2-admission-negative-phase-errors",
+            "ap2-admission-unauthenticated-profile-refuses",
+            "ap2-admission-caller-profile-refuses",
+        ):
+            with self.subTest(case=name):
+                verdict, derived, effects = evaluate_checkout_payment_admission(
+                    self.cases[name]
+                )
+                self.assertIn(verdict, {"fail", "error"})
+                self.assertIsNone(derived)
+                self.assertEqual(
+                    effects,
+                    {
+                        "hashCalls": 0,
+                        "resolverCalls": 0,
+                        "metadataCalls": 0,
+                        "reserveAp2Binding": False,
+                        "submitProviderPayment": False,
+                    },
+                )
 
     def test_complete_chain_admission_composes_into_ap2_7_binding(self):
         case = self.cases["ap2-admission-complete-chain-match"]

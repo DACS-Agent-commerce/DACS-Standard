@@ -246,7 +246,7 @@ def _anchor_from_maps(derivation, deref_map):
 def vrc(p):
     """Run validate_resolution_context over a receipt-factory dict. A raised exception here fails
     the test (that is exactly the 'no exception escapes' assertion)."""
-    return R.validate_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
+    return R.validate_legacy_resolution_context(p["deriv"], lambda x: p["deref"].get(x),
                                          lambda x: p["ev"].get(x), PUBKEYS,
                                          anchor_deref=lambda x: _anchor_deref(p, x))
 
@@ -357,7 +357,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         bind_padded = copy.deepcopy(bind4)
         bind_padded["signature"]["value"] = bind_padded["signature"]["value"] + "=="
         self.assertEqual(
-            R.verify_binding(bind_padded, PUBKEYS, expected_jobid="R10-4", expected_role="seller", expected_content_hash=h4),
+            R.verify_legacy_binding(bind_padded, PUBKEYS, expected_jobid="R10-4", expected_role="seller", expected_content_hash=h4),
             {"ok": False, "reason": "BB-4/%s (binding signature)" % self.NONCANON})
 
     def test_r10_4_unpadded_controls(self):
@@ -365,7 +365,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         base, h4, bind4 = self._r10_4_parts()
         self.assertEqual(R._post_fetch_valid(base, bind4, PUBKEYS), (True, "ok"))
         self.assertEqual(
-            R.verify_binding(bind4, PUBKEYS, expected_jobid="R10-4", expected_role="seller", expected_content_hash=h4),
+            R.verify_legacy_binding(bind4, PUBKEYS, expected_jobid="R10-4", expected_role="seller", expected_content_hash=h4),
             {"ok": True, "reason": "binding valid"})
 
     # ============================================================ R10-5 budget ingress
@@ -430,24 +430,24 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         self.assertEqual(vrc(p), (False, ["%s: counterpartyRoleEvidence must be an object (got str)" % p["h"]]))
 
         d, dm, em, h = self._winner_probe("D6-WP", lambda W: W.__setitem__("parties", None))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+        self.assertEqual(R.validate_legacy_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
                                                        anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: winner copy parties must be an array (got NoneType)" % h]))
         d, dm, em, h = self._winner_probe("D6-WS", lambda W: W.__setitem__("signatures", ["notadict"]))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+        self.assertEqual(R.validate_legacy_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
                                                        anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: winner copy signatures[0] is not an object (got str)" % h]))
         d, dm, em, h = self._winner_probe("D6-WO", lambda W: W.pop("outcome"))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+        self.assertEqual(R.validate_legacy_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
                                                        anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: winner copy outcome must be one of %s (got None)" % (h, OUTCOMES)]))
 
         d, dm, em, h = self._cp_probe("D6-CO", lambda cp: cp.pop("outcome"))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+        self.assertEqual(R.validate_legacy_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
                                                        anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: counterparty copy outcome must be one of %s (got None)" % (h, OUTCOMES)]))
         d, dm, em, h = self._cp_probe("D6-CPS", lambda cp: cp.__setitem__("phaseSummary", [{"kind": "x", "outcome": "ok"}]))
-        self.assertEqual(R.validate_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
+        self.assertEqual(R.validate_legacy_resolution_context(d, lambda x: dm.get(x), lambda x: em.get(x), PUBKEYS,
                                                        anchor_deref=_anchor_from_maps(d, dm)),
                          (False, ["%s: counterparty copy phaseSummary[0].index must be an int or string (got NoneType)" % h]))
 
@@ -531,7 +531,7 @@ class Round10ValidationPredicateTests(unittest.TestCase):
         bb6 = {"candidateBindings": [rb], "partyMap": dict(PM), "budget": 8}
         entry = _absent_entry(j, h, rb, bb6, absb, evh, cp)
         deriv = _derivation(h, entry)
-        observed = R.validate_resolution_context(deriv, lambda x: {h: winner}.get(x),
+        observed = R.validate_legacy_resolution_context(deriv, lambda x: {h: winner}.get(x),
                                                  lambda x: {evh: ev}.get(x), PUBKEYS,
                                                  anchor_deref=_anchor_from_maps(deriv, {h: winner}))   # MUST NOT raise
         self.assertEqual(

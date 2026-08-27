@@ -43,7 +43,7 @@ RRD_PATH = ROOT / "conformance" / "vectors" / "security" / "receipt-rederivation
 BB_PATH = ROOT / "conformance" / "vectors" / "security" / "bundle-binding-v0.1.json"
 
 # The patch adds `anchor_deref`; gate on the live signature so ONE file is RED-pre / GREEN-post.
-_SUPPORTS_ANCHOR = "anchor_deref" in inspect.signature(R.validate_resolution_context).parameters
+_SUPPORTS_ANCHOR = "anchor_deref" in inspect.signature(R.validate_legacy_resolution_context).parameters
 
 
 def _kw(anchor_map):
@@ -125,7 +125,7 @@ class Round14HubReproductionTests(unittest.TestCase):
                 self.assertTrue(reasons)
                 # (b) replay_receipt must RETURN (False, None), never raise.
                 try:
-                    result = R.replay_receipt(copy.deepcopy(d), lambda h: deref.get(h), v["party"],
+                    result = R.replay_legacy_receipt(copy.deepcopy(d), lambda h: deref.get(h), v["party"],
                                               v["window"][0], v["window"][1], None, None, **_kw({}))
                 except TypeError as e:
                     self.fail("(b) replay_receipt raised TypeError on windowingBasis=%r "
@@ -169,7 +169,7 @@ class Round14HubReproductionTests(unittest.TestCase):
         bindings = [bind_a, bind_b, full_binding]
         # mirror the vector harness: every binding BB-4/BB-5-valid and every copy post-fetch-valid.
         for b in bindings:
-            vb = R.verify_binding(b, self.bb_pk, expected_jobid=b["jobId"], expected_role="seller",
+            vb = R.verify_legacy_binding(b, self.bb_pk, expected_jobid=b["jobId"], expected_role="seller",
                                   expected_content_hash=b["bundleContentHash"])
             self.assertTrue(vb["ok"], "setup: binding must verify: %s" % vb["reason"])
         for b in bindings:
@@ -231,7 +231,7 @@ class Round14HubReproductionTests(unittest.TestCase):
         return derivation, self_copy, cp_true, h_self, h_cp, waddr, caddr
 
     def _vrc(self, derivation, deref_map, anchor_map):
-        return R.validate_resolution_context(derivation, lambda h: deref_map.get(h), None, None,
+        return R.validate_legacy_resolution_context(derivation, lambda h: deref_map.get(h), None, None,
                                              **_kw(anchor_map))
 
     def test_t3_counterparty_anchored_role_flip_control(self):
@@ -300,7 +300,7 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
 
     def _call(self, fetched, resolved_address, expected_content_hash, expected_role="seller",
               expected_jobid=None):
-        return R._post_fetch_address_valid(fetched, resolved_address, expected_role,
+        return R._post_fetch_legacy_address_valid(fetched, resolved_address, expected_role,
                                            expected_content_hash, self.pk, expected_jobid=expected_jobid)
 
     def test_s1_fetched_not_object(self):
@@ -417,10 +417,10 @@ class Round14VerificationCompletion(unittest.TestCase):
 
         # HONEST pair: genuinely divergent -> full CRYPTO replay refuses, validate cites the divergence.
         deref = {h_self: self_c, h_cp: cp}; anchor = {waddr: self_c, caddr: cp}
-        self.assertEqual(R.replay_receipt(deriv, lambda h: deref.get(h), "did:demos:seller",
+        self.assertEqual(R.replay_legacy_receipt(deriv, lambda h: deref.get(h), "did:demos:seller",
                                           self.FA - 1, self.FA + 1, None, self.pk, **_kw(anchor)),
                          (False, None))
-        v_ok, v_reasons = R.validate_resolution_context(deriv, lambda h: deref.get(h), None, self.pk, **_kw(anchor))
+        v_ok, v_reasons = R.validate_legacy_resolution_context(deriv, lambda h: deref.get(h), None, self.pk, **_kw(anchor))
         self.assertFalse(v_ok)
         self.assertTrue(any("diverges" in r for r in v_reasons), v_reasons)
 
@@ -428,10 +428,10 @@ class Round14VerificationCompletion(unittest.TestCase):
         cp_mut = copy.deepcopy(cp); cp_mut["anchoredByRole"] = "seller"
         self.assertEqual(R.bundle_hash(cp_mut), h_cp, "anchoredByRole is excluded from the bundle hash")
         deref2 = {h_self: self_c, h_cp: cp_mut}; anchor2 = {waddr: self_c, caddr: cp_mut}
-        self.assertEqual(R.replay_receipt(deriv, lambda h: deref2.get(h), "did:demos:seller",
+        self.assertEqual(R.replay_legacy_receipt(deriv, lambda h: deref2.get(h), "did:demos:seller",
                                           self.FA - 1, self.FA + 1, None, self.pk, **_kw(anchor2)),
                          (False, None), "crypto full replay must refuse the anchoredByRole-flip attack")
-        a_ok, a_reasons = R.validate_resolution_context(deriv, lambda h: deref2.get(h), None, self.pk, **_kw(anchor2))
+        a_ok, a_reasons = R.validate_legacy_resolution_context(deriv, lambda h: deref2.get(h), None, self.pk, **_kw(anchor2))
         self.assertFalse(a_ok)
         self.assertTrue(any("anchoredByRole" in r for r in a_reasons), a_reasons)
 
@@ -475,7 +475,7 @@ class Round14VerificationCompletion(unittest.TestCase):
         # control: divergence answers differ for the two candidate winner copies (so the index MATTERS).
         self.assertFalse(R.divergence(copy_a, cp), "copy_A must NOT diverge from cp (honest)")
         self.assertTrue(R.divergence(copy_b, cp), "copy_B WOULD diverge from cp (the wrong-index outcome)")
-        ok, reasons = R.validate_resolution_context(deriv, lambda h: deref.get(h), None, self.pk, **_kw(anchor))
+        ok, reasons = R.validate_legacy_resolution_context(deriv, lambda h: deref.get(h), None, self.pk, **_kw(anchor))
         self.assertEqual((ok, reasons), (True, []),
                          "patched: winner governed by the exact anchor copy (copy_A) -> honest receipt validates")
 

@@ -31,6 +31,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
+| [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 21 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
@@ -76,6 +77,31 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `canonical-json-v0.1.json` — CORE §B.2 RFC 8785 JCS + CF-1
+
+21 candidate vectors pin exact canonical UTF-8 hex rather than only a generic
+accept/reject result. They cover the five fractional values that exposed the
+cross-implementation divergence in #270; RFC 8785's 1e-6 notation boundary,
+negative zero, minimum binary64 value, and round-to-even sample; the inclusive
+DACS magnitude limit; and fail-closed handling of over-magnitude, non-finite,
+BigInt, and invalid-Unicode inputs.
+
+The Unicode cases discriminate DACS's values-only CF-1 layer from RFC 8785
+member-name handling: an NFD string value becomes NFC, an NFD member name stays
+as received, NFC and NFD spellings remain distinct members, and member names
+sort by UTF-16 code units. Inputs that JSON cannot faithfully carry use the
+set's declared `binary64`, `bigint`, or `unicode-code-units` tagged constructor;
+an adapter that cannot construct one must report an explicit cross-run
+abstention, never a matching rejection.
+
+Regenerate, verify, and execute with:
+
+```sh
+python3 scripts/generate_canonical_json_vectors.py --write
+python3 scripts/generate_canonical_json_vectors.py --check
+python3 -m unittest tests.test_canonical_json_vectors -v
+```
 
 ### `ap2-handler-safety-v0.6.json` — §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7
 

@@ -67,7 +67,13 @@ The format used per release:
   version. Registry hashes use the repository's JCS/NFC implementation;
   invalid candidates are discarded, unresolved signed competitors prevent
   availability from selecting a branch, and equivalent receipt/reference
-  carriers do not create false forks. Registers
+  carriers do not create false forks. Exact-head security hardening restricts
+  authenticated references to the two registered class-specific predicates,
+  binds the registry-index v1 shape/kind/revision, requires every accepted
+  latest head to descend from the persisted descriptor pair, and discards
+  invalid same-key roots before fork counting. Canonicalization failures in
+  receipt tuples and resolved definitions now return fail-closed dispositions
+  instead of escaping the reference evaluator. Registers
   `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,
   indeterminate, and boundary vectors for both algorithms. Malformed receipt
   transaction-reference shapes are discarded, while authenticated definition

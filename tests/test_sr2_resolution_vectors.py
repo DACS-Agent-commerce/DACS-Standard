@@ -144,6 +144,44 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             "fail",
         )
 
+    def test_reference_surface_authority_is_closed_and_class_specific(self):
+        expected = {
+            "finalized-bundle-reference-dereferences": "pass",
+            "authenticated-registry-index-reference-dereferences": "pass",
+            "unsupported-authenticated-reference-surface-is-discarded": "indeterminate",
+            "finalized-bundle-reference-requires-class-checks": "indeterminate",
+            "registry-reference-requires-class-checks": "indeterminate",
+        }
+        for name, verdict in expected.items():
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate_vector(self.vectors[name]), verdict)
+
+    def test_persisted_branch_snapshot_shape_and_root_classification(self):
+        expected = {
+            "persisted-branch-must-be-ancestor-of-latest": "indeterminate",
+            "snapshot-version-is-bound": "fail",
+            "snapshot-kind-is-bound": "fail",
+            "snapshot-revision-is-bound-to-sequence": "fail",
+            "snapshot-entry-schema-is-validated": "fail",
+            "invalid-same-key-root-cannot-suppress-valid-root": "pass",
+        }
+        for name, verdict in expected.items():
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate_vector(self.vectors[name]), verdict)
+
+    def test_canonicalization_failures_never_escape_the_evaluator(self):
+        expected = {
+            "fractional-unknown-in-transaction-ref-is-canonical": "pass",
+            "unsafe-number-in-transaction-ref-is-discarded": "indeterminate",
+            "fractional-unknown-in-definition-is-canonical": "pass",
+            "unsafe-integer-in-definition-is-rejected": "fail",
+            "fractional-unknown-member-is-canonical": "pass",
+            "unsafe-integer-in-unknown-member-is-rejected": "fail",
+        }
+        for name, verdict in expected.items():
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate_vector(self.vectors[name]), verdict)
+
     def test_jcs_nfc_known_answers_are_independent_of_generator_metadata(self):
         self.assertEqual(
             hash_hex({"z": 1, "a": "e\u0301"}),
@@ -162,6 +200,10 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         self.assertEqual(
             hash_hex({"safe": 0.5}),
             "3fe4ea34236b064b37a43082de46db8c7ccb0076b96916a74b0dc6cc48320506",
+        )
+        self.assertEqual(
+            hash_hex({"unsafe": 1.5}),
+            "3390e768e77aa39ea7a95540e416758b209f6b61f057257be66b9c073296533d",
         )
 
 

@@ -286,6 +286,23 @@ type RegistryBootstrapSignature = {
   value: string                         // SIG-6 unpadded Base64URL
 }
 
+type RegistryIndexEntry = {
+  id: string                            // non-empty identity within this registry kind
+  version: string                       // non-empty exact definition version
+  anchor: {
+    kind: "storage-program" | "ipfs" | "https"
+    locator: string                     // non-empty native locator
+  }
+  contentHash: string                   // 64 lower-case hex
+}
+
+type RegistryIndexSnapshot = {
+  registryIndexVersion: "1"
+  registryKind: "recipe" | "rail"
+  revision: number                      // positive JSON safe integer; equals descriptor.sequence
+  entries: RegistryIndexEntry[]         // no duplicate (id, version) pair
+}
+
 type RegistryBootstrapDescriptor = {
   registryBootstrapVersion: "1"
   registryKind: "recipe" | "rail"
@@ -340,7 +357,10 @@ sequence 1 against its release pin; enforce the signature fields allowed for
 the transition; verify the embedded receipt as `established` and `finalized`;
 require its substrate, logical address, native address, and content hash to
 equal the descriptor fields; independently verify its finality evidence; fetch
-the exact immutable index snapshot and hash-check its canonical bytes; and
+the exact immutable index snapshot and hash-check its canonical bytes; require
+the snapshot to be a `RegistryIndexSnapshot` v1 whose `registryKind` equals the
+descriptor, whose `revision` equals the descriptor `sequence`, and whose entry
+references satisfy the closed shape above; and
 persist the accepted descriptor plus index bytes for rollback detection and
 historical replay. The descriptor authority's valid signature over the exact
 embedded receipt is the artifact-specific delegation authorizing that
@@ -370,15 +390,21 @@ aliases and separate key-byte inputs are rejected.
 
 Two different valid successors of one predecessor are a fork. Under a key-only
 pin, two different valid sequence-1 descriptors are likewise a fork. A consumer
-MUST classify every predecessor-authorized signed candidate before advancing:
-invalid candidates are discarded; one valid candidate advances only when no
-competing candidate remains unresolved; an unavailable otherwise-valid
+MUST classify every release-pin-matching sequence-1 candidate and every
+predecessor-authorized successor before selecting or advancing: invalid
+candidates are discarded; one valid candidate is selected or advances only
+when no competing candidate remains unresolved; an unavailable otherwise-valid
 candidate keeps the result `indeterminate`; and multiple valid candidates are a
-fork. Proof or snapshot availability MUST NOT select a signed branch. Latest
+fork. An invalid same-key root therefore cannot suppress a valid key-pinned
+root. Proof or snapshot availability MUST NOT select a signed branch. Latest
 resolution becomes `indeterminate` on a fork and MUST NOT select by transport,
 time, or visibility; recovery requires a new out-of-band release pin.
-Latest-mode rollback to a lower accepted sequence is rejected. Historical
-replay uses the session's recorded `(sequence, descriptorHash)` pair, selects
+Latest-mode rollback to a lower accepted sequence is rejected. When a consumer
+has persisted a latest `(sequence, descriptorHash)` pair, that exact descriptor
+MUST occur in the newly predecessor-validated chain and the selected head MUST
+descend from it; a longer sibling branch is `indeterminate`, never a valid
+upgrade. Historical replay uses the session's recorded
+`(sequence, descriptorHash)` pair, selects
 only that exact descriptor from the predecessor-validated accepted chain, then
 uses its retained immutable index snapshot and exact recipe/rail entry version.
 A sequence alone, a same-sequence descriptor with another hash, or a descriptor

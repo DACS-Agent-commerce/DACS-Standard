@@ -270,14 +270,26 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
     ])
 
     def authenticated_reference(case: dict[str, Any], surface: str) -> None:
-        case["carriers"] = [{
+        carrier = {
             "kind": "authenticated-reference",
             "surface": surface,
             "referenceAuthenticated": True,
             "nativeAddress": NATIVE,
             "contentHash": hash_hex(ARTIFACT),
             "artifactChecksVerified": True,
-        }]
+        }
+        if surface == "finalized-dacs5-bundle":
+            carrier["finalizedBundleChecksVerified"] = True
+        elif surface == "registry-bootstrap-index":
+            carrier["registrySnapshotChecksVerified"] = True
+        case["carriers"] = [carrier]
+
+    def remove_class_check(case: dict[str, Any], surface: str) -> None:
+        authenticated_reference(case, surface)
+        for field in (
+            "finalizedBundleChecksVerified", "registrySnapshotChecksVerified"
+        ):
+            case["carriers"][0].pop(field, None)
 
     vectors.extend([
         resolution_vector(
@@ -299,6 +311,40 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
             lambda c: (
                 authenticated_reference(c, "unsigned-cache"),
                 c["carriers"][0].update({"referenceAuthenticated": False}),
+            ),
+        ),
+        resolution_vector(
+            "unsupported-authenticated-reference-surface-is-discarded",
+            "indeterminate",
+            "generic authentication booleans cannot authorize an unregistered carrier class",
+            lambda c: authenticated_reference(c, "unsigned-cache"),
+        ),
+        resolution_vector(
+            "finalized-bundle-reference-requires-class-checks",
+            "indeterminate",
+            "a bundle-labelled reference requires the finalized DACS-5 bundle predicate",
+            lambda c: remove_class_check(c, "finalized-dacs5-bundle"),
+        ),
+        resolution_vector(
+            "registry-reference-requires-class-checks",
+            "indeterminate",
+            "a registry-labelled reference requires the verified bootstrap snapshot predicate",
+            lambda c: remove_class_check(c, "registry-bootstrap-index"),
+        ),
+        resolution_vector(
+            "fractional-unknown-in-transaction-ref-is-canonical",
+            "pass",
+            "a bounded fractional unknown member uses CORE canonical bytes in the SR2-5 tuple",
+            lambda c: receipt_carrier(c)["receipt"]["transactionRef"].update(
+                {"futureMetric": 1.5}
+            ),
+        ),
+        resolution_vector(
+            "unsafe-number-in-transaction-ref-is-discarded",
+            "indeterminate",
+            "an uncanonicalizable receipt tuple is discarded without escaping the evaluator",
+            lambda c: receipt_carrier(c)["receipt"]["transactionRef"].update(
+                {"futureUnsafe": 9007199254740992}
             ),
         ),
     ])
@@ -361,6 +407,7 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
             "kind": "authenticated-reference",
             "surface": "finalized-dacs5-bundle",
             "referenceAuthenticated": True,
+            "finalizedBundleChecksVerified": True,
             "nativeAddress": NATIVE,
             "contentHash": hash_hex(ARTIFACT),
             "artifactChecksVerified": True,
@@ -563,6 +610,14 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             resign_root(case)
         return mutate
 
+    def replace_root_snapshot(case: dict[str, Any], snapshot: Any) -> None:
+        root = case["descriptors"][0]
+        snapshot_hash = hash_hex(snapshot)
+        root["indexContentHash"] = snapshot_hash
+        root["indexAnchorReceipt"]["contentHash"] = snapshot_hash
+        case["indexStorage"][root["nativeIndexAddress"]] = snapshot
+        resign_root(case)
+
     vectors.extend([
         bootstrap_vector(
             "registry-kind-logical-address-pairing-mismatch", "fail",
@@ -603,6 +658,30 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "recursive-bootstrap-evidence", "fail",
             "bootstrap finality proof cannot depend on the registry being bootstrapped",
             lambda c: (c["descriptors"][0]["indexAnchorReceipt"]["evidence"].update({"kind": "registry-dependent"}), resign_root(c)),
+        ),
+        bootstrap_vector(
+            "snapshot-version-is-bound", "fail",
+            "matching bytes with an unsupported registry index version are not a v1 snapshot",
+            lambda c: replace_root_snapshot(
+                c, {**index_snapshot("recipe"), "registryIndexVersion": "2"}
+            ),
+        ),
+        bootstrap_vector(
+            "snapshot-kind-is-bound", "fail",
+            "a recipe descriptor cannot authenticate a rail-shaped registry index",
+            lambda c: replace_root_snapshot(c, index_snapshot("rail")),
+        ),
+        bootstrap_vector(
+            "snapshot-revision-is-bound-to-sequence", "fail",
+            "the authenticated snapshot revision must equal its descriptor sequence",
+            lambda c: replace_root_snapshot(c, index_snapshot("recipe", revision=2)),
+        ),
+        bootstrap_vector(
+            "snapshot-entry-schema-is-validated", "fail",
+            "matching bytes with a malformed entries collection are not registry authority",
+            lambda c: replace_root_snapshot(
+                c, {**index_snapshot("recipe"), "entries": {}}
+            ),
         ),
         bootstrap_vector(
             "same-key-content-successor", "pass",
@@ -673,13 +752,14 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         bootstrap_vector("non-cumulative-revocation-candidate-is-discarded", "pass", "a successor with non-cumulative revocations is discarded", lambda c: revoked_chain_case(c, "shrink")),
         bootstrap_vector("duplicate-revocation-candidate-is-discarded", "pass", "a successor with duplicate revocations is discarded", lambda c: revoked_chain_case(c, "duplicate")),
         bootstrap_vector("revocation-set-order-is-canonical", "pass", "a successor with non-canonical revocation order is discarded", lambda c: revoked_chain_case(c, "reorder")),
-        bootstrap_vector("active-authority-revocation-candidate-is-discarded", "pass", "an invalid candidate that revokes its active authority is discarded", lambda c: revoked_chain_case(c, "revoked-predecessor")),
+        bootstrap_vector("active-key-revoking-candidate-is-discarded", "pass", "an invalid candidate that revokes its active authority is discarded", lambda c: revoked_chain_case(c, "revoked-predecessor")),
     ])
 
     def successor_fork(case: dict[str, Any]) -> None:
         root = case["descriptors"][0]
         first = add_successor(case, revision=2)
-        other_snapshot = index_snapshot("recipe", revision=22)
+        other_snapshot = index_snapshot("recipe", revision=2)
+        other_snapshot["branch"] = "other"
         other = make_descriptor(
             kind="recipe", sequence=2, snapshot=other_snapshot,
             native="demos:storage:recipe-index-22", authority_seed=OLD_SEED,
@@ -692,7 +772,8 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
 
     def root_fork(case: dict[str, Any]) -> None:
         case["trustPin"] = {"authorityKeyId": OLD_KEY}
-        snapshot = index_snapshot("recipe", revision=99)
+        snapshot = index_snapshot("recipe", revision=1)
+        snapshot["branch"] = "other"
         other = make_descriptor(
             kind="recipe", sequence=1, snapshot=snapshot,
             native="demos:storage:recipe-index-99", authority_seed=OLD_SEED,
@@ -701,6 +782,19 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         case["descriptors"].append(other)
         case["verifiedEvidenceValues"].append("evidence-recipe-index-99")
         case["indexStorage"]["demos:storage:recipe-index-99"] = snapshot
+
+    def valid_and_invalid_same_key_roots(case: dict[str, Any]) -> None:
+        case["trustPin"] = {"authorityKeyId": OLD_KEY}
+        snapshot = index_snapshot("recipe")
+        invalid = make_descriptor(
+            kind="recipe", sequence=1, snapshot=snapshot,
+            native="demos:storage:recipe-index-invalid", authority_seed=OLD_SEED,
+            evidence="evidence-recipe-index-invalid",
+        )
+        invalid["authorizationSignature"]["value"] = "AA"
+        case["descriptors"].append(invalid)
+        case["verifiedEvidenceValues"].append("evidence-recipe-index-invalid")
+        case["indexStorage"]["demos:storage:recipe-index-invalid"] = snapshot
 
     def valid_and_unavailable_successor(case: dict[str, Any]) -> None:
         successor_fork(case)
@@ -743,6 +837,41 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "targetDescriptorHash": descriptor_hash(unrelated),
         })
 
+    def persisted_sibling_branch(case: dict[str, Any]) -> None:
+        root = case["descriptors"][0]
+        persisted = add_successor(case, revision=2)
+        case["storedLatest"] = {
+            "sequence": 2,
+            "descriptorHash": descriptor_hash(persisted),
+        }
+        case["descriptors"] = [root]
+
+        sibling_snapshot = index_snapshot("recipe", revision=2)
+        sibling_snapshot["branch"] = "sibling"
+        sibling = make_descriptor(
+            kind="recipe", sequence=2, snapshot=sibling_snapshot,
+            native="demos:storage:recipe-index-sibling-2",
+            authority_seed=OLD_SEED, evidence="evidence-recipe-index-sibling-2",
+            predecessor=root,
+        )
+        head_snapshot = index_snapshot("recipe", revision=3)
+        head_snapshot["branch"] = "sibling"
+        head = make_descriptor(
+            kind="recipe", sequence=3, snapshot=head_snapshot,
+            native="demos:storage:recipe-index-sibling-3",
+            authority_seed=OLD_SEED, evidence="evidence-recipe-index-sibling-3",
+            predecessor=sibling,
+        )
+        case["descriptors"].extend([sibling, head])
+        case["verifiedEvidenceValues"].extend([
+            "evidence-recipe-index-sibling-2",
+            "evidence-recipe-index-sibling-3",
+        ])
+        case["indexStorage"].update({
+            sibling["nativeIndexAddress"]: sibling_snapshot,
+            head["nativeIndexAddress"]: head_snapshot,
+        })
+
     vectors.extend([
         bootstrap_vector("two-valid-successors-are-a-fork", "indeterminate", "transport order cannot choose a valid successor fork", successor_fork),
         bootstrap_vector(
@@ -757,9 +886,19 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         ),
         bootstrap_vector("key-only-sequence-one-fork", "indeterminate", "a key-only first-contact pin cannot choose between two valid roots", root_fork),
         bootstrap_vector(
+            "invalid-same-key-root-cannot-suppress-valid-root", "pass",
+            "invalid roots are discarded before key-pinned first-contact fork counting",
+            valid_and_invalid_same_key_roots,
+        ),
+        bootstrap_vector(
             "latest-mode-rollback-is-rejected", "fail",
             "a lower sequence than persisted latest state is rollback",
             lambda c: c.update({"storedLatest": {"sequence": 2, "descriptorHash": "cd" * 32}}),
+        ),
+        bootstrap_vector(
+            "persisted-branch-must-be-ancestor-of-latest", "indeterminate",
+            "a longer sibling branch cannot replace the consumer's persisted branch",
+            persisted_sibling_branch,
         ),
         bootstrap_vector(
             "historical-replay-uses-recorded-sequence", "pass",
@@ -783,6 +922,17 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         successor["nativeIndexAddress"] = case["descriptors"][0]["nativeIndexAddress"]
         successor["indexAnchorReceipt"]["nativeAddress"] = successor["nativeIndexAddress"]
         sign_descriptor(successor, OLD_SEED)
+
+    def replace_definition(case: dict[str, Any], definition: dict[str, Any]) -> None:
+        root = case["descriptors"][0]
+        snapshot = case["indexStorage"][root["nativeIndexAddress"]]
+        entry = snapshot["entries"][0]
+        locator = entry["anchor"]["locator"]
+        case["definitionStorage"][locator] = definition
+        entry["contentHash"] = hash_hex(definition)
+        root["indexContentHash"] = hash_hex(snapshot)
+        root["indexAnchorReceipt"]["contentHash"] = root["indexContentHash"]
+        resign_root(case)
 
     vectors.extend([
         bootstrap_vector(
@@ -818,6 +968,15 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             definition=True,
         ),
         bootstrap_vector(
+            "fractional-unknown-in-definition-is-canonical", "pass",
+            "bounded fractional unknown members participate in definition content hashing",
+            lambda c: replace_definition(c, {
+                "definitionVersion": "1", "kind": "recipe", "id": "sample",
+                "version": "1", "futureMetric": 1.5,
+            }),
+            definition=True,
+        ),
+        bootstrap_vector(
             "definition-bytes-unavailable", "indeterminate",
             "unavailable referenced definition bytes remain indeterminate",
             lambda c: c.update({"definitionStorage": {}}),
@@ -844,6 +1003,10 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         case["descriptors"][0]["futurePolicyHint"] = {"label": "e\u0301"}
         resign_root(case)
 
+    def signed_fractional_unknown(case: dict[str, Any]) -> None:
+        case["descriptors"][0]["futureMetric"] = 1.5
+        resign_root(case)
+
     vectors.extend([
         bootstrap_vector(
             "signed-unknown-member-is-preserved", "pass",
@@ -861,9 +1024,9 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             lambda c: c["descriptors"][0].update({"futureUnsafe": 9007199254740992}),
         ),
         bootstrap_vector(
-            "float-in-unknown-member-is-rejected", "fail",
-            "descriptor hashing rejects unsupported floating-point values fail closed",
-            lambda c: c["descriptors"][0].update({"futureUnsafe": 1.5}),
+            "fractional-unknown-member-is-canonical", "pass",
+            "bounded fractional unknown members participate in descriptor hashing",
+            signed_fractional_unknown,
         ),
         bootstrap_vector(
             "unknown-member-mutation-without-resigning", "fail",

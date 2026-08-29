@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Reference predicates for CORE SR2-10..SR2-13 and registry bootstrap v1.
 
-The receipt-evidence booleans in these candidate fixtures are results supplied
-by a substrate-specific proof verifier. They are never treated as proof bytes.
+The receipt-evidence and named class-specific check booleans in these candidate
+fixtures are results supplied by the corresponding proof verifier. They are
+never treated as proof bytes or accepted for an unregistered carrier class.
 Registry-bootstrap signatures are genuine Ed25519 signatures over the exact
 registered DACS domain.
 """
@@ -28,6 +29,10 @@ PAIRING = {
     "rail": "dacs4:registry:v0.1",
 }
 SIGNATURE_FIELDS = {"authorizationSignature", "authorityAcceptanceSignature"}
+REFERENCE_CLASS_CHECKS = {
+    "finalized-dacs5-bundle": "finalizedBundleChecksVerified",
+    "registry-bootstrap-index": "registrySnapshotChecksVerified",
+}
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -128,6 +133,9 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
             continue
         if kind == "authenticated-reference":
             if carrier.get("referenceAuthenticated") is not True:
+                continue
+            class_check = REFERENCE_CLASS_CHECKS.get(carrier.get("surface"))
+            if class_check is None or carrier.get(class_check) is not True:
                 continue
             native = carrier.get("nativeAddress")
             content = case.get("storage", {}).get(native)
@@ -270,9 +278,67 @@ def _verify_snapshot(descriptor: dict[str, Any], case: dict[str, Any]) -> str:
     if evidence not in case.get("verifiedEvidenceValues", []):
         return "indeterminate"
     snapshot = case.get("indexStorage", {}).get(descriptor.get("nativeIndexAddress"))
-    if snapshot is None or hash_hex(snapshot) != descriptor.get("indexContentHash"):
+    if snapshot is None:
         return "indeterminate"
+    try:
+        if hash_hex(snapshot) != descriptor.get("indexContentHash"):
+            return "indeterminate"
+    except (TypeError, ValueError, UnicodeError):
+        return "fail"
+    if not _valid_index_snapshot(snapshot, descriptor):
+        return "fail"
     return "pass"
+
+
+def _valid_index_snapshot(snapshot: Any, descriptor: dict[str, Any]) -> bool:
+    """Validate the closed v1 registry-index envelope and entry references."""
+    if not isinstance(snapshot, dict):
+        return False
+    required = {"registryIndexVersion", "registryKind", "revision", "entries"}
+    if not required.issubset(snapshot):
+        return False
+    if snapshot.get("registryIndexVersion") != "1":
+        return False
+    if snapshot.get("registryKind") != descriptor.get("registryKind"):
+        return False
+    revision = snapshot.get("revision")
+    if (
+        isinstance(revision, bool)
+        or not isinstance(revision, int)
+        or revision < 1
+        or revision > 9007199254740991
+        or revision != descriptor.get("sequence")
+    ):
+        return False
+    entries = snapshot.get("entries")
+    if not isinstance(entries, list):
+        return False
+    seen: set[tuple[str, str]] = set()
+    for entry in entries:
+        if not isinstance(entry, dict):
+            return False
+        if not {"id", "version", "anchor", "contentHash"}.issubset(entry):
+            return False
+        identifier = entry.get("id")
+        version = entry.get("version")
+        if not isinstance(identifier, str) or not identifier:
+            return False
+        if not isinstance(version, str) or not version:
+            return False
+        identity = (identifier, version)
+        if identity in seen:
+            return False
+        seen.add(identity)
+        anchor = entry.get("anchor")
+        if not isinstance(anchor, dict):
+            return False
+        if anchor.get("kind") not in {"storage-program", "ipfs", "https"}:
+            return False
+        if not isinstance(anchor.get("locator"), str) or not anchor["locator"]:
+            return False
+        if HEX64.fullmatch(str(entry.get("contentHash"))) is None:
+            return False
+    return True
 
 
 def _validate_root(descriptor: dict[str, Any], case: dict[str, Any]) -> str:
@@ -361,21 +427,32 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
     descriptors = case.get("descriptors")
     if not isinstance(descriptors, list) or not descriptors:
         return "indeterminate"
-    roots = [d for d in descriptors if isinstance(d, dict) and d.get("sequence") == 1]
     pin = case.get("trustPin", {})
+    if not isinstance(pin, dict) or not ({"descriptorHash", "authorityKeyId"} & set(pin)):
+        return "fail"
+    roots = [d for d in descriptors if isinstance(d, dict) and d.get("sequence") == 1]
     if "descriptorHash" in pin:
         roots = [d for d in roots if _try_descriptor_hash(d) == pin["descriptorHash"]]
     if "authorityKeyId" in pin:
         roots = [d for d in roots if d.get("authorityKeyId") == pin["authorityKeyId"]]
-    if len(roots) != 1:
-        return "indeterminate" if roots else "fail"
-    root = roots[0]
-    try:
-        status = _validate_root(root, case)
-    except (TypeError, ValueError, UnicodeError):
-        status = "fail"
-    if status != "pass":
-        return status
+    valid_roots: list[dict[str, Any]] = []
+    indeterminate_root_seen = False
+    for candidate in roots:
+        try:
+            status = _validate_root(candidate, case)
+        except (TypeError, ValueError, UnicodeError):
+            status = "fail"
+        if status == "pass":
+            valid_roots.append(candidate)
+        elif status == "indeterminate":
+            indeterminate_root_seen = True
+    if len(valid_roots) > 1:
+        return "indeterminate"
+    if valid_roots and indeterminate_root_seen:
+        return "indeterminate"
+    if not valid_roots:
+        return "indeterminate" if indeterminate_root_seen else "fail"
+    root = valid_roots[0]
     head = root
     accepted_chain = [root]
     while True:
@@ -412,9 +489,23 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
 
     stored = case.get("storedLatest")
     if isinstance(stored, dict) and case.get("mode", "latest") == "latest":
-        if head.get("sequence") < stored.get("sequence", 0):
+        stored_sequence = stored.get("sequence")
+        stored_hash = stored.get("descriptorHash")
+        if (
+            isinstance(stored_sequence, bool)
+            or not isinstance(stored_sequence, int)
+            or stored_sequence < 1
+            or HEX64.fullmatch(str(stored_hash)) is None
+        ):
             return "fail"
-        if head.get("sequence") == stored.get("sequence") and _try_descriptor_hash(head) != stored.get("descriptorHash"):
+        if head.get("sequence") < stored_sequence:
+            return "fail"
+        persisted = [
+            descriptor for descriptor in accepted_chain
+            if descriptor.get("sequence") == stored_sequence
+            and _try_descriptor_hash(descriptor) == stored_hash
+        ]
+        if len(persisted) != 1:
             return "indeterminate"
     if case.get("mode") == "historical":
         target_sequence = case.get("targetSequence")

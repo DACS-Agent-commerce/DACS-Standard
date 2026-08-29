@@ -240,9 +240,26 @@ def evaluate(case):
     if not verify_bundle_signatures(bundle):
         return "fail"
     delivery_steps = [step for step in pipeline if step.get("kind") in DELIVERY_KINDS]
-    expected = {(step.get("index"), step.get("kind")) for step in delivery_steps}
-    if len(expected) != len(delivery_steps):
+    pipeline_delivery_pairs = {
+        (step.get("index"), step.get("kind")) for step in delivery_steps
+    }
+    if len(pipeline_delivery_pairs) != len(delivery_steps):
         return "error"
+    summaries = bundle.get("phaseSummary")
+    if not isinstance(summaries, list):
+        return "error"
+    delivery_summaries = [s for s in summaries if s.get("kind") in DELIVERY_KINDS]
+    summary_pairs = {(s.get("index"), s.get("kind")) for s in delivery_summaries}
+    if (
+        len(summary_pairs) != len(delivery_summaries)
+        or not summary_pairs.issubset(pipeline_delivery_pairs)
+    ):
+        return "fail"
+    expected = (
+        pipeline_delivery_pairs
+        if bundle.get("outcome") == "completed"
+        else summary_pairs
+    )
     refs = bundle.get("settlementEvidence")
     if not isinstance(refs, list):
         return "error"
@@ -327,11 +344,6 @@ def evaluate(case):
 
     if set(mapped) != expected or len(mapped) != len(expected):
         return "fail"
-    summaries = bundle.get("phaseSummary")
-    if not isinstance(summaries, list):
-        return "error"
-    delivery_summaries = [s for s in summaries if s.get("kind") in DELIVERY_KINDS]
-    summary_pairs = {(s.get("index"), s.get("kind")) for s in delivery_summaries}
     if summary_pairs != expected or len(summary_pairs) != len(delivery_summaries):
         return "fail"
     for summary in delivery_summaries:

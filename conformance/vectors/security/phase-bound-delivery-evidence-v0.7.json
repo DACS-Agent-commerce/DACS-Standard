@@ -3,8 +3,8 @@
   "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-6; DACS-5 §10.4.3; CORE §B.1/§B.7",
   "decisionModel": "Current delivery evidence signs exact phase identity and artifact/credential closure; contradictions fail, malformed/unsupported input errors, and unavailable otherwise-valid private evidence remains indeterminate.",
   "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
-  "hash": "06e7174c303c5abf99d683af729a886493f5b78792e92e094ea0811ec863dfc0",
-  "count": 44,
+  "hash": "b81a295c20a6defb9bafae7bf3cd8d26cd725f3ae09e625d515685c92088e861",
+  "count": 45,
   "publicTestSeeds": {
     "orchestratorEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
     "sellerEd25519": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -6234,6 +6234,130 @@
       },
       "expected": "pass",
       "reason": "failure evidence does not require success-only deliverable closure"
+    },
+    {
+      "name": "failed-first-delivery-does-not-require-unexecuted-second",
+      "pipeline": [
+        {
+          "index": 1,
+          "kind": "deliver-storage-program"
+        },
+        {
+          "index": 2,
+          "kind": "deliver-storage-program"
+        }
+      ],
+      "evidenceRecords": [
+        {
+          "logicalAddress": "dacs4:delivery:01K2PDE0000000000000000000:1",
+          "artifact": {
+            "deliveryEvidenceVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "phaseIndex": 1,
+            "phase": "deliver-storage-program",
+            "outcome": "failure",
+            "observedAt": 1786000000001,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "value": "w2zm7crmf5u85N-81U-54N2wmqQMOG05Z9bt7L7HI7JnlF7gPv9W76hrToToffZH0pHJ_yUvVQKp62ugPjMJBw"
+            },
+            "reason": "seller could not publish the deliverable"
+          },
+          "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      ],
+      "artifactRecords": [],
+      "credentials": [],
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "01K2PDE0000000000000000000",
+        "outcome": "failed-counterparty",
+        "faultedParty": "seller",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "phase-bound-delivery",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:01K2PDE0000000000000000000"
+          },
+          "contentHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "5151515151515151515151515151515151515151515151515151515151515151",
+            "primaryClaim": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5252525252525252525252525252525252525252525252525252525252525252",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          },
+          {
+            "role": "orchestrator",
+            "bundleHash": "5353535353535353535353535353535353535353535353535353535353535353",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 1,
+            "kind": "deliver-storage-program",
+            "outcome": "fail",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:delivery:01K2PDE0000000000000000000:1"
+              },
+              "contentHash": "77aafd202883be4dd064ce7ddb92b49400f2f7a5e5c23fcf754ccf4f5099df2f",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+            },
+            "errorClass": "counterparty"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:delivery:01K2PDE0000000000000000000:1"
+            },
+            "contentHash": "77aafd202883be4dd064ce7ddb92b49400f2f7a5e5c23fcf754ccf4f5099df2f",
+            "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1786000010000,
+        "signatures": [
+          {
+            "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "algorithm": "ed25519",
+            "value": "OYVwZMDJWFg-MnhgaYaf8oUXm5Omr28DhFUcvVb9HdDZwUKhnOumgQyJq-9C2cEyXUxlYPngJmF0JUst6jdODg"
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "rFIHD8BlEnProHE8T5LycqVfXaB8qySn-cxJoqXkb1w2fzqduGhPZUVVZ46lPohg3Ofvxuge2Fbizj1tmh20DA"
+          },
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "l1clsEhzcMwfIgNJai2ZHs1__LFaxxPetz_H5xZRS6FaEBZLlXMMO6aET7xBGLQyff3KiKVxlSQus2QXaMD7CA"
+          }
+        ]
+      },
+      "executionAuthority": {
+        "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      "expected": "pass",
+      "reason": "PDE-8 and SEB derive executed delivery membership from the authenticated failed phaseSummary prefix"
     },
     {
       "name": "success-delivery-missing-closure",

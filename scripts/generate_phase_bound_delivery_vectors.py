@@ -245,6 +245,12 @@ def failed_storage_case() -> dict:
     return case
 
 
+def failed_storage_before_second_delivery_case() -> dict:
+    case = failed_storage_case()
+    case["pipeline"].append({"index": 2, "kind": "deliver-storage-program"})
+    return case
+
+
 def mixed_payment_delivery_case() -> dict:
     case = storage_case()
     index = 0
@@ -559,6 +565,7 @@ def build_vectors() -> list[dict]:
     vectors.append(make("entitlement-without-credential-needs-no-binding", "pass", "credentialDelivery is absent iff the entitlement has no credentialRef", lambda: credential_case(include_credential=False)))
 
     vectors.append(make("failure-delivery-omits-success-closure", "pass", "failure evidence does not require success-only deliverable closure", failed_storage_case))
+    vectors.append(make("failed-first-delivery-does-not-require-unexecuted-second", "pass", "PDE-8 and SEB derive executed delivery membership from the authenticated failed phaseSummary prefix", failed_storage_before_second_delivery_case))
 
     def success_without_closure(case: dict) -> None:
         artifact = case["evidenceRecords"][0]["artifact"]

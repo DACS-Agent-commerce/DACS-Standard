@@ -30,7 +30,7 @@ class AtomicWorkVectorTests(unittest.TestCase):
         errors, set_count, vector_count = validator.validate_all()
         self.assertEqual(errors, [])
         self.assertEqual(set_count, 6)
-        self.assertEqual(vector_count, 301)
+        self.assertEqual(vector_count, 302)
 
     def test_proof_byte_limit_uses_canonical_material_size(self):
         execution = next(
@@ -359,6 +359,14 @@ class AtomicWorkVectorTests(unittest.TestCase):
         self.assertEqual(ref.evaluate_vector(by_name["awb-purchase-evidence-required"])[0], "indeterminate")
         self.assertEqual(ref.evaluate_vector(by_name["awb-purchase-completion-mismatch"])[0], "indeterminate")
         self.assertEqual(ref.evaluate_vector(by_name["awb-self-consistent-forged-roster"])[0], "indeterminate")
+        self.assertEqual(ref.evaluate_vector(by_name["awb-audit-dependency-proof-missing"])[0], "indeterminate")
+        self.assertEqual(
+            by_name["awb-audit-dependency-proof-missing"]["input"]["sessionStateAfter"],
+            "audit-pending",
+        )
+        self.assertEqual(ref.evaluate_vector(by_name["awb-audit-premature-finalisation"])[0], "fail")
+        self.assertEqual(ref.evaluate_vector(by_name["awb-repair-never-replays-purchase"])[0], "fail")
+        self.assertIn("AWB-9", by_name["awb-repair-never-replays-purchase"]["ruleRefs"])
 
     def test_receipt_slot_transition_and_retry_intent_are_bound(self):
         execution = next(

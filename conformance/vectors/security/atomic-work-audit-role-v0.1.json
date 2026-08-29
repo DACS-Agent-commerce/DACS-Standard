@@ -23,8 +23,8 @@
     "orchestrator": "4444444444444444444444444444444444444444444444444444444444444444",
     "payer": "5555555555555555555555555555555555555555555555555555555555555555"
   },
-  "count": 15,
-  "hash": "35b18d01f022068bac39ea7f6953b52189e95e9f5682d44b93e856cce29f6d9f",
+  "count": 16,
+  "hash": "81828ff49579b890fe8bb106c8a84a65b2b8a827dfe070e767ad0004ca9bb4e0",
   "coverage": {
     "classification": "candidate-complete-applicable-polarity",
     "applicabilityProfile": "atomic-v0.1-explicit",
@@ -15110,10 +15110,1058 @@
     {
       "name": "awb-audit-dependency-proof-missing",
       "ruleRefs": [
-        "AWB-8",
+        "AWB-2",
         "AWB-10"
       ],
       "caseClass": "indeterminate",
+      "surface": "audit",
+      "input": {
+        "purchaseIntent": {
+          "workVersion": "1",
+          "executionProfile": "demos-bft-work/1",
+          "profile": "dacs-purchase-v1",
+          "gateMode": "co-final",
+          "networkId": "demos:testnet-atomic",
+          "railId": "demos-native:DEM",
+          "jobId": "01K1DPA0000000000000000000",
+          "phaseIndex": 2,
+          "expiresAt": 1800000060000,
+          "roleRoster": [
+            {
+              "role": "buyer",
+              "signer": "did:dacs:test:buyer"
+            },
+            {
+              "role": "seller",
+              "signer": "did:dacs:test:seller"
+            },
+            {
+              "role": "orchestrator",
+              "signer": "did:dacs:test:orchestrator"
+            },
+            {
+              "role": "payer",
+              "signer": "did:dacs:test:payer",
+              "nativeAccount": "dem-test-payer"
+            }
+          ],
+          "operations": [
+            {
+              "operationId": "buyer-vet",
+              "kind": "storage-program-put",
+              "critical": true,
+              "dependsOn": [],
+              "requiredRoles": [
+                "orchestrator"
+              ],
+              "payload": {
+                "artifact": {
+                  "recordVersion": "1",
+                  "jobId": "01K1DPA0000000000000000000",
+                  "evaluatedParty": "did:dacs:test:buyer",
+                  "bundleHash": "10a3a47ecd40d348b39a8124ddad7b38dd99cbaa0d6decdf502a1f3762fbe7bd",
+                  "requirementHash": "1b87483d2b04991c06cdd90df6a2b21b169ebbce75b951c6a47c89ea64521e93",
+                  "freshness": [],
+                  "supplementary": [],
+                  "dealSpecific": [],
+                  "overallDecision": "pass",
+                  "generatedAt": 1799999920000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:dacs:test:orchestrator",
+                    "value": "5WTehcJjDcOf6dGrLwJB5vnsnyVb353MEpKyAgNbED-knzAQXsYZN7o8NpXdSGOdTq-DBVwljElWJ30WjvCACA"
+                  }
+                },
+                "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer",
+                "writeCondition": {
+                  "kind": "create-only"
+                }
+              }
+            },
+            {
+              "operationId": "seller-vet",
+              "kind": "storage-program-put",
+              "critical": true,
+              "dependsOn": [],
+              "requiredRoles": [
+                "orchestrator"
+              ],
+              "payload": {
+                "artifact": {
+                  "recordVersion": "1",
+                  "jobId": "01K1DPA0000000000000000000",
+                  "evaluatedParty": "did:dacs:test:seller",
+                  "bundleHash": "74e98b203ac0da1af17efde9454ca1c0843a272d0ac7d66cc488a42b62a4195b",
+                  "requirementHash": "d7c88c6c8b78c9991a3a4befc5a29bf84e144dda095eec0b01b6032a8fe2c0e9",
+                  "freshness": [],
+                  "supplementary": [],
+                  "dealSpecific": [],
+                  "overallDecision": "pass",
+                  "generatedAt": 1799999920000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:dacs:test:orchestrator",
+                    "value": "65c29M1M9NLXts8pLeeIht_sfN7KDVMIJQ3fqgxl2hjXOMOwrec5M3x0_cvWRLupe_9Uq513d2nbFYsYqjthAQ"
+                  }
+                },
+                "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller",
+                "writeCondition": {
+                  "kind": "create-only"
+                }
+              }
+            },
+            {
+              "operationId": "agreement",
+              "kind": "assert-artifact",
+              "critical": true,
+              "dependsOn": [
+                "buyer-vet",
+                "seller-vet"
+              ],
+              "requiredRoles": [
+                "orchestrator"
+              ],
+              "payload": {
+                "artifact": {
+                  "agreementVersion": "1",
+                  "jobId": "01K1DPA0000000000000000000",
+                  "listingRef": {
+                    "listingId": "atomic-fixed-1",
+                    "version": 1,
+                    "contentHash": "dbcd61f9cd956e792eead9f3284ec035e024473b4bdd7562ccdaa8550fb66b6a"
+                  },
+                  "parties": [
+                    {
+                      "role": "buyer",
+                      "bundleHash": "10a3a47ecd40d348b39a8124ddad7b38dd99cbaa0d6decdf502a1f3762fbe7bd",
+                      "primaryClaim": "did:dacs:test:buyer",
+                      "vetRecordRef": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer"
+                        },
+                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "signer": "did:dacs:test:orchestrator"
+                      }
+                    },
+                    {
+                      "role": "seller",
+                      "bundleHash": "74e98b203ac0da1af17efde9454ca1c0843a272d0ac7d66cc488a42b62a4195b",
+                      "primaryClaim": "did:dacs:test:seller",
+                      "vetRecordRef": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller"
+                        },
+                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "signer": "did:dacs:test:orchestrator"
+                      }
+                    }
+                  ],
+                  "terms": {
+                    "price": {
+                      "amount": "10",
+                      "currency": "DEM"
+                    },
+                    "rail": {
+                      "railId": "demos-native:DEM"
+                    },
+                    "deliverable": {
+                      "deliverableType": "storage-program",
+                      "hash": "bdb4a3879d1c6839ededbae2396c0f70750cd4a95c7a85959b56ee9c885163be",
+                      "schemaUrl": "https://dacs.dev/result-v1.json"
+                    },
+                    "deadline": 1800000060000,
+                    "additionalTerms": {
+                      "atomicDelivery": {
+                        "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                        "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d"
+                      }
+                    }
+                  },
+                  "derivedFromPattern": "fixed-price",
+                  "generatedAt": 1799999900000,
+                  "signatures": [
+                    {
+                      "party": "did:dacs:test:buyer",
+                      "algorithm": "ed25519",
+                      "value": "wsT1OvGf_kjC6teUkrmPDdb6RSakwfnzc-t4TdsLWA9FEODeG6GwHCFlAPWUaoZW6MLAR1F1jwAftVdh0z2VBQ"
+                    },
+                    {
+                      "party": "did:dacs:test:seller",
+                      "algorithm": "ed25519",
+                      "value": "RGz7CUWWWw32w-Cw3Gk2rlTSpwXZT2NYH7j_9Qz1ck3QhIDsIfVC84m9PhLfyxrUqSXBip7WggX_gsQwm-lbDA"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "operationId": "commitment",
+              "kind": "storage-program-put",
+              "critical": true,
+              "dependsOn": [
+                "agreement"
+              ],
+              "requiredRoles": [
+                "orchestrator"
+              ],
+              "payload": {
+                "artifact": {
+                  "finalityCommitmentVersion": "1",
+                  "jobId": "01K1DPA0000000000000000000",
+                  "agreementHash": "f9efbea9476e73169c6872582f480ffdc8719bfa6cfc0dbe7188b944b43fe215",
+                  "listingRef": {
+                    "listingId": "atomic-fixed-1",
+                    "version": 1,
+                    "contentHash": "dbcd61f9cd956e792eead9f3284ec035e024473b4bdd7562ccdaa8550fb66b6a"
+                  },
+                  "parties": [
+                    "did:dacs:test:buyer",
+                    "did:dacs:test:seller"
+                  ],
+                  "pattern": "fixed-price",
+                  "createdAt": 1799999950000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "did:dacs:test:orchestrator",
+                    "value": "VKB4QwlAddc0-OlT8bjAH78kroC8Hmtu2vSYLaTHBa0jrkXbA-sHotE_MQBnxvIDxu84O4ZYArmgPcacMh-fCg"
+                  }
+                },
+                "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
+                "writeCondition": {
+                  "kind": "create-only"
+                }
+              }
+            },
+            {
+              "operationId": "payment-slot",
+              "kind": "payment-slot-cas",
+              "critical": true,
+              "dependsOn": [
+                "commitment"
+              ],
+              "requiredRoles": [
+                "payer"
+              ],
+              "payload": {
+                "slotKey": {
+                  "networkId": "demos:testnet-atomic",
+                  "railId": "demos-native:DEM",
+                  "jobId": "01K1DPA0000000000000000000",
+                  "phaseIndex": 2
+                },
+                "expected": {
+                  "state": "vacant",
+                  "generation": 0
+                },
+                "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78"
+              }
+            },
+            {
+              "operationId": "payment",
+              "kind": "native-dem-transfer",
+              "critical": true,
+              "dependsOn": [
+                "payment-slot"
+              ],
+              "requiredRoles": [
+                "payer"
+              ],
+              "payload": {
+                "from": "dem-test-payer",
+                "to": "dem-test-seller",
+                "asset": "DEM",
+                "amount": "10"
+              }
+            }
+          ]
+        },
+        "purchaseReceipt": {
+          "receiptVersion": "1",
+          "executionProfile": "demos-bft-work/1",
+          "profile": "dacs-purchase-v1",
+          "networkId": "demos:testnet-atomic",
+          "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+          "winningAttempt": {
+            "attemptId": "attempt-a",
+            "nativeTransactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-test-atomic-a"
+            }
+          },
+          "blockRef": {
+            "id": "block-atomic-901",
+            "height": "901",
+            "timestamp": 1800000030000
+          },
+          "outcome": "committed",
+          "operationResults": [
+            {
+              "operationId": "buyer-vet",
+              "operationIndex": 0,
+              "operationKind": "storage-program-put",
+              "inputHash": "93489903ba7b33ec0ef8ccf78f34b5be20657954accef21ec0cc8dd1b78d8c48",
+              "status": "committed",
+              "storageOutput": {
+                "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer",
+                "nativeAddress": "stor-6ff08de8534e412cf4eb728787bd5d4d2fc7b318",
+                "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                "writer": "native:fee-payer-77",
+                "nonce": "200"
+              },
+              "outputHash": "2ac9ec602ac5dd044b946194b772d8342749d80e39f1fa0cc806ef8378865531"
+            },
+            {
+              "operationId": "seller-vet",
+              "operationIndex": 1,
+              "operationKind": "storage-program-put",
+              "inputHash": "0ff89e8940017414df78d8074ab832ae5c23ce55bae27bc61f521617b929b5d1",
+              "status": "committed",
+              "storageOutput": {
+                "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller",
+                "nativeAddress": "stor-cdbf9556a1f3aa9af24c5b052f2b040b2f6b507c",
+                "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                "writer": "native:fee-payer-77",
+                "nonce": "201"
+              },
+              "outputHash": "4841d2f8ad59928262496347c824479ed4d63c8825aac02ac39532f8bd31a40c"
+            },
+            {
+              "operationId": "agreement",
+              "operationIndex": 2,
+              "operationKind": "assert-artifact",
+              "inputHash": "592dba6a93aa409d0d8e347613ebcc25d8877ef42fb1c9592cec3feaf97942b2",
+              "status": "committed",
+              "outputHash": "abcae3bc067fb01c00052f3007a78114ecba0967ec0cf280d68f4d3f0b61bdcc"
+            },
+            {
+              "operationId": "commitment",
+              "operationIndex": 3,
+              "operationKind": "storage-program-put",
+              "inputHash": "63a08a91d91228a5688d21c06da0e67597f81395a6dd6a622c50f23aaabc64f4",
+              "status": "committed",
+              "storageOutput": {
+                "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
+                "nativeAddress": "stor-a8f07d68e71de4710ded4a1184bc7246b397897b",
+                "contentHash": "876098adb9977047162fcc9d1dfd8bdb1ec9b2b8833e394e67ff0724e1d52418",
+                "writer": "native:fee-payer-77",
+                "nonce": "203"
+              },
+              "outputHash": "fcec0dd7f94b614e1016e8739739ce62651f06db905359a8978397d7ba3803fb"
+            },
+            {
+              "operationId": "payment-slot",
+              "operationIndex": 4,
+              "operationKind": "payment-slot-cas",
+              "inputHash": "e9caad89161bf5e7f00bdd7427165e8535c7985e6a16a507ba51e1339f9fba95",
+              "status": "committed",
+              "outputHash": "248bf77a99424ed2631faf3a2aa8a17de87c6ac856945ca5840df066dfc08c17"
+            },
+            {
+              "operationId": "payment",
+              "operationIndex": 5,
+              "operationKind": "native-dem-transfer",
+              "inputHash": "5b20397c764d2f14745d3ae418408c9f2ced981527cd16765457c7c523018b0d",
+              "status": "committed",
+              "outputHash": "5b20397c764d2f14745d3ae418408c9f2ced981527cd16765457c7c523018b0d"
+            }
+          ],
+          "operationReceiptRoot": "2b23de3ef6596a23446233e14ba6ab0a0d3049a3a7ad6fda994bb3a40ee05073",
+          "businessState": {
+            "preRoot": "ed9767c9769b94e485c51be3452823b6afcf29beb2243a717b86786319168833",
+            "postRoot": "e6c3b2bc3ac52579a71be6d92408244123cdd7e45d27255b305a7e67f8eaff4c",
+            "effectsRoot": "620ed56f742709f60ef417ab1b3c680ebd3dfe81d1156697ae4fc5c714afb3df",
+            "evidence": {
+              "kind": "test-business-state-witness",
+              "value": "eyJwb3N0U3RhdGUiOnsiYXJ0aWZhY3RzIjpbImJ1eWVyLXZldCIsInNlbGxlci12ZXQiLCJjb21taXRtZW50Il0sImJhbGFuY2VzIjp7InBheWVyIjoiOTAiLCJzZWxsZXIiOiIxMCJ9fSwicHJlU3RhdGUiOnsiYXJ0aWZhY3RzIjpbXSwiYmFsYW5jZXMiOnsicGF5ZXIiOiIxMDAiLCJzZWxsZXIiOiIwIn19LCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicHJvdGVjdGVkS2V5cyI6WyJiYWxhbmNlcyIsImFydGlmYWN0cyJdLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoidWVxM3NqLVMwOU5MMlpaQUhCUzB6TnpENjE2bm9xTkQxMlpYS2ZwVS1uaEwzY2NJQ0FCV1pNcmpLRDdrTWJwTGtXNUlrYTh6SGFBYkVGeDVOakdJQkEifSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSJ9"
+            }
+          },
+          "paymentSlot": {
+            "key": {
+              "networkId": "demos:testnet-atomic",
+              "railId": "demos-native:DEM",
+              "jobId": "01K1DPA0000000000000000000",
+              "phaseIndex": 2
+            },
+            "before": {
+              "state": "vacant",
+              "generation": 0
+            },
+            "after": {
+              "state": "settled",
+              "generation": 0,
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
+              "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299"
+            }
+          },
+          "envelopeEffects": {
+            "nonceConsumed": true,
+            "feeCharged": "1"
+          },
+          "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299",
+          "slotStateEvidence": {
+            "kind": "test-payment-slot-state",
+            "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiYzdKUG1QYWV5bTFPZGZNVUxfWVJvOW9ZcXU4X0JxTUhGMS01cEVyYkFRV1ZLQ1RycHdzZ0NBdlRqd21RLUk5QXFVREU3Y1M5RkdDSERXaFlGdENoQXcifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiJmZWExYjJkOGY4N2JkMDlhZjYzNGZiYjkyMWUyMDFlNTdiZDQzNjVkODlmZTc0M2VjYjhlNDJhNzM4NGZiOGY3In0sImJlZm9yZSI6eyJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InZhY2FudCJ9LCJrZXkiOnsiam9iSWQiOiIwMUsxRFBBMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm5ldHdvcmtJZCI6ImRlbW9zOnRlc3RuZXQtYXRvbWljIiwicGhhc2VJbmRleCI6MiwicmFpbElkIjoiZGVtb3MtbmF0aXZlOkRFTSJ9fSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSIsIndvcmtJZCI6ImZlYTFiMmQ4Zjg3YmQwOWFmNjM0ZmJiOTIxZTIwMWU1N2JkNDM2NWQ4OWZlNzQzZWNiOGU0MmE3Mzg0ZmI4ZjcifQ"
+          },
+          "finalityEvidence": {
+            "kind": "test-bft-checkpoint",
+            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJmNjAwYzk5YWI4ZGE0OWMzM2RhYWJlOGY3ZjliMjhjZjNiYTA2OGM1OTI3NzYwZmMxYWE1MWU4ZTQxM2RjMjk5Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6ImlJUXBzbEI5T2lpZjJCdEhNWTFkbWxITjhvaE5EWFFFeG1HY0FJU2t4VlRIZUh5SGxPSVNjQ09BRUVNWjRIbndnR1l0QVRCX1JwQmZWRmh2bDJlUEN3In0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+          }
+        },
+        "completionIntent": {
+          "workVersion": "1",
+          "executionProfile": "demos-bft-work/1",
+          "profile": "dacs-completion-v1",
+          "gateMode": "co-final",
+          "networkId": "demos:testnet-atomic",
+          "railId": "demos-native:DEM",
+          "jobId": "01K1DPA0000000000000000000",
+          "phaseIndex": 3,
+          "expiresAt": 1800003600000,
+          "roleRoster": [
+            {
+              "role": "buyer",
+              "signer": "did:dacs:test:buyer"
+            },
+            {
+              "role": "seller",
+              "signer": "did:dacs:test:seller"
+            },
+            {
+              "role": "orchestrator",
+              "signer": "did:dacs:test:orchestrator"
+            },
+            {
+              "role": "payer",
+              "signer": "did:dacs:test:payer",
+              "nativeAccount": "dem-test-payer"
+            }
+          ],
+          "operations": [
+            {
+              "operationId": "purchase-receipt",
+              "kind": "assert-work-receipt",
+              "critical": true,
+              "dependsOn": [],
+              "requiredRoles": [
+                "orchestrator"
+              ],
+              "payload": {
+                "receipt": {
+                  "receiptVersion": "1",
+                  "executionProfile": "demos-bft-work/1",
+                  "profile": "dacs-purchase-v1",
+                  "networkId": "demos:testnet-atomic",
+                  "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+                  "winningAttempt": {
+                    "attemptId": "attempt-a",
+                    "nativeTransactionRef": {
+                      "kind": "demos-transaction",
+                      "value": "tx-test-atomic-a"
+                    }
+                  },
+                  "blockRef": {
+                    "id": "block-atomic-901",
+                    "height": "901",
+                    "timestamp": 1800000030000
+                  },
+                  "outcome": "committed",
+                  "operationResults": [
+                    {
+                      "operationId": "buyer-vet",
+                      "operationIndex": 0,
+                      "operationKind": "storage-program-put",
+                      "inputHash": "93489903ba7b33ec0ef8ccf78f34b5be20657954accef21ec0cc8dd1b78d8c48",
+                      "status": "committed",
+                      "storageOutput": {
+                        "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer",
+                        "nativeAddress": "stor-6ff08de8534e412cf4eb728787bd5d4d2fc7b318",
+                        "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                        "writer": "native:fee-payer-77",
+                        "nonce": "200"
+                      },
+                      "outputHash": "2ac9ec602ac5dd044b946194b772d8342749d80e39f1fa0cc806ef8378865531"
+                    },
+                    {
+                      "operationId": "seller-vet",
+                      "operationIndex": 1,
+                      "operationKind": "storage-program-put",
+                      "inputHash": "0ff89e8940017414df78d8074ab832ae5c23ce55bae27bc61f521617b929b5d1",
+                      "status": "committed",
+                      "storageOutput": {
+                        "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller",
+                        "nativeAddress": "stor-cdbf9556a1f3aa9af24c5b052f2b040b2f6b507c",
+                        "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                        "writer": "native:fee-payer-77",
+                        "nonce": "201"
+                      },
+                      "outputHash": "4841d2f8ad59928262496347c824479ed4d63c8825aac02ac39532f8bd31a40c"
+                    },
+                    {
+                      "operationId": "agreement",
+                      "operationIndex": 2,
+                      "operationKind": "assert-artifact",
+                      "inputHash": "592dba6a93aa409d0d8e347613ebcc25d8877ef42fb1c9592cec3feaf97942b2",
+                      "status": "committed",
+                      "outputHash": "abcae3bc067fb01c00052f3007a78114ecba0967ec0cf280d68f4d3f0b61bdcc"
+                    },
+                    {
+                      "operationId": "commitment",
+                      "operationIndex": 3,
+                      "operationKind": "storage-program-put",
+                      "inputHash": "63a08a91d91228a5688d21c06da0e67597f81395a6dd6a622c50f23aaabc64f4",
+                      "status": "committed",
+                      "storageOutput": {
+                        "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
+                        "nativeAddress": "stor-a8f07d68e71de4710ded4a1184bc7246b397897b",
+                        "contentHash": "876098adb9977047162fcc9d1dfd8bdb1ec9b2b8833e394e67ff0724e1d52418",
+                        "writer": "native:fee-payer-77",
+                        "nonce": "203"
+                      },
+                      "outputHash": "fcec0dd7f94b614e1016e8739739ce62651f06db905359a8978397d7ba3803fb"
+                    },
+                    {
+                      "operationId": "payment-slot",
+                      "operationIndex": 4,
+                      "operationKind": "payment-slot-cas",
+                      "inputHash": "e9caad89161bf5e7f00bdd7427165e8535c7985e6a16a507ba51e1339f9fba95",
+                      "status": "committed",
+                      "outputHash": "248bf77a99424ed2631faf3a2aa8a17de87c6ac856945ca5840df066dfc08c17"
+                    },
+                    {
+                      "operationId": "payment",
+                      "operationIndex": 5,
+                      "operationKind": "native-dem-transfer",
+                      "inputHash": "5b20397c764d2f14745d3ae418408c9f2ced981527cd16765457c7c523018b0d",
+                      "status": "committed",
+                      "outputHash": "5b20397c764d2f14745d3ae418408c9f2ced981527cd16765457c7c523018b0d"
+                    }
+                  ],
+                  "operationReceiptRoot": "2b23de3ef6596a23446233e14ba6ab0a0d3049a3a7ad6fda994bb3a40ee05073",
+                  "businessState": {
+                    "preRoot": "ed9767c9769b94e485c51be3452823b6afcf29beb2243a717b86786319168833",
+                    "postRoot": "e6c3b2bc3ac52579a71be6d92408244123cdd7e45d27255b305a7e67f8eaff4c",
+                    "effectsRoot": "620ed56f742709f60ef417ab1b3c680ebd3dfe81d1156697ae4fc5c714afb3df",
+                    "evidence": {
+                      "kind": "test-business-state-witness",
+                      "value": "eyJwb3N0U3RhdGUiOnsiYXJ0aWZhY3RzIjpbImJ1eWVyLXZldCIsInNlbGxlci12ZXQiLCJjb21taXRtZW50Il0sImJhbGFuY2VzIjp7InBheWVyIjoiOTAiLCJzZWxsZXIiOiIxMCJ9fSwicHJlU3RhdGUiOnsiYXJ0aWZhY3RzIjpbXSwiYmFsYW5jZXMiOnsicGF5ZXIiOiIxMDAiLCJzZWxsZXIiOiIwIn19LCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicHJvdGVjdGVkS2V5cyI6WyJiYWxhbmNlcyIsImFydGlmYWN0cyJdLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoidWVxM3NqLVMwOU5MMlpaQUhCUzB6TnpENjE2bm9xTkQxMlpYS2ZwVS1uaEwzY2NJQ0FCV1pNcmpLRDdrTWJwTGtXNUlrYTh6SGFBYkVGeDVOakdJQkEifSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSJ9"
+                    }
+                  },
+                  "paymentSlot": {
+                    "key": {
+                      "networkId": "demos:testnet-atomic",
+                      "railId": "demos-native:DEM",
+                      "jobId": "01K1DPA0000000000000000000",
+                      "phaseIndex": 2
+                    },
+                    "before": {
+                      "state": "vacant",
+                      "generation": 0
+                    },
+                    "after": {
+                      "state": "settled",
+                      "generation": 0,
+                      "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+                      "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
+                      "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299"
+                    }
+                  },
+                  "envelopeEffects": {
+                    "nonceConsumed": true,
+                    "feeCharged": "1"
+                  },
+                  "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299",
+                  "slotStateEvidence": {
+                    "kind": "test-payment-slot-state",
+                    "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiYzdKUG1QYWV5bTFPZGZNVUxfWVJvOW9ZcXU4X0JxTUhGMS01cEVyYkFRV1ZLQ1RycHdzZ0NBdlRqd21RLUk5QXFVREU3Y1M5RkdDSERXaFlGdENoQXcifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiJmZWExYjJkOGY4N2JkMDlhZjYzNGZiYjkyMWUyMDFlNTdiZDQzNjVkODlmZTc0M2VjYjhlNDJhNzM4NGZiOGY3In0sImJlZm9yZSI6eyJnZW5lcmF0aW9uIjowLCJzdGF0ZSI6InZhY2FudCJ9LCJrZXkiOnsiam9iSWQiOiIwMUsxRFBBMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm5ldHdvcmtJZCI6ImRlbW9zOnRlc3RuZXQtYXRvbWljIiwicGhhc2VJbmRleCI6MiwicmFpbElkIjoiZGVtb3MtbmF0aXZlOkRFTSJ9fSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSIsIndvcmtJZCI6ImZlYTFiMmQ4Zjg3YmQwOWFmNjM0ZmJiOTIxZTIwMWU1N2JkNDM2NWQ4OWZlNzQzZWNiOGU0MmE3Mzg0ZmI4ZjcifQ"
+                  },
+                  "finalityEvidence": {
+                    "kind": "test-bft-checkpoint",
+                    "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJmNjAwYzk5YWI4ZGE0OWMzM2RhYWJlOGY3ZjliMjhjZjNiYTA2OGM1OTI3NzYwZmMxYWE1MWU4ZTQxM2RjMjk5Iiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6ImlJUXBzbEI5T2lpZjJCdEhNWTFkbWxITjhvaE5EWFFFeG1HY0FJU2t4VlRIZUh5SGxPSVNjQ09BRUVNWjRIbndnR1l0QVRCX1JwQmZWRmh2bDJlUEN3In0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+                  }
+                }
+              }
+            },
+            {
+              "operationId": "delivery",
+              "kind": "storage-program-put",
+              "critical": true,
+              "dependsOn": [
+                "purchase-receipt"
+              ],
+              "requiredRoles": [
+                "seller"
+              ],
+              "payload": {
+                "bytes": "ZGV0ZXJtaW5pc3RpYy1yZXN1bHQtdjE",
+                "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d",
+                "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                "writeCondition": {
+                  "kind": "create-only"
+                }
+              }
+            }
+          ]
+        },
+        "completionReceipt": {
+          "receiptVersion": "1",
+          "executionProfile": "demos-bft-work/1",
+          "profile": "dacs-completion-v1",
+          "networkId": "demos:testnet-atomic",
+          "workId": "2cc1e1defaaca915e8a6651066b11d0fa3f3d3e0eb9c45a911eb660fad7dc915",
+          "winningAttempt": {
+            "attemptId": "attempt-a",
+            "nativeTransactionRef": {
+              "kind": "demos-transaction",
+              "value": "tx-test-atomic-a"
+            }
+          },
+          "blockRef": {
+            "id": "block-atomic-901",
+            "height": "901",
+            "timestamp": 1800000030000
+          },
+          "outcome": "committed",
+          "operationResults": [
+            {
+              "operationId": "purchase-receipt",
+              "operationIndex": 0,
+              "operationKind": "assert-work-receipt",
+              "inputHash": "1de6334da63ad035c5b7f5541249892d30c4add8c56fd5957c5c1f39fcd15dec",
+              "status": "committed",
+              "outputHash": "5c57985e514a19009a48e15cd8742f24a92194a588e8361e5d13c48f01002f99"
+            },
+            {
+              "operationId": "delivery",
+              "operationIndex": 1,
+              "operationKind": "storage-program-put",
+              "inputHash": "174849da0feacb68280cf19289a33484331d6afdcb83204637ad42542ec1592a",
+              "status": "committed",
+              "storageOutput": {
+                "logicalAddress": "dacs4:deliverable:01K1DPA0000000000000000000",
+                "nativeAddress": "stor-9ebc7d3591c355e735f5e3ebf4f0114beb0dd84d",
+                "contentHash": "1e9db61580fb728d35a911a826ac37dd94799c9125d9065b6c89f5225638818d",
+                "writer": "native:fee-payer-77",
+                "nonce": "201"
+              },
+              "outputHash": "65deb34b87eebae570d225290f018add533eadb89a3bcbb79967d020ee6d733f"
+            }
+          ],
+          "operationReceiptRoot": "73f4a3abcbfca46dd06d6690ca70e3892e1651e884d2bd174dd300003cd8053c",
+          "businessState": {
+            "preRoot": "ed9767c9769b94e485c51be3452823b6afcf29beb2243a717b86786319168833",
+            "postRoot": "083338c49be233918a4b8393598635ec89aa9874121058734c7b998aa9e55410",
+            "effectsRoot": "0ad8bedaf6e0765a185c7225c60860479b5c61077a480b19b3090824f578c305",
+            "evidence": {
+              "kind": "test-business-state-witness",
+              "value": "eyJwb3N0U3RhdGUiOnsiYXJ0aWZhY3RzIjpbImRlbGl2ZXJ5Il0sImJhbGFuY2VzIjp7InBheWVyIjoiMTAwIiwic2VsbGVyIjoiMCJ9fSwicHJlU3RhdGUiOnsiYXJ0aWZhY3RzIjpbXSwiYmFsYW5jZXMiOnsicGF5ZXIiOiIxMDAiLCJzZWxsZXIiOiIwIn19LCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicHJvdGVjdGVkS2V5cyI6WyJiYWxhbmNlcyIsImFydGlmYWN0cyJdLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiQ1V2djB2andNLUp1dVY5MlVoWnBWZ3BMeEJ5UlBqN1dTWWZpMjcxN1FrcmtQcm54YnNpSW1qSFRQWndhTGJ6MFo0Q2JRSWUtdDg5d2d5NzJiRUJVQncifSwidmFsaWRhdG9yU2V0SWQiOiJ0ZXN0LXZhbGlkYXRvci1zZXQtMSJ9"
+            }
+          },
+          "paymentSlot": {
+            "key": {
+              "networkId": "demos:testnet-atomic",
+              "railId": "demos-native:DEM",
+              "jobId": "01K1DPA0000000000000000000",
+              "phaseIndex": 2
+            },
+            "before": {
+              "state": "settled",
+              "generation": 0,
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
+              "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299"
+            },
+            "after": {
+              "state": "settled",
+              "generation": 0,
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "conflictDigest": "e53e01a3cce15e0d451be88fd1660326871a7ce02bd8ebd9f1b7a048aee18a78",
+              "receiptCommitment": "f600c99ab8da49c33daabe8f7f9b28cf3ba068c5927760fc1aa51e8e413dc299"
+            }
+          },
+          "envelopeEffects": {
+            "nonceConsumed": true,
+            "feeCharged": "1"
+          },
+          "receiptCommitment": "fd58b23c60767a4f3fde31e42dd3ed108aa0b5228dad98ba1d834655943de0a0",
+          "slotStateEvidence": {
+            "kind": "test-payment-slot-state",
+            "value": "eyJuZXR3b3JrSWQiOiJkZW1vczp0ZXN0bmV0LWF0b21pYyIsInByb29mUHJvZmlsZSI6ImRlbW9zLWJmdC1wcm9vZi90ZXN0LTEiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiXzdSWW1lX3BJQTJKNVVQY20ybzVpNFhqNm5OYVBjd1pYOHhWeE5iSGRHNHJob1Qwbm5GWjBFb3VxMVUzUTNhWFdzcmtJZ0c0a1lIVUJJUVRIU2dzQ2cifSwic2xvdCI6eyJhZnRlciI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJyZWNlaXB0Q29tbWl0bWVudCI6ImY2MDBjOTlhYjhkYTQ5YzMzZGFhYmU4ZjdmOWIyOGNmM2JhMDY4YzU5Mjc3NjBmYzFhYTUxZThlNDEzZGMyOTkiLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiJmZWExYjJkOGY4N2JkMDlhZjYzNGZiYjkyMWUyMDFlNTdiZDQzNjVkODlmZTc0M2VjYjhlNDJhNzM4NGZiOGY3In0sImJlZm9yZSI6eyJjb25mbGljdERpZ2VzdCI6ImU1M2UwMWEzY2NlMTVlMGQ0NTFiZTg4ZmQxNjYwMzI2ODcxYTdjZTAyYmQ4ZWJkOWYxYjdhMDQ4YWVlMThhNzgiLCJnZW5lcmF0aW9uIjowLCJyZWNlaXB0Q29tbWl0bWVudCI6ImY2MDBjOTlhYjhkYTQ5YzMzZGFhYmU4ZjdmOWIyOGNmM2JhMDY4YzU5Mjc3NjBmYzFhYTUxZThlNDEzZGMyOTkiLCJzdGF0ZSI6InNldHRsZWQiLCJ3b3JrSWQiOiJmZWExYjJkOGY4N2JkMDlhZjYzNGZiYjkyMWUyMDFlNTdiZDQzNjVkODlmZTc0M2VjYjhlNDJhNzM4NGZiOGY3In0sImtleSI6eyJqb2JJZCI6IjAxSzFEUEEwMDAwMDAwMDAwMDAwMDAwMDAwIiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwaGFzZUluZGV4IjoyLCJyYWlsSWQiOiJkZW1vcy1uYXRpdmU6REVNIn19LCJ2YWxpZGF0b3JTZXRJZCI6InRlc3QtdmFsaWRhdG9yLXNldC0xIiwid29ya0lkIjoiMmNjMWUxZGVmYWFjYTkxNWU4YTY2NTEwNjZiMTFkMGZhM2YzZDNlMGViOWM0NWE5MTFlYjY2MGZhZDdkYzkxNSJ9"
+          },
+          "finalityEvidence": {
+            "kind": "test-bft-checkpoint",
+            "value": "eyJibG9ja0lkIjoiYmxvY2stYXRvbWljLTkwMSIsImtpbmQiOiJ0ZXN0LWJmdC1jaGVja3BvaW50IiwibmV0d29ya0lkIjoiZGVtb3M6dGVzdG5ldC1hdG9taWMiLCJwcm9vZlByb2ZpbGUiOiJkZW1vcy1iZnQtcHJvb2YvdGVzdC0xIiwicmVjZWlwdENvbW1pdG1lbnQiOiJmZDU4YjIzYzYwNzY3YTRmM2ZkZTMxZTQyZGQzZWQxMDhhYTBiNTIyOGRhZDk4YmExZDgzNDY1NTk0M2RlMGEwIiwic2lnbmF0dXJlIjp7ImFsZ29yaXRobSI6ImVkMjU1MTkiLCJzaWduZXIiOiJkaWQ6ZGFjczp0ZXN0Om5ldHdvcmsiLCJ2YWx1ZSI6ImFGeW5NUjhlYWxfYnlGY0x3WFp4U050M0k1MloxaUFvWUtoYkMyVGZrX2luNnhFMThPTEpDYU0xVkpyR1RERVFqNkNGcWhaX1hBczF0TEJxY2QyWUF3In0sInZhbGlkYXRvclNldElkIjoidGVzdC12YWxpZGF0b3Itc2V0LTEifQ"
+          }
+        },
+        "dependencyProofs": [
+          {
+            "work": "purchase",
+            "operationIndex": 0,
+            "operationRef": {
+              "kind": "demos-work-operation-v1",
+              "networkId": "demos:testnet-atomic",
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "operationIndex": 0,
+              "operationId": "buyer-vet",
+              "operationKind": "storage-program-put"
+            },
+            "receiptContentHash": "4c9406aaaa7fc6fe021ad0248da109e1c412b3781f3ac35b25cfd7418a36c9c2",
+            "leaf": {
+              "operationId": "buyer-vet",
+              "operationIndex": 0,
+              "operationKind": "storage-program-put",
+              "inputHash": "93489903ba7b33ec0ef8ccf78f34b5be20657954accef21ec0cc8dd1b78d8c48",
+              "status": "committed",
+              "storageOutput": {
+                "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Abuyer",
+                "nativeAddress": "stor-6ff08de8534e412cf4eb728787bd5d4d2fc7b318",
+                "contentHash": "3bee177666f687ead270ded099aa1201488cf47e1a12833a5879a31a347c8ce5",
+                "writer": "native:fee-payer-77",
+                "nonce": "200"
+              },
+              "outputHash": "2ac9ec602ac5dd044b946194b772d8342749d80e39f1fa0cc806ef8378865531"
+            },
+            "inclusionPath": [
+              {
+                "side": "right",
+                "hash": "87d56ae7d623d171b0cf440d0c37912273d560cd9fa525f2eb496d51d8144658"
+              },
+              {
+                "side": "right",
+                "hash": "bc9464a58d1c191aed033df9315a0b0d8d1718e26f41c3a1f852fbd1fa4f9404"
+              },
+              {
+                "side": "right",
+                "hash": "ed722d27f98890b319c0f49c04b5606a8df6ca1fffc36efe2e5239899ed45349"
+              }
+            ]
+          },
+          {
+            "work": "purchase",
+            "operationIndex": 1,
+            "operationRef": {
+              "kind": "demos-work-operation-v1",
+              "networkId": "demos:testnet-atomic",
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "operationIndex": 1,
+              "operationId": "seller-vet",
+              "operationKind": "storage-program-put"
+            },
+            "receiptContentHash": "4c9406aaaa7fc6fe021ad0248da109e1c412b3781f3ac35b25cfd7418a36c9c2",
+            "leaf": {
+              "operationId": "seller-vet",
+              "operationIndex": 1,
+              "operationKind": "storage-program-put",
+              "inputHash": "0ff89e8940017414df78d8074ab832ae5c23ce55bae27bc61f521617b929b5d1",
+              "status": "committed",
+              "storageOutput": {
+                "logicalAddress": "dacs2:composite:01K1DPA0000000000000000000:did%3Adacs%3Atest%3Aseller",
+                "nativeAddress": "stor-cdbf9556a1f3aa9af24c5b052f2b040b2f6b507c",
+                "contentHash": "be6919a71cc77bdd73d6b0e2b93b40e35b0c50c1d98620f7e78cd07e80c804a2",
+                "writer": "native:fee-payer-77",
+                "nonce": "201"
+              },
+              "outputHash": "4841d2f8ad59928262496347c824479ed4d63c8825aac02ac39532f8bd31a40c"
+            },
+            "inclusionPath": [
+              {
+                "side": "left",
+                "hash": "7968412d6b56b66eb49aecef63cc9c9d2dbf77babc7cae559427f8c47147923f"
+              },
+              {
+                "side": "right",
+                "hash": "bc9464a58d1c191aed033df9315a0b0d8d1718e26f41c3a1f852fbd1fa4f9404"
+              },
+              {
+                "side": "right",
+                "hash": "ed722d27f98890b319c0f49c04b5606a8df6ca1fffc36efe2e5239899ed45349"
+              }
+            ]
+          },
+          {
+            "work": "purchase",
+            "operationIndex": 2,
+            "operationRef": {
+              "kind": "demos-work-operation-v1",
+              "networkId": "demos:testnet-atomic",
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "operationIndex": 2,
+              "operationId": "agreement",
+              "operationKind": "assert-artifact"
+            },
+            "receiptContentHash": "4c9406aaaa7fc6fe021ad0248da109e1c412b3781f3ac35b25cfd7418a36c9c2",
+            "leaf": {
+              "operationId": "agreement",
+              "operationIndex": 2,
+              "operationKind": "assert-artifact",
+              "inputHash": "592dba6a93aa409d0d8e347613ebcc25d8877ef42fb1c9592cec3feaf97942b2",
+              "status": "committed",
+              "outputHash": "abcae3bc067fb01c00052f3007a78114ecba0967ec0cf280d68f4d3f0b61bdcc"
+            },
+            "inclusionPath": [
+              {
+                "side": "right",
+                "hash": "60b0151610ebb260195ac1ae39a8951271e906b0bca0c02e695dea7bf9fae84f"
+              },
+              {
+                "side": "left",
+                "hash": "29b0d3add677d298e9201c4d47144bf2139f2833709ab31c0fbf60172f312cb7"
+              },
+              {
+                "side": "right",
+                "hash": "ed722d27f98890b319c0f49c04b5606a8df6ca1fffc36efe2e5239899ed45349"
+              }
+            ]
+          },
+          {
+            "work": "purchase",
+            "operationIndex": 3,
+            "operationRef": {
+              "kind": "demos-work-operation-v1",
+              "networkId": "demos:testnet-atomic",
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "operationIndex": 3,
+              "operationId": "commitment",
+              "operationKind": "storage-program-put"
+            },
+            "receiptContentHash": "4c9406aaaa7fc6fe021ad0248da109e1c412b3781f3ac35b25cfd7418a36c9c2",
+            "leaf": {
+              "operationId": "commitment",
+              "operationIndex": 3,
+              "operationKind": "storage-program-put",
+              "inputHash": "63a08a91d91228a5688d21c06da0e67597f81395a6dd6a622c50f23aaabc64f4",
+              "status": "committed",
+              "storageOutput": {
+                "logicalAddress": "dacs3:commit:01K1DPA0000000000000000000",
+                "nativeAddress": "stor-a8f07d68e71de4710ded4a1184bc7246b397897b",
+                "contentHash": "876098adb9977047162fcc9d1dfd8bdb1ec9b2b8833e394e67ff0724e1d52418",
+                "writer": "native:fee-payer-77",
+                "nonce": "203"
+              },
+              "outputHash": "fcec0dd7f94b614e1016e8739739ce62651f06db905359a8978397d7ba3803fb"
+            },
+            "inclusionPath": [
+              {
+                "side": "left",
+                "hash": "5afaa24e8c95acb7e94b205cc02d6f414be554dd368351a2aa8f826a9bde975d"
+              },
+              {
+                "side": "left",
+                "hash": "29b0d3add677d298e9201c4d47144bf2139f2833709ab31c0fbf60172f312cb7"
+              },
+              {
+                "side": "right",
+                "hash": "ed722d27f98890b319c0f49c04b5606a8df6ca1fffc36efe2e5239899ed45349"
+              }
+            ]
+          },
+          {
+            "work": "purchase",
+            "operationIndex": 4,
+            "operationRef": {
+              "kind": "demos-work-operation-v1",
+              "networkId": "demos:testnet-atomic",
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "operationIndex": 4,
+              "operationId": "payment-slot",
+              "operationKind": "payment-slot-cas"
+            },
+            "receiptContentHash": "4c9406aaaa7fc6fe021ad0248da109e1c412b3781f3ac35b25cfd7418a36c9c2",
+            "leaf": {
+              "operationId": "payment-slot",
+              "operationIndex": 4,
+              "operationKind": "payment-slot-cas",
+              "inputHash": "e9caad89161bf5e7f00bdd7427165e8535c7985e6a16a507ba51e1339f9fba95",
+              "status": "committed",
+              "outputHash": "248bf77a99424ed2631faf3a2aa8a17de87c6ac856945ca5840df066dfc08c17"
+            },
+            "inclusionPath": [
+              {
+                "side": "right",
+                "hash": "79d205af7dff45fb85a72b97ab5392286001e72a6b052add68cecae8ee773887"
+              },
+              {
+                "side": "left",
+                "hash": "39302b09bb604ca0e8148cf4129f7ba4e49e991921bca0c6f3101484a29d45bf"
+              }
+            ]
+          },
+          {
+            "work": "purchase",
+            "operationIndex": 5,
+            "operationRef": {
+              "kind": "demos-work-operation-v1",
+              "networkId": "demos:testnet-atomic",
+              "workId": "fea1b2d8f87bd09af634fbb921e201e57bd4365d89fe743ecb8e42a7384fb8f7",
+              "operationIndex": 5,
+              "operationId": "payment",
+              "operationKind": "native-dem-transfer"
+            },
+            "receiptContentHash": "4c9406aaaa7fc6fe021ad0248da109e1c412b3781f3ac35b25cfd7418a36c9c2",
+            "leaf": {
+              "operationId": "payment",
+              "operationIndex": 5,
+              "operationKind": "native-dem-transfer",
+              "inputHash": "5b20397c764d2f14745d3ae418408c9f2ced981527cd16765457c7c523018b0d",
+              "status": "committed",
+              "outputHash": "5b20397c764d2f14745d3ae418408c9f2ced981527cd16765457c7c523018b0d"
+            },
+            "inclusionPath": [
+              {
+                "side": "left",
+                "hash": "6063a061c50334c0700e7b568209fe90296c45b5e68eecd8298d6563af220a4e"
+              },
+              {
+                "side": "left",
+                "hash": "39302b09bb604ca0e8148cf4129f7ba4e49e991921bca0c6f3101484a29d45bf"
+              }
+            ]
+          },
+          {
+            "work": "completion",
+            "operationIndex": 0,
+            "operationRef": {
+              "kind": "demos-work-operation-v1",
+              "networkId": "demos:testnet-atomic",
+              "workId": "2cc1e1defaaca915e8a6651066b11d0fa3f3d3e0eb9c45a911eb660fad7dc915",
+              "operationIndex": 0,
+              "operationId": "purchase-receipt",
+              "operationKind": "assert-work-receipt"
+            },
+            "receiptContentHash": "3477fefde41eba8ddd6913a073798398f9751e4a3cb1de26ef24edbae540f849",
+            "leaf": {
+              "operationId": "purchase-receipt",
+              "operationIndex": 0,
+              "operationKind": "assert-work-receipt",
+              "inputHash": "1de6334da63ad035c5b7f5541249892d30c4add8c56fd5957c5c1f39fcd15dec",
+              "status": "committed",
+              "outputHash": "5c57985e514a19009a48e15cd8742f24a92194a588e8361e5d13c48f01002f99"
+            },
+            "inclusionPath": [
+              {
+                "side": "right",
+                "hash": "d41e75b083d754f8602516da8609dcab007c81acb7d69e0c49230029e18f00f2"
+              }
+            ]
+          }
+        ],
+        "sessionStateBefore": "audit-pending",
+        "sessionStateAfter": "audit-pending",
+        "publicKeys": {
+          "did:dacs:test:network": "0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+          "did:dacs:test:buyer": "oJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA",
+          "did:dacs:test:seller": "F8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4",
+          "did:dacs:test:orchestrator": "11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg",
+          "did:dacs:test:payer": "xoImN8fTEOxXYnvgC6JZ0lN0n0qvZERwz_vlOjX3MkI"
+        },
+        "operations": [
+          {
+            "kind": "storage-program-put",
+            "idempotencyKey": "evidence:payment"
+          },
+          {
+            "kind": "storage-program-put",
+            "idempotencyKey": "bundle:seller"
+          }
+        ],
+        "duplicateEffectCount": 0,
+        "priorAnchor": {
+          "logicalAddress": "stor-b14950f652207d98ddb91052963245f586680786f316e44fc3b1942b567e1362",
+          "contentHash": "b670a56d9700dd26650994086f9b73c4ed3c0f89bd83ca13dfcf8e4d055792d9",
+          "canonicalBytes": "{\"bundleVersion\":\"1\",\"jobId\":\"01K1DPA0000000000000000000\"}"
+        },
+        "replayAnchor": {
+          "logicalAddress": "stor-b14950f652207d98ddb91052963245f586680786f316e44fc3b1942b567e1362",
+          "contentHash": "b670a56d9700dd26650994086f9b73c4ed3c0f89bd83ca13dfcf8e4d055792d9",
+          "canonicalBytes": "{\"bundleVersion\":\"1\",\"jobId\":\"01K1DPA0000000000000000000\"}"
+        },
+        "nativeTransactionRef": {
+          "kind": "demos-transaction",
+          "value": "audit-tx-1"
+        },
+        "lifecycleEvidence": {
+          "evidenceVersion": "test-1",
+          "attemptId": "audit-attempt-1",
+          "workId": "abababababababababababababababababababababababababababababababab",
+          "nativeTransactionRef": {
+            "kind": "demos-transaction",
+            "value": "audit-tx-1"
+          },
+          "state": "included-committed",
+          "blockId": "block-901",
+          "proofProfile": "demos-bft-proof/test-1",
+          "validatorSetId": "test-validator-set-1",
+          "nonce": "attempt-nonce-audit-attempt-1",
+          "fee": "1",
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "did:dacs:test:network",
+            "value": "syb0RKJ54xLvo_W09KjUU5KaAkw8Vk-GAAfPDa7O-JBk7tAJyInPTsZqJSBBk1qJxKUYRzIEQVFPNZ7vtaCECw"
+          }
+        },
+        "capability": {
+          "capabilityVersion": "1",
+          "networkAuthority": "did:dacs:test:network",
+          "networkId": "demos:testnet-atomic",
+          "executionProfile": "demos-bft-work/1",
+          "workVersions": [
+            "1"
+          ],
+          "profiles": [
+            "dacs-purchase-v1",
+            "dacs-completion-v1"
+          ],
+          "operationKinds": [
+            "assert-artifact",
+            "assert-work-receipt",
+            "native-dem-transfer",
+            "payment-slot-cas",
+            "storage-program-put"
+          ],
+          "payloadSchemas": {
+            "assert-artifact": "https://dacs.dev/schemas/atomic-assert-artifact-payload-v1.schema.json",
+            "storage-program-put": "https://dacs.dev/schemas/atomic-storage-program-put-payload-v1.schema.json",
+            "payment-slot-cas": "https://dacs.dev/schemas/atomic-payment-slot-cas-payload-v1.schema.json",
+            "native-dem-transfer": "https://dacs.dev/schemas/atomic-native-dem-transfer-payload-v1.schema.json",
+            "assert-work-receipt": "https://dacs.dev/schemas/atomic-assert-work-receipt-payload-v1.schema.json"
+          },
+          "authorizationAlgorithms": [
+            "ed25519"
+          ],
+          "proofProfile": "demos-bft-proof/test-1",
+          "validatorSetId": "test-validator-set-1",
+          "limits": {
+            "maxCanonicalBytes": 50000,
+            "maxOperations": 16,
+            "maxExecutionTimeMs": 2000,
+            "maxProofBytes": 20000,
+            "feeRule": "test-fixed-fee"
+          },
+          "evidence": {
+            "kind": "test-network-capability-attestation",
+            "value": "eyJjYXBhYmlsaXR5SGFzaCI6Ijg5OWQ2ZDNhZTkyNjhhOWRkOTNhNmFmNzBmZmZlMjA0OGRmZjBlOTY1ZGE1ZDllM2Y4Njk5ODJmN2NjYWRiM2IiLCJzaWduYXR1cmUiOnsiYWxnb3JpdGhtIjoiZWQyNTUxOSIsInNpZ25lciI6ImRpZDpkYWNzOnRlc3Q6bmV0d29yayIsInZhbHVlIjoiX0xDWGprV2V6STdJcFNjX3AyUEp3NUx3T3Rldi0xdXN6UGYxOWp6WTdUeVo1ZHRtcFQ0aU8xQUhEUU80d1ozcnhpYTNFelhHalFUalhCcGFHeTlQQkEifX0"
+          }
+        },
+        "expectedNetworkAuthority": "did:dacs:test:network",
+        "expectedProofProfile": "demos-bft-proof/test-1",
+        "expectedRailRegistryAuthority": "did:dacs:test:network"
+      },
+      "expected": "indeterminate",
+      "reason": "A missing Purchase or Completion operation proof leaves the session audit-pending and audit finalisation indeterminate.",
+      "boundary": true,
+      "boundaryRuleRefs": [
+        "AWB-2",
+        "AWB-10"
+      ]
+    },
+    {
+      "name": "awb-audit-premature-finalisation",
+      "ruleRefs": [
+        "AWB-10"
+      ],
+      "caseClass": "rejection",
       "surface": "audit",
       "input": {
         "purchaseIntent": {
@@ -16148,8 +17196,8 @@
         "expectedProofProfile": "demos-bft-proof/test-1",
         "expectedRailRegistryAuthority": "did:dacs:test:network"
       },
-      "expected": "indeterminate",
-      "reason": "A missing Purchase or Completion operation proof leaves audit finalisation indeterminate.",
+      "expected": "fail",
+      "reason": "The session cannot leave audit-pending while a Purchase or Completion operation proof is missing.",
       "boundary": true,
       "boundaryRuleRefs": [
         "AWB-10"
@@ -17235,8 +18283,7 @@
     {
       "name": "awb-audit-replay-competing-bytes",
       "ruleRefs": [
-        "AWB-8",
-        "AWB-9"
+        "AWB-8"
       ],
       "caseClass": "rejection",
       "surface": "audit",
@@ -18317,7 +19364,7 @@
     {
       "name": "awb-repair-never-replays-purchase",
       "ruleRefs": [
-        "AWB-10"
+        "AWB-9"
       ],
       "caseClass": "rejection",
       "surface": "audit",

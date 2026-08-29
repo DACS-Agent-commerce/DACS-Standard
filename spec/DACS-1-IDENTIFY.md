@@ -306,6 +306,8 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 5. **Decision** — `VerifyResult.decision == "pass"`.
 6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim; or, for `domain:`, a passing-and-fresh `demos-gcr-domain` result plus a bundle presentation that verifies under the result's exact GCR-bound Ed25519 account (DCR-7). A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
 
+   Key rotation, revocation, and post-revocation validity after this control proof are governed by the §6.6 **Key lifecycle** rules; a historical proof does not make a rotated or revoked key current for a new session.
+
 **Freshness window.** The claim's effective window is derived from the resolved VerifyResult, **not** the presenter-supplied wrapper:
 - **Issuance** = `VerifyResult.verifiedAt`.
 - **Expiry** = `min(BundleClaim.expiresAt ?? ∞, VerifyResult.validUntil ?? (verifiedAt + defaultMaxAgeSec × 1000))`, where `defaultMaxAgeSec` is read from the recipe at `VerifyResult.recipeVersion` (the exact recipe the result was validated under, §7.4.3 — NOT "latest", so a later recipe revision cannot retroactively widen an already-issued result's window).
@@ -366,8 +368,8 @@ A listing declares which bundles it will accept.
 ```
 type BundleRequirement = {
   requirementVersion: "1"
-  required: ClaimRequirement[]         // all MUST be satisfied
-  oneOf?: ClaimRequirement[][]         // EACH inner group MUST be satisfied (AND across groups); a group is satisfied when ≥1 of its members is satisfied (OR within a group)
+  required: ClaimRequirement[]         // all MUST be satisfied; MAY be empty
+  oneOf?: ClaimRequirement[][]         // omitted/empty adds no constraint; each present inner group MUST be non-empty and satisfied (AND across groups); a group is satisfied when ≥1 of its members is satisfied (OR within a group)
   preferredPresentation?: "siwd" | "sr1-root" | "per-claim" | "session-key" | "any"
   primaryClaimSelector?: string        // scheme whose identifier MUST be `presentedBy`
 }
@@ -382,7 +384,7 @@ type ClaimRequirement = {
 
 **Presence-only claim requirements (PCR-1..PCR-6).** `verificationRequired` selects one of two closed evaluation modes; it is not a hint to a verifier.
 
-- **(PCR-1) Configuration boundary.** When `verificationRequired = false`, the requirement is **presence-only**. `maxAge` and `recipeVersion` MUST be absent because no authority result or authority time window is selected. Their presence is a requirement error, not an instruction to manufacture or resolve a `VerifyResult`. When `verificationRequired = true`, the existing verification and freshness rules apply unchanged.
+- **(PCR-1) Configuration boundary.** `verificationRequired` MUST be the JSON boolean `true` or `false`; another type or absence is a requirement error. When `verificationRequired = false`, the requirement is **presence-only**. `maxAge` and `recipeVersion` MUST be absent because no authority result or authority time window is selected. Their presence is a requirement error, not an instruction to manufacture or resolve a `VerifyResult`. When `verificationRequired = true`, the existing verification and freshness rules apply unchanged. An empty `required` array and an omitted or empty `oneOf` array impose no member constraint; an empty inner `oneOf` group is a requirement error rather than an unsatisfiable or silently satisfied group.
 - **(PCR-2) Presence predicate.** A presence-only member passes only when the signed `IdentityBundle` contains a claim of the required known scheme whose reference is canonical, whose unexpired `expiresAt` (when present) contains `now`, and whose signed `BundleClaim` data satisfies `parameters` (when present). A match establishes only that the presenter signed those claim values; it does not authenticate them against an external authority. A missing claim, an expired `expiresAt`, or a parameter mismatch is a non-match. `issuedAt` is informational in this mode: it MAY be absent and, when present, MUST NOT be treated as an authority issuance time or proof of verification.
 - **(PCR-3) Optional verification reference.** A presence-matched claim MAY carry `verifiedBy`, but its decision, freshness, resolution availability, and reuse status MUST NOT elevate or defeat the presence decision. Readers MUST NOT dereference it solely to decide presence. The reference still MUST have the `VerifyResultRef` wire shape; a malformed reference makes the bundle evaluation an error. This rule does not erase the reference or permit its use as passing verification elsewhere.
 - **(PCR-4) Verified predicate.** A member with `verificationRequired = true` passes only through the §6.3.2 resolution, passing-decision, freshness, `maxAge`, recipe, and parameter checks. Presence of a matching claim is insufficient.
@@ -407,7 +409,13 @@ match(bundle, requirement):
 
      Validate every ClaimRequirement before matching. An unknown/non-canonical
 
-     scheme or malformed parameters value returns ERROR. If a presence-only member
+     scheme, a non-boolean/missing verificationRequired, a malformed parameters
+
+     value, or an empty inner oneOf group returns ERROR. Empty required and
+
+     omitted/empty oneOf collections are valid and add no member constraint.
+
+     If a presence-only member
 
      carries maxAge or recipeVersion, return ERROR (PCR-1). Validate every
 
@@ -476,6 +484,22 @@ match(bundle, requirement):
        if bundle.presentation.kind != requirement.preferredPresentation: return WARN, accept
 
   5. return ACCEPT
+
+exact_presented_satisfies_presence_member(requirement, presented):
+
+  selector := canonical_scheme(presented.ref)
+
+  return any cr in requirement.required ++ flatten(requirement.oneOf) where
+
+         cr.scheme == selector
+
+         AND cr.verificationRequired == false
+
+         AND presented.ref is canonical
+
+         AND (presented.expiresAt is absent OR now <= presented.expiresAt)
+
+         AND (cr.parameters is absent OR scheme_specific_match(presented, cr.parameters))
 
 find_claim(bundle, cr):
 

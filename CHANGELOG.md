@@ -66,8 +66,12 @@ The format used per release:
   Presence remains neither verification nor control: the exact `key:` bundle
   signature may independently prove key control, but existence-only `lei:`
   presence cannot become `presentedBy`, elevate identity tier, or key
-  reputation. Adds 31 deterministic vectors with genuine Ed25519 bundle,
-  VerifyResult, and composite signatures. No artifact or schema change.
+  reputation. Aggregation always authenticates the session-pinned recipe
+  registry snapshot, including for an all-presence requirement, so the
+  algorithm remains consistent with CRQ-1 and composes with descriptor-bound
+  registry resolution. Empty collection and exact-boolean configuration
+  semantics are explicit. Adds 34 deterministic vectors with genuine Ed25519
+  bundle, VerifyResult, and composite signatures. No artifact or schema change.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

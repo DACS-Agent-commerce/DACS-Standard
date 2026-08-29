@@ -352,6 +352,7 @@ def build_vectors() -> list[dict]:
         "error",
         signed_bundle([base_key]),
         requirement([presence("key", maxAge=60)]),
+        overall="pass",
         note="PCR-1 rejects maxAge where no authority window exists",
     ))
     vectors.append(case(
@@ -359,7 +360,31 @@ def build_vectors() -> list[dict]:
         "error",
         signed_bundle([base_key]),
         requirement([presence("key", recipeVersion=1)]),
+        overall="pass",
         note="PCR-1 rejects recipeVersion rather than manufacturing a result",
+    ))
+    vectors.append(case(
+        "verification-required-must-be-boolean",
+        "error",
+        signed_bundle([base_key]),
+        requirement([{"scheme": "key", "verificationRequired": "false"}]),
+        overall="pass",
+        note="PCR-1 rejects a string lookalike rather than selecting a truthy mode",
+    ))
+    vectors.append(case(
+        "empty-member-collections-are-vacuously-satisfied",
+        "pass",
+        signed_bundle([base_key]),
+        requirement([], one_of=[]),
+        note="Empty required and oneOf collections impose no member constraint",
+    ))
+    vectors.append(case(
+        "empty-oneof-group-is-invalid",
+        "error",
+        signed_bundle([base_key]),
+        requirement([], one_of=[[]]),
+        overall="pass",
+        note="An empty inner oneOf group is a malformed requirement, not silent pass or fail",
     ))
     vectors.append(case(
         "presence-parameters-match",

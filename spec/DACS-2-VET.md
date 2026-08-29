@@ -814,6 +814,25 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
   if sha256(CORE-canonical(requirement)) != record.requirementHash: return REJECT_RECORD
 
+  requiredMembers := requirement.required
+
+  oneOfGroups := requirement.oneOf if present, otherwise []
+
+  if requiredMembers is not an array OR oneOfGroups is not an array:
+
+    return "error", ["malformed claim requirement collections"]
+
+  if any group in oneOfGroups is not a non-empty array:
+
+    return "error", ["malformed empty or non-array oneOf group"]
+
+  claimRequirements := requiredMembers ++ flatten(oneOfGroups)
+
+  if any cr in claimRequirements is not an object OR
+     cr.verificationRequired is not exactly the JSON boolean true or false:
+
+    return "error", ["invalid verificationRequired mode"]
+
   if any presence-only member carries maxAge or recipeVersion:
 
     return "error", ["invalid presence-only requirement"]
@@ -833,12 +852,12 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
   if any record result reference is attributable only to presence-only members: return REJECT_RECORD
 
-  verifiedMembers := [cr for cr in requirement.required ++ flatten(requirement.oneOf)
+  verifiedMembers := [cr for cr in claimRequirements
                       if cr.verificationRequired == true]
 
-  registry := recipeRegistryResolver.resolve_authenticated(registryVersion) if verifiedMembers is not empty
+  registry := recipeRegistryResolver.resolve_authenticated(registryVersion)
 
-  if verifiedMembers is not empty and registry is unavailable or invalid:
+  if registry is unavailable or invalid:
 
     return "error", ["session-pinned recipe registry unavailable or invalid"]
 
@@ -869,7 +888,7 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
   # Every required member must pass in its selected mode.
 
-  for cr in requirement.required:
+  for cr in requiredMembers:
 
     outcome := classify_member(record, exactBundle, cr)
 
@@ -881,7 +900,7 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
   # oneOf groups must each contain at least one passing
 
-  for group in requirement.oneOf:
+  for group in oneOfGroups:
 
     outcomes := [classify_member(record, exactBundle, cr) for cr in group]
 
@@ -952,6 +971,60 @@ classify_member(record, exactBundle, cr):
   # freshness/maxAge, parameter, disabled/mock method, and retry classifiers.
 
   return classify_verified_member(record, cr)
+
+exact_selector_authorized(record, exactBundle, requirement):
+
+  selector := requirement.primaryClaimSelector
+
+  oneOfGroups := requirement.oneOf if present, otherwise []
+
+  if selector is absent: return true
+
+  if canonical_scheme(exactBundle.presentedBy) != selector: return false
+
+  presented := the claim in exactBundle.claims whose canonical ClaimReference
+               equals exactBundle.presentedBy
+
+  if presented is absent: return false
+
+  controlled := the exact presented claim passes DACS-1 §6.3.2 step (6)
+
+  # `verifiedSelector` is exact-claim evidence only. It passes only when the
+  # record commits presented.verifiedBy and the independently resolved result
+  # passes hash, signature, identifier, recipe/version, decision, and freshness
+  # checks for `presented`; another same-scheme claim cannot supply it.
+
+  verifiedSelector := presented has a record-committed passing-and-fresh
+                      verifiedBy under the DACS-1 §6.3.2 verified-claim gate
+
+  exactPresenceMembers := [cr for cr in requirement.required ++ flatten(oneOfGroups)
+                           if cr.scheme == selector
+                           and cr.verificationRequired == false
+                           and classify_presence(exactBundle, cr,
+                                                 exactClaimRef := presented.ref) == "pass"]
+
+  presenceSelector := exactPresenceMembers is not empty
+
+  if any required member has scheme == selector and verificationRequired == true:
+
+    presenceSelector := false
+
+  for group in oneOfGroups where any member has
+      scheme == selector and verificationRequired == true:
+
+    exactPresenceInGroup := any cr in group where cr.scheme == selector
+                            and cr.verificationRequired == false
+                            and classify_presence(exactBundle, cr,
+                                                  exactClaimRef := presented.ref) == "pass"
+
+    passingOtherScheme := any cr in group where cr.scheme != selector
+                          and classify_member(record, exactBundle, cr) == "pass"
+
+    if NOT (exactPresenceInGroup OR passingOtherScheme):
+
+      presenceSelector := false
+
+  return controlled AND (verifiedSelector OR presenceSelector)
 
 preflight_qualification(record, cr, registry):
 

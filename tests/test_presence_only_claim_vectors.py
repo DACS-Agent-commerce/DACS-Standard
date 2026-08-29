@@ -352,6 +352,14 @@ def evaluate(vector):
         return "error"
     if hash_hex(requirement) != record.get("requirementHash"):
         return "error"
+    if not isinstance(requirement, dict):
+        return "error"
+    required = requirement.get("required")
+    one_of = requirement.get("oneOf", [])
+    if not isinstance(required, list) or not isinstance(one_of, list):
+        return "error"
+    if any(not isinstance(group, list) or not group for group in one_of):
+        return "error"
     members = list(all_members(requirement))
     for member in members:
         if not isinstance(member, dict) or member.get("verificationRequired") not in {True, False}:
@@ -487,6 +495,24 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         for name, verdict in expected.items():
             self.assertEqual(verdict, evaluate(by_name[name]))
 
+    def test_requirement_shape_vectors_are_distinguishing(self):
+        by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        invalid = {
+            "presence-max-age-is-invalid",
+            "presence-recipe-version-is-invalid",
+            "verification-required-must-be-boolean",
+            "empty-oneof-group-is-invalid",
+        }
+        for name in invalid:
+            with self.subTest(vector=name):
+                vector = by_name[name]
+                self.assertEqual("error", vector["expected"])
+                self.assertEqual("pass", vector["compositeRecord"]["overallDecision"])
+                self.assertEqual("error", evaluate(vector))
+        self.assertEqual(
+            "pass", evaluate(by_name["empty-member-collections-are-vacuously-satisfied"])
+        )
+
     def test_published_control_fixture_is_the_presence_only_key_case(self):
         fixture = json.loads(CONTROL_FIXTURE.read_text(encoding="utf-8"))
         vector = next(
@@ -511,8 +537,17 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             "It MUST NOT call a verification recipe, create a `VerifyResult`, or add a `VerifyResultRef`",
             "the reliance decision is `indeterminate` until the bundle is available",
             "aggregate(record, recordRef, requirement, authority, recipeRegistryResolver)",
+            "exact_presented_satisfies_presence_member(requirement, presented):",
+            "exact_selector_authorized(record, exactBundle, requirement):",
+            "registry := recipeRegistryResolver.resolve_authenticated(registryVersion)",
+            "cr.verificationRequired is not exactly the JSON boolean true or false",
+            "if any group in oneOfGroups is not a non-empty array:",
         ):
-            self.assertIn(text, dacs2)
+            self.assertIn(text, dacs1 + dacs2)
+        self.assertNotIn(
+            "resolve_authenticated(registryVersion) if verifiedMembers is not empty",
+            dacs2,
+        )
 
 
 if __name__ == "__main__":

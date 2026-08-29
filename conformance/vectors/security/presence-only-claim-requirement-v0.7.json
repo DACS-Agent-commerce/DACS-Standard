@@ -13,8 +13,8 @@
     "authority": "5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
     "verifier": "4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147"
   },
-  "count": 31,
-  "hash": "2b7d6448b8cd9da0890d36d1939642f5159ed685b58be42d994d47471cb2c078",
+  "count": 34,
+  "hash": "5c113ea2a17b1fd11694ddec5d3a2b2ae6bb1ee1fed6c9fa42e94933b29c7585",
   "vectors": [
     {
       "name": "required-presence-key-with-issued-at",
@@ -647,12 +647,12 @@
         "freshness": [],
         "supplementary": [],
         "dealSpecific": [],
-        "overallDecision": "error",
+        "overallDecision": "pass",
         "generatedAt": 1900000000000,
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "x6rz7HT186wFg1q7zpNsOXLf-MCDsV7a2CeQAcADNr5jWFKdXJuJZgwcl4eJAGzgfd5EqYJnHXIrNzp6aDvkDA"
+          "value": "MmGS-0mxoiN_2xpYln7TTSzBI41-s2UlEbwlILJ47igSVIQFyfo4DOLQ_8r4omPKpIw32dBpyfQG-lsGs2yLAw"
         }
       },
       "resolvedResults": []
@@ -702,12 +702,168 @@
         "freshness": [],
         "supplementary": [],
         "dealSpecific": [],
-        "overallDecision": "error",
+        "overallDecision": "pass",
         "generatedAt": 1900000000000,
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "SzaZXmTuUb4F-qteBLc0yFDauORNSHLlJkSbUfNciYAEhQ_M_a2jBGUu_OrJ04CHiwGi2LKn3MM5_D8-8lh4Cw"
+          "value": "-lwfWEJmQxgg8Jx2-fwKbJ9pw0cvnV0jUlVJGyfhnca2P5POuUohkE4gq5XbrpX4nwLJ7oQ5zQSYnvnQRL0IAg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "verification-required-must-be-boolean",
+      "expected": "error",
+      "note": "PCR-1 rejects a string lookalike rather than selecting a truthy mode",
+      "evaluatedAt": 1900000000000,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": "false"
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-verification-required-must-be-boolean",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "d65f11100a71b327a0c4e0f41e6f2787c0a1c0bb129c22055e33f8f28f296ee2",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "VmM1ywc4llQZXNsk2RP9ZLHsjaCVjvQUj88_6qlufDWsYzW4TALCmj4pNbYJeMQ3Qmh9xMufQdzWwDWX6OlFAA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "empty-member-collections-are-vacuously-satisfied",
+      "expected": "pass",
+      "note": "Empty required and oneOf collections impose no member constraint",
+      "evaluatedAt": 1900000000000,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": []
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-empty-member-collections-are-vacuously-satisfied",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "acb969a7444c9d7926a4f900285285651522f61759985690fa5ab59fddf028a0",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "-AORaX46uNFZq6cyVeRaFF0kW1EP1TXdG5QYGlAYxSQo_RXSG7z-ELb-meZzIBSum6CbxJ48Vvt_7p5kkq9gBw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "empty-oneof-group-is-invalid",
+      "expected": "error",
+      "note": "An empty inner oneOf group is a malformed requirement, not silent pass or fail",
+      "evaluatedAt": 1900000000000,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": [
+          []
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-empty-oneof-group-is-invalid",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "b8f72288728de7a92f096e3689fe06d4cb75f9ab3f7ef0a8092222ac965d2a63",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "mMBftgwu6_ZTDLb6TjLDTefpeHdKJ3Ui0soMfozC5PxQD-AR_Hav10B1ssns3UEtNbcndRpXx2D09VDQ7RLJCg"
         }
       },
       "resolvedResults": []

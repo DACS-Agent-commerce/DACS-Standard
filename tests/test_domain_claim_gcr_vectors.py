@@ -125,8 +125,9 @@ def evaluate(vector):
         return "error", []
 
     has_alias = any(ref.startswith("web2:domain:") for ref in refs)
-    if artifact["unsigned"]["producerDacs1Version"] == "0.6" and has_alias:
-        return "fail", semantic
+    if artifact["unsigned"]["producerDacs1Version"] == "0.6":
+        if has_alias or any(ref != semantic_ref(ref) for ref in refs):
+            return "fail", semantic
 
     # DCR-5 identity-set cases deliberately stop before GCR verification: the
     # vector exercises only whether distinct canonical hosts remain distinct.
@@ -244,8 +245,11 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
                 "hostname-length-253-boundary",
                 "hostname-length-254-rejected",
                 "invalid-punycode-a-label-rejected",
+                "current-producer-u-label-rejected",
+                "current-producer-uppercase-host-rejected",
             },
             "DCR-2": {"all-numeric-non-ip-hostname"},
+            "DCR-4": {"legacy-mixed-case-ascii-read"},
             "DCR-5": {"distinct-hosts-remain-distinct"},
             "DCR-7": {
                 "authenticated-sr1-session-binding",
@@ -273,6 +277,18 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
                 if rule in actual:
                     actual[rule].add(vector["name"])
         self.assertEqual(expected, actual)
+
+    def test_current_spelling_is_exact_but_legacy_ascii_case_is_readable(self):
+        cases = {v["name"]: v for v in self.doc["vectors"]}
+        verdict, semantic = evaluate(cases["legacy-mixed-case-ascii-read"])
+        self.assertEqual("pass", verdict)
+        self.assertEqual(["domain:agent.example"], semantic)
+        for name in (
+            "current-producer-u-label-rejected",
+            "current-producer-uppercase-host-rejected",
+        ):
+            verdict, _ = evaluate(cases[name])
+            self.assertEqual("fail", verdict)
 
     def test_dcr1_and_dcr2_hostname_boundaries(self):
         cases = {v["name"]: v for v in self.doc["vectors"]}

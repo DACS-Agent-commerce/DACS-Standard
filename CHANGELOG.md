@@ -107,17 +107,21 @@ The format used per release:
   authority remains `indeterminate`; and inclusion time, not query time,
   governs the effective window. The persistent record cannot satisfy a fresh
   `domain-tls-control` requirement and controls a domain only when the bundle
-  presentation verifies under the same GCR-bound account. Carries 49 genuine
+  presentation verifies under the same GCR-bound account. Carries 52 genuine
   deterministic Ed25519 vectors and changes the example producer output to
   canonical `domain:`. The steward's signed registry publication remains a
   separate post-review operation.
 
-- **DCR/DGCR conformance completion** (DACS-1 §6.3.1 DCR-1/DCR-2/DCR-5/DCR-7;
-  DACS-2 §7.3.10 DGCR-1/DGCR-2/DGCR-4; #332) — without changing normative
-  semantics, expands `domain-claim-gcr-v0.4` with executable length and A-label
-  boundaries, non-IP numeric-host and distinct-host cases, direct/node writer
-  authorization, finalized inclusion, presentation-bound SR-1 control, native
-  context, and inclusion-time anti-reissue coverage. The generator is now
+- **DCR/DGCR conformance completion and spelling boundary** (DACS-1 §6.3.1
+  DCR-1/DCR-2/DCR-4/DCR-5/DCR-7; DACS-2 §7.3.10
+  DGCR-1/DGCR-2/DGCR-4; #332) — closes the remaining producer/read ambiguity:
+  a current U-label or upper-case `domain:` spelling is rejected rather than
+  repaired, while an otherwise-valid historical `web2:domain:` hostname is
+  ASCII-case-folded only after its original signature verifies. Expands
+  `domain-claim-gcr-v0.4` with those executable distinctions plus length and
+  A-label boundaries, non-IP numeric-host and distinct-host cases, direct/node
+  writer authorization, finalized inclusion, presentation-bound SR-1 control,
+  native context, and inclusion-time anti-reissue coverage. The generator is
   checked byte-for-byte in CI.
 
 ### Added — DACS-4 v0.5

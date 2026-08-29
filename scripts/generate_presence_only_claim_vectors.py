@@ -227,6 +227,8 @@ def case(
         "expected": expected,
         "note": note,
         "evaluatedAt": NOW,
+        "registryAvailable": True,
+        "registryAuthenticated": True,
         "bundleAvailable": True,
         "bundle": copy.deepcopy(bundle),
         "requirement": copy.deepcopy(req),
@@ -383,8 +385,24 @@ def build_vectors() -> list[dict]:
         "error",
         signed_bundle([base_key]),
         requirement([], one_of=[[]]),
-        overall="pass",
+        overall="fail",
         note="An empty inner oneOf group is a malformed requirement, not silent pass or fail",
+    ))
+    vectors.append(case(
+        "oneof-passing-member-cannot-mask-unknown-scheme",
+        "error",
+        signed_bundle([base_key]),
+        requirement([], one_of=[[presence("unknown"), presence("key")]]),
+        overall="pass",
+        note="DACS-1 requirement preflight rejects every unknown scheme before oneOf any-pass",
+    ))
+    vectors.append(case(
+        "presence-parameters-must-be-an-object",
+        "error",
+        signed_bundle([base_key]),
+        requirement([presence("key", parameters=[])]),
+        overall="pass",
+        note="Malformed parameters are a requirement error rather than an evaluator exception",
     ))
     vectors.append(case(
         "presence-parameters-match",
@@ -537,6 +555,20 @@ def build_vectors() -> list[dict]:
     unavailable_bundle["bundle"] = None
     vectors.append(unavailable_bundle)
 
+    unavailable_bundle_bad_registry = case(
+        "invalid-registry-precedes-unavailable-bundle",
+        "error",
+        signed_bundle([base_key]),
+        requirement([presence("key")]),
+        overall="pass",
+        note="CRQ-1 authenticates the session-pinned registry before missing bundle availability can yield indeterminate",
+    )
+    unavailable_bundle_bad_registry["registryAvailable"] = False
+    unavailable_bundle_bad_registry["registryAuthenticated"] = False
+    unavailable_bundle_bad_registry["bundleAvailable"] = False
+    unavailable_bundle_bad_registry["bundle"] = None
+    vectors.append(unavailable_bundle_bad_registry)
+
     unavailable_bad_record = case(
         "invalid-composite-still-rejects-without-bundle",
         "error",
@@ -567,6 +599,20 @@ def build_vectors() -> list[dict]:
         requirement([presence("lei")], selector="lei"),
         overall="fail",
         note="Existence-only LEI presence cannot become controlled presentedBy or reputation identity",
+    ))
+    vectors.append(case(
+        "unauthorized-selector-dominates-unavailable-member",
+        "fail",
+        signed_bundle(
+            [base_key, claim(LEI_REF), claim(DID_REF, verifiedBy=unavailable_ref)],
+            presented_by=LEI_REF,
+        ),
+        requirement(
+            [presence("lei"), verified("did")], selector="lei"
+        ),
+        refs=[unavailable_ref],
+        overall="fail",
+        note="Independent selector failure has global fail-first precedence over an indeterminate verified member",
     ))
     vectors.append(case(
         "stale-optional-key-result-does-not-remove-key-control",

@@ -833,9 +833,24 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
     return "error", ["invalid verificationRequired mode"]
 
+  if any cr.scheme is not a known canonical ClaimReference scheme OR
+     cr.parameters is present and is not an object:
+
+    return "error", ["invalid claim requirement scheme or parameters"]
+
   if any presence-only member carries maxAge or recipeVersion:
 
     return "error", ["invalid presence-only requirement"]
+
+  # Registry authentication is aggregation-scoped, not conditional on bundle
+  # or verified-member availability. CRQ-1 therefore precedes every reliance
+  # disposition that could otherwise mask an invalid session-pinned snapshot.
+
+  registry := recipeRegistryResolver.resolve_authenticated(registryVersion)
+
+  if registry is unavailable or invalid:
+
+    return "error", ["session-pinned recipe registry unavailable or invalid"]
 
   if exactBundle unavailable: return "indeterminate", ["exact bundle unavailable"]
 
@@ -854,12 +869,6 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
   verifiedMembers := [cr for cr in claimRequirements
                       if cr.verificationRequired == true]
-
-  registry := recipeRegistryResolver.resolve_authenticated(registryVersion)
-
-  if registry is unavailable or invalid:
-
-    return "error", ["session-pinned recipe registry unavailable or invalid"]
 
   # Resolve every decision-bearing family/version and any required rerun before
   # classifying any member. A registry error therefore cannot fall through to

@@ -13,14 +13,16 @@
     "authority": "5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
     "verifier": "4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147"
   },
-  "count": 34,
-  "hash": "5c113ea2a17b1fd11694ddec5d3a2b2ae6bb1ee1fed6c9fa42e94933b29c7585",
+  "count": 38,
+  "hash": "f3e5b4669110d8894c62b831a4f72d8622ccf21911cc1c86c6dc388268000ff0",
   "vectors": [
     {
       "name": "required-presence-key-with-issued-at",
       "expected": "pass",
       "note": "PCR-2 accepts a present controlled key without verifiedBy; issuedAt is informational",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -75,6 +77,8 @@
       "expected": "pass",
       "note": "PCR-2 does not require issuedAt in presence mode",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -128,6 +132,8 @@
       "expected": "fail",
       "note": "A missing presence-only claim is a conclusive non-match",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -182,6 +188,8 @@
       "expected": "fail",
       "note": "PCR-2 retains the presenter expiry boundary",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -240,6 +248,8 @@
       "expected": "pass",
       "note": "Presence does not reinterpret issuedAt as authority evidence or a freshness gate",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -294,6 +304,8 @@
       "expected": "pass",
       "note": "PCR-3 does not resolve or promote an optional failing result for presence",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -391,6 +403,8 @@
       "expected": "pass",
       "note": "PCR-3 skips verification freshness for a presence-only decision",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -488,6 +502,8 @@
       "expected": "pass",
       "note": "A well-shaped but unavailable optional result is not fetched for presence",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -549,6 +565,8 @@
       "expected": "error",
       "note": "PCR-3 preserves the VerifyResultRef wire-shape boundary",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -607,6 +625,8 @@
       "expected": "error",
       "note": "PCR-1 rejects maxAge where no authority window exists",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -662,6 +682,8 @@
       "expected": "error",
       "note": "PCR-1 rejects recipeVersion rather than manufacturing a result",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -717,6 +739,8 @@
       "expected": "error",
       "note": "PCR-1 rejects a string lookalike rather than selecting a truthy mode",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -771,6 +795,8 @@
       "expected": "pass",
       "note": "Empty required and oneOf collections impose no member constraint",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -821,6 +847,8 @@
       "expected": "error",
       "note": "An empty inner oneOf group is a malformed requirement, not silent pass or fail",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -858,12 +886,132 @@
         "freshness": [],
         "supplementary": [],
         "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "1FNRlz6w09_498MMmV2JVDDv_QMgBZ1oDkY_IUXIPios98i5wX1V37aN_t0wtw4PWIe1UU8ACK-c2WJ3vt0BAA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "oneof-passing-member-cannot-mask-unknown-scheme",
+      "expected": "error",
+      "note": "DACS-1 requirement preflight rejects every unknown scheme before oneOf any-pass",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": [
+          [
+            {
+              "scheme": "unknown",
+              "verificationRequired": false
+            },
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            }
+          ]
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-oneof-passing-member-cannot-mask-unknown-scheme",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "8170f80193fe58493f15989642c8cf360f878825afbecb855d623191c35ca81a",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
         "overallDecision": "pass",
         "generatedAt": 1900000000000,
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "mMBftgwu6_ZTDLb6TjLDTefpeHdKJ3Ui0soMfozC5PxQD-AR_Hav10B1ssns3UEtNbcndRpXx2D09VDQ7RLJCg"
+          "value": "KFjAIne6TuFJnyzr5UA0wuA24TbdM9wSdrr8SPJak5nKkra5K7m389uuAhEVQjtWrrBA-0kljp_SaTRw99_WDQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-parameters-must-be-an-object",
+      "expected": "error",
+      "note": "Malformed parameters are a requirement error rather than an evaluator exception",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false,
+            "parameters": []
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-parameters-must-be-an-object",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "b65f6df896b21e2ab8344f2b8206fcb3f6d9e718394c4ef071a814e003257d7b",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "61G-hOu9f6zhAdfV9QkDFU7RlvBMz_NC78_TNBohwkvlEzdcQ8RsgyWfIxC9VmCaqgVMMS1R2vu7Lg8mMKtjCg"
         }
       },
       "resolvedResults": []
@@ -873,6 +1021,8 @@
       "expected": "pass",
       "note": "PCR-2 applies authenticated scheme parameters in presence mode",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -936,6 +1086,8 @@
       "expected": "fail",
       "note": "Parameter mismatch is a non-match, not a verification attempt",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -999,6 +1151,8 @@
       "expected": "pass",
       "note": "A presence-only member can satisfy its oneOf group",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1060,6 +1214,8 @@
       "expected": "fail",
       "note": "A oneOf group with no present alternative fails",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1121,6 +1277,8 @@
       "expected": "pass",
       "note": "PCR-6 composes direct bundle presence with ordinary VerifyResult evidence",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1235,6 +1393,8 @@
       "expected": "fail",
       "note": "A presence pass cannot rescue a failing verification-required member",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1349,6 +1509,8 @@
       "expected": "pass",
       "note": "OR semantics permit the presence alternative while retaining the failed result",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1466,6 +1628,8 @@
       "expected": "fail",
       "note": "PCR-4 requires a passing fresh result; a present claim is insufficient",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1523,6 +1687,8 @@
       "expected": "error",
       "note": "PCR-6 rejects a CVR result reference attributable only to presence",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1629,6 +1795,8 @@
       "expected": "error",
       "note": "Strict replay binds presence to the exact bundleHash",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1683,6 +1851,8 @@
       "expected": "error",
       "note": "Strict replay binds the exact requirement including its evaluation mode",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1737,6 +1907,8 @@
       "expected": "error",
       "note": "Presence is authenticated by the bundle presentation",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1791,6 +1963,8 @@
       "expected": "error",
       "note": "PCR-6 does not weaken the signed composite-record boundary",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1845,6 +2019,8 @@
       "expected": "indeterminate",
       "note": "A standalone CVR cannot prove presence without its exact bundle companion",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": false,
       "bundle": null,
       "requirement": {
@@ -1876,10 +2052,49 @@
       "resolvedResults": []
     },
     {
+      "name": "invalid-registry-precedes-unavailable-bundle",
+      "expected": "error",
+      "note": "CRQ-1 authenticates the session-pinned registry before missing bundle availability can yield indeterminate",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": false,
+      "registryAuthenticated": false,
+      "bundleAvailable": false,
+      "bundle": null,
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-invalid-registry-precedes-unavailable-bundle",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "e_2Yk4He2ewvYKF5k5zodViAEoGmFo4lozqkYLEHNIe0jNA3o9hUboHOThKXj4497WPlf2tfVP9_rIVbRSAKDQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
       "name": "invalid-composite-still-rejects-without-bundle",
       "expected": "error",
       "note": "Composite authentication precedes the missing-bundle indeterminate branch",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": false,
       "bundle": null,
       "requirement": {
@@ -1915,6 +2130,8 @@
       "expected": "pass",
       "note": "PCR-5 permits the exact key selector because its bundle signature proves control",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -1970,6 +2187,8 @@
       "expected": "fail",
       "note": "Existence-only LEI presence cannot become controlled presentedBy or reputation identity",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -2024,10 +2243,96 @@
       "resolvedResults": []
     },
     {
+      "name": "unauthorized-selector-dominates-unavailable-member",
+      "expected": "fail",
+      "note": "Independent selector failure has global fail-first precedence over an indeterminate verified member",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "lei:5493001KJTIIGC8Y1R12",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "lei:5493001KJTIIGC8Y1R12"
+          },
+          {
+            "ref": "did:example:presence-vector",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "https",
+                "locator": "https://unavailable.example/result"
+              },
+              "contentHash": "abababababababababababababababababababababababababababababababab",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Eknlhi4mhnlV0xt6erP7V204YsdAwjO9ulUMQo41AZ20MYO_a9F4OVmq3I2QnLSPQDcwQcn6ayg1jBUYP5IwDw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false
+          },
+          {
+            "scheme": "did",
+            "verificationRequired": true
+          }
+        ],
+        "primaryClaimSelector": "lei"
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-unauthorized-selector-dominates-unavailable-member",
+        "evaluatedParty": "lei:5493001KJTIIGC8Y1R12",
+        "bundleHash": "812d67c3b575f73df142f46d42e22a9404954e7b4aefd268963014c02c868e3e",
+        "requirementHash": "46628894f9253db3d53ee41fa46862ac2c3e1eb9b07a92aa19ee93f9ee48266f",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://unavailable.example/result"
+            },
+            "contentHash": "abababababababababababababababababababababababababababababababab",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "HTldYJHHqjfph5zl7IMyx1LERVHtM94HTg0SxmvwmUHa2YbD_xPCjL1xdsSlJZ_2MqyvFMWaATZCDCfxsQnWBQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
       "name": "stale-optional-key-result-does-not-remove-key-control",
       "expected": "pass",
       "note": "The key presentation proves control while the stale result supplies no tier elevation",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -2126,6 +2431,8 @@
       "expected": "fail",
       "note": "MA-3/PCR-5 require the exact selected claim when the same scheme is mandatory-verified",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",
@@ -2241,6 +2548,8 @@
       "expected": "error",
       "note": "A strict consumer recomputes aggregation instead of trusting signed overallDecision",
       "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
       "bundleAvailable": true,
       "bundle": {
         "bundleVersion": "1",

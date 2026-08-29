@@ -362,12 +362,26 @@ def evaluate(vector):
         return "error"
     members = list(all_members(requirement))
     for member in members:
-        if not isinstance(member, dict) or member.get("verificationRequired") not in {True, False}:
+        if (
+            not isinstance(member, dict)
+            or type(member.get("verificationRequired")) is not bool
+            or not isinstance(member.get("scheme"), str)
+            or member.get("scheme") not in KNOWN_SCHEMES
+            or (
+                "parameters" in member
+                and not isinstance(member.get("parameters"), dict)
+            )
+        ):
             return "error"
         if member.get("verificationRequired") is False and (
             "maxAge" in member or "recipeVersion" in member
         ):
             return "error"
+    if (
+        vector.get("registryAvailable") is not True
+        or vector.get("registryAuthenticated") is not True
+    ):
+        return "error"
     if not vector.get("bundleAvailable"):
         return "indeterminate"
     bundle = vector.get("bundle")
@@ -415,6 +429,9 @@ def evaluate(vector):
         else:
             failures.append("oneOf")
 
+    if not selected_claim_is_authorized(vector):
+        failures.append("selector")
+
     if failures:
         decision = "fail"
     elif errors:
@@ -423,8 +440,6 @@ def evaluate(vector):
         decision = "indeterminate"
     else:
         decision = "pass"
-    if decision == "pass" and not selected_claim_is_authorized(vector):
-        decision = "fail"
     if decision != record.get("overallDecision"):
         return "error"
     return decision
@@ -490,6 +505,7 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             "presence-key-selector-has-independent-control": "pass",
             "presence-lei-selector-does-not-establish-control": "fail",
             "different-verified-same-scheme-cannot-launder-selector": "fail",
+            "unauthorized-selector-dominates-unavailable-member": "fail",
         }
         by_name = {vector["name"]: vector for vector in self.document["vectors"]}
         for name, verdict in expected.items():
@@ -502,15 +518,31 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             "presence-recipe-version-is-invalid",
             "verification-required-must-be-boolean",
             "empty-oneof-group-is-invalid",
+            "oneof-passing-member-cannot-mask-unknown-scheme",
+            "presence-parameters-must-be-an-object",
         }
         for name in invalid:
             with self.subTest(vector=name):
                 vector = by_name[name]
                 self.assertEqual("error", vector["expected"])
-                self.assertEqual("pass", vector["compositeRecord"]["overallDecision"])
+                fallback = (
+                    "fail" if name == "empty-oneof-group-is-invalid" else "pass"
+                )
+                self.assertEqual(
+                    fallback, vector["compositeRecord"]["overallDecision"]
+                )
                 self.assertEqual("error", evaluate(vector))
         self.assertEqual(
             "pass", evaluate(by_name["empty-member-collections-are-vacuously-satisfied"])
+        )
+
+    def test_registry_authentication_precedes_bundle_availability(self):
+        by_name = {vector["name"]: vector for vector in self.document["vectors"]}
+        self.assertEqual(
+            "indeterminate", evaluate(by_name["exact-bundle-unavailable-is-indeterminate"])
+        )
+        self.assertEqual(
+            "error", evaluate(by_name["invalid-registry-precedes-unavailable-bundle"])
         )
 
     def test_published_control_fixture_is_the_presence_only_key_case(self):
@@ -540,6 +572,7 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             "exact_presented_satisfies_presence_member(requirement, presented):",
             "exact_selector_authorized(record, exactBundle, requirement):",
             "registry := recipeRegistryResolver.resolve_authenticated(registryVersion)",
+            "cr.scheme is not a known canonical ClaimReference scheme",
             "cr.verificationRequired is not exactly the JSON boolean true or false",
             "if any group in oneOfGroups is not a non-empty array:",
         ):
@@ -547,6 +580,15 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         self.assertNotIn(
             "resolve_authenticated(registryVersion) if verifiedMembers is not empty",
             dacs2,
+        )
+        self.assertLess(
+            dacs2.index(
+                "registry := recipeRegistryResolver.resolve_authenticated(registryVersion)"
+            ),
+            dacs2.index(
+                'if exactBundle unavailable: return "indeterminate", '
+                '["exact bundle unavailable"]'
+            ),
         )
 
 

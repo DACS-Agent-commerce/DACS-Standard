@@ -3315,6 +3315,9 @@ def audit_role_vectors() -> list[dict[str, Any]]:
     }
     missing_dependency_proof = copy.deepcopy(audit)
     missing_dependency_proof["dependencyProofs"].pop()
+    missing_dependency_proof["sessionStateAfter"] = "audit-pending"
+    premature_finalisation = copy.deepcopy(missing_dependency_proof)
+    premature_finalisation["sessionStateAfter"] = "finalised"
     repair_payment = {"operations": [{"kind": "native-dem-transfer", "idempotencyKey": "repair-payment"}], "duplicateEffectCount": 1}
     replay_audit = {
         **copy.deepcopy(audit_evidence),
@@ -3347,10 +3350,11 @@ def audit_role_vectors() -> list[dict[str, Any]]:
         vector("awb-anchor-content-mismatch", ["AWB-2", "AWB-5", "AWB-7"], "role-anchor", wrong_content, "indeterminate", "No v1 Work profile carries the actual receipt-dependent bundle content to test this conditional proof chain."),
         vector("awb-receipt-dependent-bundle-in-completion", ["AWB-2"], "role-anchor", bundle_in_completion, "fail", "Receipt-dependent bundle bytes cannot be authored inside Completion Work."),
         vector("awb-idempotent-nonpaying-audit-tail", ["AWB-1", "AWB-2", "AWB-8", "AWB-9", "AWB-10"], "audit", audit, "pass", "The audit tail establishes final role anchoring by verifying both finalized Works and every dependency proof before publishing without payment.", boundary_rules=["AWB-8", "AWB-10"]),
-        vector("awb-audit-dependency-proof-missing", ["AWB-8", "AWB-10"], "audit", missing_dependency_proof, "indeterminate", "A missing Purchase or Completion operation proof leaves audit finalisation indeterminate.", boundary_rules=["AWB-10"]),
+        vector("awb-audit-dependency-proof-missing", ["AWB-2", "AWB-10"], "audit", missing_dependency_proof, "indeterminate", "A missing Purchase or Completion operation proof leaves the session audit-pending and audit finalisation indeterminate.", boundary_rules=["AWB-2", "AWB-10"]),
+        vector("awb-audit-premature-finalisation", ["AWB-10"], "audit", premature_finalisation, "fail", "The session cannot leave audit-pending while a Purchase or Completion operation proof is missing.", boundary_rules=["AWB-10"]),
         vector("awb-audit-replay-no-duplicate", ["AWB-9"], "audit", replay_audit, "pass", "An authenticated exact lifecycle replay produces no duplicate effect."),
-        vector("awb-audit-replay-competing-bytes", ["AWB-8", "AWB-9"], "audit", overwrite_audit, "fail", "A cryptographically valid competing-byte write cannot overwrite the immutable audit address.", boundary_rules=["AWB-8"]),
-        vector("awb-repair-never-replays-purchase", ["AWB-10"], "audit", repair_payment, "fail", "Repair/finalization never contains payment or slot operations."),
+        vector("awb-audit-replay-competing-bytes", ["AWB-8"], "audit", overwrite_audit, "fail", "A cryptographically valid competing-byte write cannot overwrite the immutable audit address.", boundary_rules=["AWB-8"]),
+        vector("awb-repair-never-replays-purchase", ["AWB-9"], "audit", repair_payment, "fail", "Repair/finalization never contains payment or slot operations."),
     ]
 
 

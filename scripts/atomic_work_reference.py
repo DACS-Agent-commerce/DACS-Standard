@@ -3701,6 +3701,10 @@ def evaluate_audit(data: dict[str, Any]) -> None:
         ):
             raise Invalid("audit dependency proof does not bind a finalized Work operation")
     if seen != expected_keys:
+        if data.get("sessionStateAfter") != "audit-pending":
+            raise Invalid(
+                "audit-pending cannot transition before dependency proofs are complete"
+            )
         raise Unknown("audit dependency proof set is incomplete")
     if (
         data.get("sessionStateBefore") != "audit-pending"

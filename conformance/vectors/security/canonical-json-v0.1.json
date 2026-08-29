@@ -8,8 +8,8 @@
     "bigint": "Construct the language's native arbitrary-precision integer type, not a JSON number.",
     "unicode-code-units": "Construct a string from the listed UTF-16 code units, including invalid lone surrogates."
   },
-  "count": 21,
-  "hash": "49ec573139a3165c097d84f0230281bcc39f1551bc76b3eb23ad7759710df159",
+  "count": 25,
+  "hash": "ee91bf9e9f3d7915b528c0fe3edeac86d27962fc53af90dbaa25b1620d26c5a5",
   "vectors": [
     {
       "name": "fraction-one-half",
@@ -105,6 +105,30 @@
       "note": "Subnormal binary64 values are valid when within the DACS magnitude bound."
     },
     {
+      "name": "minimum-negative-binary64",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "8000000000000001"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "2d35652d333234",
+      "rule": "RFC 8785 Appendix B",
+      "note": "The minimum negative subnormal retains its sign and shortest exponent form."
+    },
+    {
+      "name": "integral-binary64-one",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "3ff0000000000000"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "31",
+      "rule": "RFC 8785 Appendix B",
+      "note": "An integral binary64 serializes as an integer token without a decimal suffix."
+    },
+    {
       "name": "round-to-even",
       "operation": "canonicalize",
       "input": {
@@ -124,6 +148,30 @@
       "canonicalUtf8Hex": "39303037313939323534373430393931",
       "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
       "note": "The inclusive positive DACS magnitude boundary is accepted."
+    },
+    {
+      "name": "maximum-dacs-magnitude-binary64",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "433fffffffffffff"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "39303037313939323534373430393931",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "The inclusive positive boundary is also accepted through the binary64 path."
+    },
+    {
+      "name": "minimum-dacs-magnitude-binary64",
+      "operation": "canonicalize",
+      "input": {
+        "$dacsType": "binary64",
+        "hex": "c33fffffffffffff"
+      },
+      "expected": "pass",
+      "canonicalUtf8Hex": "2d39303037313939323534373430393931",
+      "rule": "CORE \u00a7B.2 numeric safe-magnitude constraint",
+      "note": "The inclusive negative boundary is accepted through the binary64 path."
     },
     {
       "name": "number-over-dacs-magnitude",

@@ -2,9 +2,11 @@
 """Generate the CORE §B.2 canonical-JSON candidate vectors.
 
 Expected canonical strings are independent seed constants, not output from the
-implementation under test. Their UTF-8 hex makes byte-level cross-run
-comparison mechanical. Run with --check to verify byte-for-byte determinism or
---write to regenerate the committed set.
+implementation under test. Their UTF-8 hex gives each adapter an exact-byte
+oracle. The generic CROSS-RUN run file records verdicts only, so byte evidence
+must remain enforced by the adapter (and be attached separately when needed).
+Run with --check to verify byte-for-byte determinism or --write to regenerate
+the committed set.
 """
 from __future__ import annotations
 
@@ -144,6 +146,20 @@ def build_vectors() -> list[dict[str, Any]]:
             "Subnormal binary64 values are valid when within the DACS magnitude bound.",
         ),
         accepted(
+            "minimum-negative-binary64",
+            binary64("8000000000000001"),
+            "-5e-324",
+            "RFC 8785 Appendix B",
+            "The minimum negative subnormal retains its sign and shortest exponent form.",
+        ),
+        accepted(
+            "integral-binary64-one",
+            binary64("3ff0000000000000"),
+            "1",
+            "RFC 8785 Appendix B",
+            "An integral binary64 serializes as an integer token without a decimal suffix.",
+        ),
+        accepted(
             "round-to-even",
             binary64("43143ff3c1cb0959"),
             "1424953923781206.2",
@@ -156,6 +172,20 @@ def build_vectors() -> list[dict[str, Any]]:
             "9007199254740991",
             "CORE §B.2 numeric safe-magnitude constraint",
             "The inclusive positive DACS magnitude boundary is accepted.",
+        ),
+        accepted(
+            "maximum-dacs-magnitude-binary64",
+            binary64("433fffffffffffff"),
+            "9007199254740991",
+            "CORE §B.2 numeric safe-magnitude constraint",
+            "The inclusive positive boundary is also accepted through the binary64 path.",
+        ),
+        accepted(
+            "minimum-dacs-magnitude-binary64",
+            binary64("c33fffffffffffff"),
+            "-9007199254740991",
+            "CORE §B.2 numeric safe-magnitude constraint",
+            "The inclusive negative boundary is accepted through the binary64 path.",
         ),
         rejected(
             "number-over-dacs-magnitude",

@@ -161,12 +161,15 @@ The format used per release:
   bounded fractional binary64 values using RFC 8785's ECMAScript form instead
   of rejecting them. CF-1 now explicitly normalizes string values only:
   member names remain as received, sort by UTF-16 code units, and NFC/NFD
-  spellings remain distinct. Adds 21 byte-discriminating candidate vectors
+  spellings remain distinct. Adds 25 byte-discriminating candidate vectors
   covering the seven observed cross-run divergences and relevant RFC edge
-  cases. Cross-run tooling now records unsupported cases as abstentions,
-  excludes them from agreement denominators, refuses to label a one-impl or
-  abstaining run converged, and requires rule-by-rule discrimination evidence
-  before candidate promotion.
+  cases, including signed minimum subnormal, integral-binary64 formatting, and
+  both binary64 safe-magnitude boundaries. Each adapter must compare the exact
+  canonical bytes before emitting its verdict because the generic run-file
+  channel itself is verdict-only. Cross-run tooling records unsupported cases
+  as abstentions, excludes them from agreement denominators, refuses to label
+  a one-impl or abstaining run converged, and requires rule-by-rule
+  discrimination evidence before candidate promotion.
 - **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
   replaces the stale `verify-consume-one-sided` manifest hash after the
   normative reference-shape migration, binds manifest regeneration to the

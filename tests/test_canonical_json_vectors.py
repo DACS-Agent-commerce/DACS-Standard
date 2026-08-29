@@ -39,6 +39,22 @@ def decode_tagged(value: Any) -> Any:
     return value
 
 
+def adapter_error_code(error: Exception) -> str:
+    """Map the reference adapter's exception to the vector's rejection class."""
+    message = str(error)
+    if isinstance(error, TypeError):
+        return "UNSUPPORTED-NATIVE-TYPE"
+    if "non-finite number" in message:
+        return "NON-FINITE-NUMBER"
+    if "exceeds" in message and (
+        "magnitude" in message or "safe-integer" in message
+    ):
+        return "NUMBER-OUTSIDE-DACS-MAGNITUDE"
+    if "not valid UTF-8" in message:
+        return "INVALID-UNICODE"
+    raise AssertionError(f"unclassified canonicalization error: {error!r}")
+
+
 class CanonicalJsonVectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -68,6 +84,22 @@ class CanonicalJsonVectorTests(unittest.TestCase):
             }.issubset(names)
         )
 
+    def test_numeric_regression_boundaries_are_pinned(self):
+        by_name = {vector["name"]: vector for vector in self.data["vectors"]}
+        expected = {
+            "minimum-negative-binary64": "-5e-324",
+            "integral-binary64-one": "1",
+            "maximum-dacs-magnitude-binary64": "9007199254740991",
+            "minimum-dacs-magnitude-binary64": "-9007199254740991",
+        }
+        for name, canonical in expected.items():
+            with self.subTest(name=name):
+                vector = by_name[name]
+                value = decode_tagged(vector["input"])
+                self.assertIsInstance(value, float)
+                self.assertEqual(canonical, jcs.canonicalize(value))
+                self.assertEqual(canonical.encode().hex(), vector["canonicalUtf8Hex"])
+
     def test_vectors_produce_exact_expected_bytes_rejection_or_honest_abstention(self):
         abstentions = []
         for vector in self.data["vectors"]:
@@ -81,8 +113,11 @@ class CanonicalJsonVectorTests(unittest.TestCase):
                     actual = jcs.canonicalize(value).encode("utf-8").hex()
                     self.assertEqual(actual, vector["canonicalUtf8Hex"])
                 else:
-                    with self.assertRaises((TypeError, ValueError)):
+                    with self.assertRaises((TypeError, ValueError)) as raised:
                         jcs.canonicalize(value)
+                    self.assertEqual(
+                        vector["expectedErrorCode"], adapter_error_code(raised.exception)
+                    )
         self.assertEqual(
             abstentions,
             [("bigint-native-type", "Python has no distinct native BigInt type")],

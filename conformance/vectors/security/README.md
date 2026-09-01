@@ -134,7 +134,7 @@ python3 -m unittest tests.test_payload_attestation_vectors -v
 
 ### `phase-bound-delivery-evidence-v0.7.json` — §9.7 PDE-1..PDE-8
 
-44 deterministic vectors execute the current `DeliveryEvidence` wire contract
+45 deterministic vectors execute the current `DeliveryEvidence` wire contract
 and its DACS-5 one-to-one mapping through fully shaped, three-party-signed
 `FaultAttestationBundle` artifacts. Every evidence, entitlement, payload-
 attestation, and bundle artifact carries a genuine Ed25519 signature over RFC

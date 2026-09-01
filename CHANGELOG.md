@@ -48,6 +48,23 @@ The format used per release:
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
 
+### Added — signed alternative-payment projection
+
+- **One Listing, one buyer-selected payment handler** (DACS-1 §6.3.4,
+  DACS-3 §8.5.2, DACS-4 §9.9.1 APR-1..APR-8, DACS-5 §10.4.3; #340) — adds
+  the listing-only `pay-alternative` phase carrying complete
+  `PaymentRailRef` alternatives. Exactly one reference is selected into the
+  signed Agreement before commitment, its authenticated concrete handler is
+  projected at the original phase index, and evidence/bundles record that
+  concrete handler. Post-signature switching requires a fresh job and retries
+  never fall through to another rail after authorization or ambiguous
+  settlement. A claimed fresh-job replacement is now signed through
+  `priorPaymentDispositionRef` and can authorize only from an authenticated,
+  finalized `PriorPaymentDisposition` that durably closed before authorization
+  or proves the prior authorization cannot settle. Legacy readers reject the
+  unknown phase; ordinary and repeated payment pipelines retain their prior
+  meaning.
+
 ### Fixed — DACS-1 / DACS-4 rail availability
 
 - **Production rail selection and authoritative hints** (DACS-1 §6.3.4
@@ -127,17 +144,21 @@ The format used per release:
   authority remains `indeterminate`; and inclusion time, not query time,
   governs the effective window. The persistent record cannot satisfy a fresh
   `domain-tls-control` requirement and controls a domain only when the bundle
-  presentation verifies under the same GCR-bound account. Carries 49 genuine
+  presentation verifies under the same GCR-bound account. Carries 52 genuine
   deterministic Ed25519 vectors and changes the example producer output to
   canonical `domain:`. The steward's signed registry publication remains a
   separate post-review operation.
 
-- **DCR/DGCR conformance completion** (DACS-1 §6.3.1 DCR-1/DCR-2/DCR-5/DCR-7;
-  DACS-2 §7.3.10 DGCR-1/DGCR-2/DGCR-4; #332) — without changing normative
-  semantics, expands `domain-claim-gcr-v0.4` with executable length and A-label
-  boundaries, non-IP numeric-host and distinct-host cases, direct/node writer
-  authorization, finalized inclusion, presentation-bound SR-1 control, native
-  context, and inclusion-time anti-reissue coverage. The generator is now
+- **DCR/DGCR conformance completion and spelling boundary** (DACS-1 §6.3.1
+  DCR-1/DCR-2/DCR-4/DCR-5/DCR-7; DACS-2 §7.3.10
+  DGCR-1/DGCR-2/DGCR-4; #332) — closes the remaining producer/read ambiguity:
+  a current U-label or upper-case `domain:` spelling is rejected rather than
+  repaired, while an otherwise-valid historical `web2:domain:` hostname is
+  ASCII-case-folded only after its original signature verifies. Expands
+  `domain-claim-gcr-v0.4` with those executable distinctions plus length and
+  A-label boundaries, non-IP numeric-host and distinct-host cases, direct/node
+  writer authorization, finalized inclusion, presentation-bound SR-1 control,
+  native context, and inclusion-time anti-reissue coverage. The generator is
   checked byte-for-byte in CI.
 
 ### Added — DACS-4 v0.5
@@ -175,6 +196,21 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **Canonical JSON cross-implementation repair** (CORE §B.2; #270) —
+  clarifies that the DACS 2^53−1 constraint is a finite-number magnitude
+  profile, not an integer-only profile, and makes `scripts/jcs.py` serialize
+  bounded fractional binary64 values using RFC 8785's ECMAScript form instead
+  of rejecting them. CF-1 now explicitly normalizes string values only:
+  member names remain as received, sort by UTF-16 code units, and NFC/NFD
+  spellings remain distinct. Adds 25 byte-discriminating candidate vectors
+  covering the seven observed cross-run divergences and relevant RFC edge
+  cases, including signed minimum subnormal, integral-binary64 formatting, and
+  both binary64 safe-magnitude boundaries. Each adapter must compare the exact
+  canonical bytes before emitting its verdict because the generic run-file
+  channel itself is verdict-only. Cross-run tooling records unsupported cases
+  as abstentions, excludes them from agreement denominators, refuses to label
+  a one-impl or abstaining run converged, and requires rule-by-rule
+  discrimination evidence before candidate promotion.
 - **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
   replaces the stale `verify-consume-one-sided` manifest hash after the
   normative reference-shape migration, binds manifest regeneration to the
@@ -194,11 +230,9 @@ The format used per release:
   published vector exercised the §B.2 canonical-form hash of a *signed* artifact
   (an implementer could be §B.2-correct yet fail, or §B.2-wrong yet pass). The
   validator now canonicalises with a vendored stdlib-only module (`scripts/jcs.py`)
-  implementing RFC 8785 (JCS) for the JSON subset DACS lifecycle artifacts occupy —
-  integers |n| ≤ 2⁵³−1, strings, literals, arrays, objects; non-integral numbers
-  are rejected fail-closed (no normative DACS rule forbids them, but the corpus is
-  float-free (executed) and refusing beats emitting a possibly-nonconformant ES6
-  serialisation). It hashes the signature-omitted scope via an explicit per-kind
+  implementing RFC 8785 (JCS) for the DACS finite-number magnitude profile,
+  strings, literals, arrays, and objects (fractional serialization completed by
+  the #270 repair above). It hashes the signature-omitted scope via an explicit per-kind
   hash-excluded-field table (`signature` / `signatures`; bundles also omit
   `anchoredByRole` per §10.4.1). It additionally verifies every embedded ed25519
   signature over the §B.7 domain-separated payload (registry-validated separator ‖
@@ -212,8 +246,7 @@ The format used per release:
   (pinned by an executed per-artifact equivalence test). Per CF-1's literal "every
   JSON string value", NFC is applied to string values only; member names are
   serialised and UTF-16-sorted as received (matching the in-repo `nfc_deep`
-  precedent) — whether CF-1 also binds member names is a spec-clarification
-  candidate, not resolved here.
+  precedent and now explicit in CORE §B.2 via #270).
   Residual: the signed internal cross-references
   (`listingRef` / `vetRecordRef` `contentHash`) still commit to the legacy
   whole-artifact hashes and cannot be corrected in place without the external

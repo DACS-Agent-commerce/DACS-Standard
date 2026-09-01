@@ -37,7 +37,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
-| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 52 | `error` / `fail` / `indeterminate` / `pass` |
+| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 57 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
@@ -671,6 +671,30 @@ submission because an applicable binding cannot be resolved. `error` means a
 resolver/input error is surfaced as error, with no tier-3 downgrade and no
 payment. This set is candidate data only; cross-run convergence and any golden
 promotion remain pending.
+
+### `domain-claim-gcr-v0.4.json` — DACS-1 §6.3.1 DCR-1..DCR-8 / DACS-2 §7.3.10 DGCR-1..DGCR-6
+
+Fifty-seven deterministic cases cover canonical `domain:` production,
+signature-preserving historical `web2:domain:` reads, semantic deduplication,
+presentation-bound control, and authenticated finalized Demos GCR verification.
+Every bundle and registration proof uses a deterministic genuine Ed25519
+signature.
+
+`authenticatedProducerProfile` is a trusted verifier input modelling release
+or deployment provenance; it is not an `IdentityBundle` field and MUST NOT be
+accepted from a producer self-declaration. Exact spelling follows the
+`domain:` scheme at every profile version. The profile input selects only the
+DCR-3/DCR-5 current-producer alias-emission boundary, including explicit 0.5,
+0.6.0, and 0.7 cases. The invalid-signature mixed-case legacy row requires an
+empty semantic claim set, so folding unverified bytes is observable and fails
+the executable evaluator.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_domain_gcr_vectors.py --check
+python3 -m unittest tests.test_domain_claim_gcr_vectors -v
+```
 
 ### `agreement-listing-v0.1.json` — §8.5.2 (agreement ↔ listing validation)
 

@@ -52,14 +52,12 @@ def metadata(host: str, private: Ed25519PrivateKey) -> dict:
 
 
 def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
-                  producer_version: str = "0.6",
                   claim_metadata: list[dict] | None = None) -> dict:
     metadata_items = claim_metadata or [md for _ in refs]
     if len(metadata_items) != len(refs):
         raise ValueError("claim metadata must align one-to-one with claim refs")
     unsigned = {
         "bundleVersion": "1",
-        "producerDacs1Version": producer_version,
         "subject": "domain compatibility vector",
         "claims": [
             {"ref": ref, "metadata": {"demosGcrDomain": copy.deepcopy(claim_md)}}
@@ -92,9 +90,10 @@ def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
         "name": name,
         "expected": expected,
         "artifact": signed_bundle(
-            refs, md, signer, producer_version,
+            refs, md, signer,
             claim_metadata=claim_metadata if isinstance(claim_metadata, list) else None,
         ),
+        "authenticatedProducerProfile": {"dacs1Version": producer_version},
         "authoritativeGcr": copy.deepcopy(record),
         "registrationValidation": {
             "profile": "demos-web2-domain-v1",
@@ -190,6 +189,18 @@ def main() -> None:
         want={"semanticClaims": [f"domain:{host}"]},
     ))
 
+    for name, version, ref, expected_host in [
+        ("future-profile-uppercase-host-rejected", "0.7", "domain:Agent.Example", host),
+        ("patch-profile-uppercase-host-rejected", "0.6.0", "domain:Agent.Example", host),
+        ("historical-profile-domain-u-label-rejected", "0.5", "domain:faß.example", idna_host),
+    ]:
+        expected_md = idna_md if expected_host == idna_host else md
+        vectors.append(case(
+            name, "fail", [ref], expected_md, expected_md, owner,
+            producerDacs1Version=version, ruleRefs=["DCR-1"],
+            want={"semanticClaims": [f"domain:{expected_host}"]},
+        ))
+
     decomposed_input = "e\u0301xample.example"
     decomposed_host = "xn--xample-9ua.example"
     decomposed_md = metadata(decomposed_host, owner)
@@ -204,6 +215,17 @@ def main() -> None:
         md, record, owner, producerDacs1Version="0.5", ruleRefs=["DCR-4"],
         want={"semanticClaims": [f"domain:{host}"], "originalBytesPreserved": True},
     ))
+
+    invalid_legacy = case(
+        "legacy-mixed-case-invalid-signature-rejected-before-fold", "fail",
+        ["web2:domain:Agent.Example"], md, record, owner,
+        producerDacs1Version="0.5", ruleRefs=["DCR-4"],
+        want={"semanticClaims": []},
+    )
+    signature = bytearray.fromhex(invalid_legacy["artifact"]["signature"])
+    signature[0] ^= 1
+    invalid_legacy["artifact"]["signature"] = signature.hex()
+    vectors.append(invalid_legacy)
 
     legacy = case("legacy-alias-original-byte-preservation", "pass",
                   [f"web2:domain:{host}"], md, record, owner,
@@ -230,8 +252,16 @@ def main() -> None:
         ruleRefs=["DCR-5"],
         want={"semanticClaims": [f"domain:{host}", f"domain:{other_host}"]},
     ))
-    vectors.append(case("current-producer-dual-alias-rejected", "fail",
-                        [f"domain:{host}", f"web2:domain:{host}"], md, record, owner))
+    vectors.append(case(
+        "current-producer-dual-alias-rejected", "fail",
+        [f"domain:{host}", f"web2:domain:{host}"], md, record, owner,
+        ruleRefs=["DCR-5"],
+    ))
+    vectors.append(case(
+        "future-profile-dual-alias-rejected", "fail",
+        [f"domain:{host}", f"web2:domain:{host}"], md, record, owner,
+        producerDacs1Version="0.7", ruleRefs=["DCR-5"],
+    ))
 
     for name, ref in [
         ("scheme-is-not-a-host", "domain:https://agent.example"),
@@ -414,11 +444,13 @@ def main() -> None:
         "modelNotes": [
             "sourceAuthentication and writerAuthorization are resolved verifier inputs modelling DGCR-1/DGCR-2 substrate evidence; they are not new DACS wire artifacts.",
             "authenticatedSr1Binding models an already-authenticated SR-1 resolver result bound to the exact presentation; it is not a caller assertion.",
+            "authenticatedProducerProfile is trusted release/profile context supplied by the verifier; it is not an IdentityBundle member or a producer self-declaration.",
             "evaluationScope=semantic-claim-set isolates DCR-5 identity-set processing before per-claim GCR evaluation.",
         ],
         "provenance": {
             "issue": "DACS-Agent-commerce/DACS-Standard#275",
             "coverageIssue": "DACS-Agent-commerce/DACS-Standard#332",
+            "profileBoundaryIssue": "DACS-Agent-commerce/DACS-Standard#347",
             "generator": "scripts/generate_domain_gcr_vectors.py",
         },
         "count": len(vectors),

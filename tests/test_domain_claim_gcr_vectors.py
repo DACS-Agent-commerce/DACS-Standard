@@ -16,6 +16,9 @@ VECTORS = ROOT / "conformance" / "vectors" / "security" / "domain-claim-gcr-v0.4
 LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 HEX128 = re.compile(r"^[0-9a-f]{128}$")
+PROFILE_VERSION = re.compile(
+    r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*))?$"
+)
 
 
 def compact(value):
@@ -54,6 +57,18 @@ def semantic_ref(ref):
     else:
         raise ValueError("not a domain reference")
     return "domain:" + canonical_host(host)
+
+
+def authenticated_profile_at_least(vector, minimum):
+    profile = vector.get("authenticatedProducerProfile")
+    if not isinstance(profile, dict):
+        raise ValueError("missing authenticated producer profile")
+    value = profile.get("dacs1Version")
+    match = PROFILE_VERSION.fullmatch(value) if isinstance(value, str) else None
+    if match is None:
+        raise ValueError("invalid authenticated DACS-1 version")
+    actual = tuple(int(part or 0) for part in match.groups())
+    return actual >= minimum
 
 
 def verify_artifact(artifact):
@@ -118,16 +133,25 @@ def evaluate(vector):
     if not verify_artifact(artifact):
         return "fail", []
 
+    try:
+        current_profile = authenticated_profile_at_least(vector, (0, 6, 0))
+    except ValueError:
+        return "error", []
+
     refs = [claim["ref"] for claim in artifact["unsigned"]["claims"]]
     try:
         semantic = list(dict.fromkeys(semantic_ref(ref) for ref in refs))
     except ValueError:
         return "error", []
 
+    # DCR-1 exact spelling is selected by the current ``domain:`` scheme, not
+    # by a producer-controlled version literal.  DCR-3's legacy-alias emission
+    # ban separately uses authenticated release/profile context.
+    if any(ref.startswith("domain:") and ref != semantic_ref(ref) for ref in refs):
+        return "fail", semantic
     has_alias = any(ref.startswith("web2:domain:") for ref in refs)
-    if artifact["unsigned"]["producerDacs1Version"] == "0.6":
-        if has_alias or any(ref != semantic_ref(ref) for ref in refs):
-            return "fail", semantic
+    if current_profile and has_alias:
+        return "fail", semantic
 
     # DCR-5 identity-set cases deliberately stop before GCR verification: the
     # vector exercises only whether distinct canonical hosts remain distinct.
@@ -247,10 +271,20 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
                 "invalid-punycode-a-label-rejected",
                 "current-producer-u-label-rejected",
                 "current-producer-uppercase-host-rejected",
+                "future-profile-uppercase-host-rejected",
+                "patch-profile-uppercase-host-rejected",
+                "historical-profile-domain-u-label-rejected",
             },
             "DCR-2": {"all-numeric-non-ip-hostname"},
-            "DCR-4": {"legacy-mixed-case-ascii-read"},
-            "DCR-5": {"distinct-hosts-remain-distinct"},
+            "DCR-4": {
+                "legacy-mixed-case-ascii-read",
+                "legacy-mixed-case-invalid-signature-rejected-before-fold",
+            },
+            "DCR-5": {
+                "distinct-hosts-remain-distinct",
+                "current-producer-dual-alias-rejected",
+                "future-profile-dual-alias-rejected",
+            },
             "DCR-7": {
                 "authenticated-sr1-session-binding",
                 "sr1-link-without-presentation-binding",
@@ -286,9 +320,29 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
         for name in (
             "current-producer-u-label-rejected",
             "current-producer-uppercase-host-rejected",
+            "future-profile-uppercase-host-rejected",
+            "patch-profile-uppercase-host-rejected",
+            "historical-profile-domain-u-label-rejected",
         ):
             verdict, _ = evaluate(cases[name])
             self.assertEqual("fail", verdict)
+
+    def test_authenticated_profile_controls_only_alias_emission(self):
+        cases = {v["name"]: v for v in self.doc["vectors"]}
+        for vector in cases.values():
+            self.assertNotIn("producerDacs1Version", vector["artifact"]["unsigned"])
+            self.assertIn("dacs1Version", vector["authenticatedProducerProfile"])
+        self.assertEqual("pass", evaluate(cases["historical-alias-pair-deduplicates"])[0])
+        self.assertEqual("fail", evaluate(cases["current-producer-dual-alias-rejected"])[0])
+        self.assertEqual("fail", evaluate(cases["future-profile-dual-alias-rejected"])[0])
+
+    def test_invalid_legacy_signature_stops_before_semantic_fold(self):
+        vector = next(
+            v for v in self.doc["vectors"]
+            if v["name"] == "legacy-mixed-case-invalid-signature-rejected-before-fold"
+        )
+        self.assertFalse(verify_artifact(vector["artifact"]))
+        self.assertEqual(("fail", []), evaluate(vector))
 
     def test_dcr1_and_dcr2_hostname_boundaries(self):
         cases = {v["name"]: v for v in self.doc["vectors"]}

@@ -14,7 +14,7 @@
     "verifier": "4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147"
   },
   "count": 38,
-  "hash": "f3e5b4669110d8894c62b831a4f72d8622ccf21911cc1c86c6dc388268000ff0",
+  "hash": "54780a82e0cd511a8dd4f9323f39452d4c4c5c96728116e1fe496db84b19ec6a",
   "vectors": [
     {
       "name": "required-presence-key-with-issued-at",
@@ -1006,12 +1006,12 @@
         "freshness": [],
         "supplementary": [],
         "dealSpecific": [],
-        "overallDecision": "pass",
+        "overallDecision": "fail",
         "generatedAt": 1900000000000,
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "61G-hOu9f6zhAdfV9QkDFU7RlvBMz_NC78_TNBohwkvlEzdcQ8RsgyWfIxC9VmCaqgVMMS1R2vu7Lg8mMKtjCg"
+          "value": "9ssb2doM8LJkdNLGoKba46qfnth9l4kweouWfyWmxBMPaD9is6ciYzK-qIPOExCptfvEuNLFTR7wlStgyn1HDg"
         }
       },
       "resolvedResults": []

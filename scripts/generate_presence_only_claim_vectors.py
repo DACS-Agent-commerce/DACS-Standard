@@ -401,7 +401,7 @@ def build_vectors() -> list[dict]:
         "error",
         signed_bundle([base_key]),
         requirement([presence("key", parameters=[])]),
-        overall="pass",
+        overall="fail",
         note="Malformed parameters are a requirement error rather than an evaluator exception",
     ))
     vectors.append(case(

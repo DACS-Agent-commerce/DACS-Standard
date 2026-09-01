@@ -70,7 +70,7 @@ The format used per release:
   registry snapshot, including for an all-presence requirement, so the
   algorithm remains consistent with CRQ-1 and composes with descriptor-bound
   registry resolution. Empty collection and exact-boolean configuration
-  semantics are explicit. Adds 34 deterministic vectors with genuine Ed25519
+  semantics are explicit. Adds 38 deterministic vectors with genuine Ed25519
   bundle, VerifyResult, and composite signatures. No artifact or schema change.
 
 ### Fixed — DACS-1 / DACS-4 rail availability

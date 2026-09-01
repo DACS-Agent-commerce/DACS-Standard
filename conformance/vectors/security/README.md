@@ -989,7 +989,7 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1
 
-Thirty-four candidate cases make `ClaimRequirement.verificationRequired: false`
+Thirty-eight candidate cases make `ClaimRequirement.verificationRequired: false`
 executable across DACS-1 matching and DACS-2 composite replay. Every ordinary
 bundle and composite record carries a deterministic Ed25519 signature; vectors
 that use a real verification result sign it under the independent VerifyResult

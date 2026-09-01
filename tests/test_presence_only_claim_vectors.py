@@ -526,7 +526,12 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                 vector = by_name[name]
                 self.assertEqual("error", vector["expected"])
                 fallback = (
-                    "fail" if name == "empty-oneof-group-is-invalid" else "pass"
+                    "fail"
+                    if name in {
+                        "empty-oneof-group-is-invalid",
+                        "presence-parameters-must-be-an-object",
+                    }
+                    else "pass"
                 )
                 self.assertEqual(
                     fallback, vector["compositeRecord"]["overallDecision"]

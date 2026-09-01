@@ -135,7 +135,7 @@ python3 -m unittest tests.test_ap2_handler_safety_vectors -v
 
 ### `alternative-payment-projection-v0.1.json` — §9.9.1 APR-1..APR-8
 
-44 candidate vectors make the Listing-only `pay-alternative` projection
+45 candidate vectors make the Listing-only `pay-alternative` projection
 executable across DACS-1, DACS-3, DACS-4, and DACS-5. Deterministic Ed25519
 fixtures sign the Listing, complete DEM/x402/AP2 rail definitions, payee-bound
 Agreements, evidence-bound bundles, and prior-payment dispositions. The cases

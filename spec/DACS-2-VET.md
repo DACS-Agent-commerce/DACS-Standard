@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 adds the minor-safe `vet-credentials-provenanced` phase and signed requirement/verifier provenance artifacts; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 evaluates presence-only `ClaimRequirement` members against the exact signed `IdentityBundle` under PCR-1..PCR-6 and excludes them from `VerifyResult` evidence, and adds the minor-safe `vet-credentials-provenanced` phase with signed requirement/verifier provenance artifacts; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -720,6 +720,10 @@ type WarningCode =
   | "RETRY_EXHAUSTED"                           // all VP-R1 retry attempts spent (terminal)
 ```
 
+**Presence evidence is the signed bundle, not a verification artifact.** Under DACS-1 PCR-6, the producer evaluates every `verificationRequired = false` member directly against the exact `IdentityBundle` supplied as `bundleToVet`. It MUST NOT call a verification recipe, create a `VerifyResult`, or add a `VerifyResultRef` to `freshness` or `dealSpecific` solely to represent that member. A reference needed by a separate `verificationRequired = true` member remains valid evidence for that verified member; it does not turn the presence decision into a verification decision. A genuinely passing-and-fresh pre-attested reference on the claim may still count independently under the ordinary DACS-1 verified-claim and tier rules.
+
+The wire shape of `CompositeVerificationRecord` is unchanged. Its existing `bundleHash` is the binding: a strict consumer replays aggregation with the original signed `IdentityBundle` as companion input, recomputes its DACS-1 bundle hash, and requires exact equality with `record.bundleHash`. The consumer likewise recomputes the RFC 8785 hash of the exact `BundleRequirement` and requires equality with `record.requirementHash`. If the exact bundle is unavailable, the record MUST NOT be accepted as proof that a presence-only member passed; the reliance decision is `indeterminate` until the bundle is available. An invalid bundle presentation, hash mismatch, malformed claim/reference, invalid composite signature, or aggregation mismatch MUST cause rejection.
+
 **Verification warnings (rules WN-1..WN-6).** The optional `warnings` array surfaces transient/retryable verification conditions encountered while producing the record — without changing the verification decision. Warnings are strictly advisory and orthogonal to the §7.7.1 aggregation:
 
 - (WN-1) the presence of one or more warnings MUST NOT change `overallDecision`;
@@ -735,7 +739,7 @@ CCI-native reputation signals (cci-nomis, cci-ethos, cci-humanpassport) are firs
 
 #### 7.7.1 Aggregation algorithm
 
-A verifier MUST compute overallDecision per the following algorithm. The algorithm distinguishes four cases for each required claim: passing, indeterminate (authority answered ambiguously), errored (verifier could not reach the authority), and failing/absent. Precedence among non-pass outcomes is failures > errors > indeterminates so that the strongest evidence dominates aggregation.
+A verifier MUST compute `overallDecision` per the following algorithm. A member's classifier is selected by `verificationRequired`: presence-only members are evaluated against the signed bundle under PCR-1..PCR-3, while verified members use the existing `VerifyResult` path under PCR-4. Mixed `required` and `oneOf` collections therefore compose the two modes without synthesising evidence. The algorithm distinguishes four cases for each member: passing, indeterminate (authority or required replay input unavailable), errored (malformed input or verifier failure), and failing/absent. Precedence among non-pass outcomes is failures > errors > indeterminates so that the strongest evidence dominates aggregation.
 
 ```
 aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
@@ -768,6 +772,8 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
     registryVersion := vetInput.sessionContext.recipeRegistryVersion
 
+    exactBundle := vetInput.bundleToVet
+
   else if authority.kind == "replay":
 
     verifiedBundle := authority.bundle
@@ -794,11 +800,51 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
     registryVersion := verifiedBundle.recipeRegistryVersion
 
+    exactBundle := authority.resolvedIdentityBundle
+
   else:
 
     # In particular, the off-chain unsigned SessionRecord (§10.3.2) is not authority.
 
     return "error", ["aggregation authority missing or invalid"]
+
+  # Strict bundle/requirement binding and presence-only evidence preflight
+  # (PCR-1, PCR-3, PCR-6). Production uses vetInput.bundleToVet; replay must
+  # independently resolve the same signed IdentityBundle bytes.
+
+  if sha256(CORE-canonical(requirement)) != record.requirementHash: return REJECT_RECORD
+
+  requiredMembers := requirement.required
+
+  oneOfGroups := requirement.oneOf if present, otherwise []
+
+  if requiredMembers is not an array OR oneOfGroups is not an array:
+
+    return "error", ["malformed claim requirement collections"]
+
+  if any group in oneOfGroups is not a non-empty array:
+
+    return "error", ["malformed empty or non-array oneOf group"]
+
+  claimRequirements := requiredMembers ++ flatten(oneOfGroups)
+
+  if any cr in claimRequirements is not an object OR
+     cr.verificationRequired is not exactly the JSON boolean true or false:
+
+    return "error", ["invalid verificationRequired mode"]
+
+  if any cr.scheme is not a known canonical ClaimReference scheme OR
+     cr.parameters is present and is not an object:
+
+    return "error", ["invalid claim requirement scheme or parameters"]
+
+  if any presence-only member carries maxAge or recipeVersion:
+
+    return "error", ["invalid presence-only requirement"]
+
+  # Registry authentication is aggregation-scoped, not conditional on bundle
+  # or verified-member availability. CRQ-1 therefore precedes every reliance
+  # disposition that could otherwise mask an invalid session-pinned snapshot.
 
   registry := recipeRegistryResolver.resolve_authenticated(registryVersion)
 
@@ -806,13 +852,31 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
     return "error", ["session-pinned recipe registry unavailable or invalid"]
 
+  if exactBundle unavailable: return "indeterminate", ["exact bundle unavailable"]
+
+  if exactBundle presentation invalid: return REJECT_RECORD
+
+  if sha256(dacs1_bundle_canonical_form(exactBundle)) != record.bundleHash: return REJECT_RECORD
+
+  if any BundleClaim.verifiedBy is present but not a well-formed VerifyResultRef:
+
+    return "error", ["malformed verification reference"]
+
+  # Every CVR VerifyResultRef must be attributable to at least one verified
+  # member. Presence-only members add no references and never invoke a recipe.
+
+  if any record result reference is attributable only to presence-only members: return REJECT_RECORD
+
+  verifiedMembers := [cr for cr in claimRequirements
+                      if cr.verificationRequired == true]
+
   # Resolve every decision-bearing family/version and any required rerun before
   # classifying any member. A registry error therefore cannot fall through to
   # "constraints not satisfied" or be masked by a separately failing member.
 
   qualificationContexts := {}
 
-  for cr in requirement.required ++ flatten(requirement.oneOf):
+  for cr in verifiedMembers:
 
     context := preflight_qualification(record, cr, registry)
 
@@ -822,8 +886,8 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
     qualificationContexts[cr] := context
 
-  # The helpers below use this authenticated aggregation-scoped registry and
-  # the requirement-scoped, preflighted result views.
+  # Verified-member helpers below use this authenticated aggregation-scoped
+  # registry and the requirement-scoped, preflighted result views.
 
   failures := []
 
@@ -831,17 +895,25 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
 
   indeterminates := []
 
-  # All required claims must have a passing VerifyResult
+  # Every required member must pass in its selected mode.
 
-  for cr in requirement.required:
+  for cr in requiredMembers:
 
-    classify_required(record, cr, failures, errors, indeterminates)
+    outcome := classify_member(record, exactBundle, cr)
+
+    if outcome == "fail": failures.append("required failing or absent: " + cr.scheme)
+
+    else if outcome == "error": errors.append("required errored: " + cr.scheme)
+
+    else if outcome == "indeterminate": indeterminates.append("required indeterminate: " + cr.scheme)
 
   # oneOf groups must each contain at least one passing
 
-  for group in requirement.oneOf:
+  for group in oneOfGroups:
 
-    if not any(find_qualified_pass(record, cr) for cr in group):
+    outcomes := [classify_member(record, exactBundle, cr) for cr in group]
+
+    if not any(outcome == "pass" for outcome in outcomes):
 
       # A oneOf group is satisfied iff ≥1 member passes (OR within the group).
       # When none pass, classify the group by whether it could STILL be satisfied.
@@ -853,17 +925,29 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
       # current evidence for that member and does not participate. Only when every member
       # hard-fails or lacks a qualified current result is the group a conclusive fail.
 
-      if any(find_applicable(record, cr, "error") for cr in group):
+      if any(outcome == "error" for outcome in outcomes):
 
         errors.append("oneOf group: at least one claim errored")
 
-      else if any(find_applicable(record, cr, "indeterminate") for cr in group):
+      else if any(outcome == "indeterminate" for outcome in outcomes):
 
         indeterminates.append("oneOf group: at least one claim indeterminate")
 
       else:
 
         failures.append("oneOf group: no claim satisfied")
+
+  # The composite decision covers the complete BundleRequirement, not only its
+
+  # member sets. Apply DACS-1 MA-2/MA-3 and PCR-5 to the exact presentedBy claim,
+
+  # using exact-claim verified evidence in this record where verification is required.
+
+  if requirement.primaryClaimSelector is set AND
+
+     NOT exact_selector_authorized(record, exactBundle, requirement):
+
+    failures.append("primaryClaimSelector is mismatched, uncontrolled, or unauthorized")
 
   # Cross-accumulator precedence (across ALL required claims and oneOf groups): failures > errors > indeterminates.
   # This is fail-first because a single hard-failed REQUIRED claim dooms the whole requirement (AND), regardless of
@@ -876,6 +960,80 @@ aggregate(record, recordRef, requirement, authority, recipeRegistryResolver):
   if indeterminates: return "indeterminate", indeterminates
 
   return "pass", []
+
+classify_member(record, exactBundle, cr):
+
+  if cr.verificationRequired == false:
+
+    # Apply DACS-1 PCR-1..PCR-3 to exactBundle. A matching canonical, unexpired,
+
+    # parameter-conforming claim passes. Missing/expired/mismatched is fail.
+
+    # Malformed configuration or ref is error. issuedAt and the decision,
+
+    # freshness, or availability of a well-shaped verifiedBy do not affect this outcome.
+
+    return classify_presence(exactBundle, cr)
+
+  # Apply the existing result resolution, recipe/version, identifier, decision,
+
+  # freshness/maxAge, parameter, disabled/mock method, and retry classifiers.
+
+  return classify_verified_member(record, cr)
+
+exact_selector_authorized(record, exactBundle, requirement):
+
+  selector := requirement.primaryClaimSelector
+
+  oneOfGroups := requirement.oneOf if present, otherwise []
+
+  if selector is absent: return true
+
+  if canonical_scheme(exactBundle.presentedBy) != selector: return false
+
+  presented := the claim in exactBundle.claims whose canonical ClaimReference
+               equals exactBundle.presentedBy
+
+  if presented is absent: return false
+
+  controlled := the exact presented claim passes DACS-1 §6.3.2 step (6)
+
+  # `verifiedSelector` is exact-claim evidence only. It passes only when the
+  # record commits presented.verifiedBy and the independently resolved result
+  # passes hash, signature, identifier, recipe/version, decision, and freshness
+  # checks for `presented`; another same-scheme claim cannot supply it.
+
+  verifiedSelector := presented has a record-committed passing-and-fresh
+                      verifiedBy under the DACS-1 §6.3.2 verified-claim gate
+
+  exactPresenceMembers := [cr for cr in requirement.required ++ flatten(oneOfGroups)
+                           if cr.scheme == selector
+                           and cr.verificationRequired == false
+                           and classify_presence(exactBundle, cr,
+                                                 exactClaimRef := presented.ref) == "pass"]
+
+  presenceSelector := exactPresenceMembers is not empty
+
+  if any required member has scheme == selector and verificationRequired == true:
+
+    presenceSelector := false
+
+  for group in oneOfGroups where any member has
+      scheme == selector and verificationRequired == true:
+
+    exactPresenceInGroup := any cr in group where cr.scheme == selector
+                            and cr.verificationRequired == false
+                            and classify_presence(exactBundle, cr,
+                                                  exactClaimRef := presented.ref) == "pass"
+
+    passingOtherScheme := any cr in group where cr.scheme != selector
+                          and classify_member(record, exactBundle, cr) == "pass"
+
+    if NOT (exactPresenceInGroup OR passingOtherScheme):
+
+      presenceSelector := false
+
+  return controlled AND (verifiedSelector OR presenceSelector)
 
 preflight_qualification(record, cr, registry):
 
@@ -922,49 +1080,39 @@ preflight_qualification(record, cr, registry):
 
   return {results: scopedResults, expectedVersionByMethod: the versions resolved above}
 
-classify_required(record, cr, failures, errors, indeterminates):
+classify_verified_member(record, cr):
 
   same_scheme := qualificationContexts[cr].results   // authenticated, resolved freshness ++ dealSpecific results after VP-C1 reuse handling; supplementary signals NOT included
 
   if same_scheme is empty:
 
-    failures.append("required not present: " + cr.scheme)
-
-    return
+    return "fail"
 
   results := find_applicable_results(record, cr)
 
   if results is empty:
 
-    failures.append("required constraints not satisfied: " + cr.scheme)
-
-    return
+    return "fail"
 
   if any(r.decision == "pass" and parameters_match(r, cr) for r in results):
 
-    return  // claim satisfied
+    return "pass"  // claim satisfied
 
   if any(r.decision == "pass" and not parameters_match(r, cr) for r in results):
 
-    failures.append("required constraints not satisfied: " + cr.scheme)
-
-    return
+    return "fail"
 
   if any(r.decision == "fail" for r in results):
 
-    failures.append("required failing: " + cr.scheme)
-
-    return
+    return "fail"
 
   if any(r.decision == "error" for r in results):
 
-    errors.append("required errored: " + cr.scheme)
-
-    return
+    return "error"
 
   // remaining results are "indeterminate"
 
-  indeterminates.append("required indeterminate: " + cr.scheme)
+  return "indeterminate"
 
 find_qualified_pass(record, cr):
 
@@ -1004,6 +1152,8 @@ parameters_match(r, cr):
 (CRQ-4) Required-claim and `oneOf` aggregation MUST use applicable results and qualified passes as defined above. Qualification does not change the decision of an applicable result. If only non-applicable results exist after successful family/version preflight, aggregation reports the requirement or group as unsatisfied; this is not a reclassification of those excluded results. An unresolved family/version or non-live implicit latest fails that preflight as `error` before either precedence ladder runs. Within the applicable set, the existing four-value semantics and both precedence orders are unchanged.
 
 Supplementary signals MUST NOT change overallDecision from pass to fail automatically; they are informational. A listing MAY declare in terms that specific signals are gating (e.g. minimum reputation score); when so declared, the gating check is treated as a deal-specific claim and runs through the same aggregation. Five required-claim diagnostic reasons carry distinct value: "required not present" (no same-scheme VerifyResult exists), "required constraints not satisfied" (same-scheme results exist but none meets the pinned version and age constraints, or a current `pass` fails parameter matching), "required failing" (an applicable authority result said no), "required indeterminate" (an applicable authority result answered ambiguously), and "required errored" (an applicable verifier result could not reach authority). Consumers debugging or auditing a failed session can read the failure reasons to determine which class the failure belongs to.
+
+A producer MUST set `record.overallDecision` to the algorithm's result. A strict consumer MUST independently run the same algorithm, dereference and content-hash-check every `VerifyResultRef` used by a verified member, and reject the record if the recomputed result differs from the signed `overallDecision`. An optional failing, stale, or unavailable `verifiedBy` on a presence-matched claim is not dereferenced for that member and cannot turn its presence pass into another decision. Conversely, a presence pass cannot satisfy a `verificationRequired = true` member, establish control, or elevate DACS-1 `identityTier`.
 
 #### 7.7.2 Anchoring and signature
 
@@ -1601,9 +1751,9 @@ unknown input members as overrides.
 | Recipe author | RA-1 through RA-6; PRA-1 through PRA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
 | Recipe-availability consumer | RAV-1 through RAV-4 |
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
-| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; when the new phase is selected VPA-1 through VPA-10, PVC-1 through PVC-6, and PVPC-1 through PVPC-11; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4 |
+| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PCR-1 through PCR-6; when the new phase is selected VPA-1 through VPA-10, PVC-1 through PVC-6, and PVPC-1 through PVPC-11; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
-| Composite record reader | §7.7.1 aggregation; CRQ-1 through CRQ-4; signature validation; structurally distinguish the legacy and provenanced types; for provenanced records resolve and validate the complete authorization chain |
+| Composite record reader | §7.7.1 mixed-mode aggregation; CRQ-1 through CRQ-4; exact bundle/requirement hash replay; signature validation; PCR-6 no-synthetic-result boundary; structurally distinguish the legacy and provenanced types; for provenanced records resolve and validate the complete authorization chain |
 
 ### 7.10 Rationale
 
@@ -1679,5 +1829,7 @@ access model rather than describing anchored hashes as confidentiality.
 **Identifier canonicalisation gaps.** *Threat:* the same logical identifier in two different forms produces two different VerifyResult lookups or two different reputation keys, allowing an attacker to substitute or to split/launder reputation. *Mitigation:* the canonical-form rules CF-1 (NFC, §B.2), CF-2 (ClaimReference canonical byte form), and CF-3 (canonical identity = canonical scheme + identifier, parameters excluded), plus any per-scheme identifier rule, are normative. Verifiers MUST canonicalise per CF-1/CF-2 before issuing a VerifyResult, and consumers MUST compare per the CF-3 identity before lookup, reputation keying, or the §7.3.2 replay check.
 
 **Composite record forgery.** *Threat:* an attacker constructs a composite record with overallDecision = "pass" and false VerifyResultRefs. *Mitigation:* the composite record is signed by the verifier; consumers verify the signature. The `bundleHash` and `requirementHash` fields bind the record to the exact inputs evaluated; consumers verify these against the inputs they actually used. Those hashes do not authenticate who authored or accepted a complementary requirement, and MUST NOT be presented as the separate cross-party provenance needed by a recursive audit. Each VerifyResultRef MUST be dereferenced and content-hash-validated before the composite record is accepted.
+
+**Synthetic presence verification or bundle substitution.** *Threat:* an attacker fabricates a passing `VerifyResult` for a presence-only requirement, or replays a passing composite record beside a different bundle whose claim is missing or expired. *Mitigation:* PCR-6 forbids presence-only result references and requires strict consumers to verify the composite signature, the exact signed bundle presentation, `bundleHash`, `requirementHash`, and the independently recomputed mixed-mode decision. The residual availability risk is explicit: without the exact bundle, reliance remains `indeterminate` rather than failing open.
 
 **Indeterminate-decision exploitation.** *Threat:* an attacker arranges for a required claim’s verification to fail in a way that returns indeterminate rather than fail, hoping consumers treat the result as pass. *Mitigation:* indeterminate is not pass. The aggregation algorithm treats indeterminate in a required position as overall indeterminate, which MUST fail the phase.

@@ -4,7 +4,7 @@
 
 ## Chapter 6 — DACS-1: Identify
 
-**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.7** on the common DACS v0.1 baseline. v0.7 adds the signed, listing-only `pay-alternative` phase, routes its complete-reference validation through DACS-4 APR-1/APR-2 without making it an executable handler, and registers the structurally distinct `vet-credentials-provenanced` phase. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
+**Stage:** Identify (1st of 5). **Status:** Draft — **DACS-1 v0.7** on the common DACS v0.1 baseline. v0.7 defines presence-only `ClaimRequirement` matching under PCR-1..PCR-6 without manufacturing verification evidence or weakening the identity-control boundary, adds the signed, listing-only `pay-alternative` phase whose complete-reference validation routes through DACS-4 APR-1/APR-2 without making it an executable handler, and registers the structurally distinct `vet-credentials-provenanced` phase. v0.6 makes `domain:<lowercase-IDNA-hostname>` the sole producer form and defines permanent, signature-preserving read compatibility for historical Demos `web2:domain:` aliases under DCR-1..DCR-8. v0.5 defines the EIP-155 chain profile used when an EVM `cci-xm` claim participates in DACS-4 payee-destination binding and makes accepted-rail resolvability an executed canonical-registry check under LRR-1..LRR-6 rather than a self-referential listing assertion. v0.4 requires a listing anchor to reach the CORE §5.1 finalized and independently resolvable gate before active discovery. v0.3 adds the §6.3.2 step (6) control gate, `pre-commit` `cancellationPolicy` handling §6, the sealed-envelope procurement listing-role clarification, the minor-safe `commit-payee-bound-agreement` phase, the §6.3.5/§6.3.6 DACS-5 bundle-binding discovery surfaces, and independently resolvable `RevocationBinding` revocation markers. **Depends on:** SR-1 (optional), SR-2 (required); composes with ERC-8004, W3C DIDs, A2A. **Used by:** DACS-2..5.
 
 ### 6.1 Abstract
 
@@ -293,9 +293,9 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 - If the listing's `BundleRequirement.primaryClaimSelector` is set, the presenter SHOULD select the highest-tier claim of the matching scheme. If no selector is set, the presenter SHOULD select the highest-tier claim available, per the **Claim tiers** table above.
 - Readers MUST accept any `presentedBy` value that resolves to a claim in `claims`. A reader MAY prefer a higher-tier alternative for display or reputation lookup but MUST NOT reject a bundle solely because `presentedBy` is not the highest-tier claim.
 
-**Verified-presentedBy for reputation.** Reputation MUST NOT be keyed against an unverified `presentedBy` claim, regardless of whether `primaryClaimSelector` is set. If the resolved `presentedBy` claim has a verifiable scheme but lacks a passing **and fresh** `verifiedBy` (stale per the §6.3.2 freshness gate counts as not-currently-verified), **or the presenter has not proven control of it** (step (6) above — it rests only on a DACS-2 existence/validity check, e.g. a bare-registry `lei` lookup), consumers MUST treat it as the lowest (plain signing-key) tier for reputation purposes, or reject. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
+**Controlled `presentedBy` for reputation.** Reputation MUST NOT be keyed against an uncontrolled `presentedBy` claim, regardless of whether `primaryClaimSelector` is set. Ordinarily the resolved claim therefore needs a passing **and fresh** `verifiedBy` plus the applicable control proof from step (6). The narrow exception is an exact `key:` claim whose valid bundle presentation itself proves control: it MAY key reputation at the lowest (plain signing-key) tier without a `VerifyResult`. This exception proves control of that signing key only; it does not make the key verified, elevate `identityTier`, or transfer control to another presence-only claim. A presence-only authority identifier such as `lei:` remains existence-only and MUST NOT become `presentedBy` or a reputation key without an independent control proof. *Existence ≠ control:* a verification that only confirms the identifier is real, with no DACS-1 control proof binding it to the presenter, does not qualify the claim as a controlled reputation key.
 
-> **Note (non-normative).** This stops an unverified-or-stale high-tier identifier (e.g. an `lei:` the presenter does not control, or one whose verification has gone stale) from laundering reputation onto itself. The MA-3 verified-presentedBy check (§6.3.3) enforces this at match time when a selector is set; this rule extends the same protection to the no-selector case where reputation still keys on `presentedBy` (§6.6, §10.5.2).
+> **Note (non-normative).** This stops an unverified-or-stale high-tier identifier (e.g. an `lei:` the presenter does not control, or one whose verification has gone stale) from laundering reputation onto itself while preserving the useful self-authenticating `key:` case. The MA-3/PCR-5 controlled-presentedBy check (§6.3.3) enforces this at match time when a selector is set; this rule extends the same protection to the no-selector case where reputation still keys on `presentedBy` (§6.6, §10.5.2).
 
 **Verification reference resolution.** For a BundleClaim with `verifiedBy` present, the reader runs these checks in order; **any failure makes the claim unverified** for evaluation against bundle requirements:
 
@@ -306,13 +306,15 @@ This ranking governs the `presentedBy` selection below — which primary claim t
 5. **Decision** — `VerifyResult.decision == "pass"`.
 6. **Control (for controlled use only)** — for a claim to serve as a **controlled** claim (the bundle's `presentedBy`, and the claim reputation keys against), the presenter MUST have **proven control** of it — a **DACS-1** property, established by one of: the **bundle presentation signature** for a `key:` claim (§6.3.2 / §B.7); the **anchored address-key linkage** (SR-1) for a `cci-xm:` claim; a credential **holder-binding** proof (§7.3.2 — the presenter signs with the credential-subject key) for a VC / vLEI claim; or, for `domain:`, a passing-and-fresh `demos-gcr-domain` result plus a bundle presentation that verifies under the result's exact GCR-bound Ed25519 account (DCR-7). A claim established **only** by a DACS-2 existence/validity check (a `pass` confirming the identifier is real but binding no key — e.g. a bare-registry `lei` lookup) is **valid-but-uncontrolled**: it MAY satisfy a required claim and serve as supporting context (its verified `data`), but it MUST NOT be the `presentedBy` claim and reputation MUST NOT key against it. Control follows the **proof, not the storage** — materialising a claim from a DACS-1 / CCI context confers no control on its own. Steps 1–5 gate use as a *required* claim per the listing's `BundleRequirement`; step 6 additionally gates the *controlled* uses.
 
+   Key rotation, revocation, and post-revocation validity after this control proof are governed by the §6.6 **Key lifecycle** rules; a historical proof does not make a rotated or revoked key current for a new session.
+
 **Freshness window.** The claim's effective window is derived from the resolved VerifyResult, **not** the presenter-supplied wrapper:
 - **Issuance** = `VerifyResult.verifiedAt`.
 - **Expiry** = `min(BundleClaim.expiresAt ?? ∞, VerifyResult.validUntil ?? (verifiedAt + defaultMaxAgeSec × 1000))`, where `defaultMaxAgeSec` is read from the recipe at `VerifyResult.recipeVersion` (the exact recipe the result was validated under, §7.4.3 — NOT "latest", so a later recipe revision cannot retroactively widen an already-issued result's window).
 - **Presenter narrows only** — a `BundleClaim.issuedAt` later than `verifiedAt`, or an `expiresAt` later than `VerifyResult.validUntil`, MUST be ignored (clamped to the authority window): a presenter cannot extend the authority's freshness window with a generous wrapper timestamp.
-- **Fail-closed** — if `VerifyResult.validUntil < verifiedAt`, or `verifiedAt` is absent/non-numeric, the window is undeterminable and the claim MUST be treated as stale. (When `verifiedBy` is absent there is no authority window and the §6.3.2 fail-closed default applies.)
+- **Fail-closed for verified use** — if `VerifyResult.validUntil < verifiedAt`, or `verifiedAt` is absent/non-numeric, the window is undeterminable and the claim MUST be treated as stale. When `verifiedBy` is absent there is no authority window: the claim cannot satisfy a verification-required use, but it MAY still satisfy an explicit presence-only requirement under PCR-1..PCR-3.
 **Staleness**
-A `verifiedBy` reference is **stale** when `now >` the effective expiry from the **Freshness window** above (`verifiedAt`/`validUntil` are unix ms; `defaultMaxAgeSec` is seconds → ×1000). This is the same `validUntil`-aware window VP-C1 uses for reuse (§7.6.1), so the freshness and reuse rules agree. When `verifiedBy` is absent or its window is undeterminable, the reference MUST be treated as stale (fail-closed) — an unknown age MUST NOT pass the freshness gate. A stale verification MUST be refreshed during the Vet stage (DACS-2) for any claim required by the listing's BundleRequirement.
+A `verifiedBy` reference is **stale** when `now >` the effective expiry from the **Freshness window** above (`verifiedAt`/`validUntil` are unix ms; `defaultMaxAgeSec` is seconds → ×1000). This is the same `validUntil`-aware window VP-C1 uses for reuse (§7.6.1), so the freshness and reuse rules agree. When `verifiedBy` is absent or its window is undeterminable, the reference MUST be treated as stale (fail-closed) for verification-required use — an unknown age MUST NOT pass the freshness gate. A stale verification MUST be refreshed during the Vet stage (DACS-2) only when the applicable `ClaimRequirement.verificationRequired` is `true`; a presence-only match MUST NOT trigger or depend on that refresh.
 
 **Conformance — bundles**
 A conforming bundle **producer** MUST:
@@ -325,7 +327,7 @@ A conforming bundle **reader** MUST:
 - (BR-2) reject a bundle whose presentation signature does not verify;
 - (BR-3) reject a bundle in which a required (per listing) claim has a missing or invalid `verifiedBy` when `verificationRequired = true`;
 - (BR-4) treat claims with unknown schemes as unverified;
-- (BR-5) when the listing sets `primaryClaimSelector`, reject a bundle whose `presentedBy` claim is not itself verified-and-fresh (missing/failing `verifiedBy`, or stale per the §6.3.2 freshness gate), even when its scheme matches the selector. The §6.3.3 match() step enforces this, preventing tier-laundering where an unverified or stale primary claim rides on separately-verified required claims.
+- (BR-5) when the listing sets `primaryClaimSelector`, apply MA-3/PCR-5 to the exact `presentedBy` claim. It MUST be controlled and either verified-and-fresh or explicitly authorized by a satisfied presence-only selector requirement. The latter path is usable for a self-authenticating `key:` presentation but does not make an existence-only identifier controlled. A separately verified claim of the same scheme MUST NOT launder the selected claim.
 **Selective disclosure (scope note).** v0.1 provides no per-claim selective-disclosure mechanism at the bundle layer: there is no per-claim blinding, no commitment-with-open-on-demand, and no proof-of-possession-without-disclosure for a claim a listing did not require. Concretely:
 
 - A verifier that receives a bundle sees every claim in `claims[]`; the `presentedBy` primary claim is always disclosed and is the cross-session correlator used for reputation and audit (§6.4 Rationale, §6.3.4).
@@ -366,19 +368,28 @@ A listing declares which bundles it will accept.
 ```
 type BundleRequirement = {
   requirementVersion: "1"
-  required: ClaimRequirement[]         // all MUST be satisfied
-  oneOf?: ClaimRequirement[][]         // EACH inner group MUST be satisfied (AND across groups); a group is satisfied when ≥1 of its members is satisfied (OR within a group)
+  required: ClaimRequirement[]         // all MUST be satisfied; MAY be empty
+  oneOf?: ClaimRequirement[][]         // omitted/empty adds no constraint; each present inner group MUST be non-empty and satisfied (AND across groups); a group is satisfied when ≥1 of its members is satisfied (OR within a group)
   preferredPresentation?: "siwd" | "sr1-root" | "per-claim" | "session-key" | "any"
   primaryClaimSelector?: string        // scheme whose identifier MUST be `presentedBy`
 }
 type ClaimRequirement = {
   scheme: string                       // e.g. "lei"
   verificationRequired: boolean
-  maxAge?: number                      // seconds; tightens (never widens) the effective freshness window — overrides the recipe default downward only
-  recipeVersion?: number               // pin a specific DACS-2 recipe version (§7.4.1); else latest-at-session-start
+  maxAge?: number                      // verificationRequired=true only; seconds; tightens (never widens) the effective freshness window
+  recipeVersion?: number               // verificationRequired=true only; pin a specific DACS-2 recipe version (§7.4.1); else latest-at-session-start
   parameters?: Record<string, unknown> // scheme-specific
 }
 ```
+
+**Presence-only claim requirements (PCR-1..PCR-6).** `verificationRequired` selects one of two closed evaluation modes; it is not a hint to a verifier.
+
+- **(PCR-1) Configuration boundary.** `verificationRequired` MUST be the JSON boolean `true` or `false`; another type or absence is a requirement error. When `verificationRequired = false`, the requirement is **presence-only**. `maxAge` and `recipeVersion` MUST be absent because no authority result or authority time window is selected. Their presence is a requirement error, not an instruction to manufacture or resolve a `VerifyResult`. When `verificationRequired = true`, the existing verification and freshness rules apply unchanged. An empty `required` array and an omitted or empty `oneOf` array impose no member constraint; an empty inner `oneOf` group is a requirement error rather than an unsatisfiable or silently satisfied group.
+- **(PCR-2) Presence predicate.** A presence-only member passes only when the signed `IdentityBundle` contains a claim of the required known scheme whose reference is canonical, whose unexpired `expiresAt` (when present) contains `now`, and whose signed `BundleClaim` data satisfies `parameters` (when present). A match establishes only that the presenter signed those claim values; it does not authenticate them against an external authority. A missing claim, an expired `expiresAt`, or a parameter mismatch is a non-match. `issuedAt` is informational in this mode: it MAY be absent and, when present, MUST NOT be treated as an authority issuance time or proof of verification.
+- **(PCR-3) Optional verification reference.** A presence-matched claim MAY carry `verifiedBy`, but its decision, freshness, resolution availability, and reuse status MUST NOT elevate or defeat the presence decision. Readers MUST NOT dereference it solely to decide presence. The reference still MUST have the `VerifyResultRef` wire shape; a malformed reference makes the bundle evaluation an error. This rule does not erase the reference or permit its use as passing verification elsewhere.
+- **(PCR-4) Verified predicate.** A member with `verificationRequired = true` passes only through the §6.3.2 resolution, passing-decision, freshness, `maxAge`, recipe, and parameter checks. Presence of a matching claim is insufficient.
+- **(PCR-5) Control and tier boundary.** Presence is not control and is not verification. It MUST NOT elevate `identityTier`, establish a controlled `presentedBy`, or key reputation. MA-3 permits an exact presence-only selector only when the requirement explicitly authorizes that presence path **and** the presenter independently proves control under §6.3.2 step (6). A valid bundle presentation proves this for its exact `key:` claim; an existence-only authority identifier such as `lei:` does not. A different verified claim of the same scheme MUST NOT supply control or verification to the selected claim.
+- **(PCR-6) DACS-2 bridge.** Vet evaluates presence-only members directly against the exact signed bundle bound by `CompositeVerificationRecord.bundleHash`; it MUST NOT emit a synthetic `VerifyResult` or `VerifyResultRef` for presence. DACS-2 §7.7.1 defines mixed required/`oneOf` aggregation and strict replay.
 
 **Matching algorithm**
 A reader MUST evaluate a candidate IdentityBundle against a BundleRequirement using the following deterministic algorithm:
@@ -396,9 +407,29 @@ match(bundle, requirement):
 
      remain unchanged and current dual-alias producers are still non-conforming.
 
+     Validate every ClaimRequirement before matching. An unknown/non-canonical
+
+     scheme, a non-boolean/missing verificationRequired, a malformed parameters
+
+     value, or an empty inner oneOf group returns ERROR. Empty required and
+
+     omitted/empty oneOf collections are valid and add no member constraint.
+
+     If a presence-only member
+
+     carries maxAge or recipeVersion, return ERROR (PCR-1). Validate every
+
+     present BundleClaim.verifiedBy as a VerifyResultRef wire value; a malformed
+
+     reference returns ERROR even though a presence-only decision does not resolve it (PCR-3).
+
   1. (MA-1) For each cr in requirement.required:
 
-       if NOT find_claim(bundle, cr): return REJECT("missing required: <cr.scheme>")
+       result := find_claim(bundle, cr)
+
+       if result == error: return ERROR("invalid claim or requirement: <cr.scheme>")
+
+       if result != pass: return REJECT("missing or unsatisfied required: <cr.scheme>")
 
   2. (MA-1) For each group in (requirement.oneOf or []):
 
@@ -406,7 +437,11 @@ match(bundle, requirement):
 
        for each cr in group:
 
-         if find_claim(bundle, cr): any_satisfied := true; break
+         result := find_claim(bundle, cr)
+
+         if result == error: return ERROR("invalid oneOf member: <cr.scheme>")
+
+         if result == pass: any_satisfied := true; break
 
        if NOT any_satisfied: return REJECT("oneOf group unsatisfied")
 
@@ -416,7 +451,7 @@ match(bundle, requirement):
 
   3b. (MA-3) If requirement.primaryClaimSelector is set:
 
-       // The exact claim presentedBy resolves to MUST itself be verified — not merely some claim of the selector scheme.
+       // The exact claim presentedBy resolves to MUST itself be controlled — not merely some claim of the selector scheme.
 
        // Otherwise a presenter could launder reputation by pairing an unverified (or third-party) presentedBy identifier with a *different*, already-verified claim of the same scheme.
 
@@ -424,7 +459,25 @@ match(bundle, requirement):
 
        if presented is null: return REJECT   // presentedBy does not resolve to a claim in the bundle
 
-       if presented.verifiedBy missing OR resolution fails OR (the VerifyResult resolved from presented.verifiedBy).decision != "pass" OR presented is stale per the §6.3.2 effective-window freshness gate (the same predicate find_claim applies): return REJECT   // decision is read from the resolved VerifyResult, not from VerifyResultRef; a passing-but-stale presentedBy MUST also be rejected, so a stale high-tier claim cannot key reputation even when its scheme is absent from required[]
+       verified_selector := presented has a passing-and-fresh verifiedBy under the §6.3.2 verified-claim gate
+
+       presence_selector := exact_presented_satisfies_presence_member(requirement, presented)
+
+                            AND no required verificationRequired=true member has the selector scheme
+
+                            AND every oneOf group containing a verificationRequired=true member of
+
+                                the selector scheme is satisfied either by an exact presence-only
+
+                                member for presented or by a passing member of another scheme
+
+       controlled := presenter proves control of the exact presented claim under §6.3.2 step (6)
+
+       if NOT controlled OR NOT (verified_selector OR presence_selector): return REJECT
+
+       // A valid key: bundle presentation can satisfy controlled+presence_selector.
+
+       // An existence-only lei: cannot. A different verified same-scheme claim cannot launder either predicate.
 
   4. If requirement.preferredPresentation is set AND != "any":
 
@@ -432,15 +485,47 @@ match(bundle, requirement):
 
   5. return ACCEPT
 
+exact_presented_satisfies_presence_member(requirement, presented):
+
+  selector := canonical_scheme(presented.ref)
+
+  return any cr in requirement.required ++ flatten(requirement.oneOf) where
+
+         cr.scheme == selector
+
+         AND cr.verificationRequired == false
+
+         AND presented.ref is canonical
+
+         AND (presented.expiresAt is absent OR now <= presented.expiresAt)
+
+         AND (cr.parameters is absent OR scheme_specific_match(presented, cr.parameters))
+
 find_claim(bundle, cr):
+
+  if cr.verificationRequired == false AND (cr.maxAge present OR cr.recipeVersion present): return error
 
   for each c in bundle.claims:
 
     if c.ref.scheme != cr.scheme: continue
 
-    if cr.verificationRequired AND (c.verifiedBy missing OR resolution fails OR (the VerifyResult resolved from c.verifiedBy).decision != "pass"): continue
+    if c.ref is non-canonical OR c.verifiedBy is present but malformed: return error
 
-    // Freshness gate. The §6.3.2 staleness rule applies UNCONDITIONALLY (even when cr.maxAge is unset).
+    if c.expiresAt is present AND now > c.expiresAt: continue
+
+    if cr.parameters AND NOT scheme_specific_match(c, cr.parameters): continue
+
+    if cr.verificationRequired == false:
+
+      // issuedAt and any well-shaped verifiedBy are non-authoritative for this decision.
+
+      // Do not resolve verifiedBy and do not run a verification freshness gate (PCR-2/PCR-3).
+
+      return pass
+
+    if c.verifiedBy missing OR resolution fails OR (the VerifyResult resolved from c.verifiedBy).decision != "pass": continue
+
+    // Verification-required freshness gate (PCR-4). It does not run for presence-only members.
     // Freshness is keyed on the EFFECTIVE window from the resolved VerifyResult (§6.3.2 clamp):
     //   vr := the VerifyResult resolved from c.verifiedBy
     //   eff_verifiedAt := vr.verifiedAt
@@ -451,11 +536,9 @@ find_claim(bundle, cr):
     if c.verifiedBy missing OR vr window undeterminable OR now > eff_expiry: continue
     if cr.maxAge AND (now - eff_verifiedAt) > cr.maxAge * 1000: continue   // listing-tightened bound (overrides the recipe default downward); ms vs seconds → ×1000
 
-    if cr.parameters AND NOT scheme_specific_match(c, cr.parameters): continue
+    return pass
 
-    return c
-
-  return null
+  return fail
 ```
 
 scheme_specific_match is defined per scheme in DACS-2 recipes. Where parameters are unrecognised, readers MUST treat the requirement as unmatched (not silently passed).

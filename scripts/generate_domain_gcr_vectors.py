@@ -80,7 +80,6 @@ def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
 
 def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
          signer: Ed25519PrivateKey, **extra: object) -> dict:
-    producer_version = str(extra.pop("producerDacs1Version", "0.6"))
     claim_metadata = extra.pop("claimMetadata", None)
     registration_proof = str(extra.pop(
         "registrationProofPayload",
@@ -93,7 +92,6 @@ def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
             refs, md, signer,
             claim_metadata=claim_metadata if isinstance(claim_metadata, list) else None,
         ),
-        "authenticatedProducerProfile": {"dacs1Version": producer_version},
         "authoritativeGcr": copy.deepcopy(record),
         "registrationValidation": {
             "profile": "demos-web2-domain-v1",
@@ -127,6 +125,7 @@ def main() -> None:
     vectors: list[dict] = []
 
     vectors.append(case("canonical-production", "pass", [f"domain:{host}"], md, record, owner,
+                        conformanceOperation="produce-current",
                         want={"semanticClaims": [f"domain:{host}"], "freshControl": False}))
 
     # DCR-1 exact length boundaries: 63 octets per label and 253 octets for the
@@ -179,25 +178,26 @@ def main() -> None:
 
     vectors.append(case(
         "current-producer-u-label-rejected", "fail", ["domain:faß.example"],
-        idna_md, idna_md, owner, ruleRefs=["DCR-1"],
+        idna_md, idna_md, owner, conformanceOperation="produce-current",
+        ruleRefs=["DCR-1"],
         want={"semanticClaims": [f"domain:{idna_host}"]},
     ))
 
     vectors.append(case(
         "current-producer-uppercase-host-rejected", "fail",
-        ["domain:Agent.Example"], md, record, owner, ruleRefs=["DCR-1"],
+        ["domain:Agent.Example"], md, record, owner,
+        conformanceOperation="produce-current", ruleRefs=["DCR-1"],
         want={"semanticClaims": [f"domain:{host}"]},
     ))
 
-    for name, version, ref, expected_host in [
-        ("future-profile-uppercase-host-rejected", "0.7", "domain:Agent.Example", host),
-        ("patch-profile-uppercase-host-rejected", "0.6.0", "domain:Agent.Example", host),
-        ("historical-profile-domain-u-label-rejected", "0.5", "domain:faß.example", idna_host),
+    for name, ref, expected_host in [
+        ("reader-uppercase-domain-rejected-without-profile", "domain:Agent.Example", host),
+        ("reader-u-label-domain-rejected-without-profile", "domain:faß.example", idna_host),
     ]:
         expected_md = idna_md if expected_host == idna_host else md
         vectors.append(case(
             name, "fail", [ref], expected_md, expected_md, owner,
-            producerDacs1Version=version, ruleRefs=["DCR-1"],
+            ruleRefs=["DCR-1"],
             want={"semanticClaims": [f"domain:{expected_host}"]},
         ))
 
@@ -206,20 +206,20 @@ def main() -> None:
     decomposed_md = metadata(decomposed_host, owner)
     vectors.append(case("legacy-decomposed-unicode-nfc-idna-read", "pass",
                         [f"web2:domain:{decomposed_input}"], decomposed_md, decomposed_md,
-                        owner, producerDacs1Version="0.5", unicodeInput=decomposed_input,
+                        owner, unicodeInput=decomposed_input,
                         want={"semanticClaims": [f"domain:{decomposed_host}"],
                               "originalBytesPreserved": True}))
 
     vectors.append(case(
         "legacy-mixed-case-ascii-read", "pass", ["web2:domain:Agent.Example"],
-        md, record, owner, producerDacs1Version="0.5", ruleRefs=["DCR-4"],
+        md, record, owner, ruleRefs=["DCR-4"],
         want={"semanticClaims": [f"domain:{host}"], "originalBytesPreserved": True},
     ))
 
     invalid_legacy = case(
         "legacy-mixed-case-invalid-signature-rejected-before-fold", "fail",
         ["web2:domain:Agent.Example"], md, record, owner,
-        producerDacs1Version="0.5", ruleRefs=["DCR-4"],
+        ruleRefs=["DCR-4"],
         want={"semanticClaims": []},
     )
     signature = bytearray.fromhex(invalid_legacy["artifact"]["signature"])
@@ -229,7 +229,6 @@ def main() -> None:
 
     legacy = case("legacy-alias-original-byte-preservation", "pass",
                   [f"web2:domain:{host}"], md, record, owner,
-                  producerDacs1Version="0.5",
                   want={"semanticClaims": [f"domain:{host}"], "originalBytesPreserved": True})
     rewritten = copy.deepcopy(legacy["artifact"]["unsigned"])
     rewritten["claims"][0]["ref"] = f"domain:{host}"
@@ -239,7 +238,6 @@ def main() -> None:
 
     vectors.append(case("historical-alias-pair-deduplicates", "pass",
                         [f"domain:{host}", f"web2:domain:{host}"], md, record, owner,
-                        producerDacs1Version="0.5",
                         want={"semanticClaims": [f"domain:{host}"], "tierGain": False,
                               "oneOfGain": False}))
 
@@ -255,12 +253,22 @@ def main() -> None:
     vectors.append(case(
         "current-producer-dual-alias-rejected", "fail",
         [f"domain:{host}", f"web2:domain:{host}"], md, record, owner,
-        ruleRefs=["DCR-5"],
+        conformanceOperation="produce-current", ruleRefs=["DCR-5"],
     ))
     vectors.append(case(
-        "future-profile-dual-alias-rejected", "fail",
-        [f"domain:{host}", f"web2:domain:{host}"], md, record, owner,
-        producerDacs1Version="0.7", ruleRefs=["DCR-5"],
+        "current-producer-dual-alias-with-mixed-case-rejected", "fail",
+        [f"domain:{host}", "web2:domain:Agent.Example"], md, record, owner,
+        conformanceOperation="produce-current", ruleRefs=["DCR-5"],
+    ))
+    vectors.append(case(
+        "current-producer-single-legacy-alias-rejected", "fail",
+        [f"web2:domain:{host}"], md, record, owner,
+        conformanceOperation="produce-current", ruleRefs=["DCR-3"],
+    ))
+    vectors.append(case(
+        "current-producer-single-mixed-case-legacy-alias-rejected", "fail",
+        ["web2:domain:Agent.Example"], md, record, owner,
+        conformanceOperation="produce-current", ruleRefs=["DCR-3"],
     ))
 
     for name, ref in [
@@ -444,7 +452,8 @@ def main() -> None:
         "modelNotes": [
             "sourceAuthentication and writerAuthorization are resolved verifier inputs modelling DGCR-1/DGCR-2 substrate evidence; they are not new DACS wire artifacts.",
             "authenticatedSr1Binding models an already-authenticated SR-1 resolver result bound to the exact presentation; it is not a caller assertion.",
-            "authenticatedProducerProfile is trusted release/profile context supplied by the verifier; it is not an IdentityBundle member or a producer self-declaration.",
+            "conformanceOperation=produce-current is a harness operation selecting producer-output conformance; it is not artifact data or a runtime reader input.",
+            "Readers apply permanent alias compatibility from the verified bundleVersion and alias spelling alone; mutable deployment/profile state cannot reclassify retained bytes.",
             "evaluationScope=semantic-claim-set isolates DCR-5 identity-set processing before per-claim GCR evaluation.",
         ],
         "provenance": {

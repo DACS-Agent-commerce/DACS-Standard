@@ -169,11 +169,13 @@ The format used per release:
 - **Authenticated domain-profile and verify-before-fold boundary** (DACS-1
   §6.3.1 DCR-1/DCR-4/DCR-5; #347) — removes the corpus-only
   `producerDacs1Version == "0.6"` selector from signed bundle bytes. Exact
-  spelling now follows the `domain:` scheme at every profile version, while
-  the legacy-alias emission ban uses trusted release/profile context and
-  remains compatible with authenticated historical artifacts. Adds explicit
-  0.5, 0.6.0, and 0.7 boundaries, plus an invalid-signature mixed-case legacy
-  row whose empty semantic result makes verify-before-fold ordering
+  spelling now follows the `domain:` scheme without a profile sidecar. Because
+  frozen `IdentityBundle.bundleVersion: "1"` has no authenticated minor-version
+  discriminator, current alias emission is tested at the producer/serializer
+  boundary while readers permanently accept signature-valid legacy aliases;
+  mutable deployment state cannot reclassify retained bytes. Adds single- and
+  dual-alias current-production rejections plus an invalid-signature mixed-case
+  legacy row whose empty semantic result makes verify-before-fold ordering
   evaluator-falsifiable.
 
 ### Added — DACS-4 v0.5

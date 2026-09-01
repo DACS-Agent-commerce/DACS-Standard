@@ -178,6 +178,18 @@ def main() -> None:
                         idna_md, owner, unicodeInput="faß.example",
                         want={"semanticClaims": [f"domain:{idna_host}"]}))
 
+    vectors.append(case(
+        "current-producer-u-label-rejected", "fail", ["domain:faß.example"],
+        idna_md, idna_md, owner, ruleRefs=["DCR-1"],
+        want={"semanticClaims": [f"domain:{idna_host}"]},
+    ))
+
+    vectors.append(case(
+        "current-producer-uppercase-host-rejected", "fail",
+        ["domain:Agent.Example"], md, record, owner, ruleRefs=["DCR-1"],
+        want={"semanticClaims": [f"domain:{host}"]},
+    ))
+
     decomposed_input = "e\u0301xample.example"
     decomposed_host = "xn--xample-9ua.example"
     decomposed_md = metadata(decomposed_host, owner)
@@ -186,6 +198,12 @@ def main() -> None:
                         owner, producerDacs1Version="0.5", unicodeInput=decomposed_input,
                         want={"semanticClaims": [f"domain:{decomposed_host}"],
                               "originalBytesPreserved": True}))
+
+    vectors.append(case(
+        "legacy-mixed-case-ascii-read", "pass", ["web2:domain:Agent.Example"],
+        md, record, owner, producerDacs1Version="0.5", ruleRefs=["DCR-4"],
+        want={"semanticClaims": [f"domain:{host}"], "originalBytesPreserved": True},
+    ))
 
     legacy = case("legacy-alias-original-byte-preservation", "pass",
                   [f"web2:domain:{host}"], md, record, owner,

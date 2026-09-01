@@ -4,14 +4,14 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.6** (on the common DACS v0.1 baseline; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.7** (on the common DACS v0.1 baseline; v0.7 adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
 
 ### 9.1 Abstract
 
 DACS-4 specifies how value is exchanged and the deliverable provided once a DACS-3 agreement is committed. It defines:
 
 - A **payment rail registry** — a versioned, anchored set of payment rails. Each rail is a typed envelope identifying the chain or network, the asset, the settlement contract or protocol, and any rail-specific parameters.
-- A **closed set of payment phases** (DACS-4 phase types) — pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc, pay-cross-chain-liquidity-tank, pay-ap2, pay-x402, pay-dem. Each is a phase with a uniform PhaseHandlerResult shape.
+- A **closed set of payment phases** (DACS-4 phase types) — pay-evm-erc20, pay-solana-spl, pay-cross-chain-htlc, pay-cross-chain-liquidity-tank, pay-ap2, pay-x402, pay-dem. Each is a phase with a uniform PhaseHandlerResult shape. The distinct `pay-alternative` Listing phase is only a signed pre-agreement projection instruction and is never executed.
 - A **closed set of delivery phases** — deliver-storage-program, deliver-entitlement, deliver-attested-payload. Each produces SettlementEvidence the rest of the stack consumes.
 - A **payload-attestation record** — a signed, addressable binding from exact delivered bytes and method-native proof to the job, committed agreement, DeliverableSpec, verification method, and immutable attempt number.
 - A **uniform SettlementEvidence shape** — the record produced by every payment and delivery phase; the substrate-anchored audit unit referenced by DACS-5.
@@ -151,7 +151,7 @@ type RailDefinition = {
   railType: "evm-erc20" | "solana-spl" | "cross-chain-htlc" | "cross-chain-liquidity-tank" | "ap2" | "x402" | "demos-native"
   asset: AssetSpec                     // what is being transferred
   network: NetworkSpec                 // where it lives
-  phaseHandler: PhaseType              // which pay-* phase handles it
+  phaseHandler: PaymentPhaseType       // concrete executable pay-* handler; MUST NOT be pay-alternative
   parameters: Record<string, unknown>  // rail-type-specific
   availability: RailAvailability       // operational status (see §9.4.4)
   governance: {
@@ -260,13 +260,16 @@ For DACS-1 listing validation, every advertised `PaymentRailRef` is resolved
 before session creation under §6.3.4 LRR-1..LRR-6, including references not
 used by a particular pay phase. That listing-time check uses the same canonical
 index, definition hash/signature, per-reference version selection, and
-governance authority described above. For a railId-only pay-phase field it
-checks that every matching reference-resolved definition uses the RD-6 handler
-and that the handler equals the phase kind; it does not select one complete
-reference. It returns `verified` / `rejected` / `indeterminate` for the listing
-as a whole. It establishes discovery eligibility only; the orchestrator still
-selects one complete reference, repeats resolution, pins the exact definition
-at session start, and applies RAV-R1..RAV-R5.
+governance authority described above. For a railId-only concrete pay-phase
+field it checks that every matching reference-resolved definition uses the
+RD-6 handler and that the handler equals the phase kind; it does not select one
+complete reference. For `pay-alternative`, APR-1/APR-2 instead resolve every
+complete signed alternative and require each result to name a concrete
+`PaymentPhaseType` handler. The check returns `verified` / `rejected` /
+`indeterminate` for the listing as a whole. It establishes discovery
+eligibility only; the orchestrator still selects one complete reference,
+repeats resolution, pins the exact definition at session start, and applies
+RAV-R1..RAV-R5.
 
 **Progressive anchoring for early deployments.** The rail registry follows the same progressive anchoring pattern as the DACS-2 recipe registry (§7.4.4):
 
@@ -1168,13 +1171,174 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 - **Escrow with delivery-gate** (lock → deliver → release): the v0.1 `pay-cross-chain-htlc` handler is an **atomic swap** (§9.5.4) — it has no mid-lock suspension point, so it cannot run a `deliver-*` phase *between* lock and reveal. An escrow that gates release on delivery is therefore **not expressible in v0.1** and is reserved for a future job-escrow rail (ERC-8183 is the natural home — see roadmap). v0.1 listings needing escrow-like risk shifting use deliver-then-pay or pay-then-deliver with the counterparty risk that implies.
 - **Streamed entitlement / subscription**: a multi-tranche subscription is conceptually a **sequence of independent sessions** — a fresh jobId is a *new session*, not a loop within one pipeline (§B.5/§10.3: one pipeline = one jobId). Continuous-flow / subscription settlement, including any cross-session correlation identifier, is **out of scope for v0.1** (§11.2.4; see roadmap). A v0.1 listing models each tranche as its own session.
 
+#### 9.9.1 Alternative-payment projection
+
+`pay-alternative` lets one signed Listing advertise one payment slot whose
+concrete handler is selected before Agreement commitment. It is not a payment
+handler, registry target, retry order, or generic pipeline branch.
+
+```
+type AlternativePaymentPhase = {
+  kind: "pay-alternative"
+  parameters: {
+    alternatives: PaymentRailRef[]
+  }
+}
+
+type PriorPaymentDisposition = {
+  priorPaymentDispositionVersion: "1"
+  dispositionId: string
+  priorJobId: string
+  replacementJobId: string
+  priorAgreementRef: AttestationRef
+  priorSelection: PaymentRailRef
+  priorPhaseIndex: number
+  disposition: "closed-before-authorization"
+             | "authorization-pending"
+             | "settlement-indeterminate"
+             | "closed-cannot-settle"
+  reconciliationEvidenceRefs?: AttestationRef[]
+  observedAt: number
+  signature: ComponentSignature // authenticated prior phase orchestrator
+}
+```
+
+`PriorPaymentDisposition` is the typed cross-job carrier for APR-6. It follows
+the CORE §B.2 canonical-form template with `signature` omitted and is signed as
+`"dacs-prior-payment-disposition:v1:" || disposition_hash`. It is anchored via
+SR-2 at
+`dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}`;
+`priorJobId` and `replacementJobId` follow the applicable CORE job-identifier profile,
+`priorPhaseIndex` is minimal unsigned decimal, and `dispositionId` is exactly
+64 lowercase hexadecimal characters, so none introduces a CF-4 delimiter.
+Its signer and SR-2 writer MUST be the prior payment phase's
+orchestrator recovered from authenticated prior-session execution authority,
+not a caller-supplied identity.
+
+- (APR-1) **Signed listing shape and cardinality.** A Listing using
+  `pay-alternative` MUST contain exactly one such phase, MUST contain no
+  concrete `PaymentPhaseType` phase, and its `alternatives` MUST contain at
+  least two complete, full-canonical-value-distinct `PaymentRailRef` objects.
+  Every alternative MUST occur exactly once by CORE §B.2 canonical bytes in
+  `listing.acceptedRails`; equality of only `railId`, `railVersion`, parameters,
+  or array position is insufficient. `alternatives` MUST NOT contain
+  `pay-alternative` steps, handler names, indexes, or bare rail IDs. Extra
+  `acceptedRails` entries remain subject to LRR even when not offered by this
+  slot. A duplicate alternative, missing accepted-ref member, second
+  alternative slot, concrete payment sibling, absent/empty parameters, or
+  singleton alternative set is a malformed Listing and returns `rejected`
+  before registry-dependent checks.
+- (APR-2) **Authenticated listing-time resolution.** DACS-1 LRR-2..LRR-6
+  applies to every advertised reference, including every APR-1 member, through
+  one internally consistent authenticated registry snapshot. Each alternative
+  MUST resolve to a valid definition for the exact `railId`/`railVersion` and
+  that definition's `phaseHandler` MUST be a concrete `PaymentPhaseType` the
+  reader supports; it MUST NOT be `pay-alternative`. RD-6 still forbids
+  same-railId handler drift, but different alternatives MAY resolve to
+  different concrete handlers. An authenticated absent definition, signature
+  or hash contradiction, recursive/unknown handler, or handler drift returns
+  `rejected`; unavailable or unauthenticated required authority returns
+  `indeterminate` under LRR-5 and MUST NOT be treated as absence or permission
+  to ignore that alternative.
+- (APR-3) **One complete signed selection.** Before constructing or accepting
+  the first Agreement signature, the buyer MUST select exactly one complete
+  alternative and copy that exact full-canonical `PaymentRailRef` value to
+  `agreement.terms.rail`. The orchestrator MUST resolve and pin that exact
+  definition at session start and apply RAV-R1..RAV-R5. Array order is display
+  order only: it MUST NOT select a default or create fallback priority. A
+  `terms.rail` outside the signed alternative set, a partial/same-ID match, a
+  different resolved version, or a selected definition failing RAV MUST reject
+  before either Agreement signature and before commitment.
+- (APR-4) **Deterministic effective pipeline.** Given the verified signed
+  Listing, verified signed Agreement, and authenticated definition pinned for
+  `agreement.terms.rail`, reconstruct the effective pipeline by replacing the
+  sole `pay-alternative` entry with exactly
+  `{kind: pinnedDefinition.phaseHandler, parameters:
+  {rail: agreement.terms.rail.railId}}`. The replacement retains the original
+  zero-based phase index; every other phase and its order remain byte-for-byte
+  unchanged. The projected handler MUST match the authenticated definition and
+  be a concrete `PaymentPhaseType`. A caller-supplied projected step, cached
+  handler, challenge, receipt, or wallet default is not authority.
+- (APR-5) **Agreement, execution, and evidence binding.** A
+  `PayeeBoundAgreementDocument` MUST cover the projected concrete payment with
+  exactly one payout binding whose `(railId, phaseIndex)` equals the selected
+  reference's `railId` and the unchanged alternative-slot index. Payment input,
+  PC-2 evidence addressing, and settlement reconciliation use that same tuple.
+  `SettlementEvidence.phase` and every DACS-5 `phaseSummary[].kind` MUST record
+  the concrete projected handler; neither may record `pay-alternative`.
+- (APR-6) **Selection lock, switching, and retry.** Before any Agreement
+  signature exists, the buyer MAY choose another signed alternative if the new
+  choice independently passes APR-3 and current RAV checks. Once either
+  Agreement signature exists, the complete selected reference is immutable for
+  that `jobId`; changing it requires a fresh `jobId`, a newly constructed and
+  signed Agreement, and a new commitment. After payment authorization is
+  requested or submitted—or whenever settlement observation is ambiguous,
+  pending, or `indeterminate`—retry and recovery MUST reconcile only the
+  selected rail and original `(jobId, railId, phaseIndex)` identity. They MUST
+  make zero authorization calls on another alternative and MUST NOT infer
+  fallback safety from non-observation, rejection, array order, or availability
+  change.
+
+  A fresh-job Agreement is an APR replacement only when its signed
+  `terms.priorPaymentDispositionRef` is present. Before accepting its
+  commitment or making any authorization call, the orchestrator MUST resolve
+  that reference and the exact prior Agreement; verify both content hashes,
+  the prior Agreement signatures, the disposition signature, its finalized
+  SR-2 receipt, and the authenticated prior phase-orchestrator writer; and
+  require exact equality for `priorJobId`, `replacementJobId` against the new
+  Agreement's `jobId`, `priorAgreementRef`, the complete prior `terms.rail`,
+  and the prior payment `phaseIndex`. A disposition authorizes only that one
+  signed replacement job and MUST NOT authorize any other fresh `jobId`;
+  byte-identical replay for the same replacement remains governed by the
+  replacement job's ordinary idempotency rules. Missing or
+  unavailable otherwise-consistent authority is `indeterminate`; a resolved
+  contradiction rejects. A caller-supplied `priorJobId`, prior rail, requested
+  new job, boolean, or unsigned state is inert and MUST NOT substitute.
+
+  Only `closed-before-authorization` and `closed-cannot-settle` permit the
+  replacement authorization. Issuing `closed-before-authorization` MUST be one
+  atomic durable transition that permanently closes the prior
+  `(jobId, railRefHash, phaseIndex)` authorization key before the disposition
+  is signed; the old handler MUST thereafter refuse authorization for that
+  tuple. `closed-cannot-settle` MUST carry one or more
+  `reconciliationEvidenceRefs`, each independently resolved and verified under
+  the selected prior handler's authoritative terminal-reconciliation rules,
+  and those proofs MUST conclusively establish that no prior authorization can
+  settle. `authorization-pending`, `settlement-indeterminate`, a missing proof,
+  non-observation, rejection, or an unfinalized disposition permits zero calls
+  on the replacement rail. An Agreement without
+  `priorPaymentDispositionRef` is an independent purchase, not a claimed
+  fallback; APR-6 does not pretend that two intentionally independent jobs can
+  be globally distinguished by Listing identity alone.
+- (APR-7) **Independent audit projection.** A DACS-5 consumer validating a
+  bundle for an APR Listing MUST resolve and verify the exact signed Listing,
+  signed Agreement, and selected pinned RailDefinition, rerun APR-1 through
+  APR-4, and use the resulting effective pipeline as its phase-definition
+  authority. It MUST compare `phaseSummary` and SettlementEvidence against the
+  concrete projected handler at the original index. A deterministic signed
+  contradiction is `rejected`; unavailable otherwise-consistent authority is
+  `indeterminate`. The consumer MUST NOT accept the raw `pay-alternative`
+  placeholder as an executed phase or derive the choice from bundle/evidence
+  claims.
+- (APR-8) **Compatibility and execution boundary.** Listings without
+  `pay-alternative` preserve their existing pipeline bytes and PIPE-1..PIPE-6
+  meaning. `pay-alternative` is in the closed current `PhaseType` set solely so
+  supporting readers can validate it; an older reader treats it as an unknown
+  phase and rejects the Listing as unsupported before Agreement or execution,
+  never by dropping it. It MUST NOT appear as `RailDefinition.phaseHandler`, a
+  node operation, or a DACS-4 `PaymentPhaseType`, and does not change PIPE-5
+  repeated-payment semantics. Until both counterparties and the orchestrator
+  support APR-1..APR-8, publishers MUST use separately signed sibling Listings
+  and select one Listing before Agreement; they MUST NOT manufacture a private
+  projection or execute both rails.
+
 **Conformance.**
 
-- (PIPE-1) A pipeline MUST contain at least one deliver-* phase. A pipeline MAY contain **zero** pay-* phases — the **intake-only / settled-out-of-band** pattern that §6.3.4(8) names (RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band). If a pipeline contains any pay-* phase, the acceptedRails rule of §6.3.4(8) applies.
-- (PIPE-2) Phase ordering MUST be deterministic; the listing’s declared order is normative.
-- (PIPE-3) If a pay-* phase is followed by a deliver-* phase, the deliver-* phase MUST NOT execute until the pay-* phase returns ok: true.
-- (PIPE-4) If a deliver-* phase is followed by a pay-* phase, the pay-* phase MUST NOT execute until the deliver-* phase returns ok: true.
-- (PIPE-5) Pipelines MAY repeat a phase; each invocation produces independent SettlementEvidence. In v0.1 each repeated pay-* invocation settles the **same** agreement price (`PaymentPhaseInput.amount` = `agreement.terms.price`). The payment contract carries no per-phase amount override, fee, or split, so a **fee-split** (distinct amounts to distinct payees, e.g. buyer + platform fee) is NOT representable in v0.1 and is a roadmap item (fee-split / multi-payee settlement model). Repetition is for genuinely identical settlements, not for splitting one price across payees.
+- (PIPE-1) A pipeline MUST contain at least one deliver-* phase. A pipeline MAY contain **zero** concrete pay-* phases and no `pay-alternative` — the **intake-only / settled-out-of-band** pattern that §6.3.4(8) names (RFP intake, reverse auctions where the bid is the commitment, free services gated by reputation, sealed-bid procurements settled out-of-band). If a pipeline contains a concrete payment phase or `pay-alternative`, the acceptedRails rule of §6.3.4(8) applies.
+- (PIPE-2) Phase ordering MUST be deterministic; the listing's declared order is normative, and APR-4 can replace only the one projection entry without moving it.
+- (PIPE-3) If an effective concrete pay-* phase is followed by a deliver-* phase, the deliver-* phase MUST NOT execute until the pay-* phase returns ok: true.
+- (PIPE-4) If a deliver-* phase is followed by an effective concrete pay-* phase, the pay-* phase MUST NOT execute until the deliver-* phase returns ok: true.
+- (PIPE-5) Pipelines MAY repeat a concrete phase; each invocation produces independent SettlementEvidence. APR-1 forbids repeating `pay-alternative` and forbids combining it with another payment phase. In v0.1 each repeated concrete pay-* invocation settles the **same** agreement price (`PaymentPhaseInput.amount` = `agreement.terms.price`). The payment contract carries no per-phase amount override, fee, or split, so a **fee-split** (distinct amounts to distinct payees, e.g. buyer + platform fee) is NOT representable in v0.1 and is a roadmap item (fee-split / multi-payee settlement model). Repetition is for genuinely identical settlements, not for splitting one price across payees.
 - (PIPE-6) Before executing any pay-* phase or any delivery whose disclosure, access grant, or external side effect is irreversible, the orchestrator MUST verify the DACS-3 commitment's CORE §5.1 receipt is `finalized` and matches the session's `jobId`, agreement hash, listing reference, and logical address. `submitted`, `accepted`, index-visible, or an unverified `included` state is insufficient. A binding whose declared finality profile makes inclusion final MAY satisfy both states with one receipt.
 
 > **Note (non-normative).** PIPE-1 is deliberately aligned with §6.3.4(8): a reader of either chapter reaches the same accept decision for a pay-less pipeline.
@@ -1188,7 +1352,8 @@ A listing’s pipeline declares the order of payment and delivery phases. Common
 | Orchestrator (rail selection) | RAV-R1 through RAV-R5 |
 | Payment phase handler | PC-1 through PC-7; PB-1 through PB-3 for payee-bound agreements; phase-specific procedure |
 | Delivery phase handler | §9.6 per-kind procedure; DPA-1 through DPA-9 for attested payloads; SettlementEvidence emission |
-| Pipeline executor | PIPE-1 through PIPE-5 |
+| Alternative-payment producer / reader / auditor | APR-1 through APR-8 |
+| Pipeline executor | PIPE-1 through PIPE-6 |
 | SettlementEvidence consumer | Canonical hash recomputation; signature validation; DPA-3 through DPA-9 when phase is `deliver-attested-payload`; AMEND-1 through AMEND-4 (amendment chain following) |
 
 ### 9.11 Rationale
@@ -1318,6 +1483,8 @@ A single-table summary of phase types, their parameters (from listing PhaseStep)
 | pay-cross-chain-liquidity-tank | {rail: railId} | liquidity-tank |
 | pay-ap2 | {rail: railId}; rail.parameters.providerEndpoint required | ap2 (txRef carries `protocolVersion`, required) |
 | pay-x402 | {rail: railId} | x402-event (`protocolVersion`, receipt hash, settlement transaction, chain, and log index required; legacy read: x402) |
+| pay-dem | {rail: railId} | demos |
+| pay-alternative | {alternatives: PaymentRailRef[]} | none — APR-4 projects it before execution; it is not a PaymentPhaseType |
 | deliver-storage-program | none (driven by listing.offering.deliverable) | n/a (deliverableContentHash + deliverableAnchor instead) |
 | deliver-entitlement | none (driven by listing.offering.deliverable) | n/a |
 | deliver-attested-payload | none (driven by listing.offering.deliverable; verificationMethod conditionally required by DPA-1) | deliverableContentHash + deliverableAnchor + attestationRef → PayloadAttestationRecord (DPA-6) |

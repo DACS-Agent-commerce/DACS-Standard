@@ -1,0 +1,2603 @@
+{
+  "set": "presence-only-claim-requirement-v0.7",
+  "spec": "DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1",
+  "tier": "candidate",
+  "description": "Signed mixed-mode ClaimRequirement vectors for presence-only matching, CVR replay, and the control/tier boundary.",
+  "provenance": {
+    "issue": "DACS-Agent-commerce/DACS-Standard#334",
+    "generator": "scripts/generate_presence_only_claim_vectors.py"
+  },
+  "publicKeys": {
+    "presenter": "3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+    "secondPresenter": "5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+    "authority": "5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+    "verifier": "4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147"
+  },
+  "count": 38,
+  "hash": "54780a82e0cd511a8dd4f9323f39452d4c4c5c96728116e1fe496db84b19ec6a",
+  "vectors": [
+    {
+      "name": "required-presence-key-with-issued-at",
+      "expected": "pass",
+      "note": "PCR-2 accepts a present controlled key without verifiedBy; issuedAt is informational",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-required-presence-key-with-issued-at",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "BMMMDGKB4GQ5F2vhG3syGK0uPKxRyBTA5rKPGmdkQbk60d9_lMP8kw6EwYDNkaDHBsRuTbiDQUfrPw5B0Sg_BA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "required-presence-key-without-issued-at",
+      "expected": "pass",
+      "note": "PCR-2 does not require issuedAt in presence mode",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81"
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "XL4oLLR1_nXoGBEuwsoqsjOqe2Edq7OIe-u6un_m824ux2ZNawfnm9xnc3QVrdPwsrgr4JR4B36gJx6bGrrZDg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-required-presence-key-without-issued-at",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "040ca9f54616079e5304256c899234eb0ebe0ee58381cf98c8e44d7241a60e39",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "SenpZQ_gegxP2_JvUl9VkHR7FOGhCtB4p3wzJ7tDBevXTWG3D_1nx1kG_A13-yRLrXBFfWmBGvlZmrHxJGbWAg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "required-presence-missing",
+      "expected": "fail",
+      "note": "A missing presence-only claim is a conclusive non-match",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-required-presence-missing",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "8618e969e47843094ea0ee67b7ee3c09fd357aaa0856d77a843f36e28c218fdc",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "vP--iyNnFbIxr4i8a4IGnR4EtDDP_5nBv9Ki6RL_Wg5cgNz5y_5xG4LRR2CIug58N6AwPenYDw8tzyuaozrsBw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "required-presence-expired",
+      "expected": "fail",
+      "note": "PCR-2 retains the presenter expiry boundary",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "lei:5493001KJTIIGC8Y1R12",
+            "expiresAt": 1899999999999
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "dCwIwv1eLRRDgsKSiqCSQouQZ7Tsgv7xqG5_XFk91ROmw7Fu8X_NH3mOKY-osuKgLpQTRP2NXjuLvKQ6_7EHDQ"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-required-presence-expired",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "976dfa6864ff88188d98bec8c4ae00c85850f335c85571faa4fd605dec34a42a",
+        "requirementHash": "8618e969e47843094ea0ee67b7ee3c09fd357aaa0856d77a843f36e28c218fdc",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "Cpm50p8TZ3fNM8WLh8bsdTRTxZaZLBLxd3a_sdHh79ut205T-ZJU72R_eyZm-dRRUYelTXv7bwUJ_EMM5lizBg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "future-issued-at-is-informational",
+      "expected": "pass",
+      "note": "Presence does not reinterpret issuedAt as authority evidence or a freshness gate",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1900086400000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "b2iWyzVXfdeWN2qVL0wrOKr_Gos9Br8UydZKIW1Tk7af2TMSld2xbltXEZBJ_oKSILi_YnMNMNCBlc6Q47hUCA"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-future-issued-at-is-informational",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "4a2e47e610701e30f94aaf5241464fd212027e60b7fc8bdb2b9b2a58629824c6",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "GB9p6MUiYq7roJ1B2RNu406BqEGuX58wpKm5aiDEVFbfcdgEY2y_EFQXbt2g3_Pdb0Mrb9qS4htIfG0vy8rEAQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "optional-failing-verification-does-not-defeat-presence",
+      "expected": "pass",
+      "note": "PCR-3 does not resolve or promote an optional failing result for presence",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:optional-fail"
+              },
+              "contentHash": "07d9cb6436c08a500804ba991e80060acb92482acfa0b06757b9eeff48e0469a",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "iAC5x_Jd6ep_sgnXbJ0rfcf190gV5KSNetcEsTv4At9XnGvwxZn-XuaAb4QW9-hjTNLkibSkymWMtqTcKQQICQ"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-optional-failing-verification-does-not-defeat-presence",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "c849d52fc2940cfdbe226d067e84378859f3c34cbaa2e9978550f0d7c7dca39b",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "yl8tDywvJ0SppFvdLbwALFtol6MsaXXtT41nET4YkwN1qfDeIWSULOxb2kFPLfkqjZDk5mxKRNKx_helaV5TBQ"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:optional-fail"
+            },
+            "contentHash": "07d9cb6436c08a500804ba991e80060acb92482acfa0b06757b9eeff48e0469a",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "key",
+            "identifier": "3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "fail",
+            "reason": "deterministic fail vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "93b12866b339d917e989936be3f01064547e81d47f4c6704933f56e8929fdf02",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899999989000,
+            "verifiedAt": 1899999990000,
+            "validUntil": 1900003600000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "xSiHxW2mYtNbHDKHcQa1Oz0hwulK3CIqo_zPbqehW4PMfW14jxAAYWGougRmoG8Fn5xKbfjAxzHXZGcp0wPJAQ"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "optional-stale-verification-does-not-defeat-presence",
+      "expected": "pass",
+      "note": "PCR-3 skips verification freshness for a presence-only decision",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:optional-stale"
+              },
+              "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "cJefwT1CvCc5_k7zqrZrWCjtdKky9YxCJmgQyuG7vWd5F9zfTk7k65Vj3r-RRFCgdSmvVzfBfob0Qt-RO_zOAw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-optional-stale-verification-does-not-defeat-presence",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "de1cdf030b3f49104f3e3af16f8e1f2ca57b720b3915e159132be8ca2a1d71ec",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "_vD03weAkmyN4COWSrjT7OvhoMJI0RnLZ1TF7-nbLbIYNsKPvNLtzzrYi4mdSPG6IeVFI_Wg2EHHCmhQhMSBCg"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:optional-stale"
+            },
+            "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "key",
+            "identifier": "3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "pass",
+            "reason": "deterministic pass vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "e6f80177630ba0a1a7905cedf39ef158a403085115f6a4bc2ad3bd35e600432a",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899992799000,
+            "verifiedAt": 1899992800000,
+            "validUntil": 1899996400000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "6XW4-E4uQuw2QEzFxxPzHU34DyinCT0eHCLCd-HBK9Gx7XCMmNfone9sgK5vFj13q0L98RuJ_sTqguBEwP49Ag"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "optional-unavailable-verification-does-not-defeat-presence",
+      "expected": "pass",
+      "note": "A well-shaped but unavailable optional result is not fetched for presence",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "https",
+                "locator": "https://unavailable.example/result"
+              },
+              "contentHash": "abababababababababababababababababababababababababababababababab",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "-BHwI8bvmDQRKMuCTFVPcMaTOkaQs-P6OmevqhfYEelVqpVNA1Px6U2BNktLTjQsvO5CJOLnSX60vhny1r2zCw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-optional-unavailable-verification-does-not-defeat-presence",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "f5cd69bafc95069ea64877c0e090497bb8dff0bd3b7c9e7fb24cbe20201481df",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "fgtW9sEv5l0eaBsHI77-CmeOrapQRA8q_EBV6mPKIMnf-Jx9OR4lE-923sMavXEpfE6JjDozuYKg3O0S63BkAQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "malformed-optional-verification-reference",
+      "expected": "error",
+      "note": "PCR-3 preserves the VerifyResultRef wire-shape boundary",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "verifiedBy": {
+              "anchor": "not-an-anchor",
+              "contentHash": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "80JMhTsZNBUIlZ_3J_hQoppYar0pXgZSmc4SBb3hl9VJY-OXAFC0W60edS27F3N4QRj5A6Omo5vo_qyC7fw4AA"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-malformed-optional-verification-reference",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "b1d78e4ca97a3265cd7df1fc530e440c54659fdbbc8914627d5e780a6ad271c1",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "error",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "fNy58XTkgchiw00ssuQGqsp8hZmRoHzT7JrlTGTcmHlaYWHJaoASW_dkYizGe7QLNipNi0yPuTlLHbSJlOYNDw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-max-age-is-invalid",
+      "expected": "error",
+      "note": "PCR-1 rejects maxAge where no authority window exists",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false,
+            "maxAge": 60
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-max-age-is-invalid",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "6a5addb7621af5a37fc4d5643a6b2bb839d4c2396f061088fdbef6e06652f2bc",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "MmGS-0mxoiN_2xpYln7TTSzBI41-s2UlEbwlILJ47igSVIQFyfo4DOLQ_8r4omPKpIw32dBpyfQG-lsGs2yLAw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-recipe-version-is-invalid",
+      "expected": "error",
+      "note": "PCR-1 rejects recipeVersion rather than manufacturing a result",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false,
+            "recipeVersion": 1
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-recipe-version-is-invalid",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "098823d376c01fc8dce46ce8c4b27e850ab59bf973f58db71cf1d42fbea14d2e",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "-lwfWEJmQxgg8Jx2-fwKbJ9pw0cvnV0jUlVJGyfhnca2P5POuUohkE4gq5XbrpX4nwLJ7oQ5zQSYnvnQRL0IAg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "verification-required-must-be-boolean",
+      "expected": "error",
+      "note": "PCR-1 rejects a string lookalike rather than selecting a truthy mode",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": "false"
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-verification-required-must-be-boolean",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "d65f11100a71b327a0c4e0f41e6f2787c0a1c0bb129c22055e33f8f28f296ee2",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "VmM1ywc4llQZXNsk2RP9ZLHsjaCVjvQUj88_6qlufDWsYzW4TALCmj4pNbYJeMQ3Qmh9xMufQdzWwDWX6OlFAA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "empty-member-collections-are-vacuously-satisfied",
+      "expected": "pass",
+      "note": "Empty required and oneOf collections impose no member constraint",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": []
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-empty-member-collections-are-vacuously-satisfied",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "acb969a7444c9d7926a4f900285285651522f61759985690fa5ab59fddf028a0",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "-AORaX46uNFZq6cyVeRaFF0kW1EP1TXdG5QYGlAYxSQo_RXSG7z-ELb-meZzIBSum6CbxJ48Vvt_7p5kkq9gBw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "empty-oneof-group-is-invalid",
+      "expected": "error",
+      "note": "An empty inner oneOf group is a malformed requirement, not silent pass or fail",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": [
+          []
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-empty-oneof-group-is-invalid",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "b8f72288728de7a92f096e3689fe06d4cb75f9ab3f7ef0a8092222ac965d2a63",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "1FNRlz6w09_498MMmV2JVDDv_QMgBZ1oDkY_IUXIPios98i5wX1V37aN_t0wtw4PWIe1UU8ACK-c2WJ3vt0BAA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "oneof-passing-member-cannot-mask-unknown-scheme",
+      "expected": "error",
+      "note": "DACS-1 requirement preflight rejects every unknown scheme before oneOf any-pass",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": [
+          [
+            {
+              "scheme": "unknown",
+              "verificationRequired": false
+            },
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            }
+          ]
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-oneof-passing-member-cannot-mask-unknown-scheme",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "8170f80193fe58493f15989642c8cf360f878825afbecb855d623191c35ca81a",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "KFjAIne6TuFJnyzr5UA0wuA24TbdM9wSdrr8SPJak5nKkra5K7m389uuAhEVQjtWrrBA-0kljp_SaTRw99_WDQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-parameters-must-be-an-object",
+      "expected": "error",
+      "note": "Malformed parameters are a requirement error rather than an evaluator exception",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false,
+            "parameters": []
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-parameters-must-be-an-object",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "b65f6df896b21e2ab8344f2b8206fcb3f6d9e718394c4ef071a814e003257d7b",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "9ssb2doM8LJkdNLGoKba46qfnth9l4kweouWfyWmxBMPaD9is6ciYzK-qIPOExCptfvEuNLFTR7wlStgyn1HDg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-parameters-match",
+      "expected": "pass",
+      "note": "PCR-2 applies authenticated scheme parameters in presence mode",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "lei:5493001KJTIIGC8Y1R12",
+            "metadata": {
+              "jurisdiction": "GB"
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "C_6W_CFRjYnfkcwDMOb1zbQUuW0dlMEcm1t5E-F3jXVsE2q9yYJcVxv3WRQzcmgKLflksThAiPxuXqd_26dZBA"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false,
+            "parameters": {
+              "jurisdiction": "GB"
+            }
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-parameters-match",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "1aa19b33a51bb9f810b2ec3194aca786c54b7896099990c22a9cf8b4fe080e7a",
+        "requirementHash": "da6c78b31fc2adc3e69a93f4dd87ffc1d1274f988cbbbdb9b095bdfa1382664e",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "m7ECMmYCzX0njJISC7bD_Yn5cMF5Rlm6IqIbZksjIwT2ASijVOww3rPRAbWxV3pTlnEjsYe2GLgYtksFXBtaAA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-parameters-mismatch",
+      "expected": "fail",
+      "note": "Parameter mismatch is a non-match, not a verification attempt",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "lei:5493001KJTIIGC8Y1R12",
+            "metadata": {
+              "jurisdiction": "US"
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "9VTikR_PzY9uXg1XJ98vGEKeHmnuxWV379XRAte_z19cC0lE8cmPWwmO11xMUmEIK7jTkY9FlSrMd97gi5uPBQ"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false,
+            "parameters": {
+              "jurisdiction": "GB"
+            }
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-parameters-mismatch",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "3af293c161b39d9a330c6624044b58648fc7fc530c19b6e975098db5cfb4d3f1",
+        "requirementHash": "da6c78b31fc2adc3e69a93f4dd87ffc1d1274f988cbbbdb9b095bdfa1382664e",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "ygPTv89ksPqXkKXBsAc3mtKYptfCmqsfC9RfQVW_HEIxmVbqNQXs1Eh0YR6QcjHHDoeJfVeHo2aYrothscZrAw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "oneof-presence-alternative-passes",
+      "expected": "pass",
+      "note": "A presence-only member can satisfy its oneOf group",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": [
+          [
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            },
+            {
+              "scheme": "lei",
+              "verificationRequired": false
+            }
+          ]
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-oneof-presence-alternative-passes",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "7ce197eb2d835d246089771e07de0ea6f2c7ef7b63eb66348e758978d8b08790",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "ASvR5Ff-4fd5gDSNvdU1M8VmtdjeCaCDSatiCWjAhrSPDM3-Ew_BnPbwzol_eoTpTILCCWBUIK7-u0waLeVtBQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "oneof-presence-group-unsatisfied",
+      "expected": "fail",
+      "note": "A oneOf group with no present alternative fails",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": [
+          [
+            {
+              "scheme": "lei",
+              "verificationRequired": false
+            },
+            {
+              "scheme": "did",
+              "verificationRequired": false
+            }
+          ]
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-oneof-presence-group-unsatisfied",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "394ead0b9bb254bb58d679cc8fbaef7bbe2dbc7089ce4fbc1427f051350b8cd8",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "QyQu6ZTPl_FzjlGWOL7Rg8xrwT4bpvj6JmZLN22lPb5SMM8m5NKG7ugzNenui_3BzKJC4-G7nVb7JH3P3F8UDg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "mixed-required-presence-and-verified-pass",
+      "expected": "pass",
+      "note": "PCR-6 composes direct bundle presence with ordinary VerifyResult evidence",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "did:example:presence-vector",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:did-pass"
+              },
+              "contentHash": "0be26a22e71302544826d507decac96e71e9b3bedc5dbcda0d54917f14794495",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "F6kR0B_h_TU0c73lLlIrSv-qSt35XVUAd-C3MuLKNOBYWJqERJFRSSsTaeUqCbZjjkYAJPve4Y2sF8CVWPhZAA"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          },
+          {
+            "scheme": "did",
+            "verificationRequired": true
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-mixed-required-presence-and-verified-pass",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "e4d0a7559b7d91f7f6c955dfdb75eecc526266fae2c6aac1bbed331ba3832f3c",
+        "requirementHash": "8e701933bade7d80fab66d436996356913c14bc9e63f547c875fd628748ec916",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:did-pass"
+            },
+            "contentHash": "0be26a22e71302544826d507decac96e71e9b3bedc5dbcda0d54917f14794495",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "pcHPxAFJkb8tcZauNTXtA5O_6T9RzO0Q58vSO45O2qP_8rldJNSenBNUGnZJYHXn3UrXJPQxBH_f6895sY2jDg"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:did-pass"
+            },
+            "contentHash": "0be26a22e71302544826d507decac96e71e9b3bedc5dbcda0d54917f14794495",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "did",
+            "identifier": "example:presence-vector",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "pass",
+            "reason": "deterministic pass vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "46d4a95c2f3ac24af0864e0a5be936614f8486f02813087cf3151b27b82221b0",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899999989000,
+            "verifiedAt": 1899999990000,
+            "validUntil": 1900003600000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "6D4SO37yfvnyb7gOVgIYNg837X1jxZlOSCvkf-mNm99piY1U2ImRw-nk6fHS9242d0omDgNpi2N2oNQIN9VBBg"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed-required-verified-failure-dominates",
+      "expected": "fail",
+      "note": "A presence pass cannot rescue a failing verification-required member",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "did:example:presence-vector",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:did-fail"
+              },
+              "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "frbVCqOJug9FWLVtsYgxnCWLkusG9aKW6WMs761yfCnxpAlATB00jv7UYk26nV7N07ZSoxu3ePBtZsFnIcnqAA"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          },
+          {
+            "scheme": "did",
+            "verificationRequired": true
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-mixed-required-verified-failure-dominates",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "1b7f915927976033030ab43a4acf4853484bfb8bf681418039f5d960f4197bb7",
+        "requirementHash": "8e701933bade7d80fab66d436996356913c14bc9e63f547c875fd628748ec916",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:did-fail"
+            },
+            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "NdNvHv1Vi5vXm2MLjOkqA8xLux_aC9O5iUiw0yefWdmRVY2Iaj8w87HB-F-S07esKn6x--nEGNASZl2_xkztCQ"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:did-fail"
+            },
+            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "did",
+            "identifier": "example:presence-vector",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "fail",
+            "reason": "deterministic fail vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "c16fa5d199dc6cc3b419c6ab881fb876f9910838ff1c07a30e51dae1b65fbda8",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899999989000,
+            "verifiedAt": 1899999990000,
+            "validUntil": 1900003600000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "E89IBqh4DIa51AWnmQRDD64lAiPflzBUZmcsRk_6UnAT_cjWZ9NEX0Cn-Y-6UocpcjwBKCWd7P39i1Y32sD4AA"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mixed-oneof-presence-beats-verified-failure",
+      "expected": "pass",
+      "note": "OR semantics permit the presence alternative while retaining the failed result",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "did:example:presence-vector",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:did-fail"
+              },
+              "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "frbVCqOJug9FWLVtsYgxnCWLkusG9aKW6WMs761yfCnxpAlATB00jv7UYk26nV7N07ZSoxu3ePBtZsFnIcnqAA"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [],
+        "oneOf": [
+          [
+            {
+              "scheme": "key",
+              "verificationRequired": false
+            },
+            {
+              "scheme": "did",
+              "verificationRequired": true
+            }
+          ]
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-mixed-oneof-presence-beats-verified-failure",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "1b7f915927976033030ab43a4acf4853484bfb8bf681418039f5d960f4197bb7",
+        "requirementHash": "a108875d82a011c8edebfea6c3b095cbc67a5eb0c2b773effe37b670138f3732",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:did-fail"
+            },
+            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "0ikdqY3MlfQ4PBpvQPw9YiCv6B_2KNIbt2yheMtK0z2szVJMnoaAAn6ZHoze4VojoXLoPHWCeFS7_qpg_ht6DQ"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:did-fail"
+            },
+            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "did",
+            "identifier": "example:presence-vector",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "fail",
+            "reason": "deterministic fail vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "c16fa5d199dc6cc3b419c6ab881fb876f9910838ff1c07a30e51dae1b65fbda8",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899999989000,
+            "verifiedAt": 1899999990000,
+            "validUntil": 1900003600000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "E89IBqh4DIa51AWnmQRDD64lAiPflzBUZmcsRk_6UnAT_cjWZ9NEX0Cn-Y-6UocpcjwBKCWd7P39i1Y32sD4AA"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "verified-member-cannot-use-bare-presence",
+      "expected": "fail",
+      "note": "PCR-4 requires a passing fresh result; a present claim is insufficient",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "did:example:presence-vector"
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "rA9UZ7ChA0uLc-Q-truCIlqq-g09kPeR-I-tfFHkVxnaJIWShJEJxWLUoWOFBMvjSJk1PEHoTHw46Ni-XeAtAw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "did",
+            "verificationRequired": true
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-verified-member-cannot-use-bare-presence",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "bcd5dc8ab959bc5125a87a96b550c70727e598e43711d70c0555884fb673e11f",
+        "requirementHash": "ab3f7d0e1b6eb1de66670903143845e983e8deb08bc7fb0d74754c793aa0536e",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "JtFsNInTFGjXSf8K6XIkX_XZdQDEGFxKP9q971D8D4JaRAGS8pIUi8kGgTQQcczs91FKnpubJqwGXNF-kproBw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "synthetic-presence-verify-result-rejected",
+      "expected": "error",
+      "note": "PCR-6 rejects a CVR result reference attributable only to presence",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:synthetic-presence"
+              },
+              "contentHash": "d45c0908af78234320afe1bf9e1276bc1ff9dfeac86f7bd56325f1226b21c744",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "qxZQc4PZgazlz_-ioye8zNP6Xae_vv_FgaUOsztxc8Ka8-Dq2tzGfF5n7ecqFDQUpLVDCBolZAYEK_ecsxvKCQ"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-synthetic-presence-verify-result-rejected",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "f4cdc2f65ba87cbbf173b8e6c9d5781e9bf2ff5840183566594eec6db7a8c39a",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:synthetic-presence"
+            },
+            "contentHash": "d45c0908af78234320afe1bf9e1276bc1ff9dfeac86f7bd56325f1226b21c744",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "ke3jK1YxW4Owk6Wv2jPo9vAWIF7vAzfUV3h9fb243zzT34lAK-xT3Ug7yqZ00xISoaaRqtWHmst8e_xyvApYAA"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:synthetic-presence"
+            },
+            "contentHash": "d45c0908af78234320afe1bf9e1276bc1ff9dfeac86f7bd56325f1226b21c744",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "key",
+            "identifier": "3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "pass",
+            "reason": "deterministic pass vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "a259064745efac51a17118b139e6d255512227d058d290e7f94eebcb72a45c67",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899999989000,
+            "verifiedAt": 1899999990000,
+            "validUntil": 1900003600000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "A8ylBXXhMxhfU24QkIB9Vu6n0JobmXE_UEAvai8VwT-b0_ccGiH4Al137mhi8mdEtOfwPoRBiNq4k3unlSV2Dg"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "bundle-hash-substitution-rejected",
+      "expected": "error",
+      "note": "Strict replay binds presence to the exact bundleHash",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-bundle-hash-substitution-rejected",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "Ge-7Mwo0mXaonC_3GgBhBT4cpq3FAo3TyayrvAzSrh0GFcIYv7yK-F-MYKlsF7iBvCfoK8qP2VV-R_-pGyWGDA"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "requirement-hash-substitution-rejected",
+      "expected": "error",
+      "note": "Strict replay binds the exact requirement including its evaluation mode",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-requirement-hash-substitution-rejected",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1111111111111111111111111111111111111111111111111111111111111111",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "9_oqrRqWavGV1OOiDzx5sT7HTdnWMbIsGlA_mHsBgUEiye3ofjhBvYY3L4vPYDJg_Arvw8idJs_Ub0j6efbXDQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "invalid-bundle-presentation-rejected",
+      "expected": "error",
+      "note": "Presence is authenticated by the bundle presentation",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Ap9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-invalid-bundle-presentation-rejected",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "3wbWP2atbVCcb7v0oJN0fPxaJ2QrDtA1cAazLpnTV-OQ-xHwbkb5nxiEjz3bp_VjSdf7N1WRkJEUGHLjIEl2Dg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "invalid-composite-signature-rejected",
+      "expected": "error",
+      "note": "PCR-6 does not weaken the signed composite-record boundary",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-invalid-composite-signature-rejected",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "AVaSVb-H-7SjzDPWdqm4h67adkfLPYVZRbA4GBJm43kgAgSuHxHKwvL4ksXYbRX-M9iGMLM9PjeEhxuHdW5TAg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "exact-bundle-unavailable-is-indeterminate",
+      "expected": "indeterminate",
+      "note": "A standalone CVR cannot prove presence without its exact bundle companion",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": false,
+      "bundle": null,
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-exact-bundle-unavailable-is-indeterminate",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "JDBn2EIr6Dg2Qd29cDSl5iqQNtG1029-4IIem9U6h_V0brF2Vx7SLthotNl04YFLMdO-aET5HuJsb7tsz5oIBg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "invalid-registry-precedes-unavailable-bundle",
+      "expected": "error",
+      "note": "CRQ-1 authenticates the session-pinned registry before missing bundle availability can yield indeterminate",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": false,
+      "registryAuthenticated": false,
+      "bundleAvailable": false,
+      "bundle": null,
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-invalid-registry-precedes-unavailable-bundle",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "e_2Yk4He2ewvYKF5k5zodViAEoGmFo4lozqkYLEHNIe0jNA3o9hUboHOThKXj4497WPlf2tfVP9_rIVbRSAKDQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "invalid-composite-still-rejects-without-bundle",
+      "expected": "error",
+      "note": "Composite authentication precedes the missing-bundle indeterminate branch",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": false,
+      "bundle": null,
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-invalid-composite-still-rejects-without-bundle",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "Acio1adaVkxp1Hd1z4KglroPHUAAmsoDEQK9HA0USl7Ub8kOWlpvwUDjnxevilWBjU51bdYSdfh6LO6UCI0AAw"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-key-selector-has-independent-control",
+      "expected": "pass",
+      "note": "PCR-5 permits the exact key selector because its bundle signature proves control",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ],
+        "primaryClaimSelector": "key"
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-key-selector-has-independent-control",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "fbe0bf4f54ff40d6eb76d1972374ae8d6b064ac0d0a8b4dce01a907aa6c8a852",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "KbWMLptzbMxiYchOm1wwPsDFeNKmx3MkQchm3rtNZvYSE52JdVdW9lFN5iK48ctuP0DUY6I_ZAsl9BdOVA3sDg"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "presence-lei-selector-does-not-establish-control",
+      "expected": "fail",
+      "note": "Existence-only LEI presence cannot become controlled presentedBy or reputation identity",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "lei:5493001KJTIIGC8Y1R12",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "lei:5493001KJTIIGC8Y1R12"
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Vavs6jG0iwwHSSopeqRlK1IjpkSr_Dg_RF5vTcV51rNMgxJHBpBiJ7JM7LJzjgCRTSTK09MVK0xIVmr-gL3JBA"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false
+          }
+        ],
+        "primaryClaimSelector": "lei"
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-presence-lei-selector-does-not-establish-control",
+        "evaluatedParty": "lei:5493001KJTIIGC8Y1R12",
+        "bundleHash": "c592253accc9b2f0333750f7c4142b3394229a5e1b83fc96a17ddaf0ab835fea",
+        "requirementHash": "fbe7e37d19714fb1aa42f99bf45fb6f1bab75f66f773e85c3d529b1fd016099d",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "paxkyjATsaBjI4do1cFldAetWLXnoJJE4gf0GvhTOjDEisEPW58IAwhnZPlaRv6CLyQ7Hm1U1DCHOiesy3fuBQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "unauthorized-selector-dominates-unavailable-member",
+      "expected": "fail",
+      "note": "Independent selector failure has global fail-first precedence over an indeterminate verified member",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "lei:5493001KJTIIGC8Y1R12",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "lei:5493001KJTIIGC8Y1R12"
+          },
+          {
+            "ref": "did:example:presence-vector",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "https",
+                "locator": "https://unavailable.example/result"
+              },
+              "contentHash": "abababababababababababababababababababababababababababababababab",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Eknlhi4mhnlV0xt6erP7V204YsdAwjO9ulUMQo41AZ20MYO_a9F4OVmq3I2QnLSPQDcwQcn6ayg1jBUYP5IwDw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false
+          },
+          {
+            "scheme": "did",
+            "verificationRequired": true
+          }
+        ],
+        "primaryClaimSelector": "lei"
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-unauthorized-selector-dominates-unavailable-member",
+        "evaluatedParty": "lei:5493001KJTIIGC8Y1R12",
+        "bundleHash": "812d67c3b575f73df142f46d42e22a9404954e7b4aefd268963014c02c868e3e",
+        "requirementHash": "46628894f9253db3d53ee41fa46862ac2c3e1eb9b07a92aa19ee93f9ee48266f",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "https",
+              "locator": "https://unavailable.example/result"
+            },
+            "contentHash": "abababababababababababababababababababababababababababababababab",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "HTldYJHHqjfph5zl7IMyx1LERVHtM94HTg0SxmvwmUHa2YbD_xPCjL1xdsSlJZ_2MqyvFMWaATZCDCfxsQnWBQ"
+        }
+      },
+      "resolvedResults": []
+    },
+    {
+      "name": "stale-optional-key-result-does-not-remove-key-control",
+      "expected": "pass",
+      "note": "The key presentation proves control while the stale result supplies no tier elevation",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:optional-stale"
+              },
+              "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "cJefwT1CvCc5_k7zqrZrWCjtdKky9YxCJmgQyuG7vWd5F9zfTk7k65Vj3r-RRFCgdSmvVzfBfob0Qt-RO_zOAw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          }
+        ],
+        "primaryClaimSelector": "key"
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-stale-optional-key-result-does-not-remove-key-control",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "de1cdf030b3f49104f3e3af16f8e1f2ca57b720b3915e159132be8ca2a1d71ec",
+        "requirementHash": "fbe0bf4f54ff40d6eb76d1972374ae8d6b064ac0d0a8b4dce01a907aa6c8a852",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "KeIyhoTiKRPtu9qxuejgc5pzaGr7OaYw-31IP0wi9u9vHxpFayJx0FOCXZKR5RU8H-MKad7lb_qSIvGMmPBkCA"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:optional-stale"
+            },
+            "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "key",
+            "identifier": "3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "pass",
+            "reason": "deterministic pass vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "e6f80177630ba0a1a7905cedf39ef158a403085115f6a4bc2ad3bd35e600432a",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899992799000,
+            "verifiedAt": 1899992800000,
+            "validUntil": 1899996400000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "6XW4-E4uQuw2QEzFxxPzHU34DyinCT0eHCLCd-HBK9Gx7XCMmNfone9sgK5vFj13q0L98RuJ_sTqguBEwP49Ag"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "different-verified-same-scheme-cannot-launder-selector",
+      "expected": "fail",
+      "note": "MA-3/PCR-5 require the exact selected claim when the same scheme is mandatory-verified",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "key:5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:second-key-pass"
+              },
+              "contentHash": "892ce7583084450477ad31f06c1405e6dac0e9d0cfd1e72e3bc3d91aed40646f",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "5n7gyhfmSP-Ecg6JddifWe_5LxNmV6bz2xFqhkA1Ca9NWMQhptlZ4luOibTcYwk0UcvXq1fPD5orLLLctmPODw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          },
+          {
+            "scheme": "key",
+            "verificationRequired": true
+          }
+        ],
+        "primaryClaimSelector": "key"
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-different-verified-same-scheme-cannot-launder-selector",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "f6d7576d79e3bc626ccc41c11d857400571e2cc1db00d8267e0dce11a840de7d",
+        "requirementHash": "be38c83f8fb0337c0a6e5518153194abcdb2b87bdf39c9b2928a7b9ec1c42d23",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:second-key-pass"
+            },
+            "contentHash": "892ce7583084450477ad31f06c1405e6dac0e9d0cfd1e72e3bc3d91aed40646f",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "fail",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "XlxoZK5eYXhSmxSsqOeSVzSVSHutPgvI9Cf7LJEyAk_PmSA7XwMJu72nIViAJOy4-rgOQHISPf9oDKu07dQZAw"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:second-key-pass"
+            },
+            "contentHash": "892ce7583084450477ad31f06c1405e6dac0e9d0cfd1e72e3bc3d91aed40646f",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "key",
+            "identifier": "5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "pass",
+            "reason": "deterministic pass vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "6cda86f2c34dfaada266ddd116532dcd31d5fcd506a91d2b85e0f77a0e5d32cb",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899999989000,
+            "verifiedAt": 1899999990000,
+            "validUntil": 1900003600000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+              "value": "t_dPK8AxLaPaqblmXSJ1gzOLmo0wIAvjBV1Et8KqkP-iY_8A5Tx82AFuLlJ8KfMFJtyAZIJcpYUDII8j5cKVDw"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "signed-overall-decision-mismatch-rejected",
+      "expected": "error",
+      "note": "A strict consumer recomputes aggregation instead of trusting signed overallDecision",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "Up9GLk7bcRSL-fj_AnAoiCTQ-SbZLTmR9KMpwek6J-jmzfDLksLJ25CBURD_iviP0KCkg4Z2E2HtnW7pD4WmBg"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "lei",
+            "verificationRequired": false
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-signed-overall-decision-mismatch-rejected",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "65ca457e7a29a7fabe516c6ff4378f5288f52a9e6d90e8b354dad7ac5ce4fa6f",
+        "requirementHash": "8618e969e47843094ea0ee67b7ee3c09fd357aaa0856d77a843f36e28c218fdc",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "e005U-u3bmCIILUck2QDOV2X5w3wtWMvXuD_s6e_QPx5xb1Vpeh8sE0UiYCnwQcjRgSbBA4x0nM28G4YUr8WCw"
+        }
+      },
+      "resolvedResults": []
+    }
+  ]
+}

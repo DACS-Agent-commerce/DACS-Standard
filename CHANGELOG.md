@@ -25,6 +25,16 @@ The format used per release:
   transaction co-signing remains an optional optimization and cannot replace
   applicable artifact signatures or role-specific publication.
 
+### Fixed — DACS-4 RD-5 conformance data
+
+- **EVM rail chain-ID equality restored** (§9.4.3 RD-5; #352) — corrects the
+  stale golden manifest row that admitted matching asset/network kinds with
+  unequal `chainId` values even though RD-5 requires the same positive integer
+  and PB-2 derives payee applicability from that exact chain. The contradictory
+  positive is replaced by a fail candidate pending independent reference-run
+  convergence. The executable chain-applicability set now has explicit
+  equal-positive, mismatch, zero, and non-integer asset/network controls.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

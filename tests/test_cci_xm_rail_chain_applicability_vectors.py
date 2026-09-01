@@ -13,6 +13,7 @@ VECTORS = (
     / "security"
     / "cci-xm-rail-chain-applicability-v0.5.json"
 )
+MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 DACS1 = ROOT / "spec" / "DACS-1-IDENTIFY.md"
 DACS4 = ROOT / "spec" / "DACS-4-SETTLE.md"
 
@@ -218,6 +219,33 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
         self.assertEqual(result["expected"], "error")
         self.assertEqual(result["failedAt"], "RD-5")
         self.assertFalse(result["maySubmitPayment"])
+
+    def test_rd5_requires_equal_positive_integer_chain_ids(self):
+        admitted = evaluate(self.by_name["asset-and-network-chain-id-match-admits-rail"])
+        self.assertEqual(admitted["expected"], "pass")
+        self.assertTrue(admitted["maySubmitPayment"])
+
+        for name in [
+            "zero-asset-chain-id-rejects-rail",
+            "zero-network-chain-id-rejects-rail",
+            "string-asset-chain-id-rejects-rail",
+            "string-network-chain-id-rejects-rail",
+        ]:
+            with self.subTest(vector=name):
+                result = evaluate(self.by_name[name])
+                self.assertEqual(result["expected"], "error")
+                self.assertEqual(result["failedAt"], "RD-5")
+                self.assertFalse(result["maySubmitPayment"])
+
+    def test_manifest_no_longer_promotes_the_contradictory_golden(self):
+        cases = {
+            case["id"]: case
+            for case in json.loads(MANIFEST.read_text(encoding="utf-8"))["cases"]
+        }
+        self.assertNotIn("settlement-cross-chainid-matching-kind-pass", cases)
+        corrected = cases["settlement-cross-chainid-mismatch-fail"]
+        self.assertEqual(corrected["want"], "fail")
+        self.assertEqual(corrected["status"], "candidate")
 
     def test_normative_text_pins_the_same_predicate_and_empty_alias_table(self):
         dacs1 = DACS1.read_text(encoding="utf-8")

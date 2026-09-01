@@ -1639,13 +1639,12 @@
       "want": "pass"
     },
     {
-      "id": "settlement-cross-chainid-matching-kind-pass",
+      "id": "settlement-cross-chainid-mismatch-fail",
       "area": "settlement",
       "spec": "§9.4.3 RD-5",
-      "summary": "rail with matching KINDS but asset.chainId≠network.chainId → PASS (RD-5 binds kinds, not chainId-equality)",
-      "status": "golden",
-      "reason": "reference-verifier-accepted + byte-stable",
-      "want": "pass"
+      "summary": "EVM rail with matching kinds but asset.chainId≠network.chainId → FAIL before PB-2",
+      "status": "candidate",
+      "want": "fail"
     },
     {
       "id": "settlement-delivery-extra-payment-field-pass",

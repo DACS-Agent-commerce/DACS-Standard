@@ -1,3 +1,4 @@
+import base64
 import json
 import subprocess
 import sys
@@ -76,15 +77,29 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         return gen, ver
 
     @staticmethod
-    def _mutated(path, mutate, gen):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        record = data["settlementEvidence"]
-        mutate(record)
-        record.pop("signature", None)
-        gen.sign(record, gen.ORCHESTRATOR_SEED)  # re-sign so only the structural guard can reject
+    def _write(data):
         out = Path(tempfile.mkstemp(suffix=".json")[1])
         out.write_text(json.dumps(data), encoding="utf-8")
         return out
+
+    @classmethod
+    def _pair(cls, gen, mutate_interim=None, mutate_resolved=None):
+        """Build a (interim, resolved) pair where the resolved record is REBOUND to the
+        (possibly mutated) interim and both are RE-SIGNED, so the only thing that can
+        reject a mutation is the structural guard it targets — never the signature check
+        and never the supersession hash as a side effect."""
+        interim = gen.interim_record()
+        interim.pop("signature")
+        if mutate_interim:
+            mutate_interim(interim)
+        gen.sign(interim, gen.ORCHESTRATOR_SEED)
+        resolved = gen.resolved_record(interim)
+        resolved.pop("signature")
+        if mutate_resolved:
+            mutate_resolved(resolved)
+        gen.sign(resolved, gen.ORCHESTRATOR_SEED)
+        wrap = lambda r: {"kind": "SettlementEvidenceCase", "settlementEvidence": r, "specRefs": ["§9.5.4"]}
+        return cls._write(wrap(interim)), cls._write(wrap(resolved))
 
     def test_htlc9_pack_is_deterministic_and_verifies(self):
         check = subprocess.run(["python3", str(GENERATE_HTLC9), "--check"], cwd=ROOT, text=True, capture_output=True)
@@ -97,7 +112,10 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         gen, ver = self._load_pack_modules()
         interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
         resolved = json.loads(RESOLVED.read_text(encoding="utf-8"))["settlementEvidence"]
-        self.assertEqual(resolved["supersedesEvidenceRef"]["contentHash"], "sha256:" + ver.content_hash_hex(interim))
+        ref = resolved["supersedesEvidenceRef"]
+        self.assertEqual(set(ref), {"anchor", "contentHash"})            # DACS-2 §7.5.2 shape, not the pre-#308 flat form
+        self.assertEqual(set(ref["anchor"]), {"kind", "locator"})
+        self.assertEqual(ref["contentHash"], ver.content_hash_hex(interim))
         self.assertEqual(resolved["outcome"], "success")
         self.assertEqual(resolved["settlementFinality"]["model"], "htlc-reveal")
         self.assertEqual({r["kind"] for r in resolved["paymentTxRefs"]}, {"htlc-lock", "htlc-reveal", "htlc-claim"})
@@ -105,31 +123,66 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
 
     def test_htlc9_verifier_rejects_a_garbage_signature(self):
         gen, ver = self._load_pack_modules()
-        for path in (INTERIM, RESOLVED):
-            data = json.loads(path.read_text(encoding="utf-8"))
+        for which in ("interim", "resolved"):
+            i, r = self._pair(gen)
+            data = json.loads((i if which == "interim" else r).read_text())
             data["settlementEvidence"]["signature"]["value"] = "NOT-A-SIGNATURE"
-            out = Path(tempfile.mkstemp(suffix=".json")[1]); out.write_text(json.dumps(data))
-            errors = ver.validate_pair(out, RESOLVED) if path is INTERIM else ver.validate_pair(INTERIM, out)
-            self.assertTrue(any("signature" in e for e in errors), errors)
+            out = self._write(data)
+            errors = ver.validate_pair(out, r) if which == "interim" else ver.validate_pair(i, out)
+            self.assertTrue(any("SIG-6" in e or "signature" in e for e in errors), errors)
 
-    def test_htlc9_structural_guards_are_load_bearing_under_resigned_mutation(self):
+    def test_htlc9_verifier_rejects_a_noncanonical_sig6_encoding(self):
         gen, ver = self._load_pack_modules()
+        i, r = self._pair(gen)
+        data = json.loads(r.read_text()); value = data["settlementEvidence"]["signature"]["value"]
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        alt = next(value[:-1] + c for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+                   if c != value[-1] and base64.urlsafe_b64decode(value[:-1] + c + "=" * (-len(value) % 4)) == raw)
+        data["settlementEvidence"]["signature"]["value"] = alt      # same bytes, non-canonical spelling
+        errors = ver.validate_pair(i, self._write(data))
+        self.assertTrue(any("SIG-6" in e for e in errors), errors)
+
+    def test_htlc9_structural_guards_are_load_bearing_under_resigned_rebound_mutation(self):
+        gen, ver = self._load_pack_modules()
+        R, I = "resolved", "interim"
         cases = {
-            "resolved without htlc-claim": (RESOLVED, lambda e: e.__setitem__("paymentTxRefs", [r for r in e["paymentTxRefs"] if r["kind"] != "htlc-claim"]), "htlc-claim"),
-            "resolved with wrong supersedes hash": (RESOLVED, lambda e: e["supersedesEvidenceRef"].__setitem__("contentHash", "sha256:" + "00" * 32), "content hash"),
-            "resolved smuggling a correction amendment": (RESOLVED, lambda e: e.__setitem__("settlementAmendment", {"amendmentType": "correction"}), "amendment"),
-            "resolved without settlementFinality": (RESOLVED, lambda e: e.pop("settlementFinality"), "settlementFinality"),
-            "resolved without paymentAmount": (RESOLVED, lambda e: e.pop("paymentAmount"), "paymentAmount"),
-            "resolved with outcome failure": (RESOLVED, lambda e: e.__setitem__("outcome", "failure"), "outcome success"),
-            "interim carrying an htlc-claim": (INTERIM, lambda e: e["paymentTxRefs"].append({"kind": "htlc-claim", "chainId": 84532, "contractAddress": "0x" + "0" * 40, "claimTxHash": "0x" + "cc" * 32}), "htlc-claim"),
-            "interim with outcome success": (INTERIM, lambda e: e.__setitem__("outcome", "success"), "outcome failure"),
+            "resolved without htlc-claim": (R, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-claim"]), "htlc-claim"),
+            "resolved without htlc-lock": (R, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-lock"]), "htlc-lock"),
+            "resolved without htlc-reveal": (R, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-reveal"]), "htlc-reveal"),
+            "resolved kind-only claim (no claimTxHash)": (R, lambda e: e["paymentTxRefs"].__setitem__(2, {"kind": "htlc-claim"}), "claimTxHash"),
+            "resolved lock differs from interim": (R, lambda e: e["paymentTxRefs"][0].__setitem__("lockTxHash", "0x" + "dd" * 32), "identical to the interim"),
+            "resolved wrong supersedes hash": (R, lambda e: e["supersedesEvidenceRef"].__setitem__("contentHash", "00" * 32), "content hash"),
+            "resolved flat pre-#308 AttestationRef": (R, lambda e: e.__setitem__("supersedesEvidenceRef", {"kind": "storage-program", "locator": "x", "contentHash": e["supersedesEvidenceRef"]["contentHash"]}), "unknown field"),
+            "resolved smuggling settlementAmendment": (R, lambda e: e.__setitem__("settlementAmendment", {"amendmentType": "correction"}), "amendment"),
+            "resolved smuggling amendmentRefs": (R, lambda e: e.__setitem__("amendmentRefs", []), "amendment"),
+            "resolved smuggling amendsEvidenceRef": (R, lambda e: e.__setitem__("amendsEvidenceRef", {}), "amendment"),
+            "resolved smuggling refundAmount": (R, lambda e: e.__setitem__("refundAmount", {"amount": "1", "currency": "USDC"}), "amendment"),
+            "resolved without settlementFinality": (R, lambda e: e.pop("settlementFinality"), "settlementFinality"),
+            "resolved finality model bft-final": (R, lambda e: e["settlementFinality"].__setitem__("model", "bft-final"), "htlc-reveal"),
+            "resolved finalityObservedAt as string": (R, lambda e: e["settlementFinality"].__setitem__("finalityObservedAt", "1760000290000"), "finalityObservedAt"),
+            "resolved without paymentAmount": (R, lambda e: e.pop("paymentAmount"), "paymentAmount"),
+            "resolved paymentAmount zero": (R, lambda e: e["paymentAmount"].__setitem__("amount", "0"), "CD-1"),
+            "resolved paymentAmount non-canonical 25.0": (R, lambda e: e["paymentAmount"].__setitem__("amount", "25.0"), "CD-1"),
+            "resolved outcome failure": (R, lambda e: e.__setitem__("outcome", "failure"), "outcome success"),
+            "resolved wrong evidenceVersion": (R, lambda e: e.__setitem__("evidenceVersion", "2"), "evidenceVersion"),
+            "resolved wrong phase": (R, lambda e: e.__setitem__("phase", "pay-dem"), "phase"),
+            "resolved observedAt as string": (R, lambda e: e.__setitem__("observedAt", "1"), "observedAt"),
+            "resolved jobId differs from interim": (R, lambda e: e.__setitem__("jobId", "01OTHERJOB0000000000000000"), "jobId"),
+            "interim carrying an htlc-claim": (I, lambda e: e["paymentTxRefs"].append({"kind": "htlc-claim", "chainId": 84532, "contractAddress": "0x" + "0" * 40, "claimTxHash": "0x" + "cc" * 32}), "htlc-claim"),
+            "interim outcome success": (I, lambda e: e.__setitem__("outcome", "success"), "outcome failure"),
+            "interim wrong reason": (I, lambda e: e.__setitem__("reason", "timeout"), "dest-revealed-source-unclaimed"),
+            "interim without htlc-reveal": (I, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-reveal"]), "htlc-reveal"),
+            "interim without htlc-lock": (I, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-lock"]), "htlc-lock"),
+            "interim carrying settlementFinality": (I, lambda e: e.__setitem__("settlementFinality", {"model": "htlc-reveal", "finalityObservedAt": 1}), "settlementFinality"),
         }
-        for name, (path, mutate, needle) in cases.items():
+        for name, (which, mutate, needle) in cases.items():
             with self.subTest(name=name):
-                out = self._mutated(path, mutate, gen)
-                errors = ver.validate_pair(out, RESOLVED) if path is INTERIM else ver.validate_pair(INTERIM, out)
+                i, r = self._pair(gen, mutate_interim=mutate if which == I else None, mutate_resolved=mutate if which == R else None)
+                errors = ver.validate_pair(i, r)
                 self.assertTrue(errors, f"{name}: accepted")
-                self.assertFalse(any("signature does not verify" in e for e in errors), f"{name}: rejected only by the signature check, not the guard: {errors}")
+                self.assertFalse(any("signature does not verify" in e or "SIG-6" in e for e in errors), f"{name}: rejected by the signature check, not the guard: {errors}")
+                if which == I and "content hash" not in needle:
+                    self.assertFalse(any("content hash" in e for e in errors), f"{name}: rejected by the supersession hash backstop, not the guard: {errors}")
                 self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
 
     def test_dacsx_correction_zombie_is_gone(self):

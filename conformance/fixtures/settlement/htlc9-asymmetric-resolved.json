@@ -37,12 +37,14 @@
     "signature": {
       "algorithm": "ed25519",
       "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
-      "value": "UlVWNbi2Lq8krelFMOPrZw0fSH9AIOoe7C7t8nkquZ07pcE36-kt2gewUd5PDrmE5NCpIh31UsUMGT0sLfoODA"
+      "value": "AnPIeqfU3gtb1nN1CMEJjILVm31O1rWuJtk-V06urLGY3IlDr5ggGrCPh8D0ZNjTLpeMWvYngw1SPXzgFIPFBw"
     },
     "supersedesEvidenceRef": {
-      "contentHash": "sha256:204a8db44eb80905e90fcd705d20f3020c0a5f7654aefe6ec892f277559fb7d0",
-      "kind": "storage-program",
-      "locator": "stor:evidence:htlc9"
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "stor-204a8db44eb80905e90fcd705d20f3020c0a5f7654aefe6ec892f277559fb7d0"
+      },
+      "contentHash": "204a8db44eb80905e90fcd705d20f3020c0a5f7654aefe6ec892f277559fb7d0"
     }
   },
   "specRefs": [

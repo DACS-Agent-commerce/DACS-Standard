@@ -10,8 +10,9 @@ Emits two signed ``SettlementEvidence`` fixtures (DACS-4 §9.5.4, §10.3.1 ST-8)
 * ``conformance/fixtures/settlement/htlc9-asymmetric-resolved.json`` — the ST-8
   ``:resolved`` record: ``outcome: "success"`` carrying ``settlementFinality``
   (``model: "htlc-reveal"``), ``paymentAmount``, the full ``htlc-lock`` +
-  ``htlc-reveal`` + ``htlc-claim`` set, and ``supersedesEvidenceRef`` whose
-  ``contentHash`` is the §B.2 content hash of the interim record. No amendment is
+  ``htlc-reveal`` + ``htlc-claim`` set, and ``supersedesEvidenceRef`` — a DACS-2
+  §7.5.2 AttestationRef (nested ``anchor``, bare-hex ``contentHash``) whose hash is
+  the §B.2 content hash of the interim record. No amendment is
   used (DACS-4-SETTLE.md, "No ``correction`` amendment is used").
 
 Keys are derived from fixed public test seeds (the same convention as the
@@ -34,8 +35,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jcs  # noqa: E402
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+except ImportError:  # pragma: no cover
+    raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
 
 FIXTURE_DIR = ROOT / "conformance" / "fixtures" / "settlement"
 INTERIM_PATH = FIXTURE_DIR / "htlc9-asymmetric.json"
@@ -51,7 +55,6 @@ CONTRACT = "0x0000000000000000000000000000000000000308"
 LOCK_TX = "0x" + "aa" * 32
 REVEAL_TX = "0x" + "bb" * 32
 CLAIM_TX = "0x" + "cc" * 32
-INTERIM_LOCATOR = "stor:evidence:htlc9"
 
 
 def canonical_bytes(value) -> bytes:
@@ -79,6 +82,16 @@ def sign(record: dict, seed: bytes) -> None:
         "signer": signer_ref(seed),
         "value": b64url(Ed25519PrivateKey.from_private_bytes(seed).sign(payload)),
     }
+
+
+def attestation_ref(record: dict) -> dict:
+    """DACS-2 §7.5.2 AttestationRef to a stored record: nested anchor, bare-hex content hash.
+
+    Locator follows the storage-program convention used across the security corpora
+    (``stor-<sha256hex of the record's canonical form>``).
+    """
+    digest = content_hash_hex(record)
+    return {"anchor": {"kind": "storage-program", "locator": f"stor-{digest}"}, "contentHash": digest}
 
 
 def interim_record() -> dict:
@@ -112,11 +125,7 @@ def resolved_record(interim: dict) -> dict:
         ],
         "phase": "pay-cross-chain-htlc",
         "settlementFinality": {"model": "htlc-reveal", "finalityObservedAt": 1760000290000},
-        "supersedesEvidenceRef": {
-            "kind": "storage-program",
-            "locator": INTERIM_LOCATOR,
-            "contentHash": "sha256:" + content_hash_hex(interim),
-        },
+        "supersedesEvidenceRef": attestation_ref(interim),
     }
     sign(record, ORCHESTRATOR_SEED)
     return record

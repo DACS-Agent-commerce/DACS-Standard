@@ -122,7 +122,9 @@ python3 scripts/generate_htlc9_st8_pack.py --check
 python3 scripts/verify_htlc9_st8_pack.py
 ```
 
-The validators are stdlib-only. The vector validator checks:
+The validators are stdlib-only, except signature verification (the vector validator
+and `verify_htlc9_st8_pack.py`), which needs `cryptography` and says so if it is missing.
+The vector validator checks:
 
 - required top-level vector fields
 - exactly ordered five-stage coverage

@@ -30,8 +30,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jcs  # noqa: E402
 
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+try:
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+except ImportError:  # pragma: no cover
+    raise SystemExit("cryptography is required for signature verification: python3 -m pip install cryptography")
 
 FIXTURE_DIR = ROOT / "conformance" / "fixtures" / "settlement"
 DEFAULT_INTERIM = FIXTURE_DIR / "htlc9-asymmetric.json"
@@ -55,15 +58,54 @@ def content_hash_hex(record: dict) -> str:
     return hashlib.sha256(jcs.canonicalize(unsigned).encode("utf-8")).hexdigest()
 
 
-def is_attestation_ref(value: Any) -> bool:
-    return (
-        isinstance(value, dict)
-        and isinstance(value.get("kind"), str)
-        and isinstance(value.get("locator"), str)
-        and isinstance(value.get("contentHash"), str)
-        and value["contentHash"].startswith("sha256:")
-        and len(value["contentHash"].removeprefix("sha256:")) == 64
-    )
+HEX64 = re.compile(r"^[0-9a-f]{64}$")
+TX_HASH = re.compile(r"^0x[0-9a-f]{64}$")
+TXREF_HASH_FIELD = {"htlc-lock": "lockTxHash", "htlc-reveal": "revealTxHash", "htlc-claim": "claimTxHash"}
+
+
+def attestation_ref_errors(value: Any) -> list[str]:
+    """DACS-2 §7.5.2 AttestationRef exact wire shape: {anchor:{kind,locator}, contentHash, signer?}."""
+    if not isinstance(value, dict):
+        return ["MUST be an object"]
+    errs: list[str] = []
+    unknown = set(value) - {"anchor", "contentHash", "signer"}
+    if unknown:
+        errs.append("has unknown field(s) " + ", ".join(sorted(unknown)) + " (flat kind/locator is the pre-#308 shape)")
+    anchor = value.get("anchor")
+    if not isinstance(anchor, dict) or not isinstance(anchor.get("kind"), str) or not isinstance(anchor.get("locator"), str) \
+            or set(anchor) != {"kind", "locator"}:
+        errs.append("anchor MUST be {kind, locator}")
+    if not isinstance(value.get("contentHash"), str) or not HEX64.fullmatch(value["contentHash"]):
+        errs.append("contentHash MUST be 64 lowercase hex (no prefix)")
+    return errs
+
+
+def is_canonical_sig6(value: str) -> bool:
+    """CORE §B.7 SIG-6: unpadded Base64URL that round-trips exactly."""
+    if not value or re.fullmatch(r"[A-Za-z0-9_-]+", value) is None:
+        return False
+    try:
+        raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    except (ValueError, TypeError):
+        return False
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") == value
+
+
+def txref_errors(refs: Any, path_label: str) -> list[str]:
+    errs: list[str] = []
+    if not isinstance(refs, list) or not refs:
+        return [f"{path_label}: paymentTxRefs MUST be a non-empty list"]
+    for i, ref in enumerate(refs):
+        if not isinstance(ref, dict) or ref.get("kind") not in TXREF_HASH_FIELD:
+            errs.append(f"{path_label}: paymentTxRefs[{i}] MUST be an htlc-lock / htlc-reveal / htlc-claim txRef"); continue
+        field = TXREF_HASH_FIELD[ref["kind"]]
+        if not isinstance(ref.get("chainId"), int) or isinstance(ref.get("chainId"), bool) or ref["chainId"] <= 0:
+            errs.append(f"{path_label}: {ref['kind']} chainId MUST be a positive integer")
+        if not isinstance(ref.get("contractAddress"), str) or not re.fullmatch(r"0x[0-9a-fA-F]{40}", ref["contractAddress"]):
+            errs.append(f"{path_label}: {ref['kind']} contractAddress MUST be a 0x-prefixed 20-byte hex address")
+        if not isinstance(ref.get(field), str) or not TX_HASH.fullmatch(ref[field]):
+            errs.append(f"{path_label}: {ref['kind']} MUST carry {field} as 0x-prefixed 32-byte hex")
+    return errs
 
 
 def verify_signature(record: dict) -> str | None:
@@ -77,8 +119,8 @@ def verify_signature(record: dict) -> str | None:
     if not isinstance(signer, str) or not re.fullmatch(r"cci:[0-9a-f]{64}", signer):
         return "signature.signer MUST be cci:<64 lowercase hex> (Ed25519 public key)"
     value = sig.get("value")
-    if not isinstance(value, str) or not value or "=" in value or not re.fullmatch(r"[A-Za-z0-9_-]+", value):
-        return "signature.value MUST be unpadded base64url"
+    if not isinstance(value, str) or not is_canonical_sig6(value):
+        return "signature.value MUST be canonical SIG-6 unpadded base64url (re-encodes to itself)"
     try:
         raw = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
         public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(signer.removeprefix("cci:")))
@@ -144,7 +186,10 @@ def validate_interim(path: Path) -> tuple[dict | None, list[str]]:
         errors.append(fail(path, "interim HTLC-9 evidence MUST have outcome failure"))
     if evidence.get("reason") != "dest-revealed-source-unclaimed":
         errors.append(fail(path, "interim evidence MUST carry reason dest-revealed-source-unclaimed"))
+    errors += [fail(path, e) for e in txref_errors(evidence.get("paymentTxRefs"), "interim")]
     kinds = txref_kinds(evidence)
+    if "htlc-lock" not in kinds:
+        errors.append(fail(path, "interim evidence MUST carry the htlc-lock txRef"))
     if "htlc-reveal" not in kinds:
         errors.append(fail(path, "paymentTxRefs MUST include an htlc-reveal txRef proving preimage disclosure"))
     if "htlc-claim" in kinds:
@@ -160,13 +205,18 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
         return errors
     if evidence.get("outcome") != "success":
         errors.append(fail(path, "ST-8 resolved evidence MUST have outcome success"))
+    errors += [fail(path, e) for e in txref_errors(evidence.get("paymentTxRefs"), "resolved")]
     kinds = txref_kinds(evidence)
     for needed in ("htlc-lock", "htlc-reveal", "htlc-claim"):
         if needed not in kinds:
             errors.append(fail(path, f"resolved evidence MUST carry the {needed} txRef"))
-    claim = next((r for r in evidence.get("paymentTxRefs", []) if isinstance(r, dict) and r.get("kind") == "htlc-claim"), None)
-    if claim is not None and not isinstance(claim.get("claimTxHash"), str):
-        errors.append(fail(path, "htlc-claim txRef MUST carry claimTxHash"))
+    if interim is not None:
+        def by_kind(ev, kind):
+            return next((r for r in ev.get("paymentTxRefs", []) if isinstance(r, dict) and r.get("kind") == kind), None)
+        for kind in ("htlc-lock", "htlc-reveal"):
+            a, b = by_kind(interim, kind), by_kind(evidence, kind)
+            if a is not None and b is not None and a != b:
+                errors.append(fail(path, f"resolved {kind} txRef MUST be identical to the interim record's (same lock/reveal identity across the pair)"))
     fin = evidence.get("settlementFinality")
     if not isinstance(fin, dict) or fin.get("model") != "htlc-reveal":
         errors.append(fail(path, "resolved evidence MUST carry settlementFinality.model == htlc-reveal (PC-6)"))
@@ -178,10 +228,11 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
     elif not isinstance(amount.get("amount"), str) or not CD1_AMOUNT.fullmatch(amount["amount"]) or amount["amount"] == "0":
         errors.append(fail(path, "paymentAmount.amount MUST be a positive canonical decimal string (CD-1)"))
     ref = evidence.get("supersedesEvidenceRef")
-    if not is_attestation_ref(ref):
-        errors.append(fail(path, "resolved evidence MUST carry supersedesEvidenceRef (AttestationRef) to the interim record"))
+    ref_errs = attestation_ref_errors(ref)
+    if ref_errs:
+        errors += [fail(path, "supersedesEvidenceRef " + e) for e in ref_errs]
     elif interim is not None:
-        expected = "sha256:" + content_hash_hex(interim)
+        expected = content_hash_hex(interim)
         if ref["contentHash"] != expected:
             errors.append(fail(path, "supersedesEvidenceRef.contentHash MUST equal the interim record's §B.2 content hash"))
         if interim.get("jobId") != evidence.get("jobId"):

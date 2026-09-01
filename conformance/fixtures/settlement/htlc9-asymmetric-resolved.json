@@ -3,8 +3,12 @@
   "settlementEvidence": {
     "evidenceVersion": "1",
     "jobId": "01HTLC9ASYMMETRIC000000000000",
-    "observedAt": 1760000100000,
-    "outcome": "failure",
+    "observedAt": 1760000300000,
+    "outcome": "success",
+    "paymentAmount": {
+      "amount": "25",
+      "currency": "USDC"
+    },
     "paymentTxRefs": [
       {
         "chainId": 84532,
@@ -17,14 +21,28 @@
         "contractAddress": "0x0000000000000000000000000000000000000308",
         "kind": "htlc-reveal",
         "revealTxHash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "chainId": 84532,
+        "claimTxHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "contractAddress": "0x0000000000000000000000000000000000000308",
+        "kind": "htlc-claim"
       }
     ],
     "phase": "pay-cross-chain-htlc",
-    "reason": "dest-revealed-source-unclaimed",
+    "settlementFinality": {
+      "finalityObservedAt": 1760000290000,
+      "model": "htlc-reveal"
+    },
     "signature": {
       "algorithm": "ed25519",
       "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
-      "value": "CTDrC9nVzzpXcqUygQv0IwOq1K8qRS27wmFrVjPAX9s1c3YtW_SoKSOel-2ToorkchlXb5BXQe12eR5lI69VBQ"
+      "value": "UlVWNbi2Lq8krelFMOPrZw0fSH9AIOoe7C7t8nkquZ07pcE36-kt2gewUd5PDrmE5NCpIh31UsUMGT0sLfoODA"
+    },
+    "supersedesEvidenceRef": {
+      "contentHash": "sha256:204a8db44eb80905e90fcd705d20f3020c0a5f7654aefe6ec892f277559fb7d0",
+      "kind": "storage-program",
+      "locator": "stor:evidence:htlc9"
     }
   },
   "specRefs": [

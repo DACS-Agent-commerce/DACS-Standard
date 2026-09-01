@@ -71,7 +71,9 @@ The format used per release:
   authenticated references to the two registered class-specific predicates,
   binds the registry-index v1 shape/kind/revision, requires every accepted
   latest head to descend from the persisted descriptor pair, and discards
-  invalid same-key roots before fork counting. Canonicalization failures in
+  invalid same-key roots before fork counting. Closed snapshot, entry, and
+  entry-anchor shapes reject unknown members, while byte-identical repeated
+  transport copies collapse before fork counting. Canonicalization failures in
   receipt tuples and resolved definitions now return fail-closed dispositions
   instead of escaping the reference evaluator. Registers
   `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,

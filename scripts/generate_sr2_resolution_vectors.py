@@ -618,6 +618,20 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         case["indexStorage"][root["nativeIndexAddress"]] = snapshot
         resign_root(case)
 
+    def add_unknown_snapshot_member(case: dict[str, Any], level: str) -> None:
+        snapshot = index_snapshot(
+            "recipe", include_definition=level in {"entry", "anchor"}
+        )
+        if level == "snapshot":
+            snapshot["unexpectedAuthority"] = True
+        elif level == "entry":
+            snapshot["entries"][0]["unexpectedAuthority"] = True
+        elif level == "anchor":
+            snapshot["entries"][0]["anchor"]["unexpectedAuthority"] = True
+        else:  # pragma: no cover - generator-internal misuse
+            raise ValueError(level)
+        replace_root_snapshot(case, snapshot)
+
     vectors.extend([
         bootstrap_vector(
             "registry-kind-logical-address-pairing-mismatch", "fail",
@@ -682,6 +696,21 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             lambda c: replace_root_snapshot(
                 c, {**index_snapshot("recipe"), "entries": {}}
             ),
+        ),
+        bootstrap_vector(
+            "snapshot-envelope-is-closed", "fail",
+            "an unknown top-level snapshot member is outside the closed v1 shape",
+            lambda c: add_unknown_snapshot_member(c, "snapshot"),
+        ),
+        bootstrap_vector(
+            "snapshot-entry-is-closed", "fail",
+            "an unknown registry-entry member is outside the closed v1 shape",
+            lambda c: add_unknown_snapshot_member(c, "entry"),
+        ),
+        bootstrap_vector(
+            "snapshot-entry-anchor-is-closed", "fail",
+            "an unknown registry-entry anchor member is outside the closed v1 shape",
+            lambda c: add_unknown_snapshot_member(c, "anchor"),
         ),
         bootstrap_vector(
             "same-key-content-successor", "pass",
@@ -758,8 +787,9 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
     def successor_fork(case: dict[str, Any]) -> None:
         root = case["descriptors"][0]
         first = add_successor(case, revision=2)
-        other_snapshot = index_snapshot("recipe", revision=2)
-        other_snapshot["branch"] = "other"
+        other_snapshot = index_snapshot(
+            "recipe", revision=2, include_definition=True
+        )
         other = make_descriptor(
             kind="recipe", sequence=2, snapshot=other_snapshot,
             native="demos:storage:recipe-index-22", authority_seed=OLD_SEED,
@@ -772,8 +802,9 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
 
     def root_fork(case: dict[str, Any]) -> None:
         case["trustPin"] = {"authorityKeyId": OLD_KEY}
-        snapshot = index_snapshot("recipe", revision=1)
-        snapshot["branch"] = "other"
+        snapshot = index_snapshot(
+            "recipe", revision=1, include_definition=True
+        )
         other = make_descriptor(
             kind="recipe", sequence=1, snapshot=snapshot,
             native="demos:storage:recipe-index-99", authority_seed=OLD_SEED,
@@ -846,16 +877,18 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         }
         case["descriptors"] = [root]
 
-        sibling_snapshot = index_snapshot("recipe", revision=2)
-        sibling_snapshot["branch"] = "sibling"
+        sibling_snapshot = index_snapshot(
+            "recipe", revision=2, include_definition=True
+        )
         sibling = make_descriptor(
             kind="recipe", sequence=2, snapshot=sibling_snapshot,
             native="demos:storage:recipe-index-sibling-2",
             authority_seed=OLD_SEED, evidence="evidence-recipe-index-sibling-2",
             predecessor=root,
         )
-        head_snapshot = index_snapshot("recipe", revision=3)
-        head_snapshot["branch"] = "sibling"
+        head_snapshot = index_snapshot(
+            "recipe", revision=3, include_definition=True
+        )
         head = make_descriptor(
             kind="recipe", sequence=3, snapshot=head_snapshot,
             native="demos:storage:recipe-index-sibling-3",
@@ -872,8 +905,21 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             head["nativeIndexAddress"]: head_snapshot,
         })
 
+    def duplicate_successor(case: dict[str, Any]) -> None:
+        successor = add_successor(case)
+        case["descriptors"].append(copy.deepcopy(successor))
+
+    def duplicate_root(case: dict[str, Any]) -> None:
+        case["trustPin"] = {"authorityKeyId": OLD_KEY}
+        case["descriptors"].append(copy.deepcopy(case["descriptors"][0]))
+
     vectors.extend([
         bootstrap_vector("two-valid-successors-are-a-fork", "indeterminate", "transport order cannot choose a valid successor fork", successor_fork),
+        bootstrap_vector(
+            "duplicate-successor-transport-copy-collapses", "pass",
+            "byte-identical transport copies name one descriptor rather than a fork",
+            duplicate_successor,
+        ),
         bootstrap_vector(
             "valid-and-unavailable-successors-remain-unresolved", "indeterminate",
             "proof availability cannot select one of two predecessor-authorized signed candidates",
@@ -885,6 +931,11 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             valid_and_invalid_successor,
         ),
         bootstrap_vector("key-only-sequence-one-fork", "indeterminate", "a key-only first-contact pin cannot choose between two valid roots", root_fork),
+        bootstrap_vector(
+            "duplicate-root-transport-copy-collapses", "pass",
+            "byte-identical root transport copies name one descriptor rather than a fork",
+            duplicate_root,
+        ),
         bootstrap_vector(
             "invalid-same-key-root-cannot-suppress-valid-root", "pass",
             "invalid roots are discarded before key-pinned first-contact fork counting",

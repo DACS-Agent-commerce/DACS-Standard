@@ -389,7 +389,9 @@ are exactly `key:` plus the 32 raw Ed25519 public-key bytes as 64 lower-case hex
 aliases and separate key-byte inputs are rejected.
 
 Two different valid successors of one predecessor are a fork. Under a key-only
-pin, two different valid sequence-1 descriptors are likewise a fork. A consumer
+pin, two different valid sequence-1 descriptors are likewise a fork. Repeated
+transport copies with the same descriptor hash identify one descriptor and MUST
+be collapsed before fork counting. A consumer
 MUST classify every release-pin-matching sequence-1 candidate and every
 predecessor-authorized successor before selecting or advancing: invalid
 candidates are discarded; one valid candidate is selected or advances only

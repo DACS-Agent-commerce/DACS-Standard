@@ -57,7 +57,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
-| [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 55 | `fail` / `indeterminate` / `pass` |
+| [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 60 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -157,7 +157,7 @@ through a declared binding policy.
 
 ### `registry-bootstrap-v0.1.json` — CORE §5 registry bootstrap
 
-55 candidate vectors exercise the non-recursive recipe/rail index trust root.
+60 candidate vectors exercise the non-recursive recipe/rail index trust root.
 The positive chains carry genuine deterministic Ed25519 signatures under
 `dacs-registry-bootstrap:v1:` and cover hash-only/key-only first contact,
 same-key content updates, two-signature authority rotation, exact
@@ -170,7 +170,8 @@ Negative and indeterminate cases cover missing release pins, descriptor/receipt
 tuple substitutions, unavailable or recursive finality evidence, sequence and
 registry-tuple changes, key aliases, malformed/cumulative revocations, root and
 successor forks including unavailable and invalid competing candidates,
-invalid-root suppression, latest rollback and sibling-branch substitution,
+invalid-root suppression, duplicate transport-copy collapse, closed snapshot
+member shapes, latest rollback and sibling-branch substitution,
 unrelated historical descriptors, unsafe JCS numbers,
 mutable-address reuse, stale/missing snapshot bytes, definition failures,
 cross-domain replay, and discriminator confusion.

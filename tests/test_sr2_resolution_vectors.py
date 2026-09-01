@@ -163,7 +163,12 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             "snapshot-kind-is-bound": "fail",
             "snapshot-revision-is-bound-to-sequence": "fail",
             "snapshot-entry-schema-is-validated": "fail",
+            "snapshot-envelope-is-closed": "fail",
+            "snapshot-entry-is-closed": "fail",
+            "snapshot-entry-anchor-is-closed": "fail",
             "invalid-same-key-root-cannot-suppress-valid-root": "pass",
+            "duplicate-root-transport-copy-collapses": "pass",
+            "duplicate-successor-transport-copy-collapses": "pass",
         }
         for name, verdict in expected.items():
             with self.subTest(vector=name):

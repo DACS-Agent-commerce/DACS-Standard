@@ -295,7 +295,7 @@ def _valid_index_snapshot(snapshot: Any, descriptor: dict[str, Any]) -> bool:
     if not isinstance(snapshot, dict):
         return False
     required = {"registryIndexVersion", "registryKind", "revision", "entries"}
-    if not required.issubset(snapshot):
+    if set(snapshot) != required:
         return False
     if snapshot.get("registryIndexVersion") != "1":
         return False
@@ -317,7 +317,7 @@ def _valid_index_snapshot(snapshot: Any, descriptor: dict[str, Any]) -> bool:
     for entry in entries:
         if not isinstance(entry, dict):
             return False
-        if not {"id", "version", "anchor", "contentHash"}.issubset(entry):
+        if set(entry) != {"id", "version", "anchor", "contentHash"}:
             return False
         identifier = entry.get("id")
         version = entry.get("version")
@@ -330,7 +330,7 @@ def _valid_index_snapshot(snapshot: Any, descriptor: dict[str, Any]) -> bool:
             return False
         seen.add(identity)
         anchor = entry.get("anchor")
-        if not isinstance(anchor, dict):
+        if not isinstance(anchor, dict) or set(anchor) != {"kind", "locator"}:
             return False
         if anchor.get("kind") not in {"storage-program", "ipfs", "https"}:
             return False
@@ -437,7 +437,13 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
         roots = [d for d in roots if d.get("authorityKeyId") == pin["authorityKeyId"]]
     valid_roots: list[dict[str, Any]] = []
     indeterminate_root_seen = False
+    classified_root_hashes: set[str] = set()
     for candidate in roots:
+        candidate_hash = _try_descriptor_hash(candidate)
+        if candidate_hash is not None:
+            if candidate_hash in classified_root_hashes:
+                continue
+            classified_root_hashes.add(candidate_hash)
         try:
             status = _validate_root(candidate, case)
         except (TypeError, ValueError, UnicodeError):
@@ -464,9 +470,18 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
             if isinstance(d, dict)
             and d.get("supersedesDescriptorHash") == head_hash
         ]
+        distinct_candidates: list[dict[str, Any]] = []
+        candidate_hashes: set[str] = set()
+        for candidate in candidates:
+            candidate_hash = _try_descriptor_hash(candidate)
+            if candidate_hash is not None:
+                if candidate_hash in candidate_hashes:
+                    continue
+                candidate_hashes.add(candidate_hash)
+            distinct_candidates.append(candidate)
         valid: list[dict[str, Any]] = []
         indeterminate_seen = False
-        for candidate in candidates:
+        for candidate in distinct_candidates:
             try:
                 result = _validate_successor(head, candidate, case)
             except (TypeError, ValueError, UnicodeError):

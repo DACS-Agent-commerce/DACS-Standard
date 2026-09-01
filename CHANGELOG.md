@@ -155,6 +155,21 @@ The format used per release:
 
 ### Fixed — conformance
 
+- **Canonical JSON cross-implementation repair** (CORE §B.2; #270) —
+  clarifies that the DACS 2^53−1 constraint is a finite-number magnitude
+  profile, not an integer-only profile, and makes `scripts/jcs.py` serialize
+  bounded fractional binary64 values using RFC 8785's ECMAScript form instead
+  of rejecting them. CF-1 now explicitly normalizes string values only:
+  member names remain as received, sort by UTF-16 code units, and NFC/NFD
+  spellings remain distinct. Adds 25 byte-discriminating candidate vectors
+  covering the seven observed cross-run divergences and relevant RFC edge
+  cases, including signed minimum subnormal, integral-binary64 formatting, and
+  both binary64 safe-magnitude boundaries. Each adapter must compare the exact
+  canonical bytes before emitting its verdict because the generic run-file
+  channel itself is verdict-only. Cross-run tooling records unsupported cases
+  as abstentions, excludes them from agreement denominators, refuses to label
+  a one-impl or abstaining run converged, and requires rule-by-rule
+  discrimination evidence before candidate promotion.
 - **One-sided bundle hash regenerated** (DACS-5 §10.4.1 / §14; #327) —
   replaces the stale `verify-consume-one-sided` manifest hash after the
   normative reference-shape migration, binds manifest regeneration to the
@@ -174,11 +189,9 @@ The format used per release:
   published vector exercised the §B.2 canonical-form hash of a *signed* artifact
   (an implementer could be §B.2-correct yet fail, or §B.2-wrong yet pass). The
   validator now canonicalises with a vendored stdlib-only module (`scripts/jcs.py`)
-  implementing RFC 8785 (JCS) for the JSON subset DACS lifecycle artifacts occupy —
-  integers |n| ≤ 2⁵³−1, strings, literals, arrays, objects; non-integral numbers
-  are rejected fail-closed (no normative DACS rule forbids them, but the corpus is
-  float-free (executed) and refusing beats emitting a possibly-nonconformant ES6
-  serialisation). It hashes the signature-omitted scope via an explicit per-kind
+  implementing RFC 8785 (JCS) for the DACS finite-number magnitude profile,
+  strings, literals, arrays, and objects (fractional serialization completed by
+  the #270 repair above). It hashes the signature-omitted scope via an explicit per-kind
   hash-excluded-field table (`signature` / `signatures`; bundles also omit
   `anchoredByRole` per §10.4.1). It additionally verifies every embedded ed25519
   signature over the §B.7 domain-separated payload (registry-validated separator ‖
@@ -192,8 +205,7 @@ The format used per release:
   (pinned by an executed per-artifact equivalence test). Per CF-1's literal "every
   JSON string value", NFC is applied to string values only; member names are
   serialised and UTF-16-sorted as received (matching the in-repo `nfc_deep`
-  precedent) — whether CF-1 also binds member names is a spec-clarification
-  candidate, not resolved here.
+  precedent and now explicit in CORE §B.2 via #270).
   Residual: the signed internal cross-references
   (`listingRef` / `vetRecordRef` `contentHash`) still commit to the legacy
   whole-artifact hashes and cannot be corrected in place without the external

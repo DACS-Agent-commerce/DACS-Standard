@@ -14,6 +14,14 @@ against the ``cci:<pubkey-hex>`` signer, and the supersession hash is recomputed
 No amendment of any kind is accepted — ST-8 resolution is a same-phase
 supersession, not a ``correction`` (DACS-4-SETTLE.md: "No ``correction``
 amendment is used").
+
+Scope limit, stated rather than papered over: this pack carries no rail context, so
+"source chain" is defined by where the ``htlc-lock`` sits. The verifier enforces that the
+claim shares the lock's chain and contract and that the reveal is on a different chain.
+A pair whose lock/reveal/claim are all consistently mirrored onto the other chain is
+therefore indistinguishable from a correct one here; detecting that needs the rail
+definition's source/destination declaration (DACS-4 §9.4), which an SR-2 reader has
+and this fixture pack does not.
 """
 from __future__ import annotations
 
@@ -59,6 +67,13 @@ def content_hash_hex(record: dict) -> str:
 
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+ULID = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")  # CORE B.1: jobId is a ULID (Crockford base32, 128-bit)
+ANCHOR_KINDS = {"storage-program", "ipfs", "https"}  # DACS-2 §7.5.2
+TXREF_FIELDS = {
+    "htlc-lock": {"kind", "chainId", "contractAddress", "lockTxHash"},
+    "htlc-reveal": {"kind", "chainId", "contractAddress", "revealTxHash"},
+    "htlc-claim": {"kind", "chainId", "contractAddress", "claimTxHash"},
+}
 TX_HASH = re.compile(r"^0x[0-9a-f]{64}$")
 TXREF_HASH_FIELD = {"htlc-lock": "lockTxHash", "htlc-reveal": "revealTxHash", "htlc-claim": "claimTxHash"}
 
@@ -72,9 +87,16 @@ def attestation_ref_errors(value: Any) -> list[str]:
     if unknown:
         errs.append("has unknown field(s) " + ", ".join(sorted(unknown)) + " (flat kind/locator is the pre-#308 shape)")
     anchor = value.get("anchor")
-    if not isinstance(anchor, dict) or not isinstance(anchor.get("kind"), str) or not isinstance(anchor.get("locator"), str) \
-            or set(anchor) != {"kind", "locator"}:
+    if not isinstance(anchor, dict) or set(anchor) != {"kind", "locator"} \
+            or not isinstance(anchor.get("kind"), str) or not isinstance(anchor.get("locator"), str):
         errs.append("anchor MUST be {kind, locator}")
+    else:
+        if anchor["kind"] not in ANCHOR_KINDS:
+            errs.append("anchor.kind MUST be one of storage-program | ipfs | https (DACS-2 §7.5.2)")
+        if not anchor["locator"].strip():
+            errs.append("anchor.locator MUST be non-empty")
+    if "signer" in value and not isinstance(value.get("signer"), str):
+        errs.append("signer, when present, MUST be a ClaimReference string")
     if not isinstance(value.get("contentHash"), str) or not HEX64.fullmatch(value["contentHash"]):
         errs.append("contentHash MUST be 64 lowercase hex (no prefix)")
     return errs
@@ -98,6 +120,9 @@ def txref_errors(refs: Any, path_label: str) -> list[str]:
     for i, ref in enumerate(refs):
         if not isinstance(ref, dict) or ref.get("kind") not in TXREF_HASH_FIELD:
             errs.append(f"{path_label}: paymentTxRefs[{i}] MUST be an htlc-lock / htlc-reveal / htlc-claim txRef"); continue
+        extra = set(ref) - TXREF_FIELDS[ref["kind"]]
+        if extra:
+            errs.append(f"{path_label}: {ref['kind']} txRef carries unknown field(s) {', '.join(sorted(extra))} (ChainTxRef arms are closed)")
         field = TXREF_HASH_FIELD[ref["kind"]]
         if not isinstance(ref.get("chainId"), int) or isinstance(ref.get("chainId"), bool) or ref["chainId"] <= 0:
             errs.append(f"{path_label}: {ref['kind']} chainId MUST be a positive integer")
@@ -161,8 +186,8 @@ def load_case(path: Path) -> tuple[dict | None, list[str]]:
         errors.append(fail(path, "evidenceVersion MUST be '1'"))
     if evidence.get("phase") != "pay-cross-chain-htlc":
         errors.append(fail(path, "phase MUST be pay-cross-chain-htlc"))
-    if not isinstance(evidence.get("jobId"), str) or not evidence["jobId"]:
-        errors.append(fail(path, "jobId MUST be a non-empty string"))
+    if not isinstance(evidence.get("jobId"), str) or not ULID.fullmatch(evidence["jobId"]):
+        errors.append(fail(path, "jobId MUST be a ULID: 26 Crockford-base32 characters, first in 0-7 (CORE B.1)"))
     if not isinstance(evidence.get("observedAt"), int) or isinstance(evidence.get("observedAt"), bool):
         errors.append(fail(path, "observedAt MUST be an integer unix-ms"))
     sig_err = verify_signature(evidence)
@@ -194,6 +219,9 @@ def validate_interim(path: Path) -> tuple[dict | None, list[str]]:
         errors.append(fail(path, "paymentTxRefs MUST include an htlc-reveal txRef proving preimage disclosure"))
     if "htlc-claim" in kinds:
         errors.append(fail(path, "interim evidence MUST NOT carry an htlc-claim (that is the resolved record)"))
+    for kind in ("htlc-lock", "htlc-reveal"):
+        if kinds.count(kind) > 1:
+            errors.append(fail(path, f"interim evidence MUST carry exactly one {kind} txRef"))
     if "settlementFinality" in evidence:
         errors.append(fail(path, "interim failure evidence MUST NOT carry settlementFinality"))
     return evidence, errors
@@ -210,6 +238,22 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
     for needed in ("htlc-lock", "htlc-reveal", "htlc-claim"):
         if needed not in kinds:
             errors.append(fail(path, f"resolved evidence MUST carry the {needed} txRef"))
+        elif kinds.count(needed) > 1:
+            errors.append(fail(path, f"resolved evidence MUST carry exactly one {needed} txRef"))
+    refs = [r for r in evidence.get("paymentTxRefs", []) if isinstance(r, dict)]
+    lock = next((r for r in refs if r.get("kind") == "htlc-lock"), None)
+    reveal = next((r for r in refs if r.get("kind") == "htlc-reveal"), None)
+    claim = next((r for r in refs if r.get("kind") == "htlc-claim"), None)
+    if lock and reveal and claim and all(isinstance(r.get("chainId"), int) for r in (lock, reveal, claim)):
+        # HTLC-9 topology (DACS-4 §9.5.4): the lock and the payee's claim are on the SOURCE chain
+        # and contract; the payer's reveal is on the DESTINATION chain. A claim on the destination
+        # chain is the payer's reveal mislabelled, which is the mix-up ST-8 exists to forbid.
+        if claim["chainId"] != lock["chainId"]:
+            errors.append(fail(path, "HTLC topology: htlc-claim MUST be on the source chain (claim.chainId == lock.chainId)"))
+        if claim.get("contractAddress") != lock.get("contractAddress"):
+            errors.append(fail(path, "HTLC topology: htlc-claim MUST target the source lock contract (claim.contractAddress == lock.contractAddress)"))
+        if reveal["chainId"] == lock["chainId"]:
+            errors.append(fail(path, "HTLC topology: htlc-reveal MUST be on the destination chain (reveal.chainId != lock.chainId) for pay-cross-chain-htlc"))
     if interim is not None:
         def by_kind(ev, kind):
             return next((r for r in ev.get("paymentTxRefs", []) if isinstance(r, dict) and r.get("kind") == kind), None)
@@ -223,8 +267,8 @@ def validate_resolved(path: Path, interim: dict | None) -> list[str]:
     elif not isinstance(fin.get("finalityObservedAt"), int) or isinstance(fin.get("finalityObservedAt"), bool):
         errors.append(fail(path, "settlementFinality.finalityObservedAt MUST be an integer unix-ms"))
     amount = evidence.get("paymentAmount")
-    if not isinstance(amount, dict) or not isinstance(amount.get("currency"), str):
-        errors.append(fail(path, "resolved evidence MUST carry paymentAmount (REQUIRED on success-outcome records)"))
+    if not isinstance(amount, dict) or not isinstance(amount.get("currency"), str) or not amount["currency"].strip():
+        errors.append(fail(path, "resolved evidence MUST carry paymentAmount with a non-empty currency (REQUIRED on success-outcome records)"))
     elif not isinstance(amount.get("amount"), str) or not CD1_AMOUNT.fullmatch(amount["amount"]) or amount["amount"] == "0":
         errors.append(fail(path, "paymentAmount.amount MUST be a positive canonical decimal string (CD-1)"))
     ref = evidence.get("supersedesEvidenceRef")

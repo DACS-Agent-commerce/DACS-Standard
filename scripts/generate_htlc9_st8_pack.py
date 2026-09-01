@@ -48,7 +48,7 @@ RESOLVED_PATH = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 ORCHESTRATOR_SEED = bytes.fromhex("41" * 32)  # public test seed; never a production key
 
-JOB_ID = "01HTLC9ASYMMETRIC000000000000"
+JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"  # a valid 26-char Crockford ULID (CORE B.1); the old placeholder was not one
 SOURCE_CHAIN = 84532   # Base Sepolia: payer locks here, payee claims here
 DEST_CHAIN = 80002     # Polygon Amoy: payer reveals the preimage here
 CONTRACT = "0x0000000000000000000000000000000000000308"
@@ -112,16 +112,22 @@ def interim_record() -> dict:
 
 
 def resolved_record(interim: dict) -> dict:
+    """The ST-8 :resolved record supersedes ``interim``: it carries the SAME htlc-lock and
+    htlc-reveal txRefs (copied, not re-stated) plus the payee's source-side htlc-claim."""
+    lock = next((r for r in interim.get("paymentTxRefs", []) if r.get("kind") == "htlc-lock"),
+                {"kind": "htlc-lock", "chainId": SOURCE_CHAIN, "contractAddress": CONTRACT, "lockTxHash": LOCK_TX})
+    reveal = next((r for r in interim.get("paymentTxRefs", []) if r.get("kind") == "htlc-reveal"),
+                  {"kind": "htlc-reveal", "chainId": DEST_CHAIN, "contractAddress": CONTRACT, "revealTxHash": REVEAL_TX})
     record = {
         "evidenceVersion": "1",
-        "jobId": JOB_ID,
+        "jobId": interim["jobId"],
         "observedAt": 1760000300000,
         "outcome": "success",
         "paymentAmount": {"amount": "25", "currency": "USDC"},
         "paymentTxRefs": [
-            {"kind": "htlc-lock", "chainId": SOURCE_CHAIN, "contractAddress": CONTRACT, "lockTxHash": LOCK_TX},
-            {"kind": "htlc-reveal", "chainId": DEST_CHAIN, "contractAddress": CONTRACT, "revealTxHash": REVEAL_TX},
-            {"kind": "htlc-claim", "chainId": SOURCE_CHAIN, "contractAddress": CONTRACT, "claimTxHash": CLAIM_TX},
+            dict(lock),
+            dict(reveal),
+            {"kind": "htlc-claim", "chainId": lock["chainId"], "contractAddress": lock["contractAddress"], "claimTxHash": CLAIM_TX},
         ],
         "phase": "pay-cross-chain-htlc",
         "settlementFinality": {"model": "htlc-reveal", "finalityObservedAt": 1760000290000},

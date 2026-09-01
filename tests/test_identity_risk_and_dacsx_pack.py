@@ -174,10 +174,42 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             "interim without htlc-reveal": (I, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-reveal"]), "htlc-reveal"),
             "interim without htlc-lock": (I, lambda e: e.__setitem__("paymentTxRefs", [x for x in e["paymentTxRefs"] if x["kind"] != "htlc-lock"]), "htlc-lock"),
             "interim carrying settlementFinality": (I, lambda e: e.__setitem__("settlementFinality", {"model": "htlc-reveal", "finalityObservedAt": 1}), "settlementFinality"),
+            # ── topology and closed arms (round-2 reviewer counterexamples) ──
+            "resolved claim on the destination chain": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("chainId", 80002), "claim.chainId == lock.chainId"),
+            "resolved claim against a different contract": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("contractAddress", "0x" + "9" * 40), "claim.contractAddress == lock.contractAddress"),
+            "resolved second htlc-lock appended": (R, lambda e: e["paymentTxRefs"].append({"kind": "htlc-lock", "chainId": 84532, "contractAddress": "0x" + "0" * 39 + "8", "lockTxHash": "0x" + "99" * 32}), "exactly one htlc-lock"),
+            "resolved second htlc-claim appended": (R, lambda e: e["paymentTxRefs"].append({"kind": "htlc-claim", "chainId": 84532, "contractAddress": "0x" + "0" * 39 + "8", "claimTxHash": "0x" + "ee" * 32}), "exactly one htlc-claim"),
+            "resolved extra field on a txRef": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("note", "x"), "unknown field"),
+            "resolved anchor.kind outside the enum": (R, lambda e: e["supersedesEvidenceRef"]["anchor"].__setitem__("kind", "not-a-kind"), "anchor.kind"),
+            "resolved empty anchor.locator": (R, lambda e: e["supersedesEvidenceRef"]["anchor"].__setitem__("locator", ""), "locator"),
+            "resolved non-string signer on the ref": (R, lambda e: e["supersedesEvidenceRef"].__setitem__("signer", 7), "signer"),
+            "resolved empty currency": (R, lambda e: e["paymentAmount"].__setitem__("currency", ""), "currency"),
+            "resolved invalid ULID jobId (interim too, so they still match)": (R, lambda e: e.__setitem__("jobId", "01HTLC9ASYMMETRIC000000000000"), "ULID"),
+            "resolved reveal differs from interim": (R, lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("revealTxHash", "0x" + "ab" * 32), "identical to the interim"),
+            "interim second htlc-lock appended": (I, lambda e: e["paymentTxRefs"].append({"kind": "htlc-lock", "chainId": 84532, "contractAddress": "0x" + "0" * 39 + "8", "lockTxHash": "0x" + "99" * 32}), "exactly one htlc-lock"),
+            "interim invalid ULID jobId": (I, lambda e: e.__setitem__("jobId", "01HTLC9ASYMMETRIC000000000000"), "ULID"),
         }
+        # Both-sides topology case: mutate the interim; the resolved record inherits the
+        # mutated lock/reveal, so cross-pair identity holds and ONLY the topology guard can
+        # reject. (A pair CONSISTENTLY mirrored onto the other chain is not a case here: with
+        # no rail context, "source" is wherever the lock is, so that pair is indistinguishable
+        # from a correct one — a documented scope limit of this pack, see the verifier docstring.)
+        both = {
+            "all three legs on one chain": (lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("chainId", 84532), "reveal.chainId != lock.chainId"),
+        }
+        for name, (mutate, needle) in both.items():
+            with self.subTest(name=name):
+                i, r = self._pair(gen, mutate_interim=mutate, mutate_resolved=None)   # resolved inherits the mutated lock/reveal from the interim
+                errors = ver.validate_pair(i, r)
+                self.assertTrue(errors, f"{name}: accepted")
+                self.assertFalse(any("signature does not verify" in e or "SIG-6" in e or "content hash" in e or "identical to the interim" in e for e in errors), f"{name}: rejected by a backstop, not topology: {errors}")
+                self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
         for name, (which, mutate, needle) in cases.items():
             with self.subTest(name=name):
-                i, r = self._pair(gen, mutate_interim=mutate if which == I else None, mutate_resolved=mutate if which == R else None)
+                if "interim too" in name:
+                    i, r = self._pair(gen, mutate_interim=mutate, mutate_resolved=mutate)
+                else:
+                    i, r = self._pair(gen, mutate_interim=mutate if which == I else None, mutate_resolved=mutate if which == R else None)
                 errors = ver.validate_pair(i, r)
                 self.assertTrue(errors, f"{name}: accepted")
                 self.assertFalse(any("signature does not verify" in e or "SIG-6" in e for e in errors), f"{name}: rejected by the signature check, not the guard: {errors}")

@@ -2,7 +2,7 @@
   "kind": "SettlementEvidenceCase",
   "settlementEvidence": {
     "evidenceVersion": "1",
-    "jobId": "01HTLC9ASYMMETRIC000000000000",
+    "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
     "observedAt": 1760000100000,
     "outcome": "failure",
     "paymentTxRefs": [
@@ -24,7 +24,7 @@
     "signature": {
       "algorithm": "ed25519",
       "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
-      "value": "CTDrC9nVzzpXcqUygQv0IwOq1K8qRS27wmFrVjPAX9s1c3YtW_SoKSOel-2ToorkchlXb5BXQe12eR5lI69VBQ"
+      "value": "J9aWl1-dZrsE9Gch3-jMOVj0wKwH_ohFS3IlcNYIZMnoyKBT6uCTyX367zvPzMdnP2m57-1fnxATbKtJ7_K3Ag"
     }
   },
   "specRefs": [

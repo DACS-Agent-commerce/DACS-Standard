@@ -35,18 +35,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import jcs  # noqa: E402
 
-try:
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-except ImportError:  # pragma: no cover
-    raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
-
 FIXTURE_DIR = ROOT / "conformance" / "fixtures" / "settlement"
 INTERIM_PATH = FIXTURE_DIR / "htlc9-asymmetric.json"
 RESOLVED_PATH = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
 
 EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 ORCHESTRATOR_SEED = bytes.fromhex("41" * 32)  # public test seed; never a production key
+ORCHESTRATOR_SIGNER = "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+INTERIM_SIGNATURE = "J9aWl1-dZrsE9Gch3-jMOVj0wKwH_ohFS3IlcNYIZMnoyKBT6uCTyX367zvPzMdnP2m57-1fnxATbKtJ7_K3Ag"
+RESOLVED_SIGNATURE = "DvJWDESPE7O5rHSFHhTo0pIg2CtkoAYONy6wf9csI9qEKHr9UyV-6AZ6FxqJnsAbh3i-SU8gTY8mWzrpLR7IBw"
 
 JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"  # a valid 26-char Crockford ULID (CORE B.1); the old placeholder was not one
 SOURCE_CHAIN = 84532   # Base Sepolia: payer locks here, payee claims here
@@ -71,11 +68,20 @@ def b64url(raw: bytes) -> str:
 
 
 def signer_ref(seed: bytes) -> str:
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    except ImportError:  # pragma: no cover
+        raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
     pub = Ed25519PrivateKey.from_private_bytes(seed).public_key()
     return "cci:" + pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
 
 
 def sign(record: dict, seed: bytes) -> None:
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    except ImportError:  # pragma: no cover
+        raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
     payload = EVIDENCE_DOMAIN.encode("ascii") + content_hash_hex(record).encode("ascii")
     record["signature"] = {
         "algorithm": "ed25519",
@@ -94,7 +100,7 @@ def attestation_ref(record: dict) -> dict:
     return {"anchor": {"kind": "storage-program", "locator": f"stor-{digest}"}, "contentHash": digest}
 
 
-def interim_record() -> dict:
+def interim_record(signature_value: str | None = None) -> dict:
     record = {
         "evidenceVersion": "1",
         "jobId": JOB_ID,
@@ -107,11 +113,14 @@ def interim_record() -> dict:
         "phase": "pay-cross-chain-htlc",
         "reason": "dest-revealed-source-unclaimed",
     }
-    sign(record, ORCHESTRATOR_SEED)
+    if signature_value is None:
+        sign(record, ORCHESTRATOR_SEED)
+    else:
+        record["signature"] = {"algorithm": "ed25519", "signer": ORCHESTRATOR_SIGNER, "value": signature_value}
     return record
 
 
-def resolved_record(interim: dict) -> dict:
+def resolved_record(interim: dict, signature_value: str | None = None) -> dict:
     """The ST-8 :resolved record supersedes ``interim``: it carries the SAME htlc-lock and
     htlc-reveal txRefs (copied, not re-stated) plus the payee's source-side htlc-claim."""
     lock = next((r for r in interim.get("paymentTxRefs", []) if r.get("kind") == "htlc-lock"),
@@ -133,13 +142,16 @@ def resolved_record(interim: dict) -> dict:
         "settlementFinality": {"model": "htlc-reveal", "finalityObservedAt": 1760000290000},
         "supersedesEvidenceRef": attestation_ref(interim),
     }
-    sign(record, ORCHESTRATOR_SEED)
+    if signature_value is None:
+        sign(record, ORCHESTRATOR_SEED)
+    else:
+        record["signature"] = {"algorithm": "ed25519", "signer": ORCHESTRATOR_SIGNER, "value": signature_value}
     return record
 
 
-def build() -> dict[Path, dict]:
-    interim = interim_record()
-    resolved = resolved_record(interim)
+def build(use_precomputed_signatures: bool = False) -> dict[Path, dict]:
+    interim = interim_record(INTERIM_SIGNATURE if use_precomputed_signatures else None)
+    resolved = resolved_record(interim, RESOLVED_SIGNATURE if use_precomputed_signatures else None)
     return {
         INTERIM_PATH: {
             "kind": "SettlementEvidenceCase",
@@ -163,7 +175,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check", action="store_true", help="fail if committed fixtures differ from the generator")
     parser.add_argument("--write", action="store_true", help="write the fixtures")
     args = parser.parse_args(argv)
-    built = build()
+    # Check mode reconstructs the exact deterministic bytes with pinned signatures,
+    # so it remains dependency-free. Writing (and mutation tests) signs for real.
+    built = build(use_precomputed_signatures=not args.write)
     if args.write:
         FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
         for path, data in built.items():

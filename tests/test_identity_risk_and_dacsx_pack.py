@@ -26,7 +26,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertIn("`identityTier` on IdentityBundle (#103)", text)
         self.assertIn("`dacs-sybil-scan` — behavioural-Sybil flag scanner (#101)", text)
         self.assertIn("DACS-X (dispute / execution-verification)", text)
-        self.assertIn("DACS-X shared dispute fixtures / verifier pack (#99)", text)
+        self.assertIn("HTLC-9 / ST-8 asymmetric-settlement fixture pack (#99)", text)
         # HTLC-9 asymmetric settlement resolves via the ST-8 `settle-asymmetric` state
         # at the settlement layer; the former "correction-amendment" close-out was retired
         # (Round-4 R4-A, §9.5.4). The roadmap references the current mechanism.
@@ -76,14 +76,18 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         import verify_htlc9_st8_pack as ver  # noqa: WPS433
         return gen, ver
 
-    @staticmethod
-    def _write(data):
-        out = Path(tempfile.mkstemp(suffix=".json")[1])
+    def setUp(self):
+        self._tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tempdir.cleanup)
+
+    def _write(self, data):
+        out = Path(self._tempdir.name) / f"case-{len(list(Path(self._tempdir.name).iterdir()))}.json"
         out.write_text(json.dumps(data), encoding="utf-8")
         return out
 
-    @classmethod
-    def _pair(cls, gen, mutate_interim=None, mutate_resolved=None):
+    def _pair(self, gen, mutate_interim=None, mutate_resolved=None,
+              interim_seed=None, resolved_seed=None, mutate_interim_signed=None,
+              mutate_resolved_signed=None):
         """Build a (interim, resolved) pair where the resolved record is REBOUND to the
         (possibly mutated) interim and both are RE-SIGNED, so the only thing that can
         reject a mutation is the structural guard it targets — never the signature check
@@ -92,14 +96,18 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         interim.pop("signature")
         if mutate_interim:
             mutate_interim(interim)
-        gen.sign(interim, gen.ORCHESTRATOR_SEED)
+        gen.sign(interim, interim_seed or gen.ORCHESTRATOR_SEED)
+        if mutate_interim_signed:
+            mutate_interim_signed(interim)
         resolved = gen.resolved_record(interim)
         resolved.pop("signature")
         if mutate_resolved:
             mutate_resolved(resolved)
-        gen.sign(resolved, gen.ORCHESTRATOR_SEED)
+        gen.sign(resolved, resolved_seed or gen.ORCHESTRATOR_SEED)
+        if mutate_resolved_signed:
+            mutate_resolved_signed(resolved)
         wrap = lambda r: {"kind": "SettlementEvidenceCase", "settlementEvidence": r, "specRefs": ["§9.5.4"]}
-        return cls._write(wrap(interim)), cls._write(wrap(resolved))
+        return self._write(wrap(interim)), self._write(wrap(resolved))
 
     def test_htlc9_pack_is_deterministic_and_verifies(self):
         check = subprocess.run(["python3", str(GENERATE_HTLC9), "--check"], cwd=ROOT, text=True, capture_output=True)
@@ -167,7 +175,7 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             "resolved wrong evidenceVersion": (R, lambda e: e.__setitem__("evidenceVersion", "2"), "evidenceVersion"),
             "resolved wrong phase": (R, lambda e: e.__setitem__("phase", "pay-dem"), "phase"),
             "resolved observedAt as string": (R, lambda e: e.__setitem__("observedAt", "1"), "observedAt"),
-            "resolved jobId differs from interim": (R, lambda e: e.__setitem__("jobId", "01OTHERJOB0000000000000000"), "jobId"),
+            "resolved jobId differs from interim": (R, lambda e: e.__setitem__("jobId", "01ARZ3NDEKTSV4RRFFQ69G5FAW"), "share jobId"),
             "interim carrying an htlc-claim": (I, lambda e: e["paymentTxRefs"].append({"kind": "htlc-claim", "chainId": 84532, "contractAddress": "0x" + "0" * 40, "claimTxHash": "0x" + "cc" * 32}), "htlc-claim"),
             "interim outcome success": (I, lambda e: e.__setitem__("outcome", "success"), "outcome failure"),
             "interim wrong reason": (I, lambda e: e.__setitem__("reason", "timeout"), "dest-revealed-source-unclaimed"),
@@ -189,6 +197,42 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             "interim second htlc-lock appended": (I, lambda e: e["paymentTxRefs"].append({"kind": "htlc-lock", "chainId": 84532, "contractAddress": "0x" + "0" * 39 + "8", "lockTxHash": "0x" + "99" * 32}), "exactly one htlc-lock"),
             "interim invalid ULID jobId": (I, lambda e: e.__setitem__("jobId", "01HTLC9ASYMMETRIC000000000000"), "ULID"),
         }
+        # Guards added after the converged Codex/Grok review. Every case uses _pair,
+        # which rebinds the supersession ref and re-signs both records. Assert that
+        # the named guard fires without relying on signature, SIG-6, or content-hash
+        # backstops.
+        new_cases = [
+            ("cross-signer phase pair", {"resolved_seed": bytes.fromhex("42" * 32)}, "signer continuity"),
+            ("interim observedAt equals finalityObservedAt", {"mutate_interim": lambda e: e.__setitem__("observedAt", 1760000290000)}, "interim.observedAt MUST be less"),
+            ("finalityObservedAt after resolved observedAt", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityObservedAt", 1760000300001)}, "less than or equal to resolved.observedAt"),
+            ("claim reuses lock transaction hash", {"mutate_resolved": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("claimTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-lock")["lockTxHash"])}, "claim.claimTxHash MUST differ"),
+            ("claim reuses reveal transaction hash", {"mutate_resolved": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-claim").__setitem__("claimTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal")["revealTxHash"])}, "claim.claimTxHash MUST differ from reveal.revealTxHash"),
+            ("interim reveal reuses lock transaction hash", {"mutate_interim": lambda e: next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-reveal").__setitem__("revealTxHash", next(r for r in e["paymentTxRefs"] if r["kind"] == "htlc-lock")["lockTxHash"])}, "reveal.revealTxHash MUST differ from lock.lockTxHash"),
+            ("resolved carries reason", {"mutate_resolved": lambda e: e.__setitem__("reason", "dest-revealed-source-unclaimed")}, "MUST NOT carry reason"),
+            ("interim SettlementEvidence has an unknown field", {"mutate_interim": lambda e: e.__setitem__("unexpected", True)}, "interim SettlementEvidence fields MUST be exactly"),
+            ("resolved SettlementEvidence has an unknown field", {"mutate_resolved": lambda e: e.__setitem__("unexpected", True)}, "resolved SettlementEvidence fields MUST be exactly"),
+            ("ComponentSignature has an unknown field", {"mutate_resolved_signed": lambda e: e["signature"].__setitem__("keyId", "test")}, "ComponentSignature fields MUST be exactly"),
+            ("htlc-reveal finality carries finalityBlocks", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityBlocks", 1)}, "SettlementFinalityRecord"),
+            ("htlc-reveal finality carries finalityCommitmentLevel", {"mutate_resolved": lambda e: e["settlementFinality"].__setitem__("finalityCommitmentLevel", "final")}, "SettlementFinalityRecord"),
+            ("PriceTerm has an unknown field", {"mutate_resolved": lambda e: e["paymentAmount"].__setitem__("asset", "USDC")}, "PriceTerm fields MUST be exactly"),
+            ("AttestationRef signer is empty", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "")}, "non-empty ClaimReference"),
+            ("AttestationRef signer lacks scheme", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "orchestrator")}, "scheme:identifier"),
+            ("AttestationRef signer scheme has uppercase", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "Cci:deadbeef")}, "DACS-1 §6.3.1"),
+            ("AttestationRef signer scheme has plus", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "cci+x:deadbeef")}, "DACS-1 §6.3.1"),
+            ("wire string is decomposed Unicode", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"]["anchor"].__setitem__("locator", "e\u0301")}, "CF-1"),
+        ]
+        for field in ("deliverableContentHash", "deliverableAnchor", "attestationRef"):
+            new_cases.extend([
+                (f"interim carries delivery-only {field}", {"mutate_interim": lambda e, field=field: e.__setitem__(field, "x")}, "delivery-only"),
+                (f"resolved carries delivery-only {field}", {"mutate_resolved": lambda e, field=field: e.__setitem__(field, "x")}, "delivery-only"),
+            ])
+        for name, kwargs, needle in new_cases:
+            with self.subTest(name=name):
+                i, r = self._pair(gen, **kwargs)
+                errors = ver.validate_pair(i, r)
+                self.assertTrue(errors, f"{name}: accepted")
+                self.assertFalse(any("signature does not verify" in e or "SIG-6" in e or "content hash" in e for e in errors), f"{name}: rejected by a backstop, not {needle}: {errors}")
+                self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
         # Both-sides topology case: mutate the interim; the resolved record inherits the
         # mutated lock/reveal, so cross-pair identity holds and ONLY the topology guard can
         # reject. (A pair CONSISTENTLY mirrored onto the other chain is not a case here: with

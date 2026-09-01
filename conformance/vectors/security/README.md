@@ -122,14 +122,17 @@ python3 -m unittest tests.test_canonical_json_vectors -v
 
 ### `ap2-handler-safety-v0.6.json` — §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7
 
-30 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
+36 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
 in DACS-4 v0.6. They pin provider idempotency-key bytes, NFC handling,
 job/phase separation, malformed phase refusal, exact compact-JWS transaction-ID
 derivation, CheckoutMandate `_sd_alg` selection and SHA-256 fallback, signature-
 byte sensitivity, and refusal of malformed or unsupported algorithms. The
 composed admission cases require separate verified CheckoutMandate and
 PaymentMandate artifacts, enforce the DACS signature profile, and reject a
-transaction-ID mismatch before AP2-7 reservation or provider submission.
+transaction-ID mismatch before AP2-7 reservation or provider submission. They
+also require authenticated corrective-profile admission, JID-1, and a valid
+phase index before hashing, resolution, metadata construction, reservation, or
+provider submission.
 
 The same set executes first-use binding, exact-tuple retry/resume, cross-job and
 cross-phase replay refusal, and fail-closed conflicting-store handling. An exact
@@ -1087,12 +1090,16 @@ python3 -m unittest tests.test_presence_only_claim_vectors -v
 
 ### `job-id-grammar-v0.1.json` — CORE §B.1 JID-1..JID-4
 
-Thirty-one deterministic cases pin the complete canonical DACS `jobId`
+Forty deterministic cases pin the complete canonical DACS `jobId`
 grammar, byte-exact comparison, logical-address insertion, and the DACS-5
 bundle-address preimage. Invalid case, alias, overflow, whitespace, Unicode,
 type, and length inputs execute through an instrumented gate that must make
 zero hash and resolver calls. The buyer, seller, and orchestrator bundle cases
 also carry literal address known answers independent of the generator.
+Profile-admission cases resolve opaque peer references through
+implementation-owned authenticated state and require the exact configured
+release pin plus complete module tuple; caller-supplied matching objects do not
+establish admission.
 
 Regenerate and run with:
 

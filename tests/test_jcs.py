@@ -4,6 +4,7 @@ All special characters are built with chr()/escapes so the source is pure ASCII
 with no literal control or non-ASCII bytes (robust against editor normalisation).
 """
 
+import struct
 import sys
 import unittest
 from pathlib import Path
@@ -55,10 +56,40 @@ class JcsCanonicalizeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             jcs.canonicalize(-(2 ** 53))
 
-    def test_floats_and_nonfinite_raise(self):
-        # RFC 8785 Appendix B number vectors are inapplicable by design here:
-        # non-integral numbers are rejected fail-closed (see jcs module docstring).
-        for bad in (1.5, 1.0, float("nan"), float("inf"), float("-inf")):
+    def test_fractional_numbers_use_ecmascript_form(self):
+        cases = {
+            0.5: "0.5",
+            1e-7: "1e-7",
+            0.30000000000000004: "0.30000000000000004",
+            0.1: "0.1",
+            -1.5: "-1.5",
+            1e-6: "0.000001",
+            333333333.33333329: "333333333.3333333",
+        }
+        for value, expected in cases.items():
+            with self.subTest(value=value):
+                self.assertEqual(jcs.canonicalize(value), expected)
+
+    def test_rfc8785_appendix_b_binary64_edges(self):
+        cases = {
+            "0000000000000001": "5e-324",
+            "8000000000000001": "-5e-324",
+            "3eb0c6f7a0b5ed8c": "9.999999999999997e-7",
+            "3eb0c6f7a0b5ed8d": "0.000001",
+            "43143ff3c1cb0959": "1424953923781206.2",
+        }
+        for bits, expected in cases.items():
+            value = struct.unpack(">d", bytes.fromhex(bits))[0]
+            with self.subTest(bits=bits):
+                self.assertEqual(jcs.canonicalize(value), expected)
+
+    def test_integral_floats_and_negative_zero(self):
+        self.assertEqual(jcs.canonicalize(1.0), "1")
+        self.assertEqual(jcs.canonicalize(-0.0), "0")
+        self.assertEqual(jcs.canonicalize(float(2 ** 53 - 1)), "9007199254740991")
+
+    def test_nonfinite_and_over_magnitude_floats_raise(self):
+        for bad in (float("nan"), float("inf"), float("-inf"), float(2 ** 53)):
             with self.subTest(bad=bad):
                 with self.assertRaises(ValueError):
                     jcs.canonicalize(bad)

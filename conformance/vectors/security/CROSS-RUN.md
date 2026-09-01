@@ -18,7 +18,9 @@ any runner, only the output shape is fixed:
   "impl": "pathos-dacs-ref@1.4.0",
   "results": [
     { "name": "valid-holder-binding", "verdict": "pass" },
-    { "name": "cross-session-nonce-replay", "verdict": "fail" }
+    { "name": "cross-session-nonce-replay", "verdict": "fail" },
+    { "name": "native-bigint", "status": "abstain",
+      "reason": "native BigInt is unavailable in this language" }
   ]
 }
 ```
@@ -27,6 +29,11 @@ any runner, only the output shape is fixed:
 - `impl` — free-form implementation id; include a version.
 - `results` — one entry per vector, keyed by the vector's `name`, carrying
   the verdict your implementation actually produced (not the expected one).
+  The optional `status: "evaluated"` is equivalent to omitting `status`.
+  When an adapter cannot execute a case, it MUST instead emit
+  `status: "abstain"`, omit `verdict`, and give a non-empty `reason`. An
+  adapter or transport error MUST NOT be converted into the vector's expected
+  rejection verdict.
 
 ## 2. Diff
 
@@ -46,13 +53,31 @@ files) to the tracking issue as the convergence evidence. Any divergence is
 listed per case and exits non-zero; a divergence is a finding about either an
 implementation or the set itself, and belongs on the set's tracking issue.
 
+An abstention is excluded from the displayed agreement denominator, cannot
+satisfy the vector's expected verdict, and makes the run `INCOMPLETE` with a
+non-zero exit. This distinction prevents an adapter's unsupported-operation
+error from being counted as agreement with an expected implementation
+rejection. A single implementation id is likewise validation, not a cross-run,
+and cannot print `CONVERGED`.
+
 ## 3. Promotion
 
 Convergence does not auto-promote. The steward reviews the evidence and
 decides whether the set enters the canonical §14 surface
 (`conformance/MANIFEST.json`); until then it stays candidate tier. The
 promotion bar: at least **two independent implementations** converged on the
-full set, and the set passes `scripts/validate_security_vectors.py`.
+full set with zero abstentions, the set passes
+`scripts/validate_security_vectors.py`, and the submitted evidence identifies
+the implementations and immutable revisions used.
+
+The steward MUST also confirm that the set is **discriminating** for every rule
+the promotion claim names. A rule is discriminated when the cases would produce
+different observable outputs for at least one plausible non-conforming
+implementation: normally a positive/negative pair, or (for canonicalization,
+hashing, signing, and derivation) exact expected bytes or values. Agreement on
+only a generic `pass`, `fail`, or `THROWN` outcome is not evidence for a more
+specific byte-level or ordering rule. The promotion record MUST map each claimed
+rule to its discriminating case(s); unexercised prose is outside the claim.
 
 ## Conventions for new sets
 

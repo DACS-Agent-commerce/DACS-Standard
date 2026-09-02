@@ -6,7 +6,7 @@ An independent, third-party set of conformance vectors for the DACS v0.1 full-pr
 
 Surface labels travel with each vector:
 
-- **GOLDEN (194)** — byte-stable reference outputs plus steward-corrected regressions pinned by executable predicates. Counts: 7 canonicalize, 5 decimal, 5 signing, 2 artifact-reference-shape, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 36 verify, 24 vet, 19 negotiate, and 12 governance checks.
+- **GOLDEN (193)** — byte-stable reference outputs plus steward-corrected regressions pinned by executable predicates. Counts: 6 canonicalize, 5 decimal, 5 signing, 2 artifact-reference-shape, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 17 dispute/disclosure, 37 settlement, 36 verify, 24 vet, 19 negotiate, and 12 governance checks.
 - **CANDIDATE (42)** — 28 `PayeeBoundAgreementDocument` / PB-1..PB-3 vectors plus 14 historical reputation outputs whose one-copy inputs lack authoritative-absence context.
 
 ## Why
@@ -43,7 +43,7 @@ Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`,
 
 ## Coverage
 
-- `canonicalize`: 7 golden vectors, §7.1 JCS canonicalization and §7.2 signed scope.
+- `canonicalize`: 6 legacy golden vectors for JCS canonicalization and signed scope. Current CORE §B.2 fraction, magnitude, and Unicode boundaries are exercised by the self-contained `canonical-json-v0.1` security corpus.
 - `decimal`: 5 golden vectors, §14.4 CD-1 canonical decimals and §9.3 positivity.
 - `signing`: 5 golden vectors, §7.7 domain-separated Ed25519 (SIG-2 / SIG-4).
 - `artifact-reference-shape`: 2 golden manifest cases backed by 19 executable

@@ -30,10 +30,10 @@ jobs:
           python-version: '3.x'
 
       - name: Install validation dependencies
-        run: python3 -m pip install 'cryptography==46.0.5' 'idna==3.10'
+        run: python3 -m pip install 'cryptography==46.0.5' 'idna==3.10' 'jsonschema==4.25.1'
 
       - name: crypto import gate (fail-closed)
-        run: python3 -c "import cryptography, idna; print(cryptography.__version__, idna.__version__)"
+        run: python3 -c "import cryptography, idna, jsonschema; from importlib.metadata import version; print(cryptography.__version__, idna.__version__, version('jsonschema'))"
 
       - name: Validate conformance vectors
         run: python3 scripts/validate_conformance_vectors.py
@@ -69,6 +69,15 @@ jobs:
 
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check
+
+      - name: Verify Atomic Work vectors are deterministic
+        run: python3 scripts/generate_atomic_work_vectors.py --check
+
+      - name: Validate Atomic Work vectors semantically
+        run: python3 scripts/validate_atomic_work_vectors.py
+
+      - name: Validate Atomic Work schemas and representative fixtures
+        run: python3 scripts/validate_atomic_work_schemas.py
 
       - name: Validate domain separators
         run: python3 scripts/validate_domain_separators.py

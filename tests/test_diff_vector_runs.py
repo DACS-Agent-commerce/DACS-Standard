@@ -20,10 +20,10 @@ class DiffVectorRunsTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.paths: list[Path] = []
 
-    def add_run(self, impl: str, result: dict) -> None:
+    def add_run(self, impl: object, result: dict, set_name: object = SET) -> None:
         path = Path(self.tmp.name) / f"run-{len(self.paths)}.json"
         path.write_text(
-            json.dumps({"set": SET, "impl": impl, "results": [result]}),
+            json.dumps({"set": set_name, "impl": impl, "results": [result]}),
             encoding="utf-8",
         )
         self.paths.append(path)
@@ -82,6 +82,21 @@ class DiffVectorRunsTests(unittest.TestCase):
         run = self.execute()
         self.assertNotEqual(run.returncode, 0)
         self.assertIn("needs at least two distinct implementation ids", run.stderr)
+
+    def test_null_and_empty_impl_ids_cannot_create_false_convergence(self):
+        result = {"name": CASE, "verdict": "reject"}
+        self.add_run(None, result)
+        self.add_run("", result)
+        run = self.execute()
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("'impl' must be a non-empty string", run.stderr)
+        self.assertNotIn("cross-run CONVERGED", run.stdout + run.stderr)
+
+    def test_set_id_must_be_a_nonempty_string(self):
+        self.add_run("impl-a@1", {"name": CASE, "verdict": "reject"}, None)
+        run = self.execute()
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("'set' must be a non-empty string", run.stderr)
 
 
 if __name__ == "__main__":

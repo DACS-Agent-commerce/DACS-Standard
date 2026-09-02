@@ -100,6 +100,13 @@ def load_run(path: str) -> tuple[str, str, dict[str, RunResult]]:
     for field in ("set", "impl", "results"):
         if field not in run:
             raise SystemExit(f"ERROR: {path}: run file missing '{field}'")
+    for field in ("set", "impl"):
+        if not isinstance(run[field], str) or not run[field].strip():
+            raise SystemExit(
+                f"ERROR: {path}: run file '{field}' must be a non-empty string"
+            )
+    if not isinstance(run["results"], list):
+        raise SystemExit(f"ERROR: {path}: run file 'results' must be an array")
     results: dict[str, RunResult] = {}
     for i, res in enumerate(run["results"]):
         if not isinstance(res, dict):

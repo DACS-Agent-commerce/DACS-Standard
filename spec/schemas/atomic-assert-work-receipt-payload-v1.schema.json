@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-assert-work-receipt-payload-v1.schema.json",
+  "title": "AtomicAssertWorkReceiptPayloadV1",
+  "description": "Carries the complete prior Work receipt envelope. Admission additionally verifies the referenced Purchase intent, receipt commitment, selected proof profile, finality, operation root, and payment-slot state.",
+  "type": "object",
+  "required": ["receipt"],
+  "properties": {
+    "receipt": {
+      "$ref": "atomic-work-receipt-v1.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

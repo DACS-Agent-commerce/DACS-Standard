@@ -1268,7 +1268,16 @@ def divergent_bundle_case(context: dict[str, Any]) -> dict[str, Any]:
 
 
 def parse_profile_versions(profile_text: str) -> dict[str, str]:
-    rows = re.findall(r"\| \[([^]]+)\]\([^)]+\) \| ([0-9.]+) \|", profile_text)
+    match = re.search(
+        r"^## DACS v0\.4 coordinated release\s*$([\s\S]*?)(?=^## |\Z)",
+        profile_text,
+        re.MULTILINE,
+    )
+    if match is None:
+        raise ValueError("spec/PROFILE.md lacks the coordinated v0.4 release section")
+    rows = re.findall(
+        r"\| \[([^]]+)\]\([^)]+\) \| ([0-9.]+) \|", match.group(1)
+    )
     return dict(rows)
 
 

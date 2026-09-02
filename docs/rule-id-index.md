@@ -8,6 +8,10 @@ This non-normative index helps implementers locate labelled conformance rules in
 |-------------|----------------|--------------|----------------|
 | AMEND-* | Settlement amendment validation | §9.7.1 | §14.4 |
 | AP2-* | `pay-ap2` provider-receipt verification, session binding, split credential scope, capture semantics, idempotency-key derivation, and `transaction_id` tuple binding / replay-safe retry | §9.5.6 | §14.4 |
+| AW-* | Atomic DACS Work capability, canonical intent, authorization, execution, receipt, rollback, recovery, and anchor projection (AW-1..AW-77) | §5.2 | §14.8 |
+| AWB-* | Atomic Work role anchoring, proof-chain verification, and idempotent audit finalisation | §10.4.2 | §14.5 |
+| AWP-* | Atomic Purchase and Completion DACS profile composition (AWP-1..AWP-21) | §8.6.1 | §14.3 |
+| AWS-* | Atomic `pay-dem` payment-slot compare-and-set plus versioned Work settlement evidence and proof binding | §9.5.10 / §9.7.3 | §14.4 |
 | APR-* | Signed alternative-payment selection, projection, retry, and audit recomputation | §9.9.1 | §14.4 |
 | BB-* | Bundle logical→native binding (publication, carriage, verification, resolution, multiplicity-void, fail-closed, suppression diligence) | §10.4.2 | §14.5 |
 | BP-* | Bundle producers for IdentityBundle | §6.3.2 | §14.1 |

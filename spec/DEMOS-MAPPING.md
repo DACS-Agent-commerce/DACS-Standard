@@ -147,3 +147,176 @@ validator-body-signed.
 - 🔵 **HTLC contracts (generic atomic-swap pattern)** — pay-cross-chain-htlc is a first-class supported rail in DACS-4 v0.1. **The reference implementation in agent-commerce-demo uses HTLCs today for the fx-rfq cross-chain settlement** (929 LOC: real Solana Anchor program + Base Sepolia EVM HTLC contract; lock/reveal/refund implemented end-to-end). This predates Native Bridges Phase 1 deployment. The reference implementation will migrate to pay-cross-chain-liquidity-tank as Phase 1 stabilises; until then both rails are documented honestly. ERC-20, SPL (standard token interfaces). ERC-8183 escrow (proposed; future rail).
 
 **v0.1 cross-chain settlement scope.** pay-cross-chain-liquidity-tank is supported **only** for the rails currently live in tankAddresses.json (ETH Sepolia, Polygon Amoy; USDC; unidirectional EVM source). All other tank rails in the registry are 🟡 to-add and will unlock as Native Bridges Phase 2–4 ship. pay-cross-chain-htlc is the path the reference implementation runs today; v0.1 keeps both first-class.
+
+### A.6 Atomic DACS Work capability gate
+
+The Demos platform provides the `DemosWork` orchestration primitive that the
+optional CORE §5.2 profile builds on. The pinned release recorded below does
+not yet execute that primitive as one consensus-atomic business-state overlay;
+the DACS profile therefore requires additional node and SDK binding. It also
+requires an authenticated network capability that binds one exact node and SDK
+release to the DACS-specific execution, payment, authorization, evidence, and
+recovery contract.
+
+Atomicity within one generic Work, the existing DemosWork SDK orchestration
+API, client simulation, or an ownership promise does not by itself establish
+that DACS contract. In particular, the binding must demonstrate that all
+profile operations share the required rollback boundary, that two different
+Works cannot consume the same payment slot, that DACS roles are enforced
+independently of the outer submitter, and that every outcome is independently
+verifiable and recoverable. This section records binding and evidence gaps; it
+does not assert that a listed property is absent from a particular unpublished
+node implementation.
+
+A Demos response may establish an item by identifying behavior already
+enforced by the pinned release, by specifying a DACS-specific binding or
+configuration over existing behavior, or by implementing a missing
+integration. In every case the exact interface, consensus behavior, and
+independently repeatable evidence are required; the question itself is not an
+assertion that new Atomic Work machinery is needed.
+
+For each numbered item, the versioned contract MUST state whether the pinned
+release already enforces the requirement, needs a DACS-specific binding or
+configuration, needs implementation work, or cannot support the profile. Any
+advertised behavior MUST identify its code or API surface, real node-produced
+fixtures where applicable, and an independently repeatable conformance or
+failure-injection command and result.
+
+A Demos node, SDK, adapter, or agent **MUST NOT** advertise
+`AtomicWorkCapabilityV1`, select either Atomic DACS Work profile, or label an
+execution DACS-atomic until the following questions are answered by a
+versioned runtime contract. Independently repeatable conformance and
+failure-injection evidence MUST demonstrate those answers for the advertised
+release:
+
+1. Which exact node and SDK releases authenticate the capability, execution
+   profile, proof profile, supported authorization algorithms, and enforced
+   limits?
+2. Which pure JSON bytes are admitted as the Work intent, how are CF-1/CF-2
+   and JCS applied, how is `workId` recomputed, and which fork-independent or
+   fork-pinned execution rules interpret those bytes?
+   How does the release map each published CORE §5.2 payload schema to exact
+   Demos-native validation, execution, committed-output, and proof behavior,
+   including artifact and receipt verification, Storage Program create/CAS
+   inputs and outputs, slot expected state, and native transfer accounts,
+   asset, and amount?
+3. Which business-state domains share the isolated overlay, and how do
+   Storage Program writes, the global payment-slot CAS, and native DEM transfer
+   commit or roll back together while fee and nonce effects remain separate?
+4. What are the exact `storage-program-put` create-only/CAS semantics, native
+   address derivation, writer/nonce provenance, and logical-to-native output
+   binding under replacement?
+5. Where is the network-scoped payment-slot state stored? How is its structured
+   `(networkId, railId, jobId, phaseIndex)` key derived from the authenticated
+   capability/network, signed Agreement and commitment, pinned Listing
+   `pay-dem` invocation, the session-pinned canonical registry index and its
+   finalized index/definition receipts, independently pinned
+   rail-registry-steward-verified RailDefinition, and closed
+   `AtomicPaymentPhaseInputV1` authority checks? How are the canonical rail
+   address, indexed hash/version, acceptance time, and both receipt timestamps
+   proven no later than authenticated session start?
+   How is its pure `AtomicPaymentSessionContextV1` projection bound back to the
+   independently authenticated portable source of every serializable runtime
+   SessionContext field without serializing the runtime `SubstrateSigner`
+   capability, and how is the fixed buyer/seller/orchestrator tuple derived
+   from an unordered source party set?
+   How does its global CAS survive concurrent Works,
+   validators, forks, and restarts? How do its proofs bind the complete
+   rolled-back generation-`N` state, the CAS to `in-flight` generation `N + 1`,
+   and committed or re-rolled-back generation `N + 1` receipts?
+6. Where are operation authorizations verified, which key-resolution and
+   signature rules apply, and how is a DACS role preserved when the outer
+   submitter, fee payer, or native writer is a different account?
+   How are roster entries bound to the signed agreement, finalized commitment
+   signer, authenticated session parties, pinned payer bundle, and
+   `AtomicPaymentPhaseInputV1` rather than trusted as self-assertions?
+7. What durable ledger maps canonical Work bytes to `workId`, binds each
+   `attemptId` one-to-one with its canonical `nativeTransactionRef`, and selects
+   one winning attempt whose complete identity is reproduced by the Work
+   receipt? Which authenticated state permits replacement; how are late
+   attempts fenced; and how does exact replay recompute `workId`, return the
+   authoritative winner and receipt, and avoid another business effect?
+8. How is the CORE §5.2 `receiptCommitment` committed by consensus in the same
+   transition as business state, how do detachable business-state and finality
+   proofs bind their exact committed subjects, how does finality bind the
+   resulting block ID without a circular preimage, and what independently verifiable validator-set,
+   finality, operation-inclusion, business-root, and rollback proofs are
+   returned? How does the runtime recompute CORE's portable operation
+   `inputHash`, which exact execution-profile derivations produce each optional
+   `outputHash` and `businessState.effectsRoot`, and how can an independent
+   verifier reproduce or prove those values without trusting an SDK projection?
+9. How can a verifier retrieve or reconstruct the same winning receipt and
+   operation proofs from finalized consensus data when a public Indexer is
+   absent, stale, or unavailable?
+10. Which authenticated states distinguish rejection, durable admission,
+    inclusion, rollback, replacement, drop, expiry, and authoritative
+    non-inclusion? An ordinary RPC or storage `not found` answer is not such
+    evidence.
+11. What recovery invariant applies at crashes before admission, during
+    overlay execution, after state commit, and while receipt delivery is
+    unavailable?
+12. Which consensus-selected candidate block timestamp is supplied to the
+    DACS-3 AWP-8 checks, and how is client, signer, RPC, or Indexer time
+    excluded from that decision?
+13. What exact capability-selected `feeRule`, fee-charging, and
+    nonce-consumption behavior applies to admission, commit, rollback,
+    replacement, retry, and replay? How are those effects bound to the exact
+    native attempt and winning receipt, kept separate for later envelopes, and
+    prevented from selecting another winner or authorizing another payment?
+14. What node-enforced `maxCanonicalBytes`, `maxOperations`,
+    `maxExecutionTimeMs`, `maxProofBytes`, and `feeRule` limits apply, and
+    which boundary and failure-injection tests prove atomic rollback at each
+    pre-commit limit? Which proof-profile-defined fixed or worst-case encoded
+    size is authenticated and reserved before execution, and how is the actual
+    finalized Work-result proof closure authenticated afterward against both
+    that reservation and `maxProofBytes`? A post-finality overage is node or
+    profile nonconformance, not authority to roll back committed state. Later
+    DACS-4 evidence and audit-publication receipts require their own post-commit
+    bounds and cannot imply Work rollback.
+15. How does an audit-tail anchor remain idempotent and independently
+    resolvable, including network-proof-bound create-only prior non-membership
+    or byte-identical prior content, role authorization, and `BundleBinding`
+    when its outer submitter differs, without silently replaying the Purchase
+    payment?
+
+**Recorded Phase 0 implementation disposition (informative, 2026-08-14).**
+The Demos owner completed the requested classification in
+[RFC #320](https://github.com/DACS-Agent-commerce/DACS-Standard/issues/320#issuecomment-5294684294)
+against node `demos-node-software` `0.9.8` at commit `08a0c3e4` on
+`stabilisation`, with `@kynesyslabs/demosdk` `4.0.16`. The reported genesis
+profile has `osDenomination` and `nonceEnforcement` active from height zero and
+`gasFeeSeparation` inactive; a deployment still has to prove that its sealed
+genesis matches those values. The report classifies zero items as
+`EXISTING — PIN/EVIDENCE`, so it records ownership and implementation scope but
+does not satisfy the capability-advertisement gate above.
+
+| Item | Recorded classification | Remaining release obligation |
+| ---: | --- | --- |
+| 1 | `NEW — IMPLEMENT` | Authenticated capability and aligned node/SDK release. |
+| 2 | `EXISTING — DACS BINDING` | Recompute `workId` and pin fork-safe native payload interpretation. |
+| 3 | `NEW — IMPLEMENT` | One isolated storage/slot/DEM overlay with joint rollback. |
+| 4 | `NEW — IMPLEMENT` | Storage create-only/CAS and proof-bound native output; coordinate with issue #242. |
+| 5 | `NEW — IMPLEMENT` | Durable network-scoped payment-slot CAS across concurrency, forks, and restarts. |
+| 6 | `EXISTING — DACS BINDING` | Enforce DACS operation roles before effects, independently of submitter. |
+| 7 | `NEW — IMPLEMENT` | Durable Work/attempt/winner ledger with replacement fencing and exact replay. |
+| 8 | `NEW — IMPLEMENT` | Same-transition receipt commitment and detachable effect/finality proofs. |
+| 9 | `NEW — IMPLEMENT` | Indexer-independent receipt and operation-proof reconstruction. |
+| 10 | `NEW — IMPLEMENT` | Authenticated lifecycle and authoritative non-inclusion states. |
+| 11 | `EXISTING — DACS BINDING` | Extend existing recovery to the new in-overlay execution boundary. |
+| 12 | `NEW — IMPLEMENT` | Supply the consensus-selected timestamp to AWP-8. |
+| 13 | `NEW — IMPLEMENT` | Define and prove fee/nonce behavior across every terminal and replay path. |
+| 14 | `NEW — IMPLEMENT` | Enforce Work limits and produce boundary failure-injection evidence. |
+| 15 | `EXISTING — DACS BINDING` | Bind the audit tail and `BundleBinding` when submitter and role differ. |
+
+No item was classified `UNAVAILABLE — PROFILE/FALLBACK`: the Demos owner
+accepted the node/consensus implementation track. Recording this disposition
+is sufficient to remove ambiguity about who owns each gap; it is not runtime
+evidence. Each row moves to `EXISTING — PIN/EVIDENCE` only with the exact
+interface, node-produced fixture where applicable, and independently
+repeatable conformance or failure-injection result required above.
+
+Until all applicable items are established, clients MUST use the existing
+multi-transaction lifecycle or refuse the Atomic profile before any Atomic
+Work is signed. Once an Atomic Work is signed or submitted, failure to
+establish its outcome MUST remain under reconciliation and MUST NOT trigger a
+silent fallback payment.

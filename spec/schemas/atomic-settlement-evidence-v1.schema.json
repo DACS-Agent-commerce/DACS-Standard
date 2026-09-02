@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dacs.dev/schemas/atomic-settlement-evidence-v1.schema.json",
+  "title": "AtomicSettlementEvidenceV1",
+  "type": "object",
+  "required": [
+    "atomicEvidenceVersion",
+    "networkId",
+    "jobId",
+    "railId",
+    "phaseIndex",
+    "phase",
+    "outcome",
+    "operationRef",
+    "workReceiptRef",
+    "operationProof",
+    "observedAt",
+    "signature"
+  ],
+  "properties": {
+    "atomicEvidenceVersion": { "const": "1" },
+    "networkId": { "type": "string", "minLength": 1 },
+    "jobId": {
+      "type": "string",
+      "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$"
+    },
+    "railId": { "type": "string", "minLength": 1 },
+    "phaseIndex": { "$ref": "#/$defs/safeInteger" },
+    "phase": { "enum": ["pay-dem", "deliver-storage-program"] },
+    "outcome": { "enum": ["success", "failure"] },
+    "reason": { "type": "string", "minLength": 1 },
+    "operationRef": { "$ref": "#/$defs/operationRef" },
+    "workReceiptRef": { "$ref": "#/$defs/workReceiptRef" },
+    "operationProof": { "$ref": "#/$defs/operationProof" },
+    "paymentAmount": { "$ref": "#/$defs/priceTerm" },
+    "deliverableContentHash": { "$ref": "#/$defs/hash" },
+    "deliverableAnchor": { "$ref": "#/$defs/anchor" },
+    "settlementFinality": {
+      "type": "object",
+      "required": ["model", "finalityObservedAt"],
+      "properties": {
+        "model": { "const": "bft-final" },
+        "finalityObservedAt": { "$ref": "#/$defs/safeInteger" }
+      },
+      "additionalProperties": true
+    },
+    "observedAt": { "$ref": "#/$defs/safeInteger" },
+    "signature": { "$ref": "#/$defs/signature" }
+  },
+  "additionalProperties": true,
+  "not": { "required": ["evidenceVersion"] },
+  "allOf": [
+    {
+      "if": { "properties": { "outcome": { "const": "failure" } } },
+      "then": {
+        "required": ["reason"],
+        "not": {
+          "anyOf": [
+            { "required": ["paymentAmount"] },
+            { "required": ["deliverableContentHash"] },
+            { "required": ["deliverableAnchor"] },
+            { "required": ["settlementFinality"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": { "const": "success" },
+          "phase": { "const": "pay-dem" }
+        }
+      },
+      "then": {
+        "required": ["paymentAmount", "settlementFinality"],
+        "properties": {
+          "operationRef": {
+            "properties": {
+              "operationKind": { "const": "native-dem-transfer" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": { "const": "success" },
+          "phase": { "const": "deliver-storage-program" }
+        }
+      },
+      "then": {
+        "required": ["deliverableContentHash", "deliverableAnchor"],
+        "properties": {
+          "operationRef": {
+            "properties": {
+              "operationKind": { "const": "storage-program-put" }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "claimReference": {
+      "type": "string",
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9-]*:[^\\s?]+(?:\\?(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*(?:&(?:[^\\s:?&=%]|%[0-9A-F]{2})+=(?:[^\\s:?&=%]|%[0-9A-F]{2})*)*)?$"
+    },
+    "safeInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "operationKind": {
+      "enum": [
+        "assert-artifact",
+        "storage-program-put",
+        "payment-slot-cas",
+        "native-dem-transfer",
+        "assert-work-receipt"
+      ]
+    },
+    "operationRef": {
+      "description": "Versioned operation identity. Unknown members are preserved in the enclosing signed artifact under CORE SIG-5 but do not alter the identity derived from the required named v1 fields.",
+      "type": "object",
+      "required": [
+        "kind",
+        "networkId",
+        "workId",
+        "operationIndex",
+        "operationId",
+        "operationKind"
+      ],
+      "properties": {
+        "kind": { "const": "demos-work-operation-v1" },
+        "networkId": { "type": "string", "minLength": 1 },
+        "workId": { "$ref": "#/$defs/hash" },
+        "operationIndex": { "$ref": "#/$defs/safeInteger" },
+        "operationId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{0,63}$"
+        },
+        "operationKind": { "$ref": "#/$defs/operationKind" }
+      },
+      "additionalProperties": true
+    },
+    "workReceiptRef": {
+      "description": "Versioned receipt locator. Unknown members are preserved in the enclosing signed artifact under CORE SIG-5; the named v1 fields control resolution and contentHash binds the complete resolved receipt.",
+      "type": "object",
+      "required": ["refVersion", "networkId", "workId", "receiptCommitment", "contentHash", "locator"],
+      "properties": {
+        "refVersion": { "const": "1" },
+        "networkId": { "type": "string", "minLength": 1 },
+        "workId": { "$ref": "#/$defs/hash" },
+        "receiptCommitment": { "$ref": "#/$defs/hash" },
+        "contentHash": { "$ref": "#/$defs/hash" },
+        "locator": { "$ref": "#/$defs/evidenceRef" }
+      },
+      "additionalProperties": true
+    },
+    "evidenceRef": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "value": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "anchor": {
+      "type": "object",
+      "required": ["kind", "locator"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "locator": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "operationProof": {
+      "type": "object",
+      "required": ["proofProfile", "subject", "value"],
+      "properties": {
+        "proofProfile": { "type": "string", "minLength": 1 },
+        "subject": {
+          "type": "object",
+          "required": [
+            "networkId",
+            "workId",
+            "winningAttemptId",
+            "operationReceiptRoot",
+            "operationIndex",
+            "operationId",
+            "operationKind",
+            "receiptContentHash"
+          ],
+          "properties": {
+            "networkId": { "type": "string", "minLength": 1 },
+            "workId": { "$ref": "#/$defs/hash" },
+            "winningAttemptId": { "type": "string", "minLength": 1 },
+            "operationReceiptRoot": { "$ref": "#/$defs/hash" },
+            "operationIndex": { "$ref": "#/$defs/safeInteger" },
+            "operationId": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]{0,63}$"
+            },
+            "operationKind": { "$ref": "#/$defs/operationKind" },
+            "receiptContentHash": { "$ref": "#/$defs/hash" }
+          },
+          "additionalProperties": true
+        },
+        "value": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "priceTerm": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": {
+          "type": "string",
+          "pattern": "^(?:[1-9][0-9]*(?:\\.[0-9]*[1-9])?|0\\.[0-9]*[1-9])$"
+        },
+        "currency": { "type": "string", "minLength": 1 },
+        "unit": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "signature": {
+      "type": "object",
+      "required": ["algorithm", "signer", "value"],
+      "properties": {
+        "algorithm": {
+          "enum": ["ed25519", "ecdsa-secp256k1", "sr1-aggregate"]
+        },
+        "signer": { "$ref": "#/$defs/claimReference" },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

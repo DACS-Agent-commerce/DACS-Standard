@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 adds the optional, capability-gated Atomic DACS Work profile; v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -182,11 +182,19 @@ type AnchorReceipt = {
 | DACS-1 active listing publication/discovery | `finalized`, and independently resolvable |
 | DACS-2 Vet result | verified durable `accepted` MAY permit reversible progression; `finalized` required by terminal bundle production |
 | DACS-3 agreement signature | valid required party signatures permit commitment submission; no SR-2 state is implied |
-| DACS-3 commitment | `finalized` before any payment or irreversible delivery |
+| DACS-3 commitment | `finalized` before any payment or irreversible delivery; only a `dacs-purchase-v1` Work satisfying every DACS-3 AWP-6..AWP-11 condition may validate and co-finalize that commitment with its payment |
 | DACS-4 payment | payment rail's declared finality; its SR-2 evidence anchor MAY catch up asynchronously |
 | DACS-5 completed terminal bundle | every required referenced artifact `finalized` and independently resolvable; bundle anchor itself `finalized` |
 
-- (SR2-8) A reversible step MAY progress on verified durable `accepted` when its stage rule permits it. Every payment, release of value, or irreversible delivery MUST wait for the agreement commitment's `finalized` receipt. A binding MAY satisfy this at `included` only when its declared finality profile makes inclusion final.
+- (SR2-8) A reversible step MAY progress on verified durable `accepted` when
+  its stage rule permits it. Every payment, release of value, or irreversible
+  delivery MUST wait for the agreement commitment's `finalized` receipt,
+  except that one `dacs-purchase-v1` Work MAY validate and co-finalize the
+  commitment with its payment only when every DACS-3 AWP-6 through AWP-11
+  condition is satisfied. Any missing condition restores the ordinary
+  finalized-receipt gate before signing or submission. This exception does not
+  apply to an irreversible delivery. A binding MAY satisfy the ordinary gate
+  at `included` only when its declared finality profile makes inclusion final.
 - (SR2-9) A `completed` bundle MAY be constructed and signed in preparation for anchoring, but it MUST NOT be treated as terminal or published as a completed audit artifact until every required referenced SR-2 artifact and the bundle itself meet the `finalized` and independent-resolution requirements. Rail-final payment success is not reversed while its evidence anchor catches up; the session remains non-terminal until the audit prerequisites are met.
 
 **SR-2 read outcomes and authoritative absence (normative).** An SR-2 read has one of three dispositions: `present`, `absent`, or `indeterminate`. `present` means content was returned for the requested native address; the consuming rule still verifies its canonical hash, signatures, and artifact-specific bindings. `absent` means the applicable substrate binding's declared absence-evidence policy established that no record exists at that address in the policy's referenced finalized state. Every other no-content result is `indeterminate`, including a transport error, an ordinary unqualified `not found`, a stale response, or mutually inconsistent state views.
@@ -208,6 +216,690 @@ A finalized non-membership proof or a binding-defined authenticated independent 
 > **Note (non-normative).** v2 of DACS-2 and DACS-3 is expected to specify wire formats for SR-3 attestation envelopes and SR-4 channel messages that enable cross-substrate interoperability.
 
 **Reference substrate.** The **Demos Network** is the substrate against which DACS was designed and, as of this draft, the only substrate that ships all five capabilities natively. The DACS specifications cite the substrate capabilities (SR-1 through SR-5), not the Demos primitives themselves; this separation keeps the artifact-level specification portable while staying honest about which primitives are concretely realised today and where v2 work is needed.
+
+### 5.2 Atomic DACS Work profile
+
+The Atomic DACS Work profile is an optional execution profile for a successful
+DACS purchase. It compiles existing DACS artifacts and phase results into two
+atomic business Works. It does not replace the underlying DACS-2 through DACS-5
+artifact rules.
+
+The normative machine-readable schemas are:
+
+- [`AtomicWorkCapabilityV1`](schemas/atomic-work-capability-v1.schema.json);
+- [`AtomicDacsWorkIntentV1`](schemas/atomic-dacs-work-intent-v1.schema.json);
+- [`AtomicWorkAuthorizationV1`](schemas/atomic-work-authorization-v1.schema.json);
+- [`AtomicWorkAttemptV1`](schemas/atomic-work-attempt-v1.schema.json); and
+- [`AtomicWorkReceiptV1`](schemas/atomic-work-receipt-v1.schema.json).
+
+The closed v1 operation-payload contracts are:
+
+- [`AtomicAssertArtifactPayloadV1`](schemas/atomic-assert-artifact-payload-v1.schema.json);
+- [`AtomicStorageProgramPutPayloadV1`](schemas/atomic-storage-program-put-payload-v1.schema.json);
+- [`AtomicPaymentSlotCasPayloadV1`](schemas/atomic-payment-slot-cas-payload-v1.schema.json);
+- [`AtomicNativeDemTransferPayloadV1`](schemas/atomic-native-dem-transfer-payload-v1.schema.json); and
+- [`AtomicAssertWorkReceiptPayloadV1`](schemas/atomic-assert-work-receipt-payload-v1.schema.json).
+
+These payload schemas define portable signed intent data, not a Demos SDK
+class or native transaction encoding. The authenticated execution profile
+still determines how a node realizes each contract and how its effects are
+proved.
+
+Demos provides a generic `DemosWork` orchestration primitive. This section
+defines the narrower DACS-specific consensus-atomic binding over that
+primitive; it does not require the orchestration surface to be rebuilt. The
+capability gate below establishes which exact release, native mapping,
+consensus guarantees, and proof behavior may make a DACS Atomic-profile claim.
+The pinned Phase 0 release is recorded in DEMOS-MAPPING §A.6 and does not yet
+satisfy that gate.
+
+#### 5.2.1 Scope, capability, and fallback
+
+- (AW-1) An implementation MUST use this profile only after verifying an
+  authenticated `AtomicWorkCapabilityV1` for the selected network and execution
+  profile. Its evidence MUST authenticate the exact network, execution profile,
+  proof profile, validator-set identifier, supported algorithms, operation
+  kinds, payload-schema identifiers, and enforced limits. The expected
+  `networkAuthority` MUST come from the authenticated network binding or a
+  separately trusted profile registry; a capability's self-declared authority
+  and a key bundled only by its presenter MUST NOT bootstrap that trust root.
+- (AW-2) An implementation that lacks a verified capability MUST use the
+  existing multi-transaction lifecycle or refuse the session before any Atomic
+  Work is signed.
+- (AW-3) After an Atomic Work is signed or submitted, an implementation MUST
+  NOT silently submit the corresponding payment through another profile or the
+  legacy path.
+- (AW-4) A successful v1 lifecycle consists of an Atomic Purchase Work, agent
+  execution, an Atomic Completion Work, and an idempotent audit-finalisation
+  tail.
+- (AW-5) An implementation MUST NOT describe the complete current-model DACS
+  lifecycle as exactly two consensus transactions.
+
+`AtomicWorkCapabilityV1` has the following closed v1 shape; the linked JSON
+Schema is authoritative for its exact member, array, and value constraints:
+
+```
+type AtomicWorkCapabilityV1 = {
+  capabilityVersion: "1"
+  networkAuthority: ClaimReference
+  networkId: string
+  executionProfile: string
+  workVersions: ["1"]
+  profiles: ("dacs-purchase-v1" | "dacs-completion-v1")[]
+  operationKinds: AtomicWorkOperationKindV1[]
+  payloadSchemas: Record<AtomicWorkOperationKindV1, string>
+  authorizationAlgorithms: ["ed25519"]
+  proofProfile: string
+  validatorSetId: string
+  limits: {
+    maxCanonicalBytes: number
+    maxOperations: number
+    maxExecutionTimeMs: number
+    maxProofBytes: number
+    feeRule: string
+  }
+  evidence: { kind: string; value: string }
+}
+```
+
+The v1 capability arrays are ordered, duplicate-free sets in the exact forms
+admitted by the schema. Atomic Work authorization v1 admits Ed25519 only. The
+other signature algorithms registered by CORE remain available to artifact
+types that admit them, but advertising or using another Atomic Work
+authorization algorithm requires a later capability and authorization version
+with algorithm-specific key parsing and verification rules.
+
+`limits.feeRule` selects a binding-defined, independently testable attempt and
+receipt fee contract; it is not a descriptive label. A verifier MUST understand
+that exact rule and apply it to every normal, replacement, included, rolled-back,
+and exact-replay attempt plus the receipt's envelope effects, or reject the
+capability as unsupported. The candidate vectors' synthetic rule is defined in
+their security-vector README; it is not a production Demos fee schedule.
+
+A self-reported SDK feature flag or successful simulation is not capability
+evidence.
+
+> **Note (non-normative).** The two Works optimize the irreversible business
+> path. Current DACS-4 evidence and DACS-5 bundles still depend on finalized
+> receipt fields and therefore remain in the audit tail.
+
+#### 5.2.2 Canonical unsigned intent and `workId`
+
+```
+type AtomicDacsWorkIntentV1 = {
+  workVersion: "1"
+  executionProfile: string
+  profile: "dacs-purchase-v1" | "dacs-completion-v1"
+  gateMode: "co-final" | "sequential"
+  networkId: string
+  railId: string
+  jobId: string
+  phaseIndex: number
+  expiresAt: number
+  priorFailureReceiptCommitment?: string
+  roleRoster: AtomicWorkRoleBindingV1[]
+  operations: AtomicWorkOperationV1[]
+}
+
+type AtomicWorkRoleBindingV1 = {
+  role: "buyer" | "seller" | "orchestrator" | "payer"
+  signer: ClaimReference
+  nativeAccount?: string
+}
+
+type AtomicWorkOperationV1 = {
+  operationId: string
+  kind: AtomicWorkOperationKindV1
+  critical: true
+  dependsOn: string[]
+  requiredRoles: ("buyer" | "seller" | "orchestrator" | "payer")[]
+  payload: Record<string, unknown>
+}
+
+type AtomicWorkOperationKindV1 =
+  | "assert-artifact"
+  | "storage-program-put"
+  | "payment-slot-cas"
+  | "native-dem-transfer"
+  | "assert-work-receipt"
+```
+
+`nativeAccount`, when present, is a signed expectation rather than an authority
+claim. The selected execution profile MUST independently derive the native
+account for that signer and role from authenticated identity, agreement, payer,
+and rail inputs and MUST compare it byte-for-byte with `nativeAccount` and any
+account-bearing operation payload. A value that cannot be independently
+derived or does not match MUST be rejected; a caller-supplied roster value MUST
+NOT establish account ownership, payment authority, or signer-to-account
+linkage.
+
+- (AW-6) The unsigned intent MUST be a pure JSON data value conforming to
+  `AtomicDacsWorkIntentV1`.
+- (AW-7) An intent MUST NOT contain a runtime class, callback, `Map`, `Set`,
+  mutable SDK object, or implementation-defined serialized value.
+- (AW-8) Producers MUST apply CF-1 and CF-2 before RFC 8785 JCS serialization.
+- (AW-9) Every JSON number in an intent MUST satisfy the §B.2 safe-integer
+  constraint.
+- (AW-10) `roleRoster` MUST be ordered as buyer, seller, orchestrator, payer,
+  omitting absent roles without reordering the remaining roles.
+- (AW-11) Each role MUST occur at most once in `roleRoster`; one signer MAY
+  hold more than one distinct role.
+- (AW-12) Each `requiredRoles` array MUST follow the same role order and MUST
+  contain no duplicate.
+- (AW-13) `operations` array order is execution order and MUST NOT be inferred
+  from object-member order or implementation iteration order.
+
+The canonical bytes and identifier are:
+
+```
+canonicalWorkBytes = UTF8(JCS(unsignedIntent))
+workId = lowerhex(SHA-256(
+  UTF8("dacs-atomic-work:v1:") || canonicalWorkBytes
+))
+```
+
+- (AW-14) The `workId` preimage MUST include every unsigned-intent member,
+  including unknown preserved members.
+- (AW-15) Authorizations, simulations, receipts, observations, outer nonce,
+  outer fee, transport signature, attempt ID, and native transaction hash MUST
+  remain outside `canonicalWorkBytes`. The only receipt-derived intent member
+  is `priorFailureReceiptCommitment`, when required for a slot retry under DACS-4
+  AWS-12.
+- (AW-16) A producer or node MUST derive `workId`; a caller-supplied value MUST
+  be recomputed before admission.
+- (AW-17) A claimed `workId` with different canonical bytes MUST be rejected.
+- (AW-18) Identical canonical bytes presented under a different claimed ID
+  MUST be rejected or normalized to the derived ID before admission.
+- (AW-19) `executionProfile` MUST identify fork-independent bytes or pin every
+  fork rule that can affect execution or receipt interpretation.
+- (AW-20) A node MUST reject an unsupported or mismatched execution profile
+  before executing any operation.
+- (AW-76) `expiresAt` is a Unix-millisecond consensus cutoff. At the consensus
+  transition that would execute the first operation, the authenticated
+  consensus timestamp MUST be strictly less than `expiresAt`; equality is
+  expired. An expired Work MUST be rejected before any operation executes. A
+  receipt for included execution MUST therefore have `blockRef.timestamp <
+  expiresAt`. Client, signer, RPC, and Indexer clocks MUST NOT decide this
+  predicate.
+
+`workId` is the immutable business-intent identifier. It is not a native
+transaction hash and has no synonymous `intentId` in v1.
+
+#### 5.2.3 Operation and dependency validation
+
+- (AW-21) Every `operationId` MUST match `[a-z][a-z0-9-]{0,63}` and be unique
+  within the intent.
+- (AW-22) Every dependency MUST name an earlier operation in the signed array.
+- (AW-23) A dependency cycle, unknown dependency, self-dependency, or future
+  dependency MUST be rejected before authorization or execution.
+- (AW-24) Every v1 operation MUST have `critical: true`.
+- (AW-25) The v1 operation-kind set is closed to the five kinds in
+  `AtomicWorkOperationKindV1`.
+- (AW-26) Every critical operation effect MUST participate in the same isolated
+  business-state overlay.
+- (AW-27) A client preflight or simulation MUST NOT substitute for node-enforced
+  isolation, ordering, validation, or rollback.
+- (AW-28) An XM, Web2, HTTP, bridge, L2PS, messaging, or other externally
+  irreversible action MUST NOT appear as a rollback-covered v1 operation.
+- (AW-29) An unknown operation kind MUST be rejected before any operation
+  executes.
+
+The operation names above identify semantic families. The five published
+payload schemas provide their portable signed wire grammar. The authenticated
+`executionProfile` and capability select those exact schema identifiers and
+pin their native execution and proof interpretation, including artifact
+hash/signature checks, Storage Program address realization, payment-slot CAS,
+native-transfer account authority, and prior-receipt verification.
+
+- (AW-77) A node MUST reject an operation before authorization or execution if
+  its payload does not conform to the selected execution profile's advertised
+  byte-exact schema, or if that advertised identifier is not the published v1
+  schema for the operation kind. An implementation MUST NOT infer missing
+  payload members from an SDK object, caller state, or operation label. For
+  `storage-program-put`, `writeCondition: { kind: "create-only" }` rejects an
+  existing different value but reconciles an already committed byte-identical
+  value; `writeCondition: { kind: "compare-and-set", expectedContentHash }`
+  requires authenticated current content with that exact hash and MUST reject
+  absence or a different hash. Neither condition permits overwrite based on
+  ordinary read non-observation.
+
+Generic Demos Atomic Work support does not by itself qualify these schemas for
+the DACS-specific binding. A Demos implementation MUST NOT claim that binding
+until §A.6 pins the native realization and proof contract for these schemas. At
+the semantic level, `assert-artifact` verifies complete immutable artifact bytes
+and their existing signatures;
+`storage-program-put` writes complete immutable bytes under its signed
+condition; `payment-slot-cas` applies §9.5.10; `native-dem-transfer` moves
+native DEM; and `assert-work-receipt` verifies a prior finalized Work receipt.
+
+#### 5.2.4 Operation authorizations
+
+```
+type AtomicWorkAuthorizationV1 = {
+  authorizationVersion: "1"
+  algorithm: "ed25519"
+  workId: string
+  executionProfile: string
+  networkId: string
+  railId: string
+  jobId: string
+  phaseIndex: number
+  operationId: string
+  operationIndex: number
+  operationKind: AtomicWorkOperationKindV1
+  role: "buyer" | "seller" | "orchestrator" | "payer"
+  signer: ClaimReference
+  value: string
+}
+```
+
+The signed authorization bytes are:
+
+```
+authorizationHash = lowerhex(SHA-256(
+  UTF8(JCS(authorizationWithoutValue))
+))
+signedAuthorizationBytes =
+  UTF8("dacs-atomic-work-authorization:v1:") || ASCII(authorizationHash)
+```
+
+- (AW-30) An authorization MUST sign every envelope member except `value`, and
+  its algorithm MUST be supported by the verified capability.
+- (AW-31) A verifier MUST recompute `workId` before verifying an authorization.
+- (AW-32) The operation ID, index, and kind MUST match the signed intent at
+  that index.
+- (AW-33) The role and signer MUST match one canonical `roleRoster` entry, and
+  that entry MUST independently match the pre-execution DACS authority: buyer
+  and seller match the corresponding verified signed `AgreementParty` primary
+  claim; orchestrator matches the verified finalized commitment-record signer
+  and, when present, the independently authenticated source
+  `SessionContext.parties` orchestrator (not a caller-carried projection);
+  payer matches `AtomicPaymentPhaseInputV1.payer.payingKey`, after verifying that key
+  appears in the pinned payer bundle and that the input's `bundleHash` and
+  `primaryClaim` match the agreement buyer. A self-consistent roster is not
+  role authority. A later DACS-5 `BundleParty` map is an AWB-3 audit
+  cross-check, not a circular pre-execution input.
+- (AW-34) The verifier MUST verify one authorization for every operation role
+  listed in `requiredRoles`.
+- (AW-35) A mutation of any signed authorization member MUST invalidate the
+  authorization.
+- (AW-36) An authorization for another Work, network, session, payment slot,
+  operation, role, signer, version, or algorithm MUST NOT be replayed.
+- (AW-37) The outer submitter or fee payer MUST NOT establish a DACS role or an
+  operation authorization.
+- (AW-38) A Vet verifier signature MUST NOT authorize payment unless that same
+  signer separately holds and authorizes the payer role.
+
+Signature-value encoding follows SIG-6.
+
+#### 5.2.5 Transport attempts, replacement, and winner selection
+
+```
+type AtomicAttemptLifecycleEvidenceV1 = Record<string, unknown>
+
+type AtomicWorkAttemptCommonV1 = {
+  attemptVersion: "1"
+  workId: string
+  attemptId: string
+  nativeTransactionRef: { kind: string; value: string }
+  canonicalWorkBytes: string
+  authorizations: AtomicWorkAuthorizationV1[]
+}
+
+type AtomicWorkAttemptV1 =
+  | AtomicWorkAttemptCommonV1 & {
+      attemptClass: "normal"
+      nonce?: string
+      fee?: string
+      lifecycleEvidence?: AtomicAttemptLifecycleEvidenceV1
+      observation?: "not-found" | "timeout" | "expired-local"
+    }
+  | AtomicWorkAttemptCommonV1 & {
+      attemptClass: "replacement"
+      replacementFor: string
+      nonce?: string
+      fee?: string
+      lifecycleEvidence?: AtomicAttemptLifecycleEvidenceV1
+      observation?: "not-found" | "timeout" | "expired-local"
+    }
+  | AtomicWorkAttemptCommonV1 & {
+      attemptClass: "replay"
+      replayOf: string
+      returnedWinner: string
+      nonce?: string
+      fee?: string
+      replayEffects: { nonceConsumed: boolean; feeCharged: string }
+    }
+```
+
+`canonicalWorkBytes` is carried in JSON as the exact RFC 8785 JCS text; its
+UTF-8 encoding MUST equal §5.2.2 `canonicalWorkBytes` byte-for-byte. It is not
+Base64URL and a parser/re-serializer output is not a substitute for comparing
+the carried text. `authorizations` carries the complete envelopes required by
+the Work; a transport MAY additionally index them elsewhere, but such an index
+does not replace this attempt-to-authorization binding. The attempt envelope,
+native transaction references, and replay effects are closed objects. Exactly
+one discriminated class arm applies. For normal and replacement attempts,
+authenticated `lifecycleEvidence` and an unauthenticated local `observation`
+are mutually exclusive; either MAY be absent while the attempt remains
+unresolved. A replay admits no replacement, lifecycle-evidence, or
+local-observation fields. `nonce`, `fee`, the members of non-empty
+`lifecycleEvidence`, and their verification semantics are selected by the
+authenticated capability and execution/proof profile. The generic schema
+therefore does not hard-code a fee schedule or a synthetic proof witness.
+When present, `fee` and `replayEffects.feeCharged` use the canonical
+non-negative integer string grammar `0|[1-9][0-9]*`; `replayEffects` has exactly
+the two shown members, but their values remain profile policy.
+
+- (AW-39) Every attempt for one `workId` MUST carry byte-identical
+  `canonicalWorkBytes` and authorizations valid for that Work.
+- (AW-40) Each native envelope or transaction hash MUST identify a distinct
+  transport attempt without changing `workId`. Its authenticated lifecycle
+  evidence MUST bind the capability-selected proof profile and validator set,
+  not merely carry a signature by an otherwise valid network key.
+- (AW-41) A replacement attempt MAY be admitted only after authenticated
+  lifecycle evidence proves the superseded attempt cannot later execute.
+- (AW-42) Local-clock expiry, a transport timeout, or ordinary `not found` MUST
+  leave replacement authority `indeterminate`.
+- (AW-43) The authoritative ledger MUST select at most one winning included
+  attempt for a `workId`.
+- (AW-44) After a winner is selected, every late or competing attempt MUST be
+  fenced before any business effect.
+- (AW-45) Exact replay after selection MUST return or reconstruct the winner's
+  status and MUST NOT execute the Work again. Normal submission, replacement,
+  and exact replay are mutually exclusive attempt classes. The selected
+  `feeRule` applies to every class and every attempt, including non-winners; a
+  replay without an authenticated winner is invalid.
+
+The Work ledger relation is:
+
+```
+canonicalWorkBytes <-> workId -> transportAttempts[] -> winningAttempt?
+```
+
+Receipt order, authenticated lifecycle evidence, and the winner ledger are
+consensus facts. Client observation time MUST NOT select a winner.
+
+#### 5.2.6 Authenticated Work receipts and rollback
+
+```
+type AtomicWorkReceiptV1 = {
+  receiptVersion: "1"
+  executionProfile: string
+  profile: "dacs-purchase-v1" | "dacs-completion-v1"
+  networkId: string
+  workId: string
+  winningAttempt: {
+    attemptId: string
+    nativeTransactionRef: { kind: string; value: string }
+  }
+  blockRef: { id: string; height?: string; timestamp: number }
+  outcome: "committed" | "rolled-back"
+  failedOperationId?: string
+  operationResults: AtomicWorkOperationReceiptLeafV1[]
+  operationReceiptRoot: string
+  businessState: {
+    preRoot: string
+    postRoot: string
+    effectsRoot: string
+    evidence: { kind: string; value: string }
+  }
+  paymentSlot: {
+    key: {
+      networkId: string
+      railId: string
+      jobId: string
+      phaseIndex: number
+    }
+    before: Record<string, unknown>
+    after: Record<string, unknown>
+  }
+  slotStateEvidence: { kind: string; value: string }
+  envelopeEffects: { nonceConsumed: boolean; feeCharged: string }
+  receiptCommitment: string
+  finalityEvidence: { kind: string; value: string }
+}
+
+type AtomicWorkOperationReceiptLeafV1 = {
+  operationId: string
+  operationIndex: number
+  operationKind: AtomicWorkOperationKindV1
+  inputHash: string
+  status: "committed" | "rolled-back" | "not-executed"
+  outputHash?: string
+  storageOutput?: {
+    logicalAddress: string
+    nativeAddress: string
+    contentHash: string
+    writer: string
+    nonce?: string
+  }
+  errorCode?: string
+}
+```
+
+For every leaf, the portable input commitment is derived from the exact signed
+operation payload:
+
+```
+inputHash = lowerhex(SHA-256(UTF8(JCS(operation.payload))))
+```
+
+The authenticated execution profile MUST define the byte-exact derivation and
+verification procedure for each kind's optional `outputHash` and for
+`businessState.effectsRoot`; those values are not SDK annotations. A receipt
+verifier MUST recompute every `inputHash` from the canonical Work before
+accepting the operation root, and MUST verify profile-defined output/effect
+commitments under the selected proof profile.
+
+The consensus-bound receipt core is the complete receipt with
+`receiptCommitment`, `finalityEvidence`, the detachable
+`businessState.evidence`, `slotStateEvidence`, the post-transition
+`blockRef.id`, and, for a Purchase receipt only, the terminal
+`paymentSlot.after.receiptCommitment` or
+`paymentSlot.after.failureReceiptCommitment` back-reference omitted. A
+Completion receipt preserves the complete terminal Purchase slot state in both
+`before` and `after`, including the Purchase commitment back-reference; that
+prior value is not self-referential to the Completion receipt and remains in
+the Completion core. Every other slot member remains in the core. Its
+commitment is:
+
+```
+receiptCommitment = lowerhex(SHA-256(
+  UTF8("dacs-atomic-work-receipt:v1:") || UTF8(JCS(receiptCore))
+))
+```
+
+The detachable `finalityEvidence` authenticates that exact
+`receiptCommitment` together with the finalized `blockRef.id`; the detachable
+business-state evidence proves the core's business roots, and
+`slotStateEvidence` carries or resolves an authenticated slot-state proof for
+the exact key/before/after members (excluding only the circular
+Purchase terminal commitment back-reference already reconstructed above).
+The canonical commitment is then inserted at the top level and, for Purchase,
+into the applicable terminal slot back-reference. Completion inserts only its
+top-level commitment and MUST NOT replace the Purchase commitment copied in
+its unchanged slot state. The canonical content hash used to resolve the
+complete receipt envelope is the ordinary CORE §B.2
+`sha256(UTF8(JCS(workReceipt)))`, including both members. This separates the
+same-transition consensus commitment from the later-served proof envelope and
+avoids a circular proof preimage.
+
+- (AW-46) A receipt MUST bind the canonical Work, winning attempt, network,
+  finalized block, ordered operation results, business roots, slot transition,
+  and envelope effects. For Purchase, its `paymentSlot.key` MUST equal the
+  intent's structured `(networkId, railId, jobId, phaseIndex)` tuple. A
+  committed Purchase MUST prove a terminal `settled` slot; a rolled-back
+  Purchase MUST prove the same generation's terminal `rolled-back` recovery
+  metadata with its failure-receipt hash. For Completion, the key and unchanged
+  terminal `settled` state (`before == after`) MUST be copied from the
+  independently verified Purchase receipt; Completion's own `phaseIndex`
+  continues to identify its delivery phase and MUST NOT be substituted for the
+  Purchase payment phase index.
+- (AW-47) Receipt fields alone MUST NOT establish finality or execution.
+- (AW-48) `finalityEvidence` MUST be independently verifiable against an
+  authenticated validator set or trusted checkpoint and MUST authenticate the
+  exact `receiptCommitment`. `businessState.evidence` MUST independently prove
+  the reported business roots under the selected proof profile. The receipt's
+  evidence closure MUST additionally prove the exact slot key, prior state,
+  terminal state, generation, Work, and conflict digest from authenticated
+  consensus state; an authenticated finality proof over a receipt assertion is
+  not by itself a slot-state proof.
+- (AW-49) A receipt MUST be obtainable or reconstructible from finalized
+  consensus data without public Indexer hydration.
+- (AW-50) Business-state commit and `receiptCommitment` MUST occur in one
+  consensus transition. A verifier MUST recompute `receiptCommitment` from the
+  receipt core before verifying the detachable finality proof. It MUST NOT
+  include the transition's not-yet-determined block ID or detachable proof
+  bytes, or either self-referential Purchase terminal-slot commitment field,
+  in that commitment. For a Purchase receipt, the applicable terminal-slot
+  commitment field MUST equal the recomputed top-level value. For Completion,
+  the unchanged `before` and `after` terminal fields MUST instead retain the
+  independently verified Purchase receipt's commitment and are included in
+  the Completion core. Finality evidence binds the resulting block ID back to
+  the commitment, and each detached proof MUST bind the exact committed subject
+  it proves.
+- (AW-51) The receipt's operation array MUST reproduce the signed operation
+  order exactly. Its RFC 6962 tree MUST NOT duplicate or drop an odd leaf.
+
+Operation leaves and their root are computed as follows:
+
+```
+leafHash = SHA-256(
+  0x00 || UTF8("dacs-atomic-operation-receipt:v1:") || UTF8(JCS(leaf))
+)
+nodeHash = SHA-256(0x01 || leftRaw32 || rightRaw32)
+emptyRoot = SHA-256(emptyByteString)
+```
+
+For more than one leaf, the tree uses RFC 6962's recursive split at the largest
+power of two smaller than the leaf count.
+
+- (AW-52) A committed receipt MUST mark every operation `committed`.
+- (AW-53) A rolled-back receipt MUST mark executed critical operations
+  `rolled-back` and later operations `not-executed`.
+- (AW-54) A rolled-back receipt MUST prove equality of all profile-declared
+  critical business-state domains. The `paymentSlot` execution/recovery
+  metadata is an explicit, receipt-bound rollback exception: its terminal
+  `rolled-back` state records failure and fences the generation but is excluded
+  from the business roots and cannot itself transfer value or authorize
+  payment without DACS-4 AWS-11 and AWS-12.
+- (AW-55) A rolled-back receipt MUST prove unchanged value or non-membership
+  for every payment or artifact output the Work could have created.
+- (AW-56) Outer fee charging and nonce consumption MAY persist after business
+  rollback and MUST be reported separately.
+- (AW-57) Fee or nonce consumption MUST NOT authorize another payment.
+- (AW-58) An included rollback receipt proves an included failure only; it MUST
+  NOT prove that another attempt was never admitted or included.
+- (AW-59) Pre-admission rejection, drop, and expiry require authenticated
+  lifecycle or authoritative non-inclusion evidence under §5.1.
+- (AW-60) Missing proof material MUST produce `indeterminate`; contradicted
+  proof material MUST be rejected.
+
+Crash recovery follows the consensus boundary:
+
+- (AW-61) A crash before durable admission MUST be reconciled without inferring
+  absence.
+- (AW-62) A crash during overlay execution MUST leave no committed business
+  effect.
+- (AW-63) A crash after consensus commit MUST recover the same receipt and
+  winner by `workId`.
+- (AW-64) Receipt-service unavailability after commit MUST remain
+  `indeterminate` and MUST NOT authorize resubmission.
+
+#### 5.2.7 Projection to `AnchorReceipt`
+
+```
+type DemosWorkOperationRefV1 = {
+  kind: "demos-work-operation-v1"
+  networkId: string
+  workId: string
+  operationIndex: number
+  operationId: string
+  operationKind: AtomicWorkOperationKindV1
+}
+```
+
+Each committed `storage-program-put` result projects to a CORE §5.1
+`AnchorReceipt`. The projection uses the operation leaf and the verified outer
+receipt, not a client-generated receipt.
+
+- (AW-65) The projected receipt MUST copy `logicalAddress`, `nativeAddress`,
+  `contentHash`, `writer`, and nonce from the verified operation leaf.
+- (AW-66) The projected receipt MUST copy block, finality, network, and
+  lifecycle state from the verified Work receipt.
+- (AW-67) Its `transactionRef.kind` MUST be
+  `demos-work-operation-v1`.
+- (AW-68) Its `transactionRef.value` MUST be `<workId>/<operationId>` using the
+  canonical lowercase `workId` and the validated operation ID. The evidence
+  that resolves this value MUST carry the complete structured
+  `DemosWorkOperationRefV1`, including its network, operation index, and kind.
+- (AW-69) Its evidence MUST carry or resolve the Work receipt, operation leaf,
+  inclusion path, and finality proof.
+- (AW-70) A projected receipt MUST remain independently verifiable when the
+  public Indexer is unavailable or behind consensus. The consumer MUST also
+  verify the artifact-specific role or writer authority required by the
+  consuming rule; a valid receipt and matching hash alone do not grant control
+  of a logical address.
+
+One Work receipt may project multiple `AnchorReceipt`s. Every projection has a
+different operation reference and retains all SR2-4 through SR2-6 checks.
+
+#### 5.2.8 Limits and security boundary
+
+- (AW-71) A node MUST enforce the authenticated capability's canonical-byte,
+  operation-count, execution-time, Work-result proof-byte, and fee limits. At
+  pre-execution admission it MUST compute, from the selected proof profile and
+  the admitted Work, a deterministic fixed or worst-case encoded proof-byte
+  reservation. That reservation MUST be authenticated, MUST NOT come from the
+  caller, and MUST NOT exceed `maxProofBytes`; otherwise the node rejects before
+  executing or committing business effects. After consensus finalizes the Work
+  receipt, a whole-profile verifier MUST authenticate the actual execution-time
+  and complete Work-result proof-byte measurements for the same `workId`, proof
+  profile, and validator set, and MUST verify that the actual encoded size does
+  not exceed either the admitted reservation or `maxProofBytes`. The measured
+  preimage is the JCS object containing the Work-result `proofMaterial` and its
+  `proofReservationEvidence`. It excludes only the self-authenticating
+  `limitEvidence` envelope that signs that preimage's hash and byte count; the
+  selected proof profile MUST separately fix and bound that envelope's encoding.
+  The actual proof closure ends at the finalized Work receipt and includes every authority,
+  attempt, slot, receipt, retry, and prior-Work proof needed to accept it. An
+  actual post-finality overage is node or proof-profile nonconformance; it does
+  not retroactively roll back or invalidate already committed business state.
+  Later DACS-4 settlement evidence and its separate audit-publication receipt
+  are outside this Work-result closure and require their own post-commit bounds.
+- (AW-72) A client-side limit check MUST NOT substitute for node enforcement.
+- (AW-73) A client-generated receipt, status, slot label, or rollback summary
+  MUST NOT be treated as authoritative.
+- (AW-74) A proof-bound structured identity MUST be compared component-wise and
+  type-strictly; a concatenated display string MUST NOT control a safety
+  decision.
+- (AW-75) An implementation MUST preserve the last authenticated state when a
+  later observation is `indeterminate`.
+
+> **Note (non-normative).** The principal threats are cross-Work double
+> settlement, authorization replay, transport replacement races, partial
+> critical state, receipt substitution, false absence, and transport-sender
+> role confusion. The rules above keep every safety decision on authenticated
+> consensus or DACS signature evidence.
+
+#### 5.2.9 Security considerations
+
+Atomic batching concentrates several existing trust boundaries in one
+consensus transition. The principal attacks are two Works racing the same
+payment slot, authorization replay into another context, a late transport
+attempt executing after a winner, partial critical state surviving rollback,
+receipt or proof substitution, false absence authorizing a retry, and confusion
+between the outer sender and a DACS role. AW-14 through AW-77, DACS-4 AWS-1
+through AWS-29, and DACS-5 AWB-1 through AWB-10 address those attacks.
+
+The profile inherits the advertised substrate's consensus, validator-set,
+key-resolution, and data-availability assumptions. It adds no fair-exchange
+guarantee between Purchase and Completion, no authenticated-absence guarantee
+where the binding has none, and no reason to trust client or Indexer summaries.
+A Demos implementation may provide generic Atomic Work independently; it MUST
+NOT claim the DACS-specific binding until §A.6's runtime and proof contracts are
+pinned and independently demonstrated.
 
 ## A. Demos production mapping
 
@@ -258,6 +950,8 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (listing) | `sellerPrimaryClaim` (a ClaimReference) | `listingId`, `v{listingVersion}` |
 | `dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (revocation marker) | `sellerPrimaryClaim` | `listingId`, `v{listingVersion}` |
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
+| `dacs4:payment:{jobId}:{railId}:{phaseIndex}:atomic:{generation}:{atomicSettlementId}` (Atomic payment evidence, §9.7.3) | `railId` | `jobId`, `phaseIndex`, `atomic`, `generation`, `atomicSettlementId` |
+| `dacs4:delivery:{jobId}:{phaseIndex}:atomic:{atomicSettlementId}` (Atomic delivery evidence, §9.7.3) | none | `jobId`, `phaseIndex`, `atomic`, `atomicSettlementId` |
 | `dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}` (§9.9.1 APR-6) | none | `priorJobId`, `priorPhaseIndex`, `dispositionId` |
 | `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
@@ -373,7 +1067,9 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
+| Atomic Work operation authorization | "dacs-atomic-work-authorization:v1:" | §5.2 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
+| DACS-4 Atomic Work settlement evidence | "dacs-atomic-evidence:v1:" | §9.7.3 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |
@@ -398,13 +1094,27 @@ The v0.x registry of domain separators at this revision is closed:
 
 For composite-payload separators each appended value MUST be a fixed-length hex sha256 digest (or, for `session_key`, the fixed-length hex public key) so the concatenation is unambiguously parseable. This is the sanctioned exception to the single-`artifact_hash` shape; these separators are first-class registry entries, not `dacs-x-` extensions.
 
-**Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Three further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
+**Non-signature hash-domain tags.** The table above registers *signature* domain separators (SIG-1 scopes to signatures). Eight further `dacs-*:v1:` tags domain-separate normative hashes that are not signature payloads:
 
 - `dacs-sealed-bid:v1:` — the sealed-envelope commitment preimage `sha256("dacs-sealed-bid:v1:" || sha256(canonical_JCS(bid)) || salt)` (§8.4.3);
 - `dacs-sb3:v1:` — the EIP-3009 session-binding nonce preimage `sha256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))` (§9.5.8);
-- `dacs-ap2-idem:v1:` — the AP2 provider idempotency-key preimage `sha256(UTF8("dacs-ap2-idem:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))` (§9.5.6 AP2-6).
+- `dacs-ap2-idem:v1:` — the AP2 provider idempotency-key preimage `sha256(UTF8("dacs-ap2-idem:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))` (§9.5.6 AP2-6);
+- `"dacs-atomic-work:v1:"` — the immutable Atomic Work intent identifier (§5.2);
+- `"dacs-atomic-work-receipt:v1:"` — the Atomic Work same-transition receipt-core commitment (§5.2);
+- `"dacs-atomic-operation-receipt:v1:"` — the Atomic Work operation receipt-leaf hash (§5.2); and
+- `"dacs-atomic-payment-slot:v1:"` and `"dacs-atomic-settlement-id:v1:"` — the Atomic payment conflict and operation-level settlement identities (§9.5.10 and §9.7.3).
 
-All three follow the same domain-separation discipline, preventing cross-use of the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the "sign every artifact kind" conformance do not apply to them; they are the sanctioned non-signature hash-domain tags in v0.1.
+All eight follow the same domain-separation discipline, preventing cross-use of
+the resulting hashes. None is a signature `signed_bytes`, so SIG-1 and the
+"sign every artifact kind" conformance do not apply to them. The three Atomic
+Work identifier and receipt tags are introduced by the CORE v0.3 candidate;
+the two Atomic payment and settlement tags are introduced by the DACS-4 v0.7
+candidate; the AP2 idempotency tag is introduced by DACS-4 v0.6; and the
+sealed-bid and SB-3 tags remain owned by their cited DACS-3 and DACS-4 sections.
+Collectively these are the sanctioned non-signature hash-domain tags for the
+current candidate profile, not a claim that every tag existed in the frozen
+DACS v0.1 baseline. The `:v1:` suffix versions each wire-domain grammar
+independently of the owning standard version.
 
 **Signature-value wire encoding.** This rule covers every DACS-owned signature
 envelope whose cryptographic result is carried in a string field named `value`.

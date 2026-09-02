@@ -219,7 +219,6 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
             ("AttestationRef signer lacks scheme", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "orchestrator")}, "scheme:identifier"),
             ("AttestationRef signer scheme has uppercase", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "Cci:deadbeef")}, "DACS-1 §6.3.1"),
             ("AttestationRef signer scheme has plus", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"].__setitem__("signer", "cci+x:deadbeef")}, "DACS-1 §6.3.1"),
-            ("wire string is decomposed Unicode", {"mutate_resolved": lambda e: e["supersedesEvidenceRef"]["anchor"].__setitem__("locator", "e\u0301")}, "CF-1"),
         ]
         for field in ("deliverableContentHash", "deliverableAnchor", "attestationRef"):
             new_cases.extend([
@@ -260,6 +259,30 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
                 if which == I and "content hash" not in needle:
                     self.assertFalse(any("content hash" in e for e in errors), f"{name}: rejected by the supersession hash backstop, not the guard: {errors}")
                 self.assertTrue(any(needle in e for e in errors), f"{name}: rejected for a different reason: {errors}")
+
+    def test_nfd_and_nfc_values_hash_and_verify_identically(self):
+        gen, ver = self._load_pack_modules()
+        # Code points, not literals: an editor must not be able to NFC-fold this source (see tests/test_jcs.py).
+        nfd, nfc = "e" + chr(0x0301), chr(0x00E9)
+        self.assertNotEqual(nfd, nfc)
+        set_locator = lambda value: lambda evidence: evidence["supersedesEvidenceRef"]["anchor"].__setitem__("locator", value)
+        nfd_interim_path, nfd_resolved_path = self._pair(gen, mutate_resolved=set_locator(nfd))
+        nfc_interim_path, nfc_resolved_path = self._pair(gen, mutate_resolved=set_locator(nfc))
+
+        nfd_resolved = json.loads(nfd_resolved_path.read_text())["settlementEvidence"]
+        nfc_resolved = json.loads(nfc_resolved_path.read_text())["settlementEvidence"]
+        # The wire still carries the distinct spellings; only the canonical form normalises them.
+        self.assertEqual(nfd_resolved["supersedesEvidenceRef"]["anchor"]["locator"], nfd)
+        self.assertEqual(nfc_resolved["supersedesEvidenceRef"]["anchor"]["locator"], nfc)
+        self.assertEqual(ver.content_hash_hex(nfd_resolved), ver.content_hash_hex(nfc_resolved))
+        self.assertEqual(nfd_resolved["signature"], nfc_resolved["signature"])
+        self.assertEqual(ver.validate_pair(nfd_interim_path, nfd_resolved_path), [])
+        self.assertEqual(ver.validate_pair(nfc_interim_path, nfc_resolved_path), [])
+
+        self.assertNotEqual(
+            ver.content_hash_hex({nfd: "same value"}),
+            ver.content_hash_hex({nfc: "same value"}),
+        )
 
     def test_dacsx_correction_zombie_is_gone(self):
         self.assertFalse((ROOT / "conformance/fixtures/dacsx").exists())

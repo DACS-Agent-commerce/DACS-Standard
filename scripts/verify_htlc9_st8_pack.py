@@ -28,7 +28,6 @@ import hashlib
 import json
 import re
 import sys
-import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -179,19 +178,6 @@ def _walk_keys(obj: Any):
             yield from _walk_keys(v)
 
 
-def _non_nfc_string_paths(obj: Any, path: str = "settlementEvidence") -> list[str]:
-    paths: list[str] = []
-    if isinstance(obj, dict):
-        for key, value in obj.items():
-            paths.extend(_non_nfc_string_paths(value, f"{path}.{key}"))
-    elif isinstance(obj, list):
-        for index, value in enumerate(obj):
-            paths.extend(_non_nfc_string_paths(value, f"{path}[{index}]"))
-    elif isinstance(obj, str) and unicodedata.normalize("NFC", obj) != obj:
-        paths.append(path)
-    return paths
-
-
 def load_case(path: Path) -> tuple[dict | None, list[str]]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -205,8 +191,6 @@ def load_case(path: Path) -> tuple[dict | None, list[str]]:
     evidence = data.get("settlementEvidence")
     if not isinstance(evidence, dict):
         return None, errors + [fail(path, "settlementEvidence MUST be an object")]
-    for string_path in _non_nfc_string_paths(evidence):
-        errors.append(fail(path, f"CF-1: string value at {string_path} MUST already be NFC"))
     forbidden = FORBIDDEN_KEYS & set(_walk_keys(evidence))
     if forbidden:
         errors.append(fail(path, "ST-8 supersession MUST NOT carry amendment fields: " + ", ".join(sorted(forbidden))))

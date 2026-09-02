@@ -87,8 +87,15 @@ type ChannelMessageSignature = {
 `canonicalChannelMessageVersion: "1"` and the version-1 signature envelope
 above. `signature.signer` MUST canonically equal `sender` under CORE §B.1/CF-2,
 and the declared algorithm MUST match the authenticated primary key resolved
-for that claim. Unknown message versions, signature versions, or algorithms
-are malformed; an algorithm/key mismatch is a proven authentication failure.
+for that claim. Before cryptographic verification, the reader MUST require
+`sender` to occur in the fixed CH-1 member set and obtain the member's primary
+claim, key, and key type from the authenticated DACS-1/DACS-2 membership
+binding. It MUST NOT derive message authority solely from the self-declared
+`sender` or `signature.signer`, even when a claim spelling embeds key bytes. A
+valid signature by a non-member is `fail`; unavailable key resolution for an
+authenticated member is `indeterminate`. Unknown message versions, signature
+versions, or algorithms are malformed; an algorithm/key mismatch is a proven
+authentication failure.
 Transport-level routing and framing fields MAY exist outside the signed message
 but MUST NOT be inserted into, removed from, or mutate it in transit.
 

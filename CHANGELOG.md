@@ -29,7 +29,7 @@ The format used per release:
   `legacy-import` before parsing message-controlled bytes; structural dispatch
   then occurs before crypto and never retries a value decoder, domain, digest
   framing, or alternate arm.
-- **Executable migration boundary** — adds 42 generated current and mixed-wire
+- **Executable migration boundary** — adds 44 generated current and mixed-wire
   cases plus an in-repository oracle that also executes all 15 frozen legacy
   cases. Valid, tampered, cross-domain, and wrong-framing cases execute all
   three advertised algorithms against independently bound public-key fixtures.
@@ -38,6 +38,10 @@ The format used per release:
   exact legacy signature-byte retention. `@kynesyslabs/demosdk@4.0.16` is
   recorded only as historical-arm evidence; no current Demos SDK producer
   version is claimed.
+- **Authenticated channel membership** — the executable reader obtains each
+  sender's claim, key, and key type from the verifier-owned fixed CH-1 member
+  context. A correctly signed outsider and a member message signed by another
+  key both fail; a self-declared claim or embedded key is never admission.
 
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 

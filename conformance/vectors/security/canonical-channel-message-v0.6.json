@@ -2,6 +2,60 @@
   "set": "canonical-channel-message-v0.6",
   "spec": "DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6",
   "decisionModel": "§7.5.1 four-value result; trusted operation selection and structural dispatch precede cryptography",
+  "authenticatedMembers": [
+    {
+      "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+      "algorithm": "ed25519",
+      "authorityType": "primary-key",
+      "resolution": "resolved",
+      "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+      "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+    },
+    {
+      "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+      "algorithm": "ed25519",
+      "authorityType": "primary-key",
+      "resolution": "resolved",
+      "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+      "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+    },
+    {
+      "claim": "did:example:dacs-349-ecdsa",
+      "algorithm": "ecdsa-secp256k1",
+      "authorityType": "primary-key",
+      "resolution": "resolved",
+      "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+      "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+    },
+    {
+      "claim": "did:example:dacs-349-sr1-root",
+      "algorithm": "sr1-aggregate",
+      "authorityType": "sr1-root",
+      "resolution": "resolved",
+      "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+      "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+    },
+    {
+      "claim": "did:example:unresolved",
+      "algorithm": "ed25519",
+      "authorityType": "primary-key",
+      "resolution": "unavailable"
+    },
+    {
+      "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+      "algorithm": "ed25519",
+      "authorityType": "primary-key",
+      "resolution": "resolved",
+      "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+      "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+    },
+    {
+      "claim": "did:demos:placeholder",
+      "algorithm": "ed25519",
+      "authorityType": "primary-key",
+      "resolution": "unavailable"
+    }
+  ],
   "authenticatedKeyFixtures": [
     {
       "claim": "did:example:dacs-349-ecdsa",
@@ -24,8 +78,8 @@
     "status": "frozen read/import-only; new producers MUST NOT emit",
     "operation": "legacy-import"
   },
-  "count": 42,
-  "hash": "16665e581726d08dccf3b6d5bb91a1d36686ab1861fbdb7fceea117b7447b748",
+  "count": 44,
+  "hash": "04bed39ef0f13683a2b418d6e40056c42ae43833a7cc3cb5989269d96766019e",
   "vectors": [
     {
       "name": "canonical-valid-first",
@@ -56,6 +110,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -88,6 +196,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -120,6 +282,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -152,6 +368,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -184,6 +454,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -216,6 +540,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -247,6 +625,60 @@
         "lastSequence": 0,
         "priorChannelIds": [
           "channel-reused"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -279,6 +711,232 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
+        ]
+      }
+    },
+    {
+      "name": "canonical-outsider-valid-signature",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "a valid signature cannot admit a sender outside the authenticated fixed member set",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "cci:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:acb416dc21892b4025b5c8c153f97c3d7f2227d4c7adb1d1e4e624eb4b3ca949",
+          "algorithm": "ed25519",
+          "value": "ISgCxrhPEQgVQ0IixZTkq9e8rn-Lzm-JTpDKtIBWJ97uDS2wDhTL8Q68mwWIqrDGX29yXi9LE9DG7M-DFD8RAQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
+        ]
+      }
+    },
+    {
+      "name": "canonical-member-wrong-key",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "member equality cannot replace verification against the independently bound member key",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "g26iLA-HC4uX4PvdkzI6HidkNIrQ-bmCjfLr87dK9T3w68xiZqRtWLfNtSILaaTW47Ri82wwuXNbuZQjvhFADA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -311,6 +969,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -343,6 +1055,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -375,6 +1141,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -407,6 +1227,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -439,6 +1313,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -471,6 +1399,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -503,6 +1485,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -535,6 +1571,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -567,6 +1657,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -599,6 +1743,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -631,6 +1829,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -663,6 +1915,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -695,6 +2001,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -727,6 +2087,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -759,6 +2173,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -791,6 +2259,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -824,6 +2346,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -859,6 +2435,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -891,6 +2521,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -923,6 +2607,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -956,6 +2694,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -987,6 +2779,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1014,6 +2860,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1046,6 +2946,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1072,6 +3026,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1104,6 +3112,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1136,6 +3198,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1162,6 +3278,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1188,6 +3358,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1213,6 +3437,60 @@
         "priorChannelIds": [
           "chan-session-1",
           "chan-session-2"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       },
       "expectedSignatureBytesBase64Url": "I-_NFufHK6dZbp55IM9UADN5vcBE-9-9BaF7V12i7TmxSae5lgTMQUdqsU2IGnguBJbtb2Spio4inIB2DLFCBA"
@@ -1239,6 +3517,60 @@
         "priorChannelIds": [
           "chan-session-1",
           "chan-session-2"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1274,6 +3606,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1306,6 +3692,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     },
@@ -1338,6 +3778,60 @@
         "priorChannelIds": [
           "channel-100",
           "channel-200"
+        ],
+        "authenticatedMembers": [
+          {
+            "claim": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+          },
+          {
+            "claim": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+          },
+          {
+            "claim": "did:example:dacs-349-ecdsa",
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+          },
+          {
+            "claim": "did:example:dacs-349-sr1-root",
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+          },
+          {
+            "claim": "did:example:unresolved",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          },
+          {
+            "claim": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": "acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+          },
+          {
+            "claim": "did:demos:placeholder",
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable"
+          }
         ]
       }
     }

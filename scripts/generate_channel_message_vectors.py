@@ -69,6 +69,7 @@ def public_hex(key: Ed25519PrivateKey) -> str:
 
 ALICE = private_key("dacs-349-alice")
 BOB = private_key("dacs-349-bob")
+OUTSIDER = private_key("dacs-349-outsider")
 SR1_ROOT = private_key("dacs-349-sr1-root")
 ECDSA_PRIVATE_VALUE = (
     int.from_bytes(hashlib.sha256(b"dacs-349-ecdsa").digest(), "big")
@@ -77,8 +78,74 @@ ECDSA_PRIVATE_VALUE = (
 ECDSA_PRIVATE = ec.derive_private_key(ECDSA_PRIVATE_VALUE, ec.SECP256K1())
 ALICE_REF = f"cci:{public_hex(ALICE)}"
 BOB_REF = f"cci:{public_hex(BOB)}"
+OUTSIDER_REF = f"cci:{public_hex(OUTSIDER)}"
 ECDSA_REF = "did:example:dacs-349-ecdsa"
 SR1_REF = "did:example:dacs-349-sr1-root"
+UNRESOLVED_REF = "did:example:unresolved"
+LEGACY_MEMBER_REF = "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+LEGACY_UNRESOLVED_REF = "did:demos:placeholder"
+
+
+def authenticated_members() -> list[dict]:
+    """Verifier-owned CH-1 member/key bindings represented by the vector context."""
+
+    return [
+        {
+            "claim": ALICE_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": public_hex(ALICE),
+        },
+        {
+            "claim": BOB_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": public_hex(BOB),
+        },
+        {
+            "claim": ECDSA_REF,
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": ECDSA_PRIVATE.public_key().public_bytes(
+                serialization.Encoding.X962,
+                serialization.PublicFormat.CompressedPoint,
+            ).hex(),
+        },
+        {
+            "claim": SR1_REF,
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": public_hex(SR1_ROOT),
+        },
+        {
+            "claim": UNRESOLVED_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable",
+        },
+        {
+            "claim": LEGACY_MEMBER_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": LEGACY_MEMBER_REF.removeprefix("cci:"),
+        },
+        {
+            "claim": LEGACY_UNRESOLVED_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable",
+        },
+    ]
 
 
 def current_payload(unsigned: dict, domain: bytes, framing: str) -> bytes:
@@ -209,6 +276,7 @@ def context(**updates: object) -> dict:
         "sessionChannelId": "channel-349",
         "lastSequence": 0,
         "priorChannelIds": ["channel-100", "channel-200"],
+        "authenticatedMembers": authenticated_members(),
     }
     value.update(copy.deepcopy(updates))
     return value
@@ -216,13 +284,15 @@ def context(**updates: object) -> dict:
 
 def case(name: str, expected: str, message: dict, *, note: str,
          ctx: dict | None = None, operation: str = "current-read", **extra: object) -> dict:
+    selected_context = copy.deepcopy(ctx if ctx is not None else context())
+    selected_context.setdefault("authenticatedMembers", authenticated_members())
     value = {
         "name": name,
         "expected": expected,
         "operation": operation,
         "note": note,
         "message": copy.deepcopy(message),
-        "ctx": copy.deepcopy(ctx if ctx is not None else context()),
+        "ctx": selected_context,
     }
     value.update(copy.deepcopy(extra))
     return value
@@ -240,9 +310,21 @@ def build_vectors() -> list[dict]:
     tampered = copy.deepcopy(valid)
     tampered["body"]["price"] = "11"
 
-    unresolved_unsigned = unsigned_message(sender="did:example:unresolved")
+    unresolved_unsigned = unsigned_message(sender=UNRESOLVED_REF)
     unresolved = sign_current(
-        unresolved_unsigned, signer="did:example:unresolved"
+        unresolved_unsigned, signer=UNRESOLVED_REF
+    )
+
+    outsider_unsigned = unsigned_message(sequence=2, sender=OUTSIDER_REF)
+    outsider = sign_current(
+        outsider_unsigned,
+        key=OUTSIDER,
+        signer=OUTSIDER_REF,
+    )
+    member_wrong_key = sign_current(
+        unsigned_message(sequence=2),
+        key=BOB,
+        signer=ALICE_REF,
     )
 
     padded = copy.deepcopy(valid)
@@ -350,6 +432,12 @@ def build_vectors() -> list[dict]:
              note="CH-6 refuses a reused session channel identifier"),
         case("canonical-unresolved-sender", "indeterminate", unresolved,
              note="well-formed but unavailable signer authority is indeterminate"),
+        case("canonical-outsider-valid-signature", "fail", outsider,
+             ctx=context(lastSequence=1),
+             note="a valid signature cannot admit a sender outside the authenticated fixed member set"),
+        case("canonical-member-wrong-key", "fail", member_wrong_key,
+             ctx=context(lastSequence=1),
+             note="member equality cannot replace verification against the independently bound member key"),
         case("canonical-tampered-body", "fail", tampered,
              note="message-body mutation breaks the signature"),
         case("canonical-padded-base64url", "error", padded,
@@ -439,6 +527,7 @@ def render() -> str:
         "set": "canonical-channel-message-v0.6",
         "spec": "DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6",
         "decisionModel": "§7.5.1 four-value result; trusted operation selection and structural dispatch precede cryptography",
+        "authenticatedMembers": authenticated_members(),
         "authenticatedKeyFixtures": [
             {
                 "claim": ECDSA_REF,

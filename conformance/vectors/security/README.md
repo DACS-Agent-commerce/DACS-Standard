@@ -38,7 +38,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
-| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 60 | `error` / `fail` / `indeterminate` / `pass` |
+| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
@@ -706,22 +706,25 @@ promotion remain pending.
 
 ### `domain-claim-gcr-v0.4.json` — DACS-1 §6.3.1 DCR-1..DCR-8 / DACS-2 §7.3.10 DGCR-1..DGCR-6
 
-Sixty deterministic cases cover canonical `domain:` production,
+Sixty-three deterministic cases cover canonical `domain:` production,
 signature-preserving historical `web2:domain:` reads, semantic deduplication,
 presentation-bound control, and authenticated finalized Demos GCR verification.
-All bundles are deterministically signed with genuine Ed25519 operations; one
-negative case deliberately corrupts its resulting signature. Every registration
+All bundles are deterministically signed with genuine Ed25519 operations; two
+negative cases deliberately corrupt their resulting signatures. Every registration
 proof carries a valid deterministic Ed25519 signature.
 
-`conformanceOperation: "produce-current"` is a harness instruction selecting
-the producer/serializer conformance boundary; it is not part of the signed
-artifact and is never a runtime reader input. Reader mode applies permanent
-legacy compatibility from the verified `bundleVersion: "1"` bytes and alias
-spelling alone. Exact `domain:` spelling is scheme-selected without any
-profile sidecar, current production rejects both single and dual legacy-alias
-emission, and mutable deployment state cannot reclassify retained bytes. The
-invalid-signature mixed-case legacy row requires an empty semantic claim set,
-so folding unverified bytes is observable and fails the executable evaluator.
+Cases carrying `producerInput` require an adapter to invoke its public current
+DACS-1 domain producer/serializer and compare every emitted ClaimReference plus
+the complete unsigned artifact with the signed `artifact.unsigned`. Replaying
+the supplied artifact through a reader is not a producer result; an adapter
+without the producer boundary records `status: "abstain"` under `CROSS-RUN.md`.
+Reader-only cases apply permanent legacy compatibility from the verified
+`bundleVersion: "1"` bytes and alias spelling alone. Exact `domain:` spelling
+is scheme-selected without any profile sidecar, current production rejects
+single and dual legacy-alias emission in claims and `presentedBy`, and mutable
+deployment state cannot reclassify retained bytes. Paired signed and
+signature-corrupted malformed-host rows require `error` only after successful
+signature verification and `fail` before normalization otherwise.
 
 Regenerate and execute from the repository root:
 

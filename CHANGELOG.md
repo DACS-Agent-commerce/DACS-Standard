@@ -149,8 +149,8 @@ The format used per release:
   authority remains `indeterminate`; and inclusion time, not query time,
   governs the effective window. The persistent record cannot satisfy a fresh
   `domain-tls-control` requirement and controls a domain only when the bundle
-  presentation verifies under the same GCR-bound account. Carries 60
-  deterministic Ed25519 vectors (59 valid and one deliberately corrupted)
+  presentation verifies under the same GCR-bound account. Carries 63
+  deterministic Ed25519 vectors (61 valid and two deliberately corrupted)
   and changes the example producer output to
   canonical `domain:`. The steward's signed registry publication remains a
   separate post-review operation.
@@ -173,11 +173,12 @@ The format used per release:
   spelling now follows the `domain:` scheme without a profile sidecar. Because
   frozen `IdentityBundle.bundleVersion: "1"` has no authenticated minor-version
   discriminator, current alias emission is tested at the producer/serializer
-  boundary while readers permanently accept signature-valid legacy aliases;
-  mutable deployment state cannot reclassify retained bytes. Adds single- and
-  dual-alias current-production rejections plus an invalid-signature mixed-case
-  legacy row whose empty semantic result makes verify-before-fold ordering
-  evaluator-falsifiable.
+  boundary from structured `producerInput` while readers permanently accept
+  signature-valid legacy aliases; adapters without that producer boundary must
+  abstain rather than replay the reader fixture. Mutable deployment state cannot
+  reclassify retained bytes. Adds single- and dual-alias current-production
+  rejections, `presentedBy` coverage, and paired signed/signature-corrupted
+  malformed-host rows that make verify-before-fold ordering evaluator-falsifiable.
 
 ### Added — DACS-4 v0.5
 

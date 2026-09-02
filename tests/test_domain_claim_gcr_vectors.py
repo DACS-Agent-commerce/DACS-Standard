@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import ipaddress
 import json
@@ -54,6 +55,60 @@ def semantic_ref(ref):
     else:
         raise ValueError("not a domain reference")
     return "domain:" + canonical_host(host)
+
+
+def serialize_current_domain_bundle(producer_input):
+    """Reference DCR-1/DCR-3 producer boundary for producerInput cases."""
+    if not isinstance(producer_input, dict):
+        raise ValueError("producer input must be an object")
+    if producer_input.get("producerVersion") != "dacs1-domain-v1":
+        raise NotImplementedError("unsupported producer version")
+    required = {
+        "producerVersion", "bundleVersion", "subject", "claims",
+        "presentedByClaimIndex", "presentedAt",
+    }
+    if set(producer_input) != required:
+        raise ValueError("producer input has an unexpected shape")
+    if producer_input["bundleVersion"] != "1":
+        raise ValueError("unsupported bundle version")
+    source_claims = producer_input["claims"]
+    if not isinstance(source_claims, list) or not source_claims:
+        raise ValueError("producer claims must be a non-empty array")
+    presented_index = producer_input["presentedByClaimIndex"]
+    if (not isinstance(presented_index, int) or isinstance(presented_index, bool)
+            or presented_index < 0 or presented_index >= len(source_claims)):
+        raise ValueError("presentedByClaimIndex is outside claims")
+
+    emitted_by_ref = {}
+    source_refs = []
+    for source in source_claims:
+        if not isinstance(source, dict) or set(source) != {
+                "nativeContext", "hostname", "metadata"}:
+            raise ValueError("producer claim input has an unexpected shape")
+        if source["nativeContext"] != "web2.domain":
+            raise NotImplementedError("unsupported native domain context")
+        ref = "domain:" + canonical_host(source["hostname"])
+        metadata = source["metadata"]
+        if not isinstance(metadata, dict) or set(metadata) != {"demosGcrDomain"}:
+            raise ValueError("producer claim metadata has an unexpected shape")
+        native = metadata["demosGcrDomain"]
+        if not isinstance(native, dict) or native.get("context") != "web2.domain":
+            raise ValueError("producer metadata is not a Demos domain record")
+        if native.get("hostname") != ref[len("domain:"):]:
+            raise ValueError("producer metadata hostname is not canonical")
+        emitted = {"ref": ref, "metadata": copy.deepcopy(metadata)}
+        if ref in emitted_by_ref and emitted_by_ref[ref] != emitted:
+            raise ValueError("duplicate semantic domain has conflicting metadata")
+        emitted_by_ref.setdefault(ref, emitted)
+        source_refs.append(ref)
+
+    return {
+        "bundleVersion": "1",
+        "subject": producer_input["subject"],
+        "claims": list(emitted_by_ref.values()),
+        "presentedBy": source_refs[presented_index],
+        "presentedAt": producer_input["presentedAt"],
+    }
 
 
 def verify_artifact(artifact):
@@ -113,7 +168,7 @@ def presentation_controls_account(vector, artifact, account):
     )
 
 
-def evaluate(vector):
+def evaluate(vector, producer=serialize_current_domain_bundle):
     artifact = vector["artifact"]
     if not verify_artifact(artifact):
         return "fail", []
@@ -132,17 +187,24 @@ def evaluate(vector):
     except ValueError:
         return "error", []
 
+    producer_input = vector.get("producerInput")
+    if producer_input is not None:
+        if producer is None:
+            return "abstain", []
+        try:
+            expected_unsigned = producer(producer_input)
+        except NotImplementedError:
+            return "abstain", []
+        except (KeyError, TypeError, ValueError):
+            return "error", []
+        if artifact["unsigned"] != expected_unsigned:
+            return "fail", semantic
+
     # DCR-1 exact spelling is selected by the ``domain:`` scheme. DCR-3 is a
-    # producer-output rule selected by the conformance harness, never by an
-    # artifact field or mutable runtime profile. Reader mode permanently
-    # accepts a verified bundleVersion:1 legacy alias under DCR-4.
+    # producer-output rule executed above through the actual producer input,
+    # never by an artifact field or mutable runtime profile. Reader mode
+    # permanently accepts a verified bundleVersion:1 legacy alias under DCR-4.
     if any(ref.startswith("domain:") and ref != semantic_ref(ref) for ref in refs):
-        return "fail", semantic
-    has_alias = any(ref.startswith("web2:domain:") for ref in refs)
-    operation = vector.get("conformanceOperation", "read")
-    if operation not in {"read", "produce-current"}:
-        return "error", semantic
-    if operation == "produce-current" and has_alias:
         return "fail", semantic
 
     # DCR-5 identity-set cases deliberately stop before GCR verification: the
@@ -276,6 +338,7 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
                 "current-producer-uppercase-host-rejected",
                 "reader-uppercase-domain-rejected-without-profile",
                 "reader-u-label-domain-rejected-without-profile",
+                "current-producer-presented-by-legacy-alias-rejected",
             },
             "DCR-2": {"all-numeric-non-ip-hostname"},
             "DCR-4": {
@@ -283,6 +346,8 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
                 "legacy-mixed-case-invalid-signature-rejected-before-fold",
                 "legacy-alias-unknown-bundle-version-rejected",
                 "legacy-alias-missing-bundle-version-rejected",
+                "legacy-malformed-host-errors-after-signature-verification",
+                "legacy-malformed-host-invalid-signature-fails-before-normalization",
             },
             "DCR-5": {
                 "distinct-hosts-remain-distinct",
@@ -335,6 +400,7 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
         for vector in cases.values():
             self.assertNotIn("producerDacs1Version", vector["artifact"]["unsigned"])
             self.assertNotIn("authenticatedProducerProfile", vector)
+            self.assertNotIn("conformanceOperation", vector)
         self.assertEqual("pass", evaluate(cases["canonical-production"])[0])
         self.assertEqual("pass", evaluate(cases["historical-alias-pair-deduplicates"])[0])
         self.assertEqual("fail", evaluate(cases["current-producer-dual-alias-rejected"])[0])
@@ -352,13 +418,53 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
             historical["authenticatedProducerProfile"] = {"dacs1Version": version}
             self.assertEqual("pass", evaluate(historical)[0])
 
-    def test_invalid_legacy_signature_stops_before_semantic_fold(self):
+    def test_producer_cases_execute_serializer_or_abstain(self):
+        cases = {v["name"]: v for v in self.doc["vectors"]}
+        canonical = cases["canonical-production"]
+        self.assertEqual(
+            canonical["artifact"]["unsigned"],
+            serialize_current_domain_bundle(canonical["producerInput"]),
+        )
+        self.assertEqual(("abstain", []), evaluate(canonical, producer=None))
+
+        alias = cases["current-producer-single-legacy-alias-rejected"]
+        self.assertNotEqual(
+            alias["artifact"]["unsigned"],
+            serialize_current_domain_bundle(alias["producerInput"]),
+        )
+        self.assertEqual("fail", evaluate(alias)[0])
+        reader_only = copy.deepcopy(alias)
+        reader_only.pop("producerInput")
+        self.assertEqual("pass", evaluate(reader_only)[0])
+
+    def test_current_producer_checks_presented_by_claim_reference(self):
         vector = next(
             v for v in self.doc["vectors"]
-            if v["name"] == "legacy-mixed-case-invalid-signature-rejected-before-fold"
+            if v["name"] == "current-producer-presented-by-legacy-alias-rejected"
         )
-        self.assertFalse(verify_artifact(vector["artifact"]))
-        self.assertEqual(("fail", []), evaluate(vector))
+        expected = serialize_current_domain_bundle(vector["producerInput"])
+        self.assertEqual(expected["claims"], vector["artifact"]["unsigned"]["claims"])
+        self.assertEqual("domain:agent.example", expected["presentedBy"])
+        self.assertEqual(
+            "web2:domain:agent.example",
+            vector["artifact"]["unsigned"]["presentedBy"],
+        )
+        self.assertTrue(verify_artifact(vector["artifact"]))
+        self.assertEqual("fail", evaluate(vector)[0])
+
+    def test_invalid_legacy_signature_stops_before_semantic_fold(self):
+        cases = {v["name"]: v for v in self.doc["vectors"]}
+        signed = cases["legacy-malformed-host-errors-after-signature-verification"]
+        invalid = cases[
+            "legacy-malformed-host-invalid-signature-fails-before-normalization"
+        ]
+        self.assertEqual(signed["artifact"]["unsigned"], invalid["artifact"]["unsigned"])
+        self.assertEqual(signed["artifact"]["canonicalHex"], invalid["artifact"]["canonicalHex"])
+        self.assertEqual(signed["artifact"]["contentHash"], invalid["artifact"]["contentHash"])
+        self.assertTrue(verify_artifact(signed["artifact"]))
+        self.assertEqual(("error", []), evaluate(signed))
+        self.assertFalse(verify_artifact(invalid["artifact"]))
+        self.assertEqual(("fail", []), evaluate(invalid))
 
     def test_dcr1_and_dcr2_hostname_boundaries(self):
         cases = {v["name"]: v for v in self.doc["vectors"]}

@@ -59,6 +59,7 @@ DOMAIN_RE = re.compile(r'"(dacs[-a-z0-9]*:v1:)"')
 # kind's "hash-excluded field(s)" from the CORE §B.2 per-artifact template.
 HASH_EXCLUDED = {
     "Listing": {"signature"},                              # §B.2
+    "VerifyResult": {"signature"},                         # §B.2 / §7.5
     "CompositeVerificationRecord": {"signature"},          # §B.2 / §7.7
     "AgreementDocument": {"signatures"},                   # DACS-3 §8.5 (L463: "omitting the `signatures` field")
     "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
@@ -70,6 +71,7 @@ HASH_EXCLUDED = {
 # separator is registry-validated, never trusted as supplied by the vector.
 KIND_SEPARATOR = {
     "Listing": "dacs-listing:v1:",
+    "VerifyResult": "dacs-verifyresult:v1:",
     "CompositeVerificationRecord": "dacs-composite:v1:",
     "AgreementDocument": "dacs-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",

@@ -25,6 +25,14 @@ The format used per release:
   transaction co-signing remains an optional optimization and cannot replace
   applicable artifact signatures or role-specific publication.
 
+### Fixed — lifecycle walkthrough current-wire compatibility
+
+- The executable lifecycle walkthrough now emits a canonical ULID `jobId`,
+  omits the non-schema `phaseIndex` from signed `SettlementEvidence`, recovers
+  the payment phase tuple from its canonical PC-2/SB-1 logical address, and
+  emits failure evidence with `outcome: "failure"` and a non-empty `reason`
+  (#357). The signed bundle phase summary remains the delivery-phase binding.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

@@ -54,7 +54,7 @@ STAGE_LINKS = {
     },
     "DACS-4": {
         "operation": "Settle",
-        "rules": ["PC-1", "PC-2", "PC-3", "PC-6", "FP-1", "FP-2", "FP-3", "FP-4", "PIPE-1", "PIPE-3", "SB-1", "SIG-6"],
+        "rules": ["PC-1", "PC-2", "PC-3", "PC-6", "FP-1", "FP-2", "FP-3", "FP-4", "PIPE-1", "PIPE-3", "SIG-6"],
         "vectorIds": ["settlement-payment-pass", "settlement-delivery-pass"],
     },
     "DACS-5": {
@@ -112,7 +112,7 @@ def canonical_json(value: Any) -> bytes:
 
 
 def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
-    """Recover the PC-2/SB-1 tuple from a canonical payment-evidence address."""
+    """Recover the PC-2 tuple from a canonical payment-evidence address."""
 
     if not isinstance(logical_address, str):
         raise ValueError("payment evidence logical address must be a string")
@@ -1066,7 +1066,17 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     if len(payment_entries) != 1 or len(delivery_entries) != 1:
         raise ValueError("settlement evidence is not bound to exactly one pipeline phase")
     payment_entry, delivery_entry = payment_entries[0], delivery_entries[0]
-    payment_address = payment_anchor_tuple(context["paymentTrace"]["logicalAddress"])
+    payment_trace = context["paymentTrace"]
+    payment_binding = payment_trace["publishedBinding"]
+    if payment_binding["logicalAddress"] != payment_trace["logicalAddress"]:
+        raise ValueError("payment trace logical address diverges from its published binding")
+    if payment_binding["nativeAddress"] != context["paymentRef"]["anchor"]["locator"]:
+        raise ValueError("payment reference locator diverges from its published binding")
+    if payment_binding["contentSha256"] != payment_trace["anchoredBytesSha256"]:
+        raise ValueError("payment binding content hash diverges from the anchored bytes")
+    if payment_trace["artifactHash"] != context["paymentRef"]["contentHash"]:
+        raise ValueError("payment reference content hash diverges from the signed artifact")
+    payment_address = payment_anchor_tuple(payment_binding["logicalAddress"])
     expected_payment_address = (
         JOB_ID,
         agreement["terms"]["rail"]["railId"],

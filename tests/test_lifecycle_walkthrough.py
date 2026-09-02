@@ -1,3 +1,4 @@
+import copy
 import importlib.util
 import json
 import re
@@ -154,6 +155,11 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             (agreement["artifact"]["jobId"], self.module.RAIL_ID, 3, False),
         )
         self.assertNotIn("settlementFinality", delivery["artifact"])
+        self.assertNotIn("SB-1", self.trace["stages"][3]["rules"])
+        self.assertEqual(
+            payment["artifact"]["paymentTxRefs"],
+            [{"kind": "evm", "chainId": 8453, "txHash": "0x" + "26" * 32}],
+        )
 
         bundle = buyer_bundle["artifact"]
         self.assertEqual(
@@ -191,6 +197,18 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             },
             {"buyer", "seller", "orchestrator"},
         )
+
+    def test_happy_path_authenticates_the_published_payment_binding(self):
+        stages, context = self.module.build_happy_path(self.module.FakeSubstrate())
+        candidate = copy.deepcopy(context)
+        candidate["paymentTrace"]["publishedBinding"]["logicalAddress"] = (
+            f"dacs4:payment:{self.module.JOB_ID}:"
+            "evm-erc20%3A8453%3AUSDC:4"
+        )
+        with self.assertRaisesRegex(
+            ValueError, "logical address diverges from its published binding"
+        ):
+            self.module.validate_happy_path(stages, candidate)
 
     def test_all_five_negative_examples_reject_or_classify(self):
         self.assertEqual(

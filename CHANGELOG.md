@@ -29,9 +29,12 @@ The format used per release:
 
 - The executable lifecycle walkthrough now emits a canonical ULID `jobId`,
   omits the non-schema `phaseIndex` from signed `SettlementEvidence`, recovers
-  the payment phase tuple from its canonical PC-2/SB-1 logical address, and
-  emits failure evidence with `outcome: "failure"` and a non-empty `reason`
+  the payment phase tuple from its canonical PC-2 logical address, authenticates
+  that tuple against the published logical/native/content binding and reference,
+  and emits failure evidence with `outcome: "failure"` and a non-empty `reason`
   (#357). The signed bundle phase summary remains the delivery-phase binding.
+  The walkthrough's pinned DACS-4 v0.3 profile intentionally keeps the legacy
+  `evm` reference and does not advertise the v0.6+ SB-1 event-identity rule.
 
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 

@@ -999,6 +999,7 @@ def _validate_vector(case):
     composite_by_tuple = {}
     composite_by_ref = {}
     decisions = {}
+    committed_result_refs = set()
     for item in case["composites"]:
         artifact = item["artifact"]
         require(artifact.get("provenancedRecordVersion") == "1", "composite discriminator")
@@ -1024,8 +1025,24 @@ def _validate_vector(case):
         claims = authorization["evaluatedIdentity"].get("claims", [])
         matches = [claim for claim in claims if claim.get("ref", "").startswith("key:")]
         require(len(matches) == 1 and "verifiedBy" in matches[0], "required claim")
-        require(len(artifact["freshness"]) == 1, "freshness cardinality")
-        evidence_ref = artifact["freshness"][0]
+        freshness = artifact.get("freshness")
+        deal_specific = artifact.get("dealSpecific")
+        require(
+            isinstance(freshness, list) and isinstance(deal_specific, list),
+            "committed result collections",
+        )
+        committed_refs = freshness + deal_specific
+        committed_keys = [result_ref_key(ref) for ref in committed_refs]
+        require(
+            len(committed_keys) == len(set(committed_keys)),
+            "duplicate committed VerifyResult ref",
+        )
+        require(
+            len(committed_keys) == 1,
+            "fixture committed result cardinality",
+        )
+        committed_result_refs.update(committed_keys)
+        evidence_ref = committed_refs[0]
         require(result_ref_key(evidence_ref) == result_ref_key(matches[0]["verifiedBy"]), "result replay/body binding")
         result = result_by_ref.get(result_ref_key(evidence_ref))
         require(result is not None, "result resolution")
@@ -1042,6 +1059,10 @@ def _validate_vector(case):
         composite_by_ref[ref_key(item["ref"])] = item
         decisions[key] = result["decision"]
 
+    require(
+        committed_result_refs == set(result_by_ref),
+        "committed VerifyResult union",
+    )
     require(len(composite_by_tuple) == 2 * len(entries), "composite cardinality")
 
     expected_records = []
@@ -1200,7 +1221,10 @@ def _validate_vector(case):
             return "indeterminate"
         require(audit.get("representationDisposition") == "projected-representable", "representable projection")
         require(audit.get("reputationDisposition") == "include", "representable reputation projection")
-        expected_fault = "seller" if "publisher" in failing_roles else "buyer"
+        if case["mode"] == "procurement":
+            expected_fault = "buyer" if "publisher" in failing_roles else "seller"
+        else:
+            expected_fault = "seller" if "publisher" in failing_roles else "buyer"
         require(audit.get("faultedParty") == expected_fault, "faultedParty mapping")
         require(audit["phaseSummary"].get("errorClass") == "counterparty", "errorClass mapping")
 

@@ -899,9 +899,10 @@ def make_case(
             if item["artifact"]["overallDecision"] == "fail"
         ]
         if len(set(failing_roles)) == 1:
-            mapped = role_publisher = (
-                "seller" if failing_roles[0] == "publisher" else "buyer"
-            )
+            if mode == "procurement":
+                mapped = "buyer" if failing_roles[0] == "publisher" else "seller"
+            else:
+                mapped = "seller" if failing_roles[0] == "publisher" else "buyer"
             case["auditProjection"]["faultedParty"] = mapped
 
     return case
@@ -1061,6 +1062,13 @@ def sync_composite_surface_refs(case: dict) -> None:
     sync_vet_prior_output(case)
 
 
+def resign_composite_and_relink(case: dict, item: dict) -> None:
+    signer = item["artifact"]["signature"]["signer"]
+    seed_name = next(name for name in SEEDS if claim_for(name) == signer)
+    resign_envelope(item, seed_name, COMPOSITE_DOMAIN)
+    sync_composite_surface_refs(case)
+
+
 def sync_vet_prior_output(case: dict) -> None:
     negotiate = case.get("negotiateInput")
     if negotiate is not None:
@@ -1154,10 +1162,87 @@ def build_vectors() -> list[dict]:
     )
     add(
         "procurement-two-bidder-completed",
-        "PVPC-1; PVPC-6..PVPC-8; DACS-3 §8.5.2 check 10; ST-11",
+        "PVPC-1; PVPC-6..PVPC-8; DACS-3 §8.5.2 check 11; ST-11",
         "Two all-pass supplier contexts produce four distinct records, an exact eligible set, winner/loser mappings, and retained publisher-for-loser provenance.",
         make_case("procurement"),
         "pass",
+    )
+
+    case = make_case()
+    composite = case["composites"][0]
+    committed_ref = composite["artifact"]["freshness"].pop()
+    composite["artifact"]["dealSpecific"] = [committed_ref]
+    resign_composite_and_relink(case, composite)
+    add(
+        "deal-specific-only-result-union-resolves",
+        "CRQ-1; PVC-4",
+        "The complete committed result union includes dealSpecific when freshness is empty.",
+        case,
+        "pass",
+    )
+
+    case = make_case()
+    composite = case["composites"][0]
+    composite["artifact"]["dealSpecific"] = copy.deepcopy(composite["artifact"]["freshness"])
+    resign_composite_and_relink(case, composite)
+    add(
+        "duplicate-result-across-freshness-and-deal-specific",
+        "CRQ-1; PVC-4",
+        "One VerifyResultRef cannot occur twice in the ordered committed union.",
+        case,
+        "fail",
+    )
+
+    case = make_case()
+    composite = case["composites"][0]
+    unresolved_ref = copy.deepcopy(composite["artifact"]["freshness"].pop())
+    unresolved_ref["contentHash"] = "00" * 32
+    composite["artifact"]["dealSpecific"] = [unresolved_ref]
+    resign_composite_and_relink(case, composite)
+    add(
+        "unresolved-deal-specific-result",
+        "CRQ-1; PVC-4",
+        "Every dealSpecific reference must independently resolve to its committed result.",
+        case,
+        "fail",
+    )
+
+    case = make_case()
+    composite = case["composites"][0]
+    composite["artifact"]["freshness"] = []
+    composite["artifact"]["dealSpecific"] = [result_ref(case["verificationResults"][0])]
+    resign_composite_and_relink(case, composite)
+    add(
+        "substituted-deal-specific-result",
+        "CRQ-1; PVC-4",
+        "A resolved result for another evaluated party cannot replace the committed result.",
+        case,
+        "fail",
+    )
+
+    case = make_case()
+    composite = case["composites"][0]
+    composite["artifact"]["freshness"] = []
+    composite["artifact"]["dealSpecific"] = []
+    resign_composite_and_relink(case, composite)
+    add(
+        "omitted-committed-result",
+        "CRQ-1; PVC-4",
+        "The oracle refuses a record that omits its required result from both collections.",
+        case,
+        "fail",
+    )
+
+    case = make_case()
+    extra_result, extra_evidence = make_verify_result(case["jobId"], "attacker", "pass")
+    case["verificationResults"].append(extra_result)
+    case["methodEvidence"].append(extra_evidence)
+    add(
+        "uncommitted-extra-result-projection",
+        "CRQ-1; PVC-4",
+        "A resolved VerifyResult outside every signed freshness/dealSpecific union is not an input.",
+        case,
+        "fail",
     )
     case = make_case("procurement")
     case["phaseInput"]["invocations"].reverse()
@@ -1181,6 +1266,20 @@ def build_vectors() -> list[dict]:
         "PVPC-10; DACS-5 §10.4.3",
         "A sole counterparty-evaluation fail maps uniquely to the bilateral buyer fault.",
         make_case(candidate_decisions=("fail",), outcome="failed-counterparty"),
+        "pass",
+    )
+
+    case = make_case(
+        "procurement",
+        candidate_decisions=("fail",),
+        outcome="failed-counterparty",
+    )
+    case["negotiateInput"] = None
+    add(
+        "single-supplier-procurement-fail-maps-seller",
+        "PVPC-6; PVPC-10; DACS-5 §10.4.3",
+        "With one procurement supplier, its conclusive counterparty-role failure maps to the seller.",
+        case,
         "pass",
     )
 
@@ -1546,21 +1645,21 @@ def build_vectors() -> list[dict]:
     case["agreementProjection"]["parties"] = [
         party for party in case["agreementProjection"]["parties"] if party["primaryClaim"] != winner
     ]
-    add("unvetted-winning-bidder", "PVPC-7; DACS-3 check 10", "The agreement cannot omit its winner's exact counterparty record.", case, "fail")
+    add("unvetted-winning-bidder", "PVPC-7; DACS-3 check 11", "The agreement cannot omit its winner's exact counterparty record.", case, "fail")
 
     case = make_case("procurement")
     loser = case["vetContextDelta"]["eligibleCounterparties"][1]
     for party in case["agreementProjection"]["parties"]:
         if party["primaryClaim"] == loser:
             party["vetRecordRef"]["contentHash"] = "00" * 32
-    add("unvetted-losing-bidder", "PVPC-7; DACS-3 check 10", "Every all-pass losing candidate needs its own exact record.", case, "fail")
+    add("unvetted-losing-bidder", "PVPC-7; DACS-3 check 11", "Every all-pass losing candidate needs its own exact record.", case, "fail")
 
     case = make_case("procurement")
     loser = case["vetContextDelta"]["eligibleCounterparties"][1]
     case["agreementProjection"]["parties"] = [
         party for party in case["agreementProjection"]["parties"] if party["primaryClaim"] != loser
     ]
-    add("all-pass-loser-omitted-from-agreement", "DACS-3 check 10; ST-11", "Agreement candidate contexts must equal the eligible set in both directions.", case, "fail")
+    add("all-pass-loser-omitted-from-agreement", "DACS-3 check 11; ST-11", "Agreement candidate contexts must equal the eligible set in both directions.", case, "fail")
 
     case = make_case("procurement")
     winner = case["agreementProjection"]["winnerContext"]
@@ -1568,7 +1667,7 @@ def build_vectors() -> list[dict]:
     for party in case["agreementProjection"]["parties"]:
         if party["primaryClaim"] == case["publisher"]["presentedBy"]:
             party["vetRecordRef"] = copy.deepcopy(composite_for(case, loser, "publisher")["ref"])
-    add("publisher-ref-bound-to-loser-context", "PVPC-7; DACS-3 check 10", "The publisher's singular AgreementParty ref must use the winner context.", case, "fail")
+    add("publisher-ref-bound-to-loser-context", "PVPC-7; DACS-3 check 11", "The publisher's singular AgreementParty ref must use the winner context.", case, "fail")
 
     case = make_case("procurement")
     for party in case["agreementProjection"]["parties"]:
@@ -1576,7 +1675,7 @@ def build_vectors() -> list[dict]:
             party["role"] = "seller"
         elif party["role"] == "seller":
             party["role"] = "buyer"
-    add("procurement-agreement-role-inversion", "DACS-3 §8.5.2 check 10", "Publisher and winning supplier cannot use demand-mode seller/buyer roles.", case, "fail")
+    add("procurement-agreement-role-inversion", "DACS-3 §8.5.2 check 11", "Publisher and winning supplier cannot use demand-mode seller/buyer roles.", case, "fail")
 
     case = make_case("procurement", candidate_decisions=("pass", "fail"))
     failed_context = case["candidates"][1]["presentedBy"]
@@ -1853,7 +1952,7 @@ def build_vectors() -> list[dict]:
     case["agreementProjection"]["parties"][0]["bundleHash"] = "00" * 32
     add(
         "agreement-party-bundle-hash-mismatch",
-        "DACS-3 §8.5.2 check 10",
+        "DACS-3 §8.5.2 check 11",
         "Every projected AgreementParty hash must bind the exact authenticated publisher or counterparty bundle.",
         case,
         "fail",
@@ -1867,8 +1966,8 @@ def build_document() -> dict:
     vectors = compact_vectors(expanded_vectors)
     return {
         "set": "vet-provenance-v0.6",
-        "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3 provenanced ingress/check 10; DACS-5 ST-11/vetRecords projection",
-        "scope": "Signed Vet provenance, fanout admission, agreement binding, and audit projection; assumes baseline DACS-1 Listing/PhaseStep schema validation and is not a complete outer AttestationBundle fixture",
+        "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3 provenanced ingress/check 11; DACS-5 ST-11/vetRecords projection",
+        "scope": "Signed Vet provenance, bilateral and two-bidder procurement admission, agreement binding, and audit projection; excludes sealed-demand and the PVPC-6 scoped malformed-counterparty terminal-error carve-out; assumes baseline DACS-1 Listing/PhaseStep schema validation and is not a complete outer AttestationBundle fixture",
         "provenance": "Deterministic in-repo generator; public Ed25519 test seeds; RFC 8785 JCS hashes; fixture strings are ASCII",
         "representation": {
             "kind": "two-literal-bases-with-rfc6902-subset-patches",

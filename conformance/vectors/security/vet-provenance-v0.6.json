@@ -1,7 +1,7 @@
 {
   "set": "vet-provenance-v0.6",
-  "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3 provenanced ingress/check 10; DACS-5 ST-11/vetRecords projection",
-  "scope": "Signed Vet provenance, fanout admission, agreement binding, and audit projection; assumes baseline DACS-1 Listing/PhaseStep schema validation and is not a complete outer AttestationBundle fixture",
+  "spec": "DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3 provenanced ingress/check 11; DACS-5 ST-11/vetRecords projection",
+  "scope": "Signed Vet provenance, bilateral and two-bidder procurement admission, agreement binding, and audit projection; excludes sealed-demand and the PVPC-6 scoped malformed-counterparty terminal-error carve-out; assumes baseline DACS-1 Listing/PhaseStep schema validation and is not a complete outer AttestationBundle fixture",
   "provenance": "Deterministic in-repo generator; public Ed25519 test seeds; RFC 8785 JCS hashes; fixture strings are ASCII",
   "representation": {
     "kind": "two-literal-bases-with-rfc6902-subset-patches",
@@ -51,9 +51,9 @@
     "key:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5": "332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5",
     "key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58": "e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58"
   },
-  "count": 64,
-  "hash": "4377e779dfea1b0367d4c288a3150c108520ec4f3eefff49cef7a03866cbbde6",
-  "expandedHash": "634aacc8df1df0d1c2b8e68e5e44793822c53343f4e4e97aa45532a239fc3cb9",
+  "count": 71,
+  "hash": "be0b120084b4b22cbe552ca4473f4de6adac464543f1d336f7f38d2bfdd89e1e",
+  "expandedHash": "6b17d55c2cddfcf7e6d3a78f522070152a243957cdeb55a022ea609e1706aedc",
   "vectors": [
     {
       "name": "ordinary-bilateral-third-party-verifiers",
@@ -1150,7 +1150,7 @@
     },
     {
       "name": "procurement-two-bidder-completed",
-      "rule": "PVPC-1; PVPC-6..PVPC-8; DACS-3 §8.5.2 check 10; ST-11",
+      "rule": "PVPC-1; PVPC-6..PVPC-8; DACS-3 §8.5.2 check 11; ST-11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "input": {
         "gate": "finalized-audit-projection",
@@ -3239,6 +3239,669 @@
       "note": "Two all-pass supplier contexts produce four distinct records, an exact eligible set, winner/loser mappings, and retained publisher-for-loser provenance."
     },
     {
+      "name": "deal-specific-only-result-union-resolves",
+      "rule": "CRQ-1; PVC-4",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "ordinary-bilateral-third-party-verifiers",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/agreementProjection/parties/1/vetRecordRef/contentHash",
+          "value": "a8cfc0289934528c0a2f416ceb588d2b5d0c2ed14ef9aa308b884372225441d6"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/1/contentHash",
+          "value": "a8cfc0289934528c0a2f416ceb588d2b5d0c2ed14ef9aa308b884372225441d6"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/dealSpecific",
+          "value": [
+            {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-faf67a99ddd51d35765d61476146e0439e6f2f21"
+              },
+              "contentHash": "df56a5265a3501f7f5282294658bf1cb4fd476d2fb30b7855ff0a40c588c20f5",
+              "recipeVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/freshness",
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/signature/value",
+          "value": "FfXz9qI46Nr3I8K-zQFXmKNDDjs0CI7Ub8CIMVfNmHbgn2BzTpOI384RRN7IJEpdoo_-We_KIEm0zXEdBmnmAQ"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/contentHash",
+          "value": "a8cfc0289934528c0a2f416ceb588d2b5d0c2ed14ef9aa308b884372225441d6"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/evidence/value",
+          "value": "csY90Eqgi6beX_54bwQVC9NcpmIf6-_LQjqNQT-HbqOwQ_l6bPiUwuYmMRQXayeG2Yn05WtAmcKA3eLG8lMVCg"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/transactionRef/value",
+          "value": "641902b80e693c3ce251de9c2078ea2688b762cdd533df85b66a5b3f1c5bc946"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/ref/contentHash",
+          "value": "a8cfc0289934528c0a2f416ceb588d2b5d0c2ed14ef9aa308b884372225441d6"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/compositeRecord/contentHash",
+          "value": "a8cfc0289934528c0a2f416ceb588d2b5d0c2ed14ef9aa308b884372225441d6"
+        }
+      ],
+      "expandedInputHash": "1acea0f1a47bba445b5735cf26d94b37444d8c55a2062282fafa56fc7d90f80c",
+      "expected": "pass",
+      "note": "The complete committed result union includes dealSpecific when freshness is empty."
+    },
+    {
+      "name": "duplicate-result-across-freshness-and-deal-specific",
+      "rule": "CRQ-1; PVC-4",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "ordinary-bilateral-third-party-verifiers",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/agreementProjection/parties/1/vetRecordRef/contentHash",
+          "value": "f3c5e27caa613930de0dc68967c8bd02cdc4eba170363f9f21e335e86bc4ab1a"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/1/contentHash",
+          "value": "f3c5e27caa613930de0dc68967c8bd02cdc4eba170363f9f21e335e86bc4ab1a"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/dealSpecific",
+          "value": [
+            {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-faf67a99ddd51d35765d61476146e0439e6f2f21"
+              },
+              "contentHash": "df56a5265a3501f7f5282294658bf1cb4fd476d2fb30b7855ff0a40c588c20f5",
+              "recipeVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/signature/value",
+          "value": "K2CCmT4-Al6h3S8M3aSYxFY7O9A8nYL1hogk_vnYDJHv1f29HBRDzvs8V65BK6D1EfHc28BnJPrzEiAn8wSNBg"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/contentHash",
+          "value": "f3c5e27caa613930de0dc68967c8bd02cdc4eba170363f9f21e335e86bc4ab1a"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/evidence/value",
+          "value": "O7t8rDGLzl_2_3nAhj1tOvxwCYO8dmTahC76VGKK7u_p-qJd_K5Jid-azo7tC8CaUGa6Sx6CTuuQOs0xhog-BA"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/transactionRef/value",
+          "value": "c10bd722a61e3f25500e828f00cced377c6d1f5b95a46100ddddab81f76e5321"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/ref/contentHash",
+          "value": "f3c5e27caa613930de0dc68967c8bd02cdc4eba170363f9f21e335e86bc4ab1a"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/compositeRecord/contentHash",
+          "value": "f3c5e27caa613930de0dc68967c8bd02cdc4eba170363f9f21e335e86bc4ab1a"
+        }
+      ],
+      "expandedInputHash": "9c54bf3131b3143de578dfec5319cfdb1ed23778a4e9e079c662094770437567",
+      "expected": "fail",
+      "note": "One VerifyResultRef cannot occur twice in the ordered committed union."
+    },
+    {
+      "name": "unresolved-deal-specific-result",
+      "rule": "CRQ-1; PVC-4",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "ordinary-bilateral-third-party-verifiers",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/agreementProjection/parties/1/vetRecordRef/contentHash",
+          "value": "41b00c98da752221be333deab2d2b9cf5164efe2e44fbdc16921cfcdb39df839"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/1/contentHash",
+          "value": "41b00c98da752221be333deab2d2b9cf5164efe2e44fbdc16921cfcdb39df839"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/dealSpecific",
+          "value": [
+            {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-faf67a99ddd51d35765d61476146e0439e6f2f21"
+              },
+              "contentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+              "recipeVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/freshness",
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/signature/value",
+          "value": "EsOdWKCSFDHCQjqiCXHnLvPxn5WLpjjFZF7LEHzZVmk0qKehWFPECyoEuZLCaVuOd48TbqR9K9TnC1Nk0kp-CQ"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/contentHash",
+          "value": "41b00c98da752221be333deab2d2b9cf5164efe2e44fbdc16921cfcdb39df839"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/evidence/value",
+          "value": "KrvuGU3u6EF4uWy4bgvykAHy5UTjRb97gKCFtu32pQx7UccAy2oFOD0JZwDqRCXlEvQNoGxEVjNKCqfhW1ErCg"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/transactionRef/value",
+          "value": "446713af5c663d790aaca6fb4a87aec15eb1bf16893a97783f0a33887a99dcd5"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/ref/contentHash",
+          "value": "41b00c98da752221be333deab2d2b9cf5164efe2e44fbdc16921cfcdb39df839"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/compositeRecord/contentHash",
+          "value": "41b00c98da752221be333deab2d2b9cf5164efe2e44fbdc16921cfcdb39df839"
+        }
+      ],
+      "expandedInputHash": "fd932f36866434e11f490083b83d1b8462afc6c8748cd9a0e8b6123b39a94c50",
+      "expected": "fail",
+      "note": "Every dealSpecific reference must independently resolve to its committed result."
+    },
+    {
+      "name": "substituted-deal-specific-result",
+      "rule": "CRQ-1; PVC-4",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "ordinary-bilateral-third-party-verifiers",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/agreementProjection/parties/1/vetRecordRef/contentHash",
+          "value": "dab9b388b7cd3fb8ef135e1a8545e2bc0f3ad6368aac72716dfbb808103509c9"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/1/contentHash",
+          "value": "dab9b388b7cd3fb8ef135e1a8545e2bc0f3ad6368aac72716dfbb808103509c9"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/dealSpecific",
+          "value": [
+            {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-57fe749e132f329a6510c2e0f39b1c21bb5d4317"
+              },
+              "contentHash": "ccdf4e6178fba0b2a2a6f0661490cf63843c56aa2e6c48c5f7fdb8aec6341185",
+              "recipeVersion": 1
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/freshness",
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/signature/value",
+          "value": "umUOVMz7IYTApUjF3Be713FFZp03487OGxYXYrEll3kiDCvSOEq2MqoMd_2mdAfXMiAkaFNBPE_5KQBUEEvuCw"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/contentHash",
+          "value": "dab9b388b7cd3fb8ef135e1a8545e2bc0f3ad6368aac72716dfbb808103509c9"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/evidence/value",
+          "value": "XhZ9xZ7XJ7r8fCX5l09IJut8qiupN0TQN_CY6wky216sBny5l_69JqXQwecYTB0YKi69YO68tXgAjZ4JO2MMAA"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/transactionRef/value",
+          "value": "13d9be325e2e4af996bf375e4b33e48a8c6d64007c08cbc73949c5cd4e24086b"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/ref/contentHash",
+          "value": "dab9b388b7cd3fb8ef135e1a8545e2bc0f3ad6368aac72716dfbb808103509c9"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/compositeRecord/contentHash",
+          "value": "dab9b388b7cd3fb8ef135e1a8545e2bc0f3ad6368aac72716dfbb808103509c9"
+        }
+      ],
+      "expandedInputHash": "cb0360ac1a360fb1de573d4c97dc3edd000622e29754c8020a14aa33fc09fcf5",
+      "expected": "fail",
+      "note": "A resolved result for another evaluated party cannot replace the committed result."
+    },
+    {
+      "name": "omitted-committed-result",
+      "rule": "CRQ-1; PVC-4",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "ordinary-bilateral-third-party-verifiers",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/agreementProjection/parties/1/vetRecordRef/contentHash",
+          "value": "4b2b3e2b715ae8eb45aeb365d53edf2035f3667921bc385299c87a04c8710c10"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/1/contentHash",
+          "value": "4b2b3e2b715ae8eb45aeb365d53edf2035f3667921bc385299c87a04c8710c10"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/freshness",
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/signature/value",
+          "value": "d9gWH5mBLfWWeN9k5FKdXDB8mXq-UOmjU42cTOP-O9hsTVOPQvoRY0Edl_PzC3_K02b26pkdu-aBAUpqgExfAw"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/contentHash",
+          "value": "4b2b3e2b715ae8eb45aeb365d53edf2035f3667921bc385299c87a04c8710c10"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/evidence/value",
+          "value": "kzlaXOQ1NYnhPOXJMvYBkclCJuU6fOfTnsoZ16mntEKceASH4lFzdkDyTw5fre09p7PXVE-j6hyZxYwiAH0ZBA"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/transactionRef/value",
+          "value": "4df178dea4eddc785e17876998509697d89ad815f9682e15e5c265f0de743880"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/ref/contentHash",
+          "value": "4b2b3e2b715ae8eb45aeb365d53edf2035f3667921bc385299c87a04c8710c10"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/compositeRecord/contentHash",
+          "value": "4b2b3e2b715ae8eb45aeb365d53edf2035f3667921bc385299c87a04c8710c10"
+        }
+      ],
+      "expandedInputHash": "99b884e7d91e64a2ce5965c7208414e190581617cbd3ddea97dace78bdce41da",
+      "expected": "fail",
+      "note": "The oracle refuses a record that omits its required result from both collections."
+    },
+    {
+      "name": "uncommitted-extra-result-projection",
+      "rule": "CRQ-1; PVC-4",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "ordinary-bilateral-third-party-verifiers",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/methodEvidence",
+          "value": [
+            {
+              "artifact": {
+                "kind": "self-signed-assertion",
+                "identifier": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+                "assertion": "dacs-self-signed-claim:v1:01K2VPA0000000000000000101:key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+                "signature": "W0S4nkrLI6NXHsoRaXo0RXYo0OehnarwOuefvoBwToi66pdlkgweuGRI1eYsFjk-LYohxy4xp52hTklKDEfkBw"
+              },
+              "ref": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-9958b5d9feb15fe9e4211ef565ef7990b808da6c"
+                },
+                "contentHash": "aeec1a33ee66ff3d0560dfbd6ec7d2b92c0c08d650a230263eef9d2980011998",
+                "signer": "key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "fixture-sr2",
+                "finalityProfile": "fixture-immediate-finality",
+                "logicalAddress": "fixture:self-signed-evidence:01K2VPA0000000000000000101:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+                "nativeAddress": "stor-9958b5d9feb15fe9e4211ef565ef7990b808da6c",
+                "contentHash": "aeec1a33ee66ff3d0560dfbd6ec7d2b92c0c08d650a230263eef9d2980011998",
+                "transactionRef": {
+                  "kind": "fixture-tx",
+                  "value": "00dc9d3b84da8865aac8d079d68b4df78f853dc4acd9336bc30880cad5d6dea6"
+                },
+                "writer": "key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+                "nonce": "0",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1786723200500,
+                "blockRef": {
+                  "id": "fixture-block-100",
+                  "height": "100",
+                  "timestamp": 1786723200400
+                },
+                "evidence": {
+                  "kind": "fixture-ed25519-receipt/key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+                  "value": "_23QHdapfiPqGTr2lyUCH-cYGTdKNYKtTosRpvqvIiUxVcv0vTTwrcpGGr9KjUy6rcQENqFmXrMKwjLZaJwkDQ"
+                }
+              }
+            },
+            {
+              "artifact": {
+                "kind": "self-signed-assertion",
+                "identifier": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "assertion": "dacs-self-signed-claim:v1:01K2VPA0000000000000000101:key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "signature": "MpFxIx9slrk92lj0S57361NcFk1SRHmSsXputciuTQz2lM1QSpNROzm2WdksOnLkjKpKFnQTy2eY527qrV7MDg"
+              },
+              "ref": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-27e762ada7f4453b7472f6a54321e15f97370dae"
+                },
+                "contentHash": "70e9a24a483a4df7512fa7b6e517569d56f07128c2f6f011798126aea0e1ae94",
+                "signer": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "fixture-sr2",
+                "finalityProfile": "fixture-immediate-finality",
+                "logicalAddress": "fixture:self-signed-evidence:01K2VPA0000000000000000101:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "nativeAddress": "stor-27e762ada7f4453b7472f6a54321e15f97370dae",
+                "contentHash": "70e9a24a483a4df7512fa7b6e517569d56f07128c2f6f011798126aea0e1ae94",
+                "transactionRef": {
+                  "kind": "fixture-tx",
+                  "value": "ff03c0f7f49a98a9e5454dcb6b8ecd2bb1cd36c1e4375a5f5048e98efc2e6dc5"
+                },
+                "writer": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "nonce": "0",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1786723200500,
+                "blockRef": {
+                  "id": "fixture-block-100",
+                  "height": "100",
+                  "timestamp": 1786723200400
+                },
+                "evidence": {
+                  "kind": "fixture-ed25519-receipt/key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+                  "value": "-xLjVvwHHk03TXkvx5nZYdGp2chraT33ShDbBPggM1syPPOb7H4cafL-JqOZ64T-Hp7HiyxD2S_TULZSbmArDw"
+                }
+              }
+            },
+            {
+              "artifact": {
+                "kind": "self-signed-assertion",
+                "identifier": "332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5",
+                "assertion": "dacs-self-signed-claim:v1:01K2VPA0000000000000000101:key:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5",
+                "signature": "D3sIgkbtf_ik9BJm74MqinD2CzDZI9095v8NdI6uC1J3hPCPfm-W6WLNWeE9cUtbh0mPNHkPEQtPCTtI9X6xDg"
+              },
+              "ref": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-1d40caffd4bfa8bdc3aad5fe65f11527ecf2c724"
+                },
+                "contentHash": "66ea61c1f14891b53327985cdabc3191b7d084c9ee742754a431d30e2de2c4ba",
+                "signer": "key:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5"
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "fixture-sr2",
+                "finalityProfile": "fixture-immediate-finality",
+                "logicalAddress": "fixture:self-signed-evidence:01K2VPA0000000000000000101:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5",
+                "nativeAddress": "stor-1d40caffd4bfa8bdc3aad5fe65f11527ecf2c724",
+                "contentHash": "66ea61c1f14891b53327985cdabc3191b7d084c9ee742754a431d30e2de2c4ba",
+                "transactionRef": {
+                  "kind": "fixture-tx",
+                  "value": "3183f290aa79d57c50c9e6851572c03abe70c72fb1c7cd8ea5847312f5039eff"
+                },
+                "writer": "key:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5",
+                "nonce": "0",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1786723200500,
+                "blockRef": {
+                  "id": "fixture-block-100",
+                  "height": "100",
+                  "timestamp": 1786723200400
+                },
+                "evidence": {
+                  "kind": "fixture-ed25519-receipt/key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+                  "value": "KaFIV46qDKZ71mtyPNyIdGaaxaShh8qIG4WTp3psLULLZCBcrIQk_dDeXDaeKJsB1j5nY_jRze8Z4ILNy04gAg"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults",
+          "value": [
+            {
+              "artifact": {
+                "resultVersion": "1",
+                "scheme": "key",
+                "identifier": "d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737",
+                "recipeVersion": 1,
+                "method": "self-signed",
+                "decision": "pass",
+                "reason": "deterministic fixture pass",
+                "attestation": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-9958b5d9feb15fe9e4211ef565ef7990b808da6c"
+                  },
+                  "contentHash": "aeec1a33ee66ff3d0560dfbd6ec7d2b92c0c08d650a230263eef9d2980011998",
+                  "signer": "key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+                },
+                "fetchedAt": 1786723200000,
+                "verifiedAt": 1786723200001,
+                "validUntil": 1786726800000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+                  "value": "Dd8MNY7szcR_ihKnYaGm2dqdYSXq_LRWK1dkZa7E1Dsc-ufEh5dl4wxQLBWC4y8GKGBqrFD8-8eJnHHVrykNCg"
+                }
+              },
+              "ref": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-57fe749e132f329a6510c2e0f39b1c21bb5d4317"
+                },
+                "contentHash": "ccdf4e6178fba0b2a2a6f0661490cf63843c56aa2e6c48c5f7fdb8aec6341185",
+                "signer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "fixture-sr2",
+                "finalityProfile": "fixture-immediate-finality",
+                "logicalAddress": "dacs2:01K2VPA0000000000000000101:key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737:v1",
+                "nativeAddress": "stor-57fe749e132f329a6510c2e0f39b1c21bb5d4317",
+                "contentHash": "ccdf4e6178fba0b2a2a6f0661490cf63843c56aa2e6c48c5f7fdb8aec6341185",
+                "transactionRef": {
+                  "kind": "fixture-tx",
+                  "value": "8e784deea9698d21fd63832466243e1c3ce25d8770c4ff085e05b2b577fefa43"
+                },
+                "writer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+                "nonce": "0",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1786723200500,
+                "blockRef": {
+                  "id": "fixture-block-100",
+                  "height": "100",
+                  "timestamp": 1786723200400
+                },
+                "evidence": {
+                  "kind": "fixture-ed25519-receipt/key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+                  "value": "QZss9RFpByz1TW50brEBKy5ZiAlHt2DuPMM0TsND5Fx7Sq6V9ge4c9a3mKo-JgRG8IRMJ0JGHzOUW2kPTRqlDw"
+                }
+              }
+            },
+            {
+              "artifact": {
+                "resultVersion": "1",
+                "scheme": "key",
+                "identifier": "a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0",
+                "recipeVersion": 1,
+                "method": "self-signed",
+                "decision": "pass",
+                "reason": "deterministic fixture pass",
+                "attestation": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-27e762ada7f4453b7472f6a54321e15f97370dae"
+                  },
+                  "contentHash": "70e9a24a483a4df7512fa7b6e517569d56f07128c2f6f011798126aea0e1ae94",
+                  "signer": "key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+                },
+                "fetchedAt": 1786723200000,
+                "verifiedAt": 1786723200001,
+                "validUntil": 1786726800000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+                  "value": "S2veU5hLrtzity-ah0YySSDLH1AKElYvC-BHx0lMvGRYFwf0gTWS3DSNvxdJlExpflT-CvG0U0JaJgemV-3XCw"
+                }
+              },
+              "ref": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-faf67a99ddd51d35765d61476146e0439e6f2f21"
+                },
+                "contentHash": "df56a5265a3501f7f5282294658bf1cb4fd476d2fb30b7855ff0a40c588c20f5",
+                "signer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "fixture-sr2",
+                "finalityProfile": "fixture-immediate-finality",
+                "logicalAddress": "dacs2:01K2VPA0000000000000000101:key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0:v1",
+                "nativeAddress": "stor-faf67a99ddd51d35765d61476146e0439e6f2f21",
+                "contentHash": "df56a5265a3501f7f5282294658bf1cb4fd476d2fb30b7855ff0a40c588c20f5",
+                "transactionRef": {
+                  "kind": "fixture-tx",
+                  "value": "47e144b4c6a96833ae8645929f7b475966ba714f14101b5b5b25cbb007674a8b"
+                },
+                "writer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+                "nonce": "0",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1786723200500,
+                "blockRef": {
+                  "id": "fixture-block-100",
+                  "height": "100",
+                  "timestamp": 1786723200400
+                },
+                "evidence": {
+                  "kind": "fixture-ed25519-receipt/key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+                  "value": "3zJr5rVQjZ_5kkh_fp9jO8V_Oqi6wvd4v_Z5t4eqOe5cZa9I8817aeGsS3Hvv3IQrCyaoJD1Hebc-oZyYmHkAw"
+                }
+              }
+            },
+            {
+              "artifact": {
+                "resultVersion": "1",
+                "scheme": "key",
+                "identifier": "332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5",
+                "recipeVersion": 1,
+                "method": "self-signed",
+                "decision": "pass",
+                "reason": "deterministic fixture pass",
+                "attestation": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "stor-1d40caffd4bfa8bdc3aad5fe65f11527ecf2c724"
+                  },
+                  "contentHash": "66ea61c1f14891b53327985cdabc3191b7d084c9ee742754a431d30e2de2c4ba",
+                  "signer": "key:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5"
+                },
+                "fetchedAt": 1786723200000,
+                "verifiedAt": 1786723200001,
+                "validUntil": 1786726800000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+                  "value": "4c4U5pm1EMUuZeAxS7zRe0L3riaNEz3rk4WITLJGTZ4VFt9OJW5xrwvDtsWMcebRbsRt9HxtAvyjHiwcGHueDQ"
+                }
+              },
+              "ref": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "stor-09c759331418d78b78cd9b923af4145815c6450b"
+                },
+                "contentHash": "e7fb1473d47188290bde626f9eb3b5b8fd6e83cf730b25558a2c8ee9b5062c33",
+                "signer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "fixture-sr2",
+                "finalityProfile": "fixture-immediate-finality",
+                "logicalAddress": "dacs2:01K2VPA0000000000000000101:key:332ebe8d27cb7323b3a401c1c13b5dd64bccc0e10ecda1c2b5d11a03779a85e5:v1",
+                "nativeAddress": "stor-09c759331418d78b78cd9b923af4145815c6450b",
+                "contentHash": "e7fb1473d47188290bde626f9eb3b5b8fd6e83cf730b25558a2c8ee9b5062c33",
+                "transactionRef": {
+                  "kind": "fixture-tx",
+                  "value": "3757f91375535c932d24e6253f88195b0a8592fe6614fbab38ab96057e36777d"
+                },
+                "writer": "key:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+                "nonce": "0",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1786723200500,
+                "blockRef": {
+                  "id": "fixture-block-100",
+                  "height": "100",
+                  "timestamp": 1786723200400
+                },
+                "evidence": {
+                  "kind": "fixture-ed25519-receipt/key:e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58",
+                  "value": "H5r_-UiQ7ewluabPFig-guXnwLyfQ1P6qd6pt8ocDobPC5HGRCcbWHJcXxjotSVEHz64T7QQIWufXLOrQIS0Bw"
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "expandedInputHash": "222b1586a0ce56841ddf85f61b8b0f3d02e3eb012c454ecb30c39340705f93ef",
+      "expected": "fail",
+      "note": "A resolved VerifyResult outside every signed freshness/dealSpecific union is not an input."
+    },
+    {
       "name": "input-array-order-is-nonauthoritative",
       "rule": "PVPC-1; PVPC-4; DACS-3 provenanced ingress",
       "operation": "validate-provenanced-vet-chain-and-admission",
@@ -4584,6 +5247,881 @@
       "expandedInputHash": "4a4ec4f8e4b7024ebdc4872d3a60e8c8bc4a6f00370c6e92de9e479226b17ea4",
       "expected": "pass",
       "note": "A sole counterparty-evaluation fail maps uniquely to the bilateral buyer fault."
+    },
+    {
+      "name": "single-supplier-procurement-fail-maps-seller",
+      "rule": "PVPC-6; PVPC-10; DACS-5 §10.4.3",
+      "operation": "validate-provenanced-vet-chain-and-admission",
+      "base": "ordinary-bilateral-third-party-verifiers",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/agreementProjection",
+          "value": null
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/faultedParty",
+          "value": "seller"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/outcome",
+          "value": "failed-counterparty"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/phaseSummary/errorClass",
+          "value": "counterparty"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/phaseSummary/outcome",
+          "value": "fail"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/0/anchor/locator",
+          "value": "stor-811bd14221ce90fab10748cbb3e80daf48406f21"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/0/contentHash",
+          "value": "f5842999fc92d0576af178f17587ef4a46050c9e471e1149da1167b4ae073c4c"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/1/anchor/locator",
+          "value": "stor-5cbce60bc303166696131c1f7d9316ced027b9b4"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/1/contentHash",
+          "value": "3044377b99694e61fdb534c057b226a16dc64ca047d1765be6982c2d0361819e"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/2/anchor/locator",
+          "value": "stor-50032ede4963921d0d6c59d0bc007dec5af7ab8a"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/2/contentHash",
+          "value": "5f312f88ec0e3a1bb25ecb8b7c90eecb5eae8138fc27c42e6e4b439e64a7e9bc"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/3/anchor/locator",
+          "value": "stor-7ead5bc7e49cf28a711f754e7c68c66fe955fe8d"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/vetRecords/3/contentHash",
+          "value": "e16293cb54c6f534a2fd03494b3e76a3cb6dcdfd86ff0343f824f467ad3996b4"
+        },
+        {
+          "op": "replace",
+          "path": "/auditProjection/winnerMappingPresent",
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/authorizerIdentity/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-0c7980b151829c5d59bf57fabe518a962aa23496"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/authorizerIdentity/claims/0/verifiedBy/contentHash",
+          "value": "23f35b98394b6101f593247de457849c270dbe8628a18700f8bfd483708cf5a0"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/authorizerIdentity/presentation/signatures/0/signature",
+          "value": "diprlcZaIFiR_O3CxTvanwyxqmOHoixyQnZIBmYLfsulMikxu7eAr3YE7h8BRMFrojTdRHmGdXRnJOCOd37iDg"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/counterpartySetHash",
+          "value": "012759c6f4d085ff55197edb271796dcd253d1d147cc594c89645dc5a05bb618"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/evaluatedBundleHash",
+          "value": "d16108d4f823e91bd16059194355eca80e5d8615645d02ef4094dd72df6c70c9"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/evaluatedIdentity/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-f121714350d32a0c9465801ab5c2bf091349edf2"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/evaluatedIdentity/claims/0/verifiedBy/contentHash",
+          "value": "00cf88db5f9bb6c19ccf35b5341c245599513e9949118a04fd18364260af33d5"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/evaluatedIdentity/presentation/signatures/0/signature",
+          "value": "311p8sg__GV96OO7gBIhmriYfQ7OgU7u2TmYO2CeOwwW3aEM4mgq0TBnglrVY-tu6rl9407dgIJPedB-EVc1BA"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/jobId",
+          "value": "01K2VPA0000000000000000202"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/listingRef/contentHash",
+          "value": "378390390e67f6b9cb84ff6c9a8f6e099691f99fb0676261d280592ad2e51081"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/listingRef/listingId",
+          "value": "vet-provenance-procurement-0202"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/artifact/signature/value",
+          "value": "RNb15hYvcS9m0RwZ4ubSy9IkbkwNGg4kxkFTWsckPN3ZIAjlEX_2Ujz9Nr8WONSL-yDtvOkLMSG9tF26d5z7DA"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/receipt/contentHash",
+          "value": "f5842999fc92d0576af178f17587ef4a46050c9e471e1149da1167b4ae073c4c"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/receipt/evidence/value",
+          "value": "MXnbehGUOnz97jNtq7t8bX3J1EDyUtikrgt4kTR4uXTfXtaMGyInUIc18paMeun0Q0TOL6KNIPel4qwNEbqFDg"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/receipt/logicalAddress",
+          "value": "dacs2:vet-authorization:01K2VPA0000000000000000202:counterparty:key%3Aa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0:key%3Aa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/receipt/nativeAddress",
+          "value": "stor-811bd14221ce90fab10748cbb3e80daf48406f21"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/receipt/transactionRef/value",
+          "value": "ada5a7b53318a0aff73b8eea8e84aec0957981e3d1939d40ca4c498fd67518b0"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/ref/anchor/locator",
+          "value": "stor-811bd14221ce90fab10748cbb3e80daf48406f21"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/0/ref/contentHash",
+          "value": "f5842999fc92d0576af178f17587ef4a46050c9e471e1149da1167b4ae073c4c"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/authorizerIdentity/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-f121714350d32a0c9465801ab5c2bf091349edf2"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/authorizerIdentity/claims/0/verifiedBy/contentHash",
+          "value": "00cf88db5f9bb6c19ccf35b5341c245599513e9949118a04fd18364260af33d5"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/authorizerIdentity/presentation/signatures/0/signature",
+          "value": "311p8sg__GV96OO7gBIhmriYfQ7OgU7u2TmYO2CeOwwW3aEM4mgq0TBnglrVY-tu6rl9407dgIJPedB-EVc1BA"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/counterpartySetHash",
+          "value": "012759c6f4d085ff55197edb271796dcd253d1d147cc594c89645dc5a05bb618"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/evaluatedBundleHash",
+          "value": "2f0a3d20048134d7e5d0d2655ada2d8d87ab089d21c593823be94c99f0d8b9ae"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/evaluatedIdentity/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-0c7980b151829c5d59bf57fabe518a962aa23496"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/evaluatedIdentity/claims/0/verifiedBy/contentHash",
+          "value": "23f35b98394b6101f593247de457849c270dbe8628a18700f8bfd483708cf5a0"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/evaluatedIdentity/presentation/signatures/0/signature",
+          "value": "diprlcZaIFiR_O3CxTvanwyxqmOHoixyQnZIBmYLfsulMikxu7eAr3YE7h8BRMFrojTdRHmGdXRnJOCOd37iDg"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/jobId",
+          "value": "01K2VPA0000000000000000202"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/listingRef/contentHash",
+          "value": "378390390e67f6b9cb84ff6c9a8f6e099691f99fb0676261d280592ad2e51081"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/listingRef/listingId",
+          "value": "vet-provenance-procurement-0202"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/artifact/signature/value",
+          "value": "dKc5q31m83zbdk-PzqVuci-9kioCxACd1IdnULMYPa_wcWCA8y4QP_mbqBxizEAYG2Izc8XDOTJRUjwzK12CDw"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/receipt/contentHash",
+          "value": "5f312f88ec0e3a1bb25ecb8b7c90eecb5eae8138fc27c42e6e4b439e64a7e9bc"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/receipt/evidence/value",
+          "value": "fyMPIv-c1gF9WwIbLeQ2yR10cNVs_98iASYAQiNuMFtwY6xEiYyDrlVdozaY9ThIQ1MGEUVmudXtddiRY-nbDg"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/receipt/logicalAddress",
+          "value": "dacs2:vet-authorization:01K2VPA0000000000000000202:publisher:key%3Aa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0:key%3Ad04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/receipt/nativeAddress",
+          "value": "stor-50032ede4963921d0d6c59d0bc007dec5af7ab8a"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/receipt/transactionRef/value",
+          "value": "7470856d4d368334d248b279d870c6345e2bbe4bc0fb9569185ec1d587de67ea"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/ref/anchor/locator",
+          "value": "stor-50032ede4963921d0d6c59d0bc007dec5af7ab8a"
+        },
+        {
+          "op": "replace",
+          "path": "/authorizations/1/ref/contentHash",
+          "value": "5f312f88ec0e3a1bb25ecb8b7c90eecb5eae8138fc27c42e6e4b439e64a7e9bc"
+        },
+        {
+          "op": "replace",
+          "path": "/candidates/0/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-f121714350d32a0c9465801ab5c2bf091349edf2"
+        },
+        {
+          "op": "replace",
+          "path": "/candidates/0/claims/0/verifiedBy/contentHash",
+          "value": "00cf88db5f9bb6c19ccf35b5341c245599513e9949118a04fd18364260af33d5"
+        },
+        {
+          "op": "replace",
+          "path": "/candidates/0/presentation/signatures/0/signature",
+          "value": "311p8sg__GV96OO7gBIhmriYfQ7OgU7u2TmYO2CeOwwW3aEM4mgq0TBnglrVY-tu6rl9407dgIJPedB-EVc1BA"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/authorizationRef/anchor/locator",
+          "value": "stor-811bd14221ce90fab10748cbb3e80daf48406f21"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/authorizationRef/contentHash",
+          "value": "f5842999fc92d0576af178f17587ef4a46050c9e471e1149da1167b4ae073c4c"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/bundleHash",
+          "value": "d16108d4f823e91bd16059194355eca80e5d8615645d02ef4094dd72df6c70c9"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/freshness/0/anchor/locator",
+          "value": "stor-f121714350d32a0c9465801ab5c2bf091349edf2"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/freshness/0/contentHash",
+          "value": "00cf88db5f9bb6c19ccf35b5341c245599513e9949118a04fd18364260af33d5"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/jobId",
+          "value": "01K2VPA0000000000000000202"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/overallDecision",
+          "value": "fail"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/artifact/signature/value",
+          "value": "Qemin5PLYtrmXh6aXQBCwOHuuXXeRpyHFhk0T7EN1QriTeMT3LhQc7yzi_FXs6zxpQKPbm-ap3r6OCu7Zi0lBw"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/contentHash",
+          "value": "3044377b99694e61fdb534c057b226a16dc64ca047d1765be6982c2d0361819e"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/evidence/value",
+          "value": "BQMkxBLLbBntSmM7YxIRF6LnNrO7bpYnd9eeSZpSUDHTWmz0hcc5VV3kq0yLh7F0ZlbDyOh7dGVyF2Zp4imCBA"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/logicalAddress",
+          "value": "dacs2:provenanced-composite:01K2VPA0000000000000000202:counterparty:key%3Aa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0:key%3Aa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/nativeAddress",
+          "value": "stor-5cbce60bc303166696131c1f7d9316ced027b9b4"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/receipt/transactionRef/value",
+          "value": "7029a8732f1b5badfd1abe8a7441ee150d4c1f24bb9556646ddc406075351b52"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/ref/anchor/locator",
+          "value": "stor-5cbce60bc303166696131c1f7d9316ced027b9b4"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/0/ref/contentHash",
+          "value": "3044377b99694e61fdb534c057b226a16dc64ca047d1765be6982c2d0361819e"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/artifact/authorizationRef/anchor/locator",
+          "value": "stor-50032ede4963921d0d6c59d0bc007dec5af7ab8a"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/artifact/authorizationRef/contentHash",
+          "value": "5f312f88ec0e3a1bb25ecb8b7c90eecb5eae8138fc27c42e6e4b439e64a7e9bc"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/artifact/bundleHash",
+          "value": "2f0a3d20048134d7e5d0d2655ada2d8d87ab089d21c593823be94c99f0d8b9ae"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/artifact/freshness/0/anchor/locator",
+          "value": "stor-0c7980b151829c5d59bf57fabe518a962aa23496"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/artifact/freshness/0/contentHash",
+          "value": "23f35b98394b6101f593247de457849c270dbe8628a18700f8bfd483708cf5a0"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/artifact/jobId",
+          "value": "01K2VPA0000000000000000202"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/artifact/signature/value",
+          "value": "BU9VSFndqiwsN8a-in7bEBeJLBAnXAlgU9SQeEu0Rhud6FHrftLUI-kTAnwyT5s5X-4q701IldnrO6rv7D5VDg"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/receipt/contentHash",
+          "value": "e16293cb54c6f534a2fd03494b3e76a3cb6dcdfd86ff0343f824f467ad3996b4"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/receipt/evidence/value",
+          "value": "E_S_LAg6P_FIK8c0NfUEVR9EsCVr6Z8EEGNVBJS9LNX2BQdvI3-FnmQ32_L59cyg-bGogywcCLMz7LWFi2lhCw"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/receipt/logicalAddress",
+          "value": "dacs2:provenanced-composite:01K2VPA0000000000000000202:publisher:key%3Aa09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0:key%3Ad04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/receipt/nativeAddress",
+          "value": "stor-7ead5bc7e49cf28a711f754e7c68c66fe955fe8d"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/receipt/transactionRef/value",
+          "value": "0cbc2b27a11619fda3dbff1c6cd5841e76454d1181c8500f2d786388d856faea"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/ref/anchor/locator",
+          "value": "stor-7ead5bc7e49cf28a711f754e7c68c66fe955fe8d"
+        },
+        {
+          "op": "replace",
+          "path": "/composites/1/ref/contentHash",
+          "value": "e16293cb54c6f534a2fd03494b3e76a3cb6dcdfd86ff0343f824f467ad3996b4"
+        },
+        {
+          "op": "replace",
+          "path": "/gate",
+          "value": "bundle-consumption-projection"
+        },
+        {
+          "op": "replace",
+          "path": "/jobId",
+          "value": "01K2VPA0000000000000000202"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/artifact/listingId",
+          "value": "vet-provenance-procurement-0202"
+        },
+        {
+          "op": "add",
+          "path": "/listing/artifact/pipeline/1/parameters",
+          "value": {
+            "commitDeadline": 1786723260000,
+            "revealWindow": 60,
+            "selectionRule": "lowest-price",
+            "auctionMode": "procurement"
+          }
+        },
+        {
+          "op": "replace",
+          "path": "/listing/artifact/pipeline/1/kind",
+          "value": "negotiate-sealed-envelope-procurement"
+        },
+        {
+          "op": "remove",
+          "path": "/listing/artifact/pricing/price"
+        },
+        {
+          "op": "add",
+          "path": "/listing/artifact/pricing/reservePrice",
+          "value": {
+            "amount": "10",
+            "currency": "USDC",
+            "unit": "job"
+          }
+        },
+        {
+          "op": "add",
+          "path": "/listing/artifact/pricing/selectionRule",
+          "value": "lowest-price"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/artifact/pricing/kind",
+          "value": "auction"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/artifact/signature/value",
+          "value": "ThhyR4hvwFLyZeM9RcTyJw6onOBCf-nOHX1xAbYDZgJLz6aTZJ2Kyuw56NH19DOPurfzA1sMk96c-BSprp6JCw"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/receipt/contentHash",
+          "value": "378390390e67f6b9cb84ff6c9a8f6e099691f99fb0676261d280592ad2e51081"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/receipt/evidence/value",
+          "value": "3lTjlWClmTzOG-DrmLJX9aV-MxtGcoDKSBkqzDQcjtZjRcRZ8hGekPqIXJvLHaHgwCoZudi-2TdSYoO6W57rCA"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/receipt/logicalAddress",
+          "value": "dacs1:key%3Ad04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737:vet-provenance-procurement-0202:v1"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/receipt/nativeAddress",
+          "value": "stor-16b920aa6c95d1f5da276113cc6bbf9985f80bf8"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/receipt/transactionRef/value",
+          "value": "07a210f38310b44798fbd669ffd9b97efff5b705cf249512e51496ebcff3baa3"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/ref/anchor/locator",
+          "value": "stor-16b920aa6c95d1f5da276113cc6bbf9985f80bf8"
+        },
+        {
+          "op": "replace",
+          "path": "/listing/ref/contentHash",
+          "value": "378390390e67f6b9cb84ff6c9a8f6e099691f99fb0676261d280592ad2e51081"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/artifact/assertion",
+          "value": "dacs-self-signed-claim:v1:01K2VPA0000000000000000202:key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/artifact/signature",
+          "value": "Qprj-E9Ewlu_YA7AMo5Nm1zzC9GnmOIzOUx6A49cvdruwThYSTmGs-gc-g5y4DjpE6Okn8DejeClDdJ4m5s0CQ"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/receipt/contentHash",
+          "value": "99edfeeda38f13393b400b93d8df7312cf92cb45e8d9363e8f26093535ae627e"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/receipt/evidence/value",
+          "value": "mCF_1aBoGvjOHocllHRuwqpowuPPUaZbeRqX2YgrGSyJpAnnVNT0tntPuWlrBSMI1HJfhLF1yOJKH_O5WkyFDg"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/receipt/logicalAddress",
+          "value": "fixture:self-signed-evidence:01K2VPA0000000000000000202:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/receipt/nativeAddress",
+          "value": "stor-3483ad593a25b232b36945db2f1622ff2032d33b"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/receipt/transactionRef/value",
+          "value": "0ea09299a8260993f23b759a14c007cb39e51280a3371e10d6d9c996dd44cff8"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/ref/anchor/locator",
+          "value": "stor-3483ad593a25b232b36945db2f1622ff2032d33b"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/0/ref/contentHash",
+          "value": "99edfeeda38f13393b400b93d8df7312cf92cb45e8d9363e8f26093535ae627e"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/artifact/assertion",
+          "value": "dacs-self-signed-claim:v1:01K2VPA0000000000000000202:key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/artifact/signature",
+          "value": "LtNGxCLuKOUQVXq3-I8K3RavU1AL-gikDAU5GMRTXVE34MGqo5aSxzUEfPnJJvJu1VjOoRSkf-z7QYakfucPDA"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/receipt/contentHash",
+          "value": "fb016f9be4a501f1adb08ab612013e8032cb1ebb16decb396154993db4903f2b"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/receipt/evidence/value",
+          "value": "Ze47-CLU7dG3EHNAKN6xB_Pbw5BpvSKiuJCWyxWGHPVV7IoVTn5R4Tq83hiL5jpCXRYwYJdw0F-jW7r4I_QRBw"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/receipt/logicalAddress",
+          "value": "fixture:self-signed-evidence:01K2VPA0000000000000000202:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/receipt/nativeAddress",
+          "value": "stor-1082e01ae7e4d9dea07534e551ad4bde7a95bc81"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/receipt/transactionRef/value",
+          "value": "6fc114c276ab81f7c2c2e1a22cc84e76621332ded8b281a7b79d06b564d86398"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/ref/anchor/locator",
+          "value": "stor-1082e01ae7e4d9dea07534e551ad4bde7a95bc81"
+        },
+        {
+          "op": "replace",
+          "path": "/methodEvidence/1/ref/contentHash",
+          "value": "fb016f9be4a501f1adb08ab612013e8032cb1ebb16decb396154993db4903f2b"
+        },
+        {
+          "op": "replace",
+          "path": "/mode",
+          "value": "procurement"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/0/authorizationRef/anchor/locator",
+          "value": "stor-811bd14221ce90fab10748cbb3e80daf48406f21"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/0/authorizationRef/contentHash",
+          "value": "f5842999fc92d0576af178f17587ef4a46050c9e471e1149da1167b4ae073c4c"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/0/bundleToVet/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-f121714350d32a0c9465801ab5c2bf091349edf2"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/0/bundleToVet/claims/0/verifiedBy/contentHash",
+          "value": "00cf88db5f9bb6c19ccf35b5341c245599513e9949118a04fd18364260af33d5"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/0/bundleToVet/presentation/signatures/0/signature",
+          "value": "311p8sg__GV96OO7gBIhmriYfQ7OgU7u2TmYO2CeOwwW3aEM4mgq0TBnglrVY-tu6rl9407dgIJPedB-EVc1BA"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/1/authorizationRef/anchor/locator",
+          "value": "stor-50032ede4963921d0d6c59d0bc007dec5af7ab8a"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/1/authorizationRef/contentHash",
+          "value": "5f312f88ec0e3a1bb25ecb8b7c90eecb5eae8138fc27c42e6e4b439e64a7e9bc"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/1/bundleToVet/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-0c7980b151829c5d59bf57fabe518a962aa23496"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/1/bundleToVet/claims/0/verifiedBy/contentHash",
+          "value": "23f35b98394b6101f593247de457849c270dbe8628a18700f8bfd483708cf5a0"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/invocations/1/bundleToVet/presentation/signatures/0/signature",
+          "value": "diprlcZaIFiR_O3CxTvanwyxqmOHoixyQnZIBmYLfsulMikxu7eAr3YE7h8BRMFrojTdRHmGdXRnJOCOd37iDg"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/jobId",
+          "value": "01K2VPA0000000000000000202"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/sessionContext/jobId",
+          "value": "01K2VPA0000000000000000202"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/sessionContext/listingRef/contentHash",
+          "value": "378390390e67f6b9cb84ff6c9a8f6e099691f99fb0676261d280592ad2e51081"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/sessionContext/listingRef/listingId",
+          "value": "vet-provenance-procurement-0202"
+        },
+        {
+          "op": "replace",
+          "path": "/phaseInput/sessionContext/parties",
+          "value": [
+            {
+              "role": "buyer",
+              "bundleHash": "2f0a3d20048134d7e5d0d2655ada2d8d87ab089d21c593823be94c99f0d8b9ae",
+              "primaryClaim": "key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737"
+            }
+          ]
+        },
+        {
+          "op": "replace",
+          "path": "/publisher/claims/0/verifiedBy/anchor/locator",
+          "value": "stor-0c7980b151829c5d59bf57fabe518a962aa23496"
+        },
+        {
+          "op": "replace",
+          "path": "/publisher/claims/0/verifiedBy/contentHash",
+          "value": "23f35b98394b6101f593247de457849c270dbe8628a18700f8bfd483708cf5a0"
+        },
+        {
+          "op": "replace",
+          "path": "/publisher/presentation/signatures/0/signature",
+          "value": "diprlcZaIFiR_O3CxTvanwyxqmOHoixyQnZIBmYLfsulMikxu7eAr3YE7h8BRMFrojTdRHmGdXRnJOCOd37iDg"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/artifact/attestation/anchor/locator",
+          "value": "stor-3483ad593a25b232b36945db2f1622ff2032d33b"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/artifact/attestation/contentHash",
+          "value": "99edfeeda38f13393b400b93d8df7312cf92cb45e8d9363e8f26093535ae627e"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/artifact/signature/value",
+          "value": "LRD1inO4HkR0l-CPJ3UMOXHCjUR7hIXI9OGM70WJ6DOnYNIF734o0TmvuTx6EZzMWeo6xuRHbEEBnWsOvibACg"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/receipt/contentHash",
+          "value": "23f35b98394b6101f593247de457849c270dbe8628a18700f8bfd483708cf5a0"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/receipt/evidence/value",
+          "value": "ylt9PY_RCkhK_4d3Vcx1HMULZch2wzFPJ1nbF7hU95UHhwm1zgwxhBrzFviffjcRJhI4n0vHoODXAJo0ImgaBw"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/receipt/logicalAddress",
+          "value": "dacs2:01K2VPA0000000000000000202:key:d04ab232742bb4ab3a1368bd4615e4e6d0224ab71a016baf8520a332c9778737:v1"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/receipt/nativeAddress",
+          "value": "stor-0c7980b151829c5d59bf57fabe518a962aa23496"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/receipt/transactionRef/value",
+          "value": "e4664f4b23ea9e7530fa8a7f905416b4d621fe235c79923c4a5ed64f59c5a859"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/ref/anchor/locator",
+          "value": "stor-0c7980b151829c5d59bf57fabe518a962aa23496"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/0/ref/contentHash",
+          "value": "23f35b98394b6101f593247de457849c270dbe8628a18700f8bfd483708cf5a0"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/artifact/attestation/anchor/locator",
+          "value": "stor-1082e01ae7e4d9dea07534e551ad4bde7a95bc81"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/artifact/attestation/contentHash",
+          "value": "fb016f9be4a501f1adb08ab612013e8032cb1ebb16decb396154993db4903f2b"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/artifact/decision",
+          "value": "fail"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/artifact/reason",
+          "value": "deterministic fixture fail"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/artifact/signature/value",
+          "value": "lRpMenMuN-OxGhCcE1aIQzXZmhaBzOF7DWixrAl6vh_CCrX78zyjpDU8yjN26gBFNhDqwM8NkXGpj6xpQw5jAw"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/receipt/contentHash",
+          "value": "00cf88db5f9bb6c19ccf35b5341c245599513e9949118a04fd18364260af33d5"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/receipt/evidence/value",
+          "value": "BZebm-BBe495D6vYtwwqNBxSCwZn9Gns3QVhvFCAn7weeFHAevWtlwvUUY1ZlhM9PZMwIlqlCOGY3mHiawCbAQ"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/receipt/logicalAddress",
+          "value": "dacs2:01K2VPA0000000000000000202:key:a09aa5f47a6759802ff955f8dc2d2a14a5c99d23be97f864127ff9383455a4f0:v1"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/receipt/nativeAddress",
+          "value": "stor-f121714350d32a0c9465801ab5c2bf091349edf2"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/receipt/transactionRef/value",
+          "value": "b6764540447c8f7e7d9e15b9095e41d2459f81ff9a08c5a937b4d6c4525d7abb"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/ref/anchor/locator",
+          "value": "stor-f121714350d32a0c9465801ab5c2bf091349edf2"
+        },
+        {
+          "op": "replace",
+          "path": "/verificationResults/1/ref/contentHash",
+          "value": "00cf88db5f9bb6c19ccf35b5341c245599513e9949118a04fd18364260af33d5"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/eligibleCounterparties",
+          "value": []
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/authorizationRecord/anchor/locator",
+          "value": "stor-811bd14221ce90fab10748cbb3e80daf48406f21"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/authorizationRecord/contentHash",
+          "value": "f5842999fc92d0576af178f17587ef4a46050c9e471e1149da1167b4ae073c4c"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/compositeRecord/anchor/locator",
+          "value": "stor-5cbce60bc303166696131c1f7d9316ced027b9b4"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/compositeRecord/contentHash",
+          "value": "3044377b99694e61fdb534c057b226a16dc64ca047d1765be6982c2d0361819e"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/0/overallDecision",
+          "value": "fail"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/1/authorizationRecord/anchor/locator",
+          "value": "stor-50032ede4963921d0d6c59d0bc007dec5af7ab8a"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/1/authorizationRecord/contentHash",
+          "value": "5f312f88ec0e3a1bb25ecb8b7c90eecb5eae8138fc27c42e6e4b439e64a7e9bc"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/1/compositeRecord/anchor/locator",
+          "value": "stor-7ead5bc7e49cf28a711f754e7c68c66fe955fe8d"
+        },
+        {
+          "op": "replace",
+          "path": "/vetContextDelta/records/1/compositeRecord/contentHash",
+          "value": "e16293cb54c6f534a2fd03494b3e76a3cb6dcdfd86ff0343f824f467ad3996b4"
+        }
+      ],
+      "expandedInputHash": "33bac6cfad15ec6138215e68f21bdab42e336fe757f1c4a64b4340d90084f1af",
+      "expected": "pass",
+      "note": "With one procurement supplier, its conclusive counterparty-role failure maps to the seller."
     },
     {
       "name": "partial-authorization-barrier-has-zero-verifier-effects",
@@ -9492,7 +11030,7 @@
     },
     {
       "name": "unvetted-winning-bidder",
-      "rule": "PVPC-7; DACS-3 check 10",
+      "rule": "PVPC-7; DACS-3 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "base": "procurement-two-bidder-completed",
       "patch": [
@@ -9535,7 +11073,7 @@
     },
     {
       "name": "unvetted-losing-bidder",
-      "rule": "PVPC-7; DACS-3 check 10",
+      "rule": "PVPC-7; DACS-3 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "base": "procurement-two-bidder-completed",
       "patch": [
@@ -9551,7 +11089,7 @@
     },
     {
       "name": "all-pass-loser-omitted-from-agreement",
-      "rule": "DACS-3 check 10; ST-11",
+      "rule": "DACS-3 check 11; ST-11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "base": "procurement-two-bidder-completed",
       "patch": [
@@ -9594,7 +11132,7 @@
     },
     {
       "name": "publisher-ref-bound-to-loser-context",
-      "rule": "PVPC-7; DACS-3 check 10",
+      "rule": "PVPC-7; DACS-3 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "base": "procurement-two-bidder-completed",
       "patch": [
@@ -9620,7 +11158,7 @@
     },
     {
       "name": "procurement-agreement-role-inversion",
-      "rule": "DACS-3 §8.5.2 check 10",
+      "rule": "DACS-3 §8.5.2 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "base": "procurement-two-bidder-completed",
       "patch": [
@@ -13405,7 +14943,7 @@
     },
     {
       "name": "agreement-party-bundle-hash-mismatch",
-      "rule": "DACS-3 §8.5.2 check 10",
+      "rule": "DACS-3 §8.5.2 check 11",
       "operation": "validate-provenanced-vet-chain-and-admission",
       "base": "ordinary-bilateral-third-party-verifiers",
       "patch": [

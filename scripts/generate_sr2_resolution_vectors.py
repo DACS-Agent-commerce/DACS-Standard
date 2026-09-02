@@ -207,6 +207,20 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
             lambda c: receipt_carrier(c)["receipt"].update({"transactionRef": 1.5}),
         ),
         resolution_vector(
+            "unhashable-native-address-is-discarded",
+            "indeterminate",
+            "a non-string nativeAddress is malformed and cannot reach storage lookup",
+            lambda c: receipt_carrier(c)["receipt"].update(
+                {"nativeAddress": ["demos:storage:sr2-artifact-1"]}
+            ),
+        ),
+        resolution_vector(
+            "non-numeric-delivery-time-is-discarded",
+            "indeterminate",
+            "a non-numeric carrier delivery time cannot satisfy the receipt-delivery gate",
+            lambda c: receipt_carrier(c).update({"deliveredAt": "1787036401000"}),
+        ),
+        resolution_vector(
             "unauthenticated-catalog-assertion-is-discarded",
             "indeterminate",
             "an ordinary catalog assertion is not a portable mapping carrier",
@@ -300,6 +314,12 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
                 authenticated_reference(c, "unsigned-cache"),
                 c["carriers"][0].update({"referenceAuthenticated": False}),
             ),
+        ),
+        resolution_vector(
+            "unrecognized-authenticated-reference-surface-is-discarded",
+            "indeterminate",
+            "an authenticated-reference tag cannot invent a third SR2-10 discovery surface",
+            lambda c: authenticated_reference(c, "attacker-cache"),
         ),
     ])
 
@@ -522,6 +542,12 @@ def add_successor(
 
 
 def build_bootstrap_vectors() -> list[dict[str, Any]]:
+    def invalid_key_pinned_root_sibling(case: dict[str, Any]) -> None:
+        case["trustPin"] = {"authorityKeyId": OLD_KEY}
+        sibling = copy.deepcopy(case["descriptors"][0])
+        sibling["authorizationSignature"]["value"] = "AA"
+        case["descriptors"].append(sibling)
+
     vectors = [
         bootstrap_vector(
             "valid-recipe-registry-root",
@@ -545,6 +571,12 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "pass",
             "a canonical sequence-1 authority key is a sufficient release pin",
             lambda c: c.update({"trustPin": {"authorityKeyId": OLD_KEY}}),
+        ),
+        bootstrap_vector(
+            "invalid-key-pinned-root-sibling-is-discarded",
+            "pass",
+            "a pin-matching root with an invalid signature is discarded before fork classification",
+            invalid_key_pinned_root_sibling,
         ),
         bootstrap_vector(
             "transport-without-release-pin-is-rejected",
@@ -844,6 +876,10 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         case["descriptors"][0]["futurePolicyHint"] = {"label": "e\u0301"}
         resign_root(case)
 
+    def signed_unknown_fraction(case: dict[str, Any]) -> None:
+        case["descriptors"][0]["futurePolicyHint"] = {"weight": 1.5}
+        resign_root(case)
+
     vectors.extend([
         bootstrap_vector(
             "signed-unknown-member-is-preserved", "pass",
@@ -861,9 +897,14 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             lambda c: c["descriptors"][0].update({"futureUnsafe": 9007199254740992}),
         ),
         bootstrap_vector(
-            "float-in-unknown-member-is-rejected", "fail",
-            "descriptor hashing rejects unsupported floating-point values fail closed",
+            "unsigned-fraction-member-invalidates-root", "fail",
+            "adding an unsigned finite fraction invalidates the descriptor pin and signature",
             lambda c: c["descriptors"][0].update({"futureUnsafe": 1.5}),
+        ),
+        bootstrap_vector(
+            "signed-fraction-in-unknown-member-is-canonical", "pass",
+            "an in-range finite fraction is valid JCS data when covered by the pin and signature",
+            signed_unknown_fraction,
         ),
         bootstrap_vector(
             "unknown-member-mutation-without-resigning", "fail",

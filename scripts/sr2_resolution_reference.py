@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import math
 import re
 from copy import deepcopy
 from typing import Any
@@ -83,16 +84,74 @@ def _verify_signature(signature: Any, digest: str, expected_key: str) -> bool:
     return True
 
 
-def _receipt_tuple(receipt: dict[str, Any]) -> tuple[Any, ...]:
-    transaction_ref = receipt.get("transactionRef")
-    if (
-        not isinstance(transaction_ref, dict)
-        or not isinstance(transaction_ref.get("kind"), str)
-        or not transaction_ref["kind"]
-        or not isinstance(transaction_ref.get("value"), str)
-        or not transaction_ref["value"]
+def _nonempty_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value)
+
+
+def _finite_number(value: Any) -> bool:
+    return type(value) in {int, float} and math.isfinite(value)
+
+
+def _valid_reference(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and _nonempty_string(value.get("kind"))
+        and _nonempty_string(value.get("value"))
+    )
+
+
+def _valid_receipt_shape(receipt: Any) -> bool:
+    if not isinstance(receipt, dict) or receipt.get("receiptVersion") != "1":
+        return False
+    if any(
+        not _nonempty_string(receipt.get(field))
+        for field in (
+            "substrate",
+            "finalityProfile",
+            "logicalAddress",
+            "nativeAddress",
+            "contentHash",
+            "writer",
+        )
     ):
-        raise TypeError("transactionRef must contain non-empty string kind and value")
+        return False
+    if HEX64.fullmatch(receipt["contentHash"]) is None:
+        return False
+    if not _valid_reference(receipt.get("transactionRef")):
+        return False
+    if "nonce" in receipt and not _nonempty_string(receipt["nonce"]):
+        return False
+    if receipt.get("state") not in STATE_RANK:
+        return False
+    if receipt.get("observationDisposition") != "established":
+        return False
+    if not _finite_number(receipt.get("observedAt")):
+        return False
+    if not _valid_reference(receipt.get("evidence")):
+        return False
+    block_ref = receipt.get("blockRef")
+    if receipt["state"] in {"included", "finalized"}:
+        if not isinstance(block_ref, dict) or not _nonempty_string(block_ref.get("id")):
+            return False
+    if isinstance(block_ref, dict):
+        if "height" in block_ref and (
+            not isinstance(block_ref["height"], str)
+            or re.fullmatch(r"0|[1-9][0-9]*", block_ref["height"]) is None
+        ):
+            return False
+        if "timestamp" in block_ref and not _finite_number(block_ref["timestamp"]):
+            return False
+    try:
+        canonical_bytes(receipt)
+    except (TypeError, ValueError, UnicodeError):
+        return False
+    return True
+
+
+def _receipt_tuple(receipt: dict[str, Any]) -> tuple[Any, ...]:
+    if not _valid_receipt_shape(receipt):
+        raise TypeError("receipt does not match the AnchorReceipt shape")
+    transaction_ref = receipt["transactionRef"]
     return (
         receipt.get("substrate"),
         receipt.get("logicalAddress"),
@@ -120,6 +179,9 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
 
     qualified_receipts: list[tuple[tuple[Any, ...], tuple[Any, ...], dict[str, Any]]] = []
     qualified_references: list[tuple[tuple[Any, ...], dict[str, Any]]] = []
+    storage = case.get("storage")
+    if not isinstance(storage, dict):
+        storage = {}
     for carrier in carriers:
         if not isinstance(carrier, dict):
             continue
@@ -129,8 +191,20 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
         if kind == "authenticated-reference":
             if carrier.get("referenceAuthenticated") is not True:
                 continue
+            if carrier.get("surface") not in {
+                "finalized-dacs5-bundle",
+                "registry-bootstrap-index",
+            }:
+                continue
             native = carrier.get("nativeAddress")
-            content = case.get("storage", {}).get(native)
+            content_hash = carrier.get("contentHash")
+            if (
+                not _nonempty_string(native)
+                or not _nonempty_string(content_hash)
+                or HEX64.fullmatch(content_hash) is None
+            ):
+                continue
+            content = storage.get(native)
             try:
                 content_matches = content is not None and hash_hex(content) == carrier.get("contentHash")
             except (TypeError, ValueError, UnicodeError):
@@ -147,15 +221,14 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
         if kind != "anchor-receipt":
             continue
         receipt = carrier.get("receipt")
-        if not isinstance(receipt, dict) or carrier.get("receiptEvidenceVerified") is not True:
-            continue
-        if receipt.get("receiptVersion") != "1" or receipt.get("observationDisposition") != "established":
+        if (
+            not _valid_receipt_shape(receipt)
+            or carrier.get("receiptEvidenceVerified") is not True
+        ):
             continue
         state = receipt.get("state")
         minimum = case.get("minimumState")
         if state not in STATE_RANK or minimum not in STATE_RANK or STATE_RANK[state] < STATE_RANK[minimum]:
-            continue
-        if state in {"included", "finalized"} and not isinstance(receipt.get("blockRef"), dict):
             continue
         if receipt.get("logicalAddress") != case.get("expectedLogicalAddress"):
             continue
@@ -164,16 +237,20 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
             continue
         if carrier.get("authorityVerified") is not True:
             continue
-        native = receipt.get("nativeAddress")
-        content = case.get("storage", {}).get(native)
+        native = receipt["nativeAddress"]
+        content = storage.get(native)
         try:
             content_matches = content is not None and hash_hex(content) == receipt.get("contentHash")
         except (TypeError, ValueError, UnicodeError):
             content_matches = False
         if not content_matches:
             continue
-        if carrier.get("deliveredAt") is not None and case.get("requiredBy") is not None:
-            if carrier["deliveredAt"] > case["requiredBy"]:
+        delivered_at = carrier.get("deliveredAt")
+        required_by = case.get("requiredBy")
+        if delivered_at is not None or required_by is not None:
+            if not _finite_number(delivered_at) or not _finite_number(required_by):
+                continue
+            if delivered_at > required_by:
                 return "fail"
         try:
             receipt_tuple = _receipt_tuple(receipt)
@@ -361,21 +438,27 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
     descriptors = case.get("descriptors")
     if not isinstance(descriptors, list) or not descriptors:
         return "indeterminate"
-    roots = [d for d in descriptors if isinstance(d, dict) and d.get("sequence") == 1]
-    pin = case.get("trustPin", {})
-    if "descriptorHash" in pin:
-        roots = [d for d in roots if _try_descriptor_hash(d) == pin["descriptorHash"]]
-    if "authorityKeyId" in pin:
-        roots = [d for d in roots if d.get("authorityKeyId") == pin["authorityKeyId"]]
-    if len(roots) != 1:
-        return "indeterminate" if roots else "fail"
-    root = roots[0]
-    try:
-        status = _validate_root(root, case)
-    except (TypeError, ValueError, UnicodeError):
-        status = "fail"
-    if status != "pass":
-        return status
+    root_candidates = [
+        d for d in descriptors if isinstance(d, dict) and d.get("sequence") == 1
+    ]
+    valid_roots: dict[str, dict[str, Any]] = {}
+    indeterminate_root_seen = False
+    for candidate in root_candidates:
+        try:
+            status = _validate_root(candidate, case)
+        except (TypeError, ValueError, UnicodeError):
+            status = "fail"
+        if status == "pass":
+            digest = _try_descriptor_hash(candidate)
+            if digest is not None:
+                valid_roots.setdefault(digest, candidate)
+        elif status == "indeterminate":
+            indeterminate_root_seen = True
+    if len(valid_roots) > 1 or indeterminate_root_seen:
+        return "indeterminate"
+    if not valid_roots:
+        return "fail"
+    root = next(iter(valid_roots.values()))
     head = root
     accepted_chain = [root]
     while True:

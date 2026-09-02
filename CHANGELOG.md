@@ -70,9 +70,12 @@ The format used per release:
   carriers do not create false forks. Registers
   `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,
   indeterminate, and boundary vectors for both algorithms. Malformed receipt
-  transaction-reference shapes are discarded, while authenticated definition
-  content with an unsafe JCS integer fails explicitly rather than escaping the
-  evaluator.
+  and carrier shapes are discarded before storage lookup, ordering, or tuple
+  comparison; invalid first-contact roots are discarded before fork
+  classification; only the two SR2-10 authenticated-reference surfaces are
+  admitted; finite JCS fractions are accepted when signed and pinned; and
+  authenticated definition content with an unsafe JCS integer fails explicitly
+  rather than escaping the evaluator.
 
 ### Fixed — DACS-1 v0.7 / DACS-2 v0.6
 

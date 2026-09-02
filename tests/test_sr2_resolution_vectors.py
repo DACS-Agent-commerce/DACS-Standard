@@ -28,6 +28,7 @@ BOOTSTRAP = (
     / "registry-bootstrap-v0.1.json"
 )
 GENERATOR = ROOT / "scripts" / "generate_sr2_resolution_vectors.py"
+DACS2 = ROOT / "spec" / "DACS-2-VET.md"
 
 
 def canonical_bytes(value):
@@ -100,6 +101,14 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         vector["input"]["descriptors"].reverse()
         self.assertEqual(evaluate_vector(vector), "indeterminate")
 
+    def test_invalid_root_is_discarded_before_first_contact_cardinality(self):
+        self.assertEqual(
+            evaluate_vector(
+                self.vectors["invalid-key-pinned-root-sibling-is-discarded"]
+            ),
+            "pass",
+        )
+
     def test_historical_replay_uses_exact_accepted_descriptor_identity(self):
         self.assertEqual(
             evaluate_vector(self.vectors["historical-replay-uses-recorded-sequence"]),
@@ -135,14 +144,47 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         )
 
     def test_malformed_receipt_and_unsafe_definition_return_dispositions(self):
-        self.assertEqual(
-            evaluate_vector(self.vectors["malformed-number-transaction-ref-is-discarded"]),
-            "indeterminate",
-        )
+        for name in (
+            "malformed-number-transaction-ref-is-discarded",
+            "unhashable-native-address-is-discarded",
+            "non-numeric-delivery-time-is-discarded",
+        ):
+            with self.subTest(vector=name):
+                self.assertEqual(evaluate_vector(self.vectors[name]), "indeterminate")
         self.assertEqual(
             evaluate_vector(self.vectors["unsafe-integer-in-definition-is-rejected"]),
             "fail",
         )
+
+    def test_only_normative_authenticated_reference_surfaces_are_admitted(self):
+        self.assertEqual(
+            evaluate_vector(
+                self.vectors[
+                    "unrecognized-authenticated-reference-surface-is-discarded"
+                ]
+            ),
+            "indeterminate",
+        )
+
+    def test_finite_fraction_is_valid_only_when_authenticated(self):
+        self.assertEqual(
+            evaluate_vector(self.vectors["unsigned-fraction-member-invalidates-root"]),
+            "fail",
+        )
+        self.assertEqual(
+            evaluate_vector(
+                self.vectors["signed-fraction-in-unknown-member-is-canonical"]
+            ),
+            "pass",
+        )
+
+    def test_crq1_replay_names_the_complete_pa2_pin(self):
+        text = DACS2.read_text(encoding="utf-8")
+        self.assertIn(
+            "exact `(recipeRegistryVersion, recipeRegistryDescriptorHash)` pair",
+            text,
+        )
+        self.assertIn("numeric version alone is the PA-1 form", text)
 
     def test_jcs_nfc_known_answers_are_independent_of_generator_metadata(self):
         self.assertEqual(

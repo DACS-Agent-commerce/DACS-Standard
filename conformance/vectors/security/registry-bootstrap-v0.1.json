@@ -3,8 +3,8 @@
   "spec": "CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3",
   "decisionModel": "A release-pinned sequence-one descriptor starts a non-recursive immutable registry-index chain; exact predecessor authorization, optional new-key acceptance, finality evidence, snapshot hashes, rollback, forks, and definition checks are independently enforced.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "2d58089ec3a09b482d7313aed388a9ded4c730ec543e3a5cc177a69d1a793f06",
-  "count": 48,
+  "hash": "8ec35446d035f4bf70ff0b4c6cc3c276e670349d26a1f42cb0e39f9c120f5658",
+  "count": 50,
   "publicTestSeeds": {
     "oldAuthorityEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
     "newAuthorityEd25519": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -276,6 +276,113 @@
       },
       "expected": "pass",
       "reason": "a canonical sequence-1 authority key is a sufficient release pin"
+    },
+    {
+      "name": "invalid-key-pinned-root-sibling-is-discarded",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "-GFjGTDGtDXrnpQuHonJYxWO03Yw3OA9-JiuZv-Tu6Jc9POKjyLmII2OltbuJYHozJqnCgNiSNxtC4B2vlCSCQ"
+            }
+          },
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "AA"
+            }
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          }
+        },
+        "mode": "latest"
+      },
+      "expected": "pass",
+      "reason": "a pin-matching root with an invalid signature is discarded before fork classification"
     },
     {
       "name": "transport-without-release-pin-is-rejected",
@@ -4438,7 +4545,7 @@
       "reason": "descriptor hashing rejects integers outside the JCS safe subset"
     },
     {
-      "name": "float-in-unknown-member-is-rejected",
+      "name": "unsigned-fraction-member-invalidates-root",
       "family": "bootstrap",
       "input": {
         "trustPin": {
@@ -4503,7 +4610,77 @@
         "mode": "latest"
       },
       "expected": "fail",
-      "reason": "descriptor hashing rejects unsupported floating-point values fail closed"
+      "reason": "adding an unsigned finite fraction invalidates the descriptor pin and signature"
+    },
+    {
+      "name": "signed-fraction-in-unknown-member-is-canonical",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "55613567a054aa663169ee5c9db6691231dcb508eaecb45b67de84141272307c",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "bdbcdcc2d53686945fa2fa22b88b19b5d57eb962c874a60cf6d665c6a481e321",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "qfFpGNNf_Ck4CkfC8CIpcrl9-1NlOmzU-1LCgLExbdBA9JpVrC2QbBKikHVmo2EqK0YA9ZNtR3-QhXG5tFICBA"
+            },
+            "futurePolicyHint": {
+              "weight": 1.5
+            }
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": []
+          }
+        },
+        "mode": "latest"
+      },
+      "expected": "pass",
+      "reason": "an in-range finite fraction is valid JCS data when covered by the pin and signature"
     },
     {
       "name": "unknown-member-mutation-without-resigning",

@@ -38,7 +38,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
-| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 52 | `error` / `fail` / `indeterminate` / `pass` |
+| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
@@ -53,6 +53,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-bound-delivery-evidence-v0.7.json`](phase-bound-delivery-evidence-v0.7.json) | DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-6; DACS-5 §10.4.3; CORE §B.1/§B.7 | 45 | `error` / `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
+| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 38 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
@@ -136,7 +137,7 @@ python3 -m unittest tests.test_ap2_handler_safety_vectors -v
 
 ### `alternative-payment-projection-v0.1.json` — §9.9.1 APR-1..APR-8
 
-44 candidate vectors make the Listing-only `pay-alternative` projection
+45 candidate vectors make the Listing-only `pay-alternative` projection
 executable across DACS-1, DACS-3, DACS-4, and DACS-5. Deterministic Ed25519
 fixtures sign the Listing, complete DEM/x402/AP2 rail definitions, payee-bound
 Agreements, evidence-bound bundles, and prior-payment dispositions. The cases
@@ -736,6 +737,35 @@ resolver/input error is surfaced as error, with no tier-3 downgrade and no
 payment. This set is candidate data only; cross-run convergence and any golden
 promotion remain pending.
 
+### `domain-claim-gcr-v0.4.json` — DACS-1 §6.3.1 DCR-1..DCR-8 / DACS-2 §7.3.10 DGCR-1..DGCR-6
+
+Sixty-three deterministic cases cover canonical `domain:` production,
+signature-preserving historical `web2:domain:` reads, semantic deduplication,
+presentation-bound control, and authenticated finalized Demos GCR verification.
+All bundles are deterministically signed with genuine Ed25519 operations; two
+negative cases deliberately corrupt their resulting signatures. Every registration
+proof carries a valid deterministic Ed25519 signature.
+
+Cases carrying `producerInput` require an adapter to invoke its public current
+DACS-1 domain producer/serializer and compare every emitted ClaimReference plus
+the complete unsigned artifact with the signed `artifact.unsigned`. Replaying
+the supplied artifact through a reader is not a producer result; an adapter
+without the producer boundary records `status: "abstain"` under `CROSS-RUN.md`.
+Reader-only cases apply permanent legacy compatibility from the verified
+`bundleVersion: "1"` bytes and alias spelling alone. Exact `domain:` spelling
+is scheme-selected without any profile sidecar, current production rejects
+single and dual legacy-alias emission in claims and `presentedBy`, and mutable
+deployment state cannot reclassify retained bytes. Paired signed and
+signature-corrupted malformed-host rows require `error` only after successful
+signature verification and `fail` before normalization otherwise.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_domain_gcr_vectors.py --check
+python3 -m unittest tests.test_domain_claim_gcr_vectors -v
+```
+
 ### `agreement-listing-v0.1.json` — §8.5.2 (agreement ↔ listing validation)
 
 30 vectors for the §8.5.2 check that a signed `AgreementDocument`'s terms are
@@ -1080,6 +1110,32 @@ Run the dependency-free executable checks from the repository root:
 
 ```sh
 python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
+```
+
+### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1
+
+Thirty-eight candidate cases make `ClaimRequirement.verificationRequired: false`
+executable across DACS-1 matching and DACS-2 composite replay. Every ordinary
+bundle and composite record carries a deterministic Ed25519 signature; vectors
+that use a real verification result sign it under the independent VerifyResult
+domain. The two signature-negative cases mutate one otherwise-valid signature.
+
+Coverage includes required and `oneOf` presence, expiry and parameter checks,
+informational `issuedAt`, optional failing/stale/unavailable `verifiedBy`,
+malformed references, invalid presence-only `maxAge`/`recipeVersion`, mixed
+presence and verified members, no-synthetic-result enforcement, exact bundle
+and requirement hash replay, missing replay input, decision recomputation, and
+the controlled-key versus existence-only-LEI selector boundary. Exact-boolean
+mode selection, vacuous empty member collections, and invalid empty inner
+`oneOf` groups pin the configuration edges. The set adds no
+wire member: the signed bundle and the existing CVR `bundleHash` are the
+presence evidence and binding.
+
+Regenerate and execute it from the repository root:
+
+```sh
+python3 scripts/generate_presence_only_claim_vectors.py --check
+python3 -m unittest tests.test_presence_only_claim_vectors -v
 ```
 
 ## Status

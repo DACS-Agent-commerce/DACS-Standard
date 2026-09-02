@@ -90,6 +90,9 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
   signature. The three aggregation cases bind the signed record to the exact
   production `VetCredentialsInput`, trusted session start, registry pin,
   requirement, bundle, and complete ordered result-reference set. Every case
+  also resolves each result through an independent expected-authority,
+  authenticated-source, and full-serialized-artifact binding; duplicate result
+  references and non-canonical exercised identifiers fail closed. Every case
   pins its input hash, `MANIFEST.json` pins the whole file SHA-256, and
   `scripts/diff_vector_runs.py` exposes all 34 evaluations under stable
   `<case>::<evaluation>` identities. The legacy

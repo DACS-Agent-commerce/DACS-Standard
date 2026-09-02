@@ -1,11 +1,16 @@
 import base64
+import copy
 import hashlib
+import ipaddress
 import json
 import re
 import subprocess
+import unicodedata
 import unittest
 from pathlib import Path
+from unittest import mock
 
+import idna
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -38,6 +43,11 @@ PARSER_METHODS = {
     "consensus-backed-proxy", "evm-rpc",
 }
 KEY = re.compile(r"^[0-9a-f]{64}$")
+LEI = re.compile(r"^[0-9A-Z]{20}$")
+FINRA_CRD = re.compile(r"^[1-9][0-9]*$")
+DID_IDENTIFIER = re.compile(
+    r"^[a-z0-9]+:[A-Za-z0-9._:%-]+(?::[A-Za-z0-9._:%-]+)*$"
+)
 SAFE_INT = 9_007_199_254_740_991
 
 
@@ -56,6 +66,7 @@ def public_ref(key):
 
 
 RECIPE_STEWARD_REF = public_ref(fixture_private_key("recipe-steward"))
+AUTHORITY_REF = public_ref(fixture_private_key("authority"))
 
 
 def canonical_bytes(value):
@@ -77,14 +88,47 @@ def b64url_decode(value):
     return decoded
 
 
+def b64url_encode(value):
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
 def parse_ref(value):
-    if not isinstance(value, str) or ":" not in value:
+    if (
+        not isinstance(value, str)
+        or value != unicodedata.normalize("NFC", value)
+        or ":" not in value
+    ):
         raise ValueError("malformed ClaimReference")
     scheme, identifier = value.split(":", 1)
     if scheme not in KNOWN_SCHEMES or not identifier:
         raise ValueError("unknown or empty ClaimReference")
     if scheme == "key" and not KEY.fullmatch(identifier):
         raise ValueError("key identifiers are 32-byte lowercase hex")
+    if scheme in {"lei", "cci-lei"} and not LEI.fullmatch(identifier):
+        raise ValueError("LEI identifiers are exactly 20 uppercase alphanumerics")
+    if scheme == "finra-crd" and not FINRA_CRD.fullmatch(identifier):
+        raise ValueError("FINRA CRD identifiers are canonical positive decimals")
+    if scheme == "did" and not DID_IDENTIFIER.fullmatch(identifier):
+        raise ValueError("DID identifier is not canonical")
+    if scheme == "domain":
+        try:
+            if (
+                not identifier.isascii()
+                or identifier != identifier.lower()
+                or identifier.endswith(".")
+                or idna.encode(
+                    identifier, uts46=False, std3_rules=True
+                ).decode("ascii") != identifier
+            ):
+                raise ValueError("domain identifier is not canonical")
+        except (idna.IDNAError, UnicodeError, ValueError) as error:
+            raise ValueError("domain identifier is not canonical") from error
+        try:
+            ipaddress.ip_address(identifier)
+        except ValueError:
+            pass
+        else:
+            raise ValueError("IP literals are not domain identifiers")
     return scheme, identifier
 
 
@@ -111,6 +155,51 @@ def verify_signature(public_ref, signature, payload):
     except (InvalidSignature, TypeError, ValueError):
         return False
     return True
+
+
+def resign_result(resolved, key, signer, domain=RESULT_DOMAIN):
+    changed = copy.deepcopy(resolved)
+    unsigned = {
+        name: value
+        for name, value in changed["artifact"].items()
+        if name != "signature"
+    }
+    content_hash = hash_hex(unsigned)
+    changed["ref"]["contentHash"] = content_hash
+    changed["ref"]["recipeVersion"] = unsigned["recipeVersion"]
+    changed["artifact"] = {
+        **unsigned,
+        "signature": {
+            "algorithm": "ed25519",
+            "signer": signer,
+            "value": b64url_encode(
+                key.sign((domain + content_hash).encode("ascii"))
+            ),
+        },
+    }
+    changed["serializedArtifactHash"] = hash_hex(changed["artifact"])
+    return changed
+
+
+def resign_bundle(bundle, key, signer):
+    changed = copy.deepcopy(bundle)
+    unsigned = {
+        name: value
+        for name, value in changed.items()
+        if name != "presentation"
+    }
+    changed["presentation"] = {
+        "kind": "per-claim",
+        "signatures": [{
+            "ref": signer,
+            "signature": b64url_encode(
+                key.sign(
+                    (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+                )
+            ),
+        }],
+    }
+    return changed
 
 
 def authenticated_recipe_registry(document):
@@ -194,6 +283,109 @@ def well_formed_result_ref(value):
     )
 
 
+def well_formed_attestation_ref(value):
+    if not isinstance(value, dict) or set(value) != {
+        "anchor", "contentHash", "signer"
+    }:
+        return False
+    anchor = value.get("anchor")
+    try:
+        signer_scheme, _ = parse_ref(value.get("signer"))
+    except ValueError:
+        return False
+    return (
+        isinstance(anchor, dict)
+        and set(anchor) == {"kind", "locator"}
+        and anchor.get("kind") in {"storage-program", "ipfs", "https"}
+        and isinstance(anchor.get("locator"), str)
+        and bool(anchor["locator"])
+        and isinstance(value.get("contentHash"), str)
+        and bool(re.fullmatch(r"[0-9a-f]{64}", value["contentHash"]))
+        and signer_scheme == "key"
+    )
+
+
+def authenticated_result_context(document, recipes):
+    context = document.get("trustedContext")
+    if not isinstance(context, dict) or not isinstance(recipes, dict):
+        return None
+    authorities = context.get("resultAuthorities")
+    attestations = context.get("authenticatedSourceAttestations")
+    result_artifacts = context.get("authenticatedResultArtifacts")
+    if not all(
+        isinstance(items, list)
+        for items in (authorities, attestations, result_artifacts)
+    ):
+        return None
+
+    authority_by_family = {}
+    for authority in authorities:
+        if not isinstance(authority, dict) or set(authority) != {
+            "scheme", "method", "recipeVersion", "algorithm", "signer"
+        }:
+            return None
+        family = (
+            authority.get("scheme"),
+            authority.get("method"),
+            authority.get("recipeVersion"),
+        )
+        if (
+            family not in recipes
+            or authority.get("algorithm") != "ed25519"
+            or authority.get("signer") != AUTHORITY_REF
+            or family in authority_by_family
+        ):
+            return None
+        authority_by_family[family] = authority
+    if set(authority_by_family) != set(recipes):
+        return None
+
+    attestation_by_key = {}
+    for entry in attestations:
+        if not isinstance(entry, dict) or set(entry) != {
+            "attestation", "scheme", "method", "recipeVersion", "resultSigner"
+        }:
+            return None
+        family = (
+            entry.get("scheme"), entry.get("method"), entry.get("recipeVersion")
+        )
+        attestation = entry.get("attestation")
+        key = canonical_bytes(attestation)
+        if (
+            family not in authority_by_family
+            or not well_formed_attestation_ref(attestation)
+            or entry.get("resultSigner")
+            != authority_by_family[family]["signer"]
+            or attestation.get("signer") != entry.get("resultSigner")
+            or key in attestation_by_key
+        ):
+            return None
+        attestation_by_key[key] = entry
+
+    result_hash_by_ref = {}
+    for entry in result_artifacts:
+        if not isinstance(entry, dict) or set(entry) != {
+            "ref", "serializedArtifactHash"
+        }:
+            return None
+        reference = entry.get("ref")
+        key = canonical_bytes(reference)
+        artifact_hash = entry.get("serializedArtifactHash")
+        if (
+            not well_formed_result_ref(reference)
+            or not isinstance(artifact_hash, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", artifact_hash)
+            or key in result_hash_by_ref
+        ):
+            return None
+        result_hash_by_ref[key] = artifact_hash
+    return {
+        "authorityByFamily": authority_by_family,
+        "attestationByKey": attestation_by_key,
+        "resultHashByRef": result_hash_by_ref,
+    }
+
+
 def verify_bundle(bundle):
     if not isinstance(bundle, dict) or not all_safe_integers(bundle):
         return False
@@ -238,8 +430,12 @@ def verify_bundle(bundle):
     )
 
 
-def verify_result(resolved, recipes):
-    if not isinstance(resolved, dict):
+def verify_result(resolved, recipes, result_context):
+    if (
+        not isinstance(resolved, dict)
+        or set(resolved) != {"ref", "artifact", "serializedArtifactHash"}
+        or not isinstance(result_context, dict)
+    ):
         return False
     artifact = resolved.get("artifact")
     reference = resolved.get("ref")
@@ -269,18 +465,58 @@ def verify_result(resolved, recipes):
         and signature.get("signer") not in issuer_allow_list
     ):
         return False
+    authority = result_context["authorityByFamily"].get(family)
+    full_hash = hash_hex(artifact)
+    authenticated_full_hash = result_context["resultHashByRef"].get(
+        canonical_bytes(reference)
+    )
+    source_attestation = result_context["attestationByKey"].get(
+        canonical_bytes(artifact.get("attestation"))
+    )
+    try:
+        canonical_identity = parse_ref(
+            f"{artifact.get('scheme')}:{artifact.get('identifier')}"
+        )
+    except ValueError:
+        return False
+    if (
+        canonical_identity
+        != (artifact.get("scheme"), artifact.get("identifier"))
+        or authority is None
+        or signature.get("signer") != authority["signer"]
+        or signature.get("algorithm") != authority["algorithm"]
+        or not well_formed_attestation_ref(artifact.get("attestation"))
+        or source_attestation is None
+        or (
+            source_attestation["scheme"],
+            source_attestation["method"],
+            source_attestation["recipeVersion"],
+        ) != family
+        or source_attestation["resultSigner"] != authority["signer"]
+        or resolved.get("serializedArtifactHash") != full_hash
+        or authenticated_full_hash != full_hash
+    ):
+        return False
     return verify_signature(
-        signature.get("signer"),
+        authority["signer"],
         signature.get("value"),
         (RESULT_DOMAIN + hash_hex(unsigned)).encode("ascii"),
     )
 
 
 def resolved_by_ref(value):
-    return {
-        canonical_bytes(item["ref"]): item
-        for item in value.get("resolvedResults", [])
-    }
+    items = value.get("resolvedResults")
+    if not isinstance(items, list):
+        return None
+    resolved = {}
+    for item in items:
+        if not isinstance(item, dict) or not well_formed_result_ref(item.get("ref")):
+            return None
+        key = canonical_bytes(item["ref"])
+        if key in resolved:
+            return None
+        resolved[key] = item
+    return resolved
 
 
 def matching_claims(value, req, exact_ref=None):
@@ -308,14 +544,17 @@ def matching_claims(value, req, exact_ref=None):
     return matches
 
 
-def result_outcome(value, claim, req, recipes):
+def result_outcome(value, claim, req, recipes, result_context):
     reference = claim.get("verifiedBy")
     if not well_formed_result_ref(reference):
         return "fail" if reference is None else "error"
-    resolved = resolved_by_ref(value).get(canonical_bytes(reference))
+    results = resolved_by_ref(value)
+    if results is None:
+        return "error"
+    resolved = results.get(canonical_bytes(reference))
     if resolved is None:
         return "indeterminate"
-    if not verify_result(resolved, recipes):
+    if not verify_result(resolved, recipes, result_context):
         return "error"
     result = resolved["artifact"]
     scheme, identifier = parse_ref(claim["ref"])
@@ -349,18 +588,21 @@ def result_outcome(value, claim, req, recipes):
     return "pass"
 
 
-def classify_member(value, req, recipes, exact_ref=None):
+def classify_member(value, req, recipes, result_context, exact_ref=None):
     matches = matching_claims(value, req, exact_ref)
     if req.get("verificationRequired") is False:
         return "pass" if matches else "fail"
-    outcomes = [result_outcome(value, item, req, recipes) for item in matches]
+    outcomes = [
+        result_outcome(value, item, req, recipes, result_context)
+        for item in matches
+    ]
     for outcome in ("pass", "fail", "error", "indeterminate"):
         if outcome in outcomes:
             return outcome
     return "fail"
 
 
-def presented_control(value, recipes):
+def presented_control(value, recipes, result_context):
     bundle = value["bundle"]
     presented = bundle["presentedBy"]
     scheme, _ = parse_ref(presented)
@@ -373,8 +615,11 @@ def presented_control(value, recipes):
     reference = claim.get("verifiedBy")
     if not well_formed_result_ref(reference):
         return False
-    resolved = resolved_by_ref(value).get(canonical_bytes(reference))
-    if resolved is None or not verify_result(resolved, recipes):
+    results = resolved_by_ref(value)
+    if results is None:
+        return False
+    resolved = results.get(canonical_bytes(reference))
+    if resolved is None or not verify_result(resolved, recipes, result_context):
         return False
     result = resolved["artifact"]
     binding = result.get("data", {}).get("holderBinding")
@@ -385,6 +630,7 @@ def presented_control(value, recipes):
             {"scheme": scheme, "verificationRequired": True,
              "recipeVersion": reference["recipeVersion"]},
             recipes,
+            result_context,
         ) == "pass"
         and result.get("method") == "verifiable-credential"
         and isinstance(binding, dict)
@@ -392,13 +638,15 @@ def presented_control(value, recipes):
     )
 
 
-def selector_authorized(value, req, recipes):
+def selector_authorized(value, req, recipes, result_context):
     selector = req.get("primaryClaimSelector")
     if selector is None:
         return True
     bundle = value["bundle"]
     scheme, _ = parse_ref(bundle["presentedBy"])
-    if scheme != selector or not presented_control(value, recipes):
+    if scheme != selector or not presented_control(
+        value, recipes, result_context
+    ):
         return False
     required = req.get("required", [])
     one_of = req.get("oneOf", [])
@@ -413,7 +661,8 @@ def selector_authorized(value, req, recipes):
             and item.get("verificationRequired") is True
         )
         return classify_member(
-            value, selected_req, recipes, exact_ref=bundle["presentedBy"]
+            value, selected_req, recipes, result_context,
+            exact_ref=bundle["presentedBy"]
         ) == "pass"
     presence_members = [
         item for item in required
@@ -422,7 +671,8 @@ def selector_authorized(value, req, recipes):
     ]
     if any(
         classify_member(
-            value, item, recipes, exact_ref=bundle["presentedBy"]
+            value, item, recipes, result_context,
+            exact_ref=bundle["presentedBy"]
         ) == "pass"
         for item in presence_members
     ):
@@ -432,7 +682,8 @@ def selector_authorized(value, req, recipes):
             item.get("scheme") == selector
             and item.get("verificationRequired") is False
             and classify_member(
-                value, item, recipes, exact_ref=bundle["presentedBy"]
+                value, item, recipes, result_context,
+                exact_ref=bundle["presentedBy"]
             ) == "pass"
             for item in group
         ):
@@ -463,7 +714,7 @@ def valid_requirement(req):
     return True
 
 
-def evaluate(value, recipes):
+def evaluate(value, recipes, result_context):
     if not isinstance(value, dict) or type(value.get("evaluatedAt")) is not int:
         return "error", ["invalid evaluation time"]
     if not verify_bundle(value.get("bundle")):
@@ -474,11 +725,13 @@ def evaluate(value, recipes):
     for item in value["bundle"]["claims"]:
         if "verifiedBy" in item and not well_formed_result_ref(item["verifiedBy"]):
             return "error", ["malformed verification reference"]
+    if resolved_by_ref(value) is None:
+        return "error", ["duplicate or malformed resolved result reference"]
     failures = []
     errors = []
     indeterminates = []
     for item in req.get("required", []):
-        outcome = classify_member(value, item, recipes)
+        outcome = classify_member(value, item, recipes, result_context)
         if outcome == "fail":
             failures.append("required failing or absent: " + item["scheme"])
         elif outcome == "error":
@@ -486,7 +739,10 @@ def evaluate(value, recipes):
         elif outcome == "indeterminate":
             indeterminates.append("required indeterminate: " + item["scheme"])
     for group in req.get("oneOf", []):
-        outcomes = [classify_member(value, item, recipes) for item in group]
+        outcomes = [
+            classify_member(value, item, recipes, result_context)
+            for item in group
+        ]
         if "pass" in outcomes:
             continue
         if "error" in outcomes:
@@ -497,7 +753,7 @@ def evaluate(value, recipes):
             )
         else:
             failures.append("oneOf group: no claim satisfied")
-    if not selector_authorized(value, req, recipes):
+    if not selector_authorized(value, req, recipes, result_context):
         failures.append(
             "primaryClaimSelector is mismatched, uncontrolled, or unauthorized"
         )
@@ -510,8 +766,8 @@ def evaluate(value, recipes):
     return "pass", []
 
 
-def evaluate_decision(value, recipes):
-    return evaluate(value, recipes)[0]
+def evaluate_decision(value, recipes, result_context):
+    return evaluate(value, recipes, result_context)[0]
 
 
 def well_formed_record_ref(value):
@@ -532,7 +788,9 @@ def well_formed_record_ref(value):
     )
 
 
-def authenticate_production_aggregate(value, trusted_context, recipes):
+def authenticate_production_aggregate(
+    value, trusted_context, recipes, result_context
+):
     if not isinstance(value, dict) or not isinstance(trusted_context, dict):
         return None
     record = value.get("record")
@@ -621,7 +879,10 @@ def authenticate_production_aggregate(value, trusted_context, recipes):
         len(resolved_refs) != len(resolved)
         or [canonical_bytes(item) for item in resolved_refs] != canonical_refs
         or len(set(canonical_refs)) != len(canonical_refs)
-        or any(not verify_result(item, recipes) for item in resolved)
+        or any(
+            not verify_result(item, recipes, result_context)
+            for item in resolved
+        )
     ):
         return None
     return {
@@ -632,13 +893,13 @@ def authenticate_production_aggregate(value, trusted_context, recipes):
     }
 
 
-def aggregate_output(value, trusted_context, recipes):
+def aggregate_output(value, trusted_context, recipes, result_context):
     projection = authenticate_production_aggregate(
-        value, trusted_context, recipes
+        value, trusted_context, recipes, result_context
     )
     if projection is None:
         return {"decision": "error", "reasons": ["aggregation authority invalid"]}
-    decision, reasons = evaluate(projection, recipes)
+    decision, reasons = evaluate(projection, recipes, result_context)
     if value["record"].get("overallDecision") != decision:
         return {
             "decision": "error",
@@ -659,14 +920,15 @@ def execute(evaluation, document):
     operation = evaluation["operation"]
     value = evaluation["input"]
     recipes = authenticated_recipe_registry(document)
+    result_context = authenticated_result_context(document, recipes)
     if operation == "match":
-        return evaluate_decision(value, recipes) == "pass"
+        return evaluate_decision(value, recipes, result_context) == "pass"
     if operation == "decision":
-        return evaluate_decision(value, recipes)
+        return evaluate_decision(value, recipes, result_context)
     if operation == "decision-no-throw":
         try:
             return {
-                "decision": evaluate_decision(value, recipes),
+                "decision": evaluate_decision(value, recipes, result_context),
                 "throws": False,
             }
         except Exception:  # the vector explicitly proves this boundary
@@ -674,9 +936,15 @@ def execute(evaluation, document):
     if operation == "control-decision":
         if not verify_bundle(value.get("bundle")):
             return "error"
-        return "pass" if presented_control(value, recipes) else "fail"
+        return (
+            "pass"
+            if presented_control(value, recipes, result_context)
+            else "fail"
+        )
     if operation == "aggregate":
-        return aggregate_output(value, document["trustedContext"], recipes)
+        return aggregate_output(
+            value, document["trustedContext"], recipes, result_context
+        )
     raise AssertionError(f"unknown operation {operation!r}")
 
 
@@ -695,6 +963,9 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         cls.document = json.loads(cls.raw)
         cls.cases = cls.document["cases"]
         cls.recipes = authenticated_recipe_registry(cls.document)
+        cls.result_context = authenticated_result_context(
+            cls.document, cls.recipes
+        )
 
     def test_generator_is_deterministic(self):
         subprocess.run(
@@ -754,7 +1025,11 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     else:
                         self.assertTrue(bundle_ok)
                     for resolved in value["resolvedResults"]:
-                        self.assertTrue(verify_result(resolved, self.recipes))
+                        self.assertTrue(
+                            verify_result(
+                                resolved, self.recipes, self.result_context
+                            )
+                        )
 
     def test_recipe_registry_is_signed_closed_and_family_qualified(self):
         self.assertIsNotNone(self.recipes)
@@ -802,7 +1077,14 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     },
                 }
                 changed["ref"]["contentHash"] = content_hash
-                self.assertFalse(verify_result(changed, self.recipes))
+                changed["serializedArtifactHash"] = hash_hex(
+                    changed["artifact"]
+                )
+                self.assertFalse(
+                    verify_result(
+                        changed, self.recipes, self.result_context
+                    )
+                )
 
     def test_aggregate_authority_and_committed_result_set_fail_closed(self):
         case = next(
@@ -832,6 +1114,215 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 },
                 execute(changed, self.document),
             )
+
+    def test_authenticated_result_context_is_complete_and_independent(self):
+        self.assertIsNotNone(self.result_context)
+        result_refs = {
+            canonical_bytes(result["ref"])
+            for case in self.cases
+            for evaluation in case["evaluations"].values()
+            for result in evaluation["input"]["resolvedResults"]
+        }
+        source_refs = {
+            canonical_bytes(result["artifact"]["attestation"])
+            for case in self.cases
+            for evaluation in case["evaluations"].values()
+            for result in evaluation["input"]["resolvedResults"]
+        }
+        self.assertEqual(
+            result_refs, set(self.result_context["resultHashByRef"])
+        )
+        self.assertEqual(
+            source_refs, set(self.result_context["attestationByKey"])
+        )
+
+    def test_valid_replacement_signer_cannot_preserve_result_authority(self):
+        resolved = next(
+            result
+            for case in self.cases
+            for evaluation in case["evaluations"].values()
+            for result in evaluation["input"]["resolvedResults"]
+        )
+        attacker = fixture_private_key("replacement-signer")
+        attacker_ref = public_ref(attacker)
+        changed = resign_result(resolved, attacker, attacker_ref)
+        self.assertEqual(
+            resolved["ref"]["contentHash"], changed["ref"]["contentHash"]
+        )
+        self.assertFalse(
+            verify_result(changed, self.recipes, self.result_context)
+        )
+        # Even granting the replacement its new full-artifact hash cannot make
+        # its self-declared signing key an authenticated result authority.
+        trust = copy.deepcopy(self.result_context)
+        trust["resultHashByRef"][canonical_bytes(changed["ref"])] = changed[
+            "serializedArtifactHash"
+        ]
+        self.assertFalse(verify_result(changed, self.recipes, trust))
+        with mock.patch(f"{__name__}.verify_signature", return_value=True):
+            self.assertFalse(verify_result(changed, self.recipes, trust))
+
+    def test_noncanonical_identifiers_for_each_exercised_family_reject(self):
+        invalid = [
+            "key:0x" + "11" * 32,
+            "lei:not-a-valid-lei",
+            "cci-lei:984500abcdef12345678",
+            "finra-crd:012345",
+            "did:Example:subject",
+            "domain:Example.com",
+            "domain:127.0.0.1",
+        ]
+        for reference in invalid:
+            with self.subTest(reference=reference):
+                with self.assertRaises(ValueError):
+                    parse_ref(reference)
+
+    def test_bad_signature_and_wrong_domain_are_rejected_after_hash_binding(self):
+        resolved = next(
+            result
+            for case in self.cases
+            for evaluation in case["evaluations"].values()
+            for result in evaluation["input"]["resolvedResults"]
+        )
+        bad = copy.deepcopy(resolved)
+        signature_value = bad["artifact"]["signature"]["value"]
+        bad["artifact"]["signature"]["value"] = (
+            ("A" if signature_value[0] != "A" else "B")
+            + signature_value[1:]
+        )
+        bad["serializedArtifactHash"] = hash_hex(bad["artifact"])
+        bad_trust = copy.deepcopy(self.result_context)
+        bad_trust["resultHashByRef"][canonical_bytes(bad["ref"])] = bad[
+            "serializedArtifactHash"
+        ]
+        self.assertFalse(verify_result(bad, self.recipes, bad_trust))
+
+        wrong_domain = resign_result(
+            resolved,
+            fixture_private_key("authority"),
+            AUTHORITY_REF,
+            domain="dacs-composite:v1:",
+        )
+        wrong_domain_trust = copy.deepcopy(self.result_context)
+        wrong_domain_trust["resultHashByRef"][
+            canonical_bytes(wrong_domain["ref"])
+        ] = wrong_domain["serializedArtifactHash"]
+        self.assertFalse(
+            verify_result(wrong_domain, self.recipes, wrong_domain_trust)
+        )
+
+    def test_malformed_ref_source_substitution_and_missing_family_reject(self):
+        resolved = next(
+            result
+            for case in self.cases
+            for evaluation in case["evaluations"].values()
+            for result in evaluation["input"]["resolvedResults"]
+        )
+        malformed = copy.deepcopy(resolved)
+        malformed["ref"]["contentHash"] = "not-a-hash"
+        self.assertFalse(
+            verify_result(malformed, self.recipes, self.result_context)
+        )
+
+        authority = fixture_private_key("authority")
+        source_swap = copy.deepcopy(resolved)
+        source_swap["artifact"]["attestation"]["contentHash"] = "00" * 32
+        source_swap = resign_result(source_swap, authority, AUTHORITY_REF)
+        source_trust = copy.deepcopy(self.result_context)
+        source_trust["resultHashByRef"][
+            canonical_bytes(source_swap["ref"])
+        ] = source_swap["serializedArtifactHash"]
+        self.assertFalse(
+            verify_result(source_swap, self.recipes, source_trust)
+        )
+
+        family_swap = copy.deepcopy(resolved)
+        family_swap["artifact"]["method"] = "oauth-attested"
+        family_swap = resign_result(family_swap, authority, AUTHORITY_REF)
+        family_trust = copy.deepcopy(self.result_context)
+        family_trust["resultHashByRef"][
+            canonical_bytes(family_swap["ref"])
+        ] = family_swap["serializedArtifactHash"]
+        self.assertFalse(
+            verify_result(family_swap, self.recipes, family_trust)
+        )
+
+    def test_duplicate_result_refs_fail_before_lookup(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "dacs1-cci-lei-named-matches"
+        )
+        changed = copy.deepcopy(case["evaluations"]["result"])
+        changed["input"]["resolvedResults"].append(
+            copy.deepcopy(changed["input"]["resolvedResults"][0])
+        )
+        self.assertFalse(execute(changed, self.document))
+
+    def test_signed_noncanonical_lei_cannot_satisfy_presence(self):
+        case = next(
+            item for item in self.cases
+            if item["name"]
+            == "vet-control-existence-only-lei-supporting-context"
+        )
+        original = case["evaluations"]["result"]["input"]["bundle"]
+        bundle = copy.deepcopy(original)
+        lei_claim = next(
+            item for item in bundle["claims"] if item["ref"].startswith("lei:")
+        )
+        lei_claim["ref"] = "lei:not-a-valid-lei"
+        lei_claim.pop("verifiedBy", None)
+        bundle = resign_bundle(
+            bundle,
+            fixture_private_key("presenter"),
+            public_ref(fixture_private_key("presenter")),
+        )
+        evaluation = {
+            "operation": "match",
+            "input": {
+                "evaluatedAt": 1_900_000_000_000,
+                "bundle": bundle,
+                "requirement": {
+                    "requirementVersion": "1",
+                    "required": [{
+                        "scheme": "lei", "verificationRequired": False,
+                    }],
+                },
+                "resolvedResults": [],
+            },
+        }
+        self.assertFalse(execute(evaluation, self.document))
+
+    def test_resigned_method_and_data_substitution_cannot_flip_control(self):
+        case = next(
+            item for item in self.cases
+            if item["name"]
+            == "vet-control-existence-method-forged-holderbinding-reject"
+        )
+        changed = copy.deepcopy(case["evaluations"]["result"])
+        old_result = changed["input"]["resolvedResults"][0]
+        old_ref = old_result["ref"]
+        old_result["artifact"]["method"] = "verifiable-credential"
+        old_result["artifact"]["data"] = {
+            "holderBinding": {
+                "controller": public_ref(fixture_private_key("presenter")),
+            },
+        }
+        new_result = resign_result(
+            old_result,
+            fixture_private_key("authority"),
+            AUTHORITY_REF,
+        )
+        changed["input"]["resolvedResults"][0] = new_result
+        bundle = changed["input"]["bundle"]
+        for claim in bundle["claims"]:
+            if claim.get("verifiedBy") == old_ref:
+                claim["verifiedBy"] = copy.deepcopy(new_result["ref"])
+        changed["input"]["bundle"] = resign_bundle(
+            bundle,
+            fixture_private_key("presenter"),
+            public_ref(fixture_private_key("presenter")),
+        )
+        self.assertNotEqual("pass", execute(changed, self.document))
 
     def test_vpc4_terminal_fault_attribution_is_derived(self):
         self.assertEqual("counterparty", vpc4_error_class("fail"))

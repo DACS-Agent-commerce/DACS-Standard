@@ -296,7 +296,14 @@ def signed_result(
         "contentHash": hash_hex(unsigned),
         "recipeVersion": recipe_version,
     }
-    resolved = {"ref": copy.deepcopy(result_ref), "artifact": artifact}
+    resolved = {
+        "ref": copy.deepcopy(result_ref),
+        "artifact": artifact,
+        # VerifyResultRef.contentHash intentionally omits the signature
+        # envelope.  The trusted resolver binds the complete serialized
+        # artifact separately so an envelope cannot be replaced in place.
+        "serializedArtifactHash": hash_hex(artifact),
+    }
     return result_ref, resolved
 
 
@@ -956,6 +963,25 @@ def build_cases() -> list[dict]:
 
 def build_document() -> dict:
     cases = build_cases()
+    registry = recipe_registry()
+    authenticated_attestations = {}
+    authenticated_results = {}
+    for case_value in cases:
+        for evaluation_value in case_value["evaluations"].values():
+            for resolved in evaluation_value["input"]["resolvedResults"]:
+                artifact = resolved["artifact"]
+                attestation = artifact["attestation"]
+                authenticated_attestations[canonical_bytes(attestation)] = {
+                    "attestation": copy.deepcopy(attestation),
+                    "scheme": artifact["scheme"],
+                    "method": artifact["method"],
+                    "recipeVersion": artifact["recipeVersion"],
+                    "resultSigner": AUTHORITY_REF,
+                }
+                authenticated_results[canonical_bytes(resolved["ref"])] = {
+                    "ref": copy.deepcopy(resolved["ref"]),
+                    "serializedArtifactHash": resolved["serializedArtifactHash"],
+                }
     return {
         "set": "dacs1-vet-golden-inputs-v0.1",
         "spec": (
@@ -993,10 +1019,28 @@ def build_document() -> dict:
             "verifier": VERIFIER_REF,
         },
         "trustedContext": {
-            "recipeRegistry": recipe_registry(),
+            "recipeRegistry": registry,
             "authenticatedSessionStarts": {
                 SESSION_START: authenticated_session_start(),
             },
+            "resultAuthorities": [
+                {
+                    "scheme": recipe["scheme"],
+                    "method": recipe["defaultMethod"]["kind"],
+                    "recipeVersion": recipe["recipeVersion"],
+                    "algorithm": "ed25519",
+                    "signer": AUTHORITY_REF,
+                }
+                for recipe in registry["recipes"]
+            ],
+            "authenticatedSourceAttestations": [
+                authenticated_attestations[key]
+                for key in sorted(authenticated_attestations)
+            ],
+            "authenticatedResultArtifacts": [
+                authenticated_results[key]
+                for key in sorted(authenticated_results)
+            ],
         },
         "count": len(cases),
         "hash": hash_hex(cases),

@@ -20,7 +20,12 @@ The format used per release:
   three aggregation cases exercise CRQ-1 through signed composite records and
   the production `VetCredentialsInput`/trusted-session boundary, including
   exact job, bundle, requirement, registry-pin, and committed-result-set
-  checks. Aggregate outputs retain only the normative decision and reasons;
+  checks. The fixture resolver independently binds the expected result signer,
+  authenticated source-attestation reference, and complete serialized result
+  hash in addition to the signature-excluded `VerifyResultRef.contentHash`;
+  result references must be unique and every exercised identifier must be in
+  its scheme's canonical form. Aggregate outputs retain only the normative
+  decision and reasons;
   VPC-4 terminal attribution is derived separately (`fail` maps to
   `counterparty`, never `permanent`). The cross-run tool rejects the
   superseded control-gate sketch and exposes all 34 replacement evaluations

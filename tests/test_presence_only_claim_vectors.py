@@ -85,7 +85,7 @@ def well_formed_result_ref(value):
     )
 
 
-def verify_component(artifact, domain):
+def verify_component(artifact, domain, expected_signer):
     if not isinstance(artifact, dict):
         return False
     signature = artifact.get("signature")
@@ -94,6 +94,8 @@ def verify_component(artifact, domain):
     }:
         return False
     if signature.get("algorithm") != "ed25519":
+        return False
+    if signature.get("signer") != expected_signer:
         return False
     try:
         scheme, public_hex = parse_ref(signature.get("signer"))
@@ -107,6 +109,61 @@ def verify_component(artifact, domain):
     except (InvalidSignature, TypeError, ValueError):
         return False
     return True
+
+
+def trusted_context_valid(value):
+    if not isinstance(value, dict) or set(value) != {
+        "compositeSigner", "verifyResultAuthorities"
+    }:
+        return False
+    try:
+        composite_scheme, _ = parse_ref(value["compositeSigner"])
+    except ValueError:
+        return False
+    if composite_scheme != "key":
+        return False
+    authorities = value["verifyResultAuthorities"]
+    if not isinstance(authorities, list):
+        return False
+    seen = set()
+    for authority in authorities:
+        if not isinstance(authority, dict) or set(authority) != {
+            "scheme", "method", "recipeVersion", "signer"
+        }:
+            return False
+        family = (
+            authority.get("scheme"),
+            authority.get("method"),
+            authority.get("recipeVersion"),
+        )
+        try:
+            signer_scheme, _ = parse_ref(authority.get("signer"))
+        except ValueError:
+            return False
+        if (
+            authority.get("scheme") not in KNOWN_SCHEMES
+            or not isinstance(authority.get("method"), str)
+            or not authority["method"]
+            or not isinstance(authority.get("recipeVersion"), int)
+            or isinstance(authority["recipeVersion"], bool)
+            or authority["recipeVersion"] < 1
+            or signer_scheme != "key"
+            or family in seen
+        ):
+            return False
+        seen.add(family)
+    return True
+
+
+def expected_result_signer(context, result):
+    matches = [
+        authority
+        for authority in context["verifyResultAuthorities"]
+        if authority["scheme"] == result.get("scheme")
+        and authority["method"] == result.get("method")
+        and authority["recipeVersion"] == result.get("recipeVersion")
+    ]
+    return matches[0]["signer"] if len(matches) == 1 else None
 
 
 def verify_bundle(bundle):
@@ -205,7 +262,7 @@ def classify_presence(vector, requirement, exact_ref=None):
     return "pass" if matches else "fail"
 
 
-def classify_verified(vector, requirement, exact_ref=None):
+def classify_verified(vector, requirement, exact_ref=None, trusted_context=None):
     status, matches = matching_claims(vector["bundle"], requirement, vector["evaluatedAt"])
     if status == "error":
         return status
@@ -225,7 +282,10 @@ def classify_verified(vector, requirement, exact_ref=None):
         if signed_component_hash(result) != reference["contentHash"]:
             outcomes.append("error")
             continue
-        if not verify_component(result, VERIFY_RESULT_DOMAIN):
+        expected_signer = expected_result_signer(trusted_context, result)
+        if expected_signer is None or not verify_component(
+            result, VERIFY_RESULT_DOMAIN, expected_signer
+        ):
             outcomes.append("error")
             continue
         try:
@@ -274,15 +334,15 @@ def classify_verified(vector, requirement, exact_ref=None):
     return "fail"
 
 
-def classify_member(vector, member, exact_ref=None):
+def classify_member(vector, member, exact_ref=None, trusted_context=None):
     if member.get("verificationRequired") is False:
         return classify_presence(vector, member, exact_ref)
     if member.get("verificationRequired") is True:
-        return classify_verified(vector, member, exact_ref)
+        return classify_verified(vector, member, exact_ref, trusted_context)
     return "error"
 
 
-def selected_claim_is_authorized(vector):
+def selected_claim_is_authorized(vector, trusted_context):
     requirement = vector["requirement"]
     selector = requirement.get("primaryClaimSelector")
     if selector is None:
@@ -310,7 +370,7 @@ def selected_claim_is_authorized(vector):
         return False
     if classify_verified(
         vector, {"scheme": selector, "verificationRequired": True},
-        exact_ref=bundle["presentedBy"],
+        exact_ref=bundle["presentedBy"], trusted_context=trusted_context,
     ) == "pass":
         return True
 
@@ -343,7 +403,7 @@ def selected_claim_is_authorized(vector):
         )
         other_pass = any(
             member.get("scheme") != selector
-            and classify_member(vector, member) == "pass"
+            and classify_member(vector, member, trusted_context=trusted_context) == "pass"
             for member in group
         )
         if not (exact_presence or other_pass):
@@ -351,10 +411,14 @@ def selected_claim_is_authorized(vector):
     return True
 
 
-def evaluate(vector):
+def evaluate(vector, trusted_context):
     record = vector.get("compositeRecord")
     requirement = vector.get("requirement")
-    if not verify_component(record, COMPOSITE_DOMAIN):
+    if not trusted_context_valid(trusted_context):
+        return "error"
+    if not verify_component(
+        record, COMPOSITE_DOMAIN, trusted_context["compositeSigner"]
+    ):
         return "error"
     if hash_hex(requirement) != record.get("requirementHash"):
         return "error"
@@ -417,7 +481,7 @@ def evaluate(vector):
     errors = []
     indeterminates = []
     for member in requirement.get("required", []):
-        outcome = classify_member(vector, member)
+        outcome = classify_member(vector, member, trusted_context=trusted_context)
         if outcome == "fail":
             failures.append(outcome)
         elif outcome == "error":
@@ -425,7 +489,10 @@ def evaluate(vector):
         elif outcome == "indeterminate":
             indeterminates.append(outcome)
     for group in requirement.get("oneOf", []):
-        outcomes = [classify_member(vector, member) for member in group]
+        outcomes = [
+            classify_member(vector, member, trusted_context=trusted_context)
+            for member in group
+        ]
         if "pass" in outcomes:
             continue
         if "error" in outcomes:
@@ -435,7 +502,7 @@ def evaluate(vector):
         else:
             failures.append("oneOf")
 
-    if not selected_claim_is_authorized(vector):
+    if not selected_claim_is_authorized(vector, trusted_context):
         failures.append("selector")
 
     if failures:
@@ -473,7 +540,10 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
     def test_all_vectors_execute(self):
         for vector in self.document["vectors"]:
             with self.subTest(vector=vector["name"]):
-                self.assertEqual(vector["expected"], evaluate(vector))
+                self.assertEqual(
+                    vector["expected"],
+                    evaluate(vector, self.document["trustedContext"]),
+                )
 
     def test_all_non_signature_negative_artifacts_are_genuinely_signed(self):
         for vector in self.document["vectors"]:
@@ -489,12 +559,24 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                     "invalid-composite-signature-rejected",
                     "invalid-composite-still-rejects-without-bundle",
                 },
-                verify_component(vector["compositeRecord"], COMPOSITE_DOMAIN),
+                verify_component(
+                    vector["compositeRecord"],
+                    COMPOSITE_DOMAIN,
+                    self.document["trustedContext"]["compositeSigner"],
+                ),
                 name,
             )
             for resolved in vector["resolvedResults"]:
-                self.assertTrue(
-                    verify_component(resolved["artifact"], VERIFY_RESULT_DOMAIN), name
+                expected_signer = expected_result_signer(
+                    self.document["trustedContext"], resolved["artifact"]
+                )
+                self.assertEqual(
+                    name != "authorized-result-signer-substitution-rejected",
+                    expected_signer is not None
+                    and verify_component(
+                        resolved["artifact"], VERIFY_RESULT_DOMAIN, expected_signer
+                    ),
+                    name,
                 )
 
     def test_every_result_reference_uses_the_core_b2_signed_scope(self):
@@ -525,7 +607,31 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         )
         self.assertEqual(signed_component_hash(original), signed_component_hash(mutated))
         self.assertEqual(item["ref"]["contentHash"], signed_component_hash(mutated))
-        self.assertFalse(verify_component(mutated, VERIFY_RESULT_DOMAIN))
+        expected_signer = expected_result_signer(
+            self.document["trustedContext"], mutated
+        )
+        self.assertFalse(
+            verify_component(mutated, VERIFY_RESULT_DOMAIN, expected_signer)
+        )
+
+    def test_valid_alternate_signature_cannot_replace_the_trusted_authority(self):
+        vector = next(
+            vector for vector in self.document["vectors"]
+            if vector["name"] == "authorized-result-signer-substitution-rejected"
+        )
+        resolved = vector["resolvedResults"][0]
+        self.assertEqual(
+            resolved["ref"]["contentHash"],
+            signed_component_hash(resolved["artifact"]),
+        )
+        signature = resolved["artifact"]["signature"]
+        self.assertNotEqual(
+            signature["signer"],
+            self.document["trustedContext"]["verifyResultAuthorities"][1]["signer"],
+        )
+        self.assertEqual(
+            "error", evaluate(vector, self.document["trustedContext"])
+        )
 
     def test_presence_only_members_have_no_result_refs_in_passing_records(self):
         for vector in self.document["vectors"]:
@@ -545,7 +651,9 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         }
         by_name = {vector["name"]: vector for vector in self.document["vectors"]}
         for name, verdict in expected.items():
-            self.assertEqual(verdict, evaluate(by_name[name]))
+            self.assertEqual(
+                verdict, evaluate(by_name[name], self.document["trustedContext"])
+            )
 
     def test_requirement_shape_vectors_are_distinguishing(self):
         by_name = {vector["name"]: vector for vector in self.document["vectors"]}
@@ -572,18 +680,29 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                 self.assertEqual(
                     fallback, vector["compositeRecord"]["overallDecision"]
                 )
-                self.assertEqual("error", evaluate(vector))
+                self.assertEqual(
+                    "error", evaluate(vector, self.document["trustedContext"])
+                )
         self.assertEqual(
-            "pass", evaluate(by_name["empty-member-collections-are-vacuously-satisfied"])
+            "pass", evaluate(
+                by_name["empty-member-collections-are-vacuously-satisfied"],
+                self.document["trustedContext"],
+            )
         )
 
     def test_registry_authentication_precedes_bundle_availability(self):
         by_name = {vector["name"]: vector for vector in self.document["vectors"]}
         self.assertEqual(
-            "indeterminate", evaluate(by_name["exact-bundle-unavailable-is-indeterminate"])
+            "indeterminate", evaluate(
+                by_name["exact-bundle-unavailable-is-indeterminate"],
+                self.document["trustedContext"],
+            )
         )
         self.assertEqual(
-            "error", evaluate(by_name["invalid-registry-precedes-unavailable-bundle"])
+            "error", evaluate(
+                by_name["invalid-registry-precedes-unavailable-bundle"],
+                self.document["trustedContext"],
+            )
         )
 
     def test_published_control_fixture_is_the_presence_only_key_case(self):

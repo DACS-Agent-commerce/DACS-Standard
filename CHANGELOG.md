@@ -70,8 +70,10 @@ The format used per release:
   registry snapshot, including for an all-presence requirement, so the
   algorithm remains consistent with CRQ-1 and composes with descriptor-bound
   registry resolution. Empty collection and exact-boolean configuration
-  semantics are explicit. Adds 38 deterministic vectors with genuine Ed25519
-  bundle, VerifyResult, and composite signatures. No artifact or schema change.
+  semantics are explicit. Adds 39 deterministic vectors with genuine Ed25519
+  bundle, VerifyResult, and composite signatures, including an independently
+  bound authority context that rejects a valid replacement signature without
+  changing the referenced content hash. No artifact or schema change.
 
 ### Added — signed alternative-payment projection
 

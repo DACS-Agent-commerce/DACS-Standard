@@ -56,10 +56,12 @@ def b64url(value: bytes) -> str:
 PRESENTER = private_key("dacs-334-presenter")
 SECOND_PRESENTER = private_key("dacs-334-second-presenter")
 AUTHORITY = private_key("dacs-334-authority")
+UNAUTHORIZED_AUTHORITY = private_key("dacs-334-unauthorized-authority")
 VERIFIER = private_key("dacs-334-verifier")
 PRESENTER_REF = f"key:{public_hex(PRESENTER)}"
 SECOND_REF = f"key:{public_hex(SECOND_PRESENTER)}"
 AUTHORITY_REF = f"key:{public_hex(AUTHORITY)}"
+UNAUTHORIZED_AUTHORITY_REF = f"key:{public_hex(UNAUTHORIZED_AUTHORITY)}"
 VERIFIER_REF = f"key:{public_hex(VERIFIER)}"
 LEI_REF = "lei:5493001KJTIIGC8Y1R12"
 DID_REF = "did:example:presence-vector"
@@ -116,6 +118,8 @@ def verify_result(
     verified_at: int = NOW - 10_000,
     valid_until: int | None = NOW + 3_600_000,
     recipe_version: int = 1,
+    signer_key: Ed25519PrivateKey = AUTHORITY,
+    signer_ref: str = AUTHORITY_REF,
 ) -> dict:
     scheme, identifier = ref.split(":", 1)
     unsigned = {
@@ -141,7 +145,7 @@ def verify_result(
     }
     if valid_until is not None:
         unsigned["validUntil"] = valid_until
-    return sign_component(unsigned, AUTHORITY, AUTHORITY_REF, VERIFY_RESULT_DOMAIN)
+    return sign_component(unsigned, signer_key, signer_ref, VERIFY_RESULT_DOMAIN)
 
 
 def result_ref(result: dict, label: str) -> dict:
@@ -452,6 +456,32 @@ def build_vectors() -> list[dict]:
         note="PCR-6 composes direct bundle presence with ordinary VerifyResult evidence",
     ))
 
+    unauthorized_did_vr = verify_result(
+        DID_REF,
+        "pass",
+        signer_key=UNAUTHORIZED_AUTHORITY,
+        signer_ref=UNAUTHORIZED_AUTHORITY_REF,
+    )
+    unauthorized_did_ref = result_ref(
+        unauthorized_did_vr, "unauthorized-result-signer"
+    )
+    vectors.append(case(
+        "authorized-result-signer-substitution-rejected",
+        "error",
+        signed_bundle([
+            base_key,
+            claim(DID_REF, verifiedBy=unauthorized_did_ref),
+        ]),
+        mixed_req,
+        refs=[unauthorized_did_ref],
+        resolved=[(unauthorized_did_ref, unauthorized_did_vr)],
+        overall="pass",
+        note=(
+            "CRQ-1 rejects a valid alternate-key signature because its signer is not "
+            "the independently authenticated authority for the recipe family"
+        ),
+    ))
+
     did_fail_vr = verify_result(DID_REF, "fail")
     did_fail_ref = result_ref(did_fail_vr, "did-fail")
     vectors.append(case(
@@ -673,7 +703,25 @@ def document() -> dict:
             "presenter": public_hex(PRESENTER),
             "secondPresenter": public_hex(SECOND_PRESENTER),
             "authority": public_hex(AUTHORITY),
+            "unauthorizedAuthority": public_hex(UNAUTHORIZED_AUTHORITY),
             "verifier": public_hex(VERIFIER),
+        },
+        "trustedContext": {
+            "compositeSigner": VERIFIER_REF,
+            "verifyResultAuthorities": [
+                {
+                    "scheme": "key",
+                    "method": "self-signed",
+                    "recipeVersion": 1,
+                    "signer": AUTHORITY_REF,
+                },
+                {
+                    "scheme": "did",
+                    "method": "self-signed",
+                    "recipeVersion": 1,
+                    "signer": AUTHORITY_REF,
+                },
+            ],
         },
         "count": len(vectors),
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),

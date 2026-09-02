@@ -52,7 +52,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
-| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 38 | `error` / `fail` / `indeterminate` / `pass` |
+| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 39 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
@@ -1050,18 +1050,22 @@ python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1
 
-Thirty-eight candidate cases make `ClaimRequirement.verificationRequired: false`
+Thirty-nine candidate cases make `ClaimRequirement.verificationRequired: false`
 executable across DACS-1 matching and DACS-2 composite replay. Every ordinary
 bundle and composite record carries a deterministic Ed25519 signature; vectors
 that use a real verification result sign it under the independent VerifyResult
-domain. The two signature-negative cases mutate one otherwise-valid signature.
+domain and supply the independently authenticated signer for each recipe family
+through trusted evaluator context. The signature-negative cases cover both a
+mutated signature and a valid signature made by an unauthorized replacement
+signer while preserving the referenced content hash.
 
 Coverage includes required and `oneOf` presence, expiry and parameter checks,
 informational `issuedAt`, optional failing/stale/unavailable `verifiedBy`,
 malformed references, invalid presence-only `maxAge`/`recipeVersion`, mixed
 presence and verified members, no-synthetic-result enforcement, exact bundle
 and requirement hash replay, missing replay input, decision recomputation, and
-the controlled-key versus existence-only-LEI selector boundary. Exact-boolean
+the authenticated VerifyResult-authority boundary, plus the controlled-key
+versus existence-only-LEI selector boundary. Exact-boolean
 mode selection, vacuous empty member collections, and invalid empty inner
 `oneOf` groups pin the configuration edges. The set adds no
 wire member: the signed bundle and the existing CVR `bundleHash` are the

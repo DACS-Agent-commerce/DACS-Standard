@@ -11,10 +11,28 @@
     "presenter": "3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
     "secondPresenter": "5cf001ec16f4927fe001e6f23c351724b6493cc4d7470e8635acdb9304158751",
     "authority": "5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
+    "unauthorizedAuthority": "bfd5a1fcf76500d60a9b5386a4568301d40e99f08bdd296206260c37e284583d",
     "verifier": "4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147"
   },
-  "count": 38,
-  "hash": "74948747ddfc95b8fba7b63c0f807b96cb37d2cb9a2f5c78ca77c8d503aa81a4",
+  "trustedContext": {
+    "compositeSigner": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+    "verifyResultAuthorities": [
+      {
+        "scheme": "key",
+        "method": "self-signed",
+        "recipeVersion": 1,
+        "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+      },
+      {
+        "scheme": "did",
+        "method": "self-signed",
+        "recipeVersion": 1,
+        "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+      }
+    ]
+  },
+  "count": 39,
+  "hash": "06a4cd59cf6e02343e69f1e941b57b2c30babb180e625188ec5b0826752ddb7a",
   "vectors": [
     {
       "name": "required-presence-key-with-issued-at",
@@ -1383,6 +1401,122 @@
               "algorithm": "ed25519",
               "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc",
               "value": "6D4SO37yfvnyb7gOVgIYNg837X1jxZlOSCvkf-mNm99piY1U2ImRw-nk6fHS9242d0omDgNpi2N2oNQIN9VBBg"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "authorized-result-signer-substitution-rejected",
+      "expected": "error",
+      "note": "CRQ-1 rejects a valid alternate-key signature because its signer is not the independently authenticated authority for the recipe family",
+      "evaluatedAt": 1900000000000,
+      "registryAvailable": true,
+      "registryAuthenticated": true,
+      "bundleAvailable": true,
+      "bundle": {
+        "bundleVersion": "1",
+        "presentedBy": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "presentedAt": 1899999999000,
+        "claims": [
+          {
+            "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+            "issuedAt": 1899999500000
+          },
+          {
+            "ref": "did:example:presence-vector",
+            "verifiedBy": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:unauthorized-result-signer"
+              },
+              "contentHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+              "recipeVersion": 1
+            }
+          }
+        ],
+        "presentation": {
+          "kind": "per-claim",
+          "signatures": [
+            {
+              "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+              "signature": "19AFDwRua-kY30lPYLhsVSyaMcnCfAJuk1nmD7nyYjoQ0SC0roLk7ToJZAC-HP2GYvsaHfNZ0PYVOtrrYKGcAw"
+            }
+          ]
+        }
+      },
+      "requirement": {
+        "requirementVersion": "1",
+        "required": [
+          {
+            "scheme": "key",
+            "verificationRequired": false
+          },
+          {
+            "scheme": "did",
+            "verificationRequired": true
+          }
+        ]
+      },
+      "compositeRecord": {
+        "recordVersion": "1",
+        "jobId": "pcr-authorized-result-signer-substitution-rejected",
+        "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
+        "bundleHash": "30b03bc110e04fc6778ce2998e3ed0a4b7527bd26645250eb0921c256484a9a3",
+        "requirementHash": "8e701933bade7d80fab66d436996356913c14bc9e63f547c875fd628748ec916",
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:unauthorized-result-signer"
+            },
+            "contentHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+            "recipeVersion": 1
+          }
+        ],
+        "overallDecision": "pass",
+        "generatedAt": 1900000000000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
+          "value": "f7pyMWr4g_PFnp3CNV_gfB8SNgAjMxtDoJ7KGasLtl0LdJi4CTTtCdIp0lqmeMULB3hj0oyiGebkLwaDs4haAg"
+        }
+      },
+      "resolvedResults": [
+        {
+          "ref": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "demos:presence-vector:unauthorized-result-signer"
+            },
+            "contentHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
+            "recipeVersion": 1
+          },
+          "artifact": {
+            "resultVersion": "1",
+            "scheme": "did",
+            "identifier": "example:presence-vector",
+            "recipeVersion": 1,
+            "method": "self-signed",
+            "decision": "pass",
+            "reason": "deterministic pass vector",
+            "attestation": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "demos:presence-vector:attestation"
+              },
+              "contentHash": "46d4a95c2f3ac24af0864e0a5be936614f8486f02813087cf3151b27b82221b0",
+              "signer": "key:5e4b3a5200202d797c3b6941eda5176743c5a5d9b444992c27666271654490bc"
+            },
+            "fetchedAt": 1899999989000,
+            "verifiedAt": 1899999990000,
+            "validUntil": 1900003600000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "key:bfd5a1fcf76500d60a9b5386a4568301d40e99f08bdd296206260c37e284583d",
+              "value": "o68uxqlI27emk6yochxmXCxfBZqIbiaEnsEa5SlRnv2_9wEkheN-E-AUyjT1UPFuJ3444cOwA5qX_Xdr8pYpCQ"
             }
           }
         }

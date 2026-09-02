@@ -201,6 +201,27 @@ class ArtifactShapeTests(unittest.TestCase):
         )
         self.assertTrue(any("receiptAttestation" in error for error in errors))
 
+    def test_ap2_receipt_transaction_ref_is_exact(self):
+        v = load_validator()
+        errors = []
+        v.check_chain_tx_ref(
+            {
+                "kind": "ap2",
+                "mandateId": "m-1",
+                "providerRef": "p-1",
+                "protocolVersion": "1",
+                "receiptTransactionRef": {
+                    "kind": "demos-web2-request",
+                    "value": "tx-1",
+                    "locator": "not-allowed",
+                },
+            },
+            "ctx",
+            errors,
+            "txRef",
+        )
+        self.assertTrue(any("receiptTransactionRef" in error for error in errors))
+
     def test_reference_shape_set_is_complete_and_hash_pinned(self):
         v = load_validator()
         data = json.loads(v.REFERENCE_SHAPE_VECTOR.read_text(encoding="utf-8"))

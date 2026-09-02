@@ -145,7 +145,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         conformance = base / "conformance"
         (conformance / "fixtures").mkdir(parents=True)
         (conformance / "vectors").mkdir()
-        for fixture in ["bundle.json", "divergent-seller.json", "htlc9.json", "settlement.json", "delivery.json"]:
+        for fixture in ["bundle.json", "divergent-seller.json", "htlc9.json", "settlement.json", "delivery.json", "ap2.json"]:
             (conformance / "fixtures" / fixture).write_text("{}\n", encoding="utf-8")
         (conformance / "MANIFEST.json").write_text(
             json.dumps(
@@ -189,6 +189,7 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                     "settlement": {
                         "fixture": "conformance/fixtures/settlement.json",
                         "deliveryFixture": "conformance/fixtures/delivery.json",
+                        "ap2Fixture": "conformance/fixtures/ap2.json",
                         "decisions": {"timeout": "indeterminate"},
                     },
                     "dispute": {"decisions": {"opened": "pass"}},

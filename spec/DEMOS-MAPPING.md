@@ -86,6 +86,17 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 - 🟡 oauth-attested method depends on a Demos-side OAuth attester. If not built, the method is 🔵 third-party.
 - 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native context), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
+**DAHR-backed AP2 receipt binding (normative Demos binding).** For DACS-4
+§9.5.6 AP2-2, `ChainTxRef.receiptAttestation` identifies the fetched provider
+status resource and commits to the exact returned bytes; the DAHR `txHash` is
+carried separately as
+`receiptTransactionRef = { kind: "demos-web2-request", value: txHash }`.
+Implementations MUST NOT label that transaction hash as a `storage-program`
+AttestationRef locator: a `web2Request` transaction is not a Storage Program
+record and cannot satisfy the DACS-2 §7.5.2 fetch-and-hash algorithm as one.
+Consumers authenticate the referenced transaction and response commitment by
+the same inclusion checks in (a)–(c) below.
+
 **DAHR-backed payload attestation (normative Demos binding).** DAHR supplies
 the method-native evidence for a DACS-4 §9.6.3
 `PayloadAttestationRecord`; it does not itself supply the DACS commerce

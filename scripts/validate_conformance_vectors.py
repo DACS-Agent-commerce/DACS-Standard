@@ -541,7 +541,7 @@ def validate_golden_outputs(path: Path, manifest_path: Path) -> list[str]:
     manifest_dir = manifest_path.parent
     fixture_keys = {
         "bundle": ["fixture", "divergentSellerFixture", "htlc9Fixture"],
-        "settlement": ["fixture", "deliveryFixture"],
+        "settlement": ["fixture", "deliveryFixture", "ap2Fixture"],
     }
     for section, keys in fixture_keys.items():
         section_data = data.get(section)

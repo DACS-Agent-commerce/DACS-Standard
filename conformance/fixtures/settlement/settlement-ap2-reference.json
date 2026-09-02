@@ -1,0 +1,168 @@
+{
+  "fixtureVersion": "1",
+  "provenance": {
+    "officialAp2Repository": "https://github.com/google-agentic-commerce/AP2",
+    "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
+    "generator": "official AP2 Python SDK MandateClient + DACS reference fixture",
+    "note": "The AP2 presentations and JWKs are public conformance material; no private key is included."
+  },
+  "officialAp2": {
+    "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
+    "request": {
+      "presentation": {
+        "checkoutPresentation": "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0IiwgImtpZCI6ICJkYWNzLWFwMi11c2VyLXYxIn0.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogIlJoWTVPMTdTM1VRRms5VzNrOUJhQnBVZ3V3UjltbnVDSmR3SzRtRXhmRDgifV0sICJfc2RfYWxnIjogInNoYS0yNTYifQ.1b4Md1BMe_H53wpECCWQMyDyea1WRE2lfSI7W4gEQ_poN_3X-2olvwC0yHs568en2vQBt9ALg867Fz-fgMhyWQ~WyJJZENrOUluMzNuTm91SjZiT0JnUmF3IiwgeyJ2Y3QiOiAibWFuZGF0ZS5jaGVja291dC5vcGVuLjEiLCAiY29uc3RyYWludHMiOiBbXSwgImNuZiI6IHsiandrIjogeyJjcnYiOiAiUC0yNTYiLCAia2lkIjogImRhY3MtYXAyLWFnZW50LXYxIiwgImt0eSI6ICJFQyIsICJ4IjogInlRRDhFcDNBY1gyWXBxOFYyN2tYa3dvNFVnMUtPM19QZTRiaVJ6ZXpCOW8iLCAieSI6ICJGY21XdzJqT3VmQmw1TS1LbDFBMnVrcEhGNXR5cUhndERBdDk2SnRsaFdrIn19fV0~~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK3NkLWp3dCIsICJraWQiOiAiZGFjcy1hcDItYWdlbnQtdjEifQ.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogIjIyMXBLeHlrTEh2WTltSTdoTnIwUklla3RaWnJJVktyMVBaYUdEVUlJUVUifV0sICJpYXQiOiAxNzg4MzA0NTE2LCAiYXVkIjogImRhY3MtYXAyLW1lcmNoYW50IiwgIm5vbmNlIjogImRhY3MtYXAyLXJlZmVyZW5jZS1ub25jZS12MSIsICJzZF9oYXNoIjogInRBZFhfYU5Ka2F5VkRQR0F3MUYySEZZVllYMGhnSlNiUnZMXzhuVDFNdUkiLCAiX3NkX2FsZyI6ICJzaGEtMjU2In0.mjAfoDuDt4gGWjptmrm_3ZyCE3pq9NHIW201sgE9ttv0mwwn_FYb7LJZbGbrPBmOPbY-CeWS5XwYPxBG7nMgaw~WyJWM1diQ29HUm9jWDRTUEMzWGIxY1N3IiwgeyJfc2QiOiBbIjVOeEY0QTJsVDhVb1otUURka1Q1S1JPX3MzZTVuZktnUWZ5dnVsT3pKMEUiXSwgInZjdCI6ICJtYW5kYXRlLmNoZWNrb3V0LjEiLCAiY2hlY2tvdXRfaGFzaCI6ICJYZ1dILWdscEpiZFc4NkRZQnQxNjVHdDVKYmVwVWI5LTlrOXhsa2pVenh3In1d~WyJ2LWxoYWtYZUJTM0NYVVVNVjJpUmxBIiwgImNoZWNrb3V0X2p3dCIsICJleUpoYkdjaU9pQWlSVk15TlRZaUxDQWlhMmxrSWpvZ0ltUmhZM010WVhBeUxXMWxjbU5vWVc1MExYWXhJaXdnSW5SNWNDSTZJQ0pLVjFRaWZRLmV5SnBaQ0k2SUNKamFHdGZaR0ZqYzE5aGNESmZjbVZtWlhKbGJtTmxJaXdnSW0xbGNtTm9ZVzUwSWpvZ2V5SnBaQ0k2SUNKaFkyTjBYMlJoWTNOZmNtVm1aWEpsYm1ObElpd2dJbTVoYldVaU9pQWlSRUZEVXlCQlVESWdVbVZtWlhKbGJtTmxJbjBzSUNKc2FXNWxYMmwwWlcxeklqb2dXM3NpYVdRaU9pQWliR2xmWkdGamMxOWhjREpmY21WbVpYSmxibU5sSWl3Z0ltbDBaVzBpT2lCN0ltbGtJam9nSW1SaFkzTXRZWEF5TFhKbFptVnlaVzVqWlNJc0lDSjBhWFJzWlNJNklDSkVRVU5USUVGUU1pQnlaV1psY21WdVkyVWdjMlYwZEd4bGJXVnVkQ0lzSUNKd2NtbGpaU0k2SURVd2ZTd2dJbkYxWVc1MGFYUjVJam9nTVN3Z0luUnZkR0ZzY3lJNklGdDdJblI1Y0dVaU9pQWljM1ZpZEc5MFlXd2lMQ0FpWVcxdmRXNTBJam9nTlRCOUxDQjdJblI1Y0dVaU9pQWlkRzkwWVd3aUxDQWlZVzF2ZFc1MElqb2dOVEI5WFgxZExDQWljM1JoZEhWeklqb2dJbkpsWVdSNVgyWnZjbDlqYjIxd2JHVjBaU0lzSUNKamRYSnlaVzVqZVNJNklDSlZVMFFpTENBaWRHOTBZV3h6SWpvZ1czc2lkSGx3WlNJNklDSnpkV0owYjNSaGJDSXNJQ0poYlc5MWJuUWlPaUExTUgwc0lIc2lkSGx3WlNJNklDSjBiM1JoYkNJc0lDSmhiVzkxYm5RaU9pQTFNSDFkTENBaWJHbHVhM01pT2lCYmV5SjBlWEJsSWpvZ0luQnlhWFpoWTNsZmNHOXNhV041SWl3Z0luVnliQ0k2SUNKb2RIUndjem92TDJSaFkzTXVjMmd2Y0hKcGRtRmplU0o5TENCN0luUjVjR1VpT2lBaWRHVnliWE5mYjJaZmMyVnlkbWxqWlNJc0lDSjFjbXdpT2lBaWFIUjBjSE02THk5a1lXTnpMbk5vTDNSbGNtMXpJbjFkZlEuUFBpSVpjR3hTbTg2a0ZsSjZuNEtWMmRXeDJOeERxNGpHSXpQTGd0V2ZGeGFqeVpsZC16M2V4cGVpT3NPSFRxcktXa1FhWHB6Zk50V3pSMldqZlA2YmciXQ~",
+        "paymentPresentation": "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0IiwgImtpZCI6ICJkYWNzLWFwMi11c2VyLXYxIn0.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogImIzR3FNaENrSlRmdUs0ZVh4QUhSN1A5eGtCME9NZTBRY0lFQURYcGVjcVEifV0sICJfc2RfYWxnIjogInNoYS0yNTYifQ.dZQvGQ4CccdVho5LBdd-1xPZRhzCKzO50LcYfEE3rdt7gSPlSpObRB516MPnjGeeyN-_1pr0SAPwuwGNyq0upQ~WyI5R0QtNzNUZ2VyQ2IzNzFfQ2RVZGRRIiwgeyJ2Y3QiOiAibWFuZGF0ZS5wYXltZW50Lm9wZW4uMSIsICJjb25zdHJhaW50cyI6IFtdLCAiY25mIjogeyJqd2siOiB7ImNydiI6ICJQLTI1NiIsICJraWQiOiAiZGFjcy1hcDItYWdlbnQtdjEiLCAia3R5IjogIkVDIiwgIngiOiAieVFEOEVwM0FjWDJZcHE4VjI3a1hrd280VWcxS08zX1BlNGJpUnplekI5byIsICJ5IjogIkZjbVd3MmpPdWZCbDVNLUtsMUEydWtwSEY1dHlxSGd0REF0OTZKdGxoV2sifX19XQ~~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK3NkLWp3dCIsICJraWQiOiAiZGFjcy1hcDItYWdlbnQtdjEifQ.eyJkZWxlZ2F0ZV9wYXlsb2FkIjogW3siLi4uIjogIlh0a0s4NDlzanZhM0dyN0pCU1NPWU5IckxOdllNbHB0aWg4d1NZUE9XeG8ifV0sICJpYXQiOiAxNzg4MzA0NTE2LCAiYXVkIjogImRhY3MtYXAyLW1lcmNoYW50IiwgIm5vbmNlIjogImRhY3MtYXAyLXJlZmVyZW5jZS1ub25jZS12MSIsICJzZF9oYXNoIjogIlBfbzM1M21waUJiSTR6ejkxaEFRZnB5RC04dHVYeGdmUE1uS0FRY0VGZUUiLCAiX3NkX2FsZyI6ICJzaGEtMjU2In0.-4u9gB18TO4TzN29znJI5qdu-AX5IZozMClLEVXNyxJARp33XZ75gmVD1NHcYgjOrnZdf_F3rhjedautMTiIKg~WyJ4VzFRNnVQMFdQVmxmeWFhVUpsOHlRIiwgeyJ2Y3QiOiAibWFuZGF0ZS5wYXltZW50LjEiLCAidHJhbnNhY3Rpb25faWQiOiAiWGdXSC1nbHBKYmRXODZEWUJ0MTY1R3Q1SmJlcFViOS05azl4bGtqVXp4dyIsICJwYXllZSI6IHsiaWQiOiAiYWNjdF9kYWNzX3JlZmVyZW5jZSIsICJuYW1lIjogIkRBQ1MgQVAyIFJlZmVyZW5jZSJ9LCAicGF5bWVudF9hbW91bnQiOiB7ImFtb3VudCI6IDUwLCAiY3VycmVuY3kiOiAiVVNEIn0sICJwYXltZW50X2luc3RydW1lbnQiOiB7ImlkIjogInBtX2NhcmRfdmlzYSIsICJ0eXBlIjogImNhcmQifX1d~"
+      },
+      "trust": {
+        "userPublicJwk": {
+          "crv": "P-256",
+          "kid": "dacs-ap2-user-v1",
+          "kty": "EC",
+          "x": "GvAJOD5a9RZ3q3hEnMp-CrLebge_jy4I4ZCixoxzgZo",
+          "y": "NgU6E3ysQemB42Ez64ROG1Kw3yuG_D_XdtHLX-JCi-w"
+        },
+        "merchantPublicJwk": {
+          "crv": "P-256",
+          "kid": "dacs-ap2-merchant-v1",
+          "kty": "EC",
+          "x": "Zy8NP2pjEk4zW5nYZFtFh-gyU7San2SPvDAdvYaZfko",
+          "y": "JA9OCSU12De59y6F_oCW6vOvUeyi7PDN0_wqXcj3R-g"
+        }
+      },
+      "expectedAudience": "dacs-ap2-merchant",
+      "expectedNonce": "dacs-ap2-reference-nonce-v1",
+      "merchantSignatureGeneration": "non-deterministic"
+    },
+    "verified": {
+      "checkout": {
+        "vct": "mandate.checkout.1",
+        "checkoutJwt": "eyJhbGciOiAiRVMyNTYiLCAia2lkIjogImRhY3MtYXAyLW1lcmNoYW50LXYxIiwgInR5cCI6ICJKV1QifQ.eyJpZCI6ICJjaGtfZGFjc19hcDJfcmVmZXJlbmNlIiwgIm1lcmNoYW50IjogeyJpZCI6ICJhY2N0X2RhY3NfcmVmZXJlbmNlIiwgIm5hbWUiOiAiREFDUyBBUDIgUmVmZXJlbmNlIn0sICJsaW5lX2l0ZW1zIjogW3siaWQiOiAibGlfZGFjc19hcDJfcmVmZXJlbmNlIiwgIml0ZW0iOiB7ImlkIjogImRhY3MtYXAyLXJlZmVyZW5jZSIsICJ0aXRsZSI6ICJEQUNTIEFQMiByZWZlcmVuY2Ugc2V0dGxlbWVudCIsICJwcmljZSI6IDUwfSwgInF1YW50aXR5IjogMSwgInRvdGFscyI6IFt7InR5cGUiOiAic3VidG90YWwiLCAiYW1vdW50IjogNTB9LCB7InR5cGUiOiAidG90YWwiLCAiYW1vdW50IjogNTB9XX1dLCAic3RhdHVzIjogInJlYWR5X2Zvcl9jb21wbGV0ZSIsICJjdXJyZW5jeSI6ICJVU0QiLCAidG90YWxzIjogW3sidHlwZSI6ICJzdWJ0b3RhbCIsICJhbW91bnQiOiA1MH0sIHsidHlwZSI6ICJ0b3RhbCIsICJhbW91bnQiOiA1MH1dLCAibGlua3MiOiBbeyJ0eXBlIjogInByaXZhY3lfcG9saWN5IiwgInVybCI6ICJodHRwczovL2RhY3Muc2gvcHJpdmFjeSJ9LCB7InR5cGUiOiAidGVybXNfb2Zfc2VydmljZSIsICJ1cmwiOiAiaHR0cHM6Ly9kYWNzLnNoL3Rlcm1zIn1dfQ.PPiIZcGxSm86kFlJ6n4KV2dWx2NxDq4jGIzPLgtWfFxajyZld-z3expeiOsOHTqrKWkQaXpzfNtWzR2WjfP6bg",
+        "checkoutHash": "XgWH-glpJbdW86DYBt165Gt5JbepUb9-9k9xlkjUzxw"
+      },
+      "payment": {
+        "vct": "mandate.payment.1",
+        "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
+        "protocolVersion": "0.2",
+        "transactionId": "XgWH-glpJbdW86DYBt165Gt5JbepUb9-9k9xlkjUzxw",
+        "payee": {
+          "id": "acct_dacs_reference",
+          "name": "DACS AP2 Reference"
+        },
+        "paymentAmount": {
+          "amount": 50,
+          "currency": "USD"
+        },
+        "paymentInstrument": {
+          "id": "pm_card_visa",
+          "type": "card"
+        }
+      },
+      "merchantSignature": {
+        "algorithm": "ES256",
+        "generation": "non-deterministic"
+      },
+      "verifierEvidenceHash": "745f573c89a463db214cc6bcb09dc493577a18fea792c2e70e5551ba837fafc7"
+    }
+  },
+  "agreement": {
+    "jobId": "DACS-AP2-REFERENCE-0001",
+    "phaseIndex": 2,
+    "railId": "ap2:stripe-paymentintents",
+    "agreementHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "payeeId": "acct_dacs_reference",
+    "amount": "0.5",
+    "currency": "USD",
+    "currencyMinorUnits": 2
+  },
+  "provider": {
+    "statusResponseBody": "{\"amount\":50,\"amount_received\":50,\"currency\":\"usd\",\"id\":\"pi_dacs_ap2_reference_0001\",\"metadata\":{\"dacs_agreement_hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"dacs_job_id\":\"DACS-AP2-REFERENCE-0001\"},\"object\":\"payment_intent\",\"status\":\"succeeded\"}",
+    "statusResponseHash": "584ce2cd2edf76d4acf6c60857f7e72db2beb808589ca984b1a09217d3bb2afe",
+    "attestedAnchorTxRef": "dahr-ap2-reference-0001"
+  },
+  "result": {
+    "ok": true,
+    "txRefs": [
+      {
+        "kind": "ap2",
+        "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
+        "protocolVersion": "0.2",
+        "providerRef": "pi_dacs_ap2_reference_0001",
+        "receiptAttestation": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://api.stripe.com/v1/payment_intents/pi_dacs_ap2_reference_0001"
+          },
+          "contentHash": "584ce2cd2edf76d4acf6c60857f7e72db2beb808589ca984b1a09217d3bb2afe"
+        },
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "dahr-ap2-reference-0001"
+        }
+      }
+    ],
+    "attestationRef": {
+      "anchor": {
+        "kind": "storage-program",
+        "locator": "dacs4:payment:DACS-AP2-REFERENCE-0001:ap2%3Astripe-paymentintents:2"
+      },
+      "contentHash": "ab267ba74b38b0d930dc9a58ae6679ef7c6cbdea0d206b40d5348ed67ae54487"
+    }
+  },
+  "evidence": {
+    "evidenceVersion": "1",
+    "jobId": "DACS-AP2-REFERENCE-0001",
+    "observedAt": 1788304453000,
+    "outcome": "success",
+    "paymentAmount": {
+      "amount": "0.5",
+      "currency": "USD"
+    },
+    "paymentTxRefs": [
+      {
+        "kind": "ap2",
+        "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
+        "protocolVersion": "0.2",
+        "providerRef": "pi_dacs_ap2_reference_0001",
+        "receiptAttestation": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://api.stripe.com/v1/payment_intents/pi_dacs_ap2_reference_0001"
+          },
+          "contentHash": "584ce2cd2edf76d4acf6c60857f7e72db2beb808589ca984b1a09217d3bb2afe"
+        },
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "dahr-ap2-reference-0001"
+        }
+      }
+    ],
+    "phase": "pay-ap2",
+    "settlementFinality": {
+      "finalityObservedAt": 1788304453000,
+      "model": "provider-receipt"
+    },
+    "signature": {
+      "algorithm": "ed25519",
+      "signer": "did:demos:orchestrator",
+      "value": "LKSp7utkOIhVuqwItGZR5Ip5N4eM2haxUdzBbfqV_2QmJqIWWBKk6VmoY1V1qXs_1jZLib40R5rdPbHWTWGfCQ"
+    }
+  },
+  "evidenceHash": "ab267ba74b38b0d930dc9a58ae6679ef7c6cbdea0d206b40d5348ed67ae54487",
+  "publicKeys": {
+    "did:demos:orchestrator": "maekceCtXQ62avDhCrkykrlD64Bd6XkRY320vgwHLkI"
+  },
+  "seeds": {
+    "orchestrator": "e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4"
+  },
+  "expected": {
+    "officialMandatesVerify": true,
+    "transactionIdMatchesCheckoutJws": true,
+    "merchantCheckoutSignatureVerifies": true,
+    "providerStatusBindsSession": true,
+    "providerStatusBindsAgreement": true,
+    "providerStatusMatchesAmountCurrency": true,
+    "receiptAttestationMatchesRawBody": true,
+    "settlementEvidenceVerifies": true,
+    "verdict": "pass"
+  }
+}

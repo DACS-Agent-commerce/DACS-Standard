@@ -81,7 +81,10 @@ _CHAIN_TX_REF_ARMS: dict[str, tuple[set[str], set[str]]] = {
     ),
     "demos": ({"kind", "txHash"}, {"blockNumber"}),
     "storage-program": ({"kind", "address", "writeTxHash"}, set()),
-    "ap2": ({"kind", "mandateId", "providerRef", "protocolVersion"}, {"receiptAttestation"}),
+    "ap2": (
+        {"kind", "mandateId", "providerRef", "protocolVersion"},
+        {"receiptAttestation", "receiptTransactionRef"},
+    ),
     "x402": (
         {"kind", "httpResource", "paymentReceiptHash", "protocolVersion"},
         {"settlementTxHash", "chainId"},
@@ -240,7 +243,7 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
         "recoveryDeadline", "logIndex", "instructionIndex",
     }
     for field in required | optional:
-        if field not in value or field == "kind" or field == "receiptAttestation":
+        if field not in value or field in {"kind", "receiptAttestation", "receiptTransactionRef"}:
             continue
         expected = int if field in int_fields else str
         if not isinstance(value[field], expected) or (
@@ -254,6 +257,16 @@ def check_chain_tx_ref(value, ctx: str, errors: list[str], path: str) -> None:
         errors.append(f"{ctx}: `{path}.cluster` MUST be mainnet, devnet, or testnet")
     if "receiptAttestation" in value:
         check_attestation_ref(value["receiptAttestation"], ctx, errors, f"{path}.receiptAttestation")
+    if "receiptTransactionRef" in value:
+        tx = value["receiptTransactionRef"]
+        if not isinstance(tx, dict) or set(tx) != {"kind", "value"}:
+            errors.append(
+                f"{ctx}: `{path}.receiptTransactionRef` MUST contain exactly kind + value"
+            )
+        elif not all(isinstance(tx.get(field), str) and tx[field] for field in ("kind", "value")):
+            errors.append(
+                f"{ctx}: `{path}.receiptTransactionRef.kind/value` MUST be non-empty strings"
+            )
 
 
 def check_nested_shapes(body: dict, typename: str, types: dict, ctx: str,

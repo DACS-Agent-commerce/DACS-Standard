@@ -3,8 +3,8 @@
   "spec": "DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef",
   "tier": "golden",
   "description": "Exact positive and negative wire-shape cases for every normative AttestationRef anchor kind and every ChainTxRef discriminator.",
-  "count": 23,
-  "hash": "155ef1e2ab1aa0dbb4dba23d1e1ee20b854bab8034029b4ebd0c87ad4014f858",
+  "count": 24,
+  "hash": "088aca72a4c6de0c774c937a013efdc32a879f1d044b7cebab6511741b241d38",
   "vectors": [
     {
       "name": "attestation-storage-program",
@@ -130,6 +130,10 @@
             "locator": "https://provider.test/receipts/308"
           },
           "contentHash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        },
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "0xdahr308"
         }
       }
     },
@@ -271,6 +275,20 @@
           "kind": "dacs-4-evidence",
           "name": "provider-receipt-308",
           "contentHash": "9999999999999999999999999999999999999999999999999999999999999999"
+        }
+      }
+    },
+    {
+      "name": "txref-ap2-malformed-receipt-transaction-rejected",
+      "type": "ChainTxRef",
+      "expected": "fail",
+      "value": {
+        "kind": "ap2",
+        "mandateId": "mandate-malformed-308",
+        "providerRef": "provider-malformed-308",
+        "protocolVersion": "1",
+        "receiptTransactionRef": {
+          "kind": "demos-web2-request"
         }
       }
     }

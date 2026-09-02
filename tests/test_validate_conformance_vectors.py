@@ -61,7 +61,17 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             {
                 "count": len(separators),
                 "separators": separators,
+                "historicalImport": {
+                    "operation": "legacy-import",
+                    "separator": "dacs-channelmsg:v1:",
+                    "digestFraming": "raw-sha256-bytes",
+                },
             },
+        )
+        self.assertNotIn("dacs-channelmsg:v1:", separators)
+        self.assertEqual(
+            validator.load_historical_channel_domain(ROOT),
+            "dacs-channelmsg:v1:",
         )
 
     def test_registry_golden_rejects_same_count_substitution(self):

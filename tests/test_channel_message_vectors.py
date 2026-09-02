@@ -12,6 +12,8 @@ import unittest
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
@@ -45,6 +47,15 @@ MESSAGE_TYPES = {
     "sealed-envelope-reveal", "abort",
 }
 ALGORITHMS = {"ed25519", "ecdsa-secp256k1", "sr1-aggregate"}
+SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+ECDSA_REF = "did:example:dacs-349-ecdsa"
+ECDSA_PUBLIC = bytes.fromhex(
+    "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b"
+)
+SR1_REF = "did:example:dacs-349-sr1-root"
+SR1_PUBLIC = bytes.fromhex(
+    "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+)
 
 
 def canonical_bytes(value):
@@ -135,11 +146,18 @@ def common_shape(message):
     )
 
 
-def resolve_ed25519(sender):
+def resolve_signing_key(sender):
     scheme, identifier = parse_claim_ref(sender)
-    if scheme != "cci":
-        return None
-    return Ed25519PublicKey.from_public_bytes(bytes.fromhex(identifier))
+    if scheme == "cci":
+        return "ed25519", Ed25519PublicKey.from_public_bytes(bytes.fromhex(identifier))
+    if sender == ECDSA_REF:
+        return (
+            "ecdsa-secp256k1",
+            ec.EllipticCurvePublicKey.from_encoded_point(ec.SECP256K1(), ECDSA_PUBLIC),
+        )
+    if sender == SR1_REF:
+        return "sr1-aggregate", Ed25519PublicKey.from_public_bytes(SR1_PUBLIC)
+    return None
 
 
 def verify_ed25519(public_key, signature, payload):
@@ -148,6 +166,25 @@ def verify_ed25519(public_key, signature, payload):
     except (InvalidSignature, ValueError):
         return False
     return True
+
+
+def verify_algorithm(algorithm, public_key, signature, payload):
+    if algorithm in {"ed25519", "sr1-aggregate"}:
+        return len(signature) == 64 and verify_ed25519(public_key, signature, payload)
+    if algorithm == "ecdsa-secp256k1":
+        try:
+            r, s = utils.decode_dss_signature(signature)
+            if (
+                utils.encode_dss_signature(r, s) != signature
+                or not 1 <= r < SECP256K1_ORDER
+                or not 1 <= s <= SECP256K1_ORDER // 2
+            ):
+                return False
+            public_key.verify(signature, payload, ec.ECDSA(hashes.SHA256()))
+        except (InvalidSignature, ValueError):
+            return False
+        return True
+    return False
 
 
 def apply_channel_policy(message, ctx):
@@ -181,18 +218,17 @@ def evaluate_current(message, ctx):
     if signature["signer"] != message["sender"]:
         return "fail"
     try:
-        public_key = resolve_ed25519(message["sender"])
+        resolved = resolve_signing_key(message["sender"])
     except ValueError:
         return "error"
-    if public_key is None:
+    if resolved is None:
         return "indeterminate"
-    if algorithm != "ed25519":
-        return "fail"
-    if len(raw_signature) != 64:
+    key_algorithm, public_key = resolved
+    if algorithm != key_algorithm:
         return "fail"
     unsigned = {key: value for key, value in message.items() if key != "signature"}
     payload = CURRENT_DOMAIN + message_digest(unsigned).hex().encode("ascii")
-    if not verify_ed25519(public_key, raw_signature, payload):
+    if not verify_algorithm(algorithm, public_key, raw_signature, payload):
         return "fail"
     return apply_channel_policy(message, ctx)
 
@@ -203,11 +239,14 @@ def evaluate_legacy(message, ctx):
     if not isinstance(message.get("signature"), str) or not LOWER_HEX_128.fullmatch(message["signature"]):
         return "error"
     try:
-        public_key = resolve_ed25519(message["sender"])
+        resolved = resolve_signing_key(message["sender"])
     except ValueError:
         return "error"
-    if public_key is None:
+    if resolved is None:
         return "indeterminate"
+    key_algorithm, public_key = resolved
+    if key_algorithm != "ed25519":
+        return "fail"
     unsigned = {key: value for key, value in message.items() if key != "signature"}
     payload = LEGACY_DOMAIN + message_digest(unsigned)
     if not verify_ed25519(public_key, bytes.fromhex(message["signature"]), payload):
@@ -215,18 +254,22 @@ def evaluate_legacy(message, ctx):
     return apply_channel_policy(message, ctx)
 
 
-def evaluate(vector):
+def evaluate(vector, operation):
     message = vector.get("message")
     ctx = vector.get("ctx")
     if not validate_context(ctx) or not isinstance(message, dict):
         return "error"
-    # Structural dispatch occurs once, before crypto. Presence of the current
-    # discriminator always selects the current arm, even when the rest is a
-    # malformed mixture. Legacy is selected only by its exact frozen shape.
-    if "canonicalChannelMessageVersion" in message:
+    # The trusted caller selects the read operation before structural parsing.
+    # Neither operation can auto-detect or fall back to the other wire arm.
+    if operation == "current-read":
+        if "canonicalChannelMessageVersion" not in message:
+            return "error"
         return evaluate_current(message, ctx)
-    if isinstance(message.get("signature"), str) and LOWER_HEX_128.fullmatch(message["signature"]):
-        return evaluate_legacy(message, ctx)
+    if operation == "legacy-import":
+        if "canonicalChannelMessageVersion" in message:
+            return "error"
+        if isinstance(message.get("signature"), str) and LOWER_HEX_128.fullmatch(message["signature"]):
+            return evaluate_legacy(message, ctx)
     return "error"
 
 
@@ -253,7 +296,9 @@ class ChannelMessageVectorTests(unittest.TestCase):
     def test_all_current_and_dispatch_vectors_execute(self):
         for vector in self.document["vectors"]:
             with self.subTest(vector=vector["name"]):
-                self.assertEqual(vector["expected"], evaluate(vector))
+                self.assertEqual(
+                    vector["expected"], evaluate(vector, vector["operation"])
+                )
 
     def test_frozen_historical_corpus_executes_without_reinterpretation(self):
         self.assertEqual(
@@ -262,7 +307,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertEqual(LEGACY_VECTOR_HASH, self.legacy["hash"])
         for vector in self.legacy["vectors"]:
             with self.subTest(vector=vector["name"]):
-                self.assertEqual(vector["expected"], evaluate(vector))
+                self.assertEqual(vector["expected"], evaluate(vector, "legacy-import"))
 
     def test_legacy_import_preserves_signature_bytes(self):
         vector = next(
@@ -274,7 +319,8 @@ class ChannelMessageVectorTests(unittest.TestCase):
             vector["expectedSignatureBytesBase64Url"],
             base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii"),
         )
-        self.assertEqual("pass", evaluate(vector))
+        self.assertEqual("pass", evaluate(vector, "legacy-import"))
+        self.assertEqual("error", evaluate(vector, "current-read"))
 
     def test_four_mixed_wire_barriers_are_distinguishing(self):
         by_name = {item["name"]: item for item in self.document["vectors"]}
@@ -286,7 +332,47 @@ class ChannelMessageVectorTests(unittest.TestCase):
         }
         for name, verdict in expected.items():
             with self.subTest(vector=name):
-                self.assertEqual(verdict, evaluate(by_name[name]))
+                self.assertEqual(
+                    verdict,
+                    evaluate(by_name[name], by_name[name]["operation"]),
+                )
+
+    def test_all_advertised_algorithms_have_positive_and_negative_coverage(self):
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+        for stem in ("ecdsa", "sr1-aggregate"):
+            expected = {
+                f"canonical-{stem}-valid": "pass",
+                f"canonical-{stem}-tampered-body": "fail",
+                f"canonical-{stem}-cross-domain": "fail",
+                f"canonical-{stem}-raw-digest-framing": "fail",
+            }
+            for name, verdict in expected.items():
+                with self.subTest(vector=name):
+                    vector = by_name[name]
+                    self.assertEqual(
+                        verdict, evaluate(vector, vector["operation"])
+                    )
+
+    def test_non_ed25519_keys_are_bound_by_authenticated_fixtures(self):
+        self.assertEqual(
+            self.document["authenticatedKeyFixtures"],
+            [
+                {
+                    "claim": ECDSA_REF,
+                    "algorithm": "ecdsa-secp256k1",
+                    "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+                    "publicKey": ECDSA_PUBLIC.hex(),
+                    "signatureEncoding": "canonical-DER-low-S",
+                },
+                {
+                    "claim": SR1_REF,
+                    "algorithm": "sr1-aggregate",
+                    "presentation": "sr1-root",
+                    "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+                    "publicKey": SR1_PUBLIC.hex(),
+                },
+            ],
+        )
 
     def test_current_and_historical_payloads_pin_digest_representation(self):
         current = self.document["vectors"][0]["message"]
@@ -295,7 +381,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         }
         current_payload = CURRENT_DOMAIN + message_digest(current_unsigned).hex().encode("ascii")
         self.assertEqual(len(CURRENT_DOMAIN) + 64, len(current_payload))
-        current_public = resolve_ed25519(current["sender"])
+        _, current_public = resolve_signing_key(current["sender"])
         self.assertTrue(verify_ed25519(
             current_public, decode_b64url(current["signature"]["value"]), current_payload
         ))
@@ -311,7 +397,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         }
         legacy_payload = LEGACY_DOMAIN + message_digest(legacy_unsigned)
         self.assertEqual(len(LEGACY_DOMAIN) + 32, len(legacy_payload))
-        legacy_public = resolve_ed25519(legacy["sender"])
+        _, legacy_public = resolve_signing_key(legacy["sender"])
         self.assertTrue(verify_ed25519(
             legacy_public, bytes.fromhex(legacy["signature"]), legacy_payload
         ))
@@ -333,6 +419,8 @@ class ChannelMessageVectorTests(unittest.TestCase):
             "type LegacyDemosChannelMessage = {",
             'UTF8("dacs-canonical-channel-message:v1:") || ASCII(message_hash)',
             'UTF8("dacs-channelmsg:v1:") || legacy_message_hash_bytes',
+            "selected by trusted caller policy",
+            "explicitly invoked `legacy-import` operation",
             "MUST NOT try the other arm",
         ):
             self.assertIn(text, dacs3)

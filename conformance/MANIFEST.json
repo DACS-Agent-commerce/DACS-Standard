@@ -164,11 +164,16 @@
       "id": "sig-registry-closed",
       "area": "signing",
       "spec": "§B.7",
-      "summary": "the domain-separator registry plus frozen historical channel import domain is exactly the published set of 29",
+      "summary": "the current producer domain-separator registry is exactly the published set of 28; the frozen historical channel import domain is pinned separately",
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
       "want": {
-        "count": 29,
+        "count": 28,
+        "historicalImport": {
+          "operation": "legacy-import",
+          "separator": "dacs-channelmsg:v1:",
+          "digestFraming": "raw-sha256-bytes"
+        },
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
@@ -178,7 +183,6 @@
           "dacs-bundle-presentation:v1:",
           "dacs-bundle:v1:",
           "dacs-canonical-channel-message:v1:",
-          "dacs-channelmsg:v1:",
           "dacs-commitment:v1:",
           "dacs-composite:v1:",
           "dacs-entitlement:v1:",

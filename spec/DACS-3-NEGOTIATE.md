@@ -108,21 +108,29 @@ algorithm-specific verification. Raw digest bytes, the historical domain, a
 hex signature value, standard Base64, and padded Base64URL are not alternate
 current encodings.
 
-(CH-9) **Single structural dispatch; no fallback.** A reader selects exactly
-one arm before cryptographic verification:
+(CH-9) **Explicit operation and single structural dispatch; no fallback.** A
+reader exposes two distinct operations selected by trusted caller policy before
+it parses message-controlled bytes: `current-read` and `legacy-import`. The
+operation selector is not a message member and MUST NOT be inferred from the
+presence, absence, or shape of `signature` or any other received member. Each
+operation selects exactly one arm before cryptographic verification:
 
-1. Presence of `canonicalChannelMessageVersion` selects the current arm,
-   including when its value or `signature` shape is invalid. The selected arm
-   MUST NOT fall back to historical parsing after any error or signature
-   failure.
-2. Absence of that discriminator selects the historical arm only when
-   `signature` is a bare 128-character lowercase-hex string and the remaining
-   historical required members are present.
+1. `current-read` requires `canonicalChannelMessageVersion`; its presence
+   selects the current arm even when its value or `signature` shape is invalid.
+   Its absence is malformed on this operation. The selected arm MUST NOT fall
+   back to historical parsing after any structural error or signature failure.
+2. `legacy-import` requires the discriminator to be absent, `signature` to be a
+   bare 128-character lowercase-hex string, and all remaining historical
+   required members to be present. A discriminator, current signature envelope,
+   or malformed legacy shape rejects on this operation without trying
+   `current-read`.
 3. Every partial mixture selects neither valid artifact and is malformed. In
    particular, discriminator plus bare hex, no discriminator plus a current
    signature envelope, an unknown discriminator, and a missing signature all
    reject. A reader MUST NOT try the other arm, a second value decoder, another
-   domain, or another digest framing for the same object.
+   domain, or another digest framing for the same object. The same valid legacy
+   bytes therefore reject on `current-read` and can pass only through an
+   explicitly invoked `legacy-import` operation.
 
 The historical read/import-only wire is frozen as:
 

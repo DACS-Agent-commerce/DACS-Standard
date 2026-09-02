@@ -35,6 +35,7 @@ EXPECTED_STAGES = ["DACS-1", "DACS-2", "DACS-3", "DACS-4", "DACS-5"]
 MANIFEST_REQUIRED_CASE = {"id", "area", "spec", "summary", "status", "want"}
 MANIFEST_STATUSES = {"golden", "candidate"}
 REGISTRY_CASE_ID = "sig-registry-closed"
+HISTORICAL_CHANNEL_DOMAIN = "dacs-channelmsg:v1:"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
 REQUIRED_TOP_LEVEL = {
     "vectorId",
@@ -124,12 +125,28 @@ def legacy_spelling_allowed(path: Path, data: dict) -> bool:
 def load_registered_domain_separators(root: Path = ROOT) -> set[str]:
     spec_text = specsource.spec_text(root)
     start_marker = "The v0.x registry of domain separators at this revision is closed:"
-    end_marker = "**Payload shape — single-hash vs composite.**"
+    end_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
     start = spec_text.find(start_marker)
     end = spec_text.find(end_marker, start)
     if start == -1 or end == -1:
         return set()
     return set(DOMAIN_RE.findall(spec_text[start:end]))
+
+
+def load_historical_channel_domain(root: Path = ROOT) -> str | None:
+    """Parse the one frozen channel import domain outside the producer table."""
+
+    spec_text = specsource.spec_text(root)
+    start_marker = "**Historical read/import-only domain (not a current producer registry entry).**"
+    end_marker = "**Payload shape — single-hash vs composite.**"
+    start = spec_text.find(start_marker)
+    end = spec_text.find(end_marker, start)
+    if start == -1 or end == -1:
+        return None
+    domains = set(DOMAIN_RE.findall(spec_text[start:end]))
+    if len(domains) != 1:
+        return None
+    return domains.pop()
 
 
 def canonical_json(value: Any) -> bytes:
@@ -518,6 +535,34 @@ def validate_manifest(path: Path) -> list[str]:
                         fail(
                             path,
                             f"{prefix}.want.separators MUST equal the sorted closed §B.7 registry",
+                        )
+                    )
+                historical = want.get("historicalImport")
+                parsed_historical_domain = load_historical_channel_domain(ROOT)
+                expected_historical = {
+                    "operation": "legacy-import",
+                    "separator": HISTORICAL_CHANNEL_DOMAIN,
+                    "digestFraming": "raw-sha256-bytes",
+                }
+                if parsed_historical_domain != HISTORICAL_CHANNEL_DOMAIN:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}: could not parse the one frozen historical channel domain",
+                        )
+                    )
+                if historical != expected_historical:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.historicalImport MUST pin the separate frozen channel import domain",
+                        )
+                    )
+                if HISTORICAL_CHANNEL_DOMAIN in registry:
+                    errors.append(
+                        fail(
+                            path,
+                            f"{prefix}.want.separators MUST exclude the historical import-only domain",
                         )
                     )
 

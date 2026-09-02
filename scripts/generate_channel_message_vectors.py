@@ -12,11 +12,13 @@ import argparse
 import base64
 import copy
 import hashlib
+import hmac
 import json
 import sys
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec, utils
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
@@ -37,6 +39,7 @@ LEGACY_VECTOR_HASH = "3f0664c434a6727f7578434cba9ea47b804e0dff12249081c7abdd4fdc
 CURRENT_DOMAIN = b"dacs-canonical-channel-message:v1:"
 LEGACY_DOMAIN = b"dacs-channelmsg:v1:"
 NOW = 1_900_000_000_000
+SECP256K1_ORDER = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -66,8 +69,52 @@ def public_hex(key: Ed25519PrivateKey) -> str:
 
 ALICE = private_key("dacs-349-alice")
 BOB = private_key("dacs-349-bob")
+SR1_ROOT = private_key("dacs-349-sr1-root")
+ECDSA_PRIVATE_VALUE = (
+    int.from_bytes(hashlib.sha256(b"dacs-349-ecdsa").digest(), "big")
+    % (SECP256K1_ORDER - 1)
+) + 1
+ECDSA_PRIVATE = ec.derive_private_key(ECDSA_PRIVATE_VALUE, ec.SECP256K1())
 ALICE_REF = f"cci:{public_hex(ALICE)}"
 BOB_REF = f"cci:{public_hex(BOB)}"
+ECDSA_REF = "did:example:dacs-349-ecdsa"
+SR1_REF = "did:example:dacs-349-sr1-root"
+
+
+def current_payload(unsigned: dict, domain: bytes, framing: str) -> bytes:
+    message_hash = digest(unsigned)
+    if framing == "hex":
+        return domain + message_hash.hex().encode("ascii")
+    if framing == "raw":
+        return domain + message_hash
+    raise ValueError(f"unknown framing {framing}")
+
+
+def deterministic_ecdsa_signature(payload: bytes) -> bytes:
+    """RFC 6979 secp256k1/SHA-256 with canonical DER and low-S output."""
+
+    digest_bytes = hashlib.sha256(payload).digest()
+    private_bytes = ECDSA_PRIVATE_VALUE.to_bytes(32, "big")
+    reduced_hash = (int.from_bytes(digest_bytes, "big") % SECP256K1_ORDER).to_bytes(32, "big")
+    value = b"\x01" * 32
+    key = b"\x00" * 32
+    key = hmac.new(key, value + b"\x00" + private_bytes + reduced_hash, hashlib.sha256).digest()
+    value = hmac.new(key, value, hashlib.sha256).digest()
+    key = hmac.new(key, value + b"\x01" + private_bytes + reduced_hash, hashlib.sha256).digest()
+    value = hmac.new(key, value, hashlib.sha256).digest()
+    while True:
+        value = hmac.new(key, value, hashlib.sha256).digest()
+        nonce = int.from_bytes(value, "big")
+        if 1 <= nonce < SECP256K1_ORDER:
+            break
+        key = hmac.new(key, value + b"\x00", hashlib.sha256).digest()
+        value = hmac.new(key, value, hashlib.sha256).digest()
+    point = ec.derive_private_key(nonce, ec.SECP256K1()).public_key().public_numbers()
+    r = point.x % SECP256K1_ORDER
+    z = int.from_bytes(digest_bytes, "big")
+    s = (pow(nonce, -1, SECP256K1_ORDER) * (z + r * ECDSA_PRIVATE_VALUE)) % SECP256K1_ORDER
+    s = min(s, SECP256K1_ORDER - s)
+    return utils.encode_dss_signature(r, s)
 
 
 def unsigned_message(**updates: object) -> dict:
@@ -94,13 +141,7 @@ def sign_current(
     domain: bytes = CURRENT_DOMAIN,
     framing: str = "hex",
 ) -> dict:
-    message_hash = digest(unsigned)
-    if framing == "hex":
-        payload = domain + message_hash.hex().encode("ascii")
-    elif framing == "raw":
-        payload = domain + message_hash
-    else:  # pragma: no cover - generator authoring guard
-        raise ValueError(f"unknown framing {framing}")
+    payload = current_payload(unsigned, domain, framing)
     return {
         **copy.deepcopy(unsigned),
         "signature": {
@@ -108,6 +149,40 @@ def sign_current(
             "signer": signer,
             "algorithm": algorithm,
             "value": b64url(key.sign(payload)),
+        },
+    }
+
+
+def sign_current_ecdsa(
+    unsigned: dict,
+    *,
+    domain: bytes = CURRENT_DOMAIN,
+    framing: str = "hex",
+) -> dict:
+    return {
+        **copy.deepcopy(unsigned),
+        "signature": {
+            "signatureVersion": "1",
+            "signer": ECDSA_REF,
+            "algorithm": "ecdsa-secp256k1",
+            "value": b64url(deterministic_ecdsa_signature(current_payload(unsigned, domain, framing))),
+        },
+    }
+
+
+def sign_current_sr1(
+    unsigned: dict,
+    *,
+    domain: bytes = CURRENT_DOMAIN,
+    framing: str = "hex",
+) -> dict:
+    return {
+        **copy.deepcopy(unsigned),
+        "signature": {
+            "signatureVersion": "1",
+            "signer": SR1_REF,
+            "algorithm": "sr1-aggregate",
+            "value": b64url(SR1_ROOT.sign(current_payload(unsigned, domain, framing))),
         },
     }
 
@@ -140,10 +215,11 @@ def context(**updates: object) -> dict:
 
 
 def case(name: str, expected: str, message: dict, *, note: str,
-         ctx: dict | None = None, **extra: object) -> dict:
+         ctx: dict | None = None, operation: str = "current-read", **extra: object) -> dict:
     value = {
         "name": name,
         "expected": expected,
+        "operation": operation,
         "note": note,
         "message": copy.deepcopy(message),
         "ctx": copy.deepcopy(ctx if ctx is not None else context()),
@@ -241,6 +317,20 @@ def build_vectors() -> list[dict]:
 
     malformed_context = context(lastSequence=True)
 
+    ecdsa_unsigned = unsigned_message(sequence=2, sender=ECDSA_REF)
+    ecdsa_valid = sign_current_ecdsa(ecdsa_unsigned)
+    ecdsa_tampered = copy.deepcopy(ecdsa_valid)
+    ecdsa_tampered["body"]["price"] = "11"
+    ecdsa_wrong_domain = sign_current_ecdsa(ecdsa_unsigned, domain=LEGACY_DOMAIN)
+    ecdsa_raw_framing = sign_current_ecdsa(ecdsa_unsigned, framing="raw")
+
+    sr1_unsigned = unsigned_message(sequence=3, sender=SR1_REF)
+    sr1_valid = sign_current_sr1(sr1_unsigned)
+    sr1_tampered = copy.deepcopy(sr1_valid)
+    sr1_tampered["body"]["price"] = "11"
+    sr1_wrong_domain = sign_current_sr1(sr1_unsigned, domain=LEGACY_DOMAIN)
+    sr1_raw_framing = sign_current_sr1(sr1_unsigned, framing="raw")
+
     return [
         case("canonical-valid-first", "pass", valid,
              note="current discriminator, SIG-6 value, hex-digest framing and fresh sequence"),
@@ -274,6 +364,24 @@ def build_vectors() -> list[dict]:
              note="unknown algorithm identifiers are malformed"),
         case("canonical-algorithm-key-confusion", "fail", algorithm_key_confusion,
              note="a CCI Ed25519 key cannot be relabelled as ECDSA"),
+        case("canonical-ecdsa-valid", "pass", ecdsa_valid,
+             ctx=context(lastSequence=1),
+             note="authenticated secp256k1 fixture verifies canonical DER low-S bytes"),
+        case("canonical-ecdsa-tampered-body", "fail", ecdsa_tampered,
+             ctx=context(lastSequence=1), note="ECDSA covers the complete received message"),
+        case("canonical-ecdsa-cross-domain", "fail", ecdsa_wrong_domain,
+             ctx=context(lastSequence=1), note="ECDSA cannot authenticate the historical domain"),
+        case("canonical-ecdsa-raw-digest-framing", "fail", ecdsa_raw_framing,
+             ctx=context(lastSequence=1), note="ECDSA signs ASCII lowercase hex, not raw digest bytes"),
+        case("canonical-sr1-aggregate-valid", "pass", sr1_valid,
+             ctx=context(lastSequence=2),
+             note="authenticated SR-1 root fixture verifies the canonical current payload"),
+        case("canonical-sr1-aggregate-tampered-body", "fail", sr1_tampered,
+             ctx=context(lastSequence=2), note="SR-1 root signature covers the complete received message"),
+        case("canonical-sr1-aggregate-cross-domain", "fail", sr1_wrong_domain,
+             ctx=context(lastSequence=2), note="SR-1 root signature cannot authenticate the historical domain"),
+        case("canonical-sr1-aggregate-raw-digest-framing", "fail", sr1_raw_framing,
+             ctx=context(lastSequence=2), note="SR-1 root signs ASCII lowercase hex, not raw digest bytes"),
         case("canonical-signer-sender-mismatch", "fail", signer_mismatch,
              note="signature.signer must canonically equal sender"),
         case("canonical-empty-refs-object", "pass", empty_refs,
@@ -299,17 +407,21 @@ def build_vectors() -> list[dict]:
         case("cross-domain-legacy-to-current", "fail", current_legacy_domain,
              note="the historical domain cannot authenticate a current message"),
         case("mixed-legacy-hex-digest-framing", "fail", legacy_hex_framing,
+             operation="legacy-import",
              note="historical type signs the raw digest, not ASCII lowercase hex"),
         case("cross-domain-current-to-legacy", "fail", legacy_current_signature,
+             operation="legacy-import",
              note="the current domain cannot authenticate a historical message"),
         case(
             "legacy-byte-preserving-read-only-import", "pass", frozen_first,
             ctx=copy.deepcopy(legacy_doc["vectors"][0]["ctx"]),
+            operation="legacy-import",
             note="the frozen historical bytes verify only on the explicit import arm",
             expectedSignatureBytesBase64Url=b64url(frozen_raw),
         ),
         case("legacy-uppercase-hex-rejected", "error", uppercase_legacy,
-             ctx=copy.deepcopy(legacy_doc["vectors"][0]["ctx"]),
+            ctx=copy.deepcopy(legacy_doc["vectors"][0]["ctx"]),
+             operation="legacy-import",
              note="the historical selector is exact lowercase hex, never auto-detected"),
         case("canonical-preserve-unknown-signed-field", "pass", current_unknown,
              note="SIG-5 includes an unknown field in the signed scope"),
@@ -326,11 +438,31 @@ def render() -> str:
     document = {
         "set": "canonical-channel-message-v0.6",
         "spec": "DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6",
-        "decisionModel": "§7.5.1 four-value result; structural dispatch precedes cryptography",
+        "decisionModel": "§7.5.1 four-value result; trusted operation selection and structural dispatch precede cryptography",
+        "authenticatedKeyFixtures": [
+            {
+                "claim": ECDSA_REF,
+                "algorithm": "ecdsa-secp256k1",
+                "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+                "publicKey": ECDSA_PRIVATE.public_key().public_bytes(
+                    serialization.Encoding.X962,
+                    serialization.PublicFormat.CompressedPoint,
+                ).hex(),
+                "signatureEncoding": "canonical-DER-low-S",
+            },
+            {
+                "claim": SR1_REF,
+                "algorithm": "sr1-aggregate",
+                "presentation": "sr1-root",
+                "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+                "publicKey": public_hex(SR1_ROOT),
+            },
+        ],
         "historicalCorpus": {
             "path": "channel-message-replay-v0.1.json",
             "vectorsHash": LEGACY_VECTOR_HASH,
             "status": "frozen read/import-only; new producers MUST NOT emit",
+            "operation": "legacy-import",
         },
         "count": len(vectors),
         "hash": hashlib.sha256(canonical_bytes(vectors)).hexdigest(),

@@ -1,18 +1,36 @@
 {
   "set": "canonical-channel-message-v0.6",
   "spec": "DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6",
-  "decisionModel": "§7.5.1 four-value result; structural dispatch precedes cryptography",
+  "decisionModel": "§7.5.1 four-value result; trusted operation selection and structural dispatch precede cryptography",
+  "authenticatedKeyFixtures": [
+    {
+      "claim": "did:example:dacs-349-ecdsa",
+      "algorithm": "ecdsa-secp256k1",
+      "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+      "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b",
+      "signatureEncoding": "canonical-DER-low-S"
+    },
+    {
+      "claim": "did:example:dacs-349-sr1-root",
+      "algorithm": "sr1-aggregate",
+      "presentation": "sr1-root",
+      "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+      "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+    }
+  ],
   "historicalCorpus": {
     "path": "channel-message-replay-v0.1.json",
     "vectorsHash": "3f0664c434a6727f7578434cba9ea47b804e0dff12249081c7abdd4fdc03803b",
-    "status": "frozen read/import-only; new producers MUST NOT emit"
+    "status": "frozen read/import-only; new producers MUST NOT emit",
+    "operation": "legacy-import"
   },
-  "count": 34,
-  "hash": "0e0c0cce8dc3747646a5a13e334804f93e48da80b66a5fdaad6c36b78bd87853",
+  "count": 42,
+  "hash": "16665e581726d08dccf3b6d5bb91a1d36686ab1861fbdb7fceea117b7447b748",
   "vectors": [
     {
       "name": "canonical-valid-first",
       "expected": "pass",
+      "operation": "current-read",
       "note": "current discriminator, SIG-6 value, hex-digest framing and fresh sequence",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -44,6 +62,7 @@
     {
       "name": "canonical-valid-next",
       "expected": "pass",
+      "operation": "current-read",
       "note": "strictly increasing sequence",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -75,6 +94,7 @@
     {
       "name": "canonical-valid-sequence-gap",
       "expected": "pass",
+      "operation": "current-read",
       "note": "CH-6 requires monotonicity, not contiguity",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -106,6 +126,7 @@
     {
       "name": "canonical-duplicate-sequence",
       "expected": "fail",
+      "operation": "current-read",
       "note": "duplicate sequence is a replay",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -137,6 +158,7 @@
     {
       "name": "canonical-decreasing-sequence",
       "expected": "fail",
+      "operation": "current-read",
       "note": "decreasing sequence is a replay",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -168,6 +190,7 @@
     {
       "name": "canonical-foreign-channel",
       "expected": "fail",
+      "operation": "current-read",
       "note": "valid signature cannot cross the active channel binding",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -199,6 +222,7 @@
     {
       "name": "canonical-reused-session-channel",
       "expected": "fail",
+      "operation": "current-read",
       "note": "CH-6 refuses a reused session channel identifier",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -229,6 +253,7 @@
     {
       "name": "canonical-unresolved-sender",
       "expected": "indeterminate",
+      "operation": "current-read",
       "note": "well-formed but unavailable signer authority is indeterminate",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -260,6 +285,7 @@
     {
       "name": "canonical-tampered-body",
       "expected": "fail",
+      "operation": "current-read",
       "note": "message-body mutation breaks the signature",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -291,6 +317,7 @@
     {
       "name": "canonical-padded-base64url",
       "expected": "error",
+      "operation": "current-read",
       "note": "SIG-6 rejects padding before cryptographic verification",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -322,6 +349,7 @@
     {
       "name": "canonical-standard-base64-character",
       "expected": "error",
+      "operation": "current-read",
       "note": "SIG-6 rejects standard-Base64 alphabet characters",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -353,6 +381,7 @@
     {
       "name": "canonical-hex-signature-value",
       "expected": "fail",
+      "operation": "current-read",
       "note": "hex characters form a Base64URL spelling but decode to the wrong Ed25519 length",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -384,6 +413,7 @@
     {
       "name": "canonical-unknown-signature-version",
       "expected": "error",
+      "operation": "current-read",
       "note": "unknown signature-envelope versions are not retried",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -415,6 +445,7 @@
     {
       "name": "canonical-unknown-algorithm",
       "expected": "error",
+      "operation": "current-read",
       "note": "unknown algorithm identifiers are malformed",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -446,6 +477,7 @@
     {
       "name": "canonical-algorithm-key-confusion",
       "expected": "fail",
+      "operation": "current-read",
       "note": "a CCI Ed25519 key cannot be relabelled as ECDSA",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -475,8 +507,265 @@
       }
     },
     {
+      "name": "canonical-ecdsa-valid",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "authenticated secp256k1 fixture verifies canonical DER low-S bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIgBdBdCwenhrY_Ail5KwAcVUt09pQdBaXhTLEVvht-G5k"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-ecdsa-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA covers the complete received message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIgBdBdCwenhrY_Ail5KwAcVUt09pQdBaXhTLEVvht-G5k"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-ecdsa-cross-domain",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA cannot authenticate the historical domain",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEQCIFwZLz-MaQhUnd6-kOduuQeCdfwqL9DJaLtWhE8kNv-AAiALpMB0A_joDcdA49NGeuMqBxH7LffM0C-OJPaLwz-juw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-ecdsa-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA signs ASCII lowercase hex, not raw digest bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQCZ9uyN-YpLGMHxPDsX7s8fD2GS7JNNRgz_H_L7SvRyqwIgNAI2xa1LTls7jT2zRZ7rAO43lJrReMoKJpVltr2OwUk"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-valid",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "authenticated SR-1 root fixture verifies the canonical current payload",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "hSLWgu0VSudiobHne2RDUNgBPtBJfxg1Ip2HN_ayoU35B-vkAk8K9qwMvKoZA7yCkM761I7KzJhOYPl0y1psCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signature covers the complete received message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "hSLWgu0VSudiobHne2RDUNgBPtBJfxg1Ip2HN_ayoU35B-vkAk8K9qwMvKoZA7yCkM761I7KzJhOYPl0y1psCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-cross-domain",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signature cannot authenticate the historical domain",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "2JSjk3S_ZxCczXUt6zzTO1sD7xLU_KczO9MKCw4yDHZFxzQ-B1tntz1BQn579kM2Gvt_crAx0y23I9x7sLHDCQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signs ASCII lowercase hex, not raw digest bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "-uMfwm32_V2dWwAUO94f3FKntoPgU_NtfH9-iupjkJq3tOpG2caWYBb7Kf0FIELRN3QQshXhfvYw0TOiZTenAQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
       "name": "canonical-signer-sender-mismatch",
       "expected": "fail",
+      "operation": "current-read",
       "note": "signature.signer must canonically equal sender",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -508,6 +797,7 @@
     {
       "name": "canonical-empty-refs-object",
       "expected": "pass",
+      "operation": "current-read",
       "note": "the optional refs object may omit its optional repliesTo member",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -540,6 +830,7 @@
     {
       "name": "canonical-boolean-replies-to",
       "expected": "error",
+      "operation": "current-read",
       "note": "repliesTo is a positive integer and excludes JSON booleans",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -574,6 +865,7 @@
     {
       "name": "canonical-boolean-sequence",
       "expected": "error",
+      "operation": "current-read",
       "note": "sequence is a positive integer and excludes JSON booleans",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -605,6 +897,7 @@
     {
       "name": "canonical-empty-channel-id",
       "expected": "error",
+      "operation": "current-read",
       "note": "the active channel binding cannot be empty",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -636,6 +929,7 @@
     {
       "name": "canonical-open-signature-envelope",
       "expected": "error",
+      "operation": "current-read",
       "note": "the version-1 signature envelope has an exact member set",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -668,6 +962,7 @@
     {
       "name": "neither-selector-no-discriminator-current-envelope",
       "expected": "error",
+      "operation": "current-read",
       "note": "a current envelope without its discriminator is not legacy",
       "message": {
         "channelId": "channel-349",
@@ -698,6 +993,7 @@
     {
       "name": "mixed-current-discriminator-legacy-signature",
       "expected": "error",
+      "operation": "current-read",
       "note": "the current discriminator selects current parsing before crypto",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -724,6 +1020,7 @@
     {
       "name": "canonical-unknown-message-version",
       "expected": "error",
+      "operation": "current-read",
       "note": "unknown current message versions do not fall back to legacy",
       "message": {
         "canonicalChannelMessageVersion": "2",
@@ -755,6 +1052,7 @@
     {
       "name": "canonical-missing-signature",
       "expected": "error",
+      "operation": "current-read",
       "note": "neither current nor historical structural selector matches",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -780,6 +1078,7 @@
     {
       "name": "mixed-current-raw-digest-framing",
       "expected": "fail",
+      "operation": "current-read",
       "note": "current type signs the ASCII lowercase-hex digest, not raw bytes",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -811,6 +1110,7 @@
     {
       "name": "cross-domain-legacy-to-current",
       "expected": "fail",
+      "operation": "current-read",
       "note": "the historical domain cannot authenticate a current message",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -842,6 +1142,7 @@
     {
       "name": "mixed-legacy-hex-digest-framing",
       "expected": "fail",
+      "operation": "legacy-import",
       "note": "historical type signs the raw digest, not ASCII lowercase hex",
       "message": {
         "channelId": "channel-349",
@@ -867,6 +1168,7 @@
     {
       "name": "cross-domain-current-to-legacy",
       "expected": "fail",
+      "operation": "legacy-import",
       "note": "the current domain cannot authenticate a historical message",
       "message": {
         "channelId": "channel-349",
@@ -892,6 +1194,7 @@
     {
       "name": "legacy-byte-preserving-read-only-import",
       "expected": "pass",
+      "operation": "legacy-import",
       "note": "the frozen historical bytes verify only on the explicit import arm",
       "message": {
         "channelId": "chan-session-7",
@@ -917,6 +1220,7 @@
     {
       "name": "legacy-uppercase-hex-rejected",
       "expected": "error",
+      "operation": "legacy-import",
       "note": "the historical selector is exact lowercase hex, never auto-detected",
       "message": {
         "channelId": "chan-session-7",
@@ -941,6 +1245,7 @@
     {
       "name": "canonical-preserve-unknown-signed-field",
       "expected": "pass",
+      "operation": "current-read",
       "note": "SIG-5 includes an unknown field in the signed scope",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -975,6 +1280,7 @@
     {
       "name": "canonical-stripped-unknown-field",
       "expected": "fail",
+      "operation": "current-read",
       "note": "a reader cannot strip an unknown signed field before verification",
       "message": {
         "canonicalChannelMessageVersion": "1",
@@ -1006,6 +1312,7 @@
     {
       "name": "malformed-context-boolean-sequence",
       "expected": "error",
+      "operation": "current-read",
       "note": "context integers exclude JSON booleans",
       "message": {
         "canonicalChannelMessageVersion": "1",

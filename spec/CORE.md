@@ -393,8 +393,9 @@ The v0.x registry of domain separators at this revision is closed:
 **Historical read/import-only domain (not a current producer registry entry).**
 The frozen `LegacyDemosChannelMessage` uses `"dacs-channelmsg:v1:"` followed
 by the raw 32-byte SHA-256 digest, not the lowercase-hex `artifact_hash` recipe
-above. It is registered here only so an explicitly selected historical reader
-can reproduce existing bytes under DACS-3 §8.3.3 CH-9/CH-10. New producers
+above. It is recorded separately here only so an explicitly selected historical
+importer can reproduce existing bytes under DACS-3 §8.3.3 CH-9/CH-10. It is not
+part of the closed current-producer table above. New producers
 MUST NOT emit that type or domain. A current channel message always uses the
 separate table entry, discriminator, signature envelope, digest framing, and
 SIG-6 encoding.

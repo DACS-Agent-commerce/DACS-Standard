@@ -347,8 +347,8 @@ def vectors() -> list[dict[str, object]]:
                 "moduleVersions": {
                     "core": "0.3",
                     "dacs1": "0.7",
-                    "dacs2": "0.5",
-                    "dacs3": "0.4",
+                    "dacs2": "0.6",
+                    "dacs3": "0.5",
                     "dacs4": "0.7",
                     "dacs5": "0.5",
                 },

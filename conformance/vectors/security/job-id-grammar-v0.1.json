@@ -8,16 +8,16 @@
     "moduleVersions": {
       "core": "0.3",
       "dacs1": "0.7",
-      "dacs2": "0.5",
-      "dacs3": "0.4",
+      "dacs2": "0.6",
+      "dacs3": "0.5",
       "dacs4": "0.7",
       "dacs5": "0.5"
     },
     "peerEvidence": "peerProfileRef is resolved only through implementation-owned authenticated fixture state"
   },
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "count": 40,
-  "hash": "3d1b25f9b33876c8370462df922dabef0922b9c6ec1dda61bad2aaa002025999",
+  "count": 43,
+  "hash": "886f12f511deba26cdd17e1fcf99c0beb1091f8737ba8ea871b6ba330e3d6601",
   "vectors": [
     {
       "name": "canonical-ulid",
@@ -457,13 +457,82 @@
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
+          "dacs2": "0.6",
+          "dacs3": "0.5",
           "dacs4": "0.7",
           "dacs5": "0.5"
         }
       },
       "note": "Matching caller-supplied bytes are not authenticated peer evidence.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "caller-supplied-empty-profiles-refuse",
+      "operation": "profile-admit",
+      "expected": "error",
+      "localProfile": {},
+      "peerProfile": {},
+      "note": "Two matching empty caller objects do not establish an authenticated corrective profile.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "caller-supplied-partial-profiles-refuse",
+      "operation": "profile-admit",
+      "expected": "error",
+      "localProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3"
+        }
+      },
+      "peerProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3"
+        }
+      },
+      "note": "Two matching partial caller tuples cannot satisfy complete authenticated profile admission.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "caller-supplied-unsupported-profiles-refuse",
+      "operation": "profile-admit",
+      "expected": "error",
+      "localProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "9.9",
+          "dacs1": "9.9",
+          "dacs2": "9.9",
+          "dacs3": "9.9",
+          "dacs4": "9.9",
+          "dacs5": "9.9"
+        }
+      },
+      "peerProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "9.9",
+          "dacs1": "9.9",
+          "dacs2": "9.9",
+          "dacs3": "9.9",
+          "dacs4": "9.9",
+          "dacs5": "9.9"
+        }
+      },
+      "note": "Two matching fabricated caller tuples cannot choose their own corrective profile.",
       "want": {
         "failureStage": "profile-admission",
         "hashCalls": 0,

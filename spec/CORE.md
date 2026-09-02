@@ -274,7 +274,7 @@ resolver key, settlement binding, and API path. The grammar is the canonical
 text form of a 128-bit ULID:
 
 ```text
-jobId        = first-crockford 25*crockford
+jobId        = first-crockford 25crockford
 first-crockford = %x30-37                         ; 0-7
 crockford    = %x30-39 / %x41-48 / %x4A-4B       ; 0-9 / A-H / J-K
              / %x4D-4E / %x50-54 / %x56-5A       ; M-N / P-T / V-Z
@@ -623,7 +623,7 @@ DACS v0.1 is a common baseline: all five per-stage standards, the front-matter s
 4. Mixed corrective/pre-corrective live operation is unsupported. Older artifacts remain eligible only for an explicitly selected archival path that verifies their original bytes and frozen historical semantics without deriving current addresses, performing current lookups, creating current signatures, or authorizing side effects.
 5. Every affected conformance manifest and evidence record MUST identify the corrective profile pin. Evidence generated under the earlier profile cannot be relabelled as evidence for the correction.
 
-CORE v0.3 together with DACS-1 v0.7, DACS-4 v0.7, and DACS-5 v0.5 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. These versions do not claim ordinary cross-minor compatibility with a pre-JID-1 profile.
+CORE v0.3 together with DACS-1 v0.7, DACS-2 v0.6, DACS-3 v0.5, DACS-4 v0.7, and DACS-5 v0.5 declares this boundary for `jobId`: the former “ULID or substrate-equivalent” allowance, major-only listing admission, and normalization-tolerant job-specific derivations are replaced by JID-1..JID-4 plus exact corrective-profile admission. This complete tuple is the candidate profile recorded in `PROFILE.md`; these versions do not claim ordinary cross-minor compatibility with a pre-JID-1 profile.
 
 **New-type refusal (normative).** A new artifact or phase type added in a minor version MUST be structurally distinguishable from every existing type before any type-specific action occurs. An implementation that does not support the new type MUST reject it as unsupported; it MUST NOT reinterpret it as an existing type by discarding an unknown discriminator or action-bearing field. This structural refusal is the safe minor-version behaviour expressly permitted for new artifact/phase types above. Adding act-requiring semantics to an optional field of an existing artifact is not equivalent and remains a breaking change.
 

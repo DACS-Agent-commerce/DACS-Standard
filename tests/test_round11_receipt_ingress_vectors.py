@@ -85,7 +85,7 @@ def binding_hash(binding):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
-def logical_address(job_id, role):
+def legacy_logical_address(job_id, role):
     return "stor-" + hashlib.sha256((job_id + "-bundle-" + role).encode("utf-8")).hexdigest()
 
 
@@ -119,7 +119,7 @@ def make_fab(job_id, outcome, faulted_party, anchored_by_role, sign_roles, final
 def make_binding(job_id, role, signer_role, native, content_hash):
     bd = {
         "bindingVersion": "1", "jobId": job_id, "role": role,
-        "logicalAddress": logical_address(job_id, role), "nativeAddress": native,
+        "logicalAddress": legacy_logical_address(job_id, role), "nativeAddress": native,
         "bundleContentHash": content_hash, "anchorTx": "demos-testnet:tx-" + native[5:21],
         "signer": CLAIM[signer_role],
     }
@@ -238,7 +238,7 @@ def seller_binding_raw(job, native, content_hash, role="seller", signer_role="se
     """A BundleBinding built raw so nativeAddress / bundleContentHash may be None (make_binding slices
     native[5:21]); signed over its real binding_hash so it passes BB-4 crypto in both modes."""
     bd = {"bindingVersion": "1", "jobId": job, "role": role,
-          "logicalAddress": logical_address(job, role),
+          "logicalAddress": legacy_logical_address(job, role),
           "nativeAddress": native, "bundleContentHash": content_hash,
           "anchorTx": "demos-testnet:tx-x", "signer": CLAIM[signer_role]}
     payload = (BINDING_DOMAIN + binding_hash(bd)).encode("utf-8")
@@ -441,7 +441,7 @@ def _grid_base_present():
 def _grid_base_absent_addr():
     p = build_absent("GRID-ADR")
     e = p["deriv"]["resolutionContext"][0]
-    resolved = logical_address(p["winner"]["jobId"], "seller")
+    resolved = legacy_logical_address(p["winner"]["jobId"], "seller")
     e["roleEvidence"] = {"kind": "address", "resolvedAddress": resolved}
     p["anchors"][resolved] = p["winner"]
     del e["bb6Context"]
@@ -455,8 +455,8 @@ def _grid_base_present_addr():
     p = build_present("GRID-PADR")
     e = p["deriv"]["resolutionContext"][0]
     job = p["W"]["jobId"]
-    re_nat = logical_address(job, "seller")
-    cre_nat = logical_address(job, "buyer")
+    re_nat = legacy_logical_address(job, "seller")
+    cre_nat = legacy_logical_address(job, "buyer")
     e["roleEvidence"] = {"kind": "address", "resolvedAddress": re_nat}
     e["counterpartyRoleEvidence"] = {"kind": "address", "resolvedAddress": cre_nat}
     p["anchors"][re_nat] = p["W"]
@@ -651,7 +651,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
     # ---- Class 3: jobId / role type-collusion (concat sites) -----------------------------------
     def test_r11_coll1_jobid_type_collusion_defect(self):
         """DEFECT: winner.jobId AND binding.jobId both 123 — verify_binding's jobId equality (:178)
-        passes on the collusion, then logical_address(123, role) (:182) concatenates int+str ->
+        passes on the collusion, then legacy_logical_address(123, role) (:182) concatenates int+str ->
         TypeError, both modes. verify_binding ingress must type jobId. Refuse."""
         p = build_absent("R11-COLL1")
         w = p["winner"]; w["jobId"] = 123
@@ -732,7 +732,7 @@ class Round11ReceiptIngressTests(unittest.TestCase):
         kind!='binding' branch is skipped) AND after the fix."""
         p = build_absent("R11-ADDR-CTL")
         entry = p["deriv"]["resolutionContext"][0]
-        resolved = logical_address(p["winner"]["jobId"], "seller")
+        resolved = legacy_logical_address(p["winner"]["jobId"], "seller")
         entry["roleEvidence"] = {"kind": "address", "resolvedAddress": resolved}
         p["anchors"][resolved] = p["winner"]
         del entry["bb6Context"]

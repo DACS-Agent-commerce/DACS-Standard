@@ -18,6 +18,21 @@ CORE = ROOT / "spec/CORE.md"
 DACS5 = ROOT / "spec/DACS-5-VERIFY.md"
 WORKFLOW = ROOT / ".github/workflows/validate.yml"
 README = ROOT / "conformance/vectors/security/README.md"
+PROFILE = ROOT / "spec/PROFILE.md"
+MODULE_SPECS = {
+    "core": (ROOT / "spec/CORE.md", "DACS Core", "CORE"),
+    "dacs1": (ROOT / "spec/DACS-1-IDENTIFY.md", "DACS-1", "DACS-1-IDENTIFY"),
+    "dacs2": (ROOT / "spec/DACS-2-VET.md", "DACS-2", "DACS-2-VET"),
+    "dacs3": (ROOT / "spec/DACS-3-NEGOTIATE.md", "DACS-3", "DACS-3-NEGOTIATE"),
+    "dacs4": (ROOT / "spec/DACS-4-SETTLE.md", "DACS-4", "DACS-4-SETTLE"),
+    "dacs5": (ROOT / "spec/DACS-5-VERIFY.md", "DACS-5", "DACS-5-VERIFY"),
+}
+LEGACY_ADDRESS_SUITES = (
+    ROOT / "tests/test_bundle_binding_vectors.py",
+    ROOT / "tests/test_round9_ordering_contract_vectors.py",
+    ROOT / "tests/test_round10_validation_predicate_vectors.py",
+    ROOT / "tests/test_round11_receipt_ingress_vectors.py",
+)
 
 JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
 RELEASE_PIN_RE = re.compile(r"[0-9a-f]{40}\Z", re.ASCII)
@@ -31,8 +46,8 @@ AUTHORITATIVE_RELEASE_PIN = "0000000000000000000000000000000000000001"
 AUTHORITATIVE_MODULE_VERSIONS = {
     "core": "0.3",
     "dacs1": "0.7",
-    "dacs2": "0.5",
-    "dacs3": "0.4",
+    "dacs2": "0.6",
+    "dacs3": "0.5",
     "dacs4": "0.7",
     "dacs5": "0.5",
 }
@@ -318,13 +333,52 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             vector for vector in self.data["vectors"]
             if vector["operation"] == "profile-admit"
         ]
-        self.assertEqual(9, len(cases))
+        self.assertEqual(12, len(cases))
         for case in cases:
             with self.subTest(case=case["name"]):
                 verdict, observed = evaluate(case)
                 self.assertEqual(case["expected"], verdict)
                 self.assertEqual(0, observed["hashCalls"])
                 self.assertEqual(0, observed["lookupCalls"])
+
+    def test_matching_caller_profiles_never_establish_admission(self):
+        for name in (
+            "caller-supplied-empty-profiles-refuse",
+            "caller-supplied-partial-profiles-refuse",
+            "caller-supplied-unsupported-profiles-refuse",
+        ):
+            with self.subTest(vector=name):
+                verdict, observed = evaluate(self.by_name[name])
+                self.assertEqual("error", verdict)
+                self.assertEqual("profile-admission", observed["failureStage"])
+                self.assertEqual(0, observed["hashCalls"])
+                self.assertEqual(0, observed["lookupCalls"])
+
+    def test_corrective_tuple_matches_every_module_header_and_profile_row(self):
+        profile = PROFILE.read_text(encoding="utf-8")
+        self.assertEqual(
+            AUTHORITATIVE_MODULE_VERSIONS,
+            self.data["syntheticProfileAdmissionFixture"]["moduleVersions"],
+        )
+        for module, (path, header_label, profile_label) in MODULE_SPECS.items():
+            with self.subTest(module=module):
+                expected = AUTHORITATIVE_MODULE_VERSIONS[module]
+                document = path.read_text(encoding="utf-8")
+                self.assertRegex(
+                    document,
+                    rf"\*\*{re.escape(header_label)} v{re.escape(expected)}\*\*",
+                )
+                self.assertIn(
+                    f"| [{profile_label}]({path.name}) | {expected} |",
+                    profile,
+                )
+
+    def test_legacy_address_suites_name_their_frozen_helper(self):
+        for path in LEGACY_ADDRESS_SUITES:
+            with self.subTest(path=path.name):
+                source = path.read_text(encoding="utf-8")
+                self.assertIn("def legacy_logical_address(", source)
+                self.assertNotIn("def logical_address(", source)
 
     def test_normative_and_ci_surfaces_are_linked(self):
         core = CORE.read_text(encoding="utf-8")
@@ -334,6 +388,8 @@ class JobIdGrammarVectorTests(unittest.TestCase):
         self.assertIn("JID-1", core)
         self.assertIn("JID-4", core)
         self.assertIn("[0-7][0-9A-HJKMNP-TV-Z]{25}", core)
+        self.assertIn("jobId        = first-crockford 25crockford", core)
+        self.assertNotIn("first-crockford 25*crockford", core)
         self.assertIn("ASCII(jobId)", dacs5)
         self.assertIn("generate_job_id_grammar_vectors.py --check", workflow)
         self.assertIn("job-id-grammar-v0.1.json", readme)

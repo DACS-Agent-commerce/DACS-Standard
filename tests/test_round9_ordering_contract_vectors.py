@@ -77,7 +77,7 @@ def binding_hash(binding):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
-def logical_address(job_id, role):
+def legacy_logical_address(job_id, role):
     return "stor-" + hashlib.sha256((job_id + "-bundle-" + role).encode("utf-8")).hexdigest()
 
 
@@ -131,7 +131,7 @@ def make_fab(job_id, outcome, faulted_party, anchored_by_role, sign_roles, final
 def make_binding(job_id, role, signer_role, native, content_hash):
     bd = {
         "bindingVersion": "1", "jobId": job_id, "role": role,
-        "logicalAddress": logical_address(job_id, role), "nativeAddress": native,
+        "logicalAddress": legacy_logical_address(job_id, role), "nativeAddress": native,
         "bundleContentHash": content_hash, "anchorTx": "demos-testnet:tx-" + native[5:21],
         "signer": CLAIM[signer_role],
     }

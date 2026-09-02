@@ -44,8 +44,8 @@ normalization-tolerant job-specific derivation. Its affected document tuple is:
 | --- | --- | --- |
 | [CORE](CORE.md) | 0.3 | Draft corrective candidate |
 | [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.7 | Draft corrective candidate |
-| [DACS-2-VET](DACS-2-VET.md) | 0.5 | Draft; unchanged module bytes |
-| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.4 | Draft; unchanged module bytes |
+| [DACS-2-VET](DACS-2-VET.md) | 0.6 | Draft; current composed module |
+| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.5 | Draft; current composed module |
 | [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.7 | Draft corrective candidate |
 | [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.5 | Draft corrective candidate |
 

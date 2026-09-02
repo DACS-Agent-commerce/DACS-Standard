@@ -52,7 +52,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 40 | `error` / `fail` / `pass` |
+| [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 43 | `error` / `fail` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -1090,7 +1090,7 @@ python3 -m unittest tests.test_presence_only_claim_vectors -v
 
 ### `job-id-grammar-v0.1.json` — CORE §B.1 JID-1..JID-4
 
-Forty deterministic cases pin the complete canonical DACS `jobId`
+Forty-three deterministic cases pin the complete canonical DACS `jobId`
 grammar, byte-exact comparison, logical-address insertion, and the DACS-5
 bundle-address preimage. Invalid case, alias, overflow, whitespace, Unicode,
 type, and length inputs execute through an instrumented gate that must make

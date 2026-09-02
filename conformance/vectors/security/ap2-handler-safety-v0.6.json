@@ -2,7 +2,7 @@
   "set": "ap2-handler-safety-v0.6",
   "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
   "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, authenticated synthetic-profile and JID/phase admission ordering, checkout/payment admission, and retry/replay consumption are executed; the fixture release pin is not a published release or live deployment profile; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
-  "hash": "20fa4abe59ca8ba90130bd077802b9567e74254bc95f8e353c3c1fd44a2b254d",
+  "hash": "7ed5280c4b9095a931cc6bb44efa539c8abcc78dc64ef81f33386acb08312e41",
   "count": 36,
   "vectors": [
     {
@@ -383,8 +383,8 @@
         "moduleVersions": {
           "core": "0.3",
           "dacs1": "0.7",
-          "dacs2": "0.5",
-          "dacs3": "0.4",
+          "dacs2": "0.6",
+          "dacs3": "0.5",
           "dacs4": "0.7",
           "dacs5": "0.5"
         }

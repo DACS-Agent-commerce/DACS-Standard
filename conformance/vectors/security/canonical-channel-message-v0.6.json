@@ -1,0 +1,1345 @@
+{
+  "set": "canonical-channel-message-v0.6",
+  "spec": "DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6",
+  "decisionModel": "§7.5.1 four-value result; trusted operation selection and structural dispatch precede cryptography",
+  "authenticatedKeyFixtures": [
+    {
+      "claim": "did:example:dacs-349-ecdsa",
+      "algorithm": "ecdsa-secp256k1",
+      "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+      "publicKey": "02eebd1f7b69e1d253e9c13c28660dc74d31eb7b54132f6218a1d748cd2cc2b60b",
+      "signatureEncoding": "canonical-DER-low-S"
+    },
+    {
+      "claim": "did:example:dacs-349-sr1-root",
+      "algorithm": "sr1-aggregate",
+      "presentation": "sr1-root",
+      "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+      "publicKey": "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
+    }
+  ],
+  "historicalCorpus": {
+    "path": "channel-message-replay-v0.1.json",
+    "vectorsHash": "3f0664c434a6727f7578434cba9ea47b804e0dff12249081c7abdd4fdc03803b",
+    "status": "frozen read/import-only; new producers MUST NOT emit",
+    "operation": "legacy-import"
+  },
+  "count": 42,
+  "hash": "16665e581726d08dccf3b6d5bb91a1d36686ab1861fbdb7fceea117b7447b748",
+  "vectors": [
+    {
+      "name": "canonical-valid-first",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "current discriminator, SIG-6 value, hex-digest framing and fresh sequence",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-valid-next",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "strictly increasing sequence",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "92tCOA5xk6TWaL2ejB_b70CnD2yKDOFlLWoCjwI5R4laI2AK_a7X1RT2KAST1YOOOnc3U9ahvfnlrSEZi7iTDg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-valid-sequence-gap",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "CH-6 requires monotonicity, not contiguity",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 5,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "7jW1ptfNqesupTLvkQxb4JWcf8cw4ZTwrOYycLVpDKphSr4H_U7ZPM2vOBMSbC3soEZtFaQuhVxet9uMjX5cCg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-duplicate-sequence",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "duplicate sequence is a replay",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "F0LuVeofX7htCa7eDE-mhokW3mJat8k91F_vXZI2-J_AOX4L13sAPZOr0CEOFtcmVTHxX7xcuj050d3JaxlZAw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 3,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-decreasing-sequence",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "decreasing sequence is a replay",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "F0LuVeofX7htCa7eDE-mhokW3mJat8k91F_vXZI2-J_AOX4L13sAPZOr0CEOFtcmVTHxX7xcuj050d3JaxlZAw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 4,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-foreign-channel",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "valid signature cannot cross the active channel binding",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-foreign",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "xfhQ3_ERJXYhQZPwxBUCuiXAYmavRLC5GlC8xvGVunZ1NP3WxeFHXtKIV4gd5FS51gFkKYB2FO0PA_gp56WiDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-reused-session-channel",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "CH-6 refuses a reused session channel identifier",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-reused",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "cgu0gWmUGpT62WL1aGRLd64fs9u790BLuFIje6S7-zjPHfXvxtD2sykXBMVkb5E7w_MkZoO_KArfLP_QAg1yBQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-reused",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-reused"
+        ]
+      }
+    },
+    {
+      "name": "canonical-unresolved-sender",
+      "expected": "indeterminate",
+      "operation": "current-read",
+      "note": "well-formed but unavailable signer authority is indeterminate",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "did:example:unresolved",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:unresolved",
+          "algorithm": "ed25519",
+          "value": "XuNLW-jpkSvQj9jaI5bbt-hdxCVpWGQGIimlZnQAi7vXR68c6JzaAaHI8mEyMzhWVxUvwtz0bC1A5vse-YIqDA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "message-body mutation breaks the signature",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-padded-base64url",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "SIG-6 rejects padding before cryptographic verification",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ=="
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-standard-base64-character",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "SIG-6 rejects standard-Base64 alphabet characters",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "+8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-hex-signature-value",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "hex characters form a Base64URL spelling but decode to the wrong Ed25519 length",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "93c94bc42fe1f47f84427759f96b345ee73db9bcf20ded6ba81580fdb8320bbd9ec76e17d73622c7383dab9ec120539e5f9adb156b6802c7c3a3603d10e31a0d"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-unknown-signature-version",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unknown signature-envelope versions are not retried",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "2",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-unknown-algorithm",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unknown algorithm identifiers are malformed",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "rsa-pss",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-algorithm-key-confusion",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "a CCI Ed25519 key cannot be relabelled as ECDSA",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-ecdsa-valid",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "authenticated secp256k1 fixture verifies canonical DER low-S bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIgBdBdCwenhrY_Ail5KwAcVUt09pQdBaXhTLEVvht-G5k"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-ecdsa-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA covers the complete received message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQC9dj_q9CNETiGezQOQ0Cal2NBx4NA-abbTlBe-1BX9mQIgBdBdCwenhrY_Ail5KwAcVUt09pQdBaXhTLEVvht-G5k"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-ecdsa-cross-domain",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA cannot authenticate the historical domain",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEQCIFwZLz-MaQhUnd6-kOduuQeCdfwqL9DJaLtWhE8kNv-AAiALpMB0A_joDcdA49NGeuMqBxH7LffM0C-OJPaLwz-juw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-ecdsa-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "ECDSA signs ASCII lowercase hex, not raw digest bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 2,
+        "sender": "did:example:dacs-349-ecdsa",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-ecdsa",
+          "algorithm": "ecdsa-secp256k1",
+          "value": "MEUCIQCZ9uyN-YpLGMHxPDsX7s8fD2GS7JNNRgz_H_L7SvRyqwIgNAI2xa1LTls7jT2zRZ7rAO43lJrReMoKJpVltr2OwUk"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 1,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-valid",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "authenticated SR-1 root fixture verifies the canonical current payload",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "hSLWgu0VSudiobHne2RDUNgBPtBJfxg1Ip2HN_ayoU35B-vkAk8K9qwMvKoZA7yCkM761I7KzJhOYPl0y1psCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-tampered-body",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signature covers the complete received message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "11"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "hSLWgu0VSudiobHne2RDUNgBPtBJfxg1Ip2HN_ayoU35B-vkAk8K9qwMvKoZA7yCkM761I7KzJhOYPl0y1psCA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-cross-domain",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signature cannot authenticate the historical domain",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "2JSjk3S_ZxCczXUt6zzTO1sD7xLU_KczO9MKCw4yDHZFxzQ-B1tntz1BQn579kM2Gvt_crAx0y23I9x7sLHDCQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-sr1-aggregate-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "SR-1 root signs ASCII lowercase hex, not raw digest bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 3,
+        "sender": "did:example:dacs-349-sr1-root",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "did:example:dacs-349-sr1-root",
+          "algorithm": "sr1-aggregate",
+          "value": "-uMfwm32_V2dWwAUO94f3FKntoPgU_NtfH9-iupjkJq3tOpG2caWYBb7Kf0FIELRN3QQshXhfvYw0TOiZTenAQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 2,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-signer-sender-mismatch",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "signature.signer must canonically equal sender",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693",
+          "algorithm": "ed25519",
+          "value": "zuHAFea0J47WULRqrROoCaMUBBR0pQIT2t3m47vU5MD-v0nh_y23Xz6mG6PqI-qe2bQ6-E-qotFFb1XEBny3DA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-empty-refs-object",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "the optional refs object may omit its optional repliesTo member",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "refs": {},
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "YVSAioTCwAB4dL0gPUTTx5wVGoAjInqO-jS3YGX9uc63dwPEligZCj6j_oA83jMwKCxJsynZwTTVGChnj1K5BQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-boolean-replies-to",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "repliesTo is a positive integer and excludes JSON booleans",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "refs": {
+          "repliesTo": true
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "z0cnqH_-z-XnoaBvUpu2IO1SusEI5wT-EwfQCVP5A_r_Hh12hzabapYKK6L10IG-pM3MURCv9RjD9rw3nsvWBQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-boolean-sequence",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "sequence is a positive integer and excludes JSON booleans",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": true,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "YUTJo02U4gB5BD8whw1RWMcWZbL7-7eSQnn3VWCVK1eVq8NuQ6Wcv34koa4yKdX1KkkzskJ2zUXg_w6vzDJtCg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-empty-channel-id",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "the active channel binding cannot be empty",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "s9AhKiU8dMynoVA6WVghYuVk-s2suebvGSOTh8ilabAWRbOAAj4SpK2TlkC5I5atmeJIruqzbWw9zcE3xOJeBw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-open-signature-envelope",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "the version-1 signature envelope has an exact member set",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ",
+          "keyHint": "must-not-be-ignored"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "neither-selector-no-discriminator-current-envelope",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "a current envelope without its discriminator is not legacy",
+      "message": {
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "mixed-current-discriminator-legacy-signature",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "the current discriminator selects current parsing before crypto",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "93c94bc42fe1f47f84427759f96b345ee73db9bcf20ded6ba81580fdb8320bbd9ec76e17d73622c7383dab9ec120539e5f9adb156b6802c7c3a3603d10e31a0d"
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-unknown-message-version",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "unknown current message versions do not fall back to legacy",
+      "message": {
+        "canonicalChannelMessageVersion": "2",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-missing-signature",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "neither current nor historical structural selector matches",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "mixed-current-raw-digest-framing",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "current type signs the ASCII lowercase-hex digest, not raw bytes",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "kuIlXmHxvRTjVI_HRS7pmpHtSydE_oWqaS9WD9iy1gcxFGa-HvZklhmKTGKd4DixL1f0HkMphpfBbHrZ3pr5Dg"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "cross-domain-legacy-to-current",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "the historical domain cannot authenticate a current message",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "BT-qe1Z5kNpjpoO6grtuWJaKBHUtD2Il-vso8fK__PdDQ_gkmaYNNghdjkfn6iv9M--C1nlf_vo3hx55cVkQBw"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "mixed-legacy-hex-digest-framing",
+      "expected": "fail",
+      "operation": "legacy-import",
+      "note": "historical type signs the raw digest, not ASCII lowercase hex",
+      "message": {
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "ada7f530d2536241c426866b33781bf9e56b55d556a8c2401590a81c211fb066645724b1cfa9f34c7db944b100b8eb73825426cd344847146b72d7f2c472e201"
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "cross-domain-current-to-legacy",
+      "expected": "fail",
+      "operation": "legacy-import",
+      "note": "the current domain cannot authenticate a historical message",
+      "message": {
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": "048ad36634f6edbf7bae47a916d741745a5c3c38c88795da55fa955987eba64cf78ee1e14198db976ae29f11018070d2ccbcd1c01b1d6ed5e264528a19a0ba0d"
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "legacy-byte-preserving-read-only-import",
+      "expected": "pass",
+      "operation": "legacy-import",
+      "note": "the frozen historical bytes verify only on the explicit import arm",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "23efcd16e7c72ba7596e9e7920cf54003379bdc044fbdfbd05a17b575da2ed39b149a7b99604cc41476ab14d881a782e0496ed6f64a98a8e229c80760cb14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      },
+      "expectedSignatureBytesBase64Url": "I-_NFufHK6dZbp55IM9UADN5vcBE-9-9BaF7V12i7TmxSae5lgTMQUdqsU2IGnguBJbtb2Spio4inIB2DLFCBA"
+    },
+    {
+      "name": "legacy-uppercase-hex-rejected",
+      "expected": "error",
+      "operation": "legacy-import",
+      "note": "the historical selector is exact lowercase hex, never auto-detected",
+      "message": {
+        "channelId": "chan-session-7",
+        "sequence": 1,
+        "sender": "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228",
+        "sentAt": 1750000000000,
+        "type": "offer",
+        "body": {
+          "price": "10"
+        },
+        "signature": "23EFCD16E7C72BA7596E9E7920CF54003379BDC044FBDFBD05A17B575DA2ED39B149A7B99604CC41476AB14D881A782E0496ED6F64A98A8E229C80760CB14204"
+      },
+      "ctx": {
+        "sessionChannelId": "chan-session-7",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "chan-session-1",
+          "chan-session-2"
+        ]
+      }
+    },
+    {
+      "name": "canonical-preserve-unknown-signed-field",
+      "expected": "pass",
+      "operation": "current-read",
+      "note": "SIG-5 includes an unknown field in the signed scope",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "experimentalHint": {
+          "future": true
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "JQs8fct45fFT5JDcADV9r8D_Y7o0pyfMB7T3po7yhElVEh3HYvBYfQ2zshu9JpliXDWOlLDtW8PYuOlkn1Y1BA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "canonical-stripped-unknown-field",
+      "expected": "fail",
+      "operation": "current-read",
+      "note": "a reader cannot strip an unknown signed field before verification",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "JQs8fct45fFT5JDcADV9r8D_Y7o0pyfMB7T3po7yhElVEh3HYvBYfQ2zshu9JpliXDWOlLDtW8PYuOlkn1Y1BA"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": 0,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    },
+    {
+      "name": "malformed-context-boolean-sequence",
+      "expected": "error",
+      "operation": "current-read",
+      "note": "context integers exclude JSON booleans",
+      "message": {
+        "canonicalChannelMessageVersion": "1",
+        "channelId": "channel-349",
+        "sequence": 1,
+        "sender": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+        "sentAt": 1900000000000,
+        "type": "offer",
+        "body": {
+          "currency": "DEM",
+          "price": "10"
+        },
+        "signature": {
+          "signatureVersion": "1",
+          "signer": "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57",
+          "algorithm": "ed25519",
+          "value": "k8lLxC_h9H-EQndZ-Ws0Xuc9ubzyDe1rqBWA_bgyC72ex24X1zYixzg9q57BIFOeX5rbFWtoAsfDo2A9EOMaDQ"
+        }
+      },
+      "ctx": {
+        "sessionChannelId": "channel-349",
+        "lastSequence": true,
+        "priorChannelIds": [
+          "channel-100",
+          "channel-200"
+        ]
+      }
+    }
+  ]
+}

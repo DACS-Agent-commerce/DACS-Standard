@@ -13,6 +13,32 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-3 v0.6 channel-message wire split
+
+- **Canonical current message** (DACS-3 §8.3.3 CH-7..CH-10; #349) — replaces
+  the undefined `ChannelMessageSignature` and contradictory bare-hex positive
+  examples with a discriminated `CanonicalChannelMessage`, a versioned
+  signature envelope, CORE SIG-6 unpadded Base64URL, canonical signer/sender
+  authority, and byte-exact `dacs-canonical-channel-message:v1:` plus ASCII
+  lowercase-hex-digest framing.
+- **Historical Demos arm frozen** — retains
+  `channel-message-replay-v0.1.json` byte-for-byte as read/import-only evidence
+  for the discriminator-free bare-lowercase-hex wire and its historical
+  `dacs-channelmsg:v1:` plus raw-32-byte-digest payload. New producers cannot
+  emit that type. A trusted caller must select `current-read` or
+  `legacy-import` before parsing message-controlled bytes; structural dispatch
+  then occurs before crypto and never retries a value decoder, domain, digest
+  framing, or alternate arm.
+- **Executable migration boundary** — adds 42 generated current and mixed-wire
+  cases plus an in-repository oracle that also executes all 15 frozen legacy
+  cases. Valid, tampered, cross-domain, and wrong-framing cases execute all
+  three advertised algorithms against independently bound public-key fixtures.
+  Coverage also includes the four partial mixtures, encoding/version/signer
+  failures, CH-6 channel/sequence replay, SIG-5 unknown-field preservation, and
+  exact legacy signature-byte retention. `@kynesyslabs/demosdk@4.0.16` is
+  recorded only as historical-arm evidence; no current Demos SDK producer
+  version is claimed.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

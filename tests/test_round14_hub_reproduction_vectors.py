@@ -217,7 +217,7 @@ class Round14HubReproductionTests(unittest.TestCase):
         self.assertNotEqual(R._outcome_class(self_copy["outcome"]), "abort")
         h_self, h_cp = R.bundle_hash(self_copy), R.bundle_hash(cp_true)
         self.assertNotEqual(h_self, h_cp)
-        waddr, caddr = R.logical_address("J9", "seller"), R.logical_address("J9", "buyer")
+        waddr, caddr = R.legacy_logical_address("J9", "seller"), R.legacy_logical_address("J9", "buyer")
         derivation = {
             "replayableDerivationVersion": "1",
             "resolutionContext": [{
@@ -282,7 +282,7 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
         # Baseline sanity (asserted per-test, adds no test count): a well-formed copy PASSES, so every
         # pin below fails ONLY because of its single mutation.
         b = self._good()
-        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        ok, reason = self._call(b, R.legacy_logical_address("J", "seller"), R.bundle_hash(b))
         self.assertTrue(ok, "baseline good copy must pass the guard; got %r" % (reason,))
 
     def _good(self, job_id="J", role="seller", outcome="failed-perm", omit_role_holder=False):
@@ -304,26 +304,26 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
                                            expected_content_hash, self.pk, expected_jobid=expected_jobid)
 
     def test_s1_fetched_not_object(self):
-        ok, reason = self._call("not-a-dict", R.logical_address("J", "seller"), "0" * 64)
+        ok, reason = self._call("not-a-dict", R.legacy_logical_address("J", "seller"), "0" * 64)
         self.assertFalse(ok)
         self.assertIn("fetched copy is not an object", reason)
 
     def test_s2_jobid_not_string(self):
         b = self._good()
         b["jobId"] = 123   # non-string; refuses at the jobId-type arm before any address/hash use
-        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        ok, reason = self._call(b, R.legacy_logical_address("J", "seller"), R.bundle_hash(b))
         self.assertFalse(ok)
         self.assertIn("fetched.jobId must be a string", reason)
 
     def test_s3_jobid_mismatch(self):
         b = self._good(job_id="OTHER")   # fully valid FOR "OTHER"; refuses only vs expected_jobid="J"
-        ok, reason = self._call(b, R.logical_address("OTHER", "seller"), R.bundle_hash(b), expected_jobid="J")
+        ok, reason = self._call(b, R.legacy_logical_address("OTHER", "seller"), R.bundle_hash(b), expected_jobid="J")
         self.assertFalse(ok)
         self.assertIn("fetched.jobId != expected jobId", reason)
 
     def test_s6_roster_missing_role_holder(self):
         b = self._good(omit_role_holder=True)   # parties omits the seller holder; anchoredByRole still seller
-        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        ok, reason = self._call(b, R.legacy_logical_address("J", "seller"), R.bundle_hash(b))
         self.assertFalse(ok)
         self.assertIn("fetched roster has no holder for resolved role", reason)
 
@@ -334,13 +334,13 @@ class Round14PostFetchAddressGuardPins(unittest.TestCase):
                          {"role": "seller", "primaryClaim": "did:demos:seller"}]}
         for r in ("buyer", "seller"):
             _add_bundle_signature(b, r, self.privs)
-        ok, reason = self._call(b, R.logical_address("J", "seller"), R.bundle_hash(b))
+        ok, reason = self._call(b, R.legacy_logical_address("J", "seller"), R.bundle_hash(b))
         self.assertFalse(ok)
         self.assertIn("faultedParty", reason)
 
     def test_s9_recomputed_content_hash_mismatch(self):
         b = self._good()   # fully valid; refuses only because the expected contentHash is wrong
-        ok, reason = self._call(b, R.logical_address("J", "seller"), "deadbeef" * 8)
+        ok, reason = self._call(b, R.legacy_logical_address("J", "seller"), "deadbeef" * 8)
         self.assertFalse(ok)
         self.assertIn("recomputed §10.4.1 hash != expected contentHash", reason)
 
@@ -395,7 +395,7 @@ class Round14VerificationCompletion(unittest.TestCase):
 
     def _binding(self, job, role, signer_role, native, content_hash):
         b = {"bindingVersion": "1", "jobId": job, "role": role,
-             "logicalAddress": R.logical_address(job, role), "nativeAddress": native,
+             "logicalAddress": R.legacy_logical_address(job, role), "nativeAddress": native,
              "bundleContentHash": content_hash, "signer": "did:demos:%s" % signer_role}
         return _sign_binding(b, signer_role, self.privs)
 
@@ -408,7 +408,7 @@ class Round14VerificationCompletion(unittest.TestCase):
         h_self, h_cp = R.bundle_hash(self_c), R.bundle_hash(cp)
         self.assertNotEqual(h_self, h_cp)
         self.assertTrue(R.divergence(self_c, cp), "honest pair must genuinely §10.4.3-diverge (control)")
-        waddr, caddr = R.logical_address("JA", "seller"), R.logical_address("JA", "buyer")
+        waddr, caddr = R.legacy_logical_address("JA", "seller"), R.legacy_logical_address("JA", "buyer")
         tag = {"bundle": self_c, "resolvedRole": "seller", "counterpartyDisposition": "present",
                "counterpartyRef": {"contentHash": h_cp},
                "counterpartyRoleEvidence": {"kind": "address", "resolvedAddress": caddr},
@@ -461,7 +461,7 @@ class Round14VerificationCompletion(unittest.TestCase):
         cp = self._legacy("JC", "aborted-by-other", "buyer", ["buyer"])
         h_cp = R.bundle_hash(cp)
         winner_native = "stor-winner-JC"
-        caddr = R.logical_address("JC", "buyer")
+        caddr = R.legacy_logical_address("JC", "buyer")
         winner_binding = self._binding("JC", "seller", "seller", winner_native, ch)
         bb6 = {"candidateBindings": [winner_binding], "partyMap": {"did:demos:seller": "seller"}, "budget": 8}
         entry = {"contentHash": ch, "resolvedRole": "seller",

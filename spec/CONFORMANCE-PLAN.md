@@ -75,7 +75,7 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | PB-1..PB-3 | §9.5.1 | payee-bound destination match/mismatch; exact `(railId, phaseIndex)` coverage; tier-1/2/3 selection including tier-1 intrinsic and tier-2 controlled-claim positive cases; EVM tier-2 applicability derived by exact CAIP-2 chain equality from lowercase `evm` + canonical chain ID + non-empty opaque address rather than a pre-filled flag or name alias; applicable-unresolvable pause with exact recorded cause; resolver `error` stays `error`; no downgrade; SB-3 fallback is not imported into the pre-pay gate; legacy agreement follows legacy behaviour and carries no PB claim | `conformance/vectors/security/payee-destination-binding-v0.1.json`; `conformance/vectors/security/cci-xm-rail-chain-applicability-v0.5.json` |
 | APR-1..APR-8 | §9.9.1 | exactly one listing-only choice slot with at least two complete distinct refs and no concrete pay sibling; same-snapshot authenticated resolution to supported non-recursive handlers; DEM/x402/AP2 full-ref selection; deterministic index-preserving projection; exact payee-bound payout key; positive and negative concrete bundle recomputation; legacy-reader refusal; pre-signature reselection only; same-job and fresh-job fallback refusal with zero second-rail calls; signed `priorPaymentDispositionRef` resolution against exact prior Agreement/selection/index and authenticated finalized orchestrator disposition; only durable closed-before-authorization or proof-backed closed-cannot-settle permits a replacement; ordinary PIPE-5 repetition unchanged | `conformance/vectors/security/alternative-payment-projection-v0.1.json`; `tests/test_alternative_payment_projection_vectors.py` |
 | X402-1..X402-4 | §9.5.7 | v1/v2 response-header selection; recursive CF-1 NFC pre-pass then full decoded-object JCS hash; JSON/base64 normalization; extensions and unknown members preserved; malformed/non-success refusal; hash and transaction/network mismatch rejection | `conformance/vectors/security/x402-receipt-hash-v0.1.json` |
-| SB-1..SB-3 | §9.5.8 | complete PC-2 `(jobId, CF-4 railId, phaseIndex)` anchor tuple matches signed evidence plus authenticated agreement/phase context before projection; signed `evm-event` / `solana-instruction` / `x402-event` coordinate independently matches ledger settlement; deterministic event-key projection; legacy exactly-one-match replay and ambiguous/unavailable `indeterminate`; unsigned index ignored; discriminator stripping/cross-type replay rejected; a `settlement-tx-id` reused under a second `(jobId, phaseIndex)` is counted once across a consumer's set (SB-2); optional on-chain `jobId` binding — for `pay-x402` EIP-3009, byte-exact `SHA-256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`, match/mismatch, malformed input, NFC, and retry/no-random-substitution behaviour (SB-3) | `conformance/vectors/security/settlement-event-identity-v0.6.json`; `conformance/vectors/security/sb2-settlement-uniqueness-v0.1.json`; `conformance/vectors/security/sb3-eip3009-nonce-v0.1.json` |
+| SB-1..SB-3 | §9.5.8 | complete PC-2 `(jobId, CF-4 railId, phaseIndex)` anchor tuple matches signed evidence plus authenticated agreement/phase context before projection; signed `evm-event` / `solana-instruction` / `x402-event` coordinate independently matches ledger settlement; deterministic event-key projection; legacy exactly-one-match replay and ambiguous/unavailable `indeterminate`; unsigned index ignored; discriminator stripping/cross-type replay rejected; a `settlement-tx-id` reused under a second `(jobId, phaseIndex)` is counted once across a consumer's set (SB-2); optional on-chain `jobId` binding — for current `pay-x402` EIP-3009, validate JID-1 before the byte-exact `SHA-256(UTF8("dacs-sb3:v1:") || UTF8(NFC(jobId)) || 0x3a || ASCII(decimal(phaseIndex)))`; NFC is then an identity operation, while frozen normalization-tolerant cases are explicitly derivation-only legacy replay and cannot authorize a current payment; match/mismatch, malformed input, and retry/no-random-substitution behaviour remain pinned (SB-3) | `conformance/vectors/security/settlement-event-identity-v0.6.json`; `conformance/vectors/security/sb2-settlement-uniqueness-v0.1.json`; `conformance/vectors/security/sb3-eip3009-nonce-v0.1.json` |
 | HTLC-1..HTLC-10 | §9.5.4 | buyerSalt entropy/confidentiality/non-reuse; HKDF derivation + input-uniqueness; canonical claim order; per-chain hashlocks; timelock asymmetry on absolute expiry (pinned params, source-finality margin); HTLC-9/ST-8 asymmetric resolution; HTLC-10 free-option | `conformance/fixtures/settlement/htlc9-asymmetric.json` |
 | CD-1 | §B.2 | economically-equal decimals (`"1.50"`=`"1.5"`) → identical hashes/signatures | `conformance/vectors/` (CD-1) |
 | AMEND-1..AMEND-4 | §9.7.1 | `amendsEvidenceRef` resolves + jobId match; refund/partial-refund reference success-only; summed `refundAmount` ≤ `paymentAmount`; flagged-amendment not treated as valid unwind | `conformance/fixtures/settlement/` |
@@ -102,7 +102,7 @@ Exercise each rule at its normative home; the full rule text is **not** restated
 | RT-1, RT-2 (rate phase) | §10.6.1 | run-after-settle; one-record-per-direction; rating domain-sep sig; RT-1 producer-reject out-of-range/over-length; RT-2 deriver-exclude non-conforming; `dimensions` opaque | `conformance/` |
 | ERC-8004 publication (optional) | §10.7 | token-owner-signed entry; bundle-anchor pointer; rate-limit | `conformance/` |
 
-### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-4, CD-1, SN-1..SN-4)
+### 14.6 Universal signature scheme & canonical form (SIG-1..SIG-6, CF-1..CF-4, JID-1..JID-4, CD-1, SN-1..SN-4)
 
 A cross-cutting test category that every conforming implementation runs once:
 
@@ -117,6 +117,29 @@ A cross-cutting test category that every conforming implementation runs once:
   - the DACS-5 rating address `dacs5:rating:{jobId}:{rater}` MUST round-trip a multi-colon `{rater}`.
 
   An address whose variable segments are left raw (unescaped) MUST be rejected as malformed.
+- **JID-1..JID-4 (canonical job identifier).** Run
+  `conformance/vectors/security/job-id-grammar-v0.1.json`. Accept the complete
+  26-byte uppercase Crockford grammar including its `0` and `7` first-byte
+  boundaries. Reject lowercase, mixed-case, `I`/`L`/`O` aliases, `U`, first
+  byte `8`/`9`, wrong lengths, separators, whitespace, percent encoding,
+  composed/decomposed Unicode, null, numbers, and booleans as `error` before
+  hashing, lookup, or another side effect. Recompute the three literal-known
+  DACS-5 bundle addresses from exact ASCII bytes; insert the same bytes into
+  non-hash logical-address templates; compare equal and distinct canonical
+  identifiers byte-exact; and prove a malformed comparison operand is not
+  repaired into equality. For the declared pre-v1 corrective candidate, a
+  conformance claim additionally pins the exact coordinated release/commit and
+  complete `PROFILE.md` tuple; missing, different, major-only, or unqualified
+  v0.x pins refuse before production, interpretation, resolution, signing, or
+  side effects. Legacy replay is an explicit non-live mode and cannot satisfy
+  that admission gate.
+- **Pre-JID-1 vector boundary.** Existing rule-local vectors that carry short,
+  descriptive or Unicode `jobId` labels are frozen historical fixtures, not
+  current full-input cases. They remain reproducible only through an explicitly
+  named legacy helper and cannot establish current address, lookup, signature,
+  payment, or side-effect authority. A current-profile conformance run applies
+  profile admission and JID-1 before composing those rule surfaces, substituting
+  no normalized or human-readable identifier.
 - **CD-1 (canonical decimal).** `"1.50"` and `"1.5"` as `PriceTerm.amount` MUST produce identical agreement hashes and signatures.
 - **SN-1..SN-4 (session nonce).** A presenter-chosen nonce the verifier did not issue MUST be rejected (SN-1); a native `sessionNonce` below 128 bits / not ≥32 lowercase-hex chars MUST be rejected (SN-2); a **same-session** replay of an already-consumed nonce MUST be rejected (SN-4); a nonce still unconsumed past its bounded challenge lifetime MUST be rejected (SN-4 retention); and a nonce issued for one `jobId` MUST NOT validate a presentation for another `jobId` — the cross-session case is caught by the §6.3.2 match against the jobId-issued nonce (SN-3), not SN-4.
 - **SIG-5 (preserve-unknown).** A verifier built against schema vN MUST successfully verify the signature on a document produced under vN+1 that adds an unknown field, by hashing the document as received (unknown field included); a verifier that strips the unknown field before hashing (and thus rejects) FAILS this test. The concrete Listing cases are `conformance/vectors/security/listing-preserve-unknown-v0.1.json`: an unchanged signed Listing carrying one inert unknown top-level field and a supported DPA-1 verification method passes, while mutation or removal of the unknown field fails the signature. A separately signed Listing with an unknown phase kind still refuses as unsupported under §11.1.2's new-type rule. Runners MUST apply signature, phase-kind, and DPA-1 eligibility checks before comparing each case's declared overall Listing disposition.

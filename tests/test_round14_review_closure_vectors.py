@@ -183,8 +183,8 @@ class Round14ReviewClosureTests(unittest.TestCase):
     def test_pure_mapping_evidence_binds_address_and_anchor_role(self):
         p = _replayable_present("R14-ADDRESS-ROLE")
         entry = p["deriv"]["resolutionContext"][0]
-        seller_address = R.logical_address(p["W"]["jobId"], "seller")
-        buyer_address = R.logical_address(p["W"]["jobId"], "buyer")
+        seller_address = R.legacy_logical_address(p["W"]["jobId"], "seller")
+        buyer_address = R.legacy_logical_address(p["W"]["jobId"], "buyer")
         entry["roleEvidence"] = {"kind": "address", "resolvedAddress": seller_address}
         entry["counterpartyRoleEvidence"] = {"kind": "address", "resolvedAddress": buyer_address}
         entry.pop("bb6Context")
@@ -204,7 +204,7 @@ class Round14ReviewClosureTests(unittest.TestCase):
         p = _replayable_present("R14-ADDRESS-MAP")
         entry = p["deriv"]["resolutionContext"][0]
         cp = entry["counterpartyRoleEvidence"]
-        wrong = R.logical_address(p["W"]["jobId"], "seller")
+        wrong = R.legacy_logical_address(p["W"]["jobId"], "seller")
         cp["kind"] = "address"
         cp.pop("binding")
         cp["resolvedAddress"] = wrong
@@ -218,7 +218,7 @@ class Round14ReviewClosureTests(unittest.TestCase):
         entry = p["deriv"]["resolutionContext"][0]
 
         def mapper(job_id, role):
-            return "substrate-native:" + R.logical_address(job_id, role)
+            return "substrate-native:" + R.legacy_logical_address(job_id, role)
 
         seller_address = mapper(p["W"]["jobId"], "seller")
         buyer_address = mapper(p["W"]["jobId"], "buyer")

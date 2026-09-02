@@ -1,0 +1,562 @@
+{
+  "set": "job-id-grammar-v0.1",
+  "spec": "CORE §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2",
+  "grammar": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+  "correctiveProfile": {
+    "testOnlyReleasePin": "0000000000000000000000000000000000000001",
+    "moduleVersions": {
+      "core": "0.3",
+      "dacs1": "0.7",
+      "dacs2": "0.5",
+      "dacs3": "0.4",
+      "dacs4": "0.7",
+      "dacs5": "0.5"
+    }
+  },
+  "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
+  "count": 36,
+  "hash": "8ddcab136102a80ebb26215908445aa27273d0c58e46656e64b0e0cb7c958bbf",
+  "vectors": [
+    {
+      "name": "canonical-ulid",
+      "operation": "validate",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "A canonical 26-character upper-case Crockford ULID is accepted byte-exact.",
+      "want": {
+        "canonicalJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+      }
+    },
+    {
+      "name": "lowest-syntactic-value",
+      "operation": "validate",
+      "expected": "pass",
+      "jobId": "00000000000000000000000000",
+      "note": "The lower syntactic boundary is valid; producer uniqueness is a separate obligation.",
+      "want": {
+        "canonicalJobId": "00000000000000000000000000"
+      }
+    },
+    {
+      "name": "highest-syntactic-value",
+      "operation": "validate",
+      "expected": "pass",
+      "jobId": "7ZZZZZZZZZZZZZZZZZZZZZZZZZ",
+      "note": "The first-character 0-7 bound admits the largest 128-bit ULID encoding.",
+      "want": {
+        "canonicalJobId": "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"
+      }
+    },
+    {
+      "name": "lowercase-is-not-canonical",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01arz3ndektsv4rrffq69g5fav",
+      "note": "Case-insensitive ULID decoding cannot authorize case-folding before lookup.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "mixed-case-is-not-canonical",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDeKTSV4RRFFQ69G5FAV",
+      "note": "A mixed-case spelling is malformed even when a lenient decoder accepts it.",
+      "role": "seller",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "crockford-i-alias-rejected",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKISV4RRFFQ69G5FAV",
+      "note": "The Crockford I-to-1 decode alias is forbidden on the wire.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "crockford-l-alias-rejected",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKLSV4RRFFQ69G5FAV",
+      "note": "The Crockford L-to-1 decode alias is forbidden on the wire.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "crockford-o-alias-rejected",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKOSV4RRFFQ69G5FAV",
+      "note": "The Crockford O-to-0 decode alias is forbidden on the wire.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "crockford-u-character-rejected",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKUSV4RRFFQ69G5FAV",
+      "note": "U is excluded from the canonical Crockford alphabet.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "overflow-first-character-eight",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "81ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "A first character above 7 would encode more than 128 bits.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "overflow-first-character-nine",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "91ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "The upper first-character overflow spelling is also rejected.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "short-job-id",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FA",
+      "note": "A jobId must contain exactly 26 ASCII characters.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "long-job-id",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV0",
+      "note": "A 27-character value is not a canonical ULID.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "hyphenated-job-id",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKTSV-RRFFQ69G5FAV",
+      "note": "Separators are not members of the canonical jobId grammar.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "leading-whitespace",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": " 01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "Consumers do not trim a jobId before validation or derivation.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "trailing-newline",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV\n",
+      "note": "Trailing whitespace is data, not a permitted transport variation.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "precomposed-unicode-rejected",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "0AAAAAAAAAAAAAAAAAAAAAAÅA",
+      "note": "NFC does not make a non-ASCII jobId conformant.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "decomposed-unicode-rejected",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "0AAAAAAAAAAAAAAAAAAAAAAÅA",
+      "note": "A canonically equivalent Unicode spelling is likewise rejected, not normalized.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "percent-encoding-rejected",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": "01ARZ3NDEK%SV4RRFFQ69G5FAV",
+      "note": "CF-4 percent decoding is never applied to a jobId segment.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "null-is-not-a-job-id",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": null,
+      "note": "A missing/null value fails before address work.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "integer-is-not-a-job-id",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": 1,
+      "note": "Numeric coercion is forbidden.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "boolean-is-not-a-job-id",
+      "operation": "lookup-bundle",
+      "expected": "error",
+      "jobId": true,
+      "note": "Boolean-to-integer or Boolean-to-string coercion is forbidden.",
+      "role": "buyer",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "buyer-bundle-known-answer",
+      "operation": "derive-bundle",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "Bundle addressing hashes the exact validated ASCII jobId and buyer role.",
+      "role": "buyer",
+      "want": {
+        "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
+        "hashCalls": 1,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "seller-bundle-known-answer",
+      "operation": "derive-bundle",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "The seller role has a distinct deterministic logical address.",
+      "role": "seller",
+      "want": {
+        "logicalAddress": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
+        "hashCalls": 1,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "orchestrator-bundle-known-answer",
+      "operation": "derive-bundle",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "The orchestrator role uses the same byte-exact derivation.",
+      "role": "orchestrator",
+      "want": {
+        "logicalAddress": "stor-4cadaaae064cc2257f3e101842e4ae24fd4a481fdb7dea35082f30e7ad2311d0",
+        "hashCalls": 1,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "lookup-after-validation",
+      "operation": "lookup-bundle",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "A resolver may run only after canonical grammar validation and derivation.",
+      "role": "buyer",
+      "want": {
+        "logicalAddress": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
+        "hashCalls": 1,
+        "lookupCalls": 1
+      }
+    },
+    {
+      "name": "commit-address-preserves-job-id-bytes",
+      "operation": "derive-logical",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "Every non-hash logical-address template inserts the same validated bytes.",
+      "template": "dacs3:commit:{jobId}",
+      "want": {
+        "logicalAddress": "dacs3:commit:01ARZ3NDEKTSV4RRFFQ69G5FAV",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "payment-address-preserves-job-id-bytes",
+      "operation": "derive-logical",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "CF-4 encodes railId, not the canonical ASCII jobId segment.",
+      "template": "dacs4:payment:{jobId}:evm-erc20%3A1%3AUSDC:3",
+      "want": {
+        "logicalAddress": "dacs4:payment:01ARZ3NDEKTSV4RRFFQ69G5FAV:evm-erc20%3A1%3AUSDC:3",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "exact-job-id-comparison",
+      "operation": "compare",
+      "expected": "pass",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "Two independently parsed canonical copies compare byte-exact.",
+      "otherJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "want": {
+        "equal": true,
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "different-canonical-job-ids",
+      "operation": "compare",
+      "expected": "fail",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "Two different valid ULIDs are a well-formed identity mismatch.",
+      "otherJobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+      "want": {
+        "equal": false,
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "comparison-does-not-case-fold",
+      "operation": "compare",
+      "expected": "error",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "note": "A malformed comparison operand errors instead of being uppercased into equality.",
+      "otherJobId": "01arz3ndektsv4rrffq69g5fav",
+      "want": {
+        "failureStage": "job-id-validation",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "matching-corrective-profile-admitted",
+      "operation": "profile-admit",
+      "expected": "pass",
+      "localProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "peerProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "note": "Exact authenticated release and complete module tuple admit the corrective profile.",
+      "want": {
+        "profileAdmitted": true,
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "missing-peer-profile-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "localProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "peerProfile": null,
+      "note": "Missing authenticated peer profile refuses before job-specific action.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "different-release-pin-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "localProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "peerProfile": {
+        "releasePin": "ffffffffffffffffffffffffffffffffffffffff",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "note": "The same module tuple under a different immutable release is not inferred compatible.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "different-module-tuple-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "localProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "peerProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.2",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "note": "A pre-JID-1 CORE tuple refuses even when a caller reuses the release field.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "name": "major-only-discriminator-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "localProfile": {
+        "releasePin": "0000000000000000000000000000000000000001",
+        "moduleVersions": {
+          "core": "0.3",
+          "dacs1": "0.7",
+          "dacs2": "0.5",
+          "dacs3": "0.4",
+          "dacs4": "0.7",
+          "dacs5": "0.5"
+        }
+      },
+      "peerProfile": {
+        "dacsVersion": "1"
+      },
+      "note": "A major-only artifact discriminator cannot establish corrective-profile compatibility.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    }
+  ]
+}

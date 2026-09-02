@@ -1267,8 +1267,19 @@ def divergent_bundle_case(context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def parse_profile_versions(profile_text: str) -> dict[str, str]:
-    rows = re.findall(r"\| \[([^]]+)\]\([^)]+\) \| ([0-9.]+) \|", profile_text)
+def parse_profile_versions(
+    profile_text: str, heading: str = "DACS v0.4 coordinated release"
+) -> dict[str, str]:
+    section_match = re.search(
+        rf"^## {re.escape(heading)}\s*$\n(?P<body>.*?)(?=^## |\Z)",
+        profile_text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    if section_match is None:
+        raise ValueError(f"spec/PROFILE.md is missing the {heading!r} profile section")
+    rows = re.findall(
+        r"\| \[([^]]+)\]\([^)]+\) \| ([0-9.]+) \|", section_match.group("body")
+    )
     return dict(rows)
 
 

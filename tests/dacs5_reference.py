@@ -196,7 +196,30 @@ def pointer_hash(pointer):
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
 
+CURRENT_JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
+CURRENT_BUNDLE_ROLES = {"buyer", "seller", "orchestrator"}
+
+
+def validate_current_job_id(job_id):
+    """Apply CORE JID-1 before any current-profile derivation."""
+    if not isinstance(job_id, str) or CURRENT_JOB_ID_RE.fullmatch(job_id) is None:
+        raise ValueError("job-id-validation")
+    return job_id
+
+
 def logical_address(job_id, role):
+    """Derive a current-profile address after byte-exact JID-1 validation."""
+    validated = validate_current_job_id(job_id)
+    if role not in CURRENT_BUNDLE_ROLES:
+        raise ValueError("role-validation")
+    preimage = validated.encode("ascii") + b"-bundle-" + role.encode("ascii")
+    return "stor-" + hashlib.sha256(preimage).hexdigest()
+
+
+def legacy_logical_address(job_id, role):
+    """Frozen pre-JID-1 fixture derivation; never current lookup/action authority."""
+    if not isinstance(job_id, str) or not isinstance(role, str):
+        raise ValueError("legacy-address-input")
     return "stor-" + hashlib.sha256((job_id + "-bundle-" + role).encode("utf-8")).hexdigest()
 
 
@@ -316,7 +339,9 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
         return {"ok": False, "reason": "BB-5: binding.jobId != %r" % (expected_jobid,)}
     if binding.get("role") != expected_role:
         return {"ok": False, "reason": "BB-5: binding.role != %r" % (expected_role,)}
-    if binding.get("logicalAddress") != logical_address(binding.get("jobId"), binding.get("role")):
+    # This reference predicate replays the frozen pre-JID-1 vector corpus. A
+    # current-profile consumer calls logical_address() and rejects before hash.
+    if binding.get("logicalAddress") != legacy_logical_address(binding.get("jobId"), binding.get("role")):
         return {"ok": False, "reason": "BB-5 check 5: logicalAddress != derive(jobId, role)"}
     if expected_content_hash is not None and binding.get("bundleContentHash") != expected_content_hash:
         return {"ok": False, "reason": "BB-5 check 8: binding.bundleContentHash != expected"}
@@ -1532,7 +1557,7 @@ def _post_fetch_address_valid(fetched, resolved_address, expected_role, expected
     if expected_jobid is not None and job_id != expected_jobid:
         return (False, "pure-mapping check: fetched.jobId != expected jobId")
     expected_address = (pure_mapping_resolver(job_id, expected_role)
-                        if pure_mapping_resolver is not None else logical_address(job_id, expected_role))
+                        if pure_mapping_resolver is not None else legacy_logical_address(job_id, expected_role))
     if resolved_address != expected_address:
         return (False, "pure-mapping check: resolvedAddress != mapped address for fetched (jobId, role)")
     if fetched.get("anchoredByRole") != expected_role:

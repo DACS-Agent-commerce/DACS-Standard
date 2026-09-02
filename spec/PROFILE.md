@@ -34,6 +34,29 @@ composition is:
 
 The coordinated cut is identified by the annotated repository tag `v0.4`.
 
+## Unreleased JID-1 corrective candidate
+
+This candidate is a **breaking pre-v1 correction** under CORE §11.1.2, not an
+ordinary additive minor. It replaces the existing `jobId` meaning and every
+normalization-tolerant job-specific derivation. Its affected document tuple is:
+
+| Document | Version | Status |
+| --- | --- | --- |
+| [CORE](CORE.md) | 0.3 | Draft corrective candidate |
+| [DACS-1-IDENTIFY](DACS-1-IDENTIFY.md) | 0.7 | Draft corrective candidate |
+| [DACS-2-VET](DACS-2-VET.md) | 0.5 | Draft; unchanged module bytes |
+| [DACS-3-NEGOTIATE](DACS-3-NEGOTIATE.md) | 0.4 | Draft; unchanged module bytes |
+| [DACS-4-SETTLE](DACS-4-SETTLE.md) | 0.7 | Draft corrective candidate |
+| [DACS-5-VERIFY](DACS-5-VERIFY.md) | 0.5 | Draft corrective candidate |
+
+The candidate is not an admissible live profile until a coordinated release
+records an annotated tag or immutable merge commit here. At that point every
+implementation claim MUST pin that identifier and this complete tuple. A
+deployment that cannot authenticate the same exact pin for every participant
+MUST refuse before producing, signing, resolving, comparing, or acting on a
+JID-1 artifact. A pre-JID-1 artifact is archival input only and cannot be
+silently promoted into this profile.
+
 ## Qualified implementation claims
 
 The unqualified phrase **“DACS v0.1 conformant”** retains the full-profile meaning

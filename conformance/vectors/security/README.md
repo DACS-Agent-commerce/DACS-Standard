@@ -21,13 +21,23 @@ converged; the others await a second impl). Derived from the §12.4 threat-to-te
 Cross-running a set against another implementation — and the candidate → golden
 promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 
+> **JID-1 profile boundary.** Vector sets created before the declared JID-1
+> corrective profile commonly use short, descriptive `jobId` labels. Those
+> cases are frozen rule-local or derivation-only legacy fixtures: they may
+> reproduce the historical rule named by their set, but they are not current
+> full-input sessions and cannot authorize a current address, lookup, signature,
+> payment, or other effect. A current-profile runner applies
+> `job-id-grammar-v0.1.json` and the exact-profile admission gate before running
+> any job-specific surface. Tests that intentionally replay old labels must call
+> an explicitly named legacy helper.
+
 <!-- BEGIN GENERATED: security-vector-index (scripts/generate_security_vector_index.py) -->
 
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
-| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
+| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE JID-1 | 31 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -42,6 +52,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 36 | `error` / `fail` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -1072,6 +1083,22 @@ Regenerate and execute it from the repository root:
 ```sh
 python3 scripts/generate_presence_only_claim_vectors.py --check
 python3 -m unittest tests.test_presence_only_claim_vectors -v
+```
+
+### `job-id-grammar-v0.1.json` — CORE §B.1 JID-1..JID-4
+
+Thirty-one deterministic cases pin the complete canonical DACS `jobId`
+grammar, byte-exact comparison, logical-address insertion, and the DACS-5
+bundle-address preimage. Invalid case, alias, overflow, whitespace, Unicode,
+type, and length inputs execute through an instrumented gate that must make
+zero hash and resolver calls. The buyer, seller, and orchestrator bundle cases
+also carry literal address known answers independent of the generator.
+
+Regenerate and run with:
+
+```sh
+python3 scripts/generate_job_id_grammar_vectors.py --check
+python3 -m unittest tests.test_job_id_grammar_vectors -v
 ```
 
 ## Status

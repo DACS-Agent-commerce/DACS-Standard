@@ -23,8 +23,10 @@ The format used per release:
   An exact-tuple retry resumes with the same AP2-6 key and can never create or
   count a second payment; cross-job/cross-phase reuse rejects, and conflicting
   stored bindings fail closed.
-- **Executable AP2 handler-safety candidates** cover idempotency-key bytes and
-  NFC; exact compact-JWS `transaction_id` derivation with `_sd_alg` selection;
+- **Executable AP2 handler-safety candidates** cover idempotency-key bytes,
+  JID-1 refusal before hashing, and the frozen NFC-tagged recipe as an identity
+  operation for valid current IDs; exact compact-JWS `transaction_id`
+  derivation with `_sd_alg` selection;
   separate CheckoutMandate + PaymentMandate admission before AP2-7/provider
   side effects; exact-tuple retry/resume; cross-session/cross-phase replay;
   the DACS checkout-signature profile; and split-credential registration.
@@ -89,6 +91,30 @@ The format used per release:
   or proves the prior authorization cannot settle. Legacy readers reject the
   unknown phase; ordinary and repeated payment pipelines retain their prior
   meaning.
+
+### Breaking pre-v1 correction — DACS Core v0.3 / DACS-1 v0.7 / DACS-4 v0.7 / DACS-5 v0.5
+
+- **Canonical byte-exact `jobId` grammar** (CORE §B.1 JID-1..JID-4;
+  DACS-4 §9.5.8; DACS-5 §10.3/§10.4.2; #339) — replaces the ambiguous
+  “ULID or substrate-equivalent” form with one 26-character uppercase
+  Crockford ULID grammar (`^[0-7][0-9A-HJKMNP-TV-Z]{25}$`). Current producers
+  emit that form directly; consumers validate before logical-address
+  assembly, job-specific hashing, discovery, lookup, comparison, signing, or
+  side effects and never trim, case-fold, alias-decode, percent-decode, or
+  Unicode-normalize it. Cross-artifact equality is byte-exact. The DACS-5
+  bundle address is now explicitly
+  `stor-` plus the lowercase SHA-256 hex of
+  `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`. Adds 36 deterministic
+  vectors with three independent literal address known answers, Unicode/case/
+  alias/overflow negatives, comparison cases, and executed zero-hash/
+  zero-lookup assertions for malformed input.
+- **Compatibility boundary** (CORE §11.1.2; PROFILE) — this change is not
+  minor-additive. Live use requires the exact coordinated release/commit and
+  complete module tuple to be authenticated before protocol action; mixed
+  pre-JID-1/current operation refuses. Historical artifacts remain available
+  only through an explicitly selected legacy-replay path that cannot derive a
+  current address, perform a current lookup, create a current signature, or
+  authorize an effect.
 
 ### Fixed — DACS-1 / DACS-4 rail availability
 

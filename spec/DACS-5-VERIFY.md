@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 participates in the declared CORE §11.1.2 pre-v1 corrective boundary, applies JID-1..JID-4 to session and bundle resolution, makes the §10.4.2 bundle-address preimage byte-exact, and makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission; it is not live-compatible with a pre-JID-1 profile. v0.4 added the non-terminal `audit-pending` gate, required every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, added the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and added structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -34,7 +34,7 @@ The live, mutable state document an orchestrator maintains during a session.
 ```
 type SessionRecord = {
   recordVersion: "1"
-  jobId: string                              // ULID or substrate-equivalent
+  jobId: string                              // canonical JID-1 ULID
   state: SessionState
   listingRef: { listingId: string; version: number; contentHash: string }
   parties: SessionParty[]                    // buyer + seller (+ optionally orchestrator)
@@ -72,6 +72,13 @@ type PhaseEntry = {
   contextDelta: Record<string, unknown>      // merged into running context
 }
 ```
+
+Every `jobId` in DACS-5, including nested records and signed bundles, is
+governed by CORE JID-1..JID-4. A current producer MUST populate the same exact
+26-byte ASCII value throughout one session. A consumer MUST validate each
+occurrence before comparing it, deriving an address, or performing a lookup;
+it MUST NOT uppercase, Unicode-normalize, alias-decode, trim, percent-decode,
+or coerce the value.
 
 `finalised` is the existing DACS session-state token. CORE §5.1 `finalized` is the SR-2 transaction state. The spellings are intentionally not aliases: a session reaches `finalised` only after ST-11 verifies the required SR-2 `finalized` receipts.
 
@@ -377,12 +384,12 @@ The bundle MUST be anchored via SR-2. **Two-sided anchoring scheme:**
 
 In the happy case both sides’ bundles are canonically equal (they differ only in the unhashed `anchoredByRole`) and consumers can read either; in the divergence case both sides are independently retrievable for dispute purposes (see §10.4.3).
 
-**Logical vs native bundle addresses.** The role-specific `stor-{sha256(jobId + "-bundle-" + role)}` value is the bundle's *logical* address: substrate-independent, and derivable by any party from `(jobId, role)` alone. It is an address kind in its own right (CORE §B.1 CF-4 table); it is not a `dacsN:`-form address. The universal mapping rule (DEMOS-MAPPING §A.2) applies to it identically: on a pure-mapping substrate the native address is computed directly from the logical form; on a write-input-mapping substrate it MUST be resolved through a published `BundleBinding` and is not recomputable from the logical form.
+**Logical vs native bundle addresses.** The role-specific `stor-{sha256(jobId + "-bundle-" + role)}` value is the bundle's *logical* address: substrate-independent, and derivable by any party from `(jobId, role)` alone after JID-1 validation. Its exact preimage is `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`, where `role` is the exact lowercase literal `buyer`, `seller`, or `orchestrator`; the digest is rendered as 64 lowercase hexadecimal digits. A producer or consumer MUST NOT feed a decoded 128-bit ULID value or a normalized textual substitute into this hash. It is an address kind in its own right (CORE §B.1 CF-4 table); it is not a `dacsN:`-form address. The universal mapping rule (DEMOS-MAPPING §A.2) applies to it identically: on a pure-mapping substrate the native address is computed directly from the logical form; on a write-input-mapping substrate it MUST be resolved through a published `BundleBinding` and is not recomputable from the logical form.
 
 **Demos binding (bundle).** On Demos, StorageProgram addressing folds write inputs into the native address, exactly as for listings (DACS-1 §6.3.4):
 
 ```
-logical_bundle_address := "stor-" + sha256(jobId + "-bundle-" + role)             // 64 hex; derivable offline
+logical_bundle_address := "stor-" + sha256(ASCII(jobId) || ASCII("-bundle-") || ASCII(role)) // 64 lower hex
 storageProgramName     := implementation-defined colon-free StorageProgram name   // opaque write input
 native_address         := "stor-" + first40hex( sha256( deployerAddress + ":" + storageProgramName + ":" + nonce + ":" + salt ) )
 ```
@@ -411,7 +418,7 @@ Rules:
 - (BB-2) Each anchoring party MUST make its signed binding available on its own §6.3.5 well-known index or on a §6.3.6 catalog. Where neither surface is available to the party, delivery of the signed binding to the counterparty for carriage satisfies this rule.
 - (BB-3) A `BundleBinding` is self-authenticating; any discovery surface MAY serve any signed binding verbatim.
 - (BB-4) A consumer MUST verify a `BundleBinding` before use: `signature.signer` MUST equal the top-level `signer`, and `signature` MUST verify over the domain-separated payload against `signer`'s primary-claim key. A binding failing either check MUST be discarded.
-- (BB-5) A consumer resolves a side's native address from `(jobId, role)` by first deriving the logical address (§10.4.2). On a pure-mapping substrate the native address is then computed directly from the logical form, and no `BundleBinding` is involved. On a write-input-mapping substrate the consumer MUST resolve through published bindings, applying every check below and rejecting on any failure:
+- (BB-5) A consumer resolves a side's native address from `(jobId, role)` by first validating `jobId` under JID-1 and deriving the logical address from the exact ASCII preimage above. A malformed requested or signed `jobId` is `error` before hashing, discovery, fetch, or resolver access. On a pure-mapping substrate the native address is then computed directly from the logical form, and no `BundleBinding` is involved. On a write-input-mapping substrate the consumer MUST resolve through published bindings, applying every check below and rejecting on any failure:
   1. resolve `BundleBinding`s whose `logicalAddress` matches, from the discovery surfaces it consults;
   2. reject any binding failing BB-4;
   3. reject any binding whose `bindingVersion` the consumer does not support;

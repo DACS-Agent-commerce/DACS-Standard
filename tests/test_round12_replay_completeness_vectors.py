@@ -136,8 +136,8 @@ class Round12ReplayCompletenessTests(unittest.TestCase):
         e = d["resolutionContext"][self.present_i]
         auth = self.deref_map[e["contentHash"]]
         cp = self.deref_map[e["counterpartyRef"]["contentHash"]]
-        re_nat = R.logical_address(auth["jobId"], e["resolvedRole"])
-        cre_nat = R.logical_address(cp["jobId"], "buyer" if e["resolvedRole"] == "seller" else "seller")
+        re_nat = R.legacy_logical_address(auth["jobId"], e["resolvedRole"])
+        cre_nat = R.legacy_logical_address(cp["jobId"], "buyer" if e["resolvedRole"] == "seller" else "seller")
         e["roleEvidence"] = {"kind": "address", "resolvedAddress": re_nat}
         e["counterpartyRoleEvidence"] = {"kind": "address", "resolvedAddress": cre_nat}
         e.pop("bb6Context", None)

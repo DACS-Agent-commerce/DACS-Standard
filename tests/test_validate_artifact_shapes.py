@@ -1,3 +1,4 @@
+import copy
 import importlib.util
 import hashlib
 import json
@@ -201,7 +202,7 @@ class ArtifactShapeTests(unittest.TestCase):
         )
         self.assertTrue(any("receiptAttestation" in error for error in errors))
 
-    def test_ap2_receipt_transaction_ref_is_exact(self):
+    def test_legacy_ap2_arm_rejects_receipt_transaction_ref(self):
         v = load_validator()
         errors = []
         v.check_chain_tx_ref(
@@ -221,6 +222,36 @@ class ArtifactShapeTests(unittest.TestCase):
             "txRef",
         )
         self.assertTrue(any("receiptTransactionRef" in error for error in errors))
+
+    def test_ap2_sr3_requires_exact_receipt_references(self):
+        v = load_validator()
+        valid = {
+            "kind": "ap2-sr3",
+            "mandateId": "m-1",
+            "providerRef": "p-1",
+            "protocolVersion": "1",
+            "receiptAttestation": {
+                "anchor": {
+                    "kind": "https",
+                    "locator": "https://provider.test/receipts/p-1",
+                },
+                "contentHash": "aa" * 32,
+            },
+            "receiptTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "tx-1",
+            },
+        }
+        errors = []
+        v.check_chain_tx_ref(valid, "ctx", errors, "txRef")
+        self.assertEqual(errors, [])
+
+        for missing in ("receiptAttestation", "receiptTransactionRef"):
+            malformed = copy.deepcopy(valid)
+            malformed.pop(missing)
+            errors = []
+            v.check_chain_tx_ref(malformed, "ctx", errors, "txRef")
+            self.assertTrue(any(missing in error for error in errors))
 
     def test_reference_shape_set_is_complete_and_hash_pinned(self):
         v = load_validator()

@@ -4,7 +4,8 @@
     "officialAp2Repository": "https://github.com/google-agentic-commerce/AP2",
     "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
     "generator": "official AP2 Python SDK MandateClient + DACS reference fixture",
-    "note": "The AP2 presentations and JWKs are public conformance material; no private key is included."
+    "dahrCapturedAt": "2026-09-02T09:10:38Z",
+    "note": "The AP2 presentations, JWKs, and Demos transaction evidence are public conformance material; no AP2, Stripe, or Demos private key is included. The raw Stripe response is not published because it contains a test-mode client secret."
   },
   "officialAp2": {
     "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
@@ -65,53 +66,217 @@
     }
   },
   "agreement": {
-    "jobId": "DACS-AP2-REFERENCE-0001",
+    "jobId": "01K4AP2PAY0000000000000004",
     "phaseIndex": 2,
     "railId": "ap2:stripe-paymentintents",
-    "agreementHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "agreementHash": "ad389f48689a1e8300bfd48fa7831723d8c4f4276df814964adeac671b8f3097",
     "payeeId": "acct_dacs_reference",
     "amount": "0.5",
     "currency": "USD",
     "currencyMinorUnits": 2
   },
   "provider": {
-    "statusResponseBody": "{\"amount\":50,\"amount_received\":50,\"currency\":\"usd\",\"id\":\"pi_dacs_ap2_reference_0001\",\"metadata\":{\"dacs_agreement_hash\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"dacs_job_id\":\"DACS-AP2-REFERENCE-0001\"},\"object\":\"payment_intent\",\"status\":\"succeeded\"}",
-    "statusResponseHash": "584ce2cd2edf76d4acf6c60857f7e72db2beb808589ca984b1a09217d3bb2afe",
-    "attestedAnchorTxRef": "dahr-ap2-reference-0001"
+    "statusResource": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK",
+    "statusProjection": {
+      "amount": 50,
+      "amount_received": 50,
+      "currency": "usd",
+      "id": "pi_3UBABjCpim7jxEbV1YYfnbDK",
+      "metadata": {
+        "dacs_agreement_hash": "ad389f48689a1e8300bfd48fa7831723d8c4f4276df814964adeac671b8f3097",
+        "dacs_job_id": "01K4AP2PAY0000000000000004"
+      },
+      "object": "payment_intent",
+      "status": "succeeded"
+    },
+    "projectionNote": "Selected non-secret fields from the live response. Authentication uses the raw-response hash committed by dahr.signedTransaction; the raw body is intentionally not published because it contains a provider client secret.",
+    "statusResponseHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b",
+    "statusResponseHeadersHash": "a9f03a1c11cecca2b7079c398685ddf65891a8f1ab5a8ada6666e6fb2aa0f5e9",
+    "attestedAnchorTxRef": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+  },
+  "dahr": {
+    "network": "Demos testnet via https://node2.demos.sh",
+    "signedTransaction": {
+      "content": {
+        "type": "web2Request",
+        "from": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+        "to": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+        "amount": "0",
+        "data": [
+          "web2Request",
+          {
+            "message": {
+              "sessionId": "11ffe28c8d1fa22110c5019ca32198187b180cf835089e8d1896070fbc59bf66",
+              "payload": "",
+              "authorization": "",
+              "web2Request": {
+                "raw": {
+                  "action": "startProxy",
+                  "parameters": [],
+                  "method": "GET",
+                  "url": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK",
+                  "headers": {},
+                  "stage": {
+                    "origin": {
+                      "identity": "",
+                      "connection_url": ""
+                    }
+                  }
+                },
+                "result": {
+                  "sessionId": "11ffe28c8d1fa22110c5019ca32198187b180cf835089e8d1896070fbc59bf66",
+                  "targetUrl": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK",
+                  "timestamp": 1788340238794,
+                  "status": 200,
+                  "headers": {
+                    "date": "Wed, 02 Sep 2026 09:10:38 GMT",
+                    "content-type": "application/json",
+                    "content-length": "1691",
+                    "connection": "close",
+                    "access-control-allow-credentials": "true",
+                    "access-control-allow-methods": "GET, HEAD, PUT, PATCH, POST, DELETE",
+                    "access-control-allow-origin": "*",
+                    "access-control-expose-headers": "Request-Id, Stripe-Manage-Version, Stripe-Should-Retry, X-Stripe-External-Auth-Required, X-Stripe-Privileged-Session-Required",
+                    "access-control-max-age": "300",
+                    "cache-control": "no-cache, no-store",
+                    "content-security-policy": "base-uri 'none'; default-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src 'self'; script-src 'self' 'report-sample'; style-src 'self'; worker-src 'none'; upgrade-insecure-requests; report-uri https://q.stripe.com/csp-violation?q=2vwfkyGMAiOOKUGwOKFYav7TX7TbgMsbWTJVmQ3p1AgfmTKOtVIwpzFUbG8uBgM1XTcm-zc2t9r344xh; report-to csp",
+                    "report-to": "{\"group\":\"csp\",\"max_age\":8640,\"endpoints\":[{\"url\":\"https://q.stripe.com/csp-report-v2?q=2vwfkyGMAiOOKUGwOKFYav7TX7TbgMsbWTJVmQ3p1AgfmTKOtVIwpzFUbG8uBgM1XTcm-zc2t9r344xh&t=1\"}],\"include_subdomains\":true}",
+                    "vary": "Origin",
+                    "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+                    "server": "nginx",
+                    "reporting-endpoints": "csp=\"https://q.stripe.com/csp-report-v2?q=2vwfkyGMAiOOKUGwOKFYav7TX7TbgMsbWTJVmQ3p1AgfmTKOtVIwpzFUbG8uBgM1XTcm-zc2t9r344xh&t=1\"",
+                    "request-id": "req_drbDPBsQWr79q2",
+                    "stripe-version": "2026-06-24.dahlia",
+                    "x-stripe-priority-routing-enabled": "true",
+                    "x-stripe-routing-context-priority-tier": "api-testmode",
+                    "x-wc": "3c3"
+                  },
+                  "responseHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b",
+                  "responseHeadersHash": "a9f03a1c11cecca2b7079c398685ddf65891a8f1ab5a8ada6666e6fb2aa0f5e9",
+                  "statusText": "OK"
+                },
+                "hash": "",
+                "signature": {
+                  "type": "ed25519",
+                  "data": ""
+                }
+              }
+            }
+          }
+        ],
+        "nonce": 13,
+        "timestamp": 1788340238797,
+        "transaction_fee": {
+          "network_fee": "1000000000",
+          "rpc_fee": "1000000000",
+          "additional_fee": "0",
+          "rpc_address": null
+        },
+        "from_ed25519_address": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+        "gcr_edits": [
+          {
+            "type": "assign",
+            "account": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+            "context": "web2",
+            "txhash": "",
+            "isRollback": false
+          },
+          {
+            "type": "balance",
+            "account": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+            "operation": "remove",
+            "amount": "1000000000",
+            "txhash": "",
+            "isRollback": false
+          },
+          {
+            "type": "nonce",
+            "operation": "add",
+            "account": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+            "amount": 1,
+            "txhash": "",
+            "isRollback": false
+          }
+        ]
+      },
+      "signature": {
+        "type": "ed25519",
+        "data": "0xf302566d80e283a9125ed3a67db4204afb35856ac734acff4cc2ec791c2fdb81465fb19a803f85c09b68856a6ee23b2df549ed40c7976cc2f3cd0e3cbb46e104"
+      },
+      "hash": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+    },
+    "canonicalTransaction": {
+      "hash": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5",
+      "status": "confirmed",
+      "blockNumber": 213605
+    },
+    "block": {
+      "number": 213605,
+      "hash": "bcfb1766fc2a987adf734209687a01e443dd8eb29005e487a8ae4f27f295ab13",
+      "content": {
+        "ordered_transactions": [
+          "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+        ],
+        "encrypted_transactions_hashes": {},
+        "per_address_transactions": {},
+        "web2data": {},
+        "previousHash": "1d047827a8f334a8c82ef1ff4171191bb4a38c6dd123e7d61b79cf6d7539d728",
+        "timestamp": 1788340247,
+        "peerlist": [
+          "0x24c664d9ef529f798e979357c6a7a01088226eefe05cfdb77fb42841f771e156",
+          "0xc8bc5866fecf583bc1232f04fa54fd2c5a6f7c15b91c517ac60f468cdc0b8c82",
+          "0xdad5ae081825bcf93353bb76157ae8368c33fee6fc0f692b85155bb37e4ae0ab"
+        ],
+        "l2ps_partecipating_nodes": {},
+        "l2ps_banned_nodes": {},
+        "native_tables_hashes": {
+          "native_subnets_txs": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "native_tlsnotary": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+        }
+      },
+      "status": "confirmed",
+      "validationData": {
+        "signatures": {
+          "0xc8bc5866fecf583bc1232f04fa54fd2c5a6f7c15b91c517ac60f468cdc0b8c82": "0x20a9b285ffcb9be6efd4dc77b5378fb565804d15983e402cbcbb846b2efbc4cf08042a2722ac5c9b393145d8ec60e75fbde74038a7af875cee5dde4f9571250e",
+          "0xdad5ae081825bcf93353bb76157ae8368c33fee6fc0f692b85155bb37e4ae0ab": "0x6554afedd96d551ea57b45dc324c6580a9e5513bc480db9a23d00ae0085395b8190ea97685dcaffb499dbf5ba4406cfc12bff215981f5191eb9c604fecb24f00",
+          "0x24c664d9ef529f798e979357c6a7a01088226eefe05cfdb77fb42841f771e156": "0xe82561ea802402485aa1fd55044bf6298caf2f0782de1334173b33c6cd854f83e060cc7d492fc5ce9920a63ed42e7ffd28024bf68fc8bb991314f3c759eaea0e"
+        }
+      }
+    }
   },
   "result": {
     "ok": true,
     "txRefs": [
       {
-        "kind": "ap2",
+        "kind": "ap2-sr3",
         "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
         "protocolVersion": "0.2",
-        "providerRef": "pi_dacs_ap2_reference_0001",
+        "providerRef": "pi_3UBABjCpim7jxEbV1YYfnbDK",
         "receiptAttestation": {
           "anchor": {
             "kind": "https",
-            "locator": "https://api.stripe.com/v1/payment_intents/pi_dacs_ap2_reference_0001"
+            "locator": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK"
           },
-          "contentHash": "584ce2cd2edf76d4acf6c60857f7e72db2beb808589ca984b1a09217d3bb2afe"
+          "contentHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b"
         },
         "receiptTransactionRef": {
           "kind": "demos-web2-request",
-          "value": "dahr-ap2-reference-0001"
+          "value": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
         }
       }
     ],
     "attestationRef": {
       "anchor": {
         "kind": "storage-program",
-        "locator": "dacs4:payment:DACS-AP2-REFERENCE-0001:ap2%3Astripe-paymentintents:2"
+        "locator": "dacs4:payment:01K4AP2PAY0000000000000004:ap2%3Astripe-paymentintents:2"
       },
-      "contentHash": "ab267ba74b38b0d930dc9a58ae6679ef7c6cbdea0d206b40d5348ed67ae54487"
+      "contentHash": "fb6d89eeae1f56a271e4aea0b19eeb3c702dba4ac683a0bf89835d30621ed45b"
     }
   },
   "evidence": {
     "evidenceVersion": "1",
-    "jobId": "DACS-AP2-REFERENCE-0001",
-    "observedAt": 1788304453000,
+    "jobId": "01K4AP2PAY0000000000000004",
+    "observedAt": 1788340250184,
     "outcome": "success",
     "paymentAmount": {
       "amount": "0.5",
@@ -119,35 +284,35 @@
     },
     "paymentTxRefs": [
       {
-        "kind": "ap2",
+        "kind": "ap2-sr3",
         "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
         "protocolVersion": "0.2",
-        "providerRef": "pi_dacs_ap2_reference_0001",
+        "providerRef": "pi_3UBABjCpim7jxEbV1YYfnbDK",
         "receiptAttestation": {
           "anchor": {
             "kind": "https",
-            "locator": "https://api.stripe.com/v1/payment_intents/pi_dacs_ap2_reference_0001"
+            "locator": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK"
           },
-          "contentHash": "584ce2cd2edf76d4acf6c60857f7e72db2beb808589ca984b1a09217d3bb2afe"
+          "contentHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b"
         },
         "receiptTransactionRef": {
           "kind": "demos-web2-request",
-          "value": "dahr-ap2-reference-0001"
+          "value": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
         }
       }
     ],
     "phase": "pay-ap2",
     "settlementFinality": {
-      "finalityObservedAt": 1788304453000,
+      "finalityObservedAt": 1788340250184,
       "model": "provider-receipt"
     },
     "signature": {
       "algorithm": "ed25519",
       "signer": "did:demos:orchestrator",
-      "value": "LKSp7utkOIhVuqwItGZR5Ip5N4eM2haxUdzBbfqV_2QmJqIWWBKk6VmoY1V1qXs_1jZLib40R5rdPbHWTWGfCQ"
+      "value": "0rFOd3o4srGPnRHjqVtsKrTrfIJ602Wm45noXBe5XwjsBNqQg-F8Pru3WK7F3u2GR-RCKP66kGe-Fc9SD_gDCg"
     }
   },
-  "evidenceHash": "ab267ba74b38b0d930dc9a58ae6679ef7c6cbdea0d206b40d5348ed67ae54487",
+  "evidenceHash": "fb6d89eeae1f56a271e4aea0b19eeb3c702dba4ac683a0bf89835d30621ed45b",
   "publicKeys": {
     "did:demos:orchestrator": "maekceCtXQ62avDhCrkykrlD64Bd6XkRY320vgwHLkI"
   },
@@ -161,7 +326,13 @@
     "providerStatusBindsSession": true,
     "providerStatusBindsAgreement": true,
     "providerStatusMatchesAmountCurrency": true,
-    "receiptAttestationMatchesRawBody": true,
+    "jobIdIsCanonicalUlid": true,
+    "receiptAttestationMatchesDahrCommitment": true,
+    "dahrTransactionHashVerifies": true,
+    "dahrTransactionSignatureVerifies": true,
+    "dahrRequestResponseBindingVerifies": true,
+    "dahrTransactionIncluded": true,
+    "dahrBlockConfirmed": true,
     "settlementEvidenceVerifies": true,
     "verdict": "pass"
   }

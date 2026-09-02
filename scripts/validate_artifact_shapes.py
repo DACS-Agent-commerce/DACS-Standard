@@ -83,7 +83,14 @@ _CHAIN_TX_REF_ARMS: dict[str, tuple[set[str], set[str]]] = {
     "storage-program": ({"kind", "address", "writeTxHash"}, set()),
     "ap2": (
         {"kind", "mandateId", "providerRef", "protocolVersion"},
-        {"receiptAttestation", "receiptTransactionRef"},
+        {"receiptAttestation"},
+    ),
+    "ap2-sr3": (
+        {
+            "kind", "mandateId", "providerRef", "protocolVersion",
+            "receiptAttestation", "receiptTransactionRef",
+        },
+        set(),
     ),
     "x402": (
         {"kind", "httpResource", "paymentReceiptHash", "protocolVersion"},

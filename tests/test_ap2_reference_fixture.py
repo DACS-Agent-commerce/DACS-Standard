@@ -2,6 +2,7 @@ import base64
 import copy
 import hashlib
 import json
+import re
 import sys
 import unittest
 from decimal import Decimal
@@ -24,10 +25,106 @@ FIXTURE = (
     / "settlement-ap2-reference.json"
 )
 OFFICIAL_AP2_COMMIT = "e1ea56db72a6385bce3e5c1112b3a56ce60acb43"
+ULID_RE = re.compile(r"[0-9A-HJKMNP-TV-Z]{26}\Z")
 
 
 def b64url(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+
+
+def dahr_snapshot_valid(fixture: dict) -> bool:
+    """Authenticate the pinned DAHR transaction, block, and AP2 commitment."""
+    try:
+        provider = fixture["provider"]
+        payment_ref = fixture["evidence"]["paymentTxRefs"][0]
+        dahr = fixture["dahr"]
+        signed = dahr["signedTransaction"]
+        content = signed["content"]
+        tx_hash = hashlib.sha256(
+            json.dumps(
+                content, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
+        ).hexdigest()
+        if tx_hash != signed["hash"]:
+            return False
+
+        writer = content["from"]
+        if not re.fullmatch(r"0x[0-9a-f]{64}", writer):
+            return False
+        if content["to"] != writer or content["from_ed25519_address"] != writer:
+            return False
+        public = ed25519.Ed25519PublicKey.from_public_bytes(
+            bytes.fromhex(writer[2:])
+        )
+        public.verify(
+            bytes.fromhex(signed["signature"]["data"][2:]),
+            tx_hash.encode("ascii"),
+        )
+
+        message = content["data"][1]["message"]
+        request = message["web2Request"]["raw"]
+        response = message["web2Request"]["result"]
+        if not (
+            content["type"] == "web2Request"
+            and content["data"][0] == "web2Request"
+            and message["authorization"] == ""
+            and request["action"] == "startProxy"
+            and request["parameters"] == []
+            and request["method"] == "GET"
+            and request["headers"] == {}
+            and request["url"] == provider["statusResource"]
+            and response["targetUrl"] == provider["statusResource"]
+            and response["sessionId"] == message["sessionId"]
+            and response["status"] == 200
+            and response["responseHash"] == provider["statusResponseHash"]
+            and response["responseHeadersHash"]
+            == provider["statusResponseHeadersHash"]
+            and payment_ref["kind"] == "ap2-sr3"
+            and payment_ref["providerRef"]
+            == provider["statusProjection"]["id"]
+            and payment_ref["receiptAttestation"]["anchor"]
+            == {"kind": "https", "locator": provider["statusResource"]}
+            and payment_ref["receiptAttestation"]["contentHash"]
+            == response["responseHash"]
+            and payment_ref["receiptTransactionRef"]
+            == {"kind": "demos-web2-request", "value": tx_hash}
+        ):
+            return False
+
+        canonical = dahr["canonicalTransaction"]
+        block = dahr["block"]
+        block_hash = hashlib.sha256(
+            json.dumps(
+                block["content"], separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
+        ).hexdigest()
+        if not (
+            canonical
+            == {"hash": tx_hash, "status": "confirmed", "blockNumber": block["number"]}
+            and block["status"] == "confirmed"
+            and block_hash == block["hash"]
+            and tx_hash in block["content"]["ordered_transactions"]
+        ):
+            return False
+
+        peers = set(block["content"]["peerlist"])
+        validator_signatures = block["validationData"]["signatures"]
+        if set(validator_signatures) != peers or len(peers) < 3:
+            return False
+        for signer, signature in validator_signatures.items():
+            if not re.fullmatch(r"0x[0-9a-f]{64}", signer):
+                return False
+            if not re.fullmatch(r"0x[0-9a-f]{128}", signature):
+                return False
+            validator = ed25519.Ed25519PublicKey.from_public_bytes(
+                bytes.fromhex(signer[2:])
+            )
+            validator.verify(bytes.fromhex(signature[2:]), block_hash.encode("ascii"))
+        return True
+    except (KeyError, TypeError, ValueError):
+        return False
+    except Exception:
+        return False
 
 
 class Ap2ReferenceFixtureTests(unittest.TestCase):
@@ -40,7 +137,7 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
         self.assertEqual(fixture["fixtureVersion"], "1")
         self.assertEqual(fixture["provenance"]["officialAp2Commit"], OFFICIAL_AP2_COMMIT)
         self.assertEqual(fixture["officialAp2"]["officialAp2Commit"], OFFICIAL_AP2_COMMIT)
-        self.assertIn("no private key", fixture["provenance"]["note"])
+        self.assertIn("no AP2, Stripe, or Demos private key", fixture["provenance"]["note"])
         self.assertEqual(
             fixture["officialAp2"]["request"]["merchantSignatureGeneration"],
             "non-deterministic",
@@ -91,9 +188,8 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
         fixture = self.fixture
         agreement = fixture["agreement"]
         provider = fixture["provider"]
-        body = provider["statusResponseBody"]
-        self.assertEqual(hashlib.sha256(body.encode("utf-8")).hexdigest(), provider["statusResponseHash"])
-        status = json.loads(body)
+        status = provider["statusProjection"]
+        self.assertRegex(agreement["jobId"], ULID_RE)
         self.assertEqual(status["status"], "succeeded")
         self.assertEqual(status["metadata"]["dacs_job_id"], agreement["jobId"])
         self.assertEqual(
@@ -109,17 +205,45 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
             provider["statusResponseHash"],
         )
         tx_ref = fixture["evidence"]["paymentTxRefs"][0]
+        self.assertEqual(tx_ref["kind"], "ap2-sr3")
         self.assertEqual(tx_ref["receiptAttestation"]["anchor"], {
             "kind": "https",
-            "locator": (
-                "https://api.stripe.com/v1/payment_intents/"
-                "pi_dacs_ap2_reference_0001"
-            ),
+            "locator": provider["statusResource"],
         })
         self.assertEqual(tx_ref["receiptTransactionRef"], {
             "kind": "demos-web2-request",
             "value": provider["attestedAnchorTxRef"],
         })
+
+    def test_dahr_transaction_and_finality_are_cryptographically_bound(self):
+        self.assertTrue(dahr_snapshot_valid(self.fixture))
+
+    def test_dahr_binding_mutations_are_rejected(self):
+        def request(fixture):
+            return fixture["dahr"]["signedTransaction"]["content"]["data"][1]["message"]["web2Request"]["raw"]
+
+        def response(fixture):
+            return fixture["dahr"]["signedTransaction"]["content"]["data"][1]["message"]["web2Request"]["result"]
+
+        mutations = [
+            lambda f: request(f).__setitem__("url", "https://attacker.invalid/status"),
+            lambda f: request(f).__setitem__("method", "POST"),
+            lambda f: response(f).__setitem__("status", 202),
+            lambda f: response(f).__setitem__("responseHash", "00" * 32),
+            lambda f: response(f).__setitem__("responseHeadersHash", "00" * 32),
+            lambda f: f["dahr"]["signedTransaction"]["signature"].__setitem__("data", "0x" + "00" * 64),
+            lambda f: f["dahr"]["canonicalTransaction"].__setitem__("status", "pending"),
+            lambda f: f["dahr"]["block"].__setitem__("status", "pending"),
+            lambda f: f["dahr"]["block"]["content"].__setitem__("ordered_transactions", []),
+            lambda f: f["dahr"]["block"]["validationData"].__setitem__("signatures", {}),
+            lambda f: f["evidence"]["paymentTxRefs"][0]["receiptAttestation"].__setitem__("contentHash", "00" * 32),
+            lambda f: f["evidence"]["paymentTxRefs"][0]["receiptTransactionRef"].__setitem__("value", "00" * 32),
+        ]
+        for mutate in mutations:
+            with self.subTest(mutation=mutate):
+                fixture = copy.deepcopy(self.fixture)
+                mutate(fixture)
+                self.assertFalse(dahr_snapshot_valid(fixture))
 
     def test_signed_settlement_evidence_and_result_are_exact(self):
         fixture = self.fixture

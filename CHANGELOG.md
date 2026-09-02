@@ -16,8 +16,10 @@ The format used per release:
 ### Fixed — DACS-4 v0.8 AP2 receipt references
 
 - **Provider resource and SR-3 transaction are now distinct** (DACS-4 §9.3,
-  §9.5.6 AP2-2; Demos mapping §A.3; #360) — extends the `ap2`
-  `ChainTxRef` arm with additive `receiptTransactionRef`. The
+  §9.5.6 AP2-2; Demos mapping §A.3; #360) — adds the minor-safe `ap2-sr3`
+  `ChainTxRef` arm while freezing the existing `ap2` arm. The new arm requires
+  both `receiptAttestation` and `receiptTransactionRef`, so older closed-union
+  readers reject it safely before AP2-specific action. The
   `receiptAttestation` locator identifies the provider-status resource and its
   content hash commits to the authenticated raw response; a native SR-3
   transaction is carried separately when the binding exposes one. Current

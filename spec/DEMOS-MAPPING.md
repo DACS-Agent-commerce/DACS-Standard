@@ -87,9 +87,9 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 - 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native context), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
 **DAHR-backed AP2 receipt binding (normative Demos binding).** For DACS-4
-§9.5.6 AP2-2, `ChainTxRef.receiptAttestation` identifies the fetched provider
-status resource and commits to the exact returned bytes; the DAHR `txHash` is
-carried separately as
+§9.5.6 AP2-2, the transaction reference MUST use the distinct `ap2-sr3` arm.
+Its `receiptAttestation` identifies the fetched provider status resource and
+commits to the exact returned bytes; the DAHR `txHash` is carried separately as
 `receiptTransactionRef = { kind: "demos-web2-request", value: txHash }`.
 Implementations MUST NOT label that transaction hash as a `storage-program`
 AttestationRef locator: a `web2Request` transaction is not a Storage Program

@@ -118,6 +118,14 @@ def evaluate(vector):
     if not verify_artifact(artifact):
         return "fail", []
 
+    # This reference evaluator owns the DCR-4 legacy read arm. Its registered
+    # selector is the signed IdentityBundle version, so reject an absent or
+    # unknown version before inspecting or normalizing any claim bytes. Other
+    # IdentityBundle structural checks (including BP-3 presentedBy membership)
+    # are assumed to have run upstream.
+    if artifact["unsigned"].get("bundleVersion") != "1":
+        return "error", []
+
     refs = [claim["ref"] for claim in artifact["unsigned"]["claims"]]
     try:
         semantic = list(dict.fromkeys(semantic_ref(ref) for ref in refs))
@@ -236,6 +244,17 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
         rewritten["unsigned"]["presentedBy"] = "domain:agent.example"
         self.assertFalse(verify_artifact(rewritten))
 
+    def test_legacy_read_arm_requires_signed_registered_bundle_version(self):
+        cases = {vector["name"]: vector for vector in self.doc["vectors"]}
+        for name in (
+            "legacy-alias-unknown-bundle-version-rejected",
+            "legacy-alias-missing-bundle-version-rejected",
+        ):
+            with self.subTest(vector=name):
+                vector = cases[name]
+                self.assertTrue(verify_artifact(vector["artifact"]))
+                self.assertEqual(("error", []), evaluate(vector))
+
     def test_dedup_cannot_gain_tier_or_oneof(self):
         vector = next(v for v in self.doc["vectors"]
                       if v["name"] == "historical-alias-pair-deduplicates")
@@ -262,6 +281,8 @@ class DomainClaimGCRVectorTests(unittest.TestCase):
             "DCR-4": {
                 "legacy-mixed-case-ascii-read",
                 "legacy-mixed-case-invalid-signature-rejected-before-fold",
+                "legacy-alias-unknown-bundle-version-rejected",
+                "legacy-alias-missing-bundle-version-rejected",
             },
             "DCR-5": {
                 "distinct-hosts-remain-distinct",

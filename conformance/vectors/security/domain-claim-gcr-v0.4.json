@@ -16,8 +16,8 @@
     "profileBoundaryIssue": "DACS-Agent-commerce/DACS-Standard#347",
     "generator": "scripts/generate_domain_gcr_vectors.py"
   },
-  "count": 58,
-  "hash": "6d2e5e5bb2db61ace27e4aab993b9bfdf80bf1e2fb6c182dc4cecdc51c413bb1",
+  "count": 60,
+  "hash": "70817b2683933577b0f774efac762ce670184a1b1c00ed4e6371579b244ebbfa",
   "vectors": [
     {
       "name": "canonical-production",
@@ -995,6 +995,143 @@
           "domain:agent.example"
         ],
         "originalBytesPreserved": true
+      }
+    },
+    {
+      "name": "legacy-alias-unknown-bundle-version-rejected",
+      "expected": "error",
+      "artifact": {
+        "unsigned": {
+          "bundleVersion": "2",
+          "subject": "domain compatibility vector",
+          "claims": [
+            {
+              "ref": "web2:domain:agent.example",
+              "metadata": {
+                "demosGcrDomain": {
+                  "context": "web2.domain",
+                  "hostname": "agent.example",
+                  "account": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+                  "proofUrl": "https://agent.example/.well-known/demos-cci.txt",
+                  "sourceTransaction": {
+                    "txHash": "d9a7cb254554bfec65607f823a1404b6b172b51049f1abd2e31d69cbf1e4e417",
+                    "blockNumber": 424242
+                  },
+                  "recordedAt": 1799913600000
+                }
+              }
+            }
+          ],
+          "presentedBy": "web2:domain:agent.example",
+          "presentedAt": 1799999999000
+        },
+        "canonicalHex": "7b2262756e646c6556657273696f6e223a2232222c22636c61696d73223a5b7b226d65746164617461223a7b2264656d6f73476372446f6d61696e223a7b226163636f756e74223a2235663832356331363764626432663934353866383637623137663762303664383137336532373462346463343130623337393634646662303537356630313537222c22636f6e74657874223a22776562322e646f6d61696e222c22686f73746e616d65223a226167656e742e6578616d706c65222c2270726f6f6655726c223a2268747470733a2f2f6167656e742e6578616d706c652f2e77656c6c2d6b6e6f776e2f64656d6f732d6363692e747874222c227265636f726465644174223a313739393931333630303030302c22736f757263655472616e73616374696f6e223a7b22626c6f636b4e756d626572223a3432343234322c22747848617368223a2264396137636232353435353462666563363536303766383233613134303462366231373262353130343966316162643265333164363963626631653465343137227d7d7d2c22726566223a22776562323a646f6d61696e3a6167656e742e6578616d706c65227d5d2c2270726573656e7465644174223a313739393939393939393030302c2270726573656e7465644279223a22776562323a646f6d61696e3a6167656e742e6578616d706c65222c227375626a656374223a22646f6d61696e20636f6d7061746962696c69747920766563746f72227d",
+        "contentHash": "c86a8ce18051c6cf020cc29d41c83dd489eab101837d09040d4cbba5c91d28bd",
+        "signingPublicKey": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "signature": "af66627541cb4e8cd03c36407345f30d5550ebe97197f2a2d105fd9d18430b84bdf63d13616ef9c5d6e0ab5cc2091e7f9f40d781b976a094013ed4e09dee6204"
+      },
+      "authoritativeGcr": {
+        "context": "web2.domain",
+        "hostname": "agent.example",
+        "account": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "proofUrl": "https://agent.example/.well-known/demos-cci.txt",
+        "sourceTransaction": {
+          "txHash": "d9a7cb254554bfec65607f823a1404b6b172b51049f1abd2e31d69cbf1e4e417",
+          "blockNumber": 424242
+        },
+        "recordedAt": 1799913600000
+      },
+      "registrationValidation": {
+        "profile": "demos-web2-domain-v1",
+        "proofPayload": "demos:dw2p:ed25519:00dc35e1625fba2c803f36ff4ea50bb79b81e5903a6ac4e7370a7d9932413723ac4ccb78d39a6f47e5ee1af0e4cfabbda98d3994b152c6b8bc5086b2a426a60e"
+      },
+      "sourceAvailable": true,
+      "sourceAuthentication": {
+        "inclusionProofCoversTransaction": true,
+        "blockFinalized": true
+      },
+      "writerAuthorization": {
+        "authenticated": true,
+        "writer": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "authorizedAccount": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157"
+      },
+      "validationProfileAvailable": true,
+      "requiredMethod": "demos-gcr-domain",
+      "evaluatedAt": 1800000000000,
+      "recipeDefaultMaxAgeSec": 31536000,
+      "ruleRefs": [
+        "DCR-4"
+      ],
+      "want": {
+        "semanticClaims": []
+      }
+    },
+    {
+      "name": "legacy-alias-missing-bundle-version-rejected",
+      "expected": "error",
+      "artifact": {
+        "unsigned": {
+          "subject": "domain compatibility vector",
+          "claims": [
+            {
+              "ref": "web2:domain:agent.example",
+              "metadata": {
+                "demosGcrDomain": {
+                  "context": "web2.domain",
+                  "hostname": "agent.example",
+                  "account": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+                  "proofUrl": "https://agent.example/.well-known/demos-cci.txt",
+                  "sourceTransaction": {
+                    "txHash": "d9a7cb254554bfec65607f823a1404b6b172b51049f1abd2e31d69cbf1e4e417",
+                    "blockNumber": 424242
+                  },
+                  "recordedAt": 1799913600000
+                }
+              }
+            }
+          ],
+          "presentedBy": "web2:domain:agent.example",
+          "presentedAt": 1799999999000
+        },
+        "canonicalHex": "7b22636c61696d73223a5b7b226d65746164617461223a7b2264656d6f73476372446f6d61696e223a7b226163636f756e74223a2235663832356331363764626432663934353866383637623137663762303664383137336532373462346463343130623337393634646662303537356630313537222c22636f6e74657874223a22776562322e646f6d61696e222c22686f73746e616d65223a226167656e742e6578616d706c65222c2270726f6f6655726c223a2268747470733a2f2f6167656e742e6578616d706c652f2e77656c6c2d6b6e6f776e2f64656d6f732d6363692e747874222c227265636f726465644174223a313739393931333630303030302c22736f757263655472616e73616374696f6e223a7b22626c6f636b4e756d626572223a3432343234322c22747848617368223a2264396137636232353435353462666563363536303766383233613134303462366231373262353130343966316162643265333164363963626631653465343137227d7d7d2c22726566223a22776562323a646f6d61696e3a6167656e742e6578616d706c65227d5d2c2270726573656e7465644174223a313739393939393939393030302c2270726573656e7465644279223a22776562323a646f6d61696e3a6167656e742e6578616d706c65222c227375626a656374223a22646f6d61696e20636f6d7061746962696c69747920766563746f72227d",
+        "contentHash": "8611c3bac6e79a200735609833c5200af674cd534b1b9cef905ef1701863d70c",
+        "signingPublicKey": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "signature": "c760977f62251ff7fcddf7217cf18891242b2f52968a4c1495fef409ee896afc7b2da974d78330e474de195cde4352cf11c045ead5c0de037237ebb06747dd07"
+      },
+      "authoritativeGcr": {
+        "context": "web2.domain",
+        "hostname": "agent.example",
+        "account": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "proofUrl": "https://agent.example/.well-known/demos-cci.txt",
+        "sourceTransaction": {
+          "txHash": "d9a7cb254554bfec65607f823a1404b6b172b51049f1abd2e31d69cbf1e4e417",
+          "blockNumber": 424242
+        },
+        "recordedAt": 1799913600000
+      },
+      "registrationValidation": {
+        "profile": "demos-web2-domain-v1",
+        "proofPayload": "demos:dw2p:ed25519:00dc35e1625fba2c803f36ff4ea50bb79b81e5903a6ac4e7370a7d9932413723ac4ccb78d39a6f47e5ee1af0e4cfabbda98d3994b152c6b8bc5086b2a426a60e"
+      },
+      "sourceAvailable": true,
+      "sourceAuthentication": {
+        "inclusionProofCoversTransaction": true,
+        "blockFinalized": true
+      },
+      "writerAuthorization": {
+        "authenticated": true,
+        "writer": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157",
+        "authorizedAccount": "5f825c167dbd2f9458f867b17f7b06d8173e274b4dc410b37964dfb0575f0157"
+      },
+      "validationProfileAvailable": true,
+      "requiredMethod": "demos-gcr-domain",
+      "evaluatedAt": 1800000000000,
+      "recipeDefaultMaxAgeSec": 31536000,
+      "ruleRefs": [
+        "DCR-4"
+      ],
+      "want": {
+        "semanticClaims": []
       }
     },
     {

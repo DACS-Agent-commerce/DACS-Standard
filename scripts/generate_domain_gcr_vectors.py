@@ -52,12 +52,15 @@ def metadata(host: str, private: Ed25519PrivateKey) -> dict:
 
 
 def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
-                  claim_metadata: list[dict] | None = None) -> dict:
+                  claim_metadata: list[dict] | None = None,
+                  bundle_version: str | None = "1") -> dict:
     metadata_items = claim_metadata or [md for _ in refs]
     if len(metadata_items) != len(refs):
         raise ValueError("claim metadata must align one-to-one with claim refs")
-    unsigned = {
-        "bundleVersion": "1",
+    unsigned = {}
+    if bundle_version is not None:
+        unsigned["bundleVersion"] = bundle_version
+    unsigned.update({
         "subject": "domain compatibility vector",
         "claims": [
             {"ref": ref, "metadata": {"demosGcrDomain": copy.deepcopy(claim_md)}}
@@ -65,7 +68,7 @@ def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
         ],
         "presentedBy": refs[0],
         "presentedAt": NOW - 1_000,
-    }
+    })
     canonical = compact(unsigned)
     digest = hashlib.sha256(canonical).digest()
     signed = b"dacs-bundle-presentation:v1:" + digest
@@ -81,6 +84,7 @@ def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
 def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
          signer: Ed25519PrivateKey, **extra: object) -> dict:
     claim_metadata = extra.pop("claimMetadata", None)
+    bundle_version = extra.pop("bundleVersion", "1")
     registration_proof = str(extra.pop(
         "registrationProofPayload",
         proof_payload(key("dacs-275-domain-owner"), md["hostname"], md["account"]),
@@ -91,6 +95,7 @@ def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
         "artifact": signed_bundle(
             refs, md, signer,
             claim_metadata=claim_metadata if isinstance(claim_metadata, list) else None,
+            bundle_version=bundle_version if isinstance(bundle_version, str) else None,
         ),
         "authoritativeGcr": copy.deepcopy(record),
         "registrationValidation": {
@@ -214,6 +219,19 @@ def main() -> None:
         "legacy-mixed-case-ascii-read", "pass", ["web2:domain:Agent.Example"],
         md, record, owner, ruleRefs=["DCR-4"],
         want={"semanticClaims": [f"domain:{host}"], "originalBytesPreserved": True},
+    ))
+
+    vectors.append(case(
+        "legacy-alias-unknown-bundle-version-rejected", "error",
+        [f"web2:domain:{host}"], md, record, owner,
+        bundleVersion="2", ruleRefs=["DCR-4"],
+        want={"semanticClaims": []},
+    ))
+    vectors.append(case(
+        "legacy-alias-missing-bundle-version-rejected", "error",
+        [f"web2:domain:{host}"], md, record, owner,
+        bundleVersion=None, ruleRefs=["DCR-4"],
+        want={"semanticClaims": []},
     ))
 
     invalid_legacy = case(

@@ -23,6 +23,8 @@ profile identifier would incorrectly create a new full-profile version.
 
 ```sh
 python3 scripts/validate_conformance_vectors.py --manifest conformance/MANIFEST.json
+python3 scripts/generate_dacs1_vet_golden_inputs.py --check
+python3 -m unittest tests.test_dacs1_vet_golden_inputs -v
 python3 scripts/validate_artifact_shapes.py
 python3 scripts/run_lifecycle_walkthrough.py --check
 python3 scripts/validate_implementation_manifests.py
@@ -39,7 +41,14 @@ For a runnable five-stage builder path, see the dependency-free
 artifact chain, emits canonical bytes/hashes/signature payloads/refs, and executes
 five deterministic failure examples without importing a live substrate SDK.
 
-Regenerate from the public verifier mirror with `bun conformance/run.ts --emit`, then copy `conformance/` back here. Deterministic by construction: every key and signature is derived from fixed public seeds and every timestamp is pinned, so each run is byte-stable. No private key material is stored — seeds are public test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
+Regenerate externally sourced outputs from the public verifier mirror with
+`bun conformance/run.ts --emit`, then copy those outputs back here. Regenerate
+the 24 Standard-owned DACS-1/Vet inputs separately with
+`python3 scripts/generate_dacs1_vet_golden_inputs.py --write`; the external
+emitter is not their authority. Deterministic by construction: every key and
+signature is derived from fixed public seeds and every timestamp is pinned, so
+each run is byte-stable. No private key material is stored — seeds are public
+test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 
 ## Coverage
 
@@ -74,7 +83,14 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
 - `fixtures/attestation-bundle-0004-seller.json` — the same `jobId` as DACS-VERIFY-0004 with a divergent `failed-counterparty` outcome; it verifies independently and has a different bundle hash.
 - `fixtures/attestation-bundle-htlc9.json` — the full byte-stable HTLC-9 asymmetric-settlement fixture.
 - `fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json` — deterministic signed listing/EBFAB fixture covering bundle and extended-pointer domains, discriminator/type-swap refusal, cross-type replay, signed-but-SEB-invalid rejection, EBFAB/EBFAB member divergence, and EBFAB authority across every older bundle type.
-- `fixtures/identity/control-gate-vectors.json` — the #170 DACS-1 controlled-use input→expected fixture pack: existence-only registry passes remain valid supporting context but cannot satisfy `presentedBy` / reputation-key use; malformed or unresolvable control proofs stay on the §7.5.1 4-value path.
+- `fixtures/identity/dacs1-vet-golden-inputs-v0.1.json` — complete,
+  deterministic current-wire inputs for the 13 DACS-1 and 11 Vet golden
+  manifest cases that previously existed only inside `dacs-verify`. Every
+  bundle and available result carries a genuine signature, every case pins its
+  input hash, and `MANIFEST.json` pins the whole file SHA-256. The legacy
+  `control-gate-vectors.json` policy sketch is retained only as superseded
+  history; its abbreviated references and signatures are not executable wire
+  artifacts.
 - `fixtures/settlement-evidence-payment-success.json` — a byte-stable pay-evm-erc20 success SettlementEvidence (§9.7) with its PaymentPhaseInput + PhaseHandlerResult, signed by a deterministic orchestrator key.
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable deliver-storage-program success SettlementEvidence (deliverable content hash + anchor, no settlementFinality).
 - `fixtures/session-bundle-one-sided.json` — a one-signature `aborted-by-other` bundle for the §10.4.3(b)/§10.11 one-sided case.

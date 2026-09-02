@@ -32,7 +32,7 @@ artifact, verify every signature, and confirm the audit trail end-to-end.
 | Standard | Stage | Scope |
 |----------|-------|-------|
 | **DACS-1** | Identify | Agent identity, signed & anchored service listings, discovery |
-| **DACS-2** | Vet | Method-pluggable credential attestation against authoritative sources |
+| **DACS-2** | Vet | Method-pluggable credential attestation with signed requirement, role, and verifier provenance |
 | **DACS-3** | Negotiate | Private negotiation phases (RFQ, sealed envelope, fixed price) + agreement commitment |
 | **DACS-4** | Settle | Payment-rail registry, payment phases, delivery phases |
 | **DACS-5** | Verify | Session record, attestation bundle, reputation derivation |

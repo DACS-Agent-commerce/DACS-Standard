@@ -28,7 +28,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Commit-agreement.** The DACS-3 phase that anchors a legacy AgreementDocument hash on the public chain. Defined in §8.6.
 - **Commit-payee-bound-agreement.** The DACS-3 phase that anchors a PayeeBoundAgreementDocument hash on the public chain. Defined in §8.6.
 - **CommitmentRecord.** The on-chain record produced by either DACS-3 agreement commitment phase. Defined in §8.6.
-- **CompositeVerificationRecord.** The document the DACS-2 vet-credentials phase produces, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in §7.7.
+- **CompositeVerificationRecord.** The legacy document the DACS-2 `vet-credentials` phase produces, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in §7.7.
 - **Content hash.** sha256 hex of the canonical form of a document.
 - **DACS-1..5.** The five per-stage standards: Identify, Vet, Negotiate, Settle, Verify.
 - **DACS-X.** Anticipated future standard for dispute resolution; not part of v0.1.
@@ -63,6 +63,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **PhaseHandlerResult.** The return shape of every phase handler. §B.5 (front matter).
 - **Pipeline.** The ordered sequence of PhaseStep entries declared in a listing. §6.3.4.
 - **Presentation signature.** The signature on an identity bundle. §6.3.2.
+- **ProvenancedCompositeVerificationRecord.** The signed output of one `vet-credentials-provenanced` invocation. It binds the evaluated party and role, counterparty context, exact result set, authorization, verifier, job, and registry pin. §7.7.4.
 - **sr1-root presentation.** A bundle-presentation kind in which a single SR-1 root key co-signs every claim under one aggregate signature, producing a single cryptographic artifact for the whole bundle. The natural presentation for a party self-binding a single document. §6.3.2.
 - **Primary identity claim.** The claim within a bundle that serves as the canonical identifier of the party for reputation, audit, and addressing.
 - **Rate phase.** Optional DACS-5 phase producing structured ratings between parties. §10.6.
@@ -89,5 +90,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **ULID.** Universally Unique Lexicographically Sortable Identifier; recommended jobId format.
 - **validator-set claim.** See "Substrate-validator-set claim".
 - **VerifyResult / VerifyResultRef.** The uniform record every DACS-2 method produces; reference to an anchored VerifyResult. §7.5.
-- **Vet-credentials phase.** The DACS-2 phase that runs verification across the counterparty’s bundle. §7.8.
+- **Vet-credentials phase.** The legacy DACS-2 phase that runs verification across the counterparty’s bundle. §7.8.
+- **Vet-credentials-provenanced phase.** The DACS-2 phase that requires signed, pair-complete authorization of every publisher/counterparty evaluation and produces `ProvenancedCompositeVerificationRecord` artifacts. §7.8.3.
+- **VetRequirementAuthorization.** A signed DACS-2 authorization binding one Vet invocation to its job, roster, evaluated party and role, counterparty context, requirement, verifier, registry pin, and logical address. §7.7.3.
 - **Well-known/agent.json.** The A2A capability-discovery surface that DACS extends with a dacs block. §6.3.5.

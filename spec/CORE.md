@@ -295,7 +295,7 @@ In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a rese
 - **AttestationRef.** A reference to an anchored attestation: anchor locator + content hash + (optional) signer. Defined in chapter 7 (DACS-2).
 - **VerifyResult.** The uniform record produced by every DACS-2 verification method. Defined in chapter 7.
 - **VerifyResultRef.** A reference to an anchored VerifyResult: anchor + contentHash + recipeVersion (recipeVersion is load-bearing for staleness checks).
-- **Composite verification record.** The anchored document produced by the vet-credentials phase, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in chapter 7.
+- **Composite verification records.** `CompositeVerificationRecord` is the legacy `vet-credentials` output. `ProvenancedCompositeVerificationRecord` is the signed `vet-credentials-provenanced` output that additionally binds the job, evaluated role and party, counterparty context, authorizing requirement, verifier identity, and exact result set through its `VetRequirementAuthorization`. Defined in chapter 7.
 - **PayloadAttestationRecord.** The DACS-4 delivery-verification artifact that binds method-native evidence to exact payload bytes, a job, a committed agreement, and its DeliverableSpec. It is distinct from a claim-oriented DACS-2 VerifyResult. Defined in §9.6.3.
 
 ### B.4 Session, pipeline, and phases

@@ -222,6 +222,21 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
         self.assertEqual(result["failedAt"], "RD-5")
         self.assertFalse(result["maySubmitPayment"])
 
+    def test_rd5_covers_native_evm_equal_and_unequal_chain_ids(self):
+        admitted = evaluate(
+            self.by_name["native-evm-equal-positive-chain-id-admits-rail"]
+        )
+        self.assertEqual(admitted["expected"], "pass")
+        self.assertEqual(admitted["railChain"], "eip155:8453")
+        self.assertTrue(admitted["maySubmitPayment"])
+
+        rejected = evaluate(
+            self.by_name["native-evm-unequal-chain-id-rejects-rail"]
+        )
+        self.assertEqual(rejected["expected"], "error")
+        self.assertEqual(rejected["failedAt"], "RD-5")
+        self.assertFalse(rejected["maySubmitPayment"])
+
     def test_rd5_requires_equal_positive_integer_chain_ids(self):
         admitted = evaluate(self.by_name["asset-and-network-chain-id-match-admits-rail"])
         self.assertEqual(admitted["expected"], "pass")

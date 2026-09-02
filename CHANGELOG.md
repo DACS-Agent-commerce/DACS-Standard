@@ -33,7 +33,8 @@ The format used per release:
   and PB-2 derives payee applicability from that exact chain. The contradictory
   positive is replaced by a fail candidate pending independent reference-run
   convergence. The executable chain-applicability set now has explicit
-  equal-positive, mismatch, zero, and non-integer asset/network controls.
+  equal-positive and mismatch controls for both `erc20` and `native-evm`, plus
+  zero and non-integer asset/network controls.
 
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 

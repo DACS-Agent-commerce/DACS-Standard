@@ -622,7 +622,6 @@ def evaluate_delivery_after_payment(
             {
                 "outcome": "failure",
                 "reason": f"delivery adapter reported {error_class} failure",
-                "errorClass": error_class,
             }
         )
         phase_entry.update({"outcome": "fail", "errorClass": error_class})

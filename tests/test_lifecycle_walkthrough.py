@@ -268,9 +268,16 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             delivery["failureEvidence"]["artifact"]["outcome"], "failure"
         )
         self.assertTrue(delivery["failureEvidence"]["artifact"]["reason"])
+        self.assertNotIn("errorClass", delivery["failureEvidence"]["artifact"])
         self.assertEqual(
             delivery["resultingBundle"]["artifact"]["outcome"],
             "failed-counterparty",
+        )
+        self.assertEqual(
+            delivery["resultingBundle"]["artifact"]["phaseSummary"][-1][
+                "errorClass"
+            ],
+            "counterparty",
         )
         self.assertEqual(
             delivery["resultingBundle"]["artifact"]["settlementEvidence"][0],

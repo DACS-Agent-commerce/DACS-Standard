@@ -89,7 +89,11 @@ def _nonempty_string(value: Any) -> bool:
 
 
 def _finite_number(value: Any) -> bool:
-    return type(value) in {int, float} and math.isfinite(value)
+    if type(value) is int:
+        return -9007199254740991 <= value <= 9007199254740991
+    if type(value) is float:
+        return math.isfinite(value) and abs(value) <= 9007199254740991
+    return False
 
 
 def _valid_reference(value: Any) -> bool:
@@ -130,6 +134,8 @@ def _valid_receipt_shape(receipt: Any) -> bool:
     if not _valid_reference(receipt.get("evidence")):
         return False
     block_ref = receipt.get("blockRef")
+    if block_ref is not None and not isinstance(block_ref, dict):
+        return False
     if receipt["state"] in {"included", "finalized"}:
         if not isinstance(block_ref, dict) or not _nonempty_string(block_ref.get("id")):
             return False

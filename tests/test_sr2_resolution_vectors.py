@@ -151,6 +151,11 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         ):
             with self.subTest(vector=name):
                 self.assertEqual(evaluate_vector(self.vectors[name]), "indeterminate")
+        oversized_time = copy.deepcopy(
+            self.vectors["direct-finalized-receipt-resolves"]
+        )
+        oversized_time["input"]["carriers"][0]["deliveredAt"] = 10**1000
+        self.assertEqual(evaluate_vector(oversized_time), "indeterminate")
         self.assertEqual(
             evaluate_vector(self.vectors["unsafe-integer-in-definition-is-rejected"]),
             "fail",

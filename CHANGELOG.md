@@ -20,6 +20,18 @@ The format used per release:
   `canonical-json-v0.1` corpus remains the executable authority for those bounds
   (#354). The shared validator documentation now states the same rule.
 
+### Fixed — Demos SR-2 bundle co-signing status
+
+- **Artifact signatures separated from transaction signatures** (#369) —
+  corrects DEMOS-MAPPING §A.2 so a native multi-party Storage Program
+  transaction is not presented as an amber DACS v0.1 dependency. For non-abort
+  outcomes the bundle first carries every required DACS signature and each
+  required signing party anchors its role-specific copy through its own
+  owner-signed SR-2 write and verified receipt. Abort outcomes retain the
+  single-signature and bundle-suppression exceptions in §§10.4.1/10.11. Native
+  transaction co-signing remains an optional optimization and cannot replace
+  applicable artifact signatures or role-specific publication.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

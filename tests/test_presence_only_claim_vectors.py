@@ -18,7 +18,10 @@ VECTORS = (
 GENERATOR = ROOT / "scripts" / "generate_presence_only_claim_vectors.py"
 DACS1 = ROOT / "spec" / "DACS-1-IDENTIFY.md"
 DACS2 = ROOT / "spec" / "DACS-2-VET.md"
-CONTROL_FIXTURE = ROOT / "conformance" / "fixtures" / "identity" / "control-gate-vectors.json"
+CONTROL_FIXTURE = (
+    ROOT / "conformance" / "fixtures" / "identity"
+    / "dacs1-vet-golden-inputs-v0.1.json"
+)
 BUNDLE_DOMAIN = "dacs-bundle-presentation:v1:"
 VERIFY_RESULT_DOMAIN = "dacs-verifyresult:v1:"
 COMPOSITE_DOMAIN = "dacs-composite:v1:"
@@ -554,14 +557,15 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         fixture = json.loads(CONTROL_FIXTURE.read_text(encoding="utf-8"))
         vector = next(
             case for case in fixture["cases"]
-            if case["id"] == "vet-control-key-presentation-accept"
+            if case["name"] == "vet-control-key-presentation-accept"
         )
-        claim = vector["input"]["bundle"]["claims"][0]
-        member = vector["input"]["requirement"]["required"][0]
+        value = vector["evaluations"]["result"]["input"]
+        claim = value["bundle"]["claims"][0]
+        member = value["requirement"]["required"][0]
         self.assertNotIn("verifiedBy", claim)
         self.assertIn("issuedAt", claim)
         self.assertFalse(member["verificationRequired"])
-        self.assertEqual("pass", vector["expected"])
+        self.assertEqual("pass", vector["expectedOutput"])
 
     def test_specs_define_all_presence_rules_and_versions(self):
         dacs1 = DACS1.read_text(encoding="utf-8")

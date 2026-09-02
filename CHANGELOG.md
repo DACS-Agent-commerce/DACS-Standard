@@ -13,6 +13,19 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — executable DACS-1 / Vet golden inputs
+
+- The 24 DACS-1/Vet manifest cases now use only registered DACS-2 method
+  kinds and resolve every result against an exact, signed recipe family. The
+  three aggregation cases exercise CRQ-1 through signed composite records and
+  the production `VetCredentialsInput`/trusted-session boundary, including
+  exact job, bundle, requirement, registry-pin, and committed-result-set
+  checks. Aggregate outputs retain only the normative decision and reasons;
+  VPC-4 terminal attribution is derived separately (`fail` maps to
+  `counterparty`, never `permanent`). The cross-run tool rejects the
+  superseded control-gate sketch and exposes all 34 replacement evaluations
+  under stable `<case>::<evaluation>` names (#363).
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

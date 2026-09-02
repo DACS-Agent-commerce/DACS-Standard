@@ -51,6 +51,7 @@ REFERENCE_FIXTURES = (
     ROOT / "conformance" / "fixtures" / "session-bundle-one-sided.json",
     ROOT / "conformance" / "fixtures" / "session-bundles-presence.json",
     ROOT / "conformance" / "fixtures" / "session-bundles-reputation.json",
+    ROOT / "conformance" / "fixtures" / "identity" / "dacs1-vet-golden-inputs-v0.1.json",
     ROOT / "conformance" / "fixtures" / "settlement-evidence-payment-success.json",
     ROOT / "conformance" / "fixtures" / "settlement-evidence-delivery-success.json",
     ROOT / "conformance" / "fixtures" / "settlement" / "htlc9-asymmetric.json",
@@ -357,8 +358,12 @@ def _embedded_reference_artifacts(data) -> list[tuple[str, dict]]:
 
     def walk(value) -> None:
         if isinstance(value, dict):
-            if value.get("bundleVersion") == "1":
+            if value.get("bundleVersion") == "1" and "phaseSummary" in value:
                 pairs.append(("AttestationBundle", value))
+            elif value.get("bundleVersion") == "1" and "claims" in value:
+                pairs.append(("IdentityBundle", value))
+            elif value.get("resultVersion") == "1":
+                pairs.append(("VerifyResult", value))
             elif value.get("faultBundleVersion") == "1":
                 pairs.append(("FaultAttestationBundle", value))
             elif value.get("evidenceVersion") == "1":

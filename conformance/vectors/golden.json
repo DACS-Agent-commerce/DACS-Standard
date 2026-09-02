@@ -55,9 +55,9 @@
     ]
   },
   "dacs1": {
-    "status": "golden — reference-verifier-accepted + byte-stable",
+    "status": "golden — external outputs plus Standard-owned current-wire signed inputs and executable predicates",
     "controlGate": {
-      "fixture": "conformance/fixtures/identity/control-gate-vectors.json",
+      "fixture": "conformance/fixtures/identity/dacs1-vet-golden-inputs-v0.1.json",
       "decisions": [
         "pass",
         "fail",
@@ -88,7 +88,7 @@
         {
           "id": "vet-control-key-malformed-scope-reject-no-throw",
           "expected": {
-            "decision": "fail",
+            "decision": "error",
             "throws": false
           }
         },

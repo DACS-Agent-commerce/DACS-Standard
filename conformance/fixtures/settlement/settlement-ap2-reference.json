@@ -333,6 +333,8 @@
     "dahrRequestResponseBindingVerifies": true,
     "dahrTransactionIncluded": true,
     "dahrBlockConfirmed": true,
+    "dahrValidatorSetUsesIndependentTrustAnchor": true,
+    "dahrSelfCertifiedValidatorSetRejected": true,
     "settlementEvidenceVerifies": true,
     "verdict": "pass"
   }

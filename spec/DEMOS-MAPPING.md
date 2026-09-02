@@ -112,7 +112,11 @@ binding. For
   transaction commits to the requested canonical URL, HTTP method, request
   body hash when present, response status, `responseHash`, and
   `responseHeadersHash`, and require those request inputs to equal the signed
-  listing's complete `verificationMethod` configuration;
+  listing's complete `verificationMethod` configuration. The consensus verifier
+  MUST obtain the authorized validator roster from an independently authenticated
+  network profile, validator-set epoch, or equivalent trust anchor; a `peerlist`
+  or signer roster carried only inside the candidate block MUST NOT authenticate
+  itself;
 - (c) it MUST obtain the returned `data` string, encode it as UTF-8 without
   reserialisation, require `sha256(UTF8(data)) == responseHash`, and deliver
   those exact bytes so

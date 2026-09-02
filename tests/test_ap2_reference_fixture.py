@@ -8,6 +8,7 @@ import unittest
 from decimal import Decimal
 from pathlib import Path
 
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 from cryptography.hazmat.primitives.hashes import SHA256
@@ -26,6 +27,18 @@ FIXTURE = (
 )
 OFFICIAL_AP2_COMMIT = "e1ea56db72a6385bce3e5c1112b3a56ce60acb43"
 ULID_RE = re.compile(r"[0-9A-HJKMNP-TV-Z]{26}\Z")
+PINNED_DAHR_TX_HASH = "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+PINNED_DAHR_BLOCK = {
+    "number": 213605,
+    "hash": "bcfb1766fc2a987adf734209687a01e443dd8eb29005e487a8ae4f27f295ab13",
+}
+PINNED_DAHR_VALIDATORS = frozenset(
+    {
+        "0x24c664d9ef529f798e979357c6a7a01088226eefe05cfdb77fb42841f771e156",
+        "0xc8bc5866fecf583bc1232f04fa54fd2c5a6f7c15b91c517ac60f468cdc0b8c82",
+        "0xdad5ae081825bcf93353bb76157ae8368c33fee6fc0f692b85155bb37e4ae0ab",
+    }
+)
 
 
 def b64url(value: str) -> bytes:
@@ -45,7 +58,7 @@ def dahr_snapshot_valid(fixture: dict) -> bool:
                 content, separators=(",", ":"), ensure_ascii=False
             ).encode("utf-8")
         ).hexdigest()
-        if tx_hash != signed["hash"]:
+        if tx_hash != signed["hash"] or tx_hash != PINNED_DAHR_TX_HASH:
             return False
 
         writer = content["from"]
@@ -103,13 +116,18 @@ def dahr_snapshot_valid(fixture: dict) -> bool:
             == {"hash": tx_hash, "status": "confirmed", "blockNumber": block["number"]}
             and block["status"] == "confirmed"
             and block_hash == block["hash"]
+            and {"number": block["number"], "hash": block_hash}
+            == PINNED_DAHR_BLOCK
             and tx_hash in block["content"]["ordered_transactions"]
         ):
             return False
 
         peers = set(block["content"]["peerlist"])
         validator_signatures = block["validationData"]["signatures"]
-        if set(validator_signatures) != peers or len(peers) < 3:
+        if (
+            peers != PINNED_DAHR_VALIDATORS
+            or set(validator_signatures) != PINNED_DAHR_VALIDATORS
+        ):
             return False
         for signer, signature in validator_signatures.items():
             if not re.fullmatch(r"0x[0-9a-f]{64}", signer):
@@ -244,6 +262,36 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
                 fixture = copy.deepcopy(self.fixture)
                 mutate(fixture)
                 self.assertFalse(dahr_snapshot_valid(fixture))
+
+    def test_self_certified_validator_set_is_not_a_trust_anchor(self):
+        fixture = copy.deepcopy(self.fixture)
+        block = fixture["dahr"]["block"]
+        attacker_keys = [
+            ed25519.Ed25519PrivateKey.from_private_bytes(bytes([seed]) * 32)
+            for seed in (1, 2, 3)
+        ]
+        attacker_signers = [
+            "0x"
+            + key.public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+            .hex()
+            for key in attacker_keys
+        ]
+        block["content"]["peerlist"] = attacker_signers
+        block_hash = hashlib.sha256(
+            json.dumps(
+                block["content"], separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
+        ).hexdigest()
+        block["hash"] = block_hash
+        block["validationData"]["signatures"] = {
+            signer: "0x" + key.sign(block_hash.encode("ascii")).hex()
+            for signer, key in zip(attacker_signers, attacker_keys)
+        }
+        self.assertFalse(dahr_snapshot_valid(fixture))
 
     def test_signed_settlement_evidence_and_result_are_exact(self):
         fixture = self.fixture

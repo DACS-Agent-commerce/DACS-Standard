@@ -1342,7 +1342,7 @@
       "id": "settlement-ap2-reference-pass",
       "area": "settlement",
       "spec": "§9.5.6 AP2-1..AP2-7; §9.7",
-      "summary": "official AP2 v0.2 CheckoutMandate + PaymentMandate admission, provider-status session binding, receipt attestation, provider-receipt finality, and signed pay-ap2 SettlementEvidence pass",
+      "summary": "official AP2 v0.2 CheckoutMandate + PaymentMandate admission, provider-status session binding, receipt attestation, independently pinned Demos validator-set finality, and signed pay-ap2 SettlementEvidence pass",
       "status": "golden",
       "reason": "official AP2 SDK accepted + executable reference predicates + byte-stable",
       "fixture": "conformance/fixtures/settlement/settlement-ap2-reference.json",

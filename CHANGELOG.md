@@ -13,6 +13,13 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — CORE canonicalization conformance
+
+- Retires the stale `canon-noninteger-throws` manifest row left behind by #345;
+  CORE §B.2 permits finite binary64 fractions, and the self-contained
+  `canonical-json-v0.1` corpus remains the executable authority for those bounds
+  (#354). The shared validator documentation now states the same rule.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

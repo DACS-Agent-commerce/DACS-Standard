@@ -86,6 +86,32 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("spec MUST identify the closed registry at §B.7", result.stderr)
 
+    def test_output_only_dacsx_rows_are_candidates_not_goldens(self):
+        data = json.loads(MANIFEST.read_text())
+        dacsx = [
+            case for case in data["cases"]
+            if case["area"] in {"dispute", "disclosure"}
+        ]
+        self.assertEqual(17, len(dacsx))
+        self.assertEqual(
+            {"dispute": 8, "disclosure": 9},
+            {
+                area: sum(case["area"] == area for case in dacsx)
+                for area in ("dispute", "disclosure")
+            },
+        )
+        for case in dacsx:
+            with self.subTest(case=case["id"]):
+                self.assertEqual("candidate", case["status"])
+                self.assertIn("output-only expectation", case["reason"])
+                self.assertIn("not published", case["reason"])
+        self.assertEqual(177, sum(
+            case["status"] == "golden" for case in data["cases"]
+        ))
+        self.assertEqual(59, sum(
+            case["status"] == "candidate" for case in data["cases"]
+        ))
+
     def test_vector_covers_all_five_dacs_stages_in_order(self):
         data = json.loads(VECTORS.read_text())
         stages = [artifact["stage"] for artifact in data["artifacts"]]

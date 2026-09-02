@@ -85,17 +85,24 @@ type ChannelMessageSignature = {
 
 (CH-7) **Current type and signature authority.** A current producer MUST emit
 `canonicalChannelMessageVersion: "1"` and the version-1 signature envelope
-above. `signature.signer` MUST canonically equal `sender` under CORE §B.1/CF-2,
+above. `signature.signer` and `sender` MUST each be in CF-2 canonical byte form
+and MUST identify the same party under CORE §B.1/CF-3,
 and the declared algorithm MUST match the authenticated primary key resolved
 for that claim. Before cryptographic verification, the reader MUST require
-`sender` to occur in the fixed CH-1 member set and obtain the member's primary
-claim, key, and key type from the authenticated DACS-1/DACS-2 membership
-binding. It MUST NOT derive message authority solely from the self-declared
-`sender` or `signature.signer`, even when a claim spelling embeds key bytes. A
-valid signature by a non-member is `fail`; unavailable key resolution for an
-authenticated member is `indeterminate`. Unknown message versions, signature
-versions, or algorithms are malformed; an algorithm/key mismatch is a proven
-authentication failure.
+`sender`'s CF-3 canonical identity to occur exactly once in the fixed CH-1
+member set and obtain the member's primary claim, key, and key type from the
+authenticated DACS-1/DACS-2 membership binding. Member-set uniqueness and
+lookup MUST use the CF-3 `(canonical Scheme, canonical Identifier)` pair;
+parameter-only variants MUST NOT create distinct members or select a different
+key. The authenticated membership binding is verifier-owned authority and MUST
+be capability-separated from the message and its caller-supplied session
+context. A reader MUST NOT accept a member list or claim-to-key binding merely
+because it accompanies the message, and MUST NOT derive authority solely from
+the self-declared `sender` or `signature.signer`, even when a claim spelling
+embeds key bytes. A valid signature by a non-member or against a different key
+is `fail`; unavailable authenticated membership or key resolution is
+`indeterminate`. Unknown message versions, signature versions, or algorithms
+are malformed; an algorithm/key mismatch is a proven authentication failure.
 Transport-level routing and framing fields MAY exist outside the signed message
 but MUST NOT be inserted into, removed from, or mutate it in transit.
 

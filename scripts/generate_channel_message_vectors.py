@@ -87,7 +87,7 @@ LEGACY_UNRESOLVED_REF = "did:demos:placeholder"
 
 
 def authenticated_members() -> list[dict]:
-    """Verifier-owned CH-1 member/key bindings represented by the vector context."""
+    """Deterministic keys used to construct the verifier-owned test capability."""
 
     return [
         {
@@ -276,7 +276,6 @@ def context(**updates: object) -> dict:
         "sessionChannelId": "channel-349",
         "lastSequence": 0,
         "priorChannelIds": ["channel-100", "channel-200"],
-        "authenticatedMembers": authenticated_members(),
     }
     value.update(copy.deepcopy(updates))
     return value
@@ -285,7 +284,6 @@ def context(**updates: object) -> dict:
 def case(name: str, expected: str, message: dict, *, note: str,
          ctx: dict | None = None, operation: str = "current-read", **extra: object) -> dict:
     selected_context = copy.deepcopy(ctx if ctx is not None else context())
-    selected_context.setdefault("authenticatedMembers", authenticated_members())
     value = {
         "name": name,
         "expected": expected,
@@ -325,6 +323,10 @@ def build_vectors() -> list[dict]:
         unsigned_message(sequence=2),
         key=BOB,
         signer=ALICE_REF,
+    )
+    qualified_member = sign_current(
+        unsigned_message(sequence=2, sender=f"{ALICE_REF}?role=buyer"),
+        signer=f"{ALICE_REF}?role=author",
     )
 
     padded = copy.deepcopy(valid)
@@ -398,6 +400,12 @@ def build_vectors() -> list[dict]:
     del stripped_unknown["experimentalHint"]
 
     malformed_context = context(lastSequence=True)
+    injected_membership_context = context()
+    injected_membership_context["authenticatedMembers"] = [{
+        "claim": ALICE_REF,
+        "algorithm": "ed25519",
+        "publicKey": public_hex(BOB),
+    }]
 
     ecdsa_unsigned = unsigned_message(sequence=2, sender=ECDSA_REF)
     ecdsa_valid = sign_current_ecdsa(ecdsa_unsigned)
@@ -438,6 +446,9 @@ def build_vectors() -> list[dict]:
         case("canonical-member-wrong-key", "fail", member_wrong_key,
              ctx=context(lastSequence=1),
              note="member equality cannot replace verification against the independently bound member key"),
+        case("canonical-qualified-member-identity", "pass", qualified_member,
+             ctx=context(lastSequence=1),
+             note="CF-3 ignores advisory qualifiers when sender, signer and authenticated membership identities are matched"),
         case("canonical-tampered-body", "fail", tampered,
              note="message-body mutation breaks the signature"),
         case("canonical-padded-base64url", "error", padded,
@@ -518,6 +529,9 @@ def build_vectors() -> list[dict]:
         case("malformed-context-boolean-sequence", "error", valid,
              ctx=malformed_context,
              note="context integers exclude JSON booleans"),
+        case("untrusted-context-membership-injection", "error", valid,
+             ctx=injected_membership_context,
+             note="message-adjacent session input cannot supply or replace authenticated CH-1 authority"),
     ]
 
 
@@ -527,7 +541,6 @@ def render() -> str:
         "set": "canonical-channel-message-v0.6",
         "spec": "DACS-3 §8.3.3 CH-6..CH-10 + CORE §B.7 SIG-2/SIG-5/SIG-6",
         "decisionModel": "§7.5.1 four-value result; trusted operation selection and structural dispatch precede cryptography",
-        "authenticatedMembers": authenticated_members(),
         "authenticatedKeyFixtures": [
             {
                 "claim": ECDSA_REF,

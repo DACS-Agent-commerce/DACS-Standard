@@ -10,6 +10,7 @@ import subprocess
 import sys
 import unicodedata
 import unittest
+import urllib.parse
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -57,6 +58,14 @@ SR1_REF = "did:example:dacs-349-sr1-root"
 SR1_PUBLIC = bytes.fromhex(
     "ad1c29b30511eb51de06962d03b5d89f1c7be5d40ba49537bf9e31383cf6f04c"
 )
+ALICE_REF = "cci:e70a5bcf97758337d7191df8e32ddd310933ce077937e36723b8b3be4dd69f57"
+ALICE_PUBLIC = bytes.fromhex(ALICE_REF.removeprefix("cci:"))
+BOB_REF = "cci:ea0c2afe8504c5500e1c28d05d4a2f214c076c8fc2c0db3225d13d1c1513d693"
+BOB_PUBLIC = bytes.fromhex(BOB_REF.removeprefix("cci:"))
+LEGACY_MEMBER_REF = "cci:acdcc8494d458f44a7aaac1d6a84ec624daee88436db2ae26e67ba645a106228"
+LEGACY_PUBLIC = bytes.fromhex(LEGACY_MEMBER_REF.removeprefix("cci:"))
+UNRESOLVED_REF = "did:example:unresolved"
+LEGACY_UNRESOLVED_REF = "did:demos:placeholder"
 
 
 def canonical_bytes(value):
@@ -85,20 +94,58 @@ def parse_claim_ref(value):
         or ":" not in value
     ):
         raise ValueError("malformed ClaimReference")
-    scheme, identifier = value.split(":", 1)
+    scheme, remainder = value.split(":", 1)
+    if remainder.count("?") > 1:
+        raise ValueError("malformed ClaimReference")
+    identifier, separator, parameters = remainder.partition("?")
     if not CLAIM_SCHEME.fullmatch(scheme) or not identifier:
         raise ValueError("malformed ClaimReference")
     if scheme == "cci" and not LOWER_HEX_64.fullmatch(identifier):
         raise ValueError("malformed CCI ClaimReference")
+    if separator:
+        pairs = parameters.split("&")
+        if not parameters or any(pair.count("=") != 1 for pair in pairs):
+            raise ValueError("malformed ClaimReference parameters")
+        decoded_keys = []
+        for pair in pairs:
+            key, parameter_value = pair.split("=", 1)
+            for component in (key, parameter_value):
+                if any(character in component for character in ":?&="):
+                    raise ValueError("unescaped reserved ClaimReference parameter")
+                for match in re.finditer("%", component):
+                    if not re.match(r"[0-9A-F]{2}", component[match.start() + 1:match.start() + 3]):
+                        raise ValueError("non-canonical ClaimReference percent escape")
+                try:
+                    urllib.parse.unquote(component, errors="strict")
+                except UnicodeDecodeError as exc:
+                    raise ValueError("malformed ClaimReference parameter encoding") from exc
+            decoded_keys.append(urllib.parse.unquote(key, errors="strict"))
+        if (
+            any(not key for key in decoded_keys)
+            or decoded_keys != sorted(decoded_keys)
+            or len(decoded_keys) != len(set(decoded_keys))
+        ):
+            raise ValueError("non-canonical ClaimReference parameters")
     return scheme, identifier
 
 
 def validate_context(ctx):
     if not isinstance(ctx, dict) or set(ctx) != {
-        "sessionChannelId", "lastSequence", "priorChannelIds", "authenticatedMembers"
+        "sessionChannelId", "lastSequence", "priorChannelIds"
     }:
         return False
-    members = ctx["authenticatedMembers"]
+    return (
+        isinstance(ctx["sessionChannelId"], str)
+        and bool(ctx["sessionChannelId"])
+        and isinstance(ctx["lastSequence"], int)
+        and not isinstance(ctx["lastSequence"], bool)
+        and ctx["lastSequence"] >= 0
+        and isinstance(ctx["priorChannelIds"], list)
+        and all(isinstance(item, str) and item for item in ctx["priorChannelIds"])
+    )
+
+
+def validate_authenticated_members(members):
     if not isinstance(members, list) or not members:
         return False
     seen = set()
@@ -115,11 +162,11 @@ def validate_context(ctx):
         if set(member) != expected_keys:
             return False
         try:
-            parse_claim_ref(member["claim"])
+            identity = parse_claim_ref(member["claim"])
         except (TypeError, ValueError):
             return False
         if (
-            member["claim"] in seen
+            identity in seen
             or member["algorithm"] not in ALGORITHMS
             or member["authorityType"] not in {"primary-key", "sr1-root"}
             or resolution not in {"resolved", "unavailable"}
@@ -127,7 +174,7 @@ def validate_context(ctx):
             != (member["authorityType"] == "sr1-root")
         ):
             return False
-        seen.add(member["claim"])
+        seen.add(identity)
         if resolution == "unavailable":
             continue
         public_key = member["publicKey"]
@@ -152,15 +199,99 @@ def validate_context(ctx):
                 )
         except ValueError:
             return False
-    return (
-        isinstance(ctx["sessionChannelId"], str)
-        and bool(ctx["sessionChannelId"])
-        and isinstance(ctx["lastSequence"], int)
-        and not isinstance(ctx["lastSequence"], bool)
-        and ctx["lastSequence"] >= 0
-        and isinstance(ctx["priorChannelIds"], list)
-        and all(isinstance(item, str) and item for item in ctx["priorChannelIds"])
-    )
+    return True
+
+
+class AuthenticatedChannelAuthority:
+    """Verifier-owned capability containing authenticated CH-1 bindings.
+
+    Untrusted message/session input cannot construct or replace this capability.
+    A production implementation obtains equivalent data only after its DACS-1/
+    DACS-2 membership-binding verification has succeeded.
+    """
+
+    def __init__(self, bindings):
+        if not isinstance(bindings, dict) or not bindings:
+            raise ValueError("authenticated channel bindings required")
+        self._bindings = {}
+        for channel_id, members in bindings.items():
+            if not isinstance(channel_id, str) or not channel_id:
+                raise ValueError("invalid authenticated channel identifier")
+            if not validate_authenticated_members(members):
+                raise ValueError("invalid authenticated channel membership")
+            self._bindings[channel_id] = {
+                parse_claim_ref(member["claim"]): copy.deepcopy(member)
+                for member in members
+            }
+
+    def resolve(self, channel_id, sender):
+        members = self._bindings.get(channel_id)
+        if members is None:
+            return "unavailable", None
+        return "resolved", copy.deepcopy(members.get(parse_claim_ref(sender)))
+
+
+def authenticated_members():
+    return [
+        {
+            "claim": ALICE_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": ALICE_PUBLIC.hex(),
+        },
+        {
+            "claim": BOB_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": BOB_PUBLIC.hex(),
+        },
+        {
+            "claim": ECDSA_REF,
+            "algorithm": "ecdsa-secp256k1",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "sec1-compressed-lowercase-hex",
+            "publicKey": ECDSA_PUBLIC.hex(),
+        },
+        {
+            "claim": SR1_REF,
+            "algorithm": "sr1-aggregate",
+            "authorityType": "sr1-root",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": SR1_PUBLIC.hex(),
+        },
+        {
+            "claim": UNRESOLVED_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable",
+        },
+        {
+            "claim": LEGACY_MEMBER_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "resolved",
+            "publicKeyEncoding": "ed25519-raw-lowercase-hex",
+            "publicKey": LEGACY_PUBLIC.hex(),
+        },
+        {
+            "claim": LEGACY_UNRESOLVED_REF,
+            "algorithm": "ed25519",
+            "authorityType": "primary-key",
+            "resolution": "unavailable",
+        },
+    ]
+
+
+AUTHORITY = AuthenticatedChannelAuthority({
+    channel_id: authenticated_members()
+    for channel_id in ("channel-349", "channel-reused", "chan-session-1", "chan-session-7")
+})
 
 
 def common_shape(message):
@@ -201,13 +332,12 @@ def common_shape(message):
     )
 
 
-def resolve_signing_key(sender, ctx):
+def resolve_signing_key(sender, ctx, authority):
     """Resolve only from verifier-owned authenticated channel membership."""
 
-    member = next(
-        (item for item in ctx["authenticatedMembers"] if item["claim"] == sender),
-        None,
-    )
+    binding_resolution, member = authority.resolve(ctx["sessionChannelId"], sender)
+    if binding_resolution == "unavailable":
+        return "unavailable", None, None
     if member is None:
         return "outsider", None, None
     if member["resolution"] == "unavailable":
@@ -259,7 +389,7 @@ def apply_channel_policy(message, ctx):
     return "pass"
 
 
-def evaluate_current(message, ctx):
+def evaluate_current(message, ctx, authority):
     if message.get("canonicalChannelMessageVersion") != "1" or not common_shape(message):
         return "error"
     signature = message.get("signature")
@@ -277,11 +407,11 @@ def evaluate_current(message, ctx):
         raw_signature = decode_b64url(signature.get("value"))
     except (TypeError, ValueError):
         return "error"
-    if signature["signer"] != message["sender"]:
+    if parse_claim_ref(signature["signer"]) != parse_claim_ref(message["sender"]):
         return "fail"
     try:
         resolution, key_algorithm, public_key = resolve_signing_key(
-            message["sender"], ctx
+            message["sender"], ctx, authority
         )
     except ValueError:
         return "error"
@@ -298,14 +428,14 @@ def evaluate_current(message, ctx):
     return apply_channel_policy(message, ctx)
 
 
-def evaluate_legacy(message, ctx):
+def evaluate_legacy(message, ctx, authority):
     if "canonicalChannelMessageVersion" in message or not common_shape(message):
         return "error"
     if not isinstance(message.get("signature"), str) or not LOWER_HEX_128.fullmatch(message["signature"]):
         return "error"
     try:
         resolution, key_algorithm, public_key = resolve_signing_key(
-            message["sender"], ctx
+            message["sender"], ctx, authority
         )
     except ValueError:
         return "error"
@@ -322,7 +452,7 @@ def evaluate_legacy(message, ctx):
     return apply_channel_policy(message, ctx)
 
 
-def evaluate(vector, operation):
+def evaluate(vector, operation, authority):
     message = vector.get("message")
     ctx = vector.get("ctx")
     if not validate_context(ctx) or not isinstance(message, dict):
@@ -332,12 +462,12 @@ def evaluate(vector, operation):
     if operation == "current-read":
         if "canonicalChannelMessageVersion" not in message:
             return "error"
-        return evaluate_current(message, ctx)
+        return evaluate_current(message, ctx, authority)
     if operation == "legacy-import":
         if "canonicalChannelMessageVersion" in message:
             return "error"
         if isinstance(message.get("signature"), str) and LOWER_HEX_128.fullmatch(message["signature"]):
-            return evaluate_legacy(message, ctx)
+            return evaluate_legacy(message, ctx, authority)
     return "error"
 
 
@@ -346,13 +476,6 @@ class ChannelMessageVectorTests(unittest.TestCase):
     def setUpClass(cls):
         cls.document = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.legacy = json.loads(LEGACY.read_text(encoding="utf-8"))
-
-    def legacy_with_authenticated_members(self, vector):
-        candidate = copy.deepcopy(vector)
-        candidate["ctx"]["authenticatedMembers"] = copy.deepcopy(
-            self.document["authenticatedMembers"]
-        )
-        return candidate
 
     def test_generator_is_byte_deterministic(self):
         subprocess.run(
@@ -372,7 +495,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         for vector in self.document["vectors"]:
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(
-                    vector["expected"], evaluate(vector, vector["operation"])
+                    vector["expected"], evaluate(vector, vector["operation"], AUTHORITY)
                 )
 
     def test_frozen_historical_corpus_executes_without_reinterpretation(self):
@@ -384,10 +507,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(
                     vector["expected"],
-                    evaluate(
-                        self.legacy_with_authenticated_members(vector),
-                        "legacy-import",
-                    ),
+                    evaluate(vector, "legacy-import", AUTHORITY),
                 )
 
     def test_legacy_import_preserves_signature_bytes(self):
@@ -400,8 +520,8 @@ class ChannelMessageVectorTests(unittest.TestCase):
             vector["expectedSignatureBytesBase64Url"],
             base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii"),
         )
-        self.assertEqual("pass", evaluate(vector, "legacy-import"))
-        self.assertEqual("error", evaluate(vector, "current-read"))
+        self.assertEqual("pass", evaluate(vector, "legacy-import", AUTHORITY))
+        self.assertEqual("error", evaluate(vector, "current-read", AUTHORITY))
 
     def test_four_mixed_wire_barriers_are_distinguishing(self):
         by_name = {item["name"]: item for item in self.document["vectors"]}
@@ -415,7 +535,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
             with self.subTest(vector=name):
                 self.assertEqual(
                     verdict,
-                    evaluate(by_name[name], by_name[name]["operation"]),
+                    evaluate(by_name[name], by_name[name]["operation"], AUTHORITY),
                 )
 
     def test_all_advertised_algorithms_have_positive_and_negative_coverage(self):
@@ -431,7 +551,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
                 with self.subTest(vector=name):
                     vector = by_name[name]
                     self.assertEqual(
-                        verdict, evaluate(vector, vector["operation"])
+                        verdict, evaluate(vector, vector["operation"], AUTHORITY)
                     )
 
     def test_non_ed25519_keys_are_bound_by_authenticated_fixtures(self):
@@ -459,17 +579,29 @@ class ChannelMessageVectorTests(unittest.TestCase):
         by_name = {item["name"]: item for item in self.document["vectors"]}
         outsider = by_name["canonical-outsider-valid-signature"]
         wrong_key = by_name["canonical-member-wrong-key"]
-        self.assertEqual("fail", evaluate(outsider, outsider["operation"]))
-        self.assertEqual("fail", evaluate(wrong_key, wrong_key["operation"]))
+        self.assertEqual("fail", evaluate(outsider, outsider["operation"], AUTHORITY))
+        self.assertEqual("fail", evaluate(wrong_key, wrong_key["operation"], AUTHORITY))
 
         valid = copy.deepcopy(by_name["canonical-valid-first"])
-        sender = valid["message"]["sender"]
-        valid["ctx"]["authenticatedMembers"] = [
-            member
-            for member in valid["ctx"]["authenticatedMembers"]
-            if member["claim"] != sender
-        ]
-        self.assertEqual("fail", evaluate(valid, "current-read"))
+        valid["ctx"]["authenticatedMembers"] = [{
+            "claim": valid["message"]["sender"],
+            "algorithm": "ed25519",
+            "publicKey": BOB_PUBLIC.hex(),
+        }]
+        self.assertEqual("error", evaluate(valid, "current-read", AUTHORITY))
+
+    def test_membership_uses_cf3_identity_and_rejects_qualifier_duplicates(self):
+        by_name = {item["name"]: item for item in self.document["vectors"]}
+        qualified = by_name["canonical-qualified-member-identity"]
+        self.assertEqual("pass", evaluate(qualified, "current-read", AUTHORITY))
+
+        first = copy.deepcopy(authenticated_members()[0])
+        second = copy.deepcopy(first)
+        first["claim"] += "?role=a"
+        second["claim"] += "?role=b"
+        second["publicKey"] = BOB_PUBLIC.hex()
+        with self.assertRaisesRegex(ValueError, "invalid authenticated channel membership"):
+            AuthenticatedChannelAuthority({"channel-duplicate": [first, second]})
 
     def test_current_and_historical_payloads_pin_digest_representation(self):
         current = self.document["vectors"][0]["message"]
@@ -479,7 +611,7 @@ class ChannelMessageVectorTests(unittest.TestCase):
         current_payload = CURRENT_DOMAIN + message_digest(current_unsigned).hex().encode("ascii")
         self.assertEqual(len(CURRENT_DOMAIN) + 64, len(current_payload))
         _, _, current_public = resolve_signing_key(
-            current["sender"], self.document["vectors"][0]["ctx"]
+            current["sender"], self.document["vectors"][0]["ctx"], AUTHORITY
         )
         self.assertTrue(verify_ed25519(
             current_public, decode_b64url(current["signature"]["value"]), current_payload
@@ -498,7 +630,8 @@ class ChannelMessageVectorTests(unittest.TestCase):
         self.assertEqual(len(LEGACY_DOMAIN) + 32, len(legacy_payload))
         _, _, legacy_public = resolve_signing_key(
             legacy["sender"],
-            self.legacy_with_authenticated_members(self.legacy["vectors"][0])["ctx"],
+            self.legacy["vectors"][0]["ctx"],
+            AUTHORITY,
         )
         self.assertTrue(verify_ed25519(
             legacy_public, bytes.fromhex(legacy["signature"]), legacy_payload

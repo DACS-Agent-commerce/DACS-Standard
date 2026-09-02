@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission and makes ST-11 recursively validate the new DACS-2 provenanced-Vet authorization chain. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -37,7 +37,7 @@ type SessionRecord = {
   jobId: string                              // ULID or substrate-equivalent
   state: SessionState
   listingRef: { listingId: string; version: number; contentHash: string }
-  parties: SessionParty[]                    // buyer + seller (+ optionally orchestrator)
+  parties: SessionParty[]                    // stage-dependent: ordinary bilateral buyer+seller; sealed precommit publisher only; postcommit publisher+winner; optionally orchestrator (DACS-3 §8.4.3)
   pipeline: PhaseStep[]
   phaseResults: PhaseEntry[]                 // one per executed phase
   startedAt: number                          // unix ms
@@ -62,7 +62,7 @@ type SessionParty = {
   role: "buyer" | "seller" | "orchestrator"
   bundleHash: string                         // sha256 of the verified IdentityBundle
   primaryClaim: ClaimReference               // bundle.presentedBy
-  vetRecordRef?: AttestationRef              // post-Vet
+  vetRecordRef?: AttestationRef              // post-Vet legacy or provenanced Composite
 }
 type PhaseEntry = {
   index: number                              // position in pipeline
@@ -145,10 +145,56 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
   - **Precedence.** A cancellation is a deliberate party action and ranks **with** abort (ST-3), above the ST-9 timeout: a party electing to cancel within an open deadline does so as a party decision, not a timeout. `with-fee` cancellation — a cancellation owing a fee after `commit-completed` — is **not defined** here; only the `pre-commit` case is honoured, and a `with-fee` value confers no neutrality.
 
 - (ST-11) **Completed-bundle audit gate.** After the last successful settle/rate step, the session enters `audit-pending`; it does not enter `finalised` merely because commercial performance is complete. During `audit-pending`, the producer MUST:
-  1. obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for every required DACS-2 composite record, the DACS-3 commitment, and every DACS-4 settlement/delivery evidence record;
-  2. independently resolve each receipt's native address, recompute the referenced artifact's canonical content hash, and match its logical/session bindings;
+  1. obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for every required DACS-2 composite record (and every §7.7.3 authorization transitively required by a provenanced Composite), the DACS-3 commitment, and every DACS-4 settlement/delivery evidence record;
+  2. independently resolve each receipt's native address, recompute the referenced artifact's canonical content hash, match its logical/session bindings, and recursively validate every required artifact reference rather than stopping at the outer signature;
   3. construct and obtain all required signatures on the completed bundle, anchor the role-specific copy under §10.4.2, and obtain a verified `finalized` receipt for the bundle itself; and
   4. publish the applicable logical→native `BundleBinding` on a write-input substrate.
+
+  When the pinned listing selects `vet-credentials-provenanced`, ST-11 MUST
+  additionally apply VPA-1..VPA-10, PVC-1..PVC-6, and PVPC-1..PVPC-11. It MUST
+  type-dispatch `vetRecords[]` under that signed phase and find exactly
+  `2 × counterpartyCount` `VetRequirementAuthorization` references plus exactly
+  two `ProvenancedCompositeVerificationRecord` references for every context in
+  the signed candidate-roster commitment. A legacy Composite or any other type is invalid on this
+  path. From the authorization bodies it reconstructs the complete claim-sorted
+  candidate roster, recomputes `counterpartySetHash`, and verifies the identical
+  hash/count on every authorization before interpreting any Vet or agreement
+  outcome.
+
+  ST-11 then resolves each Composite's exact `authorizationRef`; verifies and
+  matches the exact signed `authorizerIdentity` and independently selected
+  `verifierIdentity`; verifies their purpose-specific signatures and exact
+  derived logical-address/receipt tuples; recomputes the requirement and
+  evaluated-bundle hashes, decision inputs, and `overallDecision`; and enforces
+  the ordinary/procurement role mapping. Every context must be conclusively
+  classified under PVPC-6. Both records for every eligible context
+  MUST recompute to `pass`; an excluded context must have the conclusive fail or
+  precisely scoped malformed-counterparty cause PVPC-6 permits. All excluded
+  candidate records remain in `vetRecords[]` and are audited.
+
+  For fixed-price/RFQ, `counterpartyCount` MUST be one and the existing
+  bilateral buyer/seller Vet references and AgreementParty entries MUST map to
+  that sole two-pass pair. No sealed `vetPairs`, winner-context, or loser rule
+  applies. For either sealed mode, every winning or non-winning bidder that the
+  agreement carries MUST use its own counterparty-evaluation ref, and the
+  publisher AgreementParty MUST use its winner-context publisher ref. A losing
+  bidder is checked through `AgreementParty` plus `vetRecords[]`; DACS-5's
+  `BundleParty` union is not extended with a losing-bidder role. Conversely,
+  the agreement's candidate contexts MUST equal the recomputed eligible/pass
+  set exactly: one winner, every other eligible context once as
+  `bidder-non-winning`, and no excluded/non-pass context. The publisher appears
+  exactly once with the winner-context publisher ref; omitting an all-pass loser
+  is as invalid as admitting an unvetted one. Excluded sealed candidates do not
+  become agreement parties but their records remain audited.
+
+  A missing whole pair, roster/hash/count disagreement, missing or duplicate
+  direction, swapped reference/hash, wrong logical address, body/hash mismatch,
+  wrong-party signer, unauthenticated authorization, non-pass admitted pair, or
+  otherwise valid Composite signature over a substituted requirement blocks
+  `audit-pending → finalised`. An unavailable but not refuted dependency keeps
+  the session non-terminal under the existing ST-7 path; a cryptographically or
+  semantically invalid chain is rejected and cannot be repaired by indexer
+  visibility.
 
   Only then may `audit-pending → finalised`. External indexer visibility never gates this transition. A rail-final payment whose `SettlementEvidence` anchor is pending remains a successful payment under DACS-4 PC-7 while the session remains `audit-pending`; the producer MUST retry only the idempotent evidence anchor and MUST NOT resubmit payment. If a required anchor has an established `dropped`, `replaced`, `expired`, or `reorged` state, or an `indeterminate` observation disposition over its preserved state, the producer follows CORE §5.1 reconciliation and remains non-terminal. SR-2 unavailability transitions `audit-pending → substrate-failure-paused`; ST-7 resumes to `audit-pending` or, after its bounded retry period, transitions to `failed-substrate`. It MUST NOT rewrite a rail-final payment as a payment failure or attribute the substrate failure to either party.
 
@@ -202,7 +248,7 @@ type AttestationBundle = {
 
   phaseSummary: BundlePhaseEntry[]
 
-  vetRecords: AttestationRef[]                // composite verification records
+  vetRecords: AttestationRef[]                // Vet artifacts; legacy phase: Composites only; provenanced phase: complete authorization set plus every emitted provenanced Composite
 
   settlementEvidence: AttestationRef[]
 
@@ -279,7 +325,7 @@ type FaultAttestationBundle = {
   cancellation?: CancellationMarker
   parties: BundleParty[]
   phaseSummary: BundlePhaseEntry[]
-  vetRecords: AttestationRef[]
+  vetRecords: AttestationRef[]                // same legacy/provenanced type-dispatched semantics as AttestationBundle
   settlementEvidence: AttestationRef[]
   amendments?: AttestationRef[]
   ratingRefs?: AttestationRef[]
@@ -503,13 +549,124 @@ Listing or bundle bytes.
 
 A failed or aborted bundle MUST be produced when the session reaches its terminal state. A completed bundle MUST instead be constructed, signed, anchored, finalized, and made independently resolvable during `audit-pending`; its finalized receipt is the prerequisite for the `finalised` terminal transition (ST-11). The bundle MUST include references to:
 
-- all DACS-2 composite verification records;
+- all DACS-2 Vet artifacts. For a completed `vet-credentials-provenanced` phase
+  this means the complete preauthorized `2 × |C|` authorization set and exactly
+  two `ProvenancedCompositeVerificationRecord` references per candidate context,
+  including records for excluded and losing candidates. A Vet-failed/aborted
+  session carries every produced authorization and Composite; after the
+  preauthorization barrier—or whenever any Composite exists—the complete
+  authorization set is mandatory. Artifacts are recursively validated under
+  the outcome-independent rule below and, for completed sessions, ST-11;
 - the DACS-3 agreement (if any);
 - DACS-4 settlement evidence — one entry per phase invocation that ran to an outcome and produced a qualifying SR-2 record, whether that record's outcome is success or failure. For a completed bundle the record is `finalized` and independently resolvable under ST-11; an EBFAB for a failed or aborted terminal requires an established `included` or `finalized` record under SEB-1. An ST-8-resolved cross-chain settle phase contributes exactly its `:resolved` success record; its superseded interim failure record is reachable only through `supersedesEvidenceRef` and is not listed independently. If the ST-8 window expires unresolved, the interim `dest-revealed-source-unclaimed` or `tank-locked-unreleased` failure record stands as that phase's terminal evidence and IS the top-level member. Both parties' `settlementEvidence[]` arrays MUST contain the same applicable terminal member, so the two-sided copies stay canonically equal (§10.4.1). A successful `deliver-attested-payload` entry is valid only after its DACS-4 §9.6.3 `attestationRef` resolves through the complete DPA-3..DPA-9 chain (`PayloadAttestationRecord` → method evidence/native transaction → exact delivered payload hash); these transitive dependencies are required referenced artifacts for CORE §5.1 SR2-9 finalization/resolution and MUST NOT be replaced by the SettlementEvidence signer's assertion;
 - DACS-4 amendments (refunds);
 - DACS-5 ratings (if the rate phase ran).
 
 The bundle MUST NOT include references to any record outside the session’s scope.
+
+**Provenanced Vet validation applies to every outcome.** ST-11 is the
+successful-session finality gate, but VPA/PVC provenance is also a general
+bundle-consumption requirement. A producer and consumer MUST first resolve and
+validate the signed pinned Listing. If that Listing selects the unique
+`vet-credentials-provenanced` step, a bundle that records that phase or carries
+new provenanced Vet artifacts MUST contain exactly one `phaseSummary` entry at
+that signed step's pipeline index, and the entry's `kind` MUST be
+`vet-credentials-provenanced`. A summary cannot select, upgrade, or downgrade
+this path by itself; a missing, duplicate, wrong-index, or Listing-divergent
+entry is invalid. Repeated legacy `vet-credentials` steps retain their existing
+PIPE-5 and bundle-summary semantics and are not collapsed by this exact-one
+rule; the artifact-type symmetry rules still prohibit mixing legacy and
+provenanced records. For the provenanced step, the producer and consumer MUST
+recursively validate every included provenanced Composite and its authorization
+before using the Vet decision or `errorClass` for audit, reconciliation, fault
+attribution, or reputation:
+
+- a session that reached `vet-completed` or later MUST carry the complete
+  `2 × |C|` authorization set and exactly two valid role-distinct provenanced
+  Composites per committed context. The consumer reconstructs the exact
+  distinct-context roster and verifies its shared
+  `counterpartySetHash`/`counterpartyCount`; omission of a whole pair fails;
+- a session that failed or aborted during Vet MUST carry every artifact actually
+  produced, and each carried artifact MUST validate recursively. If the VPA-9
+  preauthorization barrier completed—or any Composite exists—the full
+  authorization roster is mandatory, while a not-yet-emitted Composite
+  direction may be absent only when `phaseSummary` proves Vet did not complete;
+- a pre-barrier abort or permanent self failure may carry a partial or empty
+  authorization set and no Composite, but then supplies no authenticated roster
+  and MUST NOT produce counterparty fault or reputation input. Any
+  `failed-counterparty` Vet claim requires the full authorization roster and a
+  recursively valid record whose recomputed decision/cause proves the claimed
+  conclusive fail or malformed-counterparty carve-out; and
+- a cryptographically or semantically invalid chain is rejected and MUST NOT
+  produce party fault or reputation input. A referenced dependency that is
+  temporarily unavailable is `indeterminate` and the job is excluded pending
+  resolution; it MUST NOT be coerced to `failed-counterparty`.
+
+A permitted pre-barrier partial authorization is checked individually for its
+supported type, body/hash consistency, identity and purpose-specific signature,
+session/listing binding, and logical/native receipt tuple. It is not a valid
+VPA-2/VPA-9 roster and is never a decision, fault, or reputation input. Full
+recursive VPA/PVC set validation begins once the barrier completed or any
+Composite exists.
+
+For a representable bilateral Vet terminal, an absolute party fault is derived
+from the single causally failing record's `evaluatedRole`, mapped through the
+signed mode. Exactly one commerce party must have the conclusive fail or
+permitted malformed-counterparty cause. If both directions implicate different
+commerce parties, causes conflict, or a self/verifier/substrate cause cannot be
+mapped uniquely, the current single-`faultedParty` bundle cannot express the
+result: producers MUST NOT choose a culprit by role, order, or precedence, and
+consumers reject/exclude such a pseudo-bundle from reputation pending a
+steward-approved multi-fault representation.
+A `FaultAttestationBundle` that is uniquely attributable MUST set
+`faultedParty` to that exact mapped evaluated party; any other value is rejected
+even if it lies in the generic §10.4.1 permissible set.
+
+Thus a co-signed failed/aborted outer bundle does not launder a substituted
+requirement: the outer signatures attest the bundle, not the missing or invalid
+DACS-2 provenance chain.
+
+For canonical bundle production, provenanced `vetRecords[]` is ordered by the
+CF-1-normalized UTF-8 bytes of resolved `counterpartyContext`, then by
+`evaluatedRole` with `counterparty` before `publisher`, then by artifact kind
+with `VetRequirementAuthorization` before its
+`ProvenancedCompositeVerificationRecord`; an absent not-yet-emitted Composite
+contributes no placeholder. A producer MUST resolve and normalize this order
+before signing. Anchor arrival, verifier completion, input array, and winner
+order are not canonical ordering inputs.
+
+**Existing outer-bundle limit for pre-agreement multi-candidate terminals.**
+The provenance rules above apply to any bundle the existing DACS-5 wire type can
+otherwise represent. A sealed session with more than one committed candidate
+that terminates before an agreement selects a winner cannot be faithfully
+encoded by the current `BundleParty`, `faultedParty`, role-address, and required
+signer model: it has only singular `buyer`/`seller` roles. A producer MUST NOT
+collapse multiple candidates onto duplicate buyer/seller roles, choose one by
+order, or derive party fault/reputation from such a pseudo-bundle. Until a
+distinct candidate-aware DACS-5 terminal bundle is approved, that terminal is
+non-representable: a consumer rejects a pseudo-bundle and excludes the job from
+reputation. A selected but uncommitted winner does not cure the gap;
+`|C| > 1` requires a verified `agreementRef` from `commit-completed` or later.
+Multi-candidate provenanced Vet runtime MUST remain disabled until that
+steward-approved terminal type exists. #331 does not silently extend the frozen
+bundle unions. Bilateral pre-agreement terminals and completed sealed sessions
+(where the committed agreement identifies a winner and losers) remain
+representable under the rules above.
+
+For this validation, publisher/counterparty are mapped to the DACS-5
+`BundleParty.role` wire values from the signed pinned negotiation phase before
+comparing identity bodies: ordinary/RFQ/sealed-demand maps
+`publisher→seller,counterparty→buyer`; procurement maps
+`publisher→buyer,counterparty→seller`. The same prospective mapping applies to
+a Vet-failed/aborted bundle with no agreement only when
+`counterpartyCount == 1`. A bundle for the new phase that
+contains a legacy Composite is invalid, not a downgrade path. Symmetrically, a
+bundle for the legacy phase MUST contain only legacy
+`CompositeVerificationRecord` Vet entries; a provenanced Composite or
+authorization is invalid on that path and cannot confer a provenance claim.
+Type selection happens before any decision, `errorClass`, or fault use.
+
+For a completed bundle, every required reference above MUST resolve to an artifact with a verified CORE §5.1 `finalized` receipt whose logical address, native address, content hash, transaction, writer, nonce (where applicable), and session bindings match. A mere submission, durable acceptance, inclusion under a non-final profile, or index hit is insufficient. The producer MUST NOT omit a required reference merely because its anchor is still catching up; it remains in `audit-pending` instead.
 
 **EvidenceBoundFaultAttestationBundle exact-set validation (SEB-1..SEB-6).** These rules define validity only for `EvidenceBoundFaultAttestationBundle`. Its producer and consumer validate the authoritative top-level `settlementEvidence[]` against the authenticated executed phase set as follows. The two perspective copies MUST contain the same applicable terminal members. An ST-8-resolved phase lists only its `:resolved` success record; an expired phase lists its standing interim failure record.
 
@@ -1154,6 +1311,17 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 **Replay across sessions.** *Threat:* an attacker captures a signed bundle and replays it as a different session’s bundle. *Mitigation:* the bundle includes jobId; the signature payload includes the bundle hash which includes jobId. Replay against a different jobId fails verification.
 
 **Cross-protocol and cross-type signature confusion.** *Threat:* a bundle signature is replayed as another DACS artifact or an EBFAB discriminator is stripped/renamed so its signatures are tried against an older bundle type. *Mitigation:* §B.7 assigns `dacs-bundle:v1:`, `dacs-fault-bundle:v1:`, and `dacs-evidence-bound-fault-bundle:v1:` to the three bundle types. A consumer requires exactly one supported discriminator and verifies only under its matching domain. A signature produced under any other artifact or bundle type cannot validate even when the remaining fields or hash bytes align.
+
+**Vet requirement or verifier substitution.** *Threat:* an orchestrator supplies
+an easier complementary requirement, swaps the two requirement hashes, or asks
+an unselected verifier to sign a passing Composite. *Mitigation:* a listing that
+selects `vet-credentials-provenanced` carries two structurally distinct
+Composites per candidate context; each recursively binds a signed
+`VetRequirementAuthorization`, exact requirement body/hash, evaluated
+party/bundle, pinned listing, and complete verifier identity. ST-11 verifies
+every chain and its procurement-aware role mapping before terminal finalisation.
+A valid outer signature never authenticates a missing or mismatched inner
+authorization.
 
 **Reputation poisoning via collusion.** *Threat:* two colluding parties run many fake sessions to inflate each other’s reputation. *Mitigation:* this is fundamentally hard to prevent at the protocol level. DACS-5 mitigates by per-primary-claim keying (collusion inflates only one tier of reputation), by transactional-volume reporting (consumers can see if a party’s reputation comes from many tiny sessions vs few large ones), and by composability with external signal sources. The volume signal is **weak and must not be over-trusted**: `observedTransactionalVolume` is reported per-currency, unnormalised, with no FX conversion (§10.5), so a colluding pair transacting across many low-significance currencies can keep every `PriceTerm` row small and evade the "few large vs many tiny" heuristic; cross-currency rows are not comparable or summable. The v0.2 `transactionCountByCurrency` metric (§10.5.1) supplies the per-currency transaction count strengthening that heuristic; an FX-normalised aggregate remains roadmap. Consumers SHOULD read volume alongside `bundleCount` and external signals rather than as a standalone collusion gate. Consumers handling stakes worth the cost of collusion SHOULD weigh DACS-5 metrics against external signals.
 

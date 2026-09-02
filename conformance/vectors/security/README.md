@@ -70,6 +70,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
+| [`vet-provenance-v0.6.json`](vet-provenance-v0.6.json) | DACS-2 VPA-1..VPA-10, PVC-1..PVC-6, PVPC-1..PVPC-11; DACS-3 provenanced ingress/check 11; DACS-5 ST-11/vetRecords projection | 71 | `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`x402-receipt-hash-v0.1.json`](x402-receipt-hash-v0.1.json) | DACS-4 §9.5.7 X402-1..X402-4 canonical x402 settlement-response hashing | 12 | `error` / `fail` / `pass` |
 
@@ -163,6 +164,23 @@ python3 scripts/generate_alternative_payment_projection_vectors.py --write
 python3 scripts/generate_alternative_payment_projection_vectors.py --check
 python3 -m unittest tests.test_alternative_payment_projection_vectors -v
 ```
+
+### `vet-provenance-v0.6.json` — VPA-1..VPA-10 / PVC-1..PVC-6 / PVPC-1..PVPC-11
+
+The generated candidate vectors cover authenticated two-direction Vet provenance,
+bilateral and two-bidder procurement admission, agreement mapping, and terminal
+audit projection. They do not claim sealed-demand coverage or exercise the
+PVPC-6 scoped malformed-counterparty terminal-error carve-out. To
+keep the signed fixtures reviewable, two positive vectors carry literal
+`input` objects and every other vector carries a one-level `base` plus a strict
+RFC 6902 `add`/`remove`/`replace` patch. `hash` pins the represented vectors,
+`expandedInputHash` pins each reconstructed input, and `expandedHash` pins the
+full semantic vector array. The independent oracle rejects recursive,
+overlapping, malformed, or out-of-bounds patches before evaluating verdicts.
+
+Run the deterministic generator and independent expansion/oracle checks with
+`python3 scripts/generate_vet_provenance_vectors.py --check` and
+`python3 -m unittest tests.test_vet_provenance_vectors -v`.
 
 ### `payload-attestation-binding-v0.1.json` — §9.6.3 DPA-1..DPA-9
 

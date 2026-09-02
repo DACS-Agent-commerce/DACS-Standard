@@ -55,6 +55,7 @@ REFERENCE_FIXTURES = (
     ROOT / "conformance" / "fixtures" / "settlement-evidence-delivery-success.json",
     ROOT / "conformance" / "fixtures" / "settlement" / "htlc9-asymmetric.json",
     ROOT / "conformance" / "vectors" / "security" / "bundle-binding-v0.1.json",
+    ROOT / "conformance" / "vectors" / "security" / "vet-provenance-v0.6.json",
 )
 
 # Vectors whose artifacts are known-stale (pre-v0.1 shapes) and are awaiting
@@ -357,8 +358,12 @@ def _embedded_reference_artifacts(data) -> list[tuple[str, dict]]:
 
     def walk(value) -> None:
         if isinstance(value, dict):
-            if value.get("bundleVersion") == "1":
+            if value.get("bundleVersion") == "1" and "phaseSummary" in value:
                 pairs.append(("AttestationBundle", value))
+            elif value.get("vetAuthorizationVersion") == "1":
+                pairs.append(("VetRequirementAuthorization", value))
+            elif value.get("provenancedRecordVersion") == "1":
+                pairs.append(("ProvenancedCompositeVerificationRecord", value))
             elif value.get("faultBundleVersion") == "1":
                 pairs.append(("FaultAttestationBundle", value))
             elif value.get("evidenceVersion") == "1":

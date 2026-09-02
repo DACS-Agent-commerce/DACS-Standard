@@ -4,7 +4,7 @@
 
 ## Chapter 7 — DACS-2: Vet
 
-**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 evaluates presence-only `ClaimRequirement` members against the exact signed `IdentityBundle` under PCR-1..PCR-6 and excludes them from `VerifyResult` evidence; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
+**Stage:** Vet (2nd of 5). **Status:** Draft — **DACS-2 v0.6** (on the common DACS v0.1 baseline; v0.6 evaluates presence-only `ClaimRequirement` members against the exact signed `IdentityBundle` under PCR-1..PCR-6 and excludes them from `VerifyResult` evidence, and adds the minor-safe `vet-credentials-provenanced` phase with signed requirement/verifier provenance artifacts; v0.5 makes `parserRules` conditional on the selected method's declared evaluation mode and rejects parser/method confusion before invocation; v0.4 registers the persistent Demos `demos-gcr-domain` method and permits distinct recipe families for one claim scheme; v0.3 adds complete `ClaimRequirement` qualification before §7.7.1 decision classification and binds Vet progression and terminal verification to the CORE §5.1 SR-2 lifecycle; v0.2 pins that a `VerifyResult` establishes **existence/validity, never control** — §7.3.2 area; and the `lei` **registration-status → decision** mapping, §7.4.1). **Depends on:** SR-2 (required), SR-3 (required for consensus-backed-proxy and evm-rpc methods); composes with W3C VC, TLSNotary, zkTLS / Reclaim. **Used by:** DACS-1 (claim verification), DACS-3 (pre-negotiation gate), DACS-5 (audit references).
 
 ### 7.1 Abstract
 
@@ -13,8 +13,8 @@ DACS-2 specifies how a party's claimed credentials are verified against authorit
 - A **verification method registry** — a closed set (`verifiable-credential`, `tlsnotary`, `zktls`, `consensus-backed-proxy`, `oauth-attested`, `evm-rpc`, `domain-tls-control`, `self-signed`, `demos-gcr-domain`), each with input/output shape, trust model, and substrate requirements.
 - A **recipe registry** — a versioned, anchored lookup binding a DACS-1 claim scheme (`lei`, `finra-crd`, `domain`, …) to the method and parsing rules used to verify it.
 - A **uniform VerifyResult** — the method-agnostic, anchored record the rest of the stack consumes (decision, attestation reference, extracted data).
-- A **composite verification record** — the anchored artifact Vet produces, aggregating freshness checks, supplementary signals, and deal-specific claims; referenced by DACS-5.
-- A **vet-credentials phase** — the phase the orchestrator invokes over the counterparty's bundle and the listing's requirement, emitting the composite record.
+- **Composite verification records** — the legacy record plus a structurally distinct provenanced record that recursively binds a signed session-specific requirement and verifier authorization; referenced by DACS-5.
+- **Vet phase types** — the legacy `vet-credentials` phase and the minor-safe `vet-credentials-provenanced` phase for auditable two-sided requirement provenance.
 
 Vet does three jobs and produces one output (the composite verification record) that the rest of the transaction — and a future auditor, regulator, or arbitrator — references.
 
@@ -636,7 +636,7 @@ A consumer of a VerifyResult MUST validate the attestation by:
 
 1. fetching the anchor at AttestationRef.anchor.locator;
 2. checking integrity against AttestationRef.contentHash by the same procedure that produced it at anchor time (contentHash is the sha256 of the anchored content's canonical form, per the Content-hash definition):
-   - for attestations that are canonical-JSON DACS documents — parsing the fetched content, recomputing the RFC 8785 canonical form, and comparing sha256(canonical_form) to AttestationRef.contentHash;
+   - for canonical-JSON DACS documents using the default CORE §B.2 template — parsing the fetched content, recomputing that artifact type's signature-excluded RFC 8785 canonical form, and comparing its sha256 to AttestationRef.contentHash;
    - for raw-byte attestations (e.g. a consensus-backed-proxy response body per §7.3.5, a tlsnotary proof, or an oauth-attested envelope) — hashing the fetched bytes and comparing sha256(bytes) to AttestationRef.contentHash;
    - mismatch MUST cause rejection in either case;
 3. for methods with signer, validating the attestation signature against the signer’s known key (mismatch MUST cause rejection);
@@ -684,7 +684,7 @@ type CompositeVerificationRecord = {
   jobId: string                               // DACS-5 session id
   evaluatedParty: ClaimReference              // counterparty's primary identity claim
   bundleHash: string                          // sha256 of the IdentityBundle this Vet ran against
-  requirementHash: string                     // sha256 of the exact BundleRequirement evaluated; not proof of its authorship/provenance
+  requirementHash: string                     // sha256 of the exact BundleRequirement evaluated; not proof of authorship/provenance and listing-owned only for publisher→counterparty
   freshness: VerifyResultRef[]                // re-verifications of pre-attested claims
   supplementary: SupplementarySignal[]
   dealSpecific: VerifyResultRef[]
@@ -1164,6 +1164,300 @@ A producer MUST set `record.overallDecision` to the algorithm's result. A strict
 signed_bytes := "dacs-composite:v1:" || composite_hash
 In v0.1, the composite record carries a single verifier signature. Multi-party composition (e.g., two-sided independent Vet records cross-referenced into one) is deferred to v2.
 
+The legacy `CompositeVerificationRecord` and its `recordVersion: "1"` shape are
+frozen. Its `requirementHash` proves which requirement bytes the verifier says it
+used, but the record does not prove who authorized those bytes or that verifier
+for the job. A pipeline that needs independently auditable provenance MUST use
+the structurally distinct artifacts and phase in §§7.7.3–7.8.3. Adding an
+action-bearing optional provenance member to this legacy record is forbidden by
+CORE §11.1.2.
+
+#### 7.7.3 Vet requirement authorization
+
+A `VetRequirementAuthorization` is the signed, session-specific source of the
+exact requirement and verifier for one party's Vet invocation. It is created
+before verification begins. Roles in this artifact are deliberately
+`publisher` and `counterparty`, because agreement `buyer`/`seller` roles are not
+known until the negotiation pattern is applied and invert in sealed-envelope
+procurement.
+
+```
+type VetSessionRole = "publisher" | "counterparty"
+
+type VetRequirementOrigin =
+  | { kind: "listing"; field: "buyerRequirement" }
+  | { kind: "party-declared" }
+
+type VetRequirementAuthorization = {
+  vetAuthorizationVersion: "1"               // exclusive structural discriminator
+  jobId: string
+  listingRef: { listingId: string; version: number; contentHash: string }
+  recipeRegistryVersion: number                 // exact session-start DACS-2 registry pin
+  counterpartySetHash: string                   // roster_commitment(C), identical on every authorization for the job
+  counterpartyCount: number                    // |C|, identical on every authorization for the job
+  evaluatedRole: VetSessionRole
+  counterpartyContext: ClaimReference          // the counterparty that identifies this publisher↔counterparty pair
+  evaluatedIdentity: IdentityBundle            // exact bundle body the verifier MUST evaluate
+  evaluatedParty: ClaimReference
+  evaluatedBundleHash: string
+  authorizerRole: VetSessionRole
+  authorizerIdentity: IdentityBundle           // exact session identity authorizing this invocation
+  requirementOrigin: VetRequirementOrigin
+  requirement: BundleRequirement              // exact body the verifier MUST evaluate
+  requirementHash: string                     // sha256(canonical_JCS(requirement))
+  verifierIdentity: IdentityBundle             // exact authorized verifier identity
+  authorizedAt: number
+  signature: ComponentSignature               // requirement authorizer
+}
+```
+
+For its signature preimage, the artifact follows the §B.2 canonical-form
+template, omitting `signature`. Define
+`authorization_hash = sha256(canonical_JCS(authorization minus signature))`;
+its authorizer signs:
+
+```
+signed_bytes := "dacs-vet-authorization:v1:" || authorization_hash
+```
+
+Per CORE §B.2, `authorization_hash` is also the
+`AttestationRef.contentHash` and `AnchorReceipt.contentHash`; the signature is
+verified independently and is not part of the canonical hash scope.
+
+The authorization MUST be anchored via SR-2 at
+`dacs2:vet-authorization:{jobId}:{evaluatedRole}:{counterpartyContext}:{evaluatedParty}`
+(or substrate equivalent). `counterpartyContext` and `evaluatedParty` are CF-4
+variable segments and MUST be percent-encoded before assembly;
+`evaluatedRole` is the fixed enum token. The context is the counterparty's
+canonical primary claim for both directions of one publisher↔counterparty
+pair. It prevents the publisher's repeated evaluations for different sealed
+bidders from colliding at one logical address.
+
+Authorization validation is deterministic:
+
+- (VPA-1) **Distinct type.** A conforming producer MUST emit exactly
+  `vetAuthorizationVersion: "1"` and MUST NOT emit a legacy
+  `recordVersion` or `provenancedRecordVersion`. A reader that does not support
+  this type rejects it before acting. Both/neither discriminator combinations
+  are invalid.
+- (VPA-2) **Pinned session/listing and authenticated candidate set.** `jobId` and every `listingRef` member MUST
+  equal the opened session's pinned values. The listing MUST resolve through a
+  verified finalized anchor, its content hash and listing signature MUST verify,
+  and the publisher is the identity in `listing.seller.identity` regardless of
+  later agreement roles. Before any verification, form the session's candidate
+  set `C` from every distinct, authenticated counterparty IdentityBundle
+  admitted to this job: one party for fixed-price/RFQ and all bidders for either
+  sealed mode. This new phase MUST NOT derive `C` from the legacy caller-owned
+  `buyerBundles[]` field. Canonically equal IdentityBundle bodies for one
+  primary claim collapse to one candidate; two independently verified bodies
+  with the same canonical primary claim but different bundle hashes are an
+  equivocation and MUST be rejected before authorization or admission, never
+  selected by array or arrival order. Define `roster_entry(c)` as
+  `{primaryClaim:c.presentedBy,bundleHash:dacs1_bundle_hash(c)}`; sort the entries
+  by the CF-1-normalized UTF-8 bytes of `primaryClaim`, and define
+  `roster_commitment(C) = sha256(canonical_JCS(sorted_entries))`. Every one of
+  the `2 × |C|` authorizations MUST carry the same
+  `counterpartySetHash == roster_commitment(C)` and
+  `counterpartyCount == |C|`. The count MUST be a positive safe integer. The
+  authorization set itself is therefore the signed source of candidate-roster
+  truth; a caller hint, array length, winner set, or partial bundle roster is
+  not. Every `c ∈ C` requires one publisher↔`c` authorization pair.
+  `recipeRegistryVersion` MUST equal the positive safe-integer DACS-2 registry
+  version pinned at session start, the provenanced phase input, and any DACS-5
+  bundle that consumes the records. A `ClaimRequirement` without an explicit
+  recipe version resolves against this signed pin, never "latest" at replay or
+  audit time.
+- (VPA-3) **Opposite-party authorization and roster mapping.**
+  `authorizerRole` MUST be the role
+  opposite `evaluatedRole`. The complete `authorizerIdentity` is in the signed
+  scope; its DACS-1 presentation, session nonce, controlled `presentedBy`, and
+  canonical bundle hash MUST verify. To match it to the DACS-5 wire roster, the
+  consumer first binds `counterpartyContext` to the exact `c.presentedBy` for
+  this pair and requires publisher and `c` to have distinct canonical primary
+  claims. It then derives roles from the pinned phase. In a completed bilateral
+  session, ordinary/RFQ maps `publisher→seller,counterparty→buyer`. In a
+  completed sealed session, the publisher maps to seller (demand) or buyer
+  (procurement), the winner maps to the opposite buyer/seller role, and every
+  loser maps to its `AgreementParty.role: "bidder-non-winning"`. Publisher and
+  winner MUST match both their AgreementParty and DACS-5 BundleParty entries;
+  a loser MUST match its AgreementParty (DACS-5 BundleParty has no losing-bidder
+  role and MUST NOT be extended or invented for this check). Before an
+  agreement exists, including Vet failure or
+  abort, the signed Listing identifies the publisher and the complete valid
+  authorization-pair set identifies each admitted counterparty; no invented
+  buyer/seller roster entry substitutes for a losing bidder. `signature.signer`
+  MUST canonically equal
+  `authorizerIdentity.presentedBy` and verify under that control proof. The
+  evaluated party cannot self-authorize an easier requirement, and ST-11 does
+  not depend on an unavailable off-chain IdentityBundle to authenticate the
+  authorizer.
+  `counterpartyContext` MUST equal `evaluatedIdentity.presentedBy` on the
+  counterparty-evaluation direction and `authorizerIdentity.presentedBy` on the
+  publisher-evaluation direction; both records for one pair therefore carry
+  the same authenticated context.
+- (VPA-4) **Publisher-owned requirement.** When `evaluatedRole` is
+  `"counterparty"`, `authorizerRole` MUST be `"publisher"`,
+  `requirementOrigin` MUST be exactly
+  `{kind:"listing",field:"buyerRequirement"}`,
+  `authorizerIdentity.presentedBy` MUST canonically equal the listing
+  publisher, and `canonical_JCS(requirement)` MUST be byte-for-byte equal to
+  `canonical_JCS(listing.buyerRequirement)` from the signed Listing.
+- (VPA-5) **Complementary requirement.** When `evaluatedRole` is
+  `"publisher"`, `authorizerRole` MUST be `"counterparty"` and
+  `requirementOrigin` MUST be exactly `{kind:"party-declared"}`. The
+  counterparty's verified `authorizerIdentity` and signature over this artifact
+  are the authenticated origin of the
+  complementary requirement; no listing field or orchestrator assertion may
+  substitute for it.
+- (VPA-6) **Exact evaluated subject and body.** The complete
+  `evaluatedIdentity` is in the signed scope; its DACS-1 presentation and
+  session nonce MUST verify. `evaluatedParty` MUST canonically equal
+  `evaluatedIdentity.presentedBy`, and `evaluatedBundleHash` MUST equal its
+  independently recomputed DACS-1 bundle hash. The body, claim order, hash, and
+  party MUST also equal the exact `bundleToVet` input. On the
+  counterparty-evaluation direction the body/hash MUST equal that context's
+  entry in `C`; on the publisher-evaluation direction it MUST equal the common
+  authenticated publisher session body established by VPA-3/VPA-9 (the
+  counterparty-only roster `C` has no publisher entry). A hash without the
+  body, a removed or inserted claim, or a body/hash mismatch is rejected before
+  any recipe invocation or external fetch.
+- (VPA-7) **Exact requirement hash.** A consumer MUST recompute
+  `sha256(canonical_JCS(requirement))` after the CORE CF-1 NFC pre-pass and
+  compare it byte-for-byte with `requirementHash`. A supplied hash, a hash over
+  different JSON bytes, or a body/hash mismatch MUST NOT select a requirement.
+- (VPA-8) **Exact verifier identity.** The complete `verifierIdentity` is in the
+  signed scope. Its DACS-1 presentation and controlled `presentedBy` MUST
+  verify, and its session presentation MUST bind the same job-issued challenge
+  nonce as the evaluated and authorizer session bundles under DACS-1 §6.3.2
+  and CORE §B.8. A persistent or different-session verifier presentation is
+  invalid. The later provenanced Composite signer MUST equal this exact
+  `presentedBy`; neither the SR-2 writer nor the DACS-3 commitment orchestrator
+  is implicitly authorized. They MAY be the same identity only when this
+  artifact explicitly selects it.
+- (VPA-9) **Pair cardinality and uniqueness.** For every `c ∈ C` there MUST be
+  exactly two authorizations sharing `counterpartyContext == c.presentedBy`:
+  one publisher-authorized evaluation of `c`, and one `c`-authorized evaluation
+  of the publisher. There MUST be exactly one authorization for each
+  `(jobId,evaluatedRole,counterpartyContext,evaluatedParty)` tuple. Missing
+  winner or loser pairs, duplicate pair directions, duplicate logical addresses
+  with different content hashes, cross-bidder substitution, or an authorization
+  outside `C` are invalid. A consumer MUST NOT choose by timestamp, array order,
+  anchor order, winner status, or a caller hint. Re-evaluation after an
+  authenticated requirement/body change requires a new jobId; it MUST NOT
+  overwrite the tuple's immutable artifact. Before the first verification side
+  effect, all `2 × counterpartyCount` authorizations MUST be present, mutually
+  agree on `counterpartySetHash` and `counterpartyCount`, reconstruct exactly
+  that many distinct context pairs, and recompute the committed roster from the
+  counterparty identity/hash in each pair. This preauthorization barrier makes
+  adding or silently omitting a bidder after another bidder's verification has
+  begun detectable.
+  Within each pair, the counterparty-evaluation authorization's exact signed
+  `evaluatedIdentity` body/hash MUST equal the publisher-evaluation
+  authorization's `authorizerIdentity` body/recomputed hash, and the
+  publisher-evaluation authorization's exact `evaluatedIdentity` body/hash MUST
+  equal the counterparty-evaluation authorization's `authorizerIdentity`
+  body/recomputed hash. Across all contexts, that publisher session body and
+  hash MUST also be byte-identical. The roster is recomputed only from each
+  pair's counterparty-evaluation identity after these equalities hold. Primary
+  claim equality alone cannot repair two different bundle bodies.
+- (VPA-10) **Anchor gate.** Before verification starts, the handler MUST resolve
+  the exact `AttestationRef`, validate the content hash and authorizer signature,
+  and derive the logical address from the signed
+  `(jobId,evaluatedRole,counterpartyContext,evaluatedParty)` tuple. The
+  verified CORE §5.1 receipt's `logicalAddress` MUST equal that exact
+  CF-4-encoded address. `AttestationRef.anchor.locator` MUST instead equal the
+  receipt's authenticated `nativeAddress` (or the binding-defined native
+  content locator); on a write-input-mapping substrate it MUST NOT be derived
+  from the logical form. The receipt MUST also bind the artifact's independently
+  recomputed CORE §B.2 content hash, transaction, writer, and nonce where the binding
+  supplies them, and be at `accepted` or later. A reference to valid bytes under
+  the wrong logical tuple, a native-ref mismatch, `submitted`, or a broadcast
+  acknowledgement is insufficient. DACS-5 ST-11 requires the same artifact to
+  be finalized and independently resolvable before a completed session becomes
+  terminal.
+
+#### 7.7.4 Provenanced composite verification record
+
+The provenanced phase emits a different artifact type rather than attaching an
+optional, action-bearing member to the legacy Composite.
+
+```
+type ProvenancedCompositeVerificationRecord = {
+  provenancedRecordVersion: "1"              // exclusive structural discriminator
+  jobId: string
+  evaluatedRole: VetSessionRole
+  counterpartyContext: ClaimReference
+  evaluatedParty: ClaimReference
+  bundleHash: string
+  requirementHash: string
+  authorizationRef: AttestationRef            // exact §7.7.3 artifact
+  freshness: VerifyResultRef[]
+  supplementary: SupplementarySignal[]
+  dealSpecific: VerifyResultRef[]
+  overallDecision: "pass" | "fail" | "indeterminate" | "error"
+  warnings?: VerificationWarning[]
+  generatedAt: number
+  signature: ComponentSignature               // exact authorized verifier
+}
+```
+
+For its signature preimage, the record follows the §B.2 canonical-form template,
+omitting `signature`. Define
+`provenanced_composite_hash = sha256(canonical_JCS(record minus signature))`;
+the verifier signs:
+
+```
+signed_bytes := "dacs-provenanced-composite:v1:" || provenanced_composite_hash
+```
+
+Per CORE §B.2, `provenanced_composite_hash` is also the
+`AttestationRef.contentHash` and `AnchorReceipt.contentHash`; the signature is
+verified independently and is not part of the canonical hash scope.
+
+It MUST be anchored at
+`dacs2:provenanced-composite:{jobId}:{evaluatedRole}:{counterpartyContext}:{evaluatedParty}`
+(or substrate equivalent), with both ClaimReference segments CF-4 encoded. The
+pair context keeps the repeated publisher evaluations for distinct sealed
+bidders at distinct addresses.
+
+- (PVC-1) The record MUST carry exactly `provenancedRecordVersion: "1"` and
+  MUST NOT carry `recordVersion` or `vetAuthorizationVersion`. An unsupported
+  reader rejects the new type before interpreting any legacy field.
+- (PVC-2) The reader MUST resolve `authorizationRef`, validate it completely
+  under VPA-1..VPA-10, and independently recompute the reference content hash.
+  A missing, unauthenticated, unresolved, or wrong-type reference cannot be
+  replaced by the Composite signature.
+- (PVC-3) `jobId`, `evaluatedRole`, `counterpartyContext`, `evaluatedParty`,
+  `bundleHash`, and `requirementHash` MUST exactly match the resolved authorization's
+  corresponding values. The authorization's `counterpartySetHash` and
+  `counterpartyCount` remain transitively binding inputs to the pair and session.
+  Swapping two valid authorization references therefore fails even when both
+  record signatures verify.
+- (PVC-4) `signature.signer` MUST canonically equal the resolved
+  authorization's `verifierIdentity.presentedBy`, and the signature MUST verify
+  over the `dacs-provenanced-composite:v1:` payload under that exact identity.
+  A valid signature by any other party is unauthorized.
+- (PVC-5) The verifier MUST run §7.7.1 against the resolved authorization's
+  `requirement` and exact `evaluatedIdentity` bodies, never against
+  caller-supplied input, and a consumer MUST recompute `overallDecision` from
+  that bundle, the referenced results, and every member of the same requirement.
+  A claim removed from or inserted into the signed evaluated body, a result
+  reference replayed from another body, or a different requirement body MUST
+  therefore fail recomputation even when the outer signature remains valid.
+  A valid record signature over a substituted/easier `requirementHash` does not
+  cure the PVC-3 mismatch.
+- (PVC-6) WN-1..WN-6 apply unchanged. VPC-3 and VPC-5 apply to this record's
+  anchor with its new logical address and immutable canonical bytes. The
+  handler and consumer MUST derive the exact logical address from the signed
+  `(jobId,evaluatedRole,counterpartyContext,evaluatedParty)` tuple and require
+  the verified receipt's `logicalAddress` to equal it. The returned
+  `AttestationRef.anchor.locator` MUST equal the receipt's authenticated
+  `nativeAddress`/binding-defined native locator, while the receipt also binds
+  the record's independently recomputed CORE §B.2 content hash, transaction, writer, and
+  nonce where applicable. On a write-input-mapping substrate the native locator
+  is resolved, never recomputed from the logical form. Valid signed bytes under
+  a different logical tuple or a mismatched native ref do not satisfy PVC-6.
+
 ### 7.8 The vet-credentials phase
 
 ```
@@ -1187,16 +1481,49 @@ type VetCredentialsOutput = PhaseHandlerResult & {
 }
 ```
 
+The legacy `actor` field names the **evaluated party's prospective agreement
+role**, not the caller or verifier. It is derived from the pinned listing phase
+and MUST NOT be caller-selected:
+
+| Pinned mode | Evaluated publisher | Evaluated counterparty/bidder |
+| --- | --- | --- |
+| fixed-price / RFQ / sealed demand | `actor: "seller"` | `actor: "buyer"` |
+| sealed procurement | `actor: "buyer"` | `actor: "seller"` |
+
+For a losing sealed bidder, the value is still that bidder's prospective role
+at Vet time; `bidder-non-winning` exists only after selection. This table
+clarifies legacy bytes without authenticating the legacy complementary
+requirement; the new phase supplies that missing provenance.
+
 #### 7.8.1 Phase contract
 
 The orchestrator MUST:
 
 - (VPC-1) invoke vet-credentials after a successful Identify stage and before any Negotiate phase requiring a verified bundle;
-- (VPC-2) invoke vet-credentials **once per party** — each party's bundle is vetted against the *counterparty's* requirements:
-  - the buyer’s bundle against listing-side requirements on buyers, and
-  - the seller’s bundle against buyer-side requirements on sellers —
+- (VPC-2) invoke the legacy handler once per legacy evaluated subject. For a
+  bilateral fixed-price/RFQ session this means exactly the **listing publisher**
+  and that session's **counterparty**, without inferring agreement roles from
+  the legacy DACS-1 field names: the counterparty's bundle is vetted against the
+  publisher's signed `Listing.buyerRequirement`, and the publisher's bundle is
+  vetted against the counterparty's caller-supplied complementary requirement.
+  For a sealed session, every `buyerBundles[]` bidder is evaluated against the
+  Listing requirement and produces the corresponding `buyerVetRefs[]` entry,
+  while the frozen input has only one publisher bundle / `sellerVetRef` arm.
+  That singular arm does not authenticate a bidder-specific complementary
+  requirement or provide the new phase's `2 × |C|` guarantee; an implementation
+  needing that guarantee MUST select `vet-credentials-provenanced` rather than
+  infer it retroactively from legacy array positions.
 
-  each invocation producing its own CompositeVerificationRecord (the input carries a single `bundleToVet` + `actor`), before Negotiate;
+  For fixed-price, RFQ, and sealed-envelope demand the publisher later becomes
+  agreement `seller` and the counterparty becomes agreement `buyer`. For
+  `negotiate-sealed-envelope-procurement` the publisher later becomes agreement
+  `buyer` and the winning counterparty becomes agreement `seller`; the Listing
+  requirement therefore gates that supplier, not the publisher. The mapping is
+  determined by the pinned listing phase kind, never by the `seller` and
+  `buyerRequirement` field names.
+
+  Each invocation produces its own `CompositeVerificationRecord` (the input
+  carries one `bundleToVet` + `actor`) before Negotiate;
 - (VPC-3) submit the composite record for anchoring and, before returning `ok: true`, obtain a verified CORE §5.1 receipt at `accepted` or later and return that receipt as `anchorReceipt`. The phase MAY therefore permit reversible progression into Negotiate on binding-defined durable admission. A submission or ordinary RPC/broadcast acknowledgement is insufficient. If the substrate binding exposes no verifiable durable `accepted` state, the handler MUST wait for `included` or `finalized`;
 - (VPC-4) on `overallDecision != "pass"` (after permitted retries), MUST fail the phase with `errorClass` derived from the overall decision:
 
@@ -1208,7 +1535,13 @@ The orchestrator MUST:
 
 - (VPC-5) when VPC-3 returns before `finalized`, retain a durable idempotent reconciliation keyed by the record's logical address and content hash. It MUST resume observation of the same transaction (or a binding-valid replacement), MUST NOT create a second logical record, and MUST surface an established `dropped`, `replaced`, `expired`, or `reorged` state—or an `indeterminate` observation disposition over the preserved state—rather than treating the record as final. After authenticated `dropped`, `expired`, or `reorged`, the handler MAY resubmit the **identical canonical record bytes** under the same logical address and content hash when the binding supports readmission; the new transaction/native binding MUST be published and verified through a new receipt. It MUST NOT resubmit merely because observation is `indeterminate`, and MUST follow a `replaced` receipt only by independently verifying the named replacement. Reconciliation never repeats credential verification or changes the composite decision. DACS-5 §10.4.3 forbids terminal bundle production until the composite record has a verified `finalized` receipt and is independently resolvable.
 
-This affects fault attribution only; the overall decision is unchanged. By the point VPC-4 is evaluated the retry budget is already exhausted (`indeterminate` MUST NOT be retried at all per VP-R4; `error` is retried only while budget remains), so the *phase-overall* outcome is terminal: the `transient` class applies to in-flight retries, never to the phase-fail result. This matches the §7.8.2 cause table (`indeterminate`/`error` after retry-budget exhaustion → permanent).
+This affects fault attribution only; the overall decision is unchanged. By the
+point VPC-4 is evaluated every retry permitted by VP-R1..VP-R4 is exhausted or
+not permitted (`indeterminate` is retried only when the pinned recipe explicitly
+sets `retryOnIndeterminate`; `error` is retried only while its budget remains),
+so the *phase-overall* outcome is terminal: the `transient` class applies to
+in-flight retries, never to the phase-fail result. This matches the §7.8.2 cause
+table (`indeterminate`/`error` after its permitted retry handling → permanent).
 
 #### 7.8.2 Error classification and idempotency
 
@@ -1229,6 +1562,187 @@ This affects fault attribution only; the overall decision is unchanged. By the p
 
 Re-running vet-credentials with the same inputs MUST produce the same composite-record content modulo the volatile fields refreshed against current state — `generatedAt`, each VerifyResult's `fetchedAt`/`verifiedAt`, and supplementary signals' `observedAt`/`value`. The orchestrator MUST NOT double-anchor; the reuse/no-change test is over the **stable** content (the freshness/deal-specific VerifyResultRefs + decisions, excluding those volatile timestamp/value fields), so an unchanged authority state reuses the existing anchor.
 
+#### 7.8.3 The vet-credentials-provenanced phase
+
+`vet-credentials-provenanced` is the minor-safe, auditable alternative. A
+listing that includes a Vet step selects exactly one mode: legacy-only, or one
+`vet-credentials-provenanced` step; mixing the modes is invalid. A pipeline
+with no Vet step remains valid when its other owning-stage rules permit it.
+Because the provenanced mode is a new
+phase kind and emits a new record discriminator, an older implementation
+rejects it before action under CORE §11.1.2 rather than silently applying the
+legacy caller-supplied requirement semantics.
+
+A session MUST NOT mix the two modes: a provenanced listing cannot satisfy
+PVPC-1 with a legacy `recordVersion: "1"` Composite, and a legacy listing does
+not retroactively gain provenance merely because an implementation stores an
+unreferenced authorization beside it. Consumers select the validation path from
+the signed pinned phase kind and then require that path's exclusive record
+discriminator; they never downgrade on an unknown type, missing reference, or
+failed authorization.
+
+```
+type ProvenancedVetInvocationInput = {
+  counterpartyContext: ClaimReference
+  evaluatedRole: "publisher" | "counterparty"
+  bundleToVet: IdentityBundle
+  authorizationRef: AttestationRef
+}
+
+type ProvenancedVetCredentialsInput = {
+  jobId: string
+  invocations: ProvenancedVetInvocationInput[] // exactly two per publisher↔counterparty pair
+  sessionContext: SessionContext
+  recipeRegistryVersion: number
+  attempt: number
+}
+
+type ProvenancedVetCredentialsOutput = PhaseHandlerResult & {
+  contextDelta: {
+    "vet-credentials-provenanced": {
+      records: Array<{
+        counterpartyContext: ClaimReference
+        evaluatedRole: "publisher" | "counterparty"
+        compositeRecord: AttestationRef
+        authorizationRecord: AttestationRef
+        overallDecision: "pass" | "fail" | "indeterminate" | "error"
+      }>
+      eligibleCounterparties: ClaimReference[]
+    }
+  }
+}
+```
+
+`records[]` is emitted in ascending order of the CF-1-normalized UTF-8 bytes of
+`counterpartyContext`, with `evaluatedRole:"counterparty"` before
+`evaluatedRole:"publisher"` inside a context. `eligibleCounterparties[]` uses
+the same claim ordering. Scheduler completion order, authorization anchor order,
+and caller array order MUST NOT affect either output.
+
+The input intentionally has no `requirement`, `actor`, or `verifierIdentity`
+member. Those security-bearing values are resolved from the signed
+authorization; an implementation MUST reject rather than read similarly named
+unknown input members as overrides.
+
+- (PVPC-1) One signed Listing contains exactly one provenanced Vet PhaseStep.
+  That step fans out over the VPA-2 counterparty set `C`: for every `c ∈ C`,
+  `invocations` MUST contain exactly two entries sharing
+  `counterpartyContext == c.presentedBy`, one evaluating the publisher and one
+  evaluating `c`. A successful phase produces exactly one provenanced Composite
+  per entry (two per pair, `2 × |C|` total). It MUST NOT drop a losing bidder,
+  repeat the PhaseStep, or collapse repeated publisher evaluations across
+  contexts.
+- (PVPC-2) Before any claim lookup, recipe invocation, authority fetch, or
+  cached-result application, the handler MUST validate the authorization under
+  VPA-1..VPA-10 and bind `bundleToVet` to its `evaluatedParty` and
+  byte-exact `evaluatedIdentity`/`evaluatedBundleHash`. No caller body/hash,
+  implicit default, or legacy
+  `VetCredentialsInput` field may replace a failed or unavailable authorization.
+- (PVPC-3) The handler MUST use only the authorization's exact `requirement` and
+  `verifierIdentity`. It MUST sign with the authorized verifier and emit the
+  corresponding provenanced record under PVC-1..PVC-6. A verifier that cannot
+  use the authorized identity fails before emitting a record; it MUST NOT
+  substitute the SR-2 writer, orchestrator, or either commerce party.
+- (PVPC-4) Each context's two invocations MUST have opposite authorizers and
+  distinct evaluated roles and MUST satisfy VPA-9 as one closed pair. Missing,
+  duplicate, swapped, cross-bidder, or same-party provenance invalidates that
+  pair. Array order and later winner status do not assign roles or repair it.
+- (PVPC-5) VPC-3 and VPC-5 apply to every provenanced Composite. VPC-4 derives
+  each non-pass invocation's decision cause and `errorClass`, but its legacy
+  whole-phase-failure sentence applies unchanged only to fixed-price/RFQ. For a
+  sealed fanout, PVPC-6 alone decides candidate exclusion and whole-phase
+  success; the permitted scoped malformed-counterparty terminal error is an
+  exclusion, not a phase-wide blocker. The
+  authorization's independently verified `accepted`-or-later receipt is also
+  retained for reconciliation; neither artifact may be double-anchored or
+  mutated during catch-up. A verifier/self failure or SR-2/substrate failure is
+  phase-wide, not a licence to remove one candidate. It follows the existing
+  VPC-4 or DACS-5 substrate-pause path and blocks admission of every candidate
+  until resolved or terminally classified.
+- (PVPC-6) For fixed-price/RFQ, the sole pair is eligible only when both
+  recomputed decisions are `pass`; otherwise Vet fails under VPC-4. For either
+  sealed mode, derive eligibility independently per `c`: only a pair whose two
+  recomputed decisions are `pass` enters channels, commits, reveals, or winner
+  selection. A candidate may be excluded only after a conclusive `fail` in
+  either direction, or after a terminal error whose sole proximate cause is
+  that candidate's signed counterparty presentation being malformed under the
+  §7.8.2 carve-out. The latter exception applies only to the
+  `evaluatedRole:"counterparty"` invocation; a malformed publisher body,
+  authorization, roster, verifier/self operation, or substrate observation is
+  phase-wide. `error` follows VP-R1/VP-R3 and MUST exhaust its permitted retry
+  path before terminal classification. `indeterminate` follows VP-R4: retry it
+  only when the pinned recipe explicitly permits that retry. Neither an
+  in-flight/retryable `error` nor an `indeterminate` may be turned into silent
+  bidder exclusion. If either remains after its permitted handling, Vet fails
+  under VPC-4 rather than advancing with that candidate removed.
+
+  The phase may advance to Negotiate only after every context in the committed
+  roster is conclusively classified as an eligible two-pass pair or one of the
+  two permitted exclusion cases, and at least one pair is eligible. Thus one
+  bidder's `fail` cannot mask another bidder's temporarily unavailable or
+  ambiguous verification. Across candidates, `error` other than the explicitly
+  permitted terminal malformed-counterparty exclusion blocks first, then
+  `indeterminate`, and only a set consisting entirely of
+  conclusive exclusions can produce the no-eligible-counterparty failure; this
+  admission ordering does not alter §7.7.1's per-record aggregation algorithm
+  or the within-`oneOf` precedence.
+  `eligibleCounterparties` MUST be the unique canonical-claim-sorted set derived
+  by this rule, never a caller-selected subset.
+- (PVPC-7) The provenanced sealed-envelope input variant in DACS-3 §8.4.3 MUST
+  carry exactly the derived eligible set and both refs for every eligible pair.
+  After selection, each bidder AgreementParty (winner or loser) references its
+  own counterparty-evaluation record. The publisher AgreementParty references
+  the publisher-evaluation record for the winner's context. All other
+  publisher-for-loser records remain mandatory DACS-5 audit records. A missing
+  unvetted winner or loser, cross-bidder ref, or procurement role inversion is
+  rejected before commitment.
+- (PVPC-8) Once the VPA-9 preauthorization barrier completes, a DACS-5 bundle
+  for every outcome representable by its selected DACS-5 type carries every one
+  of the committed roster's `2 × |C|`
+  authorization references and every emitted provenanced Composite reference—not
+  merely eligible or winning pairs—in the existing `vetRecords[]` surface. The
+  existence of any Composite proves verification began and therefore requires
+  that complete authorization set. An abort or permanent self failure before
+  the barrier carries every authorization actually produced but no Composite;
+  that partial set cannot support counterparty fault attribution. Consumers MUST
+  type-dispatch each resolved reference, reconstruct and verify the committed
+  roster before interpreting an attributed outcome, and validate
+  the complete `bundle→Composite→authorization→signed Listing/session-party`
+  chain; a flat list of otherwise valid hashes is insufficient.
+  When `|C| > 1`, bundle production additionally requires a verified
+  `agreementRef` from `commit-completed` or later that identifies the publisher,
+  winner, and non-winning candidates. A selected but uncommitted winner is not
+  sufficient. A pre-agreement multi-candidate terminal is outside the frozen
+  DACS-5 bundle types and follows the DACS-5 implementation gate, not a set of
+  pairwise pseudo-sessions.
+- (PVPC-9) `authorizedAt` is audit metadata, not ordering authority. Conflicting
+  records are not resolved by wall-clock time. Replay is prevented by the
+  signed `jobId`, pinned listing, evaluated subject, and unique logical address.
+- (PVPC-10) A completed bilateral pair and every sealed eligible pair MUST
+  independently recompute `overallDecision == "pass"`; a structurally valid
+  signed `fail`, `error`, or `indeterminate` record cannot appear on a completed
+  or admitted path. For failed/aborted consumption, the consumer recomputes the
+  decision and cause for every Composite actually present; a valid pre-barrier
+  abort may have none and therefore provides no decision or attribution input.
+  For present records it applies VPC-4 (including the counterparty-malformed
+  presentation carve-out), and cross-checks `phaseSummary.errorClass` and bundle
+  outcome. Where current DACS-5 requires an absolute party fault, the culprit is
+  the evaluated party mapped through the signed negotiation mode, and only when
+  exactly one commerce party has a conclusive attributable fail or the precisely
+  scoped malformed-counterparty cause. If both commerce parties fail, causes
+  conflict, or a self/verifier/substrate cause cannot map uniquely into the
+  current single-`faultedParty` bundle, a producer MUST NOT choose by role,
+  direction, array order, or aggregation precedence; the pseudo-bundle is
+  rejected/excluded from reputation pending a multi-fault representation. It
+  MUST likewise reject an `error` relabelled as counterparty fault or any other
+  decision/cause/outcome mismatch.
+- (PVPC-11) When claim-requirement qualification or replay logic is composed
+  with this phase, production derives the requirement and evaluated bundle only
+  from the validated authorization, and replay resolves PVC-2 then uses those
+  same bodies. Implementations MUST preserve the applicable one-to-one
+  result-reference and registry-pin checks; a legacy `vetInput.requirement` or
+  separately supplied replay requirement MUST NOT override the authorization.
+
 ### 7.9 Conformance summary
 
 | Role | Requirements |
@@ -1237,9 +1751,9 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 | Recipe author | RA-1 through RA-6; PRA-1 through PRA-5; PSP field semantics (§7.4.1) when declaring a ParserSpec |
 | Recipe-availability consumer | RAV-1 through RAV-4 |
 | Recipe steward (availability & governance) | RAV-5 through RAV-7; GOV-2; PA-1 through PA-3 |
-| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PCR-1 through PCR-6; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4 |
+| Verifier (orchestrator) | VP-R1 through VP-R4; VP-C1 through VP-C3; VPC-1 through VPC-5; PCR-1 through PCR-6; when the new phase is selected VPA-1 through VPA-10, PVC-1 through PVC-6, and PVPC-1 through PVPC-11; PRA-3 through PRA-5; PSP-1 through PSP-5; WN-1 through WN-4 |
 | VerifyResult consumer | §7.5.2 attestation resolution; recipe-version pinning; WN-5, WN-6; GOV-3 |
-| Composite record reader | §7.7.1 mixed-mode aggregation; CRQ-1 through CRQ-4; exact bundle/requirement hash replay; signature validation; PCR-6 no-synthetic-result boundary |
+| Composite record reader | §7.7.1 mixed-mode aggregation; CRQ-1 through CRQ-4; exact bundle/requirement hash replay; signature validation; PCR-6 no-synthetic-result boundary; structurally distinguish the legacy and provenanced types; for provenanced records resolve and validate the complete authorization chain |
 
 ### 7.10 Rationale
 
@@ -1249,11 +1763,19 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 
 **Recipe-family-per-scheme vs general-purpose protocol.** A general-purpose fetch endpoint would lose the structured parser rules, success-criterion semantics, and negative-match pattern recipes encode. Recipes are small, family-scoped within a scheme, and capture each authority's messy response format.
 
-**Composite record vs per-claim records.** The stack references *one* Vet artifact, not N. The composite record composes, signs, and anchors once instead of forcing every consumer to walk a list.
+**Composite record vs per-claim records.** One Composite aggregates the
+per-claim results for one evaluated party in one invocation. The provenanced
+sealed phase deliberately fans out to two invocations per committed candidate,
+so it carries `2 × |C|` Composites plus their authorizations; it does not pretend
+that one global record can authenticate bidder-specific complementary
+requirements.
 
 **SR-3 dependency for consensus-backed-proxy.** Substrate-agnostic alternatives (single proxy / MPC TLSNotary) exist as separate registry methods but cost more per verification. For high-volume public-registry verification — the bulk of institutional Vet — consensus-backed proxy at chain rate is the right tool; the dependency is explicit and opt-in per recipe.
 
-**Single-verifier signature on the composite record.** Each side runs Vet on the other and produces its own record; v0.1 carries one signature per record. Mutual-Vet multi-party composition is deferred.
+**Single-verifier signature on the composite record.** Each publisher↔candidate
+pair runs both Vet directions and produces one authorized-verifier signature per
+direction. A sealed fanout therefore has multiple single-verifier records;
+multi-signature composition inside one record remains deferred.
 
 **Reputation as supplementary signal, not a hard gate.** Reputation has no authoritative source; as a hard gate it would lock new sellers out of the market. It is surfaced to the verifier (and optional listing gating) but does not by default block engagement.
 
@@ -1270,6 +1792,21 @@ Re-running vet-credentials with the same inputs MUST produce the same composite-
 **ACME / Let's Encrypt.** The `domain-tls-control` method follows ACME's challenge/response (RFC 8555); implementations MAY reuse existing ACME libraries.
 
 ### 7.12 Security considerations
+
+**Authorization disclosure.** *Threat:* a producer treats the new phase as a
+privacy proof and publicly anchors raw identity metadata or a sensitive
+complementary policy. A `VetRequirementAuthorization` intentionally contains
+three complete IdentityBundles (evaluated party, authorizer, verifier) and the
+exact requirement body because a hash alone cannot support independent replay.
+The new phase is therefore **not privacy-preserving**. Producers MUST minimize
+`BundleClaim.metadata` and requirement contents to what Vet needs and MUST NOT
+place secrets, raw credentials, personal data, or commercially sensitive policy
+text in them unintentionally. Where those exact bodies are sensitive, the
+authorization MUST use an access-controlled/restricted SR-2 realization that
+still gives every authorized party and auditor independent authenticated
+resolution through the same receipt and content-hash rules; a public SR-2 anchor
+is world-readable. Implementer documentation MUST disclose this storage and
+access model rather than describing anchored hashes as confidentiality.
 
 **Method substitution.** *Threat:* a verifier uses a weaker method than the recipe declares. *Mitigation:* the VerifyResult.method field MUST be the method actually executed; consumers compare to the recipe’s defaultMethod and alternatives and reject results that used an unaccepted method. Recipes SHOULD list only equivalent alternatives.
 

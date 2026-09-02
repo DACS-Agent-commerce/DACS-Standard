@@ -42,6 +42,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | PS-* | Negotiation pattern selection | §8.8 | §14.3 |
 | PRA-* | Recipe parser applicability and selected-method execution | §7.4.1 / §7.6 | §14.2 |
 | PSP-* | ParserSpec parse/match semantics | §7.4.1 | §14.2 |
+| PVPC-* | Provenanced Vet phase fanout, admission, and outcome handling | §7.8.3 | §14.2 |
 | RA-* | Recipe-family authoring and resolution | §7.4.3 | §14.2 |
 | RAV-* | Recipe availability values and consumers | §7.4.5 | §14.2 |
 | RAV-R* | Rail availability values and orchestrators | §9.4.4 | §14.4 |
@@ -59,6 +60,8 @@ This non-normative index helps implementers locate labelled conformance rules in
 | ST-* | Session state transitions | §10.3.1 | §14.5 |
 | VP-C* | VerifyResult caching semantics | §7.6.1 | §14.2 |
 | VP-R* | VerifyResult retry semantics | §7.6.1 | §14.2 |
+| VPA-* | Vet requirement authorization provenance and preverification binding | §7.7.3 | §14.2 |
+| PVC-* | Provenanced Composite validation and authorization linkage | §7.7.4 | §14.2 |
 | VPC-* | Vet phase contract | §7.8 | §14.2 |
 | WN-* | Advisory verification warnings | §7.7 | §14.2 |
 | X402-* | x402 settlement-response selection, canonical receipt hashing, and evidence consistency | §9.5.7 | §14.4 |

@@ -88,6 +88,7 @@ type DeliveryOrRemedyAgreement = {
   budgetBaseUnits: string
   submissionCutoffSec: number
   evaluationDeadlineSec: number
+  preSubmissionRefundPolicy: "expiry-only" | "evaluator-rejection"
   disclosurePolicy: "public-evidence-only" | "explicit-party-supplied"
   evaluationRuleRef: AttestationRef
   signatures: DeliveryOrRemedySignature[]
@@ -135,6 +136,7 @@ The canonical form omits `signatures`. Each party signs:
 - (DRA-12) The overlay MUST be finalized and independently resolvable before job creation or funding.
 - (DRA-13) The evaluator signature authenticates only this overlay. It MUST NOT add the evaluator to the bilateral `AgreementArtifact`, make the evaluator a buyer or seller, or add an evaluator signature requirement to the buyer/seller `AttestationBundle`.
 - (DRA-14) The native client, provider, evaluator, token, budget, payout receiver, and applicable deadlines MUST be fixed and authenticated no later than funding. A later mutable replacement MUST prevent progression.
+- (DRA-15) `preSubmissionRefundPolicy` MUST be signed before funding. `expiry-only` permits only decisionless expiry recovery before submission; `evaluator-rejection` additionally permits the DRD-12 path.
 
 The evaluator requirement is deal policy, not a universal arbitrator credential. A live Listing or agreement chooses the credential strength appropriate to the value and subject matter.
 

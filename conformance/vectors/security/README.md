@@ -33,7 +33,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
-| [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
+| [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 28 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
@@ -228,7 +228,7 @@ python3 -m unittest tests.test_phase_bound_delivery_vectors -v
 
 ### `cci-xm-rail-chain-applicability-v0.5.json` — §6.3.1 EVM profile + §9.4.3 RD-5 / §9.5.1 PB-2
 
-20 candidate vectors make the PB-2 EVM chain-applicability predicate
+28 candidate vectors make the PB-2 EVM chain-applicability predicate
 executable. Exact positive-decimal chain IDs map one-to-one to CAIP-2
 `eip155:<chainId>` and cover Ethereum mainnet, Base mainnet, Ethereum Sepolia,
 and Base Sepolia. A different numeric chain, a leading-zero or zero spelling,
@@ -243,8 +243,10 @@ not establish tier 2.
 The set also pins three fail-closed boundaries: an exact chain match becomes
 tier-2-applicable before SR-1 resolution, so an unavailable or erroneous
 linkage cannot downgrade to tier 3; conflicting EVM asset/network chain IDs
-fail RD-5; and an x402 resource rail that exposes no single EIP-155 chain in
-its pinned definition cannot gain tier 2 retroactively from a later receipt.
+fail RD-5, with equal-positive, unequal, zero, and non-integer controls for
+`erc20` plus equal-positive and unequal controls for `native-evm`; and an x402
+resource rail that exposes no single EIP-155 chain in its pinned definition
+cannot gain tier 2 retroactively from a later receipt.
 Run the dependency-free executable predicate with
 `python3 -m unittest tests.test_cci_xm_rail_chain_applicability_vectors -v`.
 

@@ -62,8 +62,9 @@ type JobEscrowPhaseStep = {
 - (DRP-4) No other payment, delivery, or `pay-alternative` step MAY occur between or alongside the pair.
 - (DRP-5) Both steps MUST name the same complete, agreement-selected rail definition.
 - (DRP-6) The delivery step MUST NOT begin until finalized evidence proves the exact budget is locked.
-- (DRP-7) The terminal step MUST use the exact signed delivery `SettlementEvidence` produced by the intervening step.
+- (DRP-7) When delivery was submitted, the terminal step MUST use the exact signed delivery `SettlementEvidence` produced by the intervening step. A pre-submission expiry or evaluator-rejection refund MUST instead omit delivery evidence as required by DRD-9 and DRT-12.
 - (DRP-8) Neither invocation alone constitutes a second purchase or a second agreement price for DACS-5 volume.
+- (DRP-9) The delivery evidence content hash MUST be fixed before the native submission call. The hashed artifact MUST NOT contain or derive any field from the resulting native submission transaction or event. Later authenticated native evidence binds that already-fixed digest to the native job; it is not part of the digest itself.
 
 > **Note (non-normative).** A single long-running phase would need a new suspended result state. The paired form preserves the current one-result-per-invocation contract and makes the preterminal delivery hash available without a circular terminal-evidence hash.
 
@@ -132,6 +133,8 @@ The canonical form omits `signatures`. Each party signs:
 - (DRA-10) `budgetBaseUnits` MUST be the minimal unsigned decimal form of the exact agreement price after conversion using the pinned token decimals.
 - (DRA-11) The overlay MUST bind the three ordered phase indexes selected by DRP-1 through DRP-3.
 - (DRA-12) The overlay MUST be finalized and independently resolvable before job creation or funding.
+- (DRA-13) The evaluator signature authenticates only this overlay. It MUST NOT add the evaluator to the bilateral `AgreementArtifact`, make the evaluator a buyer or seller, or add an evaluator signature requirement to the buyer/seller `AttestationBundle`.
+- (DRA-14) The native client, provider, evaluator, token, budget, payout receiver, and applicable deadlines MUST be fixed and authenticated no later than funding. A later mutable replacement MUST prevent progression.
 
 The evaluator requirement is deal policy, not a universal arbitrator credential. A live Listing or agreement chooses the credential strength appropriate to the value and subject matter.
 
@@ -299,6 +302,8 @@ The canonical form omits `signature`. The signing domain is:
 - (DRD-8) A decision already observed in a terminal job MUST NOT authorize any other job or transaction.
 - (DRD-9) A pre-submission refund decision MUST omit `deliveryEvidenceRef` and use a `DisputeOutcome` basis.
 - (DRD-10) Authenticated substrate evidence MUST order the decision's finality before the terminal transaction.
+- (DRD-11) A self-reported decision time, block number, or `decidedAt` extension MUST NOT establish DRD-10. Evidence that places finality after the terminal transaction MUST be rejected; evidence that cannot order the two events MUST yield `indeterminate`.
+- (DRD-12) A pre-submission evaluator rejection is distinct from expiry. It MUST be authorized by the signed agreement policy and a finalized `DisputeOutcome`, omit delivery evidence, and map only to the native evaluator-rejection action.
 
 ### 6.3 DisputeOutcome
 
@@ -407,6 +412,7 @@ The canonical form omits `signature`. The signing domain is:
 - (DRT-10) The phase orchestrator signs terminal evidence, but its signature MUST NOT substitute for chain, evaluator, or agreement verification.
 - (DRT-11) `fundingEvidenceRef` MUST resolve to the exact finalized funding record for this job and budget.
 - (DRT-12) A post-submission refund MUST carry `deliveryEvidenceRef`; a pre-submission refund MUST omit it.
+- (DRT-13) An expiry refund without an authenticated accountability finding MUST project no buyer or seller fault. A separate later `DisputeOutcome` MAY establish accountability but MUST NOT relabel or reverse the financial disposition.
 
 DACS-5 projection keeps money and accountability separate:
 
@@ -472,6 +478,8 @@ No universal duration is declared here. Each registered rail revision pins `mini
 - (DREB-18) An EIP-1271 account MAY be used only when the applicable DACS signature/control verifier supports its exact chain and code.
 - (DREB-19) A relayer MUST NOT become the evaluator merely because it submits a transaction.
 - (DREB-20) A generic evaluator adapter MUST NOT be used in the first profile.
+- (DREB-21) For evaluator-driven `complete` or `reject`, the authenticated native caller at the escrow contract MUST equal the agreement-bound evaluator account.
+- (DREB-22) An outer transaction submitter MAY relay execution for an EIP-1271 or other supported account, but the rail evidence MUST distinguish that submitter from the native caller. For an EOA evaluator, the EOA itself remains the native caller; a relayer address MUST NOT be substituted.
 
 ### 8.4 Deployment eligibility
 
@@ -558,7 +566,9 @@ Promotion requires full signed artifacts and authenticated native inputs, not ex
 2. create, fund, deliver, submit, evaluate, and refund the complete budget;
 3. expiry before submission followed by complete refund;
 4. expiry after submission and grace followed by complete refund without an invented evaluator decision;
-5. an independently reproduced byte-exact `description`, `deliverable`, and `reason` mapping.
+5. agreement-authorized evaluator rejection before submission using a `DisputeOutcome`, with no delivery reference;
+6. an independently reproduced byte-exact `description`, `deliverable`, and `reason` mapping;
+7. relayed EIP-1271 execution where the outer submitter differs but the authenticated native caller remains the bound evaluator account.
 
 ### 11.2 Required rejection cases
 
@@ -574,6 +584,10 @@ Promotion requires full signed artifacts and authenticated native inputs, not ex
 10. mutable or changed implementation, hook, authority, or token behavior;
 11. ambiguous event identity or mismatched log index;
 12. terminal action followed by an attempted monetary replay.
+13. delivery evidence that contains or derives from the native submission event;
+14. a signature finalized after the terminal action, or a self-reported timestamp used as a substitute for authenticated ordering;
+15. a relayer presented as the native evaluator caller;
+16. an evaluator added as a buyer/seller bundle party merely because it signed the overlay.
 
 ### 11.3 Required indeterminate cases
 

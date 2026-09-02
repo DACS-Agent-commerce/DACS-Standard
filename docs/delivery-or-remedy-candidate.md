@@ -524,7 +524,7 @@ type ERC8183ProfileParameters = {
 
 The current reference implementation at [`erc-8183/base-contracts@142e669`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol) is not eligible as published. It exposes UUPS upgrades, administrator pause and emergency withdrawal, mutable fees and hooks, and funded-state claim settlement. Its refund function is pause-gated, and a pending claim can delay a funded-state refund.
 
-This finding does not reject ERC-8183. It means a strict DACS deployment needs a minimal compatible implementation or irreversible authority restrictions that independently prove DRC-1 through DRC-11.
+This finding does not reject ERC-8183. It means a strict DACS deployment needs a minimal compatible implementation or irreversible authority restrictions that independently prove DRC-1 through DRC-12.
 
 ## 9. Verification result and ordering
 
@@ -614,7 +614,7 @@ Every vector pack must include exact canonical bytes, hashes, signatures, logica
 
 ### Contract and reference implementation contributors
 
-- provide an exact deployment satisfying DRC-1 through DRC-11;
+- provide an exact deployment satisfying DRC-1 through DRC-12;
 - publish verified source, compiler settings, constructor/initializer inputs, deployed addresses, runtime bytecode hashes, and authority state;
 - publish finalized event fixtures for release, rejection, expiry, replay, mismatch, and unavailable-state cases.
 

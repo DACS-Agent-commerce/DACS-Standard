@@ -1,0 +1,467 @@
+{
+  "kind": "ERC8183DeploymentCapabilityPack",
+  "status": "non-normative-review-fixture",
+  "spec": "docs/delivery-or-remedy-candidate.md#84-deployment-eligibility",
+  "sourcePins": {
+    "canonicalErc": "https://github.com/ethereum/ERCs/blob/a078cab5cc8e9581c15f76c091ed96eed28f02f7/ERCS/erc-8183.md",
+    "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol"
+  },
+  "scope": "capability evidence only; no chain deployment or DACS rail is registered",
+  "hash": "b39675a6f486c74d2973bb9d66a91b3110e85d08dcae7ffe4eff1b6fcda26a54",
+  "count": 16,
+  "manifests": {
+    "synthetic-control": {
+      "manifestVersion": "1",
+      "candidateProfile": "dacs-delivery-gate-v1",
+      "fixtureOnly": true,
+      "registrationStatus": "not-a-deployment",
+      "implementation": {
+        "name": "synthetic-drc-control",
+        "revision": "fixture-only",
+        "chainId": 31337,
+        "contractAddress": "0xdededededededededededededededededededede"
+      },
+      "capabilities": {
+        "preterminalProviderPayoutPaths": [],
+        "platformFeeBP": 0,
+        "evaluatorFeeBP": 0,
+        "feeMutationAuthorities": [],
+        "expiryRecoveryPauseGated": false,
+        "expiryRecoveryHookGated": false,
+        "evaluatorCanBlockExpiryRecovery": false,
+        "pendingClaimCanDelayFundedRecovery": false,
+        "lockedFundAlternateWithdrawalAuthorities": [],
+        "logicReplacementAuthorities": [],
+        "hookMutable": false,
+        "upgradeableSyntactically": false,
+        "upgradeAuthorityIrreversiblyDisabled": true,
+        "hookMode": "absent",
+        "paymentTokenSemantics": {
+          "transferFees": false,
+          "rebasing": false,
+          "callbacks": false,
+          "pause": false,
+          "blacklist": false,
+          "externalBalanceMutation": false,
+          "independentlyVerified": true
+        },
+        "eventIdentityComplete": true,
+        "decisionOrderingProfile": "synthetic-single-chain-finalized-before-terminal-v1"
+      },
+      "evidence": {
+        "sourceRevision": "synthetic-fixture-only",
+        "compilerSettingsHash": "dfc4089aac860367f682e6cb2b78c688d7acd161df35e733167acfc18c445150",
+        "runtimeBytecodeHash": "bbe44a5c9907d350953dd1fa11165c2eca5a67670f2cd4c0f8b0e2e2f5b4bf40",
+        "independentlyResolvedRuntimeBytecodeHash": "bbe44a5c9907d350953dd1fa11165c2eca5a67670f2cd4c0f8b0e2e2f5b4bf40",
+        "sourceToBytecodeReproducible": true,
+        "upgradeDisablementAuthenticated": true,
+        "decisionOrderingEvidenceAuthenticated": true,
+        "complete": true,
+        "conflict": false
+      }
+    },
+    "current-reference-142e669": {
+      "manifestVersion": "1",
+      "candidateProfile": "dacs-delivery-gate-v1",
+      "fixtureOnly": false,
+      "registrationStatus": "unregistered-ineligible-reference-source",
+      "implementation": {
+        "name": "erc-8183/base-contracts ERC8183.sol",
+        "revision": "142e669c1fd318486a4628395b629f033654dd06",
+        "sourcePath": "contracts/ERC8183.sol",
+        "deployment": null
+      },
+      "capabilities": {
+        "preterminalProviderPayoutPaths": [
+          "settleClaim while Funded",
+          "approveClaim while Funded"
+        ],
+        "platformFeeBP": 0,
+        "evaluatorFeeBP": 0,
+        "feeMutationAuthorities": [
+          "ADMIN_ROLE:setPlatformFee",
+          "ADMIN_ROLE:setEvaluatorFee"
+        ],
+        "expiryRecoveryPauseGated": true,
+        "expiryRecoveryHookGated": true,
+        "evaluatorCanBlockExpiryRecovery": false,
+        "pendingClaimCanDelayFundedRecovery": true,
+        "lockedFundAlternateWithdrawalAuthorities": [
+          "ADMIN_ROLE:emergencyWithdraw"
+        ],
+        "logicReplacementAuthorities": [
+          "DEFAULT_ADMIN_ROLE:_authorizeUpgrade",
+          "ADMIN_ROLE:batchDetachHook"
+        ],
+        "hookMutable": true,
+        "upgradeableSyntactically": true,
+        "upgradeAuthorityIrreversiblyDisabled": false,
+        "hookMode": "mutable-blocking",
+        "paymentTokenSemantics": {
+          "transferFees": null,
+          "rebasing": null,
+          "callbacks": null,
+          "pause": null,
+          "blacklist": null,
+          "externalBalanceMutation": null,
+          "independentlyVerified": null
+        },
+        "eventIdentityComplete": true,
+        "decisionOrderingProfile": null
+      },
+      "evidence": {
+        "sourceRevision": "142e669c1fd318486a4628395b629f033654dd06",
+        "compilerSettingsHash": null,
+        "runtimeBytecodeHash": null,
+        "independentlyResolvedRuntimeBytecodeHash": null,
+        "sourceToBytecodeReproducible": null,
+        "upgradeDisablementAuthenticated": false,
+        "decisionOrderingEvidenceAuthenticated": null,
+        "complete": false,
+        "conflict": null
+      },
+      "observedSourceFacts": [
+        "UUPSUpgradeable with DEFAULT_ADMIN_ROLE upgrade authorization",
+        "ADMIN_ROLE pause, emergencyWithdraw, mutable fees, hook whitelist, and hook detachment",
+        "settleClaim and approveClaim can release provider value from Funded",
+        "claimRefund is pause-gated and a pending claim can delay Funded recovery"
+      ]
+    }
+  },
+  "cases": [
+    {
+      "name": "synthetic-all-rules-control",
+      "base": "synthetic-control",
+      "expected": "verified",
+      "registrationEligible": false,
+      "expectedFailedRules": [],
+      "note": "all DRC rules pass, but fixtureOnly keeps registration ineligible",
+      "patch": []
+    },
+    {
+      "name": "drc-1-preterminal-payout",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-1"
+      ],
+      "note": "a Funded payout path violates delivery gating",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "preterminalProviderPayoutPaths"
+          ],
+          "value": [
+            "settleClaim while Funded"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "drc-2-mutable-fees",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-2"
+      ],
+      "note": "zero defaults do not repair mutable fee authority",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "feeMutationAuthorities"
+          ],
+          "value": [
+            "admin:setFee"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "drc-3-blocked-expiry-recovery",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-3"
+      ],
+      "note": "pause-gated expiry recovery is ineligible",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "expiryRecoveryPauseGated"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "drc-4-emergency-withdrawal",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-4"
+      ],
+      "note": "an alternate locked-fund recipient is ineligible",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "lockedFundAlternateWithdrawalAuthorities"
+          ],
+          "value": [
+            "admin:withdraw"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "drc-5-logic-replacement",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-5"
+      ],
+      "note": "mutable logic can weaken core guarantees",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "logicReplacementAuthorities"
+          ],
+          "value": [
+            "proxy-admin"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "drc-6-live-upgrade-authority",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-6"
+      ],
+      "note": "syntactic upgradeability needs irreversible disablement proof",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "upgradeableSyntactically"
+          ],
+          "value": true
+        },
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "upgradeAuthorityIrreversiblyDisabled"
+          ],
+          "value": false
+        },
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "upgradeDisablementAuthenticated"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "drc-7-mutable-blocking-hook",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-7"
+      ],
+      "note": "hooks cannot block recovery or change later",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "hookMode"
+          ],
+          "value": "mutable-blocking"
+        }
+      ]
+    },
+    {
+      "name": "drc-8-fee-on-transfer-token",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-8"
+      ],
+      "note": "token transfer fees break exact accounting",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "paymentTokenSemantics",
+            "transferFees"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "drc-9-ambiguous-events",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-9"
+      ],
+      "note": "events must identify the exact job and action",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "eventIdentityComplete"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "drc-10-bytecode-mismatch",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-10"
+      ],
+      "note": "independently resolved code must match reproducible output",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "independentlyResolvedRuntimeBytecodeHash"
+          ],
+          "value": "abababababababababababababababababababababababababababababababab"
+        }
+      ]
+    },
+    {
+      "name": "drc-11-conflicting-evidence",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-11"
+      ],
+      "note": "conflicting deployment evidence leaves the rail unavailable",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "conflict"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "drc-12-unauthenticated-ordering",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-12"
+      ],
+      "note": "decision ordering must be authenticated",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "decisionOrderingEvidenceAuthenticated"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
+      "name": "source-to-bytecode-evidence-unavailable",
+      "base": "synthetic-control",
+      "expected": "indeterminate",
+      "registrationEligible": false,
+      "expectedFailedRules": [],
+      "note": "missing source-to-bytecode evidence is not guessed",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "evidence",
+            "sourceToBytecodeReproducible"
+          ],
+          "value": null
+        }
+      ],
+      "expectedUnknownRules": [
+        "DRC-10"
+      ]
+    },
+    {
+      "name": "current-reference-142e669-ineligible",
+      "base": "current-reference-142e669",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-1",
+        "DRC-2",
+        "DRC-3",
+        "DRC-4",
+        "DRC-5",
+        "DRC-6",
+        "DRC-7"
+      ],
+      "note": "the pinned reference source is not a DACS-eligible deployment",
+      "patch": [],
+      "expectedUnknownRules": [
+        "DRC-8",
+        "DRC-10",
+        "DRC-11",
+        "DRC-12"
+      ]
+    },
+    {
+      "name": "malformed-deployment-manifest",
+      "base": "synthetic-control",
+      "expected": "error",
+      "registrationEligible": false,
+      "expectedFailedRules": [],
+      "note": "malformed capability input fails before eligibility",
+      "patch": [
+        {
+          "op": "remove",
+          "path": [
+            "capabilities"
+          ]
+        }
+      ]
+    }
+  ]
+}

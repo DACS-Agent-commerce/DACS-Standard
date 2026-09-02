@@ -105,6 +105,9 @@ v0.1 conformance requirements:
   `dest-revealed-source-unclaimed` interim evidence state.
 - `conformance/fixtures/dacsx/dispute-outcome-htlc9-correction.json` — the
   provisional DACS-X DisputeOutcome seam that emits a correction amendment.
+- `conformance/fixtures/delivery-remedy/` — signed synthetic release/refund
+  lifecycle cases and DRC-1 through DRC-12 capability evidence for the #356
+  review candidate. It explicitly registers no rail or deployment.
 
 ## Validate locally
 
@@ -116,6 +119,8 @@ python3 scripts/validate_domain_separators.py
 python3 scripts/validate_rule_ids.py
 python3 scripts/validate_spec_tables.py
 python3 scripts/verify_dacsx_dispute_pack.py
+python3 scripts/generate_delivery_remedy_candidate_vectors.py --check
+python3 scripts/verify_delivery_remedy_candidate_vectors.py
 ```
 
 The validators are stdlib-only. The vector validator checks:

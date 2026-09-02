@@ -13,6 +13,16 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — Demos SR-2 bundle co-signing status
+
+- **Artifact signatures separated from transaction signatures** (#369) —
+  corrects DEMOS-MAPPING §A.2 so a native multi-party Storage Program
+  transaction is not presented as an amber DACS v0.1 dependency. A completed
+  bundle first carries every required DACS signature; each role then anchors
+  its role-specific copy through its own owner-signed SR-2 write and verified
+  receipt. Native transaction co-signing remains an optional optimization and
+  cannot replace artifact signatures or role-specific publication.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte

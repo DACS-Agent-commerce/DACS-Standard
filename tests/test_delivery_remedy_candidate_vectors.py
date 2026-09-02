@@ -122,6 +122,9 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         expiry_post = materialize_vector(
             self.vector_pack, self.vectors["expiry-after-submission-grace"]
         )
+        pre_submission_rejection = materialize_vector(
+            self.vector_pack, self.vectors["pre-submission-evaluator-rejection"]
+        )
         self.assertEqual(release["native"]["terminalAction"], "complete")
         self.assertEqual(rejection["native"]["terminalAction"], "reject")
         self.assertEqual(expiry_pre["native"]["terminalAction"], "claimRefund")
@@ -130,6 +133,15 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         self.assertNotIn("deliveryEvidenceRef", expiry_pre["artifacts"]["terminal"])
         self.assertNotIn("decision", expiry_post["artifacts"])
         self.assertIn("deliveryEvidenceRef", expiry_post["artifacts"]["terminal"])
+        self.assertNotIn("delivery", pre_submission_rejection["artifacts"])
+        self.assertIn("dispute", pre_submission_rejection["artifacts"])
+        self.assertNotIn(
+            "deliveryEvidenceRef", pre_submission_rejection["artifacts"]["decision"]
+        )
+        self.assertEqual(
+            pre_submission_rejection["artifacts"]["decision"]["basisRef"]["kind"],
+            "dispute-outcome",
+        )
 
     def test_replay_role_mapping_and_ordering_regressions_are_present(self):
         required = {
@@ -141,10 +153,28 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "delivery-hash-text-rehash": "rejected",
             "decision-hash-text-rehash": "rejected",
             "cross-substrate-order-unavailable": "indeterminate",
+            "decision-finalized-after-terminal": "rejected",
+            "delivery-submission-circularity": "rejected",
+            "evaluator-added-as-bundle-party": "rejected",
+            "relayer-substituted-as-native-caller": "rejected",
         }
         for name, expected in required.items():
             with self.subTest(vector=name):
                 self.assertEqual(self.vectors[name]["expected"], expected)
+
+    def test_relay_never_replaces_the_native_evaluator_caller(self):
+        relayed = materialize_vector(
+            self.vector_pack, self.vectors["eip1271-relayed-execution"]
+        )
+        self.assertEqual(relayed["native"]["evaluatorAccountType"], "eip1271")
+        self.assertEqual(
+            relayed["native"]["terminalCaller"], relayed["native"]["evaluator"]
+        )
+        self.assertNotEqual(
+            relayed["native"]["transactionSubmitter"],
+            relayed["native"]["terminalCaller"],
+        )
+        self.assertEqual(evaluate_protocol(relayed)["result"], "verified")
 
     def test_fixture_scope_cannot_be_read_as_live_rail_registration(self):
         self.assertEqual(self.vector_pack["status"], "non-normative-review-fixture")

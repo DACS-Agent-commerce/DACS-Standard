@@ -26,6 +26,7 @@ DEPLOYMENT_OUTPUT = ROOT / "conformance/fixtures/delivery-remedy/deployment-capa
 
 JOB_A = "01J8ME0SXKQ4T9V2RC5HJ6WX7D"
 JOB_B = "01J8ME0SXKQ4T9V2RC5HJ6WX7E"
+CASE_A = "01J8ME0SXKQ4T9V2RC5HJ6WX7F"
 BUYER = "did:demos:agent:" + "11" * 32
 SELLER = "did:demos:agent:" + "22" * 32
 EVALUATOR = "did:demos:agent:" + "33" * 32
@@ -46,6 +47,7 @@ TOKEN = "0x" + "55" * 20
 BUYER_ACCOUNT = "0x" + "11" * 20
 SELLER_ACCOUNT = "0x" + "22" * 20
 EVALUATOR_ACCOUNT = "0x" + "33" * 20
+RELAYER_ACCOUNT = "0x" + "77" * 20
 RUNTIME_HASH = hashlib.sha256(b"synthetic DACS delivery gate runtime v1").hexdigest()
 
 DOMAINS = {
@@ -54,6 +56,7 @@ DOMAINS = {
     "funding": "dacs-escrow-funding-evidence:v1:",
     "delivery": "dacs-evidence:v1:",
     "evaluation": "dacs-execution-evaluation:v1:",
+    "dispute": "dacs-dispute-outcome:v1:",
     "decision": "dacs-escrow-decision:v1:",
     "terminal": "dacs-escrow-terminal-evidence:v1:",
 }
@@ -150,7 +153,10 @@ def logical(job_id: str, suffix: str) -> str:
 
 
 def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
-    if lifecycle not in {"release", "rejected-refund", "expired-pre", "expired-post"}:
+    if lifecycle not in {
+        "release", "rejected-refund", "pre-submission-rejected-refund",
+        "expired-pre", "expired-post",
+    }:
         raise ValueError(lifecycle)
     pipeline = [
         {"kind": "commit-delivery-or-remedy-agreement"},
@@ -226,6 +232,7 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
         "budgetBaseUnits": "1000000",
         "submissionCutoffSec": 1800000000,
         "evaluationDeadlineSec": 1800007200,
+        "preSubmissionRefundPolicy": "evaluator-rejection",
         "disclosurePolicy": "public-evidence-only",
         "evaluationRuleRef": {
             "kind": "storage-program",
@@ -269,7 +276,7 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
     }
     delivery = None
     delivery_ref = None
-    if lifecycle != "expired-pre":
+    if lifecycle not in {"expired-pre", "pre-submission-rejected-refund"}:
         delivery = sign_component({
             "evidenceVersion": "1",
             "jobId": job_id,
@@ -326,9 +333,46 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
             "decisionRef": decision_ref,
         })
 
+    if lifecycle == "pre-submission-rejected-refund":
+        dispute = sign_component({
+            "disputeOutcomeVersion": "1",
+            "jobId": job_id,
+            "caseId": CASE_A,
+            "revision": 0,
+            "deliveryOrRemedyAgreementHash": agreement_hash,
+            "caseRef": {
+                "kind": "storage-program",
+                "locator": f"fixture:dispute:{CASE_A}",
+                "contentHash": hashlib.sha256(f"case:{CASE_A}".encode("ascii")).hexdigest(),
+            },
+            "subjectBundleRefs": [],
+            "subjectEvidenceRefs": [funding_ref],
+            "finding": {
+                "classification": "no-fault",
+                "rationaleCode": "fixture-agreement-authorized-pre-submission-rejection",
+            },
+            "recommendedDisposition": "refund-to-client",
+        }, "evaluator", DOMAINS["dispute"])
+        dispute_ref = ref(dispute, f"dacsx:dispute:{job_id}:{CASE_A}:outcome:0")
+        decision = sign_component({
+            "escrowDecisionVersion": "1",
+            "jobId": job_id,
+            "deliveryOrRemedyAgreementHash": agreement_hash,
+            "escrowJobRef": job_ref,
+            "basisRef": {"kind": "dispute-outcome", "ref": dispute_ref},
+            "disposition": "refund-to-client",
+        }, "evaluator", DOMAINS["decision"])
+        decision_ref = ref(decision, logical(job_id, "decision"))
+        artifacts.update({
+            "dispute": dispute,
+            "disputeRef": dispute_ref,
+            "decision": decision,
+            "decisionRef": decision_ref,
+        })
+
     if lifecycle == "release":
         terminal_state, disposition, recipient, action = "released", "release-to-provider", SELLER_ACCOUNT, "complete"
-    elif lifecycle == "rejected-refund":
+    elif lifecycle in {"rejected-refund", "pre-submission-rejected-refund"}:
         terminal_state, disposition, recipient, action = "rejected-refund", "refund-to-client", BUYER_ACCOUNT, "reject"
     else:
         terminal_state, disposition, recipient, action = "expired-refund", "refund-to-client", BUYER_ACCOUNT, "claimRefund"
@@ -377,6 +421,9 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
         "client": BUYER_ACCOUNT,
         "provider": SELLER_ACCOUNT,
         "evaluator": EVALUATOR_ACCOUNT,
+        "evaluatorAccountType": "eoa",
+        "terminalCaller": EVALUATOR_ACCOUNT if decision is not None else BUYER_ACCOUNT,
+        "transactionSubmitter": EVALUATOR_ACCOUNT if decision is not None else BUYER_ACCOUNT,
         "token": TOKEN,
         "amountBaseUnits": "1000000",
         "description": "dacs-delivery-remedy:v1:" + agreement_hash,
@@ -397,12 +444,23 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
         "artifacts": artifacts,
         "publicKeys": {claim: public_key(role) for role, claim in CLAIMS.items()},
         "orchestratorClaim": ORCHESTRATOR,
+        "bundleRequiredSigners": [BUYER, SELLER],
         "evaluatorVetResult": "pass",
         "profileParameters": profile,
         "mappingSources": mapping_sources,
         "native": native,
         "externalEvidence": external,
-        "submittedBeforeExpiry": lifecycle != "expired-pre",
+        "deliveryBinding": (
+            {"status": "not-applicable"}
+            if delivery is None
+            else {
+                "status": "verified",
+                "finalizedBeforeNativeSubmission": True,
+                "containsNativeSubmissionObservation": False,
+            }
+        ),
+        "reputationProjection": {"buyerFault": False, "sellerFault": False},
+        "submittedBeforeExpiry": lifecycle not in {"expired-pre", "pre-submission-rejected-refund"},
         "consumedDecisionHashes": [],
     }
 
@@ -508,6 +566,7 @@ def build_vector_pack() -> dict[str, Any]:
     fixtures = {
         "release": make_base("release"),
         "rejected-refund": make_base("rejected-refund"),
+        "pre-submission-rejected-refund": make_base("pre-submission-rejected-refund"),
         "expired-pre": make_base("expired-pre"),
         "expired-post": make_base("expired-post"),
     }
@@ -600,6 +659,7 @@ def build_vector_pack() -> dict[str, Any]:
     vectors = [
         vector("release-complete-budget", "release", "verified", "DRV-7", "fund, deliver, evaluate, and release the complete budget"),
         vector("evaluator-rejection-refund", "rejected-refund", "verified", "DRV-7", "a signed rejection refunds the complete budget"),
+        vector("pre-submission-evaluator-rejection", "pre-submission-rejected-refund", "verified", "DRV-7", "agreement-authorized pre-submission rejection uses a DisputeOutcome and omits delivery evidence"),
         vector("expiry-before-submission", "expired-pre", "verified", "DRV-7", "pre-submission expiry refunds without a decision or delivery reference"),
         vector("expiry-after-submission-grace", "expired-post", "verified", "DRV-7", "post-submission expiry refunds after grace without inventing a decision"),
         vector("pipeline-missing-terminal", "release", "rejected", "DRP-1", "an unpaired escrow phase is rejected", [{"op": "remove", "path": ["pipeline", 3]}]),
@@ -608,6 +668,8 @@ def build_vector_pack() -> dict[str, Any]:
         vector("pipeline-extra-payment", "release", "rejected", "DRP-4", "ordinary payment phases cannot accompany the pair", [{"op": "add", "path": ["pipeline", 4], "value": {"kind": "pay-x402"}}]),
         vector("pipeline-rail-divergence", "release", "rejected", "DRP-5", "both escrow invocations must use the same rail", [{"op": "replace", "path": ["pipeline", 3, "parameters", "rail"], "value": "pay-evm-erc8183:other"}]),
         vector("pipeline-phase-index-divergence", "release", "rejected", "DRA-11", "signed indexes must match the phase pair", [{"op": "replace", "path": ["artifacts", "agreement", "deliveryPhaseIndex"], "value": 4}]),
+        vector("evaluator-added-as-bundle-party", "release", "rejected", "DRA-13", "the evaluator overlay signature does not create a third bundle party", [{"op": "add", "path": ["bundleRequiredSigners", 2], "value": EVALUATOR}]),
+        vector("delivery-submission-circularity", "release", "rejected", "DRP-9", "delivery evidence must be fixed before and independent of the native submission event", [{"op": "replace", "path": ["deliveryBinding", "containsNativeSubmissionObservation"], "value": True}]),
         vector("description-prefix-substitution", "release", "rejected", "DREB-1", "the exact ASCII description prefix is bound", [{"op": "replace", "path": ["native", "description"], "value": "dacs-delivery:v1:" + fixtures["release"]["mappingSources"]["agreementHash"]}]),
         vector("description-sha256-prefix", "release", "rejected", "DREB-1", "a sha256: textual prefix is not inserted", [{"op": "replace", "path": ["native", "description"], "value": "dacs-delivery-remedy:v1:sha256:" + fixtures["release"]["mappingSources"]["agreementHash"]}]),
         vector("uppercase-delivery-hash", "release", "rejected", "DREB-3", "declared content hashes are lowercase", [{"op": "replace", "path": ["mappingSources", "deliveryHash"], "value": fixtures["release"]["mappingSources"]["deliveryHash"].upper()}]),
@@ -631,6 +693,9 @@ def build_vector_pack() -> dict[str, Any]:
         vector("cross-job-decision-replay", "cross-job-decision", "rejected", "DRD-8", "decision from another job cannot be replayed"),
         vector("consumed-decision-replay", "release", "rejected", "DRD-8", "a terminally consumed decision is one-use", [{"op": "add", "path": ["consumedDecisionHashes", 0], "value": fixtures["release"]["mappingSources"]["decisionHash"]}]),
         vector("wrong-evaluator-signer", "release", "rejected", "DRE-1", "commercial parties cannot sign evaluator artifacts", [{"op": "replace", "path": ["artifacts", "evaluation", "signature"], "value": bad_signer}]),
+        vector("relayed-outer-submitter", "release", "verified", "DRV-7", "an outer relay does not replace the authenticated native evaluator caller", [{"op": "replace", "path": ["native", "transactionSubmitter"], "value": RELAYER_ACCOUNT}]),
+        vector("eip1271-relayed-execution", "release", "verified", "DRV-7", "a supported contract account remains the native caller while an outer account submits", [{"op": "replace", "path": ["native", "evaluatorAccountType"], "value": "eip1271"}, {"op": "replace", "path": ["native", "transactionSubmitter"], "value": RELAYER_ACCOUNT}]),
+        vector("relayer-substituted-as-native-caller", "release", "rejected", "DREB-21", "a relayer cannot replace the agreement-bound evaluator as native caller", [{"op": "replace", "path": ["native", "terminalCaller"], "value": RELAYER_ACCOUNT}]),
         vector("reject-evaluation-release-action", "reject-then-release", "rejected", "DRD-2", "rejection cannot authorize release"),
         vector("accept-evaluation-refund-action", "accept-then-refund", "rejected", "DRD-2", "acceptance cannot authorize refund"),
         vector("partial-terminal-release", "partial-release", "rejected", "DRT-5", "terminal release must cover the complete budget"),
@@ -640,10 +705,13 @@ def build_vector_pack() -> dict[str, Any]:
         vector("nonzero-platform-fee", "release", "rejected", "DRT-7", "escrow fees must be zero", [{"op": "replace", "path": ["native", "platformFeeBP"], "value": 1}]),
         vector("expiry-invented-decision", "expiry-invented-decision", "rejected", "DRD-7", "expiry cannot manufacture an evaluator decision"),
         vector("pre-submission-expiry-delivery-ref", "expiry-invented-delivery", "rejected", "DRT-12", "pre-submission expiry omits delivery evidence"),
+        vector("expiry-invented-seller-fault", "expired-pre", "rejected", "DRT-13", "decisionless expiry cannot invent buyer or seller fault", [{"op": "replace", "path": ["reputationProjection", "sellerFault"], "value": True}]),
         vector("rail-resolution-unavailable", "release", "indeterminate", "DRV-2", "unavailable rail authority does not become a guessed failure", [{"op": "replace", "path": ["externalEvidence", "railResolution"], "value": "unavailable"}]),
         vector("runtime-code-unavailable", "release", "indeterminate", "DRV-2", "unresolved code remains indeterminate", [{"op": "replace", "path": ["externalEvidence", "codeResolution"], "value": "unavailable"}]),
         vector("terminal-finality-unavailable", "release", "indeterminate", "DRV-2", "missing finality evidence remains indeterminate", [{"op": "replace", "path": ["externalEvidence", "terminalFinality"], "value": "unavailable"}]),
         vector("cross-substrate-order-unavailable", "release", "indeterminate", "DRD-10", "unorderable decision and terminal evidence remains indeterminate", [{"op": "replace", "path": ["externalEvidence", "decisionOrdering"], "value": "unavailable"}]),
+        vector("self-reported-time-cannot-order", "release", "indeterminate", "DRD-10", "a self-reported decidedAt value cannot replace authenticated ordering", [{"op": "add", "path": ["native", "reportedDecidedAt"], "value": 1799999999}, {"op": "replace", "path": ["externalEvidence", "decisionOrdering"], "value": "unavailable"}]),
+        vector("decision-finalized-after-terminal", "release", "rejected", "DRV-6", "authenticated after-terminal decision finality is contradictory", [{"op": "replace", "path": ["externalEvidence", "decisionOrdering"], "value": "contradictory"}]),
         vector("decision-artifact-unavailable", "missing-decision", "indeterminate", "DRD-10", "missing decision evidence without contradiction remains indeterminate"),
         vector("authenticated-native-contradiction", "release", "rejected", "DRV-6", "authenticated contradictory chain evidence rejects", [{"op": "replace", "path": ["externalEvidence", "codeResolution"], "value": "contradictory"}]),
         vector("noncanonical-job-id", "release", "error", "DRAA-1", "malformed JID is an input error", [{"op": "replace", "path": ["artifacts", "agreement", "jobId"], "value": "job-356"}]),

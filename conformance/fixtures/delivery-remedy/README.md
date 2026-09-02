@@ -10,9 +10,11 @@ The pack turns the pre-normative
 into executable review evidence:
 
 - `candidate-vectors-v0.1.json` contains deterministic, signed synthetic
-  lifecycle inputs for full release, evaluator rejection/refund,
-  pre-submission expiry, and post-submission expiry. Its negative cases cover
-  escrow-phase pairing, exact hash-to-`bytes32` mapping, role and account
+  lifecycle inputs for full release, evaluator rejection/refund before or
+  after submission, pre-submission expiry, and post-submission expiry. Its
+  cases cover non-circular delivery binding and relayed evaluator execution.
+  Negative cases cover escrow-phase pairing, exact hash-to-`bytes32` mapping,
+  role and account
   collisions, deadline divergence, cross-job and consumed-decision replay,
   release/refund direction, full-budget and zero-fee requirements, and the
   four-result verification boundary.

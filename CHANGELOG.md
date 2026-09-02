@@ -17,11 +17,13 @@ The format used per release:
 
 - **Artifact signatures separated from transaction signatures** (#369) —
   corrects DEMOS-MAPPING §A.2 so a native multi-party Storage Program
-  transaction is not presented as an amber DACS v0.1 dependency. A completed
-  bundle first carries every required DACS signature; each role then anchors
-  its role-specific copy through its own owner-signed SR-2 write and verified
-  receipt. Native transaction co-signing remains an optional optimization and
-  cannot replace artifact signatures or role-specific publication.
+  transaction is not presented as an amber DACS v0.1 dependency. For non-abort
+  outcomes the bundle first carries every required DACS signature and each
+  required signing party anchors its role-specific copy through its own
+  owner-signed SR-2 write and verified receipt. Abort outcomes retain the
+  single-signature and bundle-suppression exceptions in §§10.4.1/10.11. Native
+  transaction co-signing remains an optional optimization and cannot replace
+  applicable artifact signatures or role-specific publication.
 
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 

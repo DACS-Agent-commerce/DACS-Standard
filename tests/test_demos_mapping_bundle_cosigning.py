@@ -19,6 +19,18 @@ class DemosMappingBundleCosigningTests(unittest.TestCase):
             "A future one-transaction multi-party helper is an optimization only",
             mapping,
         )
+        self.assertIn("The abort outcomes are the normative exception", mapping)
+        self.assertIn("MAY be single-signed", mapping)
+        self.assertIn("a withdrawing party need not anchor", mapping)
+        self.assertIn("§10.11 bundle-suppression rules apply", mapping)
+        self.assertIn(
+            "every party that actually signs and anchors publishes its own role-specific copy",
+            mapping,
+        )
+        self.assertIn(
+            "create a signature or publication duty that DACS-5 suppresses",
+            mapping,
+        )
         self.assertNotIn(
             "🟡 Native multi-party Storage Program signature helper", mapping
         )
@@ -34,6 +46,11 @@ class DemosMappingBundleCosigningTests(unittest.TestCase):
             "Each anchored copy MUST set `anchoredByRole` to the role of the anchoring party",
             dacs5,
         )
+        self.assertIn(
+            "A bundle whose outcome is `aborted-by-self` or `aborted-by-other` MAY carry a single signature",
+            dacs5,
+        )
+        self.assertIn("A withdrawing party need not anchor a bundle at all", dacs5)
 
 
 if __name__ == "__main__":

@@ -1,35 +1,230 @@
 {
   "set": "dacs1-vet-golden-inputs-v0.1",
-  "spec": "DACS-1 §6.3.2/§6.3.3; DACS-2 §7.5.1/§7.7.1",
+  "spec": "DACS-1 §6.3.2/§6.3.3; DACS-2 §7.4.3/§7.5.1/§7.7.1/§7.7.2/§7.8.1",
   "status": "golden",
   "sourceObservation": {
     "repository": "github.com/mj-deving/dacs-verify",
     "commit": "ddba42e5789fdde84b4ae1d31eaa4fa65c28965b",
     "path": "conformance/run.ts"
   },
-  "provenance": "Standard-owned deterministic reconstruction of the external runner's previously hidden inputs, normalized to current ClaimReference, IdentityBundle, VerifyResultRef, signature, freshness, and presence-only rules",
+  "provenance": "Standard-owned deterministic reconstruction of the external runner's previously hidden inputs, normalized to current ClaimReference, IdentityBundle, VerifyResultRef, signed-recipe, production-authority, signature, freshness, and presence-only rules",
   "hashScope": "SHA-256 of UTF-8 compact JSON with recursively sorted keys; each inputHash covers only that case's evaluations; fileSha256 is pinned by MANIFEST.json",
   "publicTestSeeds": {
     "derivation": "sha256(UTF8('dacs-363:' + label))",
     "labels": [
       "presenter",
       "second-presenter",
-      "authority"
+      "authority",
+      "recipe-steward",
+      "verifier"
     ]
   },
   "publicKeys": {
     "presenter": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
     "secondPresenter": "key:a688ca8598879716b4e7b84d30d861f63cb50a7e33eaf2b209b8090ff61abdb3",
-    "authority": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+    "authority": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+    "recipeSteward": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+    "verifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
+  },
+  "trustedContext": {
+    "recipeRegistry": {
+      "recipeRegistryVersion": 1,
+      "steward": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+      "recipes": [
+        {
+          "recipeVersion": 1,
+          "scheme": "cci-lei",
+          "defaultMethod": {
+            "kind": "verifiable-credential",
+            "issuerAllowList": [
+              "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+            ]
+          },
+          "defaultMaxAgeSec": 300,
+          "retryClass": "transient",
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "acceptedAt": 1899913600000,
+            "anchoring": "single-signer"
+          },
+          "parserRules": {
+            "format": "raw",
+            "matcher": ".+"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "value": "lF-pMhJK_uxiqXjRM65cARE_msxeA1ld9sqWMYAdJKL55i_HMe_NctP9XybSgL_HetQBnvqNiedhzyzpUlzqDA"
+          }
+        },
+        {
+          "recipeVersion": 1,
+          "scheme": "did",
+          "defaultMethod": {
+            "kind": "verifiable-credential",
+            "issuerAllowList": [
+              "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+            ]
+          },
+          "defaultMaxAgeSec": 300,
+          "retryClass": "transient",
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "acceptedAt": 1899913600000,
+            "anchoring": "single-signer"
+          },
+          "parserRules": {
+            "format": "raw",
+            "matcher": ".+"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "value": "JtrWN3a6Vq7q_YZTrlZNRZdwih6mMtkx5LS_ThaoxmkweWpbqCvj_9HAR9xQVglFpOfd_9YayLDxzh8wcmIVBQ"
+          }
+        },
+        {
+          "recipeVersion": 1,
+          "scheme": "domain",
+          "defaultMethod": {
+            "kind": "demos-gcr-domain"
+          },
+          "defaultMaxAgeSec": 300,
+          "retryClass": "transient",
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "acceptedAt": 1899913600000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "value": "4oSviYckyYJ74v6qX_oCgzdqj7zwinfH3WU9z7imdykxKlk8J72A1PcVeP7qBX_PO86reugYPQGMDISpIFu2Cg"
+          }
+        },
+        {
+          "recipeVersion": 1,
+          "scheme": "finra-crd",
+          "defaultMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.brokercheck.finra.org/search/individual/{identifier}"
+            }
+          },
+          "defaultMaxAgeSec": 300,
+          "retryClass": "transient",
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "acceptedAt": 1899913600000,
+            "anchoring": "single-signer"
+          },
+          "parserRules": {
+            "format": "raw",
+            "matcher": ".+"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "value": "M7_sLx7b3CTZzfVGMnKBJWocsc4wqmsK6Jt1U2pI06FGfmg9HMFSHBhp9WRUnkTo8eXuyCQVJ8L47MNEeXqfAQ"
+          }
+        },
+        {
+          "recipeVersion": 1,
+          "scheme": "key",
+          "defaultMethod": {
+            "kind": "self-signed"
+          },
+          "defaultMaxAgeSec": 300,
+          "retryClass": "transient",
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "acceptedAt": 1899913600000,
+            "anchoring": "single-signer"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "value": "OyFu_E0iVrize9X_h1_CuraEK-3-FtMU5YLehE0eotIi9qbfAaz0VP0bwwUuKp5npq2bXYaCp0VYTW8ctqkmDg"
+          }
+        },
+        {
+          "recipeVersion": 1,
+          "scheme": "lei",
+          "defaultMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.gleif.org/api/v1/lei-records/{identifier}"
+            }
+          },
+          "defaultMaxAgeSec": 300,
+          "retryClass": "transient",
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "acceptedAt": 1899913600000,
+            "anchoring": "single-signer"
+          },
+          "parserRules": {
+            "format": "raw",
+            "matcher": ".+"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "value": "VDsaZ4Z8P5rlCwtCceNyAnZk7ScjCoBwgztCsjqqQlOjrMEd_Zp-s9I4FB9nkGJTNUs2ge9s5_6S0L_vmmF3BA"
+          }
+        },
+        {
+          "recipeVersion": 2,
+          "scheme": "lei",
+          "defaultMethod": {
+            "kind": "verifiable-credential",
+            "issuerAllowList": [
+              "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+            ]
+          },
+          "defaultMaxAgeSec": 300,
+          "retryClass": "transient",
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "acceptedAt": 1899913600000,
+            "anchoring": "single-signer"
+          },
+          "parserRules": {
+            "format": "raw",
+            "matcher": ".+"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
+            "value": "11MjtXwJFEMYzpW8gMfYBSghfqpcZU3MC6MQr1p729tfi7QRH5JLTXJ36B7YVZdDM02aOrQ0GzYrfTWDgQsTAA"
+          }
+        }
+      ]
+    },
+    "authenticatedSessionStarts": {
+      "dacs-363-session-start": {
+        "jobId": "01J00000000000000000000363",
+        "recipeRegistryVersion": 1
+      }
+    }
   },
   "count": 24,
-  "hash": "746081b7c4030899ac3263175445875882754bd4ea3fe30330a1fa7804ec82ed",
+  "hash": "70fd25c1a780f9e7d9cb9fa00dc4dfca9e090a9604f83202dead98cc647fbc21",
   "cases": [
     {
       "name": "dacs1-cci-lei-defect",
       "spec": "§6.3.3",
       "summary": "A cci-lei claim cannot satisfy a distinct bare lei requirement.",
-      "inputHash": "8af10273c16383e131a44cf18a947f935fade091a50d8e796c57da6145160415",
+      "inputHash": "e7bf337b83bccc5ada32899827e774762613be327a13731ab2317252f83a248c",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -48,7 +243,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:cci-lei-pass"
                     },
-                    "contentHash": "0825292a12cb0dee30a67b32348ac16309788d6b321759b3b5c57cfa17265e39",
+                    "contentHash": "7720667051369d258f18cb4fb844a9b7421cd0091a39252871d120478cba5d60",
                     "recipeVersion": 1
                   }
                 },
@@ -62,7 +257,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "AQn6ZG9C7w4LLvhWBOsOgydPcAR9ZUS55c5_-7jq6uEGMt0ZLF6wFmCNC6y8XVmosJkNEDfg2ZNdfrRWd6XUCQ"
+                    "signature": "Ewr6GyqZ-V7ktBz_sFIXAgncAwX6v8g4huicV-iBdyZcqAU1aYZie8v51fTJAs-kOxZF2-5KInLB7tF7k30VCw"
                   }
                 ]
               }
@@ -74,7 +269,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:cci-lei-pass"
                   },
-                  "contentHash": "0825292a12cb0dee30a67b32348ac16309788d6b321759b3b5c57cfa17265e39",
+                  "contentHash": "7720667051369d258f18cb4fb844a9b7421cd0091a39252871d120478cba5d60",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -82,7 +277,7 @@
                   "scheme": "cci-lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "vc-presentation",
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic cci-lei-pass pass",
                   "attestation": {
@@ -99,7 +294,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "Ay-wN3WuykRILUVs6QKebEGj-4in6EgutSZ2D2Vtqf8XbiXjbKnc_dUL1LJsvVj-Q7XPpr7En6Q-YOp_tTiRAQ"
+                    "value": "gz3ECzVHcGrMNw_b8xEyj6pPEI1gpZVlchg2SAibXksC8gmfqW69Sm8wanMkx-tA4fytPCJpRfXb5BecjldpAQ"
                   }
                 }
               }
@@ -123,7 +318,7 @@
       "name": "dacs1-cci-lei-named-matches",
       "spec": "§6.3.1",
       "summary": "The same signed cci-lei claim satisfies its own registered scheme.",
-      "inputHash": "c169b91d21886b917a899727b5ead6d1a5a6e811111efe74b9cb1c43edfa47a0",
+      "inputHash": "66cdeb0bbd3409cf155f23cc1cd853b5cecfe5e2a55602338a51688a7cefc2c6",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -142,7 +337,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:cci-lei-pass"
                     },
-                    "contentHash": "0825292a12cb0dee30a67b32348ac16309788d6b321759b3b5c57cfa17265e39",
+                    "contentHash": "7720667051369d258f18cb4fb844a9b7421cd0091a39252871d120478cba5d60",
                     "recipeVersion": 1
                   }
                 },
@@ -156,7 +351,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "AQn6ZG9C7w4LLvhWBOsOgydPcAR9ZUS55c5_-7jq6uEGMt0ZLF6wFmCNC6y8XVmosJkNEDfg2ZNdfrRWd6XUCQ"
+                    "signature": "Ewr6GyqZ-V7ktBz_sFIXAgncAwX6v8g4huicV-iBdyZcqAU1aYZie8v51fTJAs-kOxZF2-5KInLB7tF7k30VCw"
                   }
                 ]
               }
@@ -168,7 +363,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:cci-lei-pass"
                   },
-                  "contentHash": "0825292a12cb0dee30a67b32348ac16309788d6b321759b3b5c57cfa17265e39",
+                  "contentHash": "7720667051369d258f18cb4fb844a9b7421cd0091a39252871d120478cba5d60",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -176,7 +371,7 @@
                   "scheme": "cci-lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "vc-presentation",
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic cci-lei-pass pass",
                   "attestation": {
@@ -193,7 +388,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "Ay-wN3WuykRILUVs6QKebEGj-4in6EgutSZ2D2Vtqf8XbiXjbKnc_dUL1LJsvVj-Q7XPpr7En6Q-YOp_tTiRAQ"
+                    "value": "gz3ECzVHcGrMNw_b8xEyj6pPEI1gpZVlchg2SAibXksC8gmfqW69Sm8wanMkx-tA4fytPCJpRfXb5BecjldpAQ"
                   }
                 }
               }
@@ -217,7 +412,7 @@
       "name": "dacs1-tier-laundering-guard",
       "spec": "§6.3.3",
       "summary": "Another same-scheme pass cannot authorize the exact selected claim.",
-      "inputHash": "815cc0528c4b77708d8a1ec5fdca208f3f5c0983a6fcb1df4c7aab808a28f478",
+      "inputHash": "b0f55acd5edf7372116cead56e81ce87384b107f1d5bc8327b57f668dbff0d9a",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -236,7 +431,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-selected"
                     },
-                    "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                    "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                     "recipeVersion": 1
                   }
                 },
@@ -248,7 +443,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-other"
                     },
-                    "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                    "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                     "recipeVersion": 1
                   }
                 },
@@ -262,7 +457,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "8qXvAnjMSydAMMnptPnvtlwepEYJZ94kRknVDzmt2jJA61bXNPPrkPLbZxcFAoFtl4JLm_dgwqrWOwIEEju6Bg"
+                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
                   }
                 ]
               }
@@ -274,7 +469,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-selected"
                   },
-                  "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                  "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -282,7 +477,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "fail",
                   "reason": "deterministic laundering-selected fail",
                   "attestation": {
@@ -299,7 +494,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "KO6EINwYVDnvy45IuDaN1jKVeMzGDB_QPSLpOoiskaqv6zUzo2yQ4p-kTEkjljmDlcaR34dyyQSBnX6mgzvqAA"
+                    "value": "Qr55UbR2U9jbddUZEq-quOMELUv9OUyWD9eErXtdcPfvnyony1hAqVMBA2wwt_rhnG1GG6VHr0lkrT0Y9sASCg"
                   }
                 }
               },
@@ -309,7 +504,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-other"
                   },
-                  "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                  "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -317,7 +512,7 @@
                   "scheme": "lei",
                   "identifier": "529900T8BM49AABBCC11",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic laundering-other pass",
                   "attestation": {
@@ -334,7 +529,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "cSIToqpepHXachn1wOUUJts7j3IjoRHUgiKXCErTbdf88HKG_L5EccrYqA7t8UsQoNbgpJkxs4kxt6mIXc3MAg"
+                    "value": "a-fYyenURs8RKqC1J4PDnHltAPnTTHgnjev-eSucwpF8ZkyY1R6AxrxwwLwQeRnBlYhqKAZINlLyWJeXINzWCw"
                   }
                 }
               }
@@ -359,7 +554,7 @@
       "name": "vet-control-existence-only-lei-supporting-context",
       "spec": "§6.3.2 step (6)",
       "summary": "A registry pass is valid supporting evidence when the LEI is not used as control.",
-      "inputHash": "2085a72c2e1b93d33b31400a702694172688346bda4106942781c28d17796e97",
+      "inputHash": "b1e0db7743485914fc3a0033fbd98f8efa1570cbffa92764630d61b407bdeb17",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -378,7 +573,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:registry-lei"
                     },
-                    "contentHash": "d6a676f9defbe1f0abb65ea8409fc6c8308b8d5d32501dbad0589ead7e134532",
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
                     "recipeVersion": 1
                   }
                 },
@@ -392,7 +587,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "LRnBEl-DGeDIFgZHdV37jbJh3ISegmKy5L2ViVlaMNyavswKGKNvDjuUK7z40TakbUaxqH8GnPobSy9vK7JsCw"
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
                   }
                 ]
               }
@@ -404,7 +599,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:registry-lei"
                   },
-                  "contentHash": "d6a676f9defbe1f0abb65ea8409fc6c8308b8d5d32501dbad0589ead7e134532",
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -412,7 +607,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic registry-lei pass",
                   "attestation": {
@@ -429,7 +624,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "vkEs6DWZe2rm5bTzn8m2S6ETdI1hn8KOnci5uNhjBop1fFtsa1xHdh_QNeE3zAkJCKJOSBzn6lN3VklEPQ9BDQ"
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
                   }
                 }
               }
@@ -453,7 +648,7 @@
       "name": "vet-control-existence-only-lei-presentedby-reject",
       "spec": "§6.3.2 step (6)",
       "summary": "The same existence-only result cannot control the selected LEI.",
-      "inputHash": "dbffbc5f3981d0a481ac75ef7f5b4a0a2b84889fa82ecc49fb4237ec5604b402",
+      "inputHash": "de6d9964109a41cb6338ad5b2ffd2cf11f11f2585679894bee5a9b2061c8d8b4",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -472,7 +667,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:registry-lei"
                     },
-                    "contentHash": "d6a676f9defbe1f0abb65ea8409fc6c8308b8d5d32501dbad0589ead7e134532",
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
                     "recipeVersion": 1
                   }
                 },
@@ -486,7 +681,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "AJAn7kOuo9HcYvEPwT-KJlydRasT6WAfPt-8GGimqyJcYdo5BVgOm4laB5fZAnxFcX4qJSOAX22LhRxLvSWFAA"
+                    "signature": "s9eQJUztmpTnm9rYmGqlkvdeuA_wmbXZsoxO930VN8aTfA6gPANioty91zFw2W-KR1zVcvRbByFRwxOq7WRjDg"
                   }
                 ]
               }
@@ -498,7 +693,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:registry-lei"
                   },
-                  "contentHash": "d6a676f9defbe1f0abb65ea8409fc6c8308b8d5d32501dbad0589ead7e134532",
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -506,7 +701,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic registry-lei pass",
                   "attestation": {
@@ -523,7 +718,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "vkEs6DWZe2rm5bTzn8m2S6ETdI1hn8KOnci5uNhjBop1fFtsa1xHdh_QNeE3zAkJCKJOSBzn6lN3VklEPQ9BDQ"
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
                   }
                 }
               }
@@ -548,7 +743,7 @@
       "name": "vet-control-existence-only-lei-reputation-key-reject",
       "spec": "§10.5.2",
       "summary": "An existence-only LEI cannot be used as a controlled reputation key.",
-      "inputHash": "c60fe88d1032a910f755f430de28950a72eec99d202abc0c133640c3d8884cd2",
+      "inputHash": "2dda354e10694cf4017e3e632ff6826be87772261a2fb0b02bf463d20268afeb",
       "evaluations": {
         "result": {
           "operation": "control-decision",
@@ -567,7 +762,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:registry-lei"
                     },
-                    "contentHash": "d6a676f9defbe1f0abb65ea8409fc6c8308b8d5d32501dbad0589ead7e134532",
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
                     "recipeVersion": 1
                   }
                 },
@@ -581,7 +776,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "AJAn7kOuo9HcYvEPwT-KJlydRasT6WAfPt-8GGimqyJcYdo5BVgOm4laB5fZAnxFcX4qJSOAX22LhRxLvSWFAA"
+                    "signature": "s9eQJUztmpTnm9rYmGqlkvdeuA_wmbXZsoxO930VN8aTfA6gPANioty91zFw2W-KR1zVcvRbByFRwxOq7WRjDg"
                   }
                 ]
               }
@@ -593,7 +788,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:registry-lei"
                   },
-                  "contentHash": "d6a676f9defbe1f0abb65ea8409fc6c8308b8d5d32501dbad0589ead7e134532",
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -601,7 +796,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic registry-lei pass",
                   "attestation": {
@@ -618,7 +813,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "vkEs6DWZe2rm5bTzn8m2S6ETdI1hn8KOnci5uNhjBop1fFtsa1xHdh_QNeE3zAkJCKJOSBzn6lN3VklEPQ9BDQ"
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
                   }
                 }
               }
@@ -632,7 +827,7 @@
       "name": "vet-control-existence-method-forged-holderbinding-reject",
       "spec": "§6.3.2 step (6)",
       "summary": "Data cannot upgrade an existence-only method into a control method.",
-      "inputHash": "9199d4031dcab8c47e365d51a03877dc918eea4c5a3283d8c8d03b915475831a",
+      "inputHash": "0524883d261ff6e10377680ea57168b7f8aa4f723fb9d90cfe4fe6dfd1a19f33",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -651,7 +846,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:registry-forged-holder-binding"
                     },
-                    "contentHash": "2867fa0b88d62bfcef28a6a0d25471e0055055baeb7936a986b6abd14cf1a16e",
+                    "contentHash": "6ae5b536fefd067877994e2a4281231d36ba0f5ef8d342b64c915b36bbee8420",
                     "recipeVersion": 1
                   }
                 },
@@ -665,7 +860,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "cI67VCRWBTQzUWDJqp7M9tfLCYdg2g9iiJI5tvZGVbmbpk1_kz3r11ONsEiu91kv8VEgmpq-1NFcylqr0nGeBQ"
+                    "signature": "KcsNe90Rd75zLqkx3inzzrvyR-zr3ZKzgI5CBKeHbDzO8o6kXQOBz49qoLjxY014Fa9SEWW6qILHCEUbjZ33Dg"
                   }
                 ]
               }
@@ -677,7 +872,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:registry-forged-holder-binding"
                   },
-                  "contentHash": "2867fa0b88d62bfcef28a6a0d25471e0055055baeb7936a986b6abd14cf1a16e",
+                  "contentHash": "6ae5b536fefd067877994e2a4281231d36ba0f5ef8d342b64c915b36bbee8420",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -685,7 +880,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic registry-forged-holder-binding pass",
                   "attestation": {
@@ -707,7 +902,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "8cNFvrCW2fq4No-4zfuWn1t8uhP8AmSC2N5VuH4aDTU16NEvyiu_r1geTeumGblLwM5VG6YFYzu9ay6Yf1okAA"
+                    "value": "ezw55BMk5LjX79d_DZroXhLXoFQcBSxasG4j9lEq2mXvO6uFdJKPDbUEG4wWnX8tS5N8-092fKCJtl6_jCrKDw"
                   }
                 }
               }
@@ -1027,7 +1222,7 @@
       "name": "dacs1-freshness-fail-closed",
       "spec": "§6.3.2/§6.3.3",
       "summary": "Verified claims use resolved authority time, clamp expiresAt, and fail closed on unavailable time evidence.",
-      "inputHash": "8482a177d3f9f1a072aa7e5810b269c801b6c230e5583190a34844b29c801eb8",
+      "inputHash": "9c0aa4acd842ce0e93f644806216f97abfdd981792b13b5c84c2c9d2a95a72c4",
       "evaluations": {
         "absentBoth": {
           "operation": "match",
@@ -1094,7 +1289,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:dacs1-freshness-expired"
                     },
-                    "contentHash": "00d55addc721edcf412ba2c1f6a570b2c92c15f01cbc60d6f586f41a0b95d026",
+                    "contentHash": "6ee003989aeb15dabdd225f9f442930795d4f328d616eca4386f4247a6e545d4",
                     "recipeVersion": 1
                   },
                   "expiresAt": 1899999999999
@@ -1109,7 +1304,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "_3K5K0DMyspAfZEsKFnIEGhnBRVOEEsUCg_aTBVV8EuhzLTiUyJG5GK_LkdcVP0ZHgSG0bm-W1LBGIjVpXuPDw"
+                    "signature": "7GDh6gCB_umALiVLZFkMmRuxIh3WO9k-g5JTkL-vm5ZQ_vkS0Eghx1KtxvH7VhtAdQ2025UfUmrx62Deu0TTAQ"
                   }
                 ]
               }
@@ -1121,7 +1316,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:dacs1-freshness-expired"
                   },
-                  "contentHash": "00d55addc721edcf412ba2c1f6a570b2c92c15f01cbc60d6f586f41a0b95d026",
+                  "contentHash": "6ee003989aeb15dabdd225f9f442930795d4f328d616eca4386f4247a6e545d4",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1129,7 +1324,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic dacs1-freshness-expired pass",
                   "attestation": {
@@ -1146,7 +1341,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "UKfwwXCP-owQTV5cVhV0FZ1784DG1kMEiZYiSw98wl18Rn8WV5l9TFlJ8IdulUUWL-JrsHW8WWea8n4KtYAYAQ"
+                    "value": "Ncs2QVUplWX2ZEYRpZjri6Yumegj-545UunN0-9sLxhgG0pxvsly1GLs18nFyWPmZG7o2TmPmerWKZSwJL18Dw"
                   }
                 }
               }
@@ -1179,7 +1374,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:dacs1-freshness-expires-only"
                     },
-                    "contentHash": "2b7ea281d68f2f8cc0665ff1808fecec3bf1b295b34cfd6cd1afc63f663d4f2b",
+                    "contentHash": "ed13b27e3fbcfc754ee644673078575eae779b8001fadaba195bfc8873f73f23",
                     "recipeVersion": 1
                   },
                   "expiresAt": 1900000060000
@@ -1194,7 +1389,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "vl7BGWBQzWyokvgYMrwGCj4RjOhP8BVV3GxhcAO8WxKjYtGagKjGRA0b99qHc41pV_7kla27weXsLL7eoX0TBw"
+                    "signature": "7cRCp7bp7_1UwCU_FVOX23WCGI9eR4AuhslFkSrqj3KA3cdyKhybGlxfw1rKT57BcUTpm3NizkugjwSWhmLsAA"
                   }
                 ]
               }
@@ -1206,7 +1401,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:dacs1-freshness-expires-only"
                   },
-                  "contentHash": "2b7ea281d68f2f8cc0665ff1808fecec3bf1b295b34cfd6cd1afc63f663d4f2b",
+                  "contentHash": "ed13b27e3fbcfc754ee644673078575eae779b8001fadaba195bfc8873f73f23",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1214,7 +1409,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic dacs1-freshness-expires-only pass",
                   "attestation": {
@@ -1231,7 +1426,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "QIMpi5dWXdWMrs6B8EiwaOHu7vszcan8ajlTPP1PppDhh9UkxIEA29wSWL-uAsfwWQ5N41el7miB6142IcCPCQ"
+                    "value": "6o5zjUl4BNYxpA7fkHYGu4xWqNMpFXvryRTYemWyyqEZzo9fqVEN5ZYD-BNiArgqUmqImE2lC9xyu0VsAqr0Aw"
                   }
                 }
               }
@@ -1264,7 +1459,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:dacs1-freshness-max-age"
                     },
-                    "contentHash": "61c2140478e9348611a27056cc45f081a021892a1903ed0bcf0b08e1cc5aa3d3",
+                    "contentHash": "31f5f8f9c445ffe011182fa1d019c457ecac89c0021a1a279da716b0d1f4e83b",
                     "recipeVersion": 1
                   },
                   "expiresAt": 1900000060000
@@ -1279,7 +1474,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "VjOhcxFEj2BJ1UC4_5-ctuNb9vdPSAkITcmgTAyQox9hvTtTZruzSPIB3MnfcrtEsvdr5cuiZTqcN71x0I59CQ"
+                    "signature": "rlj-bxDj1mHtWcSGaitLBSMd34nDEDJluQaaBDitCWGIkZryIJ5qXVyBCu84dPbIqeQ4jWrCXPDjGU7jE1ohDQ"
                   }
                 ]
               }
@@ -1291,7 +1486,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:dacs1-freshness-max-age"
                   },
-                  "contentHash": "61c2140478e9348611a27056cc45f081a021892a1903ed0bcf0b08e1cc5aa3d3",
+                  "contentHash": "31f5f8f9c445ffe011182fa1d019c457ecac89c0021a1a279da716b0d1f4e83b",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1299,7 +1494,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic dacs1-freshness-max-age pass",
                   "attestation": {
@@ -1316,7 +1511,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "6cl6uGlV1CXy4ZNXcFMqZNQF0A1Dcn9e6gulDy6PwXTA1dFMx3cIXGEFlLW6eox-l9or1I2aoSMZ8Wlt_pJJDQ"
+                    "value": "fwy5ZkCs0jOwGJgxt759PcKvNTu12cGBruTjBtM0gnKCRcZJpGNlm6tQf1-zlRlWBE854U_gv4swbV5cWZ60DQ"
                   }
                 }
               }
@@ -1351,8 +1546,8 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:dacs1-freshness-selected-stale"
                     },
-                    "contentHash": "abb3992c9e055b689c9c474305a32a274fd7351039fa8687efbf6c2161d78e08",
-                    "recipeVersion": 1
+                    "contentHash": "f947153bebf30c423f6abd2897bb8515a06c6962f42f97efffeca53d2b480111",
+                    "recipeVersion": 2
                   },
                   "expiresAt": 1899999999999
                 },
@@ -1364,7 +1559,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:dacs1-freshness-other-fresh"
                     },
-                    "contentHash": "4c350a64db7cb14f69894a209accdaf7493a7542edcc49d48f9119763642ecd7",
+                    "contentHash": "b0843cd40e1f786e6ef40f77eb779e65af13d83d2e98638fb4b6b1070d1bdebc",
                     "recipeVersion": 1
                   }
                 },
@@ -1378,7 +1573,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "lem9mgqQh-rR0V0-7cYwrzrNP-OsMmwhr5T3k2B4A6rOHZcikpejQS9zZILhOSbHFMX6L0l1qdakttzgrzAzDw"
+                    "signature": "-x5NyqFYJWQbm1MN_5nTwEJ6vWNo5QG4-P6Kr6pb2tXfzLOMqFKiR0cJInUjzHKDe94NnBfy3vHEjy0XJI9aDg"
                   }
                 ]
               }
@@ -1390,15 +1585,15 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:dacs1-freshness-selected-stale"
                   },
-                  "contentHash": "abb3992c9e055b689c9c474305a32a274fd7351039fa8687efbf6c2161d78e08",
-                  "recipeVersion": 1
+                  "contentHash": "f947153bebf30c423f6abd2897bb8515a06c6962f42f97efffeca53d2b480111",
+                  "recipeVersion": 2
                 },
                 "artifact": {
                   "resultVersion": "1",
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
-                  "recipeVersion": 1,
-                  "method": "vlei-presentation",
+                  "recipeVersion": 2,
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic dacs1-freshness-selected-stale pass",
                   "attestation": {
@@ -1420,7 +1615,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "1Uo_1A_7urM9NTX0Y3gscG1ZKYO18RN2y2ZptfwV3DAiL6xkl56xWhwFziSnyA_4K0wRwLmRvpFaUrq9e4fYDQ"
+                    "value": "A30wexdDlegQ1WqXlUiGdpmfLP_4XumS-eY285AVVC_chw-iOZQCdFZE5OeD6eZoKHbd2w-oWOtLwVHvidHVAQ"
                   }
                 }
               },
@@ -1430,7 +1625,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:dacs1-freshness-other-fresh"
                   },
-                  "contentHash": "4c350a64db7cb14f69894a209accdaf7493a7542edcc49d48f9119763642ecd7",
+                  "contentHash": "b0843cd40e1f786e6ef40f77eb779e65af13d83d2e98638fb4b6b1070d1bdebc",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1438,7 +1633,7 @@
                   "scheme": "lei",
                   "identifier": "529900T8BM49AABBCC11",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic dacs1-freshness-other-fresh pass",
                   "attestation": {
@@ -1455,7 +1650,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "Nwto4d8fXaHR5x1xjTlxvT4CaZu4Lbsjc8WxqVDQkJhXonV8bW3t6sy5QPXofHubOQQoYBTraxw5hWCguPNEBQ"
+                    "value": "RzZUo-GePgFFQVQ0V-9GlJwcj0_B9D5RpJZLO-8Xiwa9OvDVWXBwfrA-SQe6HFlEETpOyuguJ4q2Fd5giKAoBQ"
                   }
                 }
               }
@@ -1466,7 +1661,7 @@
                 {
                   "scheme": "lei",
                   "verificationRequired": true,
-                  "recipeVersion": 1,
+                  "recipeVersion": 2,
                   "maxAge": 60
                 }
               ],
@@ -1487,7 +1682,7 @@
       "name": "vet-ma1-required-missing",
       "spec": "§6.3.3",
       "summary": "A signed bundle without the required scheme is rejected.",
-      "inputHash": "f172c112bcb6580d21466dc446d9a00aa717573ff9d76e37e466fbeee7ea55fc",
+      "inputHash": "c7b0f9807db4f045c4bd82839922b125912b1cdf251e76c471646792d14f9409",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -1506,7 +1701,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:missing-required-lei"
                     },
-                    "contentHash": "f0b8729965df1d7ab55e6d862f80ad191cf536461cc04eb8dd057728c1781926",
+                    "contentHash": "fc6c23157d1ee3c58de9b001994708b872bfc9e5a4cafad13ab28cc183d863ab",
                     "recipeVersion": 1
                   }
                 },
@@ -1520,7 +1715,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "8Kq-4IqDSlxuT0pep9UMBkB00QiRIWALavilGPvGWwih9ZkMIbNoS9Tx241H6kzEscSuYaaxAVc7hqbG-Rg_Dg"
+                    "signature": "OrxPq5WalejFSFBW0tUZ81A1hnFX5bjMqV1hejFPSvRnduwpw29U-t9jhceZll6lxUdavz8J3AS66YqeT_-UAw"
                   }
                 ]
               }
@@ -1532,7 +1727,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:missing-required-lei"
                   },
-                  "contentHash": "f0b8729965df1d7ab55e6d862f80ad191cf536461cc04eb8dd057728c1781926",
+                  "contentHash": "fc6c23157d1ee3c58de9b001994708b872bfc9e5a4cafad13ab28cc183d863ab",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1540,7 +1735,7 @@
                   "scheme": "did",
                   "identifier": "example:missing-lei",
                   "recipeVersion": 1,
-                  "method": "vc-presentation",
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic missing-required-lei pass",
                   "attestation": {
@@ -1557,7 +1752,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "-_Yh1RBr8E_kvMY1h7rPVa2zJVSmWeF72Jf0zQFLyxgt4hTqOequD8wJ24V8J_IbTTliAUr1kirpPNxqplZrCQ"
+                    "value": "nix0X5mjf62WMiGV0V1bRUDMV_aba6Hh8KXHnkZZy0zTHXlRsl5-pbcZfJXm0vKCEQEdjKRmmCodjaWqg8_uBQ"
                   }
                 }
               }
@@ -1581,7 +1776,7 @@
       "name": "vet-ma1-oneof",
       "spec": "§6.3.3",
       "summary": "OneOf passes with a matching member and fails when no member is present.",
-      "inputHash": "e071f9c4246a01c69ea863a24881cfcf44f279e25c816110c684e73af602da36",
+      "inputHash": "b65f3202f8b28b40cdcd4225b39dd367e966e42c74ae15eb349fc817d7d4b4ef",
       "evaluations": {
         "satisfied": {
           "operation": "match",
@@ -1600,7 +1795,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:oneof-finra"
                     },
-                    "contentHash": "900ebe5888badc21603c8d20be9a6188eb6ac4758f16eb9ecd00fc45587d8c87",
+                    "contentHash": "eea6344f8ab28b122826fafe4483e242c5ac427fb0f9dd31a59c4d2071fd5809",
                     "recipeVersion": 1
                   }
                 },
@@ -1614,7 +1809,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "0Y3Yu86SG6myvNYV6WqJICXnGpRigyP9xUTjLqgBC-0z9OjbWnaDQH4hFFUbdA3eQMudqBrHTFX0L0IL8uz4Aw"
+                    "signature": "Gw4A0XijO4O5S3uuCQveUBBTHNvyaKlzRe1YrGSknu4XjXas39G43Bmt3B4pMqeBvbKzAncUcf32NVnluwcJDw"
                   }
                 ]
               }
@@ -1626,7 +1821,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:oneof-finra"
                   },
-                  "contentHash": "900ebe5888badc21603c8d20be9a6188eb6ac4758f16eb9ecd00fc45587d8c87",
+                  "contentHash": "eea6344f8ab28b122826fafe4483e242c5ac427fb0f9dd31a59c4d2071fd5809",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1634,7 +1829,7 @@
                   "scheme": "finra-crd",
                   "identifier": "12345",
                   "recipeVersion": 1,
-                  "method": "vc-presentation",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic oneof-finra pass",
                   "attestation": {
@@ -1651,7 +1846,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "_InvoGvt1WRCwsmzaA3hoAfnBwEKGfnqRA3OPueSs3KpVNN_BQBrPelrh_ISrQ4SiIf7sQ4vKBwnUI2LHxHzDA"
+                    "value": "8oVg1Pxb6DyoErc_rNPxyizjm_vWFcILHQ3wGOC2zjtNpvVNTk-dDT2RYXZGIYrDj2rbFJInlKnI2JEVcnBcAA"
                   }
                 }
               }
@@ -1693,7 +1888,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:missing-required-lei"
                     },
-                    "contentHash": "f0b8729965df1d7ab55e6d862f80ad191cf536461cc04eb8dd057728c1781926",
+                    "contentHash": "fc6c23157d1ee3c58de9b001994708b872bfc9e5a4cafad13ab28cc183d863ab",
                     "recipeVersion": 1
                   }
                 },
@@ -1707,7 +1902,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "8Kq-4IqDSlxuT0pep9UMBkB00QiRIWALavilGPvGWwih9ZkMIbNoS9Tx241H6kzEscSuYaaxAVc7hqbG-Rg_Dg"
+                    "signature": "OrxPq5WalejFSFBW0tUZ81A1hnFX5bjMqV1hejFPSvRnduwpw29U-t9jhceZll6lxUdavz8J3AS66YqeT_-UAw"
                   }
                 ]
               }
@@ -1719,7 +1914,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:missing-required-lei"
                   },
-                  "contentHash": "f0b8729965df1d7ab55e6d862f80ad191cf536461cc04eb8dd057728c1781926",
+                  "contentHash": "fc6c23157d1ee3c58de9b001994708b872bfc9e5a4cafad13ab28cc183d863ab",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1727,7 +1922,7 @@
                   "scheme": "did",
                   "identifier": "example:missing-lei",
                   "recipeVersion": 1,
-                  "method": "vc-presentation",
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic missing-required-lei pass",
                   "attestation": {
@@ -1744,7 +1939,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "-_Yh1RBr8E_kvMY1h7rPVa2zJVSmWeF72Jf0zQFLyxgt4hTqOequD8wJ24V8J_IbTTliAUr1kirpPNxqplZrCQ"
+                    "value": "nix0X5mjf62WMiGV0V1bRUDMV_aba6Hh8KXHnkZZy0zTHXlRsl5-pbcZfJXm0vKCEQEdjKRmmCodjaWqg8_uBQ"
                   }
                 }
               }
@@ -1779,7 +1974,7 @@
       "name": "vet-ma2-scheme-mismatch",
       "spec": "§6.3.3",
       "summary": "The exact presentedBy scheme must equal primaryClaimSelector.",
-      "inputHash": "0095bd83e96a691eb1b253653ed9c8d171f6c5a342d6d3fc28a1b8cca60133ec",
+      "inputHash": "9b4d45e91470ab4cfa337c4a681de4b680c69521b89cde6076573cc43e6ea7d6",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -1798,8 +1993,8 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:scheme-mismatch-lei"
                     },
-                    "contentHash": "b70614f48ec7b5099f91f2951c5e69f976d95157d8f8feffee6070f79237867b",
-                    "recipeVersion": 1
+                    "contentHash": "d9b464942b9e434f0a5845defaf753c83dab7a11310c44c74bed318d6a33e6b8",
+                    "recipeVersion": 2
                   }
                 },
                 {
@@ -1812,7 +2007,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "nnRVfoBcBPdX0prxeFGvnz3bXXuEG14UiG9qe8YL1_CbyZj8zdPwYPEYpgP69XpuEwlsmyy_T3PSj3glefDsBg"
+                    "signature": "gOebzeawGIkKq4gOAFsQ1zRU9skQ6mtuv6vcUJpkuESWBPrzzw_so6FVeICL8PCaDgnS9_x4fhBk8KGd8fN3Aw"
                   }
                 ]
               }
@@ -1824,15 +2019,15 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:scheme-mismatch-lei"
                   },
-                  "contentHash": "b70614f48ec7b5099f91f2951c5e69f976d95157d8f8feffee6070f79237867b",
-                  "recipeVersion": 1
+                  "contentHash": "d9b464942b9e434f0a5845defaf753c83dab7a11310c44c74bed318d6a33e6b8",
+                  "recipeVersion": 2
                 },
                 "artifact": {
                   "resultVersion": "1",
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
-                  "recipeVersion": 1,
-                  "method": "vlei-presentation",
+                  "recipeVersion": 2,
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic scheme-mismatch-lei pass",
                   "attestation": {
@@ -1854,7 +2049,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "pwhBQmLdGQGD-XGLlmhLHR9qo3iX1G0vJSPczJLVE51f8rQrDWEubaeZNL01dGR4nyGxoqJjydH61OxMv06dDQ"
+                    "value": "KJv6Ie84WC3pglA6Zm9Yle2i-XFq5_SlPV89mEhTUEKPabm7fSy3xOehtas3GgWS-w4kVi4xhf412pbJdZxkCQ"
                   }
                 }
               }
@@ -1865,7 +2060,7 @@
                 {
                   "scheme": "lei",
                   "verificationRequired": true,
-                  "recipeVersion": 1
+                  "recipeVersion": 2
                 }
               ],
               "primaryClaimSelector": "lei"
@@ -1879,7 +2074,7 @@
       "name": "vet-ma3-unverified-reject",
       "spec": "§6.3.3",
       "summary": "A failing selected claim is not laundered by another same-scheme pass.",
-      "inputHash": "815cc0528c4b77708d8a1ec5fdca208f3f5c0983a6fcb1df4c7aab808a28f478",
+      "inputHash": "b0f55acd5edf7372116cead56e81ce87384b107f1d5bc8327b57f668dbff0d9a",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -1898,7 +2093,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-selected"
                     },
-                    "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                    "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                     "recipeVersion": 1
                   }
                 },
@@ -1910,7 +2105,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-other"
                     },
-                    "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                    "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                     "recipeVersion": 1
                   }
                 },
@@ -1924,7 +2119,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "8qXvAnjMSydAMMnptPnvtlwepEYJZ94kRknVDzmt2jJA61bXNPPrkPLbZxcFAoFtl4JLm_dgwqrWOwIEEju6Bg"
+                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
                   }
                 ]
               }
@@ -1936,7 +2131,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-selected"
                   },
-                  "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                  "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1944,7 +2139,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "fail",
                   "reason": "deterministic laundering-selected fail",
                   "attestation": {
@@ -1961,7 +2156,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "KO6EINwYVDnvy45IuDaN1jKVeMzGDB_QPSLpOoiskaqv6zUzo2yQ4p-kTEkjljmDlcaR34dyyQSBnX6mgzvqAA"
+                    "value": "Qr55UbR2U9jbddUZEq-quOMELUv9OUyWD9eErXtdcPfvnyony1hAqVMBA2wwt_rhnG1GG6VHr0lkrT0Y9sASCg"
                   }
                 }
               },
@@ -1971,7 +2166,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-other"
                   },
-                  "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                  "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -1979,7 +2174,7 @@
                   "scheme": "lei",
                   "identifier": "529900T8BM49AABBCC11",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic laundering-other pass",
                   "attestation": {
@@ -1996,7 +2191,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "cSIToqpepHXachn1wOUUJts7j3IjoRHUgiKXCErTbdf88HKG_L5EccrYqA7t8UsQoNbgpJkxs4kxt6mIXc3MAg"
+                    "value": "a-fYyenURs8RKqC1J4PDnHltAPnTTHgnjev-eSucwpF8ZkyY1R6AxrxwwLwQeRnBlYhqKAZINlLyWJeXINzWCw"
                   }
                 }
               }
@@ -2021,7 +2216,7 @@
       "name": "vet-ma3-resolution-vs-presence",
       "spec": "§6.3.3",
       "summary": "Presence can match without resolving an optional failure; verified use cannot.",
-      "inputHash": "46a0d3e6775cb866e896b1625d569ab3c4042dc5ebd1f77bad561ee601b55698",
+      "inputHash": "933d4e17889c300dda95bd22a506709b1bf7a6fd4c3e787244af2736d9eabdc4",
       "evaluations": {
         "dacs1Presence": {
           "operation": "match",
@@ -2040,7 +2235,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-selected"
                     },
-                    "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                    "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                     "recipeVersion": 1
                   }
                 },
@@ -2052,7 +2247,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-other"
                     },
-                    "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                    "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                     "recipeVersion": 1
                   }
                 },
@@ -2066,7 +2261,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "8qXvAnjMSydAMMnptPnvtlwepEYJZ94kRknVDzmt2jJA61bXNPPrkPLbZxcFAoFtl4JLm_dgwqrWOwIEEju6Bg"
+                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
                   }
                 ]
               }
@@ -2078,7 +2273,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-selected"
                   },
-                  "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                  "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2086,7 +2281,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "fail",
                   "reason": "deterministic laundering-selected fail",
                   "attestation": {
@@ -2103,7 +2298,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "KO6EINwYVDnvy45IuDaN1jKVeMzGDB_QPSLpOoiskaqv6zUzo2yQ4p-kTEkjljmDlcaR34dyyQSBnX6mgzvqAA"
+                    "value": "Qr55UbR2U9jbddUZEq-quOMELUv9OUyWD9eErXtdcPfvnyony1hAqVMBA2wwt_rhnG1GG6VHr0lkrT0Y9sASCg"
                   }
                 }
               },
@@ -2113,7 +2308,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-other"
                   },
-                  "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                  "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2121,7 +2316,7 @@
                   "scheme": "lei",
                   "identifier": "529900T8BM49AABBCC11",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic laundering-other pass",
                   "attestation": {
@@ -2138,7 +2333,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "cSIToqpepHXachn1wOUUJts7j3IjoRHUgiKXCErTbdf88HKG_L5EccrYqA7t8UsQoNbgpJkxs4kxt6mIXc3MAg"
+                    "value": "a-fYyenURs8RKqC1J4PDnHltAPnTTHgnjev-eSucwpF8ZkyY1R6AxrxwwLwQeRnBlYhqKAZINlLyWJeXINzWCw"
                   }
                 }
               }
@@ -2171,7 +2366,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-selected"
                     },
-                    "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                    "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                     "recipeVersion": 1
                   }
                 },
@@ -2183,7 +2378,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:laundering-other"
                     },
-                    "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                    "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                     "recipeVersion": 1
                   }
                 },
@@ -2197,7 +2392,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "8qXvAnjMSydAMMnptPnvtlwepEYJZ94kRknVDzmt2jJA61bXNPPrkPLbZxcFAoFtl4JLm_dgwqrWOwIEEju6Bg"
+                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
                   }
                 ]
               }
@@ -2209,7 +2404,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-selected"
                   },
-                  "contentHash": "09ee56f703f0b6fe97c79222d1b9fe7b0c176f6f7e122347f16bbb901efd6e28",
+                  "contentHash": "c074aca707928f418cd623a022ccc918e8074b2418d520c71a39ba95a0aa6515",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2217,7 +2412,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "fail",
                   "reason": "deterministic laundering-selected fail",
                   "attestation": {
@@ -2234,7 +2429,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "KO6EINwYVDnvy45IuDaN1jKVeMzGDB_QPSLpOoiskaqv6zUzo2yQ4p-kTEkjljmDlcaR34dyyQSBnX6mgzvqAA"
+                    "value": "Qr55UbR2U9jbddUZEq-quOMELUv9OUyWD9eErXtdcPfvnyony1hAqVMBA2wwt_rhnG1GG6VHr0lkrT0Y9sASCg"
                   }
                 }
               },
@@ -2244,7 +2439,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:laundering-other"
                   },
-                  "contentHash": "86f85af76ecd13e6b5aee481d7e23962221ee7c6f67bc6ac1a53bb0dde23be89",
+                  "contentHash": "2e9be31880445ce86ca4d7b101abab25df17985d78f007a35441f0c30eec5a1f",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2252,7 +2447,7 @@
                   "scheme": "lei",
                   "identifier": "529900T8BM49AABBCC11",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic laundering-other pass",
                   "attestation": {
@@ -2269,7 +2464,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "cSIToqpepHXachn1wOUUJts7j3IjoRHUgiKXCErTbdf88HKG_L5EccrYqA7t8UsQoNbgpJkxs4kxt6mIXc3MAg"
+                    "value": "a-fYyenURs8RKqC1J4PDnHltAPnTTHgnjev-eSucwpF8ZkyY1R6AxrxwwLwQeRnBlYhqKAZINlLyWJeXINzWCw"
                   }
                 }
               }
@@ -2297,7 +2492,7 @@
       "name": "vet-ma3-verified-accept",
       "spec": "§6.3.3",
       "summary": "A fresh selected vLEI result with holder binding is accepted.",
-      "inputHash": "01acef68429298bfccd823e598ac185d7e7d2d676e35d42efff85e982a0a59ff",
+      "inputHash": "73aca0c79a14e91710d63ee39f50c74a3c417a6fa1f0de838aeec4708414edee",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -2316,8 +2511,8 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:selected-vlei-pass"
                     },
-                    "contentHash": "be1b58c8732b4944653e0e1186f577c2092600ccb403cee0a6eaa71e65837402",
-                    "recipeVersion": 1
+                    "contentHash": "191db07e93cd5e957a5a0d24b8fc063b3eea9eed1abc67a370a77ea8f77106ff",
+                    "recipeVersion": 2
                   }
                 },
                 {
@@ -2330,7 +2525,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "fYUKGcvEhuXDiIseTUnTvhp_YBtAqc-NboLOjPTlyYMc7Gchygj6O0FXmf7E2T_BXyRA6bRBJaRYxVuMcNVnAQ"
+                    "signature": "4jrIF-hKBZtaYcFOLS_B3zYnhLkUZKvsthqmiecKeWJWW_iU34u9BUYMenZCKXfTDgPMDBAOYCIo-bJu2zIEDw"
                   }
                 ]
               }
@@ -2342,15 +2537,15 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:selected-vlei-pass"
                   },
-                  "contentHash": "be1b58c8732b4944653e0e1186f577c2092600ccb403cee0a6eaa71e65837402",
-                  "recipeVersion": 1
+                  "contentHash": "191db07e93cd5e957a5a0d24b8fc063b3eea9eed1abc67a370a77ea8f77106ff",
+                  "recipeVersion": 2
                 },
                 "artifact": {
                   "resultVersion": "1",
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
-                  "recipeVersion": 1,
-                  "method": "vlei-presentation",
+                  "recipeVersion": 2,
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic selected-vlei-pass pass",
                   "attestation": {
@@ -2372,7 +2567,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "b3UffBY1_UES-uhyBQvE9j-7Eu_D5-PiNGbTMiHcndlhHrvPisqwOyZBm-zGno6UeWOaJKXXSSuSCeOxuwHEDw"
+                    "value": "ma0gIUlEiPMfD9h5UgV7l-0tpme_CrslIg1dOREhIjn1-o_4u_dexXUke6Y2JAckxPu9yj2uqTfradhrso_2Ag"
                   }
                 }
               }
@@ -2383,7 +2578,7 @@
                 {
                   "scheme": "lei",
                   "verificationRequired": true,
-                  "recipeVersion": 1
+                  "recipeVersion": 2
                 }
               ],
               "primaryClaimSelector": "lei"
@@ -2397,7 +2592,7 @@
       "name": "vet-findclaim-decision",
       "spec": "§6.3.3",
       "summary": "An indeterminate required claim does not count as a matching pass.",
-      "inputHash": "ad1c7f99b3f80c0890bc252701342c4d540e3c359493da42b9ab43fd0abdb3cc",
+      "inputHash": "e2df1edcbca43246c1081be9f0753ce79bf295cf83d726af9788fdece2f0c15f",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -2416,7 +2611,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:findclaim-indeterminate"
                     },
-                    "contentHash": "d6bf25a8b12ffa3f0bd98cc2ae376ea7482636262b01860ad80705ef513ab333",
+                    "contentHash": "0920a391acefa6fae4649efefeb137cc78ff4c5f8f48445c0e9d9351e107bf5e",
                     "recipeVersion": 1
                   }
                 },
@@ -2430,7 +2625,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "f7BZ8VgW4ybxsn1bgSUl5OlCJkJVoP7_yUeoPmEPNPmcdrsCVs_1AtwkDx6hGcElh4ucuE0FtbB_DpSGHSi9AA"
+                    "signature": "m0CLlAOK-5ZUxyJ5_JJwPdCKBaazJYiVtBdUbj_XjENccQqBz5sxEHeb4lIdVX8BO5renTLLWWS_ABpBX_O0Bw"
                   }
                 ]
               }
@@ -2442,7 +2637,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:findclaim-indeterminate"
                   },
-                  "contentHash": "d6bf25a8b12ffa3f0bd98cc2ae376ea7482636262b01860ad80705ef513ab333",
+                  "contentHash": "0920a391acefa6fae4649efefeb137cc78ff4c5f8f48445c0e9d9351e107bf5e",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2450,7 +2645,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "indeterminate",
                   "reason": "deterministic findclaim-indeterminate indeterminate",
                   "attestation": {
@@ -2467,7 +2662,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "5fmLEUSzNHmvG75fB16P4fQEtNpPROZYram7P6uvW2BzUrmWTCSm1HpEJ7sBW2-zcBIpVQJvgLJt3s75oy1CDA"
+                    "value": "kxjOyc16MOa_CKFDHocVXIo05UE2CeGlOdNVFrop7U13lyH-Xzc3z-JsD4Wesdytrj4bGWNYuT7R1oTISEJ3Cg"
                   }
                 }
               }
@@ -2491,7 +2686,7 @@
       "name": "vet-freshness-fail-closed",
       "spec": "§6.3.2/§6.3.3",
       "summary": "Vet applies the same resolved authority window and presenter clamp.",
-      "inputHash": "01a3a46e1841dc0f6cae19d35e0c23dcc75d033a780a9ce8173ed7148e25dc18",
+      "inputHash": "aaa7ee9a08c4209a91640dc425f8d3e5f6b2095ce0cf7ffde898beb1b69c6862",
       "evaluations": {
         "absentBoth": {
           "operation": "match",
@@ -2558,7 +2753,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:vet-freshness-expired"
                     },
-                    "contentHash": "f952c58c2aec0f1bcc43a2e0732a23badba7630e500aff05749999237c3e94e3",
+                    "contentHash": "a294b00ae4753996f9c36ee8fc344fa555141930664f0a87f1c25e38ea7b04ca",
                     "recipeVersion": 1
                   },
                   "expiresAt": 1899999999999
@@ -2573,7 +2768,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "JQSxxBD_P54IOso4FkFH9p5HatO87fxUVnXQPP-PafuQejZOn9QasQclPFjzttKi7_2vpF43zLX04uaTxXKkAg"
+                    "signature": "kDKL_O3kU9wqS-e07PvGg_IRZ2eQTMuRcOUbDg4xdiRK9FselrN6TAyDUidSLX9wKbMzCowjMWQyY4F9BAmSBw"
                   }
                 ]
               }
@@ -2585,7 +2780,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:vet-freshness-expired"
                   },
-                  "contentHash": "f952c58c2aec0f1bcc43a2e0732a23badba7630e500aff05749999237c3e94e3",
+                  "contentHash": "a294b00ae4753996f9c36ee8fc344fa555141930664f0a87f1c25e38ea7b04ca",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2593,7 +2788,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic vet-freshness-expired pass",
                   "attestation": {
@@ -2610,7 +2805,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "vXgNC7djBJcu7YhP2ZWAsBm21jlYmnsCQ1r5DbOQh7ydYngQbOr4yPfTnI02ZizLM_3FIdJ06CuAltWF3ZRYAA"
+                    "value": "aiPjR_IVeiCqxZHaCzQgPmcjkzC42slgwc0hZ6LAT-jBIJ5SEPFq1ua58J0n-lsmtUL60wJL6eC_xYbxivnBCQ"
                   }
                 }
               }
@@ -2643,7 +2838,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:vet-freshness-expires-only"
                     },
-                    "contentHash": "00ecb3caf3994cbcdd8d6dfc697181121ea30e1ee58c1c03905d1211aab2db41",
+                    "contentHash": "81b932a961949a75b35414841780ceddc1864646f09102aca668a3aacca4f461",
                     "recipeVersion": 1
                   },
                   "expiresAt": 1900000060000
@@ -2658,7 +2853,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "uAuHhtAv4V-EU9I-z5gMgox3FJno9kjjozsjAYbzWENRiQxeyLdl35vC37wUxFV8VcUf9VDdlB15Xa2v4clxBQ"
+                    "signature": "hHnyWTLn59v82EzaXwf2MDd1zs33PsMDr8bN2Fbxg0XTZ1wAmlAA7_UELYapZ63kSoD3fnTElp3I6fIQX2YEAg"
                   }
                 ]
               }
@@ -2670,7 +2865,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:vet-freshness-expires-only"
                   },
-                  "contentHash": "00ecb3caf3994cbcdd8d6dfc697181121ea30e1ee58c1c03905d1211aab2db41",
+                  "contentHash": "81b932a961949a75b35414841780ceddc1864646f09102aca668a3aacca4f461",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2678,7 +2873,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic vet-freshness-expires-only pass",
                   "attestation": {
@@ -2695,7 +2890,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "MwtnNOZESWCzIYJmGAG9BpiJxmoWNLdvp2GMwBnuB9M6WkDgTOyVfFaoTI9Hz9T3qQfnxcclf6WtDJS4_Nv3Cw"
+                    "value": "eEiSo_ofq2OQ2E4XEqHTURS36CO_NxNCrwOoQMN3LGteAgQt6gaw7lqnuJvxZqU49uvOhP25ClKqxHa-SokmDA"
                   }
                 }
               }
@@ -2728,7 +2923,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:vet-freshness-max-age"
                     },
-                    "contentHash": "23e13bc12ebbe6ed9911fdea0554f4b3e297fb4e09b323dc3de8398c73ebf51e",
+                    "contentHash": "cce86e0611ac4e6db5c9739c613de13a79ffd13a374e6194ad7ad9f48c8adfd1",
                     "recipeVersion": 1
                   },
                   "expiresAt": 1900000060000
@@ -2743,7 +2938,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "imc0j-K082bkag8IIkXRwL6QE1hzKgX_jNQWhabbrOTcBMzB2VWQK3yWW_3l3msw9walFmRPIlSeGaWpUBdSBg"
+                    "signature": "RvLJ8j4i4u4PghTFaIPrDDMMSn_6WVnpoSJ0IDyYf3pzhovTAWeDTmB5Y9-4IZqOWIgQwNNwxUZYE0wsyuTTBA"
                   }
                 ]
               }
@@ -2755,7 +2950,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:vet-freshness-max-age"
                   },
-                  "contentHash": "23e13bc12ebbe6ed9911fdea0554f4b3e297fb4e09b323dc3de8398c73ebf51e",
+                  "contentHash": "cce86e0611ac4e6db5c9739c613de13a79ffd13a374e6194ad7ad9f48c8adfd1",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2763,7 +2958,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic vet-freshness-max-age pass",
                   "attestation": {
@@ -2780,7 +2975,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "MG7wSqFerwlH-a0iOsXm1qh9ytIO_fuFvNQa1W9617lUGsmSjmoH--in8F2fRXPVO1w-8hxRs-qDkid0JV7MAw"
+                    "value": "fM4KqiRJBreWFSvRv5rTtMDpepIpnLU1HevjRaCcxZy8diiByzrJbBw7_vg8T5oqYgrlmNJrAUb3bML6X3tPCQ"
                   }
                 }
               }
@@ -2815,8 +3010,8 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:vet-freshness-selected-stale"
                     },
-                    "contentHash": "386a0ef80013daec4e712bf2b96205188623bf33455d24128c71c14a0e7516af",
-                    "recipeVersion": 1
+                    "contentHash": "5bb944dbcce2cda5b53a794a0de19378ffe80e3e5eecc05e87af00bfde136311",
+                    "recipeVersion": 2
                   },
                   "expiresAt": 1899999999999
                 },
@@ -2828,7 +3023,7 @@
                       "kind": "storage-program",
                       "locator": "demos:dacs-363:result:vet-freshness-other-fresh"
                     },
-                    "contentHash": "49c74671f2cea02d58160201c3797eb7a64f058862148c640d882036a28fb844",
+                    "contentHash": "da01dab23643e18ba1a62156b5819ca322e71ce755935d4f722dc564d372e32f",
                     "recipeVersion": 1
                   }
                 },
@@ -2842,7 +3037,7 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "lcjJkfAYL5kecWihJSkpbqZkZFgmqjrXWgX7CHMro8JwXAMtFGoHzahmRPr3w85us3D9HXvLIxCu9Auo0s6vCA"
+                    "signature": "bjxfJqMC-qvP_fQ_NX-lwgA8wy_2Fl5GCzrWKUR0yX3WA1TJB7EH3Q4C31jUx9zTjUWZ-G4sPhAhHlrUYIr0Ag"
                   }
                 ]
               }
@@ -2854,15 +3049,15 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:vet-freshness-selected-stale"
                   },
-                  "contentHash": "386a0ef80013daec4e712bf2b96205188623bf33455d24128c71c14a0e7516af",
-                  "recipeVersion": 1
+                  "contentHash": "5bb944dbcce2cda5b53a794a0de19378ffe80e3e5eecc05e87af00bfde136311",
+                  "recipeVersion": 2
                 },
                 "artifact": {
                   "resultVersion": "1",
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
-                  "recipeVersion": 1,
-                  "method": "vlei-presentation",
+                  "recipeVersion": 2,
+                  "method": "verifiable-credential",
                   "decision": "pass",
                   "reason": "deterministic vet-freshness-selected-stale pass",
                   "attestation": {
@@ -2884,7 +3079,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "ex2tAnVPSbE_afhvwC2dNNs5fxuswdYF7mjfqY4Ww6fXxVH-eIS27heta_tF6yWOUpxmxwH4hh0qHFnbpp2bDQ"
+                    "value": "vFTnRTjdeSVXxctL-sAQftVmIMq460WUIYj1WavOKc9eJQ-H9hK61M0L3oU5Aos0KN9lNMUEbbrDz_EU9Fv0CQ"
                   }
                 }
               },
@@ -2894,7 +3089,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:vet-freshness-other-fresh"
                   },
-                  "contentHash": "49c74671f2cea02d58160201c3797eb7a64f058862148c640d882036a28fb844",
+                  "contentHash": "da01dab23643e18ba1a62156b5819ca322e71ce755935d4f722dc564d372e32f",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -2902,7 +3097,7 @@
                   "scheme": "lei",
                   "identifier": "529900T8BM49AABBCC11",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "pass",
                   "reason": "deterministic vet-freshness-other-fresh pass",
                   "attestation": {
@@ -2919,7 +3114,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "tyPI5QjwwrRXVHrGBCoeZECZMOpoyiZ7ofX2fEhPlaNxNtONenwMKpQxGgwtkrAbg5g85dDExuoSx0aT2h7HBA"
+                    "value": "b5VKh8mdNPYQtQeMCfR66MBl4AhRZWQ-eDBt90WbRH8XFkN8zNSODax2Obr_BoPKUyTL2uxja0TABjZUfb0jBA"
                   }
                 }
               }
@@ -2930,7 +3125,7 @@
                 {
                   "scheme": "lei",
                   "verificationRequired": true,
-                  "recipeVersion": 1,
+                  "recipeVersion": 2,
                   "maxAge": 60
                 }
               ],
@@ -2951,55 +3146,53 @@
       "name": "vet-oneof-error-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, retryable error outranks a conclusive failing alternative.",
-      "inputHash": "d3dd449691fb063a9cec041db45fcd00cdff09478b395d5a48dc3a174faca3e6",
+      "inputHash": "e5d1294ac848d1b3c3ddc9d15b91e5c1f69a2351a86f39770b5c099e0d319eaf",
       "evaluations": {
         "result": {
           "operation": "aggregate",
           "input": {
             "evaluatedAt": 1900000000000,
-            "bundle": {
-              "bundleVersion": "1",
-              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-              "presentedAt": 1900000000000,
-              "claims": [
+            "record": {
+              "recordVersion": "1",
+              "jobId": "01J00000000000000000000363",
+              "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "bundleHash": "04b64b199566c166a639a1eb55d97ce6e62edc8903e84e8d2af2bbed42abc746",
+              "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
+              "freshness": [],
+              "supplementary": [],
+              "dealSpecific": [
                 {
-                  "ref": "lei:984500ABCDEF12345678",
-                  "issuedAt": 1899999999000,
-                  "verifiedBy": {
-                    "anchor": {
-                      "kind": "storage-program",
-                      "locator": "demos:dacs-363:result:oneof-lei-fail"
-                    },
-                    "contentHash": "f0d2d962cbdc3c55f75a48c1f281a4cf9115b667e9f52e4eb2946f206d41e7b9",
-                    "recipeVersion": 1
-                  }
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:oneof-lei-fail"
+                  },
+                  "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
+                  "recipeVersion": 1
                 },
                 {
-                  "ref": "domain:example.com",
-                  "issuedAt": 1899999999000,
-                  "verifiedBy": {
-                    "anchor": {
-                      "kind": "storage-program",
-                      "locator": "demos:dacs-363:result:oneof-domain-error"
-                    },
-                    "contentHash": "0b6de1d239ca9171f2f8ee71b63086e548624abd010f34a84a92d3c8e3ece0ce",
-                    "recipeVersion": 1
-                  }
-                },
-                {
-                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                  "issuedAt": 1899999999000
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:oneof-domain-error"
+                  },
+                  "contentHash": "0b6de1d239ca9171f2f8ee71b63086e548624abd010f34a84a92d3c8e3ece0ce",
+                  "recipeVersion": 1
                 }
               ],
-              "presentation": {
-                "kind": "per-claim",
-                "signatures": [
-                  {
-                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "fwF2dBF3f49ObVJK3HIOw2Cp9EF_zV5s2KQZwmn3svB1s_jwlEGqEXDJARaIk0tyLkjSxjHyVTmSEkFhsjI2Bg"
-                  }
-                ]
+              "overallDecision": "error",
+              "generatedAt": 1900000000000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                "value": "GhpTxUZanhwYkwviMLw3c5dT9ya67yA_Jr6nj4lHsHBV0MLKsmk7hQflvLvLFShyf_D-tMHCium_tpjapwVdDQ"
               }
+            },
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
+              },
+              "contentHash": "2e39635f5f4777d8539f27592ab5daad8a0e4bd6a425df2e2c8ef4b5a61cc1c0",
+              "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
               {
@@ -3008,7 +3201,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:oneof-lei-fail"
                   },
-                  "contentHash": "f0d2d962cbdc3c55f75a48c1f281a4cf9115b667e9f52e4eb2946f206d41e7b9",
+                  "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -3016,7 +3209,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "fail",
                   "reason": "deterministic oneof-lei-fail fail",
                   "attestation": {
@@ -3033,7 +3226,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "KbEG2IAxgj4seTJlMGsiqflt_NhibTkLifXRQ-kWB8cujf-vht49jdIhYY8Oakc_o6_LT9kx6MDd49q4rcaLAQ"
+                    "value": "psFdseMm7TlCM-SHJ8h43FT3yPVhK2xw6RPnGT_XTLUcdrvh8gtO50UBad2NENUdwviG63EEsBSGOoUf3LY6Cw"
                   }
                 }
               },
@@ -3070,89 +3263,166 @@
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
                     "value": "H_9phI0rVXJrtfhk94RFVB55cf_rfuBJmlNSEecVceimTYBnoCkFkvL_D9jpkH9jjssu-AbMMmdBqzQ3M4MEDg"
                   }
-                },
-                "failureClass": "transient"
+                }
               }
             ],
-            "requirement": {
-              "requirementVersion": "1",
-              "required": [],
-              "oneOf": [
-                [
-                  {
-                    "scheme": "lei",
-                    "verificationRequired": true,
-                    "recipeVersion": 1
-                  },
-                  {
-                    "scheme": "domain",
-                    "verificationRequired": true,
-                    "recipeVersion": 1
+            "authority": {
+              "kind": "production",
+              "authenticatedSessionStart": "dacs-363-session-start",
+              "vetInput": {
+                "jobId": "01J00000000000000000000363",
+                "actor": "buyer",
+                "bundleToVet": {
+                  "bundleVersion": "1",
+                  "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "presentedAt": 1900000000000,
+                  "claims": [
+                    {
+                      "ref": "lei:984500ABCDEF12345678",
+                      "issuedAt": 1899999999000,
+                      "verifiedBy": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "demos:dacs-363:result:oneof-lei-fail"
+                        },
+                        "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
+                        "recipeVersion": 1
+                      }
+                    },
+                    {
+                      "ref": "domain:example.com",
+                      "issuedAt": 1899999999000,
+                      "verifiedBy": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "demos:dacs-363:result:oneof-domain-error"
+                        },
+                        "contentHash": "0b6de1d239ca9171f2f8ee71b63086e548624abd010f34a84a92d3c8e3ece0ce",
+                        "recipeVersion": 1
+                      }
+                    },
+                    {
+                      "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                      "issuedAt": 1899999999000
+                    }
+                  ],
+                  "presentation": {
+                    "kind": "per-claim",
+                    "signatures": [
+                      {
+                        "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                        "signature": "dBAb1HpnJzC3HlY5pczkOhHf85vmstZ0RF5RcF2L_oUjiNL5tCxzzcw8w9xGLss04yFP1vLxTHokjCXlYkUHDg"
+                      }
+                    ]
                   }
-                ]
-              ]
+                },
+                "requirement": {
+                  "requirementVersion": "1",
+                  "required": [],
+                  "oneOf": [
+                    [
+                      {
+                        "scheme": "lei",
+                        "verificationRequired": true,
+                        "recipeVersion": 1
+                      },
+                      {
+                        "scheme": "domain",
+                        "verificationRequired": true,
+                        "recipeVersion": 1
+                      }
+                    ]
+                  ]
+                },
+                "verifierIdentity": {
+                  "bundleVersion": "1",
+                  "presentedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                  "presentedAt": 1900000000000,
+                  "claims": [
+                    {
+                      "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                      "issuedAt": 1899999999000
+                    }
+                  ],
+                  "presentation": {
+                    "kind": "per-claim",
+                    "signatures": [
+                      {
+                        "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                        "signature": "_N70XDY0J03DY3_yxYIF3NvW_-vSrwTuwBIpkpxQp9UzzM6o5qTMAebM32TELn7k3MfcvE8WQn9grht_tpRFDQ"
+                      }
+                    ]
+                  }
+                },
+                "sessionContext": {
+                  "jobId": "01J00000000000000000000363",
+                  "recipeRegistryVersion": 1
+                },
+                "recipeRegistryVersion": 1,
+                "attempt": 1
+              }
             }
           }
         }
       },
       "expectedOutput": {
         "decision": "error",
-        "errorClass": "transient"
+        "reasons": [
+          "oneOf group: at least one claim errored"
+        ]
       }
     },
     {
       "name": "vet-oneof-indeterminate-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, indeterminate outranks fail when no error or pass exists.",
-      "inputHash": "63362ab2da9cf886ef94ab914fc63049f088f4d277466fa996d6502a093cb807",
+      "inputHash": "14b0f55f4359dd921968493543bf4ca151d40294a8705ec23081a64a701b6841",
       "evaluations": {
         "result": {
           "operation": "aggregate",
           "input": {
             "evaluatedAt": 1900000000000,
-            "bundle": {
-              "bundleVersion": "1",
-              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-              "presentedAt": 1900000000000,
-              "claims": [
+            "record": {
+              "recordVersion": "1",
+              "jobId": "01J00000000000000000000363",
+              "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "bundleHash": "a6c18a2306f0bc84e80cc4742ec0c4578146859b389444a6f2ddd3cb70cf3b9c",
+              "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
+              "freshness": [],
+              "supplementary": [],
+              "dealSpecific": [
                 {
-                  "ref": "lei:984500ABCDEF12345678",
-                  "issuedAt": 1899999999000,
-                  "verifiedBy": {
-                    "anchor": {
-                      "kind": "storage-program",
-                      "locator": "demos:dacs-363:result:oneof-lei-fail"
-                    },
-                    "contentHash": "f0d2d962cbdc3c55f75a48c1f281a4cf9115b667e9f52e4eb2946f206d41e7b9",
-                    "recipeVersion": 1
-                  }
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:oneof-lei-fail"
+                  },
+                  "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
+                  "recipeVersion": 1
                 },
                 {
-                  "ref": "domain:example.com",
-                  "issuedAt": 1899999999000,
-                  "verifiedBy": {
-                    "anchor": {
-                      "kind": "storage-program",
-                      "locator": "demos:dacs-363:result:oneof-domain-indeterminate"
-                    },
-                    "contentHash": "cf6b5d3b1a8906716174566b74f86a294080c130ce889e6ee2a96a531477cbb9",
-                    "recipeVersion": 1
-                  }
-                },
-                {
-                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                  "issuedAt": 1899999999000
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:oneof-domain-indeterminate"
+                  },
+                  "contentHash": "cf6b5d3b1a8906716174566b74f86a294080c130ce889e6ee2a96a531477cbb9",
+                  "recipeVersion": 1
                 }
               ],
-              "presentation": {
-                "kind": "per-claim",
-                "signatures": [
-                  {
-                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "1s5CTy1ejTTTYMduXu7hN_OmgWjv0Nv4Mr7OntacF69HEFcx1aQIyR5pyhm0rzvF0p3Grhy_pQ-6CrYpd1HtBA"
-                  }
-                ]
+              "overallDecision": "indeterminate",
+              "generatedAt": 1900000000000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                "value": "TkmWo9CBPuxnYPwDObepK6U6kGK4gdZi8S0AuwQWlqCauW6j4PVN1gTOmbBR9CgSE5FpetbNjUom5LZwsq6lCw"
               }
+            },
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
+              },
+              "contentHash": "4c621c60b02b8469803c36d18a55524acc0e93952e4cf6fd214c277ac04bdd4d",
+              "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
               {
@@ -3161,7 +3431,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:oneof-lei-fail"
                   },
-                  "contentHash": "f0d2d962cbdc3c55f75a48c1f281a4cf9115b667e9f52e4eb2946f206d41e7b9",
+                  "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -3169,7 +3439,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "fail",
                   "reason": "deterministic oneof-lei-fail fail",
                   "attestation": {
@@ -3186,7 +3456,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "KbEG2IAxgj4seTJlMGsiqflt_NhibTkLifXRQ-kWB8cujf-vht49jdIhYY8Oakc_o6_LT9kx6MDd49q4rcaLAQ"
+                    "value": "psFdseMm7TlCM-SHJ8h43FT3yPVhK2xw6RPnGT_XTLUcdrvh8gtO50UBad2NENUdwviG63EEsBSGOoUf3LY6Cw"
                   }
                 }
               },
@@ -3226,84 +3496,163 @@
                 }
               }
             ],
-            "requirement": {
-              "requirementVersion": "1",
-              "required": [],
-              "oneOf": [
-                [
-                  {
-                    "scheme": "lei",
-                    "verificationRequired": true,
-                    "recipeVersion": 1
-                  },
-                  {
-                    "scheme": "domain",
-                    "verificationRequired": true,
-                    "recipeVersion": 1
+            "authority": {
+              "kind": "production",
+              "authenticatedSessionStart": "dacs-363-session-start",
+              "vetInput": {
+                "jobId": "01J00000000000000000000363",
+                "actor": "buyer",
+                "bundleToVet": {
+                  "bundleVersion": "1",
+                  "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "presentedAt": 1900000000000,
+                  "claims": [
+                    {
+                      "ref": "lei:984500ABCDEF12345678",
+                      "issuedAt": 1899999999000,
+                      "verifiedBy": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "demos:dacs-363:result:oneof-lei-fail"
+                        },
+                        "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
+                        "recipeVersion": 1
+                      }
+                    },
+                    {
+                      "ref": "domain:example.com",
+                      "issuedAt": 1899999999000,
+                      "verifiedBy": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "demos:dacs-363:result:oneof-domain-indeterminate"
+                        },
+                        "contentHash": "cf6b5d3b1a8906716174566b74f86a294080c130ce889e6ee2a96a531477cbb9",
+                        "recipeVersion": 1
+                      }
+                    },
+                    {
+                      "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                      "issuedAt": 1899999999000
+                    }
+                  ],
+                  "presentation": {
+                    "kind": "per-claim",
+                    "signatures": [
+                      {
+                        "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                        "signature": "An72gh0lDD-gOaLCV5P280CgeF0LE1eCVFxM_xwbR_kSL0JORDswtAfNA7FfQLkrJcqS0m60fW5tkBd6bxdxCw"
+                      }
+                    ]
                   }
-                ]
-              ]
+                },
+                "requirement": {
+                  "requirementVersion": "1",
+                  "required": [],
+                  "oneOf": [
+                    [
+                      {
+                        "scheme": "lei",
+                        "verificationRequired": true,
+                        "recipeVersion": 1
+                      },
+                      {
+                        "scheme": "domain",
+                        "verificationRequired": true,
+                        "recipeVersion": 1
+                      }
+                    ]
+                  ]
+                },
+                "verifierIdentity": {
+                  "bundleVersion": "1",
+                  "presentedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                  "presentedAt": 1900000000000,
+                  "claims": [
+                    {
+                      "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                      "issuedAt": 1899999999000
+                    }
+                  ],
+                  "presentation": {
+                    "kind": "per-claim",
+                    "signatures": [
+                      {
+                        "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                        "signature": "_N70XDY0J03DY3_yxYIF3NvW_-vSrwTuwBIpkpxQp9UzzM6o5qTMAebM32TELn7k3MfcvE8WQn9grht_tpRFDQ"
+                      }
+                    ]
+                  }
+                },
+                "sessionContext": {
+                  "jobId": "01J00000000000000000000363",
+                  "recipeRegistryVersion": 1
+                },
+                "recipeRegistryVersion": 1,
+                "attempt": 1
+              }
             }
           }
         }
       },
       "expectedOutput": {
-        "decision": "indeterminate"
+        "decision": "indeterminate",
+        "reasons": [
+          "oneOf group: at least one claim indeterminate"
+        ]
       }
     },
     {
       "name": "vet-cross-accumulator-fail-over-error",
       "spec": "§7.7.1",
       "summary": "A required hard fail outranks a separate oneOf error globally.",
-      "inputHash": "614b15717ef873d3524b271021400e8a543d67ce394a18ae1589fef6f11efbbd",
+      "inputHash": "e3525f564ee8578821b1ed62bddefdabd166ed823297e9a635cc87b9a5aa3783",
       "evaluations": {
         "result": {
           "operation": "aggregate",
           "input": {
             "evaluatedAt": 1900000000000,
-            "bundle": {
-              "bundleVersion": "1",
-              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-              "presentedAt": 1900000000000,
-              "claims": [
+            "record": {
+              "recordVersion": "1",
+              "jobId": "01J00000000000000000000363",
+              "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "bundleHash": "04b64b199566c166a639a1eb55d97ce6e62edc8903e84e8d2af2bbed42abc746",
+              "requirementHash": "647b7eb216c46142f051b8f2857e696fcfd7cf142543a0b6f4f4b9aca930cadf",
+              "freshness": [],
+              "supplementary": [],
+              "dealSpecific": [
                 {
-                  "ref": "lei:984500ABCDEF12345678",
-                  "issuedAt": 1899999999000,
-                  "verifiedBy": {
-                    "anchor": {
-                      "kind": "storage-program",
-                      "locator": "demos:dacs-363:result:oneof-lei-fail"
-                    },
-                    "contentHash": "f0d2d962cbdc3c55f75a48c1f281a4cf9115b667e9f52e4eb2946f206d41e7b9",
-                    "recipeVersion": 1
-                  }
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:oneof-lei-fail"
+                  },
+                  "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
+                  "recipeVersion": 1
                 },
                 {
-                  "ref": "domain:example.com",
-                  "issuedAt": 1899999999000,
-                  "verifiedBy": {
-                    "anchor": {
-                      "kind": "storage-program",
-                      "locator": "demos:dacs-363:result:oneof-domain-error"
-                    },
-                    "contentHash": "0b6de1d239ca9171f2f8ee71b63086e548624abd010f34a84a92d3c8e3ece0ce",
-                    "recipeVersion": 1
-                  }
-                },
-                {
-                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                  "issuedAt": 1899999999000
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:oneof-domain-error"
+                  },
+                  "contentHash": "0b6de1d239ca9171f2f8ee71b63086e548624abd010f34a84a92d3c8e3ece0ce",
+                  "recipeVersion": 1
                 }
               ],
-              "presentation": {
-                "kind": "per-claim",
-                "signatures": [
-                  {
-                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "fwF2dBF3f49ObVJK3HIOw2Cp9EF_zV5s2KQZwmn3svB1s_jwlEGqEXDJARaIk0tyLkjSxjHyVTmSEkFhsjI2Bg"
-                  }
-                ]
+              "overallDecision": "fail",
+              "generatedAt": 1900000000000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                "value": "KXtBJOF6JBIx1BJWLu-8coT2uco6eZ4ve_Nok0pDrU81X2-xYxriIq_e4XCf0LWwYGKRYxHrwRXTvgcr2lKMCw"
               }
+            },
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
+              },
+              "contentHash": "4b4c00bf5ad6d2cba098e94fab5c05db8fbce5d470df0b4f6f80ef5ecbc64911",
+              "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
               {
@@ -3312,7 +3661,7 @@
                     "kind": "storage-program",
                     "locator": "demos:dacs-363:result:oneof-lei-fail"
                   },
-                  "contentHash": "f0d2d962cbdc3c55f75a48c1f281a4cf9115b667e9f52e4eb2946f206d41e7b9",
+                  "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
                   "recipeVersion": 1
                 },
                 "artifact": {
@@ -3320,7 +3669,7 @@
                   "scheme": "lei",
                   "identifier": "984500ABCDEF12345678",
                   "recipeVersion": 1,
-                  "method": "gleif-registry",
+                  "method": "consensus-backed-proxy",
                   "decision": "fail",
                   "reason": "deterministic oneof-lei-fail fail",
                   "attestation": {
@@ -3337,7 +3686,7 @@
                   "signature": {
                     "algorithm": "ed25519",
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
-                    "value": "KbEG2IAxgj4seTJlMGsiqflt_NhibTkLifXRQ-kWB8cujf-vht49jdIhYY8Oakc_o6_LT9kx6MDd49q4rcaLAQ"
+                    "value": "psFdseMm7TlCM-SHJ8h43FT3yPVhK2xw6RPnGT_XTLUcdrvh8gtO50UBad2NENUdwviG63EEsBSGOoUf3LY6Cw"
                   }
                 }
               },
@@ -3374,35 +3723,114 @@
                     "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
                     "value": "H_9phI0rVXJrtfhk94RFVB55cf_rfuBJmlNSEecVceimTYBnoCkFkvL_D9jpkH9jjssu-AbMMmdBqzQ3M4MEDg"
                   }
-                },
-                "failureClass": "transient"
+                }
               }
             ],
-            "requirement": {
-              "requirementVersion": "1",
-              "required": [
-                {
-                  "scheme": "lei",
-                  "verificationRequired": true,
-                  "recipeVersion": 1
-                }
-              ],
-              "oneOf": [
-                [
-                  {
-                    "scheme": "domain",
-                    "verificationRequired": true,
-                    "recipeVersion": 1
+            "authority": {
+              "kind": "production",
+              "authenticatedSessionStart": "dacs-363-session-start",
+              "vetInput": {
+                "jobId": "01J00000000000000000000363",
+                "actor": "buyer",
+                "bundleToVet": {
+                  "bundleVersion": "1",
+                  "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "presentedAt": 1900000000000,
+                  "claims": [
+                    {
+                      "ref": "lei:984500ABCDEF12345678",
+                      "issuedAt": 1899999999000,
+                      "verifiedBy": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "demos:dacs-363:result:oneof-lei-fail"
+                        },
+                        "contentHash": "3f1377d13ddd5f3ae1c46e1831aa2e89d92bf2f7eb2fa7478aed9e2774cd2a6b",
+                        "recipeVersion": 1
+                      }
+                    },
+                    {
+                      "ref": "domain:example.com",
+                      "issuedAt": 1899999999000,
+                      "verifiedBy": {
+                        "anchor": {
+                          "kind": "storage-program",
+                          "locator": "demos:dacs-363:result:oneof-domain-error"
+                        },
+                        "contentHash": "0b6de1d239ca9171f2f8ee71b63086e548624abd010f34a84a92d3c8e3ece0ce",
+                        "recipeVersion": 1
+                      }
+                    },
+                    {
+                      "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                      "issuedAt": 1899999999000
+                    }
+                  ],
+                  "presentation": {
+                    "kind": "per-claim",
+                    "signatures": [
+                      {
+                        "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                        "signature": "dBAb1HpnJzC3HlY5pczkOhHf85vmstZ0RF5RcF2L_oUjiNL5tCxzzcw8w9xGLss04yFP1vLxTHokjCXlYkUHDg"
+                      }
+                    ]
                   }
-                ]
-              ]
+                },
+                "requirement": {
+                  "requirementVersion": "1",
+                  "required": [
+                    {
+                      "scheme": "lei",
+                      "verificationRequired": true,
+                      "recipeVersion": 1
+                    }
+                  ],
+                  "oneOf": [
+                    [
+                      {
+                        "scheme": "domain",
+                        "verificationRequired": true,
+                        "recipeVersion": 1
+                      }
+                    ]
+                  ]
+                },
+                "verifierIdentity": {
+                  "bundleVersion": "1",
+                  "presentedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                  "presentedAt": 1900000000000,
+                  "claims": [
+                    {
+                      "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                      "issuedAt": 1899999999000
+                    }
+                  ],
+                  "presentation": {
+                    "kind": "per-claim",
+                    "signatures": [
+                      {
+                        "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+                        "signature": "_N70XDY0J03DY3_yxYIF3NvW_-vSrwTuwBIpkpxQp9UzzM6o5qTMAebM32TELn7k3MfcvE8WQn9grht_tpRFDQ"
+                      }
+                    ]
+                  }
+                },
+                "sessionContext": {
+                  "jobId": "01J00000000000000000000363",
+                  "recipeRegistryVersion": 1
+                },
+                "recipeRegistryVersion": 1,
+                "attempt": 1
+              }
             }
           }
         }
       },
       "expectedOutput": {
         "decision": "fail",
-        "errorClass": "permanent"
+        "reasons": [
+          "required failing or absent: lei"
+        ]
       }
     }
   ]

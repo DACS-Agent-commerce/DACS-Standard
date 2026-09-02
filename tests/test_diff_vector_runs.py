@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "diff_vector_runs.py"
+sys.path.insert(0, str(ROOT / "scripts"))
+from diff_vector_runs import load_expected  # noqa: E402
 SET = "phase-kind-divergence-v0.3"
 CASE = "shared-index-kind-mismatch-is-divergent"
 
@@ -82,6 +85,19 @@ class DiffVectorRunsTests(unittest.TestCase):
         run = self.execute()
         self.assertNotEqual(run.returncode, 0)
         self.assertIn("needs at least two distinct implementation ids", run.stderr)
+
+    def test_superseded_identity_sketch_is_not_executable(self):
+        with self.assertRaisesRegex(SystemExit, "superseded and not executable"):
+            load_expected("control-gate-vectors")
+
+    def test_replacement_expands_all_named_evaluations(self):
+        expected = load_expected("dacs1-vet-golden-inputs-v0.1")
+        self.assertEqual(34, len(expected))
+        self.assertIn("dacs1-cci-lei-defect::result", expected)
+        self.assertIn("dacs1-freshness-fail-closed::expiresOnly", expected)
+        self.assertEqual(
+            "error", expected["vet-oneof-error-over-fail::result"]
+        )
 
 
 if __name__ == "__main__":

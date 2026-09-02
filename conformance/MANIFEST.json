@@ -9,7 +9,7 @@
   "inputBindings": {
     "dacs1-vet-golden-inputs-v0.1": {
       "path": "conformance/fixtures/identity/dacs1-vet-golden-inputs-v0.1.json",
-      "sha256": "1ec5dded8a1d92711161d38d186174d5956e23928d13ff74cb077363d0232120",
+      "sha256": "202939d7c3f25ff8b2139c6e556f5b14a8934e5356e28501537aa779e086ffb9",
       "caseCount": 24,
       "scope": "The 13 DACS-1 and 11 Vet manifest cases listed under the same IDs in the bound fixture."
     }
@@ -695,7 +695,9 @@
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
         "decision": "error",
-        "errorClass": "transient"
+        "reasons": [
+          "oneOf group: at least one claim errored"
+        ]
       }
     },
     {
@@ -706,7 +708,10 @@
       "status": "golden",
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
-        "decision": "indeterminate"
+        "decision": "indeterminate",
+        "reasons": [
+          "oneOf group: at least one claim indeterminate"
+        ]
       }
     },
     {
@@ -718,7 +723,9 @@
       "reason": "reference-verifier-accepted + byte-stable",
       "want": {
         "decision": "fail",
-        "errorClass": "permanent"
+        "reasons": [
+          "required failing or absent: lei"
+        ]
       }
     },
     {

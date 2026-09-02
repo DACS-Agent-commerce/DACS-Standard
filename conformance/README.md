@@ -86,11 +86,16 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
 - `fixtures/identity/dacs1-vet-golden-inputs-v0.1.json` — complete,
   deterministic current-wire inputs for the 13 DACS-1 and 11 Vet golden
   manifest cases that previously existed only inside `dacs-verify`. Every
-  bundle and available result carries a genuine signature, every case pins its
-  input hash, and `MANIFEST.json` pins the whole file SHA-256. The legacy
+  bundle, available result, recipe, and composite record carries a genuine
+  signature. The three aggregation cases bind the signed record to the exact
+  production `VetCredentialsInput`, trusted session start, registry pin,
+  requirement, bundle, and complete ordered result-reference set. Every case
+  pins its input hash, `MANIFEST.json` pins the whole file SHA-256, and
+  `scripts/diff_vector_runs.py` exposes all 34 evaluations under stable
+  `<case>::<evaluation>` identities. The legacy
   `control-gate-vectors.json` policy sketch is retained only as superseded
-  history; its abbreviated references and signatures are not executable wire
-  artifacts.
+  history and is rejected by the cross-run tool; its abbreviated references
+  and signatures are not executable wire artifacts.
 - `fixtures/settlement-evidence-payment-success.json` — a byte-stable pay-evm-erc20 success SettlementEvidence (§9.7) with its PaymentPhaseInput + PhaseHandlerResult, signed by a deterministic orchestrator key.
 - `fixtures/settlement-evidence-delivery-success.json` — a byte-stable deliver-storage-program success SettlementEvidence (deliverable content hash + anchor, no settlementFinality).
 - `fixtures/session-bundle-one-sided.json` — a one-signature `aborted-by-other` bundle for the §10.4.3(b)/§10.11 one-sided case.

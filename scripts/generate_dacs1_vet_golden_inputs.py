@@ -14,6 +14,7 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+from urllib.parse import quote
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -28,6 +29,11 @@ NOW = 1_900_000_000_000
 SOURCE_COMMIT = "ddba42e5789fdde84b4ae1d31eaa4fa65c28965b"
 BUNDLE_DOMAIN = "dacs-bundle-presentation:v1:"
 RESULT_DOMAIN = "dacs-verifyresult:v1:"
+RECIPE_DOMAIN = "dacs-recipe:v1:"
+COMPOSITE_DOMAIN = "dacs-composite:v1:"
+RECIPE_REGISTRY_VERSION = 1
+JOB_ID = "01J00000000000000000000363"
+SESSION_START = "dacs-363-session-start"
 
 
 def canonical_bytes(value: object) -> bytes:
@@ -60,9 +66,13 @@ def public_hex(key: Ed25519PrivateKey) -> str:
 PRESENTER = private_key("presenter")
 SECOND_PRESENTER = private_key("second-presenter")
 AUTHORITY = private_key("authority")
+RECIPE_STEWARD = private_key("recipe-steward")
+VERIFIER = private_key("verifier")
 PRESENTER_REF = f"key:{public_hex(PRESENTER)}"
 SECOND_REF = f"key:{public_hex(SECOND_PRESENTER)}"
 AUTHORITY_REF = f"key:{public_hex(AUTHORITY)}"
+RECIPE_STEWARD_REF = f"key:{public_hex(RECIPE_STEWARD)}"
+VERIFIER_REF = f"key:{public_hex(VERIFIER)}"
 LEI_A = "lei:984500ABCDEF12345678"
 LEI_B = "lei:529900T8BM49AABBCC11"
 
@@ -87,10 +97,16 @@ def requirement(
     return out
 
 
-def member(scheme: str, *, verified: bool, max_age: int | None = None) -> dict:
+def member(
+    scheme: str,
+    *,
+    verified: bool,
+    max_age: int | None = None,
+    recipe_version: int = 1,
+) -> dict:
     out = {"scheme": scheme, "verificationRequired": verified}
     if verified:
-        out["recipeVersion"] = 1
+        out["recipeVersion"] = recipe_version
     if max_age is not None:
         out["maxAge"] = max_age
     return out
@@ -124,23 +140,124 @@ def signed_bundle(
     }
 
 
+def identity_bundle_hash(bundle: dict) -> str:
+    return hash_hex({
+        key: value for key, value in bundle.items() if key != "presentation"
+    })
+
+
+def signed_recipe(
+    scheme: str,
+    method: dict,
+    recipe_version: int,
+) -> dict:
+    method_kind = method["kind"]
+    unsigned = {
+        "recipeVersion": recipe_version,
+        "scheme": scheme,
+        "defaultMethod": copy.deepcopy(method),
+        "defaultMaxAgeSec": 300,
+        "retryClass": "transient",
+        "availability": "live",
+        "governance": {
+            "proposedBy": RECIPE_STEWARD_REF,
+            "acceptedAt": NOW - 86_400_000,
+            "anchoring": "single-signer",
+        },
+    }
+    if method_kind in {
+        "verifiable-credential", "tlsnotary", "zktls",
+        "consensus-backed-proxy", "evm-rpc",
+    }:
+        unsigned["parserRules"] = {"format": "raw", "matcher": ".+"}
+    signature = b64url(
+        RECIPE_STEWARD.sign(
+            (RECIPE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+        )
+    )
+    return {
+        **unsigned,
+        "signature": {
+            "algorithm": "ed25519",
+            "signer": RECIPE_STEWARD_REF,
+            "value": signature,
+        },
+    }
+
+
+def recipe_registry() -> dict:
+    vc = {
+        "kind": "verifiable-credential",
+        "issuerAllowList": [AUTHORITY_REF],
+    }
+    recipes = [
+        signed_recipe("cci-lei", vc, 1),
+        signed_recipe("did", vc, 1),
+        signed_recipe("domain", {"kind": "demos-gcr-domain"}, 1),
+        signed_recipe(
+            "finra-crd",
+            {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "GET",
+                    "urlTemplate": (
+                        "https://api.brokercheck.finra.org/search/individual/"
+                        "{identifier}"
+                    ),
+                },
+            },
+            1,
+        ),
+        signed_recipe("key", {"kind": "self-signed"}, 1),
+        signed_recipe(
+            "lei",
+            {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "GET",
+                    "urlTemplate": (
+                        "https://api.gleif.org/api/v1/lei-records/{identifier}"
+                    ),
+                },
+            },
+            1,
+        ),
+        # RA-3 versions are monotonic per scheme, including across families.
+        signed_recipe("lei", vc, 2),
+    ]
+    return {
+        "recipeRegistryVersion": RECIPE_REGISTRY_VERSION,
+        "steward": RECIPE_STEWARD_REF,
+        "recipes": recipes,
+    }
+
+
+def authenticated_session_start() -> dict:
+    # SessionContext is runtime state, not a signed wire artifact.  The fixture
+    # harness supplies this exact object through its trusted-context boundary.
+    return {
+        "jobId": JOB_ID,
+        "recipeRegistryVersion": RECIPE_REGISTRY_VERSION,
+    }
+
+
 def signed_result(
     ref: str,
     decision: str,
     label: str,
     *,
-    method: str = "vc-presentation",
+    method: str = "verifiable-credential",
+    recipe_version: int = 1,
     verified_at: int = NOW - 1_000,
     valid_until: int = NOW + 60_000,
     data: dict | None = None,
-    failure_class: str | None = None,
 ) -> tuple[dict, dict]:
     scheme, identifier = ref.split(":", 1)
     unsigned = {
         "resultVersion": "1",
         "scheme": scheme,
         "identifier": identifier,
-        "recipeVersion": 1,
+        "recipeVersion": recipe_version,
         "method": method,
         "decision": decision,
         "reason": f"deterministic {label} {decision}",
@@ -177,11 +294,9 @@ def signed_result(
             "locator": f"demos:dacs-363:result:{label}",
         },
         "contentHash": hash_hex(unsigned),
-        "recipeVersion": 1,
+        "recipeVersion": recipe_version,
     }
     resolved = {"ref": copy.deepcopy(result_ref), "artifact": artifact}
-    if failure_class is not None:
-        resolved["failureClass"] = failure_class
     return result_ref, resolved
 
 
@@ -210,6 +325,88 @@ def evaluation(
     if req is not None:
         input_value["requirement"] = copy.deepcopy(req)
     return {"operation": operation, "input": input_value}
+
+
+def signed_composite(
+    bundle: dict,
+    req: dict,
+    resolved: list[dict],
+    decision: str,
+) -> tuple[dict, dict]:
+    result_refs = [copy.deepcopy(item["ref"]) for item in resolved]
+    unsigned = {
+        "recordVersion": "1",
+        "jobId": JOB_ID,
+        "evaluatedParty": bundle["presentedBy"],
+        "bundleHash": identity_bundle_hash(bundle),
+        "requirementHash": hash_hex(req),
+        "freshness": [],
+        "supplementary": [],
+        "dealSpecific": result_refs,
+        "overallDecision": decision,
+        "generatedAt": NOW,
+    }
+    signature = b64url(
+        VERIFIER.sign((COMPOSITE_DOMAIN + hash_hex(unsigned)).encode("ascii"))
+    )
+    record = {
+        **unsigned,
+        "signature": {
+            "algorithm": "ed25519",
+            "signer": VERIFIER_REF,
+            "value": signature,
+        },
+    }
+    record_ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": (
+                f"dacs2:composite:{JOB_ID}:"
+                f"{quote(bundle['presentedBy'], safe='')}"
+            ),
+        },
+        "contentHash": hash_hex(unsigned),
+        "signer": VERIFIER_REF,
+    }
+    return record, record_ref
+
+
+def aggregate_evaluation(
+    bundle: dict,
+    req: dict,
+    resolved: list[dict],
+    decision: str,
+) -> dict:
+    record, record_ref = signed_composite(bundle, req, resolved, decision)
+    verifier_identity = signed_bundle(
+        [claim(VERIFIER_REF, issuedAt=NOW - 1_000)],
+        presented_by=VERIFIER_REF,
+        signer=VERIFIER,
+        signer_ref=VERIFIER_REF,
+    )
+    return {
+        "operation": "aggregate",
+        "input": {
+            "evaluatedAt": NOW,
+            "record": record,
+            "recordRef": record_ref,
+            "resolvedResults": copy.deepcopy(resolved),
+            "authority": {
+                "kind": "production",
+                "authenticatedSessionStart": SESSION_START,
+                "vetInput": {
+                    "jobId": JOB_ID,
+                    "actor": "buyer",
+                    "bundleToVet": copy.deepcopy(bundle),
+                    "requirement": copy.deepcopy(req),
+                    "verifierIdentity": verifier_identity,
+                    "sessionContext": authenticated_session_start(),
+                    "recipeRegistryVersion": RECIPE_REGISTRY_VERSION,
+                    "attempt": 1,
+                },
+            },
+        },
+    }
 
 
 def add_case(
@@ -248,13 +445,13 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
     ], presented_by=LEI_A)
 
     expired_claim, expired_result = verified_claim(
-        LEI_A, "pass", f"{prefix}-expired", method="gleif-registry"
+        LEI_A, "pass", f"{prefix}-expired", method="consensus-backed-proxy"
     )
     expired_claim["expiresAt"] = NOW - 1
     expired_bundle = signed_bundle([expired_claim], presented_by=LEI_A)
 
     expires_claim, expires_result = verified_claim(
-        LEI_A, "pass", f"{prefix}-expires-only", method="gleif-registry"
+        LEI_A, "pass", f"{prefix}-expires-only", method="consensus-backed-proxy"
     )
     expires_claim.pop("issuedAt")
     expires_claim["expiresAt"] = NOW + 60_000
@@ -264,7 +461,7 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
         LEI_A,
         "pass",
         f"{prefix}-max-age",
-        method="gleif-registry",
+        method="consensus-backed-proxy",
         verified_at=NOW - 120_000,
         valid_until=NOW + 60_000,
     )
@@ -276,18 +473,20 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
         LEI_A,
         "pass",
         f"{prefix}-selected-stale",
-        method="vlei-presentation",
+        method="verifiable-credential",
+        recipe_version=2,
         data={"holderBinding": {"controller": PRESENTER_REF}},
     )
     stale_claim["expiresAt"] = NOW - 1
     fresh_claim, fresh_result = verified_claim(
-        LEI_B, "pass", f"{prefix}-other-fresh", method="gleif-registry"
+        LEI_B, "pass", f"{prefix}-other-fresh", method="consensus-backed-proxy"
     )
     stale_bundle = signed_bundle(
         [stale_claim, fresh_claim], presented_by=LEI_A
     )
     selected_req = requirement(
-        [member("lei", verified=True, max_age=60)], selector="lei"
+        [member("lei", verified=True, max_age=60, recipe_version=2)],
+        selector="lei",
     )
 
     return {
@@ -317,7 +516,7 @@ def build_cases() -> list[dict]:
         "cci-lei:984500ABCDEF12345678",
         "pass",
         "cci-lei-pass",
-        method="vc-presentation",
+        method="verifiable-credential",
     )
     cci_bundle = signed_bundle(
         [cci_claim], presented_by="cci-lei:984500ABCDEF12345678"
@@ -348,10 +547,10 @@ def build_cases() -> list[dict]:
     )
 
     selected_fail, selected_fail_result = verified_claim(
-        LEI_A, "fail", "laundering-selected", method="gleif-registry"
+        LEI_A, "fail", "laundering-selected", method="consensus-backed-proxy"
     )
     other_pass, other_pass_result = verified_claim(
-        LEI_B, "pass", "laundering-other", method="gleif-registry"
+        LEI_B, "pass", "laundering-other", method="consensus-backed-proxy"
     )
     laundering_bundle = signed_bundle(
         [selected_fail, other_pass], presented_by=LEI_A
@@ -371,12 +570,17 @@ def build_cases() -> list[dict]:
     )
 
     registry_claim, registry_result = verified_claim(
-        LEI_A, "pass", "registry-lei", method="gleif-registry"
+        LEI_A, "pass", "registry-lei", method="consensus-backed-proxy"
     )
     supporting_bundle = signed_bundle([registry_claim], presented_by=PRESENTER_REF)
     registry_primary_bundle = signed_bundle([registry_claim], presented_by=LEI_A)
     verified_lei = requirement([member("lei", verified=True)])
-    selected_lei = requirement([member("lei", verified=True)], selector="lei")
+    selected_lei_registry = requirement(
+        [member("lei", verified=True)], selector="lei"
+    )
+    selected_lei_vc = requirement(
+        [member("lei", verified=True, recipe_version=2)], selector="lei"
+    )
     add_case(
         cases,
         "vet-control-existence-only-lei-supporting-context",
@@ -393,7 +597,7 @@ def build_cases() -> list[dict]:
         "§6.3.2 step (6)",
         "The same existence-only result cannot control the selected LEI.",
         {"result": evaluation(
-            "decision", registry_primary_bundle, selected_lei,
+            "decision", registry_primary_bundle, selected_lei_registry,
             resolved=[registry_result],
         )},
         "fail",
@@ -414,7 +618,7 @@ def build_cases() -> list[dict]:
         LEI_A,
         "pass",
         "registry-forged-holder-binding",
-        method="gleif-registry",
+        method="consensus-backed-proxy",
         data={"holderBinding": {"controller": PRESENTER_REF}},
     )
     forged_bundle = signed_bundle([forged_claim], presented_by=LEI_A)
@@ -424,7 +628,8 @@ def build_cases() -> list[dict]:
         "§6.3.2 step (6)",
         "Data cannot upgrade an existence-only method into a control method.",
         {"result": evaluation(
-            "decision", forged_bundle, selected_lei, resolved=[forged_result]
+            "decision", forged_bundle, selected_lei_registry,
+            resolved=[forged_result]
         )},
         "fail",
     )
@@ -545,7 +750,8 @@ def build_cases() -> list[dict]:
     )
 
     finra_claim, finra_result = verified_claim(
-        "finra-crd:12345", "pass", "oneof-finra", method="vc-presentation"
+        "finra-crd:12345", "pass", "oneof-finra",
+        method="consensus-backed-proxy"
     )
     satisfied_bundle = signed_bundle([finra_claim], presented_by=PRESENTER_REF)
     unsatisfied_bundle = signed_bundle([did_claim], presented_by=PRESENTER_REF)
@@ -569,7 +775,8 @@ def build_cases() -> list[dict]:
     )
 
     lei_claim, lei_result = verified_claim(
-        LEI_A, "pass", "scheme-mismatch-lei", method="vlei-presentation",
+        LEI_A, "pass", "scheme-mismatch-lei",
+        method="verifiable-credential", recipe_version=2,
         data={"holderBinding": {"controller": PRESENTER_REF}},
     )
     mismatch_bundle = signed_bundle([lei_claim], presented_by=PRESENTER_REF)
@@ -579,7 +786,7 @@ def build_cases() -> list[dict]:
         "§6.3.3",
         "The exact presentedBy scheme must equal primaryClaimSelector.",
         {"result": evaluation(
-            "match", mismatch_bundle, selected_lei, resolved=[lei_result]
+            "match", mismatch_bundle, selected_lei_vc, resolved=[lei_result]
         )},
         False,
     )
@@ -590,7 +797,7 @@ def build_cases() -> list[dict]:
         "§6.3.3",
         "A failing selected claim is not laundered by another same-scheme pass.",
         {"result": evaluation(
-            "match", laundering_bundle, selected_lei,
+            "match", laundering_bundle, selected_lei_registry,
             resolved=[selected_fail_result, other_pass_result],
         )},
         False,
@@ -608,7 +815,7 @@ def build_cases() -> list[dict]:
                 resolved=[selected_fail_result, other_pass_result],
             ),
             "vetResolved": evaluation(
-                "match", laundering_bundle, selected_lei,
+                "match", laundering_bundle, selected_lei_registry,
                 resolved=[selected_fail_result, other_pass_result],
             ),
         },
@@ -619,7 +826,8 @@ def build_cases() -> list[dict]:
         LEI_A,
         "pass",
         "selected-vlei-pass",
-        method="vlei-presentation",
+        method="verifiable-credential",
+        recipe_version=2,
         data={"holderBinding": {"controller": PRESENTER_REF}},
     )
     controlled_lei_bundle = signed_bundle(
@@ -631,7 +839,7 @@ def build_cases() -> list[dict]:
         "§6.3.3",
         "A fresh selected vLEI result with holder binding is accepted.",
         {"result": evaluation(
-            "match", controlled_lei_bundle, selected_lei,
+            "match", controlled_lei_bundle, selected_lei_vc,
             resolved=[controlled_lei_result],
         )},
         True,
@@ -639,7 +847,7 @@ def build_cases() -> list[dict]:
 
     indet_claim, indet_result = verified_claim(
         LEI_A, "indeterminate", "findclaim-indeterminate",
-        method="gleif-registry",
+        method="consensus-backed-proxy",
     )
     indet_bundle = signed_bundle([indet_claim], presented_by=PRESENTER_REF)
     add_case(
@@ -663,14 +871,13 @@ def build_cases() -> list[dict]:
     )
 
     oneof_lei_fail, oneof_lei_fail_result = verified_claim(
-        LEI_A, "fail", "oneof-lei-fail", method="gleif-registry"
+        LEI_A, "fail", "oneof-lei-fail", method="consensus-backed-proxy"
     )
     domain_error, domain_error_result = verified_claim(
         "domain:example.com",
         "error",
         "oneof-domain-error",
         method="demos-gcr-domain",
-        failure_class="transient",
     )
     error_bundle = signed_bundle(
         [oneof_lei_fail, domain_error], presented_by=PRESENTER_REF
@@ -683,11 +890,16 @@ def build_cases() -> list[dict]:
         "vet-oneof-error-over-fail",
         "§7.7.1",
         "Within oneOf, retryable error outranks a conclusive failing alternative.",
-        {"result": evaluation(
-            "aggregate", error_bundle, aggregation_oneof,
-            resolved=[oneof_lei_fail_result, domain_error_result],
+        {"result": aggregate_evaluation(
+            error_bundle,
+            aggregation_oneof,
+            [oneof_lei_fail_result, domain_error_result],
+            "error",
         )},
-        {"decision": "error", "errorClass": "transient"},
+        {
+            "decision": "error",
+            "reasons": ["oneOf group: at least one claim errored"],
+        },
     )
 
     domain_indet, domain_indet_result = verified_claim(
@@ -704,11 +916,16 @@ def build_cases() -> list[dict]:
         "vet-oneof-indeterminate-over-fail",
         "§7.7.1",
         "Within oneOf, indeterminate outranks fail when no error or pass exists.",
-        {"result": evaluation(
-            "aggregate", indet_oneof_bundle, aggregation_oneof,
-            resolved=[oneof_lei_fail_result, domain_indet_result],
+        {"result": aggregate_evaluation(
+            indet_oneof_bundle,
+            aggregation_oneof,
+            [oneof_lei_fail_result, domain_indet_result],
+            "indeterminate",
         )},
-        {"decision": "indeterminate"},
+        {
+            "decision": "indeterminate",
+            "reasons": ["oneOf group: at least one claim indeterminate"],
+        },
     )
 
     cross_req = requirement(
@@ -720,11 +937,16 @@ def build_cases() -> list[dict]:
         "vet-cross-accumulator-fail-over-error",
         "§7.7.1",
         "A required hard fail outranks a separate oneOf error globally.",
-        {"result": evaluation(
-            "aggregate", error_bundle, cross_req,
-            resolved=[oneof_lei_fail_result, domain_error_result],
+        {"result": aggregate_evaluation(
+            error_bundle,
+            cross_req,
+            [oneof_lei_fail_result, domain_error_result],
+            "fail",
         )},
-        {"decision": "fail", "errorClass": "permanent"},
+        {
+            "decision": "fail",
+            "reasons": ["required failing or absent: lei"],
+        },
     )
 
     assert len(cases) == 24
@@ -736,7 +958,10 @@ def build_document() -> dict:
     cases = build_cases()
     return {
         "set": "dacs1-vet-golden-inputs-v0.1",
-        "spec": "DACS-1 §6.3.2/§6.3.3; DACS-2 §7.5.1/§7.7.1",
+        "spec": (
+            "DACS-1 §6.3.2/§6.3.3; DACS-2 §7.4.3/§7.5.1/"
+            "§7.7.1/§7.7.2/§7.8.1"
+        ),
         "status": "golden",
         "sourceObservation": {
             "repository": "github.com/mj-deving/dacs-verify",
@@ -746,7 +971,8 @@ def build_document() -> dict:
         "provenance": (
             "Standard-owned deterministic reconstruction of the external runner's "
             "previously hidden inputs, normalized to current ClaimReference, "
-            "IdentityBundle, VerifyResultRef, signature, freshness, and presence-only rules"
+            "IdentityBundle, VerifyResultRef, signed-recipe, production-authority, "
+            "signature, freshness, and presence-only rules"
         ),
         "hashScope": (
             "SHA-256 of UTF-8 compact JSON with recursively sorted keys; each inputHash "
@@ -754,12 +980,23 @@ def build_document() -> dict:
         ),
         "publicTestSeeds": {
             "derivation": "sha256(UTF8('dacs-363:' + label))",
-            "labels": ["presenter", "second-presenter", "authority"],
+            "labels": [
+                "presenter", "second-presenter", "authority",
+                "recipe-steward", "verifier",
+            ],
         },
         "publicKeys": {
             "presenter": PRESENTER_REF,
             "secondPresenter": SECOND_REF,
             "authority": AUTHORITY_REF,
+            "recipeSteward": RECIPE_STEWARD_REF,
+            "verifier": VERIFIER_REF,
+        },
+        "trustedContext": {
+            "recipeRegistry": recipe_registry(),
+            "authenticatedSessionStarts": {
+                SESSION_START: authenticated_session_start(),
+            },
         },
         "count": len(cases),
         "hash": hash_hex(cases),

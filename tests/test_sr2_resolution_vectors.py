@@ -134,6 +134,16 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             "pass",
         )
 
+    def test_malformed_receipt_and_unsafe_definition_return_dispositions(self):
+        self.assertEqual(
+            evaluate_vector(self.vectors["malformed-number-transaction-ref-is-discarded"]),
+            "indeterminate",
+        )
+        self.assertEqual(
+            evaluate_vector(self.vectors["unsafe-integer-in-definition-is-rejected"]),
+            "fail",
+        )
+
     def test_jcs_nfc_known_answers_are_independent_of_generator_metadata(self):
         self.assertEqual(
             hash_hex({"z": 1, "a": "e\u0301"}),
@@ -149,8 +159,10 @@ class SR2ResolutionVectorTests(unittest.TestCase):
         self.assertEqual(evaluate_vector(vector), "pass")
         with self.assertRaises(ValueError):
             hash_hex({"unsafe": 9007199254740992})
-        with self.assertRaises(ValueError):
-            hash_hex({"unsafe": 1.5})
+        self.assertEqual(
+            hash_hex({"safe": 0.5}),
+            "3fe4ea34236b064b37a43082de46db8c7ccb0076b96916a74b0dc6cc48320506",
+        )
 
 
 if __name__ == "__main__":

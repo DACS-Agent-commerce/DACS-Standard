@@ -3,8 +3,8 @@
   "spec": "CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3",
   "decisionModel": "A release-pinned sequence-one descriptor starts a non-recursive immutable registry-index chain; exact predecessor authorization, optional new-key acceptance, finality evidence, snapshot hashes, rollback, forks, and definition checks are independently enforced.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "87e3a2c62579e79f4ba8d31a3fb00eaaf7118b0faab9c0473d93ce6d3cb057f3",
-  "count": 47,
+  "hash": "2d58089ec3a09b482d7313aed388a9ded4c730ec543e3a5cc177a69d1a793f06",
+  "count": 48,
   "publicTestSeeds": {
     "oldAuthorityEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
     "newAuthorityEd25519": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -1360,7 +1360,7 @@
       "reason": "a rotation without new-key acceptance is discarded and the accepted root remains"
     },
     {
-      "name": "sequence-skip-is-rejected",
+      "name": "sequence-skipping-candidate-is-discarded",
       "family": "bootstrap",
       "input": {
         "trustPin": {
@@ -1745,7 +1745,7 @@
       "reason": "the descriptor's active authority cannot appear in its revocation set"
     },
     {
-      "name": "revocation-set-cannot-shrink",
+      "name": "non-cumulative-revocation-candidate-is-discarded",
       "family": "bootstrap",
       "input": {
         "trustPin": {
@@ -1919,7 +1919,7 @@
       "reason": "a successor with non-cumulative revocations is discarded"
     },
     {
-      "name": "revocation-set-cannot-contain-duplicates",
+      "name": "duplicate-revocation-candidate-is-discarded",
       "family": "bootstrap",
       "input": {
         "trustPin": {
@@ -2273,7 +2273,7 @@
       "reason": "a successor with non-canonical revocation order is discarded"
     },
     {
-      "name": "revoked-predecessor-cannot-authorize",
+      "name": "active-authority-revocation-candidate-is-discarded",
       "family": "bootstrap",
       "input": {
         "trustPin": {
@@ -3955,6 +3955,100 @@
       },
       "expected": "fail",
       "reason": "definition bytes must match the authenticated entry hash"
+    },
+    {
+      "name": "unsafe-integer-in-definition-is-rejected",
+      "family": "bootstrap",
+      "input": {
+        "trustPin": {
+          "descriptorHash": "ae50753ffa5a837122a1ad9a6738cf82643525ecf4518fa7028d47bbd8a3cda0",
+          "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        },
+        "descriptors": [
+          {
+            "registryBootstrapVersion": "1",
+            "registryKind": "recipe",
+            "registryLogicalAddress": "dacs2:registry:v0.1",
+            "substrate": "demos:testnet",
+            "sequence": 1,
+            "nativeIndexAddress": "demos:storage:recipe-index-1",
+            "indexContentHash": "e760d0f0486f46ba904abea417dc65cdeb5a7286a38de1709dd01bd4e4a679b1",
+            "indexAnchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:registry:v0.1",
+              "nativeAddress": "demos:storage:recipe-index-1",
+              "contentHash": "e760d0f0486f46ba904abea417dc65cdeb5a7286a38de1709dd01bd4e4a679b1",
+              "transactionRef": {
+                "kind": "demos-transaction",
+                "value": "tx:evidence-recipe-index-1"
+              },
+              "writer": "demos:account:registry-writer",
+              "nonce": "recipe-index-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-recipe-index-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-recipe-index-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "authorityKeyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "authorizationSignature": {
+              "keyId": "key:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "algorithm": "ed25519",
+              "value": "9tcD87hAIik64L12OrFxpD6IP1_VJciojE5jxRjBetzclDTM_MqSgT-EEL1cgg2l8jIOkc-Bg2a-98exleehAQ"
+            }
+          }
+        ],
+        "verifiedEvidenceValues": [
+          "evidence-recipe-index-1"
+        ],
+        "indexStorage": {
+          "demos:storage:recipe-index-1": {
+            "registryIndexVersion": "1",
+            "registryKind": "recipe",
+            "revision": 1,
+            "entries": [
+              {
+                "id": "sample",
+                "version": "1",
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "demos:storage:recipe-definition-1"
+                },
+                "contentHash": "3927d73379133c2c0b9d681125e7bbb55ef67f112cc7370cd3bad20580e38fc4"
+              }
+            ]
+          }
+        },
+        "mode": "latest",
+        "definitionQuery": {
+          "id": "sample",
+          "version": "1"
+        },
+        "definitionStorage": {
+          "demos:storage:recipe-definition-1": {
+            "definitionVersion": "1",
+            "kind": "recipe",
+            "id": "sample",
+            "version": "1",
+            "futureUnsafe": 9007199254740992
+          }
+        },
+        "definitionChecks": {
+          "signatureVerified": true,
+          "semanticRulesVerified": true
+        }
+      },
+      "expected": "fail",
+      "reason": "definition bytes outside the JCS safe-magnitude subset fail explicitly"
     },
     {
       "name": "definition-bytes-unavailable",

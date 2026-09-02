@@ -8,6 +8,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 |-------------|----------------|--------------|----------------|
 | AMEND-* | Settlement amendment validation | §9.7.1 | §14.4 |
 | AP2-* | `pay-ap2` provider-receipt verification, session binding, split credential scope, capture semantics, idempotency-key derivation, and `transaction_id` tuple binding / replay-safe retry | §9.5.6 | §14.4 |
+| APR-* | Signed alternative-payment selection, projection, retry, and audit recomputation | §9.9.1 | §14.4 |
 | BB-* | Bundle logical→native binding (publication, carriage, verification, resolution, multiplicity-void, fail-closed, suppression diligence) | §10.4.2 | §14.5 |
 | BP-* | Bundle producers for IdentityBundle | §6.3.2 | §14.1 |
 | BR-* | Bundle readers for IdentityBundle | §6.3.2 | §14.1 |
@@ -36,6 +37,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | PA-* | Progressive-anchoring phases | §7.4.4 | §14.7 |
 | PB-* | Payee-destination binding (agreement carriage + identity-binding ladder + exact EIP-155 `cci-xm` rail applicability) | §9.5.1 | §14.4 |
 | PC-* | Payment phase common contract | §9.5 | §14.4 |
+| PCR-* | Presence-only ClaimRequirement matching, mixed Vet aggregation, and control/tier boundary | §6.3.3 / §7.7.1 | §14.1 / §14.2 |
 | PIPE-* | Pipeline shape and phase ordering | §9.9 | §14.4 |
 | PS-* | Negotiation pattern selection | §8.8 | §14.3 |
 | PRA-* | Recipe parser applicability and selected-method execution | §7.4.1 / §7.6 | §14.2 |

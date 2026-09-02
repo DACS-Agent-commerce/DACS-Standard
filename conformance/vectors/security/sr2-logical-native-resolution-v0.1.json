@@ -3,8 +3,8 @@
   "spec": "CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2",
   "decisionModel": "Only verified direct receipts or class-authenticated references establish fetch inputs; lifecycle, exact bytes, authority, timeliness, absence, and equivocation remain separate fail-closed gates.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "a86fa2013eca6225480d4b4da678dd4d735426d11f7ecc38373c6388eabfa651",
-  "count": 28,
+  "hash": "7a32820f6cc1284a3bf6a2ae2d767d4e7826767158c842d24b3b74490457c595",
+  "count": 29,
   "publicTestSeeds": {
     "oldAuthorityEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
     "newAuthorityEd25519": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -242,6 +242,56 @@
       },
       "expected": "indeterminate",
       "reason": "receipt fields are assertions until substrate evidence verifies"
+    },
+    {
+      "name": "malformed-number-transaction-ref-is-discarded",
+      "family": "resolution",
+      "input": {
+        "expectedLogicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+        "expectedContentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+        "minimumState": "finalized",
+        "requiredBy": 1787036405000,
+        "storage": {
+          "demos:storage:sr2-artifact-1": {
+            "recordVersion": "1",
+            "jobId": "01K2SR20000000000000000000",
+            "result": "pass"
+          }
+        },
+        "carriers": [
+          {
+            "kind": "anchor-receipt",
+            "receipt": {
+              "receiptVersion": "1",
+              "substrate": "demos:testnet",
+              "finalityProfile": "demos-bft-final:v1",
+              "logicalAddress": "dacs2:vet:01K2SR20000000000000000000:buyer",
+              "nativeAddress": "demos:storage:sr2-artifact-1",
+              "contentHash": "6b1104b3f93e49f15ee768e07ab8c7c79a64e019274beeea4d48ba31af2935c2",
+              "transactionRef": 1.5,
+              "writer": "demos:account:registry-writer",
+              "nonce": "artifact-1",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1787036400000,
+              "evidence": {
+                "kind": "demos-finality-proof",
+                "value": "evidence-artifact-1"
+              },
+              "blockRef": {
+                "id": "block:evidence-artifact-1",
+                "height": "42000",
+                "timestamp": 1787036399000
+              }
+            },
+            "receiptEvidenceVerified": true,
+            "authorityVerified": true,
+            "deliveredAt": 1787036401000
+          }
+        ]
+      },
+      "expected": "indeterminate",
+      "reason": "a numeric transactionRef is malformed and the receipt is discarded"
     },
     {
       "name": "unauthenticated-catalog-assertion-is-discarded",

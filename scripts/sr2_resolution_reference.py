@@ -84,12 +84,21 @@ def _verify_signature(signature: Any, digest: str, expected_key: str) -> bool:
 
 
 def _receipt_tuple(receipt: dict[str, Any]) -> tuple[Any, ...]:
+    transaction_ref = receipt.get("transactionRef")
+    if (
+        not isinstance(transaction_ref, dict)
+        or not isinstance(transaction_ref.get("kind"), str)
+        or not transaction_ref["kind"]
+        or not isinstance(transaction_ref.get("value"), str)
+        or not transaction_ref["value"]
+    ):
+        raise TypeError("transactionRef must contain non-empty string kind and value")
     return (
         receipt.get("substrate"),
         receipt.get("logicalAddress"),
         receipt.get("nativeAddress"),
         receipt.get("contentHash"),
-        canonical_bytes(receipt.get("transactionRef")).decode("utf-8"),
+        canonical_bytes(transaction_ref).decode("utf-8"),
         receipt.get("writer"),
         receipt.get("nonce"),
     )
@@ -166,8 +175,15 @@ def evaluate_resolution(case: dict[str, Any]) -> str:
         if carrier.get("deliveredAt") is not None and case.get("requiredBy") is not None:
             if carrier["deliveredAt"] > case["requiredBy"]:
                 return "fail"
+        try:
+            receipt_tuple = _receipt_tuple(receipt)
+        except (TypeError, ValueError, UnicodeError):
+            # An unsupported transactionRef cannot participate in an SR2-5
+            # identity comparison. Discard this carrier just like any other
+            # malformed or unverifiable receipt candidate.
+            continue
         qualified_receipts.append((
-            _receipt_tuple(receipt),
+            receipt_tuple,
             (receipt.get("nativeAddress"), receipt.get("contentHash")),
             carrier,
         ))
@@ -329,7 +345,11 @@ def _definition_result(head: dict[str, Any], case: dict[str, Any]) -> str:
     definition = case.get("definitionStorage", {}).get(locator)
     if definition is None:
         return "indeterminate"
-    if hash_hex(definition) != entry.get("contentHash"):
+    try:
+        definition_hash = hash_hex(definition)
+    except (TypeError, ValueError, UnicodeError):
+        return "fail"
+    if definition_hash != entry.get("contentHash"):
         return "fail"
     checks = case.get("definitionChecks", {})
     if checks.get("signatureVerified") is not True or checks.get("semanticRulesVerified") is not True:

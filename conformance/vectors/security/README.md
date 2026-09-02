@@ -26,17 +26,19 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | Set | Spec surface | Vectors | Verdicts used |
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
+| [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
 | [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.6 §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7 | 30 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
+| [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
 | [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
-| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 49 | `error` / `fail` / `indeterminate` / `pass` |
+| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 52 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
@@ -50,11 +52,12 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`payee-destination-binding-v0.1.json`](payee-destination-binding-v0.1.json) | DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3 | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`payload-attestation-binding-v0.1.json`](payload-attestation-binding-v0.1.json) | DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3 | 22 | `fail` / `indeterminate` / `pass` |
 | [`phase-kind-divergence-v0.3.json`](phase-kind-divergence-v0.3.json) | DACS-5 §10.4.3 / §10.5.1 guard (ii) shared-index phase-kind divergence | 1 | `reject` |
+| [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 38 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
-| [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 47 | `fail` / `indeterminate` / `pass` |
+| [`registry-bootstrap-v0.1.json`](registry-bootstrap-v0.1.json) | CORE §5 RegistryBootstrapDescriptor; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3 | 48 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -66,7 +69,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
-| [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 28 | `fail` / `indeterminate` / `pass` |
+| [`sr2-logical-native-resolution-v0.1.json`](sr2-logical-native-resolution-v0.1.json) | CORE §5 SR2-10..SR2-13; DACS-1 §6.3.4; DACS-5 §10.4.2 | 29 | `fail` / `indeterminate` / `pass` |
 | [`unresolved-vs-absent-v0.3.json`](unresolved-vs-absent-v0.3.json) | DACS-5 §10.4.3(b) + §10.4.2 BB-8 + CORE §5 absence-evidence policy | 4 | `indeterminate` / `pass` |
 | [`verifyresult-acceptance-v0.1.json`](verifyresult-acceptance-v0.1.json) | DACS-2 §7.12 | 13 | `error` / `fail` / `indeterminate` / `pass` |
 | [`vp-replay-v0.1.json`](vp-replay-v0.1.json) | DACS §7.3.2 | 13 | `error` / `fail` / `indeterminate` / `pass` |
@@ -78,6 +81,35 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 <!-- END GENERATED: security-vector-index -->
 
 ## Included sets
+
+### `canonical-json-v0.1.json` — CORE §B.2 RFC 8785 JCS + CF-1
+
+25 candidate vectors pin exact canonical UTF-8 hex rather than only a generic
+accept/reject result. They cover the five fractional values that exposed the
+cross-implementation divergence in #270; RFC 8785's 1e-6 notation boundary,
+negative zero, positive and negative minimum binary64 values, integral-float
+formatting, and a round-to-even sample; both binary64 paths at the inclusive
+DACS magnitude limits; and fail-closed handling of over-magnitude, non-finite,
+BigInt, and invalid-Unicode inputs.
+
+The Unicode cases discriminate DACS's values-only CF-1 layer from RFC 8785
+member-name handling: an NFD string value becomes NFC, an NFD member name stays
+as received, NFC and NFD spellings remain distinct members, and member names
+sort by UTF-16 code units. Inputs that JSON cannot faithfully carry use the
+set's declared `binary64`, `bigint`, or `unicode-code-units` tagged constructor;
+an adapter that cannot construct one must report an explicit cross-run
+abstention, never a matching rejection. The generic cross-run file records
+verdicts rather than canonical bytes, so each adapter MUST compare exact
+`canonicalUtf8Hex` before emitting `pass`; byte-level logs may be attached as
+additional review evidence.
+
+Regenerate, verify, and execute with:
+
+```sh
+python3 scripts/generate_canonical_json_vectors.py --write
+python3 scripts/generate_canonical_json_vectors.py --check
+python3 -m unittest tests.test_canonical_json_vectors -v
+```
 
 ### `ap2-handler-safety-v0.6.json` — §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7
 
@@ -106,7 +138,7 @@ python3 -m unittest tests.test_ap2_handler_safety_vectors -v
 
 ### `sr2-logical-native-resolution-v0.1.json` — CORE §5 SR2-10..SR2-13
 
-25 candidate vectors make the portable logical-to-native read path executable.
+29 candidate vectors make the portable logical-to-native read path executable.
 They admit a verified direct `AnchorReceipt` at the calling rule's lifecycle
 gate, plus exact authenticated references from a finalized DACS-5 bundle or a
 verified registry snapshot. They keep bare locators, unverified receipts,
@@ -122,7 +154,7 @@ through a declared binding policy.
 
 ### `registry-bootstrap-v0.1.json` — CORE §5 registry bootstrap
 
-47 candidate vectors exercise the non-recursive recipe/rail index trust root.
+48 candidate vectors exercise the non-recursive recipe/rail index trust root.
 The positive chains carry genuine deterministic Ed25519 signatures under
 `dacs-registry-bootstrap:v1:` and cover hash-only/key-only first contact,
 same-key content updates, two-signature authority rotation, exact
@@ -143,6 +175,36 @@ Public test seeds are included. Regenerate and execute both sets with:
 python3 scripts/generate_sr2_resolution_vectors.py --write
 python3 scripts/generate_sr2_resolution_vectors.py --check
 python3 -m unittest tests.test_sr2_resolution_vectors -v
+```
+
+### `alternative-payment-projection-v0.1.json` — §9.9.1 APR-1..APR-8
+
+44 candidate vectors make the Listing-only `pay-alternative` projection
+executable across DACS-1, DACS-3, DACS-4, and DACS-5. Deterministic Ed25519
+fixtures sign the Listing, complete DEM/x402/AP2 rail definitions, payee-bound
+Agreements, evidence-bound bundles, and prior-payment dispositions. The cases
+cover full-reference membership, optional snapshot-selected versions,
+same-snapshot registry resolution, supported non-recursive handlers,
+array-order independence, original-index projection, exact payout keys, and
+concrete evidence/bundle kinds.
+
+Negative and recovery cases reject malformed or repeated choice slots,
+concrete payment siblings, same-railId reference substitution, caller-supplied
+handler substitution, selected-rail RAV failure, signed in-job switching, and
+same-job or fresh-job fallback while prior authorization is open or
+indeterminate. Cross-job cases resolve the exact prior Agreement and require a
+finalized orchestrator-signed disposition: either an atomic durable closure
+before authorization or independently verified cannot-settle evidence. The set
+also includes a positive independently recomputed bundle. The executable
+effects counter pins zero second-rail wallet authorizations on every
+refusal/retry path. A legacy reader refuses the unknown phase, while an
+ordinary repeated-payment Listing retains PIPE-5 behaviour. Regenerate and
+execute with:
+
+```sh
+python3 scripts/generate_alternative_payment_projection_vectors.py --write
+python3 scripts/generate_alternative_payment_projection_vectors.py --check
+python3 -m unittest tests.test_alternative_payment_projection_vectors -v
 ```
 
 ### `payload-attestation-binding-v0.1.json` — §9.6.3 DPA-1..DPA-9
@@ -1027,6 +1089,32 @@ Run the dependency-free executable checks from the repository root:
 
 ```sh
 python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
+```
+
+### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1
+
+Thirty-eight candidate cases make `ClaimRequirement.verificationRequired: false`
+executable across DACS-1 matching and DACS-2 composite replay. Every ordinary
+bundle and composite record carries a deterministic Ed25519 signature; vectors
+that use a real verification result sign it under the independent VerifyResult
+domain. The two signature-negative cases mutate one otherwise-valid signature.
+
+Coverage includes required and `oneOf` presence, expiry and parameter checks,
+informational `issuedAt`, optional failing/stale/unavailable `verifiedBy`,
+malformed references, invalid presence-only `maxAge`/`recipeVersion`, mixed
+presence and verified members, no-synthetic-result enforcement, exact bundle
+and requirement hash replay, missing replay input, decision recomputation, and
+the controlled-key versus existence-only-LEI selector boundary. Exact-boolean
+mode selection, vacuous empty member collections, and invalid empty inner
+`oneOf` groups pin the configuration edges. The set adds no
+wire member: the signed bundle and the existing CVR `bundleHash` are the
+presence evidence and binding.
+
+Regenerate and execute it from the repository root:
+
+```sh
+python3 scripts/generate_presence_only_claim_vectors.py --check
+python3 -m unittest tests.test_presence_only_claim_vectors -v
 ```
 
 ## Status

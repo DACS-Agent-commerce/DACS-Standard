@@ -201,6 +201,12 @@ def build_resolution_vectors() -> list[dict[str, Any]]:
             lambda c: receipt_carrier(c).update({"receiptEvidenceVerified": False}),
         ),
         resolution_vector(
+            "malformed-number-transaction-ref-is-discarded",
+            "indeterminate",
+            "a numeric transactionRef is malformed and the receipt is discarded",
+            lambda c: receipt_carrier(c)["receipt"].update({"transactionRef": 1.5}),
+        ),
+        resolution_vector(
             "unauthenticated-catalog-assertion-is-discarded",
             "indeterminate",
             "an ordinary catalog assertion is not a portable mapping carrier",
@@ -629,7 +635,7 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             lambda c: add_successor(c, rotate=True).pop("authorityAcceptanceSignature"),
         ),
         bootstrap_vector(
-            "sequence-skip-is-rejected", "pass",
+            "sequence-skipping-candidate-is-discarded", "pass",
             "a sequence-skipping candidate is discarded and cannot advance the accepted chain",
             lambda c: changed_successor(c, lambda d: d.update({"sequence": 3})),
         ),
@@ -664,10 +670,10 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         sign_descriptor(successor, NEW_SEED)
 
     vectors.extend([
-        bootstrap_vector("revocation-set-cannot-shrink", "pass", "a successor with non-cumulative revocations is discarded", lambda c: revoked_chain_case(c, "shrink")),
-        bootstrap_vector("revocation-set-cannot-contain-duplicates", "pass", "a successor with duplicate revocations is discarded", lambda c: revoked_chain_case(c, "duplicate")),
+        bootstrap_vector("non-cumulative-revocation-candidate-is-discarded", "pass", "a successor with non-cumulative revocations is discarded", lambda c: revoked_chain_case(c, "shrink")),
+        bootstrap_vector("duplicate-revocation-candidate-is-discarded", "pass", "a successor with duplicate revocations is discarded", lambda c: revoked_chain_case(c, "duplicate")),
         bootstrap_vector("revocation-set-order-is-canonical", "pass", "a successor with non-canonical revocation order is discarded", lambda c: revoked_chain_case(c, "reorder")),
-        bootstrap_vector("revoked-predecessor-cannot-authorize", "pass", "an invalid candidate that revokes its active authority is discarded", lambda c: revoked_chain_case(c, "revoked-predecessor")),
+        bootstrap_vector("active-authority-revocation-candidate-is-discarded", "pass", "an invalid candidate that revokes its active authority is discarded", lambda c: revoked_chain_case(c, "revoked-predecessor")),
     ])
 
     def successor_fork(case: dict[str, Any]) -> None:
@@ -803,6 +809,12 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "definition-content-hash-mismatch", "fail",
             "definition bytes must match the authenticated entry hash",
             lambda c: c["definitionStorage"].update({"demos:storage:recipe-definition-1": {"tampered": True}}),
+            definition=True,
+        ),
+        bootstrap_vector(
+            "unsafe-integer-in-definition-is-rejected", "fail",
+            "definition bytes outside the JCS safe-magnitude subset fail explicitly",
+            lambda c: c["definitionStorage"]["demos:storage:recipe-definition-1"].update({"futureUnsafe": 9007199254740992}),
             definition=True,
         ),
         bootstrap_vector(

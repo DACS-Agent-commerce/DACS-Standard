@@ -60,6 +60,35 @@ The format used per release:
 - **`docs/flow-trace.md`** recognizes the AP2-3 read-only status fetch as the
   narrow credential-bound DAHR carve-out (#279).
 
+### Added — CORE v0.3 / DACS-1 v0.7 / DACS-2 v0.6 / DACS-4 v0.7
+
+- **Portable logical-to-native resolution and registry bootstrap** (CORE §5.1
+  SR2-10..SR2-13; DACS-1 §6.3.4 LRR-2; DACS-2 §7.4.3; DACS-4 §9.4.3;
+  Demos mapping §A.2; #242) — makes a verified `AnchorReceipt` the portable
+  mapping carrier on write-input substrates without changing its v1 bytes,
+  requires call-site authority and lifecycle checks, timely direct delivery
+  once a qualifying receipt exists, fail-closed substrate non-admission and
+  absence, and bounded public discovery, and preserves finalized
+  bundle references as the public audit path for session artifacts. Adds the
+  distinct signed `RegistryBootstrapDescriptor` trust root for the recipe and
+  rail index major lines, immutable content-sequenced snapshots, exact
+  first-contact pins, dual-authorized key rotation, cumulative revocation,
+  fork/rollback refusal, exact sequence-and-descriptor-hash historical replay,
+  and authenticated definition references. PA-2 session and signed bundle
+  shapes now carry the descriptor hash paired with the numeric registry
+  version. Registry hashes use the repository's JCS/NFC implementation;
+  invalid candidates are discarded, unresolved signed competitors prevent
+  availability from selecting a branch, and equivalent receipt/reference
+  carriers do not create false forks. Registers
+  `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,
+  indeterminate, and boundary vectors for both algorithms. Malformed receipt
+  and carrier shapes are discarded before storage lookup, ordering, or tuple
+  comparison; invalid first-contact roots are discarded before fork
+  classification; only the two SR2-10 authenticated-reference surfaces are
+  admitted; finite JCS fractions are accepted when signed and pinned; and
+  authenticated definition content with an unsafe JCS integer fails explicitly
+  rather than escaping the evaluator.
+
 ### Fixed — DACS-1 v0.7 / DACS-2 v0.6
 
 - **Presence-only claim requirements made executable** (DACS-1 §6.3.3

@@ -576,7 +576,7 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
             "aggregate(record, recordRef, requirement, authority, recipeRegistryResolver)",
             "exact_presented_satisfies_presence_member(requirement, presented):",
             "exact_selector_authorized(record, exactBundle, requirement):",
-            "registry := recipeRegistryResolver.resolve_authenticated(registryVersion)",
+            "registry := recipeRegistryResolver.resolve_authenticated(registryVersion, registryDescriptorHash)",
             "cr.scheme is not a known canonical ClaimReference scheme",
             "cr.verificationRequired is not exactly the JSON boolean true or false",
             "if any group in oneOfGroups is not a non-empty array:",
@@ -588,7 +588,7 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
         )
         self.assertLess(
             dacs2.index(
-                "registry := recipeRegistryResolver.resolve_authenticated(registryVersion)"
+                "registry := recipeRegistryResolver.resolve_authenticated(registryVersion, registryDescriptorHash)"
             ),
             dacs2.index(
                 'if exactBundle unavailable: return "indeterminate", '

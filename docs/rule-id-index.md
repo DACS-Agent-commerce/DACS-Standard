@@ -55,7 +55,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | SEB-* | SettlementEvidence exact-set and phase-bijection validation | §10.4.3 | §14.5 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |
-| SR2-* | SR-2 write lifecycle, portable receipts, visibility separation, and stage gates | §5.1 | §14.8 |
+| SR2-* | SR-2 write lifecycle, portable receipts, logical-to-native resolution, bounded discovery, visibility separation, and stage gates | §5.1 | §14.8 / §14.11 |
 | ST-* | Session state transitions | §10.3.1 | §14.5 |
 | VP-C* | VerifyResult caching semantics | §7.6.1 | §14.2 |
 | VP-R* | VerifyResult retry semantics | §7.6.1 | §14.2 |

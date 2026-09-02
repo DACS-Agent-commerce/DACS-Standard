@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 defines portable logical-to-native resolution and the non-recursive registry bootstrap; v0.2 defined the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -200,6 +200,193 @@ An SR-2 binding MAY omit authoritative absence support. A binding that supports 
 
 A finalized non-membership proof or a binding-defined authenticated independent quorum MAY satisfy that policy. DACS does not prescribe one mechanism or a universal quorum number. When the binding has no declared policy, or a read does not satisfy it, a consumer MUST return `indeterminate` rather than promote non-observation to `absent`. This requirement changes no signed artifact shape; absence evidence is substrate read context retained by the consumer.
 
+**Logical-to-native resolution (normative).** On a write-input-mapping
+substrate (§A.2), a native address is not recomputable from its DACS logical
+address. Given an expected canonical logical address, an optional expected
+content hash, the calling rule's lifecycle gate, and its named artifact-specific
+authorization predicate, a consumer MUST apply this algorithm:
+
+1. obtain an `AnchorReceipt` directly from a protocol participant or through
+   an artifact-specific discovery surface;
+2. independently verify the receipt's binding-defined `evidence` under SR2-4,
+   its complete SR2-5 tuple, and its lifecycle snapshot under SR2-6/SR2-7;
+3. require `logicalAddress` to equal the expected canonical address and, when
+   supplied, `contentHash` to equal the expected hash;
+4. require the established state to meet the calling rule's minimum gate from
+   the cross-stage table above; index visibility and an indeterminate
+   observation cannot promote that state;
+5. fetch only from the exact verified `nativeAddress`, canonicalize the
+   returned artifact under §B.2, and require its hash to equal
+   `receipt.contentHash`;
+6. apply the calling rule's named writer, signer, session, role, and semantic
+   authorization predicate. SR2-4/SR2-5 receipt validity proves publication of
+   the tuple, not authority to control its logical address; and
+7. only then return `present` with the verified artifact and receipt. Fetching
+   from an untrusted candidate is not acceptance.
+
+- (SR2-10) **Portable logical-address resolution carrier.** A consumer on a
+  write-input mapping MUST establish a logical-to-native mapping from a verified
+  `AnchorReceipt` or a class-specific binding verified under that class's rules.
+  A bare native locator, unverified receipt, unauthenticated cache/catalog/index
+  assertion, or locally reconstructed write input MUST NOT establish the
+  mapping. This is distinct from dereferencing an already-authenticated content
+  reference: a signed finalized bundle's `AttestationRef`, or an entry in a
+  registry-index snapshot authenticated by a verified
+  `RegistryBootstrapDescriptor`, MAY carry a native locator plus content hash
+  for fetch-and-hash verification without claiming independent resolution of
+  that referenced logical address. The referenced artifact's own signature,
+  version, availability, governance, and semantic checks remain mandatory.
+- (SR2-11) **Calling-rule lifecycle and authority gate.** Resolution MUST apply
+  the lifecycle state and the artifact-specific authority predicate named by
+  the rule that requested the artifact. A call site that cannot identify that
+  predicate MUST NOT return `present`. A receipt whose evidence, tuple,
+  lifecycle, and content hash all verify is still insufficient when the
+  required publisher/writer/signer/session authority is absent or invalid.
+  For example, a DACS-2 Vet record may support reversible progress on verified
+  durable `accepted` when VPC-3 permits it, while DACS-4 PIPE-6 requires the
+  agreement commitment to be `finalized` before an irreversible effect.
+- (SR2-12) **Timely direct delivery and retention.** Once a qualifying receipt
+  exists, a producer MUST make it available to every participant entitled by
+  the calling rule no later than the first applicable gate in the cross-stage
+  table. It MUST retain and re-deliver that receipt through terminalization,
+  including a failed or aborted session that never produces a finalized
+  bundle. A substrate that never establishes the minimum required lifecycle
+  state leaves the producer and session blocked at that gate; the unavailable
+  receipt is not by itself producer non-conformance, but the producer MUST NOT
+  cross the gate or represent the state as established. Withholding an
+  existing qualifying receipt or delivering it only after the first required
+  gate is a producer conformance failure and MUST NOT retroactively validate
+  progress taken without the receipt. A forged or mismatched candidate is
+  discarded; if no qualifying carrier remains, the resolution result is
+  `indeterminate`, never authoritative absence.
+- (SR2-13) **Bounded public discovery.** Listings use §6.3.4–§6.3.6,
+  revocations use `RevocationBinding`, and bundles use `BundleBinding`. Other
+  session artifacts MAY be exchanged by verified receipt during the session
+  and resolved transitively from authenticated references in the finalized
+  DACS-5 bundle afterward. DACS does not require a public `jobId`-indexed
+  discovery surface for those artifacts.
+
+A resolution result MUST NOT report `absent` unless the applicable substrate's
+declared absence-evidence policy was satisfied. For an immutable logical
+address, two canonically unequal otherwise-qualifying carriers from authorized
+sources are an equivocation. The consumer MUST retain both for audit and return
+`indeterminate`; arrival order, fetch order, `observedAt`, and index visibility
+MUST NOT select a winner. Equal SR2-5 tuples collapse only through SR2-7's
+binding-authenticated ordering. `AnchorReceipt` v1 is unchanged.
+
+**Registry bootstrap (normative).** The recipe and rail registry indexes cannot
+discover their own write-input-derived native addresses. A conforming PA-2
+implementation therefore uses this non-SR-2 trust-root type for each supported
+registry major line:
+
+```
+type RegistryBootstrapSignature = {
+  keyId: string                         // key:<64 lower-case hex Ed25519 key>
+  algorithm: "ed25519"
+  value: string                         // SIG-6 unpadded Base64URL
+}
+
+type RegistryBootstrapDescriptor = {
+  registryBootstrapVersion: "1"
+  registryKind: "recipe" | "rail"
+  registryLogicalAddress: string
+  substrate: string
+  sequence: number                      // positive JSON safe integer
+  nativeIndexAddress: string
+  indexContentHash: string              // 64 lower-case hex
+  indexAnchorReceipt: AnchorReceipt     // established finalized snapshot
+  authorityKeyId: string                // canonical key:<hex> material
+  supersedesDescriptorHash?: string     // required after sequence 1
+  revokedAuthorityKeyIds?: string[]     // sorted, unique, cumulative
+  authorizationSignature: RegistryBootstrapSignature
+  authorityAcceptanceSignature?: RegistryBootstrapSignature // rotation only
+}
+```
+
+The exact v1 pairing is `recipe` ↔ `dacs2:registry:v0.1` and `rail` ↔
+`dacs4:registry:v0.1`; `registryLogicalAddress` is self-describing and MUST be
+checked against that pairing, never used as its authority source. The trust-pin
+identity is `(registryKind, registryLogicalAddress, substrate,
+registryBootstrapVersion)` and deliberately excludes `sequence`.
+
+For both signatures:
+
+```
+descriptor_hash := sha256(canonical_JCS(descriptor with both
+                          authorizationSignature and
+                          authorityAcceptanceSignature omitted))
+signed_bytes    := "dacs-registry-bootstrap:v1:" || descriptor_hash
+```
+
+Both named signature fields are omitted for both signatures. Every other
+member, including an unknown member, remains in the hash under SIG-5; a verifier
+MUST NOT strip unknown members before hashing. The descriptor hash is 64
+lower-case hex and is the sole descriptor identity used by release pins,
+successor links, persisted state, and replay. The discriminator is exactly
+`registryBootstrapVersion: "1"`; a missing, unsupported, or multiply-present
+`*BootstrapVersion` member MUST be rejected before signatures or use.
+
+An implementation or release supporting PA-2 MUST pin at least one, and SHOULD
+pin both, of the canonical sequence-1 descriptor hash and canonical
+`authorityKeyId`. It MUST ship the descriptor bytes or declare a retrieval
+transport, document the out-of-band channel for replacement trust pins, and
+SHOULD state an expected distribution bound in its implementation conformance
+claim. HTTPS, DNS, package registries, indexers, and repository branches are
+transport only. Bootstrap receipt/finality evidence MUST be independently
+verifiable without using the registry being bootstrapped.
+
+A consumer MUST verify the canonical tuple and descriptor hash; authenticate
+sequence 1 against its release pin; enforce the signature fields allowed for
+the transition; verify the embedded receipt as `established` and `finalized`;
+require its substrate, logical address, native address, and content hash to
+equal the descriptor fields; independently verify its finality evidence; fetch
+the exact immutable index snapshot and hash-check its canonical bytes; and
+persist the accepted descriptor plus index bytes for rollback detection and
+historical replay. The descriptor authority's valid signature over the exact
+embedded receipt is the artifact-specific delegation authorizing that
+receipt's writer for this index snapshot; no claimant-supplied authorization
+boolean or additional unnamed substrate proof may substitute for it. The
+embedded `observedAt` is the original observer's time and is not reproduced;
+consensus time remains `blockRef.timestamp` under SR2-6.
+
+Registry-bootstrap v1 uses an immutable index snapshot per descriptor sequence.
+Every content append or other index-byte change advances `sequence` by one,
+anchors new snapshot bytes at a new native address, and retains the prior
+descriptor, receipt, address, and bytes. `recipeRegistryVersion` and
+`railRegistryVersion` under PA-2 are this content-sequence counter. Authority
+rotation is the distinguished transition where `authorityKeyId` changes; PA-3
+threshold governance requires a distinct future bootstrap type.
+
+Sequence 1 carries only `authorizationSignature` by `authorityKeyId` and no
+successor fields. Every successor increments exactly once, binds the predecessor
+hash, preserves the registry tuple, and is authorized by the predecessor key.
+An unchanged-key successor carries no acceptance signature. A changed-key
+successor additionally carries `authorityAcceptanceSignature` by the new key;
+the predecessor authorization explicitly delegates the new authority and may
+revoke the predecessor for later sequences. Revocations are sorted, unique,
+cumulative, never shrink, and cannot include the active key. Key identifiers
+are exactly `key:` plus the 32 raw Ed25519 public-key bytes as 64 lower-case hex;
+aliases and separate key-byte inputs are rejected.
+
+Two different valid successors of one predecessor are a fork. Under a key-only
+pin, two different valid sequence-1 descriptors are likewise a fork. A consumer
+MUST classify every predecessor-authorized signed candidate before advancing:
+invalid candidates are discarded; one valid candidate advances only when no
+competing candidate remains unresolved; an unavailable otherwise-valid
+candidate keeps the result `indeterminate`; and multiple valid candidates are a
+fork. Proof or snapshot availability MUST NOT select a signed branch. Latest
+resolution becomes `indeterminate` on a fork and MUST NOT select by transport,
+time, or visibility; recovery requires a new out-of-band release pin.
+Latest-mode rollback to a lower accepted sequence is rejected. Historical
+replay uses the session's recorded `(sequence, descriptorHash)` pair, selects
+only that exact descriptor from the predecessor-validated accepted chain, then
+uses its retained immutable index snapshot and exact recipe/rail entry version.
+A sequence alone, a same-sequence descriptor with another hash, or a descriptor
+outside that chain is not replay authority. Unavailable required bootstrap
+material yields `indeterminate` after invalid candidates are discarded and
+never permits fallback to an unpinned latest index. Recursive evidence that
+depends on the target registry is rejected.
+
 **Substrate-coupling status in v0.1.**
 
 - **SR-1, SR-2, and SR-5 are specified at the protocol level.** Another substrate that ships an equivalent primitive (cross-substrate identity aggregation; content-addressed anchored storage; atomic cross-chain settlement) can interoperate with DACS implementations on Demos at the artifact level: the bundles, listings, and evidence records validate the same way.
@@ -316,7 +503,9 @@ type SessionContext = {
   jobId: string
   listingRef: { listingId: string; version: number; contentHash: string }
   recipeRegistryVersion: number             // DACS-2 registry pinned at session start
+  recipeRegistryDescriptorHash?: string     // REQUIRED under PA-2; 64 lower-case hex paired with recipeRegistryVersion
   railRegistryVersion: number               // DACS-4 registry pinned at session start
+  railRegistryDescriptorHash?: string       // REQUIRED under PA-2; 64 lower-case hex paired with railRegistryVersion
   parties: SessionParty[]
   priorPhaseOutputs: Record<string, unknown> // accumulated contextDelta from completed phases
   signer: SubstrateSigner                   // substrate-specific signing capability
@@ -333,6 +522,13 @@ type PhaseHandlerResult = {
   errorClass?: "permanent" | "transient" | "counterparty" | "substrate" | "settlement-atomicity"
 }
 ```
+
+For a PA-2 registry, the version and descriptor-hash members are one
+authenticated pin and MUST be populated, persisted, and compared together. A
+handler MUST NOT resolve a numeric registry version without its paired hash or
+substitute a same-sequence descriptor. PA-1 in-code registries omit the
+corresponding descriptor-hash member. A missing or unresolvable PA-2 pair cannot
+fall back to current registry state.
 
 Conformance: phase handlers MUST accept a SessionContext and return a PhaseHandlerResult. On ok: true the orchestrator merges contextDelta into the corresponding PhaseEntry and records txRefs in the session event log; on ok: false the orchestrator classifies the failure per errorClass and applies the retry policy in chapter 10.
 
@@ -372,6 +568,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
+| Registry bootstrap descriptor | "dacs-registry-bootstrap:v1:" | §5.1 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |

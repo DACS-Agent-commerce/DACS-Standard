@@ -45,6 +45,8 @@ def claim_eip155_chain(claim):
 
 
 def rail_eip155_chain(rail):
+    # This focused PB-2 predicate assumes the other RD-5 railType/asset/network
+    # kind-coherence checks have already passed.
     network = rail.get("network")
     asset = rail.get("asset")
     if not isinstance(network, dict) or not isinstance(asset, dict):
@@ -227,6 +229,7 @@ class CciXmRailChainApplicabilityVectorTests(unittest.TestCase):
 
         for name in [
             "zero-asset-chain-id-rejects-rail",
+            "both-zero-chain-ids-reject-rail",
             "zero-network-chain-id-rejects-rail",
             "string-asset-chain-id-rejects-rail",
             "string-network-chain-id-rejects-rail",

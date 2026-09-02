@@ -7,8 +7,8 @@
     "issue": "DACS-Agent-commerce/DACS-Standard#307",
     "generator": "hand-authored normative examples; independently recomputed by tests/test_cci_xm_rail_chain_applicability_vectors.py"
   },
-  "count": 25,
-  "hash": "1d7acddc2f411613bdbd22e8258e64ab10a1e0e9aeb16ea09d267243c1ce34c6",
+  "count": 26,
+  "hash": "3192318b4237520a703abecb8ec5f3ce519bec67a4f29d0ae6369b46c0a7a585",
   "vectors": [
     {
       "name": "ethereum-mainnet-exact-chain-id-tier2",
@@ -443,13 +443,33 @@
       }
     },
     {
-      "name": "zero-network-chain-id-rejects-rail",
+      "name": "both-zero-chain-ids-reject-rail",
       "expected": "error",
       "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
       "railDefinition": {
         "railId": "evm-erc20:8453:USDC",
         "railType": "evm-erc20",
         "asset": {"kind": "erc20", "chainId": 0},
+        "network": {"kind": "evm", "chainId": 0}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "zero-network-chain-id-rejects-rail",
+      "expected": "error",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
         "network": {"kind": "evm", "chainId": 0}
       },
       "tier3AgreementAssertionPresent": true,

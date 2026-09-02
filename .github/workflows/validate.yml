@@ -64,6 +64,9 @@ jobs:
       - name: Verify presence-only claim vectors are deterministic
         run: python3 scripts/generate_presence_only_claim_vectors.py --check
 
+      - name: Verify canonical channel-message vectors are deterministic
+        run: python3 scripts/generate_channel_message_vectors.py --check
+
       - name: Verify alternative-payment vectors are deterministic
         run: python3 scripts/generate_alternative_payment_projection_vectors.py --check
 

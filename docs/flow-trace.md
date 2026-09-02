@@ -303,7 +303,7 @@ Notes:
 
 ## 5. Stage 3 — Negotiate (RFQ on L2PS)
 
-The buyer and seller exchange offers and counters through an L2PS subnet. Each channel message is signed under the channel-msg domain separator. The final terms become a signed AgreementArtifact (legacy or payee-bound as selected by the listing); the AgreementHash is what's anchored on-chain via a CommitmentRecord.
+The buyer and seller exchange offers and counters through an L2PS subnet. Each current DACS channel message is a discriminated `CanonicalChannelMessage` signed under the canonical-channel-message domain separator. The final terms become a signed AgreementArtifact (legacy or payee-bound as selected by the listing); the AgreementHash is what's anchored on-chain via a CommitmentRecord.
 
 ```typescript
 async function negotiateRFQ(
@@ -327,8 +327,10 @@ async function negotiateRFQ(
 
   // Distribute RSA membership keys to buyer + seller out-of-band (e.g., via SIWD).
 
-  // 2. Multi-turn exchange. Each message signed under "dacs-channelmsg:v1:".
-  const transcript: SignedChannelMsg[] = [];
+  // 2. Multi-turn exchange. Each current message carries
+  // canonicalChannelMessageVersion: "1" and is signed under
+  // "dacs-canonical-channel-message:v1:" per DACS-3 CH-7/CH-8.
+  const transcript: CanonicalChannelMessage[] = [];
 
   // Turn 1: buyer offers 85 USDC
   transcript.push(await sendChannelMsg(subnet, buyerDemos, {
@@ -724,11 +726,11 @@ The trace is an honest forward projection of what production DACS-on-Demos code 
 
 **Trace assumption.** `sendChannelMsg(...)` sends a fully-structured envelope (sequence, signature, refs) and the SDK preserves the structure on the receive side.
 
-**Reality today.** `subnet.sendMessage({ recipient, content })` accepts arbitrary `content`. The structure is whatever the caller puts in. There is no SDK-level type for `ChannelMessage`, no sequence enforcement, no transcript-export.
+**Reality today.** `@kynesyslabs/demosdk@4.0.16` exposes the historical Demos message container: no current DACS discriminator, a bare lowercase-hex Ed25519 value, and the frozen `dacs-channelmsg:v1:` raw-digest signed bytes. It is evidence for the explicit read/import arm, not the current DACS type.
 
-**Gap.** First-class `ChannelMessage` type in the SDK with sequence validation on receive, transcript export, and helper for the `dacs-channelmsg:v1:` signing. Also on DACS-3 Tier 1.
+**Gap.** Add a `CanonicalChannelMessage` producer/consumer that emits the CH-7/CH-8 discriminator, signature envelope, SIG-6 value, canonical domain and ASCII lowercase-hex digest framing; retain the old SDK object only behind an explicit historical import API. Execute the Standard's mixed-wire corpus and keep sequence validation/transcript export. Also on DACS-3 Tier 1.
 
-**Spec impact.** None — the envelope shape in this trace matches DACS-3 §8.3.3.
+**Spec impact.** DACS-3 §8.3.3 defines the current/historical split. This trace shows only the current arm; importing the SDK's historical message does not authorize re-emitting it.
 
 ### 9.4 SR-4 (L2PS) — encrypted-transcript anchoring
 

@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.5** (on the common DACS v0.1 baseline; v0.5 binds a `pay-alternative` Listing to exactly one complete `terms.rail` selection, validates payee-bound payout coverage against the DACS-4 APR effective pipeline, and signs any cross-job replacement through `priorPaymentDispositionRef`; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.6** (on the common DACS v0.1 baseline; v0.6 separates the frozen historical Demos channel-message import arm from the discriminated current `CanonicalChannelMessage`, pins the current SIG-6 value and §B.7 lowercase-hex-digest signature framing, and forbids decoder/domain fallback; v0.5 binds a `pay-alternative` Listing to exactly one complete `terms.rail` selection, validates payee-bound payout coverage against the DACS-4 APR effective pipeline, and signs any cross-job replacement through `priorPaymentDispositionRef`; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -52,28 +52,113 @@ On Demos, L2PS (Layer-2 Privacy Subnets) is the SR-4 implementation. Channel ses
 
 For v0.1, subnet membership MUST be bindable to the participants’ CCI primary claims, so that channel-message signatures verify against the same key that holds value on-chain and the agreement commitment anchor’s parties match the channel members. Until CCI-keyed membership ships, implementations MAY use a binding-proof step: each participant signs an "L2PS subnet X membership = CCI Y" attestation with their CCI primary key, anchored as a Storage Program before negotiation begins.
 
-Other substrates MAY implement SR-4 via TEE-based confidential channels, zk-based privacy circuits, or permissioned-overlay networks bound to public-chain identity, provided they satisfy CH-1 through CH-6. DACS-3 does not standardise the wire protocol or the cryptographic envelope — those are SR-4 implementation choices — but does standardise the messages’ semantic shape.
+Other substrates MAY implement SR-4 via TEE-based confidential channels, zk-based privacy circuits, or permissioned-overlay networks bound to public-chain identity, provided they satisfy CH-1 through CH-10. DACS-3 does not standardise the SR-4 transport, routing, or confidentiality envelope — those remain substrate choices — but it does standardise the signed DACS message carried inside that transport.
 
 #### 8.3.3 Message envelope (substrate-independent)
 
+The current DACS-3 message is structurally distinct from the historical Demos
+message described below. `ChannelMessage` without qualification in current
+DACS-3 prose means `CanonicalChannelMessage`:
+
 ```
-type ChannelMessage = {
-  channelId: string                    // substrate-derived; opaque to DACS-3; MUST be unique per session (see CH-6)
-  sequence: number                     // monotonic per channel, starts at 1
-  sender: ClaimReference               // author's primary claim
-  sentAt: number                       // unix ms
+type CanonicalChannelMessage = {
+  canonicalChannelMessageVersion: "1" // exclusive current-message discriminator
+  channelId: string                    // substrate-derived; opaque to DACS-3; MUST be unique per session (CH-6)
+  sequence: number                     // positive integer; monotonic per channel, starts at 1
+  sender: ClaimReference               // author's canonical primary claim
+  sentAt: number                       // non-negative integer unix ms
   type: "offer" | "counter" | "accept" | "reject"
        | "sealed-envelope-commit" | "sealed-envelope-reveal"
        | "abort"
-  body: unknown                        // type-specific. Sealed-envelope commit/reveal bodies are defined in §8.4.3; RFQ offer/counter/accept/reject bodies are implementation-defined (the authoritative agreed terms live only in the signed AgreementArtifact, not the channel body)
-  refs?: { repliesTo?: number }
-  signature: ChannelMessageSignature   // see below
+  body: unknown                        // type-specific; see §8.4 for normative pattern bodies
+  refs?: { repliesTo?: number }        // repliesTo, when present, is a positive integer
+  signature: ChannelMessageSignature
+}
+
+type ChannelMessageSignature = {
+  signatureVersion: "1"
+  signer: ClaimReference
+  algorithm: "ed25519" | "ecdsa-secp256k1" | "sr1-aggregate"
+  value: string                        // CORE §B.7 SIG-6 unpadded Base64URL
 }
 ```
 
-The envelope follows the §B.2 canonical-form template, omitting the `signature` field; the signature is computed over:
-signed_bytes := "dacs-channelmsg:v1:" || envelope_hash
-Implementations MAY add transport-level fields (routing, framing) outside the signed envelope; signed envelope contents MUST NOT change between sender and receiver.
+(CH-7) **Current type and signature authority.** A current producer MUST emit
+`canonicalChannelMessageVersion: "1"` and the version-1 signature envelope
+above. `signature.signer` MUST canonically equal `sender` under CORE §B.1/CF-2,
+and the declared algorithm MUST match the authenticated primary key resolved
+for that claim. Unknown message versions, signature versions, or algorithms
+are malformed; an algorithm/key mismatch is a proven authentication failure.
+Transport-level routing and framing fields MAY exist outside the signed message
+but MUST NOT be inserted into, removed from, or mutate it in transit.
+
+(CH-8) **Current signed bytes.** Let `unsigned_message` be the complete received
+message with only its top-level `signature` member omitted, retaining the
+current discriminator and every unknown member as required by SIG-5. The exact
+recipe is:
+
+```
+message_hash := lowercase_hex(sha256(UTF8(JCS(unsigned_message))))
+signed_bytes := UTF8("dacs-canonical-channel-message:v1:") || ASCII(message_hash)
+```
+
+The producer and verifier MUST apply CORE §B.7, including SIG-2 independent
+reconstruction and SIG-6 canonical unpadded Base64URL decoding before
+algorithm-specific verification. Raw digest bytes, the historical domain, a
+hex signature value, standard Base64, and padded Base64URL are not alternate
+current encodings.
+
+(CH-9) **Single structural dispatch; no fallback.** A reader selects exactly
+one arm before cryptographic verification:
+
+1. Presence of `canonicalChannelMessageVersion` selects the current arm,
+   including when its value or `signature` shape is invalid. The selected arm
+   MUST NOT fall back to historical parsing after any error or signature
+   failure.
+2. Absence of that discriminator selects the historical arm only when
+   `signature` is a bare 128-character lowercase-hex string and the remaining
+   historical required members are present.
+3. Every partial mixture selects neither valid artifact and is malformed. In
+   particular, discriminator plus bare hex, no discriminator plus a current
+   signature envelope, an unknown discriminator, and a missing signature all
+   reject. A reader MUST NOT try the other arm, a second value decoder, another
+   domain, or another digest framing for the same object.
+
+The historical read/import-only wire is frozen as:
+
+```
+type LegacyDemosChannelMessage = {
+  channelId: string
+  sequence: number
+  sender: ClaimReference
+  sentAt: number
+  type: "offer" | "counter" | "accept" | "reject"
+       | "sealed-envelope-commit" | "sealed-envelope-reveal" | "abort"
+  body: unknown
+  refs?: { repliesTo?: number }
+  signature: string                    // exactly 128 lowercase hex characters
+}
+
+legacy_message_hash_bytes := sha256(UTF8(JCS(legacy_message_without_signature)))
+signed_bytes := UTF8("dacs-channelmsg:v1:") || legacy_message_hash_bytes
+```
+
+(CH-10) **Historical import boundary.** A conforming reader MAY expose this
+historical arm only as an explicitly selected, read/import-only compatibility
+path. It MUST verify the exact bare-hex signature over the frozen raw 32-byte
+digest recipe before returning authenticated historical semantics. New
+producers MUST NOT emit it. Decoding and re-encoding its signature bytes does
+not create a current signature: current publication requires a new
+`CanonicalChannelMessage`, a fresh author signature over CH-8, and a new
+artifact/reference wherever the serialized message is committed. Legacy
+message bytes and signature bytes MUST remain unchanged when retained for
+audit.
+
+After structural and cryptographic verification, both arms apply CH-6 channel
+binding/reuse and monotonic-sequence checks. An unavailable authenticated key
+is `indeterminate`; malformed structure/encoding/context is `error`; a proven
+signature, binding, reuse, or replay violation is `fail`. The frozen legacy
+corpus and the generated current/mixed-wire corpus are identified in §14.3.
 
 #### 8.3.4 Channel failure detection and abort
 
@@ -670,7 +755,7 @@ type ChannelTranscript = {
   transcriptVersion: "1"
   channelId: string
   members: ClaimReference[]
-  messages: ChannelMessage[]
+  messages: CanonicalChannelMessage[]
   generatedAt: number
   signatures: TranscriptSignature[]
 }
@@ -702,7 +787,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 
 | Role | Requirements |
 | --- | --- |
-| Channel implementation | CH-1 through CH-6; message envelope; failure detection |
+| Channel implementation | CH-1 through CH-10; current message/signature wire; strict historical import; failure detection |
 | negotiate-fixed-price | §8.4.1 procedure; signature collection; SR-2 anchoring |
 | negotiate-rfq | §8.4.2 procedure; RFQ-1 through RFQ-4; channel turn timeouts |
 | negotiate-sealed-envelope / negotiate-sealed-envelope-procurement | §8.4.3 procedure; SE-1 through SE-9; deterministic selection; rule-ref content-hash binding; mode-bound role assignment; same-bidder commit authority |
@@ -734,7 +819,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 
 **Sealed-bid government procurement.** negotiate-sealed-envelope-procurement covers FAR Part 14's commit-then-reveal with cryptographic commitment (vs physical envelopes); the selection-rule abstraction (lowest-price / first-acceptable / rule-ref) covers FAR's "lowest responsive responsible bidder" and "best value". EU/UK equivalents map similarly.
 
-**Off-chain negotiation systems.** An existing RFQ system / procurement portal / B2B negotiation tool MAY serve as the SR-4 channel provided it satisfies CH-1..CH-6; the public-chain binding and agreement shape are the only DACS-3 additions.
+**Off-chain negotiation systems.** An existing RFQ system / procurement portal / B2B negotiation tool MAY serve as the SR-4 channel provided it satisfies CH-1..CH-10. Its transport remains private to that system, but current DACS messages carried through it use the CH-7/CH-8 wire; the public-chain binding and agreement shape are the other DACS-3 additions.
 
 **ERC-8183 escrow.** A DACS-3 agreement whose `terms.rail` is an EVM rail MAY reference an ERC-8183 escrow as the settlement vehicle; the DACS-4 rail definition carries the contract address.
 

@@ -203,9 +203,9 @@ A finalized non-membership proof or a binding-defined authenticated independent 
 **Substrate-coupling status in v0.1.**
 
 - **SR-1, SR-2, and SR-5 are specified at the protocol level.** Another substrate that ships an equivalent primitive (cross-substrate identity aggregation; content-addressed anchored storage; atomic cross-chain settlement) can interoperate with DACS implementations on Demos at the artifact level: the bundles, listings, and evidence records validate the same way.
-- **SR-3 and SR-4 are specified at the trust-property level only in v0.1.** Two substrates each shipping their own SR-3 (consensus-backed proxy attestation) or SR-4 (identity-keyed private coordination) implementations will *not* be wire-protocol interoperable. The trust properties listed under CH-1..CH-6 for SR-4 and under §7.3.5 for SR-3 are the conformance bar v0.1 requires; the underlying message formats and consensus signatures are substrate-specific. Consequence, until the v2 wire formats ship (see note below): a session begun on substrate A cannot be completed on substrate B if it uses any SR-3- or SR-4-dependent phase.
+- **SR-3 and the SR-4 transport/confidentiality layer are specified at the trust-property level only in v0.1.** Two substrates each shipping their own SR-3 (consensus-backed proxy attestation) or SR-4 (identity-keyed private coordination) implementations will *not* be transport-wire interoperable. The trust properties listed under CH-1..CH-10 for SR-4 and under §7.3.5 for SR-3 are the conformance bar v0.1 requires; CH-7..CH-10 standardise the signed DACS message inside SR-4, while routing, confidentiality envelopes, and consensus signatures remain substrate-specific. Consequence, until the v2 substrate wire formats ship (see note below): a session begun on substrate A cannot be completed on substrate B if it uses any SR-3- or SR-4-dependent phase.
 
-> **Note (non-normative).** v2 of DACS-2 and DACS-3 is expected to specify wire formats for SR-3 attestation envelopes and SR-4 channel messages that enable cross-substrate interoperability.
+> **Note (non-normative).** v2 of DACS-2 and DACS-3 is expected to specify wire formats for SR-3 attestation envelopes and the SR-4 transport/confidentiality layer that enable cross-substrate interoperability. The signed `CanonicalChannelMessage` carried inside SR-4 is already byte-defined by DACS-3 §8.3.3.
 
 **Reference substrate.** The **Demos Network** is the substrate against which DACS was designed and, as of this draft, the only substrate that ships all five capabilities natively. The DACS specifications cite the substrate capabilities (SR-1 through SR-5), not the Demos primitives themselves; this separation keeps the artifact-level specification portable while staying honest about which primitives are concretely realised today and where v2 work is needed.
 
@@ -367,7 +367,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-2 VerifyResult | "dacs-verifyresult:v1:" | §7.5 |
 | DACS-2 composite verification record | "dacs-composite:v1:" | §7.7 |
 | DACS-2 recipe | "dacs-recipe:v1:" | §7.4 |
-| DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
+| DACS-3 canonical channel message | "dacs-canonical-channel-message:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |
 | DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
@@ -389,6 +389,15 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-1 bundle session-key root binding | "dacs-session-binding:v1:" | §6.3.2 |
 | DACS-3 auto-accept commitment | "dacs-auto-accept-commitment:v1:" | §8.4.1 |
 | DACS-3 auto-accept instance | "dacs-auto-accept-instance:v1:" | §8.4.1 |
+
+**Historical read/import-only domain (not a current producer registry entry).**
+The frozen `LegacyDemosChannelMessage` uses `"dacs-channelmsg:v1:"` followed
+by the raw 32-byte SHA-256 digest, not the lowercase-hex `artifact_hash` recipe
+above. It is registered here only so an explicitly selected historical reader
+can reproduce existing bytes under DACS-3 §8.3.3 CH-9/CH-10. New producers
+MUST NOT emit that type or domain. A current channel message always uses the
+separate table entry, discriminator, signature envelope, digest framing, and
+SIG-6 encoding.
 
 **Payload shape — single-hash vs composite.** Most artifacts use the single-hash payload `domain_separator || artifact_hash`. Three entries are *composite-payload* separators that, by design, prepend the separator to more than one framed value rather than a single artifact hash:
 
@@ -447,9 +456,13 @@ encoding, preserve the exact signature bytes, and emit the canonical DACS value.
 It MUST NOT auto-detect by trying decoders or accept the legacy spelling on the
 conforming verification path.
 
-Re-encoding the same bytes does not change the signed payload because signature
-fields are omitted from the artifact hash. An immutable stored serialization
-still needs a migrated publication. If a dependent artifact commits the complete
+Re-encoding the same bytes does not change the signed payload when the artifact
+type, domain, and signed-scope recipe are unchanged because signature fields are
+omitted from the artifact hash. It does not convert a historical channel
+message to `CanonicalChannelMessage`: those types deliberately use different
+discriminators, domains, and digest representations, so current publication
+requires a fresh author signature. An immutable stored serialization still
+needs a migrated publication. If a dependent artifact commits the complete
 stored serialization, its reference MUST be updated and the dependent artifact
 MUST be regenerated and re-signed.
 

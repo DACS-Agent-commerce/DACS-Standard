@@ -3629,6 +3629,8 @@ def evaluate_audit(data: dict[str, Any]) -> None:
         completion_receipt,
     )):
         raise Unknown("authenticated Purchase and Completion evidence unavailable")
+    _profile_shape(purchase_intent, "dacs-purchase-v1")
+    _profile_shape(completion_intent, "dacs-completion-v1")
     verify_receipt(
         purchase_receipt, purchase_intent, data["publicKeys"],
         capability=data.get("capability"),
@@ -3651,8 +3653,16 @@ def evaluate_audit(data: dict[str, Any]) -> None:
         )
     ):
         raise Invalid("audit tail does not bind the verified Purchase/Completion pair")
+    state_before = data.get("sessionStateBefore")
+    state_after = data.get("sessionStateAfter")
+    if state_before != "audit-pending":
+        raise Invalid("audit tail must start from audit-pending")
     proofs = data.get("dependencyProofs")
     if not isinstance(proofs, list):
+        if state_after != "audit-pending":
+            raise Invalid(
+                "audit-pending cannot transition before dependency proofs are available"
+            )
         raise Unknown("audit dependency proofs unavailable")
     works = {
         "purchase": (purchase_intent, purchase_receipt),
@@ -3701,15 +3711,12 @@ def evaluate_audit(data: dict[str, Any]) -> None:
         ):
             raise Invalid("audit dependency proof does not bind a finalized Work operation")
     if seen != expected_keys:
-        if data.get("sessionStateAfter") != "audit-pending":
+        if state_after != "audit-pending":
             raise Invalid(
                 "audit-pending cannot transition before dependency proofs are complete"
             )
         raise Unknown("audit dependency proof set is incomplete")
-    if (
-        data.get("sessionStateBefore") != "audit-pending"
-        or data.get("sessionStateAfter") != "finalised"
-    ):
+    if state_after != "finalised":
         raise Invalid("audit tail session-state transition is invalid")
     identities = [op.get("idempotencyKey") for op in operations]
     if any(not isinstance(value, str) or not value for value in identities):

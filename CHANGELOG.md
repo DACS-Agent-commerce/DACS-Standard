@@ -67,9 +67,9 @@ The format used per release:
   publication receipt. Current v1 admits no bundle-anchor Work operation; its
   bundle remains in that tail. Adds eleven JSON Schemas plus deterministic
   candidate vectors with explicit acceptance/rejection/indeterminate/malformed
-  and true boundary metadata. Every new rule ID has executable coverage; complete
-  positive/negative/boundary coverage per individual rule remains a draft
-  blocker. Demos provides a generic `DemosWork` orchestration primitive; the
+  and true boundary metadata. Every new rule ID has complete applicable
+  positive/negative/boundary coverage. Demos provides a generic `DemosWork`
+  orchestration primitive; the
   consensus-atomic DACS binding remains ineligible to advertise
   `AtomicWorkCapabilityV1` until its
   byte-exact consensus, proof, rollback, recovery, fee/nonce, and limit
@@ -78,6 +78,32 @@ The format used per release:
   fifteen requirements are yet `EXISTING — PIN/EVIDENCE`, four require a DACS
   binding, and eleven require implementation. This assigns the remaining work
   without weakening the capability gate or the sequential fallback.
+### Fixed — DACS-1 v0.7 / DACS-2 v0.6
+
+- **Presence-only claim requirements made executable** (DACS-1 §6.3.3
+  PCR-1..PCR-6; DACS-2 §7.7.1; #334) — resolves the contradiction where
+  `verificationRequired: false` skipped the decision check but still failed the
+  unconditional freshness gate, while composite aggregation required a passing
+  `VerifyResult` for every member. Presence-only matching now evaluates the
+  exact signed bundle directly: canonical known claim, unexpired presenter
+  bound, and presenter-signed scheme parameters, with `issuedAt` informational. A well-shaped
+  optional `verifiedBy` is non-deciding for presence; malformed references are
+  errors, and `maxAge`/`recipeVersion` are invalid without verification.
+  DACS-2 excludes presence-only members from result evidence and replays mixed
+  required/`oneOf` aggregation against the exact bundle and requirement bound
+  by the existing CVR hashes; missing bundle is indeterminate, while synthetic
+  results, substitutions, invalid signatures, and decision mismatches reject.
+  Presence remains neither verification nor control: the exact `key:` bundle
+  signature may independently prove key control, but existence-only `lei:`
+  presence cannot become `presentedBy`, elevate identity tier, or key
+  reputation. Aggregation always authenticates the session-pinned recipe
+  registry snapshot, including for an all-presence requirement, so the
+  algorithm remains consistent with CRQ-1 and composes with descriptor-bound
+  registry resolution. Empty collection and exact-boolean configuration
+  semantics are explicit. Adds 38 deterministic vectors with genuine Ed25519
+  bundle, VerifyResult, and composite signatures. No artifact or schema change.
+
+### Added — signed alternative-payment projection
 
 - **One Listing, one buyer-selected payment handler** (DACS-1 §6.3.4,
   DACS-3 §8.5.2, DACS-4 §9.9.1 APR-1..APR-8, DACS-5 §10.4.3; #340) — adds

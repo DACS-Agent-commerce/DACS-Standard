@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import subprocess
 import sys
@@ -367,6 +368,35 @@ class AtomicWorkVectorTests(unittest.TestCase):
         self.assertEqual(ref.evaluate_vector(by_name["awb-audit-premature-finalisation"])[0], "fail")
         self.assertEqual(ref.evaluate_vector(by_name["awb-repair-never-replays-purchase"])[0], "fail")
         self.assertIn("AWB-9", by_name["awb-repair-never-replays-purchase"]["ruleRefs"])
+
+        unavailable = copy.deepcopy(
+            by_name["awb-idempotent-nonpaying-audit-tail"]["input"]
+        )
+        unavailable["dependencyProofs"] = None
+        unavailable["sessionStateAfter"] = "finalised"
+        with self.assertRaisesRegex(
+            ref.Invalid, "cannot transition before dependency proofs are available"
+        ):
+            ref.evaluate_audit(unavailable)
+
+        reverse = copy.deepcopy(unavailable)
+        reverse["sessionStateBefore"] = "finalised"
+        reverse["sessionStateAfter"] = "audit-pending"
+        with self.assertRaisesRegex(ref.Invalid, "must start from audit-pending"):
+            ref.evaluate_audit(reverse)
+
+        widened = copy.deepcopy(
+            by_name["awb-idempotent-nonpaying-audit-tail"]["input"]
+        )
+        widened["purchaseIntent"]["operations"].append({
+            "operationId": "unreferenced-extra",
+            "kind": "assert-artifact",
+            "dependsOn": [],
+            "requiredRoles": ["orchestrator"],
+            "payload": {},
+        })
+        with self.assertRaisesRegex(ref.Invalid, "profile operation count mismatch"):
+            ref.evaluate_audit(widened)
 
     def test_receipt_slot_transition_and_retry_intent_are_bound(self):
         execution = next(

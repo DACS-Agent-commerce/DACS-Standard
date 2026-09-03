@@ -8,6 +8,8 @@
 
 The capitalized requirement words in this document are proposed requirements. They become normative only if promoted into the applicable specification modules by a later steward-approved pull request.
 
+All artifact kinds introduced by this pre-normative candidate use the `dacs-x-` extension-domain form required by CORE SIG-4. Promotion requires explicit domain-registry entries and regenerated review vectors; candidate signatures MUST NOT be relabelled as signatures under a future registered domain.
+
 ## 1. Outcome and boundary
 
 Delivery-or-remedy commerce locks the agreed price before delivery. It releases the locked value only after an agreed evaluator authenticates an acceptable delivery, or returns the locked value through an authenticated rejection or expiry path.
@@ -65,6 +67,9 @@ type JobEscrowPhaseStep = {
 - (DRP-7) When delivery was submitted, the terminal step MUST use the exact signed delivery `SettlementEvidence` produced by the intervening step. A pre-submission expiry or evaluator-rejection refund MUST instead omit delivery evidence as required by DRD-9 and DRT-12.
 - (DRP-8) Neither invocation alone constitutes a second purchase or a second agreement price for DACS-5 volume.
 - (DRP-9) The delivery evidence content hash MUST be fixed before the native submission call. The hashed artifact MUST NOT contain or derive any field from the resulting native submission transaction or event. Later authenticated native evidence binds that already-fixed digest to the native job; it is not part of the digest itself.
+- (DRP-10) The paired `job-escrow` lifecycle counts as one concrete payment selection for the `acceptedRails` rule referenced by DACS-4 PIPE-1. It remains structurally outside the `pay-*` and `pay-alternative` registries and MUST NOT inherit PIPE-3 through PIPE-5 by implication.
+- (DRP-11) DACS-4 PIPE-6 applies to the `fund` invocation. The orchestrator MUST verify the finalized DACS-3 commitment before it submits any transaction that can lock value.
+- (DRP-12) On the ordinary submitted path, the `terminal` invocation MUST NOT execute until the intervening `deliver-*` invocation has returned and the native submission is authenticated. It MAY execute without a returned delivery only after authenticated native time has reached `submissionCutoffSec`, or through the DRD-12 pre-submission rejection path. In either exception, the orchestrator MUST cancel or permanently ignore any late delivery result and MUST NOT submit it to a terminal or refunded native job.
 
 > **Note (non-normative).** A single long-running phase would need a new suspended result state. The paired form preserves the current one-result-per-invocation contract and makes the preterminal delivery hash available without a circular terminal-evidence hash.
 
@@ -88,7 +93,7 @@ type DeliveryOrRemedyAgreement = {
   budgetBaseUnits: string
   submissionCutoffSec: number
   evaluationDeadlineSec: number
-  preSubmissionRefundPolicy: "expiry-only" | "evaluator-rejection"
+  preSubmissionRefundPolicy: "evaluator-rejection"
   disclosurePolicy: "public-evidence-only" | "explicit-party-supplied"
   evaluationRuleRef: AttestationRef
   signatures: DeliveryOrRemedySignature[]
@@ -117,7 +122,7 @@ type DeliveryOrRemedySignature = {
 The canonical form omits `signatures`. Each party signs:
 
 ```text
-"dacs-delivery-remedy-agreement:v1:" || agreement_overlay_hash
+"dacs-x-delivery-remedy-agreement:v1:" || agreement_overlay_hash
 ```
 
 `agreement_overlay_hash` is the lowercase hexadecimal SHA-256 digest of the RFC 8785 canonical form after CORE canonicalization.
@@ -135,8 +140,9 @@ The canonical form omits `signatures`. Each party signs:
 - (DRA-11) The overlay MUST bind the three ordered phase indexes selected by DRP-1 through DRP-3.
 - (DRA-12) The overlay MUST be finalized and independently resolvable before job creation or funding.
 - (DRA-13) The evaluator signature authenticates only this overlay. It MUST NOT add the evaluator to the bilateral `AgreementArtifact`, make the evaluator a buyer or seller, or add an evaluator signature requirement to the buyer/seller `AttestationBundle`.
-- (DRA-14) The native client, provider, evaluator, token, budget, payout receiver, and applicable deadlines MUST be fixed and authenticated no later than funding. A later mutable replacement MUST prevent progression.
-- (DRA-15) `preSubmissionRefundPolicy` MUST be signed before funding. `expiry-only` permits only decisionless expiry recovery before submission; `evaluator-rejection` additionally permits the DRD-12 path.
+- (DRA-14) The native client, provider, evaluator, token, budget, payout receiver, pre-submission rejection policy, and applicable deadlines MUST be fixed and authenticated no later than funding. A later mutable replacement MUST prevent progression.
+- (DRA-15) `preSubmissionRefundPolicy` MUST be signed before funding and MUST equal `evaluator-rejection` in this profile. A different value is an unsupported profile, not a client-side restriction on the native evaluator.
+- (DRA-16) Decisionless expiry remains available regardless of the fixed pre-submission policy. A future `expiry-only` profile MUST select an implementation that immutably disables evaluator rejection while funded; an SDK omission, caller convention, or post-transaction verifier rejection is insufficient.
 
 The evaluator requirement is deal policy, not a universal arbitrator credential. A live Listing or agreement chooses the credential strength appropriate to the value and subject matter.
 
@@ -190,12 +196,12 @@ type EvmEventRef = {
 The job reference canonical form omits `signature`. The candidate signing domain is:
 
 ```text
-"dacs-escrow-job-ref:v1:" || escrow_job_ref_hash
+"dacs-x-escrow-job-ref:v1:" || escrow_job_ref_hash
 ```
 
 - (DRJ-1) `nativeJobId` MUST use the native identifier's minimal canonical spelling.
 - (DRJ-2) `creationEvent` MUST resolve to exactly one finalized job-creation event at the pinned contract.
-- (DRJ-3) The event's client, provider, evaluator, expiry, and hook fields MUST match the overlay and rail definition.
+- (DRJ-3) The authenticated creation/configuration event set's client, provider, evaluator, submission cutoff, expiry/recovery deadline, pre-submission rejection policy, and hook fields MUST match the overlay and rail definition.
 - (DRJ-4) The native job description MUST equal the byte-exact agreement binding in section 8.1.
 - (DRJ-5) `runtimeBytecodeHash` MUST match authenticated code at the finalized creation block and at each later action block.
 - (DRJ-6) A proxy binding MUST also resolve the implementation and every authority capable of changing behavior.
@@ -224,7 +230,7 @@ type EscrowFundingEvidence = {
 The canonical form omits `signature`. The signing domain is:
 
 ```text
-"dacs-escrow-funding-evidence:v1:" || escrow_funding_evidence_hash
+"dacs-x-escrow-funding-evidence:v1:" || escrow_funding_evidence_hash
 ```
 
 - (DRF-1) Funding evidence MUST bind the exact overlay, job reference, and `fund` phase index.
@@ -259,7 +265,7 @@ type ExecutionEvaluation = {
 The canonical form omits `signature`. The signing domain is:
 
 ```text
-"dacs-execution-evaluation:v1:" || execution_evaluation_hash
+"dacs-x-execution-evaluation:v1:" || execution_evaluation_hash
 ```
 
 - (DRE-1) The signer MUST be the exact agreement-bound evaluator primary claim.
@@ -291,7 +297,7 @@ type EscrowDecision = {
 The canonical form omits `signature`. The signing domain is:
 
 ```text
-"dacs-escrow-decision:v1:" || escrow_decision_hash
+"dacs-x-escrow-decision:v1:" || escrow_decision_hash
 ```
 
 - (DRD-1) The signer MUST be the exact agreement-bound evaluator primary claim.
@@ -342,7 +348,7 @@ type AccountabilityFinding = {
 The canonical form omits `signature`. The signing domain is:
 
 ```text
-"dacs-dispute-outcome:v1:" || dispute_outcome_hash
+"dacs-x-dispute-outcome:v1:" || dispute_outcome_hash
 ```
 
 - (DRX-1) A `DisputeOutcome` MUST NOT directly instruct or claim an on-chain transfer.
@@ -399,7 +405,7 @@ type EscrowTerminalEvidence = {
 The canonical form omits `signature`. The signing domain is:
 
 ```text
-"dacs-escrow-terminal-evidence:v1:" || terminal_evidence_hash
+"dacs-x-escrow-terminal-evidence:v1:" || terminal_evidence_hash
 ```
 
 - (DRT-1) `released` MUST carry and verify `decisionRef`, its basis, and `deliveryEvidenceRef`.
@@ -466,12 +472,12 @@ bytes32 value: 0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1
 - (DREB-9) ERC `evaluator` MUST equal the address in the evaluator's controlled EVM account claim.
 - (DREB-10) The payout receiver MUST equal the agreement-bound seller payout account.
 - (DREB-11) The native budget and payment token MUST equal the agreement price and pinned rail asset.
-- (DREB-12) ERC `expiredAt` MUST equal `submissionCutoffSec`.
-- (DREB-13) `evaluationDeadlineSec` MUST equal `submissionCutoffSec + evaluationGracePeriodSec` for a binding that grants a fixed post-expiry grace period.
+- (DREB-12) ERC `expiredAt` MUST equal `evaluationDeadlineSec`. It is the terminal recovery deadline, not the submission cutoff.
+- (DREB-13) The selected implementation MUST separately and immutably commit `submissionCutoffSec`. It MUST expose authenticated evidence of that per-job value and reject native `submit` calls at or after it, even while the job remains funded awaiting expiry recovery.
 - (DREB-14) `evaluationDeadlineSec - submissionCutoffSec` MUST be positive and no shorter than the pinned `minimumEvaluationWindowSec`.
-- (DREB-15) A submitted job's recovery path MUST become callable no later than the bound evaluation deadline.
+- (DREB-15) The native expiry-recovery path for either a funded or submitted job MUST become callable at `evaluationDeadlineSec` and MUST NOT become callable before it.
 
-No universal duration is declared here. Each registered rail revision pins `minimumEvaluationWindowSec`, `evaluationGracePeriodSec`, and the exact native deadline mapping.
+No universal duration is declared here. Each registered rail revision pins `minimumEvaluationWindowSec`, the deadline profile, and the exact native enforcement and mapping.
 
 ### 8.3 Direct evaluator transaction model
 
@@ -482,6 +488,7 @@ No universal duration is declared here. Each registered rail revision pins `mini
 - (DREB-20) A generic evaluator adapter MUST NOT be used in the first profile.
 - (DREB-21) For evaluator-driven `complete` or `reject`, the authenticated native caller at the escrow contract MUST equal the agreement-bound evaluator account.
 - (DREB-22) An outer transaction submitter MAY relay execution for an EIP-1271 or other supported account, but the rail evidence MUST distinguish that submitter from the native caller. For an EOA evaluator, the EOA itself remains the native caller; a relayer address MUST NOT be substituted.
+- (DREB-23) An SDK timer, orchestrator refusal, transaction-simulation result, or post-transaction conformance verdict MUST NOT substitute for the native submission-cutoff and expiry enforcement required by DREB-12 through DREB-15.
 
 ### 8.4 Deployment eligibility
 
@@ -501,7 +508,7 @@ type ERC8183ProfileParameters = {
   tokenDecimals: number
   finalityBlocks: number
   minimumEvaluationWindowSec: number
-  evaluationGracePeriodSec: number
+  deadlineProfile: "separate-submission-cutoff-v1"
   decisionOrderingProfile: string
   platformFeeBP: 0
   evaluatorFeeBP: 0
@@ -521,10 +528,13 @@ type ERC8183ProfileParameters = {
 - (DRC-10) A registration proposal MUST provide reproducible source-to-bytecode evidence and independently resolved deployed bytecode.
 - (DRC-11) Missing or conflicting deployment evidence MUST leave the rail unregistered and unavailable.
 - (DRC-12) The rail MUST define how authenticated evidence orders decision finality before the terminal transaction across the selected substrates.
+- (DRC-13) The selected implementation MUST immutably enforce a separate per-job submission cutoff and terminal recovery deadline with the exact behavior in DREB-12 through DREB-15.
 
-The current reference implementation at [`erc-8183/base-contracts@142e669`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol) is not eligible as published. It exposes UUPS upgrades, administrator pause and emergency withdrawal, mutable fees and hooks, and funded-state claim settlement. Its refund function is pause-gated, and a pending claim can delay a funded-state refund.
+The canonical ERC-8183 surface has one `expiredAt` value and permits evaluator rejection while `Funded`. The DACS MVP therefore fixes `preSubmissionRefundPolicy` to `evaluator-rejection` and requires a compatible implementation with a separately enforced submission cutoff. It does not claim that canonical `expiredAt` alone can provide both a submission cutoff and a later evaluation window. A future `expiry-only` policy requires a new profile and native enforcement that disables funded-state evaluator rejection.
 
-This finding does not reject ERC-8183. It means a strict DACS deployment needs a minimal compatible implementation or irreversible authority restrictions that independently prove DRC-1 through DRC-12.
+The current reference implementation at [`erc-8183/base-contracts@142e669`](https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol) is not eligible as published. It exposes UUPS upgrades, administrator pause and emergency withdrawal, mutable fees and hooks, and funded-state claim settlement. Its refund function is pause-gated, a pending claim can delay a funded-state refund, and it does not provide the separately enforced submission cutoff required by DRC-13.
+
+This finding does not reject ERC-8183. It means a strict DACS deployment needs a minimal compatible implementation or irreversible authority restrictions that independently prove DRC-1 through DRC-13.
 
 ## 9. Verification result and ordering
 
@@ -574,7 +584,7 @@ Promotion requires full signed artifacts and authenticated native inputs, not ex
 
 ### 11.2 Required rejection cases
 
-1. wrong job, overlay, rail, chain, contract, runtime code, token, budget, decimals, client, provider, evaluator, expiry, payout receiver, or phase index;
+1. wrong job, overlay, rail, chain, contract, runtime code, token, budget, decimals, client, provider, evaluator, submission cutoff, expiry/recovery deadline, payout receiver, or phase index;
 2. noncanonical JID or content hash;
 3. description prefix, hash-text rehash, byte-order, padding, truncation, or zero-reason mismatch;
 4. cross-job delivery, evaluation, decision, terminal-event, or receipt replay;
@@ -590,6 +600,8 @@ Promotion requires full signed artifacts and authenticated native inputs, not ex
 14. a signature finalized after the terminal action, or a self-reported timestamp used as a substitute for authenticated ordering;
 15. a relayer presented as the native evaluator caller;
 16. an evaluator added as a buyer/seller bundle party merely because it signed the overlay.
+17. a native submission accepted at or after `submissionCutoffSec`, or expiry recovery accepted before `evaluationDeadlineSec`;
+18. an `expiry-only` pre-submission policy claimed under this profile, or a client-side policy presented as native enforcement.
 
 ### 11.3 Required indeterminate cases
 
@@ -614,7 +626,7 @@ Every vector pack must include exact canonical bytes, hashes, signatures, logica
 
 ### Contract and reference implementation contributors
 
-- provide an exact deployment satisfying DRC-1 through DRC-12;
+- provide an exact deployment satisfying DRC-1 through DRC-13;
 - publish verified source, compiler settings, constructor/initializer inputs, deployed addresses, runtime bytecode hashes, and authority state;
 - publish finalized event fixtures for release, rejection, expiry, replay, mismatch, and unavailable-state cases.
 

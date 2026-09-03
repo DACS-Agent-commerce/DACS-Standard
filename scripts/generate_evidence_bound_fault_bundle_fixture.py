@@ -31,6 +31,7 @@ DOMAINS = {
 }
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
 POINTER_DOMAINS = {
     "fault": "dacs-fault-bundle-pointer:v1:",
     "evidence-bound": "dacs-evidence-bound-fault-bundle-pointer:v1:",
@@ -158,9 +159,11 @@ def settlement_finality(phase, observed_at):
 
 def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success", reason=None,
                   supersedes=None, label_suffix=""):
+    delivery = phase.startswith("deliver-")
     record = {
-        "evidenceVersion": "1",
+        ("deliveryEvidenceVersion" if delivery else "evidenceVersion"): "1",
         "jobId": job_id,
+        **({"phaseIndex": phase_index} if delivery else {}),
         "phase": phase,
         "outcome": outcome,
         "observedAt": 1785772799000 + phase_index,
@@ -175,20 +178,33 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
         record["deliverableContentHash"] = hashlib.sha256(
             f"deliverable:{job_id}:{phase_index}".encode()
         ).hexdigest()
-        if phase in {"deliver-storage-program", "deliver-attested-payload"}:
-            record["deliverableAnchor"] = {
-                "kind": "storage-program",
-                "locator": "stor-" + hashlib.sha256(
-                    f"deliverable-anchor:{job_id}:{phase_index}".encode()
-                ).hexdigest(),
-            }
+        deliverable_address = (
+            f"dacs4:entitlement:{job_id}:{phase_index}:0"
+            if phase == "deliver-entitlement"
+            else f"dacs4:deliverable:{job_id}:{phase_index}"
+        )
+        record["deliverableAnchor"] = {
+            "kind": "storage-program",
+            "locator": deliverable_address,
+        }
         if phase == "deliver-attested-payload":
-            record["attestationRef"] = reference(
-                f"payload-attestation:{job_id}:{phase_index}"
-            )
+            method_hash = hashlib.sha256(
+                f"verification-method:{job_id}:{phase_index}".encode()
+            ).hexdigest()
+            record["attestationRef"] = {
+                **reference(f"payload-attestation:{job_id}:{phase_index}"),
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": (
+                        f"dacs4:payload-attestation:{job_id}:{phase_index}:"
+                        f"{method_hash}:0"
+                    ),
+                },
+            }
     if supersedes is not None:
         record["supersedesEvidenceRef"] = copy.deepcopy(supersedes)
-    payload = (SETTLEMENT_EVIDENCE_DOMAIN + evidence_hash(record)).encode("utf-8")
+    domain = DELIVERY_EVIDENCE_DOMAIN if delivery else SETTLEMENT_EVIDENCE_DOMAIN
+    payload = (domain + evidence_hash(record)).encode("utf-8")
     record["signature"] = {
         "signer": CLAIMS["seller"],
         "algorithm": "ed25519",
@@ -211,7 +227,7 @@ def make_session_execution_authority(job_id, phase, phase_index, *, signer_role=
     if phase.startswith("pay-"):
         execution_address = {}
     else:
-        execution_address = {"evidenceLogicalAddress": f"dacs4:evidence:{job_id}:{phase_index}"}
+        execution_address = {"evidenceLogicalAddress": f"dacs4:delivery:{job_id}:{phase_index}"}
     return {
         "jobId": job_id,
         "phaseIndex": phase_index,
@@ -232,7 +248,7 @@ def make_verified_anchor_receipt(ref, job_id, phase, phase_index, *, signer_role
             ":resolved" if resolved else "",
         )
         if phase.startswith("pay-")
-        else f"dacs4:evidence:{job_id}:{phase_index}"
+        else f"dacs4:delivery:{job_id}:{phase_index}"
     )
     transaction = "demos-testnet:tx-" + hashlib.sha256(
         f"{job_id}:{phase_index}:{phase}:{'resolved' if resolved else 'ordinary'}".encode()

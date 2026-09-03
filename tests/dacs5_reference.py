@@ -44,6 +44,7 @@ FAULT_BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
 EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
@@ -181,6 +182,12 @@ def listing_hash(listing):
 
 def settlement_evidence_hash(record):
     """DACS-4 §9.7 evidence hash: canonical form minus its signature envelope."""
+    unsigned = {k: v for k, v in record.items() if k != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def delivery_evidence_hash(record):
+    """DACS-4 §9.7 DeliveryEvidence hash: canonical form minus its signature envelope."""
     unsigned = {k: v for k, v in record.items() if k != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
 
@@ -585,7 +592,8 @@ def _bundle_signatures_valid(bundle, pubkeys):
 
 
 def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase_index,
-                                          phase_kind, signer, *, resolved=False):
+                                          phase_kind, signer, *, resolved=False,
+                                          current_delivery=False):
     """Validate independently authenticated execution authority against a verified receipt."""
     if not isinstance(execution, dict) or not isinstance(receipt, dict):
         return (False, "missing executionAuthority or anchorReceipt binding")
@@ -604,10 +612,12 @@ def _validate_evidence_resolution_binding(ref, execution, receipt, bundle, phase
             bundle.get("jobId"), quote(rail_id, safe="-._~"), phase_index,
             ":resolved" if resolved else "",
         )
+    elif current_delivery:
+        expected_logical = "dacs4:delivery:%s:%d" % (bundle.get("jobId"), phase_index)
     else:
         expected_logical = execution.get("evidenceLogicalAddress")
         if not isinstance(expected_logical, str) or not expected_logical:
-            return (False, "delivery execution authority lacks evidenceLogicalAddress")
+            return (False, "legacy delivery execution authority lacks evidenceLogicalAddress")
     anchor = ref.get("anchor") if isinstance(ref, dict) else None
     nonce = receipt.get("nonce")
     if (
@@ -948,6 +958,108 @@ def _settlement_evidence_shape_valid(record):
     return True
 
 
+def _delivery_evidence_shape_valid(record):
+    """Closed current DACS-4 §9.7 DeliveryEvidence wire shape."""
+    if not isinstance(record, dict):
+        return False
+    required = {
+        "deliveryEvidenceVersion", "jobId", "phaseIndex", "phase", "outcome",
+        "observedAt", "signature",
+    }
+    optional = {
+        "reason", "deliverableContentHash", "deliverableAnchor", "attestationRef",
+        "credentialDelivery",
+    }
+    if not required <= set(record) or set(record) - required - optional:
+        return False
+    phase_index = record.get("phaseIndex")
+    phase = record.get("phase")
+    outcome = record.get("outcome")
+    signature = record.get("signature")
+    if (
+        record.get("deliveryEvidenceVersion") != "1"
+        or "evidenceVersion" in record
+        or not _nonempty_jcs_string(record.get("jobId"))
+        or isinstance(phase_index, bool)
+        or not isinstance(phase_index, int)
+        or phase_index < 0
+        or phase_index > _MAX_SAFE_JSON_INTEGER
+        or not _string_member(phase, DELIVERY_PHASES)
+        or not _string_member(outcome, {"success", "failure"})
+        or not _non_boolean_number(record.get("observedAt"))
+        or not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or not _nonempty_jcs_string(signature.get("algorithm"))
+        or not _claim_reference_shape_valid(signature.get("signer"))
+        or not _nonempty_jcs_string(signature.get("value"))
+    ):
+        return False
+    if outcome == "failure":
+        if not _nonempty_jcs_string(record.get("reason")):
+            return False
+    elif "reason" in record:
+        return False
+    if "deliverableContentHash" in record and not _sha256_hex(record["deliverableContentHash"]):
+        return False
+    if "deliverableAnchor" in record:
+        anchor = record["deliverableAnchor"]
+        if (
+            not isinstance(anchor, dict)
+            or set(anchor) != {"kind", "locator"}
+            or not _nonempty_jcs_string(anchor.get("kind"))
+            or not _nonempty_jcs_string(anchor.get("locator"))
+        ):
+            return False
+    if "attestationRef" in record and not _attestation_ref_shape_valid(record["attestationRef"]):
+        return False
+    if "credentialDelivery" in record:
+        binding = record["credentialDelivery"]
+        credential_ref = binding.get("credentialRef") if isinstance(binding, dict) else None
+        renewal_seq = binding.get("renewalSeq") if isinstance(binding, dict) else None
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != {"credentialRef", "credentialCleartextHash", "renewalSeq"}
+            or not isinstance(credential_ref, dict)
+            or set(credential_ref) != {"ref", "accessModel"}
+            or not _attestation_ref_shape_valid(credential_ref.get("ref"))
+            or not _string_member(
+                credential_ref.get("accessModel"), {"buyer-only", "encrypt-to-buyer"}
+            )
+            or not _sha256_hex(binding.get("credentialCleartextHash"))
+            or isinstance(renewal_seq, bool)
+            or not isinstance(renewal_seq, int)
+            or renewal_seq < 0
+            or renewal_seq > _MAX_SAFE_JSON_INTEGER
+        ):
+            return False
+    if outcome == "success":
+        if (
+            not _sha256_hex(record.get("deliverableContentHash"))
+            or not isinstance(record.get("deliverableAnchor"), dict)
+        ):
+            return False
+        if phase == "deliver-attested-payload":
+            if not _attestation_ref_shape_valid(record.get("attestationRef")):
+                return False
+        elif "attestationRef" in record:
+            return False
+        if phase != "deliver-entitlement" and "credentialDelivery" in record:
+            return False
+    return True
+
+
+def _evidence_wire_type(record):
+    """Classify an evidence artifact by its exclusive structural discriminator."""
+    if not isinstance(record, dict):
+        return None
+    candidates = []
+    if record.get("evidenceVersion") == "1":
+        candidates.append("settlement")
+    if record.get("deliveryEvidenceVersion") == "1":
+        candidates.append("delivery")
+    return candidates[0] if len(candidates) == 1 else None
+
+
 def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
                                             session_execution_authority_by_phase_key,
                                             verified_receipt_by_canonical_ref):
@@ -955,8 +1067,10 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
     ref_key = canonical(ref).decode("utf-8")
     receipt = verified_receipt_by_canonical_ref.get(ref_key)
     if not isinstance(receipt, dict):
-        return (False, "settlement evidence lacks a verified SR-2 receipt", None)
+        return (False, "evidence record lacks a verified SR-2 receipt", None)
     matches = []
+    evidence_type = _evidence_wire_type(record)
+    current_delivery = evidence_type == "delivery"
     for phase_key, execution in session_execution_authority_by_phase_key.items():
         if not isinstance(execution, dict):
             continue
@@ -969,6 +1083,7 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
             or phase_key != f"{phase_index}:{phase_kind}"
             or execution.get("jobId") != bundle.get("jobId")
             or phase_kind != record.get("phase")
+            or (current_delivery and phase_index != record.get("phaseIndex"))
             or execution.get("phaseOrchestrator") != signer
         ):
             continue
@@ -981,7 +1096,7 @@ def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
         for resolved in resolution_classes:
             ok, _ = _validate_evidence_resolution_binding(
                 ref, execution, receipt, bundle, phase_index, phase_kind, signer,
-                resolved=resolved,
+                resolved=resolved, current_delivery=current_delivery,
             )
             if ok:
                 matches.append((phase_key, resolved))
@@ -1249,28 +1364,51 @@ def validate_ebfab(
     for ref, resolution in zip(actual_refs, exact_resolutions):
         record = resolution.get("record")
         if not isinstance(record, dict):
-            return (False, "settlement evidence lacks authenticated record", None)
+            return (False, "evidence reference lacks an authenticated record", None)
+        evidence_type = _evidence_wire_type(record)
+        if evidence_type == "settlement":
+            shape_valid = _settlement_evidence_shape_valid(record)
+            evidence_domain = SETTLEMENT_EVIDENCE_DOMAIN
+        elif evidence_type == "delivery":
+            shape_valid = _delivery_evidence_shape_valid(record)
+            evidence_domain = DELIVERY_EVIDENCE_DOMAIN
+        else:
+            return (False, "evidence record has an unsupported or ambiguous discriminator", None)
+        if not shape_valid:
+            return (False, "evidence record does not satisfy its closed type shape", None)
+        evidence_hash = (
+            delivery_evidence_hash(record)
+            if evidence_type == "delivery"
+            else settlement_evidence_hash(record)
+        )
+        record_phase = record.get("phase")
+        if record_phase in PAYMENT_PHASES and evidence_type != "settlement":
+            return (False, "payment phase does not resolve to SettlementEvidence", None)
+        if record_phase in DELIVERY_PHASES:
+            if evidence_type == "settlement" and pipeline_kinds.count(record_phase) != 1:
+                return (False, "legacy delivery evidence is not a single unambiguous invocation", None)
+        elif record_phase not in PAYMENT_PHASES:
+            return (False, "evidence record does not name a supported evidence phase", None)
         signature = record.get("signature")
         if (
-            not _settlement_evidence_shape_valid(record)
-            or record.get("jobId") != bundle.get("jobId")
+            record.get("jobId") != bundle.get("jobId")
             or not isinstance(signature, dict)
             or signature.get("algorithm") != "ed25519"
             or not isinstance(signature.get("signer"), str)
             or signature.get("signer") not in pubkeys
-            or ref.get("contentHash") != settlement_evidence_hash(record)
+            or ref.get("contentHash") != evidence_hash
         ):
-            return (False, "settlement evidence record does not bind this job, phase, signer, or hash", None)
+            return (False, "evidence record does not bind this job, phase, signer, or hash", None)
         canonical_ok, canonical_reason = sig6_canonical(signature.get("value", ""))
         if not canonical_ok:
             return (False, canonical_reason, None)
         if not verify_sig(
             pubkeys[signature["signer"]],
-            SETTLEMENT_EVIDENCE_DOMAIN,
-            settlement_evidence_hash(record),
+            evidence_domain,
+            evidence_hash,
             signature["value"],
         ):
-            return (False, "settlement evidence signature does not verify", None)
+            return (False, "evidence signature does not verify under its type domain", None)
         binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
             ref,
             record,
@@ -1291,7 +1429,7 @@ def validate_ebfab(
             else "failure"
         )
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
-            return (False, "settlement evidence record contradicts the signed phase result", None)
+            return (False, "evidence record contradicts the signed phase result", None)
         actual_keys.append(phase_key)
         authenticated_records.append((ref, resolution, record, phase_key, resolved_record))
     if (
@@ -1433,7 +1571,7 @@ def validate_ebfab(
     for resolution in exact_resolutions:
         lifecycle = resolution.get("lifecycle")
         if not isinstance(lifecycle, dict):
-            return (False, "settlement evidence lacks authenticated lifecycle", None)
+            return (False, "evidence record lacks authenticated lifecycle", None)
         state = lifecycle.get("state")
         if completed and (
             state != "finalized" or lifecycle.get("independentlyResolvable") is not True

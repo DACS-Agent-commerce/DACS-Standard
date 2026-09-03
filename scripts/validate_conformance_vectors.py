@@ -62,6 +62,7 @@ HASH_EXCLUDED = {
     "CompositeVerificationRecord": {"signature"},          # §B.2 / §7.7
     "AgreementDocument": {"signatures"},                   # DACS-3 §8.5 (L463: "omitting the `signatures` field")
     "SettlementEvidence": {"signature"},                   # §B.2 / §9.7
+    "DeliveryEvidence": {"signature"},                     # §B.2 / §9.7
     "AttestationBundle": {"signatures", "anchoredByRole"}, # DACS-5 §10.4.1 (signatures AND anchoredByRole)
 }
 
@@ -73,6 +74,7 @@ KIND_SEPARATOR = {
     "CompositeVerificationRecord": "dacs-composite:v1:",
     "AgreementDocument": "dacs-agreement:v1:",
     "SettlementEvidence": "dacs-evidence:v1:",
+    "DeliveryEvidence": "dacs-delivery-evidence:v1:",
     "AttestationBundle": "dacs-bundle:v1:",
 }
 

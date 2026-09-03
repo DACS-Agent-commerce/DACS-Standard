@@ -61,6 +61,9 @@ jobs:
       - name: Verify domain-claim GCR vectors are deterministic
         run: python3 scripts/generate_domain_gcr_vectors.py --check
 
+      - name: Verify phase-bound delivery vectors are deterministic
+        run: python3 scripts/generate_phase_bound_delivery_vectors.py --check
+
       - name: Verify presence-only claim vectors are deterministic
         run: python3 scripts/generate_presence_only_claim_vectors.py --check
 

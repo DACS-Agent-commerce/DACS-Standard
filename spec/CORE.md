@@ -258,8 +258,11 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (listing) | `sellerPrimaryClaim` (a ClaimReference) | `listingId`, `v{listingVersion}` |
 | `dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (revocation marker) | `sellerPrimaryClaim` | `listingId`, `v{listingVersion}` |
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
+| `dacs4:delivery:{jobId}:{phaseIndex}` (§9.7 PDE-1..PDE-8) | none | `jobId`, `phaseIndex` |
+| `dacs4:deliverable:{jobId}:{phaseIndex}` (§9.6/§9.7 PDE-3) | none | `jobId`, `phaseIndex` |
+| `dacs4:entitlement:{jobId}:{phaseIndex}:{renewalSeq}` (§9.6.2/§9.7 PDE-3) | none | `jobId`, `phaseIndex`, `renewalSeq` |
+| `dacs4:payload-attestation:{jobId}:{phaseIndex}:{verificationMethodHash}:{attempt}` (§9.6.3/§9.7 PDE-3) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `phaseIndex`, `verificationMethodHash`, `attempt` |
 | `dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}` (§9.9.1 APR-6) | none | `priorJobId`, `priorPhaseIndex`, `dispositionId` |
-| `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
 | `dacs2:{jobId}:{scheme}:{identifier}:v{recipeVersion}` (attestation, CM-2) | `identifier` — e.g. a CCI identifier `evm:mainnet:0x1234` | `jobId`, `scheme`, `v{recipeVersion}` |
 | `dacs2:composite:{jobId}:{evaluatedParty}` (§7.7.2) | `evaluatedParty` (a ClaimReference) | `jobId` |
 | `dacs3:commit:{jobId}` (agreement commitment, §8.6) | none | `jobId` |
@@ -267,6 +270,10 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | `stor-{sha256(...)}` (DACS-5 role-specific bundle, §10.4.2) | none — hash-based, no colon-bearing segment | — |
 
 In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a reserved-delimiter-free token (§6.3.1 grammar), and `phaseIndex`/`resolved`/`v{recipeVersion}` are fixed structural segments — none need encoding.
+
+The pre-DACS-4-v0.7 unindexed delivery addresses are historical read forms,
+not alternate current spellings. Their admissibility and inability to satisfy a
+repeated delivery invocation are defined exclusively by §9.7 PDE-7.
 
 ### B.2 Anchoring and signing
 
@@ -305,7 +312,8 @@ In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a rese
 - **Session record.** The live state document for an active session. Held off-chain by the orchestrator; the bundle is the on-chain artifact. Defined in chapter 10 (DACS-5).
 - **Attestation bundle.** The frozen end-of-session artifact, anchored via SR-2. The audit unit. Defined in chapter 10.
 - **Agreement document.** The canonical signed JSON document produced by a negotiation pattern. Defined in chapter 8 (DACS-3).
-- **SettlementEvidence.** The uniform record produced by every DACS-4 payment and delivery phase. Defined in chapter 9.
+- **SettlementEvidence.** The current payment-evidence record produced by DACS-4 payment phases; historical records may carry a delivery phase under the restricted PDE-7 legacy arm. Defined in chapter 9.
+- **DeliveryEvidence.** The current DACS-4 delivery-evidence record, signing the exact job, pipeline phase index/kind, phase-indexed artifact closure, and any exact delivered-only credential binding. Defined in chapter 9.
 
 ### B.5 Shared phase-handler types
 
@@ -342,7 +350,7 @@ The v0.1 set of identity schemes (DACS-1), verification methods (DACS-2), negoti
 
 ### B.7 Universal signature scheme — domain-separated signing
 
-Every signature in DACS — across DACS-1 (listings, revocations), DACS-2 (VerifyResults, composite records, recipes), DACS-3 (channel messages, agreements, commitments), DACS-4 (settlement evidence, payload attestations, amendments, rails, entitlements), and DACS-5 (bundles, ratings) — MUST be computed over a domain-separated payload. The domain separator prevents cross-protocol signature replay: a signature produced under one artifact kind MUST NOT validate as a signature under any other artifact kind, even when the underlying hash bytes coincide.
+Every signature in DACS — across DACS-1 (listings, revocations), DACS-2 (VerifyResults, composite records, recipes), DACS-3 (channel messages, agreements, commitments), DACS-4 (settlement evidence, delivery evidence, payload attestations, amendments, rails, entitlements), and DACS-5 (bundles, ratings) — MUST be computed over a domain-separated payload. The domain separator prevents cross-protocol signature replay: a signature produced under one artifact kind MUST NOT validate as a signature under any other artifact kind, even when the underlying hash bytes coincide.
 The canonical payload to be signed is:
 
 ```
@@ -374,6 +382,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
+| DACS-4 delivery evidence | "dacs-delivery-evidence:v1:" | §9.7 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |
@@ -607,7 +616,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (including `dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `deliveryEvidenceVersion`, `payloadAttestationVersion`, `ratingVersion`, and `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 The **§11.1.2 additivity contract** makes the major-only signal sufficient for *minor* skew, in both directions, with **no per-artifact minor-version field**:
 

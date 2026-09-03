@@ -164,6 +164,26 @@ The format used per release:
   definitions, missing authority, signed-scope mutation, untrusted mode input,
   and contradictory discovery hints.
 
+### Added — DACS-4 v0.7 / DACS-5 v0.5
+
+- **Phase-bound delivery evidence and exact credential handover — PDE-1..PDE-8**
+  (§9.6, §9.7, §10.4.3, CORE §B.1/§B.7; #329, #330) — introduces the
+  structurally distinct `DeliveryEvidence` artifact under
+  `dacs-delivery-evidence:v1:` so every delivery result signs its exact
+  `phaseIndex`. Current evidence, deliverable, entitlement, and payload-
+  attestation addresses are phase-indexed; renewal and attempt counters remain
+  independent within each invocation. Successful entitlement evidence binds
+  the exact EntitlementRecord hash/anchor and, when present, the complete
+  credential reference/access model, cleartext credential digest, and renewal
+  sequence while asserting delivered only. DACS-5 now verifies a one-to-one
+  phase/evidence mapping even when optional per-phase pointers are absent.
+  Historical unindexed delivery-shaped `SettlementEvidence` remains
+  byte-stable and readable only for one unambiguous matching delivery; it
+  cannot satisfy repetition or be reported as DV-5-verified. Adds deterministic
+  signed vectors for repeated storage/entitlement/attested delivery, address
+  and cross-phase replay, credential mismatch/substitution, legacy reads,
+  discriminator/domain separation, and unresolved evidence.
+
 ### Added — DACS-4 v0.6
 
 - **Signed settlement-event identity — SB-1/SB-2 repair** (§9.3, §9.5.2, §9.5.3, §9.5.7, §9.5.8; #315) — adds distinct `evm-event`, `solana-instruction`, and `x402-event` `ChainTxRef` arms so the event/instruction coordinate that produces the SB-1 uniqueness key is inside the signed `SettlementEvidence` scope. Current producers must emit the applicable event-level arm and verifiers independently match its asset, payer, agreement-authorized payee, signed `paymentAmount`, and receipt context against authenticated ledger data before projection. They must also compare the complete PC-2 address tuple against signed `jobId`, the authenticated agreement/phase rail, and the authenticated `BundlePhaseEntry.index`; a valid evidence signature or outer receipt cannot substitute for this check. The legacy `evm`, `solana`, and `x402` arms remain byte-stable read/replay shapes: exactly one independently matching event permits projection, no match fails, and unavailable or multiple matches remain `indeterminate`; unsigned caller/indexer coordinates never disambiguate them. Adds deterministic, genuinely signed vectors for EVM, Solana, current and legacy x402 receipt/event reconciliation, batched transfers, cross-job reuse, signed-amount mismatch, full-address tuple mismatch and CF-4 encoding, malformed/missing indexes, ledger mismatch/unavailability, legacy ambiguity, discriminator stripping, and cross-type signature replay.

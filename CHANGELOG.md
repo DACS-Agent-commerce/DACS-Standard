@@ -32,6 +32,17 @@ The format used per release:
   transaction co-signing remains an optional optimization and cannot replace
   applicable artifact signatures or role-specific publication.
 
+### Fixed — lifecycle walkthrough current-wire compatibility
+
+- The executable lifecycle walkthrough now emits a canonical ULID `jobId`,
+  omits the non-schema `phaseIndex` from signed `SettlementEvidence`, recovers
+  the payment phase tuple from its canonical PC-2 logical address, authenticates
+  that tuple against the published logical/native/content binding and reference,
+  and emits failure evidence with `outcome: "failure"` and a non-empty `reason`
+  (#357). The signed bundle phase summary remains the delivery-phase binding.
+  The walkthrough's pinned DACS-4 v0.3 profile intentionally keeps the legacy
+  `evm` reference and does not advertise the v0.6+ SB-1 event-identity rule.
+
 ### Fixed — DACS-4 RD-5 conformance data
 
 - **EVM rail chain-ID equality restored** (§9.4.3 RD-5; #352) — corrects the

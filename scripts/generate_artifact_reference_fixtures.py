@@ -230,8 +230,9 @@ def regenerate_settlement_fixture(data, signing_keys):
     out = normalize_tree(copy.deepcopy(data))
     evidence = out.get("evidence")
     if not isinstance(evidence, dict):
-        # HTLC-9 is a provisional wrapper with a placeholder signature. It is
-        # shape-only and has no deterministic signer key in the fixture.
+        # The HTLC-9 SettlementEvidenceCase wrappers are not regenerated here: their
+        # evidence is signed from the public orchestrator seed by
+        # scripts/generate_htlc9_st8_pack.py, which owns their bytes and --check.
         return out
 
     digest = evidence_hash(evidence)

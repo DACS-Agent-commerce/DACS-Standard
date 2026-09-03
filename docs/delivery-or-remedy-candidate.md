@@ -559,6 +559,8 @@ It applies the checks in this order:
 - (DRV-3) A malformed encoding MUST NOT be repaired before hashing or comparison.
 - (DRV-4) A signature over internally consistent false fields MUST NOT override independently resolved authority.
 - (DRV-5) A retry after `indeterminate` MUST reconcile the original native job and action before submitting any transaction.
+- (DRV-6) Authenticated external evidence that contradicts a signed artifact or claimed native fact MUST yield `rejected`.
+- (DRV-7) A verifier MUST return `verified` only after every applicable artifact, authority, reference, native-evidence, finality, and ordering check succeeds.
 
 ## 10. Transcript and evidence disclosure
 

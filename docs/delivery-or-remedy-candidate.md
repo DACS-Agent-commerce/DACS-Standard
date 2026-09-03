@@ -62,7 +62,7 @@ type JobEscrowPhaseStep = {
 - (DRP-2) The first step MUST use `action: "fund"` and the second MUST use `action: "terminal"`.
 - (DRP-3) Exactly one supported `deliver-*` step MUST occur between the paired steps.
 - (DRP-4) No other payment, delivery, or `pay-alternative` step MAY occur between or alongside the pair.
-- (DRP-5) Both steps MUST name the same complete, agreement-selected rail definition.
+- (DRP-5) Both steps MUST name the same complete, agreement-selected rail definition. A verifier MUST derive the effective profile parameters from that authenticated, content-hash-bound definition; a detached caller or fixture projection MUST NOT override or weaken them.
 - (DRP-6) The delivery step MUST NOT begin until finalized evidence proves the exact budget is locked.
 - (DRP-7) When delivery was submitted, the terminal step MUST use the exact signed delivery `SettlementEvidence` produced by the intervening step. A pre-submission expiry or evaluator-rejection refund MUST instead omit delivery evidence as required by DRD-9 and DRT-12.
 - (DRP-8) Neither invocation alone constitutes a second purchase or a second agreement price for DACS-5 volume.
@@ -135,7 +135,7 @@ The canonical form omits `signatures`. Each party signs:
 - (DRA-6) The evaluator's primary claim MUST differ from both commercial parties under CORE CF-3 identity.
 - (DRA-7) The evaluator's controlled EVM account MUST differ from the client and provider accounts.
 - (DRA-8) The evaluator's exact `BundleRequirement` MUST hash to `requirementHash` and match the authenticated DACS-2 composite result.
-- (DRA-9) The evaluator's Vet result MUST be `pass` and fresh at funding under the bound requirement.
+- (DRA-9) The evaluator's Vet result MUST be `pass` and fresh at funding under the bound requirement. Freshness MUST be evaluated at the authenticated block timestamp of the exact funding event; `observedAt`, a caller-supplied `fundedAt`, or a local clock MUST NOT establish that time.
 - (DRA-10) `budgetBaseUnits` MUST be the minimal unsigned decimal form of the exact agreement price after conversion using the pinned token decimals.
 - (DRA-11) The overlay MUST bind the three ordered phase indexes selected by DRP-1 through DRP-3.
 - (DRA-12) The overlay MUST be finalized and independently resolvable before job creation or funding.
@@ -227,6 +227,14 @@ type EscrowFundingEvidence = {
 }
 ```
 
+`SettlementFinalityRecord` is the existing DACS-4 type and retains its exact
+registered shape (`model`, the model-specific parameter such as
+`finalityBlocks`, and `finalityObservedAt`). The EVM event's block number,
+block hash, block timestamp, inclusion, and confirmation observations are
+authenticated resolver inputs used to verify that record; they are not
+unregistered replacement members of `SettlementFinalityRecord`. The same
+boundary applies to `EscrowTerminalEvidence.finality` below.
+
 The canonical form omits `signature`. The signing domain is:
 
 ```text
@@ -235,7 +243,7 @@ The canonical form omits `signature`. The signing domain is:
 
 - (DRF-1) Funding evidence MUST bind the exact overlay, job reference, and `fund` phase index.
 - (DRF-2) The native token and amount MUST equal the pinned rail asset and `budgetBaseUnits`.
-- (DRF-3) The event set MUST prove the complete budget entered escrow for the exact native job.
+- (DRF-3) The event set MUST prove the complete budget entered escrow for the exact native job and supply its authenticated block timestamp for DRA-9. Every event reference MUST retain the exact `EvmEventRef` kind and chain binding.
 - (DRF-4) The resulting native state MUST map to portable state `funded`.
 - (DRF-5) The verifier MUST establish that no value reached the provider or payout receiver.
 - (DRF-6) Funding evidence MUST meet the rail's exact finality profile before delivery begins.
@@ -411,7 +419,7 @@ The canonical form omits `signature`. The signing domain is:
 - (DRT-1) `released` MUST carry and verify `decisionRef`, its basis, and `deliveryEvidenceRef`.
 - (DRT-2) `rejected-refund` MUST carry and verify `decisionRef` and its basis.
 - (DRT-3) `expired-refund` MUST omit `decisionRef` and MUST NOT imply an evaluator decision.
-- (DRT-4) The terminal event set MUST identify one contract, native job, terminal selector, recipient, token, and amount without ambiguity.
+- (DRT-4) The terminal event set MUST identify one chain, contract, native job, terminal selector, recipient, token, and amount without ambiguity. Every event reference MUST retain the exact `EvmEventRef` kind and chain binding.
 - (DRT-5) A release amount MUST equal the complete funded budget and the recipient MUST equal the seller payout account.
 - (DRT-6) A refund amount MUST equal the complete funded budget and the recipient MUST equal the client account.
 - (DRT-7) Zero-fee policy and zero preterminal payout MUST be verified from immutable capabilities and authenticated state or events.
@@ -419,8 +427,9 @@ The canonical form omits `signature`. The signing domain is:
 - (DRT-9) Unavailable otherwise-consistent chain evidence MUST yield `indeterminate`, not a retry on another rail.
 - (DRT-10) The phase orchestrator signs terminal evidence, but its signature MUST NOT substitute for chain, evaluator, or agreement verification.
 - (DRT-11) `fundingEvidenceRef` MUST resolve to the exact finalized funding record for this job and budget.
-- (DRT-12) A post-submission refund MUST carry `deliveryEvidenceRef`; a pre-submission refund MUST omit it.
+- (DRT-12) A post-submission refund MUST carry `deliveryEvidenceRef`; a pre-submission refund MUST omit it. A verifier MUST derive the pre/post-submission classification from the authenticated submission-event block timestamp and the signed cutoff; a caller-supplied boolean MUST NOT establish it.
 - (DRT-13) An expiry refund without an authenticated accountability finding MUST project no buyer or seller fault. A separate later `DisputeOutcome` MAY establish accountability but MUST NOT relabel or reverse the financial disposition.
+- (DRT-14) Any candidate financial/accountability projection MUST be recomputed from the authenticated terminal evidence and finding according to the table below. A contradictory caller-supplied projection MUST be rejected. Until the DACS-5 mapping is promoted, this projection remains display-only and MUST NOT enter conforming v0.1 reputation derivation.
 
 DACS-5 projection keeps money and accountability separate:
 

@@ -84,6 +84,15 @@ class CanonicalJsonVectorTests(unittest.TestCase):
             }.issubset(names)
         )
 
+    def test_manifest_does_not_publish_the_obsolete_fraction_rejection(self):
+        manifest = json.loads(
+            (ROOT / "conformance" / "MANIFEST.json").read_text(encoding="utf-8")
+        )
+        ids = {case["id"] for case in manifest["cases"]}
+        self.assertNotIn("canon-noninteger-throws", ids)
+        by_name = {vector["name"]: vector for vector in self.data["vectors"]}
+        self.assertEqual(by_name["fraction-one-half"]["canonicalUtf8Hex"], "302e35")
+
     def test_numeric_regression_boundaries_are_pinned(self):
         by_name = {vector["name"]: vector for vector in self.data["vectors"]}
         expected = {

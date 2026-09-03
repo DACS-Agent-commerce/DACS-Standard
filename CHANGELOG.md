@@ -13,6 +13,13 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — CORE canonicalization conformance
+
+- Retires the stale `canon-noninteger-throws` manifest row left behind by #345;
+  CORE §B.2 permits finite binary64 fractions, and the self-contained
+  `canonical-json-v0.1` corpus remains the executable authority for those bounds
+  (#354). The shared validator documentation now states the same rule.
+
 ### Fixed — Demos SR-2 bundle co-signing status
 
 - **Artifact signatures separated from transaction signatures** (#369) —
@@ -24,6 +31,17 @@ The format used per release:
   single-signature and bundle-suppression exceptions in §§10.4.1/10.11. Native
   transaction co-signing remains an optional optimization and cannot replace
   applicable artifact signatures or role-specific publication.
+
+### Fixed — DACS-4 RD-5 conformance data
+
+- **EVM rail chain-ID equality restored** (§9.4.3 RD-5; #352) — corrects the
+  stale golden manifest row that admitted matching asset/network kinds with
+  unequal `chainId` values even though RD-5 requires the same positive integer
+  and PB-2 derives payee applicability from that exact chain. The contradictory
+  positive is replaced by a fail candidate pending independent reference-run
+  convergence. The executable chain-applicability set now has explicit
+  equal-positive and mismatch controls for both `erc20` and `native-evm`, plus
+  zero and non-integer asset/network controls.
 
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 

@@ -18,7 +18,7 @@ into executable review evidence:
   collisions, deadline divergence, cross-job and consumed-decision replay,
   release/refund direction, full-budget and zero-fee requirements, and the
   four-result verification boundary.
-- `deployment-capabilities-v0.1.json` derives DRC-1 through DRC-12 outcomes
+- `deployment-capabilities-v0.1.json` derives DRC-1 through DRC-13 outcomes
   from explicit capability evidence. It includes a synthetic all-pass control
   that is permanently marked `fixtureOnly`, individual rule regressions, and
   a pinned assessment of
@@ -26,10 +26,38 @@ into executable review evidence:
   The pinned reference is `rejected`, remains unregistered, and is never
   reported as available.
 
-The synthetic control proves only that the checker can observe all twelve
+The synthetic control proves only that the checker can observe all thirteen
 positive capability predicates. Its `registrationStatus` is
 `not-a-deployment`; a verified control therefore still has
 `registrationEligible: false`.
+
+The protocol verifier evaluates the finality records embedded in signed
+funding and terminal artifacts and requires non-empty, canonical event-reference
+sets. A separate caller-supplied `verified` status cannot make a pending signed
+record final or make an empty event set identify a native action.
+
+Each lifecycle fixture also carries `reproductionInputs`: the public test-key
+seeds, role-bundle and Vet-record bodies, evaluation rule, delivered artifact or
+dispute case, runtime-bytecode preimage, native event/log inputs, and finality
+block-hash preimages. The verifier independently recomputes their keys, hashes,
+references, event identities, and positive bindings. These are synthetic inputs,
+not a live chain resolver, production identity registry, or eligible deployment.
+
+The `externalEvidence` object is an explicit fixture boundary for authenticated
+resolver outcomes such as registry availability and cross-substrate ordering.
+The pack exercises unavailable and contradictory outcomes but does not claim to
+implement those external resolvers. Promotion still requires real authenticated
+resolver evidence and a second implementation; the status labels in this pack
+cannot register a rail or authorize a transaction.
+
+Every candidate rule ID is accounted for mechanically. Each executable vector
+lists the rules its positive or negative path exercises. The pack's
+`promotionBlockedRules` ledger names the remaining rules and the concrete
+capability needed before they can be promoted. Those entries are intentionally
+not marked as executed: they cover SR-2 logical addressing and anchoring, live
+proxy/authority resolution, explicit-party evidence proof, retry orchestration,
+and the future transcript and post-terminal dispute-revision profiles. The test
+suite fails if a spec rule is absent from both sets or appears in both.
 
 ## Reproduce
 

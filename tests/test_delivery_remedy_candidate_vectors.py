@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import unittest
@@ -26,6 +27,7 @@ VECTOR_PACK = ROOT / "conformance/fixtures/delivery-remedy/candidate-vectors-v0.
 DEPLOYMENT_PACK = ROOT / "conformance/fixtures/delivery-remedy/deployment-capabilities-v0.1.json"
 GENERATOR = ROOT / "scripts/generate_delivery_remedy_candidate_vectors.py"
 VERIFIER = ROOT / "scripts/verify_delivery_remedy_candidate_vectors.py"
+SPEC = ROOT / "docs/delivery-or-remedy-candidate.md"
 
 
 class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
@@ -59,7 +61,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
 
     def test_pack_metadata_hashes_and_names_are_exact(self):
         for pack, fields in (
-            (self.vector_pack, ("fixtures", "vectors")),
+            (
+                self.vector_pack,
+                ("fixtures", "vectors", "promotionBlockedRules"),
+            ),
             (self.deployment_pack, ("manifests", "cases")),
         ):
             with self.subTest(kind=pack["kind"]):
@@ -70,6 +75,30 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
                 self.assertEqual(
                     pack["hash"], hashlib.sha256(canonical_bytes(payload)).hexdigest()
                 )
+
+    def test_every_candidate_rule_is_executed_or_explicitly_promotion_blocked(self):
+        spec_rules = set(
+            re.findall(
+                r"\b(?:DRP|DRA|DRL|DRJ|DRF|DRAA|DREB|DRE|DRD|DRT|DRV|DRQ|DRX|DRC)-\d+\b",
+                SPEC.read_text(encoding="utf-8"),
+            )
+        )
+        executed = {
+            rule
+            for vector in self.vector_pack["vectors"]
+            for rule in vector["rules"]
+        }
+        executed.update(
+            rule
+            for case in self.deployment_pack["cases"]
+            for rule in case["rules"]
+        )
+        blocked = set(self.vector_pack["promotionBlockedRules"])
+        self.assertFalse(executed & blocked)
+        self.assertEqual(spec_rules, executed | blocked)
+        self.assertTrue(
+            all(self.vector_pack["promotionBlockedRules"][rule] for rule in blocked)
+        )
 
     def test_every_lifecycle_vector_executes_to_its_pinned_result_and_rule(self):
         self.assertEqual(verify_vector_pack(self.vector_pack), [])
@@ -222,9 +251,69 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
         )
         self.assertEqual(
             [rule for rule in sorted(DRC_RULES, key=lambda item: int(item.split("-")[1])) if observed["ruleStatuses"][rule] == "unknown"],
-            ["DRC-8", "DRC-10", "DRC-11", "DRC-12"],
+            ["DRC-8", "DRC-10", "DRC-11", "DRC-12", "DRC-13"],
         )
         self.assertFalse(observed["registrationEligible"])
+
+    def test_signed_funding_and_terminal_records_cannot_bypass_finality_or_events(self):
+        expected = {
+            "funding-finality-pending": ("indeterminate", "DRF-6"),
+            "funding-events-empty": ("rejected", "DRF-3"),
+            "terminal-finality-pending": ("indeterminate", "DRT-8"),
+            "terminal-events-empty": ("rejected", "DRT-4"),
+        }
+        for name, (verdict, rule) in expected.items():
+            with self.subTest(vector=name):
+                observed = evaluate_protocol(
+                    materialize_vector(self.vector_pack, self.vectors[name])
+                )
+                self.assertEqual((observed["result"], observed["rule"]), (verdict, rule))
+
+    def test_candidate_domains_and_deadline_profile_match_the_spec(self):
+        release = materialize_vector(
+            self.vector_pack, self.vectors["release-complete-budget"]
+        )
+        self.assertEqual(
+            release["profileParameters"]["deadlineProfile"],
+            "separate-submission-cutoff-v1",
+        )
+        self.assertEqual(
+            release["native"]["expiredAt"],
+            release["artifacts"]["agreement"]["evaluationDeadlineSec"],
+        )
+        self.assertNotEqual(
+            release["native"]["expiredAt"],
+            release["artifacts"]["agreement"]["submissionCutoffSec"],
+        )
+        self.assertEqual(
+            self.vectors["unsupported-expiry-only-policy"]["expectedRule"],
+            "DRA-15",
+        )
+
+    def test_reproduction_inputs_are_present_and_load_bearing(self):
+        release = materialize_vector(
+            self.vector_pack, self.vectors["release-complete-budget"]
+        )
+        inputs = release["reproductionInputs"]
+        self.assertEqual(set(inputs["roleBundles"]), {"buyer", "seller", "evaluator"})
+        self.assertEqual(set(inputs["vetRecords"]), {"buyer", "seller", "evaluator"})
+        self.assertIsNotNone(inputs["deliveredArtifact"])
+        self.assertEqual(len(inputs["nativeEventInputs"]), 4)
+        required = {
+            "public-test-seed-mismatch": "DRV-4",
+            "role-bundle-input-mismatch": "DRA-4",
+            "evaluation-rule-input-mismatch": "DRE-6",
+            "delivered-artifact-input-mismatch": "DRE-3",
+            "runtime-bytecode-preimage-mismatch": "DRJ-5",
+            "native-event-transaction-preimage-mismatch": "DRT-4",
+            "terminal-event-payload-mismatch": "DRT-4",
+            "funding-finality-block-preimage-mismatch": "DRF-6",
+        }
+        for name, rule in required.items():
+            with self.subTest(vector=name):
+                vector = self.vectors[name]
+                self.assertEqual(vector["expected"], "rejected")
+                self.assertEqual(vector["expectedRule"], rule)
 
 
 if __name__ == "__main__":

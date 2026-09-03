@@ -7,8 +7,8 @@
     "referenceImplementation": "https://github.com/erc-8183/base-contracts/blob/142e669c1fd318486a4628395b629f033654dd06/contracts/ERC8183.sol"
   },
   "scope": "capability evidence only; no chain deployment or DACS rail is registered",
-  "hash": "b39675a6f486c74d2973bb9d66a91b3110e85d08dcae7ffe4eff1b6fcda26a54",
-  "count": 16,
+  "hash": "f9f380cadc71823e04207f890b660af9b84c6ae2e16d6b9abe9898fc919adb6f",
+  "count": 17,
   "manifests": {
     "synthetic-control": {
       "manifestVersion": "1",
@@ -46,7 +46,10 @@
           "independentlyVerified": true
         },
         "eventIdentityComplete": true,
-        "decisionOrderingProfile": "synthetic-single-chain-finalized-before-terminal-v1"
+        "decisionOrderingProfile": "synthetic-single-chain-finalized-before-terminal-v1",
+        "deadlineProfile": "separate-submission-cutoff-v1",
+        "submissionCutoffEnforced": true,
+        "expiryRecoveryDeadlineEnforced": true
       },
       "evidence": {
         "sourceRevision": "synthetic-fixture-only",
@@ -56,6 +59,7 @@
         "sourceToBytecodeReproducible": true,
         "upgradeDisablementAuthenticated": true,
         "decisionOrderingEvidenceAuthenticated": true,
+        "deadlineEnforcementAuthenticated": true,
         "complete": true,
         "conflict": false
       }
@@ -107,7 +111,10 @@
           "independentlyVerified": null
         },
         "eventIdentityComplete": true,
-        "decisionOrderingProfile": null
+        "decisionOrderingProfile": null,
+        "deadlineProfile": null,
+        "submissionCutoffEnforced": null,
+        "expiryRecoveryDeadlineEnforced": null
       },
       "evidence": {
         "sourceRevision": "142e669c1fd318486a4628395b629f033654dd06",
@@ -117,6 +124,7 @@
         "sourceToBytecodeReproducible": null,
         "upgradeDisablementAuthenticated": false,
         "decisionOrderingEvidenceAuthenticated": null,
+        "deadlineEnforcementAuthenticated": null,
         "complete": false,
         "conflict": null
       },
@@ -124,7 +132,8 @@
         "UUPSUpgradeable with DEFAULT_ADMIN_ROLE upgrade authorization",
         "ADMIN_ROLE pause, emergencyWithdraw, mutable fees, hook whitelist, and hook detachment",
         "settleClaim and approveClaim can release provider value from Funded",
-        "claimRefund is pause-gated and a pending claim can delay Funded recovery"
+        "claimRefund is pause-gated and a pending claim can delay Funded recovery",
+        "no separately enforced per-job submission cutoff is evidenced"
       ]
     }
   },
@@ -135,6 +144,10 @@
       "expected": "verified",
       "registrationEligible": false,
       "expectedFailedRules": [],
+      "rules": [
+        "DRL-8",
+        "DRL-9"
+      ],
       "note": "all DRC rules pass, but fixtureOnly keeps registration ineligible",
       "patch": []
     },
@@ -144,6 +157,9 @@
       "expected": "rejected",
       "registrationEligible": false,
       "expectedFailedRules": [
+        "DRC-1"
+      ],
+      "rules": [
         "DRC-1"
       ],
       "note": "a Funded payout path violates delivery gating",
@@ -168,6 +184,9 @@
       "expectedFailedRules": [
         "DRC-2"
       ],
+      "rules": [
+        "DRC-2"
+      ],
       "note": "zero defaults do not repair mutable fee authority",
       "patch": [
         {
@@ -190,6 +209,9 @@
       "expectedFailedRules": [
         "DRC-3"
       ],
+      "rules": [
+        "DRC-3"
+      ],
       "note": "pause-gated expiry recovery is ineligible",
       "patch": [
         {
@@ -208,6 +230,9 @@
       "expected": "rejected",
       "registrationEligible": false,
       "expectedFailedRules": [
+        "DRC-4"
+      ],
+      "rules": [
         "DRC-4"
       ],
       "note": "an alternate locked-fund recipient is ineligible",
@@ -232,6 +257,9 @@
       "expectedFailedRules": [
         "DRC-5"
       ],
+      "rules": [
+        "DRC-5"
+      ],
       "note": "mutable logic can weaken core guarantees",
       "patch": [
         {
@@ -252,6 +280,9 @@
       "expected": "rejected",
       "registrationEligible": false,
       "expectedFailedRules": [
+        "DRC-6"
+      ],
+      "rules": [
         "DRC-6"
       ],
       "note": "syntactic upgradeability needs irreversible disablement proof",
@@ -290,6 +321,9 @@
       "expectedFailedRules": [
         "DRC-7"
       ],
+      "rules": [
+        "DRC-7"
+      ],
       "note": "hooks cannot block recovery or change later",
       "patch": [
         {
@@ -308,6 +342,9 @@
       "expected": "rejected",
       "registrationEligible": false,
       "expectedFailedRules": [
+        "DRC-8"
+      ],
+      "rules": [
         "DRC-8"
       ],
       "note": "token transfer fees break exact accounting",
@@ -331,6 +368,9 @@
       "expectedFailedRules": [
         "DRC-9"
       ],
+      "rules": [
+        "DRC-9"
+      ],
       "note": "events must identify the exact job and action",
       "patch": [
         {
@@ -349,6 +389,9 @@
       "expected": "rejected",
       "registrationEligible": false,
       "expectedFailedRules": [
+        "DRC-10"
+      ],
+      "rules": [
         "DRC-10"
       ],
       "note": "independently resolved code must match reproducible output",
@@ -371,6 +414,9 @@
       "expectedFailedRules": [
         "DRC-11"
       ],
+      "rules": [
+        "DRC-11"
+      ],
       "note": "conflicting deployment evidence leaves the rail unavailable",
       "patch": [
         {
@@ -391,6 +437,9 @@
       "expectedFailedRules": [
         "DRC-12"
       ],
+      "rules": [
+        "DRC-12"
+      ],
       "note": "decision ordering must be authenticated",
       "patch": [
         {
@@ -404,11 +453,35 @@
       ]
     },
     {
+      "name": "drc-13-missing-native-submission-cutoff",
+      "base": "synthetic-control",
+      "expected": "rejected",
+      "registrationEligible": false,
+      "expectedFailedRules": [
+        "DRC-13"
+      ],
+      "rules": [
+        "DRC-13"
+      ],
+      "note": "submission and recovery deadlines must be separately enforced",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "capabilities",
+            "submissionCutoffEnforced"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
       "name": "source-to-bytecode-evidence-unavailable",
       "base": "synthetic-control",
       "expected": "indeterminate",
       "registrationEligible": false,
       "expectedFailedRules": [],
+      "rules": [],
       "note": "missing source-to-bytecode evidence is not guessed",
       "patch": [
         {
@@ -438,13 +511,23 @@
         "DRC-6",
         "DRC-7"
       ],
+      "rules": [
+        "DRC-1",
+        "DRC-2",
+        "DRC-3",
+        "DRC-4",
+        "DRC-5",
+        "DRC-6",
+        "DRC-7"
+      ],
       "note": "the pinned reference source is not a DACS-eligible deployment",
       "patch": [],
       "expectedUnknownRules": [
         "DRC-8",
         "DRC-10",
         "DRC-11",
-        "DRC-12"
+        "DRC-12",
+        "DRC-13"
       ]
     },
     {
@@ -453,6 +536,7 @@
       "expected": "error",
       "registrationEligible": false,
       "expectedFailedRules": [],
+      "rules": [],
       "note": "malformed capability input fails before eligibility",
       "patch": [
         {

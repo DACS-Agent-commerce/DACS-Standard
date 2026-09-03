@@ -68,6 +68,28 @@ EXTERNAL_EVIDENCE_FIELDS = {
 }
 EXTERNAL_STATES = {"verified", "not-applicable", "unavailable", "contradictory"}
 DRC_RULES = {f"DRC-{number}" for number in range(1, 14)}
+PROFILE_FIELDS = {
+    "minimumEvaluationWindowSec",
+    "deadlineProfile",
+    "finalityBlocks",
+    "decisionOrderingProfile",
+    "platformFeeBP",
+    "evaluatorFeeBP",
+    "capabilityProfile",
+}
+EVENT_INPUT_FIELDS = {
+    "eventRef",
+    "txHashPreimageUtf8",
+    "blockNumber",
+    "blockHash",
+    "blockHashPreimageUtf8",
+    "blockTimestampSec",
+    "confirmations",
+    "contractAddress",
+    "nativeJobId",
+    "eventName",
+    "arguments",
+}
 
 
 def canonical_bytes(value: Any) -> bytes:
@@ -163,34 +185,47 @@ def _event_refs_check(
     return None
 
 
+def _event_identity(ref_value: Any) -> tuple[Any, Any, Any, Any] | None:
+    if not isinstance(ref_value, dict):
+        return None
+    return (
+        ref_value.get("kind"),
+        ref_value.get("chainId"),
+        ref_value.get("txHash"),
+        ref_value.get("logIndex"),
+    )
+
+
 def _finality_check(
     finality: Any,
-    chain_id: Any,
     minimum_confirmations: Any,
+    observations: list[dict[str, Any]],
     rule: str,
     label: str,
 ) -> dict[str, str] | None:
-    if not isinstance(finality, dict):
+    if not isinstance(finality, dict) or set(finality) != {
+        "model", "finalityBlocks", "finalityObservedAt"
+    }:
         return result("error", "DRV-2", f"{label} finality must be an object")
-    if finality.get("status") != "finalized":
-        return result("indeterminate", rule, f"{label} finality is not finalized")
-    block_number = finality.get("blockNumber")
-    block_hash = finality.get("blockHash")
-    confirmations = finality.get("confirmations")
+    finality_blocks = finality.get("finalityBlocks")
+    observed_at = finality.get("finalityObservedAt")
     if (
-        finality.get("chainId") != chain_id
-        or type(block_number) is not int
-        or block_number < 0
-        or not isinstance(block_hash, str)
-        or EVM_TX_RE.fullmatch(block_hash) is None
-        or type(confirmations) is not int
-        or confirmations < 0
+        type(finality_blocks) is not int
+        or finality_blocks <= 0
+        or type(observed_at) is not int
+        or observed_at < 0
         or type(minimum_confirmations) is not int
         or minimum_confirmations <= 0
     ):
         return result("error", "DRV-2", f"{label} finality record is malformed")
-    if confirmations < minimum_confirmations:
+    if finality.get("model") != "block-depth" or finality_blocks != minimum_confirmations:
+        return result("rejected", rule, f"{label} finality does not match the rail profile")
+    if not observations:
+        return result("rejected", rule, f"{label} finality has no authenticated event observation")
+    if any(observation["confirmations"] < minimum_confirmations for observation in observations):
         return result("indeterminate", rule, f"{label} finality threshold is not met")
+    if any(observed_at < observation["blockTimestampSec"] * 1000 for observation in observations):
+        return result("rejected", rule, f"{label} finality predates its event block")
     return None
 
 
@@ -280,6 +315,16 @@ def _pipeline_check(value: dict[str, Any]) -> dict[str, str] | None:
     ]
     if prohibited:
         return result("rejected", "DRP-4", "ordinary payment phases cannot accompany the escrow pair")
+    supported_kinds = {
+        "commit-delivery-or-remedy-agreement",
+        "job-escrow",
+        "deliver-storage-program",
+        "deliver-entitlement",
+        "deliver-attested-payload",
+        "rate",
+    }
+    if any(step["kind"] not in supported_kinds for step in pipeline):
+        return result("error", "DRV-2", "pipeline contains an unsupported phase kind")
     if (
         agreement.get("fundPhaseIndex") != fund_index
         or agreement.get("deliveryPhaseIndex") != delivery_indexes[0]
@@ -619,6 +664,178 @@ def _delivery_binding_check(value: dict[str, Any]) -> dict[str, str] | None:
     return None
 
 
+def _native_event_input_check(
+    value: dict[str, Any],
+) -> tuple[dict[tuple[Any, Any, Any, Any], dict[str, Any]], dict[str, str] | None]:
+    """Authenticate synthetic resolver observations against every signed event ref."""
+    inputs = value["reproductionInputs"]
+    event_inputs = inputs.get("nativeEventInputs")
+    if not isinstance(event_inputs, list) or not event_inputs:
+        return {}, result("error", "DRV-2", "native event inputs must be a non-empty array")
+
+    artifacts = value["artifacts"]
+    chain_id = value["native"].get("chainId")
+    funding_refs = artifacts["funding"].get("fundingEventRefs")
+    terminal_refs = artifacts["terminal"].get("terminalEventRefs")
+    for refs, rule, label in (
+        ([artifacts["job"].get("creationEvent")], "DRJ-3", "creation"),
+        (funding_refs, "DRF-3", "funding"),
+        (terminal_refs, "DRT-4", "terminal"),
+    ):
+        issue = _event_refs_check(refs, chain_id, rule, label)
+        if issue:
+            return {}, issue
+
+    binding = value["deliveryBinding"]
+    if len(funding_refs) != 1:
+        return {}, result("rejected", "DRF-3", "candidate funding event set must identify one event")
+    expected: list[tuple[dict[str, Any], str, str, str]] = [
+        (artifacts["job"]["creationEvent"], "DRJ-3", "DRJ-3", "creation"),
+        (funding_refs[0], "DRF-3", "DRF-6", "funding"),
+    ]
+    if artifacts.get("delivery") is not None:
+        submission_ref = binding.get("nativeSubmissionEvent")
+        issue = _event_refs_check([submission_ref], chain_id, "DRP-9", "submission")
+        if issue:
+            return {}, issue
+        expected.append((submission_ref, "DRP-9", "DRP-9", "submission"))
+    if len(terminal_refs) != 1:
+        return {}, result("rejected", "DRT-4", "candidate terminal event set must identify one event")
+    expected.append((terminal_refs[0], "DRT-4", "DRT-8", "terminal"))
+
+    expected_by_partial = {
+        (ref_value["txHash"], ref_value["logIndex"]): (
+            ref_value, reference_rule, finality_rule, label
+        )
+        for ref_value, reference_rule, finality_rule, label in expected
+    }
+    by_identity: dict[tuple[Any, Any, Any, Any], dict[str, Any]] = {}
+    partial_identities: set[tuple[Any, Any]] = set()
+    for event_input_value in event_inputs:
+        if not isinstance(event_input_value, dict) or set(event_input_value) != EVENT_INPUT_FIELDS:
+            return {}, result("error", "DRV-2", "native event input is malformed")
+        ref_value = event_input_value["eventRef"]
+        partial = (
+            ref_value.get("txHash") if isinstance(ref_value, dict) else None,
+            ref_value.get("logIndex") if isinstance(ref_value, dict) else None,
+        )
+        expected_item = expected_by_partial.get(partial)
+        reference_rule = expected_item[1] if expected_item else "DRT-4"
+        finality_rule = expected_item[2] if expected_item else "DRT-8"
+        label = expected_item[3] if expected_item else "native"
+        issue = _event_refs_check([ref_value], chain_id, reference_rule, label)
+        if issue:
+            return {}, issue
+
+        tx_preimage = event_input_value["txHashPreimageUtf8"]
+        block_preimage = event_input_value["blockHashPreimageUtf8"]
+        if (
+            not isinstance(tx_preimage, str)
+            or ref_value["txHash"]
+            != "0x" + hashlib.sha256(tx_preimage.encode("utf-8")).hexdigest()
+        ):
+            return {}, result("rejected", reference_rule, "native event transaction preimage does not match")
+        if (
+            type(event_input_value["blockNumber"]) is not int
+            or event_input_value["blockNumber"] < 0
+            or type(event_input_value["blockTimestampSec"]) is not int
+            or event_input_value["blockTimestampSec"] < 0
+            or type(event_input_value["confirmations"]) is not int
+            or event_input_value["confirmations"] < 0
+            or not isinstance(event_input_value["blockHash"], str)
+            or EVM_TX_RE.fullmatch(event_input_value["blockHash"]) is None
+            or not isinstance(block_preimage, str)
+            or not isinstance(event_input_value["contractAddress"], str)
+            or not isinstance(event_input_value["nativeJobId"], str)
+            or not isinstance(event_input_value["eventName"], str)
+            or not event_input_value["eventName"]
+            or not isinstance(event_input_value["arguments"], dict)
+        ):
+            return {}, result("error", "DRV-2", "native event observation is malformed")
+        expected_block_preimage = (
+            f"{tx_preimage}:block:{event_input_value['blockNumber']}:"
+            f"{event_input_value['blockTimestampSec']}"
+        )
+        if block_preimage != expected_block_preimage:
+            return {}, result("rejected", finality_rule, "native event block identity preimage does not match")
+        if event_input_value["blockHash"] != "0x" + hashlib.sha256(
+            block_preimage.encode("utf-8")
+        ).hexdigest():
+            return {}, result("rejected", finality_rule, "native event block-hash preimage does not match")
+
+        identity = _event_identity(ref_value)
+        if identity in by_identity or partial in partial_identities:
+            return {}, result("rejected", "DRT-4", "native event input identity is duplicated")
+        by_identity[identity] = event_input_value
+        partial_identities.add(partial)
+
+    expected_identities = {_event_identity(item[0]) for item in expected}
+    if set(by_identity) != expected_identities:
+        return {}, result("rejected", "DRT-4", "native event inputs do not match the referenced event set")
+
+    records: dict[str, dict[str, Any]] = {}
+    for event_input_value in event_inputs:
+        name = event_input_value["eventName"]
+        if name in records:
+            return {}, result("rejected", "DRT-4", "native event name is duplicated")
+        records[name] = event_input_value
+    terminal_name = {
+        "released": "JobCompleted",
+        "rejected-refund": "JobRejected",
+        "expired-refund": "JobExpired",
+    }.get(artifacts["terminal"].get("terminalState"))
+    expected_names = {"JobCreated", "JobFunded", terminal_name}
+    if artifacts.get("delivery") is not None:
+        expected_names.add("JobSubmitted")
+    if None in expected_names or set(records) != expected_names:
+        return {}, result("rejected", "DRT-4", "native event selectors do not match the lifecycle")
+    minimum_confirmations = artifacts["railDefinition"].get("profileParameters", {}).get(
+        "finalityBlocks"
+    )
+    if type(minimum_confirmations) is not int or minimum_confirmations <= 0:
+        return {}, result("error", "DRV-2", "rail finality depth must be a positive integer")
+    finality_rules = {
+        "JobCreated": "DRJ-2",
+        "JobFunded": "DRF-6",
+        "JobSubmitted": "DRP-9",
+        "JobCompleted": "DRT-8",
+        "JobRejected": "DRT-8",
+        "JobExpired": "DRT-8",
+    }
+    for name, event_input_value in records.items():
+        if event_input_value["confirmations"] < minimum_confirmations:
+            return {}, result(
+                "indeterminate", finality_rules[name],
+                f"{name} event has not reached the rail finality depth",
+            )
+
+    funded_at = records["JobFunded"]["blockTimestampSec"]
+    if value["native"].get("fundedAtSec") != funded_at:
+        return {}, result("rejected", "DRA-9", "caller funding time differs from the authenticated event block")
+    submitted_before_cutoff = False
+    ordered = [records["JobCreated"], records["JobFunded"]]
+    if artifacts.get("delivery") is not None:
+        submitted = records["JobSubmitted"]
+        if submitted["eventRef"] != binding.get("nativeSubmissionEvent"):
+            return {}, result("rejected", "DRP-9", "submission observation does not match the delivery binding")
+        submitted_before_cutoff = (
+            submitted["blockTimestampSec"] < artifacts["agreement"].get("submissionCutoffSec")
+        )
+        if not submitted_before_cutoff:
+            return {}, result("rejected", "DRP-9", "native delivery was submitted at or after the cutoff")
+        ordered.append(submitted)
+    ordered.append(records[terminal_name])
+    if any(
+        earlier["blockTimestampSec"] >= later["blockTimestampSec"]
+        or earlier["blockNumber"] >= later["blockNumber"]
+        for earlier, later in zip(ordered, ordered[1:])
+    ):
+        return {}, result("rejected", "DRT-4", "native event observations are not strictly ordered")
+    if value.get("submittedBeforeCutoff") is not submitted_before_cutoff:
+        return {}, result("rejected", "DRT-12", "submission classification contradicts authenticated event time")
+    return by_identity, None
+
+
 def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
     """Validate every committed preimage needed to reconstruct fixture claims."""
     inputs = value.get("reproductionInputs")
@@ -633,8 +850,6 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
         "disputeCase",
         "runtimeBytecode",
         "nativeEventInputs",
-        "fundingFinalityBlockHashPreimageUtf8",
-        "terminalFinalityBlockHashPreimageUtf8",
     }
     if set(inputs) != required:
         return result("error", "DRV-2", "reproduction input set is incomplete")
@@ -647,6 +862,10 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
             pending.extend(current.values())
         elif isinstance(current, list):
             pending.extend(current)
+
+    event_inputs, event_issue = _native_event_input_check(value)
+    if event_issue:
+        return event_issue
 
     seeds = inputs["publicTestSeedHex"]
     if not isinstance(seeds, dict) or set(seeds) != set(value["publicKeys"]):
@@ -668,7 +887,8 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
     vet_records = inputs["vetRecords"]
     if not isinstance(bundles, dict) or not isinstance(vet_records, dict):
         return result("error", "DRV-2", "role source inputs must be objects")
-    funded_at = value["native"].get("fundedAtSec")
+    funding_ref = value["artifacts"]["funding"]["fundingEventRefs"][0]
+    funded_at = event_inputs[_event_identity(funding_ref)]["blockTimestampSec"]
     for role in ("buyer", "seller", "evaluator"):
         binding = agreement[role]
         bundle = bundles.get(role)
@@ -717,48 +937,6 @@ def _reproduction_input_check(value: dict[str, Any]) -> dict[str, str] | None:
     if runtime.get("sha256") != runtime_hash or artifacts["job"].get("runtimeBytecodeHash") != runtime_hash:
         return result("rejected", "DRJ-5", "runtime-bytecode preimage does not match the job")
 
-    event_inputs = inputs["nativeEventInputs"]
-    if not isinstance(event_inputs, list) or not event_inputs:
-        return result("error", "DRV-2", "native event inputs must be a non-empty array")
-    by_identity: dict[tuple[str, int], dict[str, Any]] = {}
-    for event_input_value in event_inputs:
-        if not isinstance(event_input_value, dict):
-            return result("error", "DRV-2", "native event input is malformed")
-        ref_value = event_input_value.get("eventRef")
-        preimage = event_input_value.get("txHashPreimageUtf8")
-        if (
-            not isinstance(ref_value, dict)
-            or not isinstance(preimage, str)
-            or ref_value.get("txHash") != "0x" + hashlib.sha256(preimage.encode("utf-8")).hexdigest()
-        ):
-            return result("rejected", "DRT-4", "native event transaction preimage does not match")
-        identity = (ref_value.get("txHash"), ref_value.get("logIndex"))
-        if identity in by_identity:
-            return result("rejected", "DRT-4", "native event input identity is duplicated")
-        by_identity[identity] = event_input_value
-
-    expected_refs = [artifacts["job"]["creationEvent"]]
-    expected_refs.extend(artifacts["funding"]["fundingEventRefs"])
-    binding = value["deliveryBinding"]
-    if artifacts.get("delivery") is not None:
-        expected_refs.append(binding.get("nativeSubmissionEvent"))
-    expected_refs.extend(artifacts["terminal"]["terminalEventRefs"])
-    expected_identities = {
-        (ref_value.get("txHash"), ref_value.get("logIndex"))
-        for ref_value in expected_refs
-        if isinstance(ref_value, dict)
-    }
-    if set(by_identity) != expected_identities:
-        rule = "DRF-3" if not artifacts["funding"]["fundingEventRefs"] else "DRT-4"
-        return result("rejected", rule, "native event inputs do not match the referenced event set")
-
-    finality_preimages = (
-        (artifacts["funding"]["finality"], inputs["fundingFinalityBlockHashPreimageUtf8"], "DRF-6"),
-        (artifacts["terminal"]["finality"], inputs["terminalFinalityBlockHashPreimageUtf8"], "DRT-8"),
-    )
-    for finality_value, preimage, rule in finality_preimages:
-        if not isinstance(preimage, str) or finality_value.get("blockHash") != "0x" + hashlib.sha256(preimage.encode("utf-8")).hexdigest():
-            return result("rejected", rule, "finality block-hash preimage does not match")
     return None
 
 
@@ -872,16 +1050,29 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
 
     cutoff = agreement.get("submissionCutoffSec")
     deadline = agreement.get("evaluationDeadlineSec")
-    profile = value.get("profileParameters")
-    if type(cutoff) is not int or type(deadline) is not int or not isinstance(profile, dict):
+    profile_projection = value.get("profileParameters")
+    rail_profile = a["railDefinition"].get("profileParameters")
+    if (
+        type(cutoff) is not int
+        or type(deadline) is not int
+        or not isinstance(profile_projection, dict)
+        or not isinstance(rail_profile, dict)
+    ):
         return result("error", "DRV-2", "deadline and profile fields must be present")
-    minimum = profile.get("minimumEvaluationWindowSec")
+    minimum = profile_projection.get("minimumEvaluationWindowSec")
     if type(minimum) is not int:
         return result("error", "DREB-14", "minimum evaluation window must be an integer")
     if minimum <= 0:
         return result("rejected", "DREB-14", "evaluation windows must be positive")
     if deadline - cutoff < minimum:
         return result("rejected", "DREB-14", "evaluation window is shorter than the pinned minimum")
+    if profile_projection != rail_profile:
+        return result("rejected", "DRP-5", "detached profile projection differs from the authenticated rail")
+    profile = rail_profile
+    if set(profile) != PROFILE_FIELDS:
+        return result("error", "DRV-2", "candidate rail profile shape is not exact")
+    if type(profile.get("finalityBlocks")) is not int or profile["finalityBlocks"] <= 0:
+        return result("error", "DRV-2", "rail finality depth must be a positive integer")
     if profile.get("deadlineProfile") != "separate-submission-cutoff-v1":
         return result("rejected", "DREB-13", "unsupported native deadline profile")
     if (
@@ -912,12 +1103,17 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     )
     if funding_events:
         return funding_events
+    event_inputs = {
+        _event_identity(item["eventRef"]): item
+        for item in value["reproductionInputs"]["nativeEventInputs"]
+    }
+    funding_observations = [
+        event_inputs[_event_identity(ref_value)]
+        for ref_value in funding["fundingEventRefs"]
+    ]
     funding_finality = _finality_check(
-        funding.get("finality"),
-        chain_id,
-        profile.get("finalityBlocks"),
-        "DRF-6",
-        "funding",
+        funding.get("finality"), profile.get("finalityBlocks"),
+        funding_observations, "DRF-6", "funding",
     )
     if funding_finality:
         return funding_finality
@@ -935,7 +1131,12 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
         return result("rejected", "DRF-1", "funding phase index mismatch")
     if native.get("preterminalProviderPayoutBaseUnits") != "0":
         return result("rejected", "DRL-7", "provider received value before terminal release")
-    if native.get("platformFeeBP") != 0 or native.get("evaluatorFeeBP") != 0:
+    if (
+        profile.get("platformFeeBP") != 0
+        or profile.get("evaluatorFeeBP") != 0
+        or native.get("platformFeeBP") != profile.get("platformFeeBP")
+        or native.get("evaluatorFeeBP") != profile.get("evaluatorFeeBP")
+    ):
         return result("rejected", "DRT-7", "escrow fee is nonzero")
 
     terminal = a["terminal"]
@@ -957,15 +1158,36 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
     )
     if terminal_events:
         return terminal_events
+    terminal_observations = [
+        event_inputs[_event_identity(ref_value)]
+        for ref_value in terminal["terminalEventRefs"]
+    ]
     terminal_finality = _finality_check(
-        terminal.get("finality"),
-        chain_id,
-        profile.get("finalityBlocks"),
-        "DRT-8",
-        "terminal",
+        terminal.get("finality"), profile.get("finalityBlocks"),
+        terminal_observations, "DRT-8", "terminal",
     )
     if terminal_finality:
         return terminal_finality
+
+    projection = value.get("reputationProjection")
+    if not isinstance(projection, dict) or set(projection) != {
+        "buyerFault", "sellerFault", "releaseAloneEstablishesNonFinancialCompletion"
+    } or any(type(projection.get(field)) is not bool for field in projection):
+        return result("error", "DRV-2", "reputation projection is malformed")
+    finding_artifact = evaluation if evaluation is not None else dispute
+    classification = (
+        finding_artifact.get("finding", {}).get("classification")
+        if isinstance(finding_artifact, dict)
+        else None
+    )
+    expected_faults = {
+        "buyerFault": classification == "buyer-fault",
+        "sellerFault": classification == "seller-fault",
+    }
+    if decision is None and (projection["buyerFault"] or projection["sellerFault"]):
+        return result("rejected", "DRT-13", "decisionless expiry invents buyer or seller fault")
+    if any(projection[field] is not expected for field, expected in expected_faults.items()):
+        return result("rejected", "DRT-14", "caller projection contradicts the authenticated finding")
 
     if decision is not None:
         expected_reason = "0x" + mapping_sources["decisionHash"]
@@ -1016,11 +1238,6 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
                 return result("rejected", "DRD-5", "release decision maps to a non-release action")
             if terminal.get("disposition") != disposition or terminal.get("recipient") != seller_account:
                 return result("rejected", "DRT-5", "release recipient or disposition mismatch")
-            projection = value.get("reputationProjection")
-            if not isinstance(projection, dict) or type(
-                projection.get("releaseAloneEstablishesNonFinancialCompletion")
-            ) is not bool:
-                return result("error", "DRV-2", "reputation projection is malformed")
             if projection["releaseAloneEstablishesNonFinancialCompletion"]:
                 return result(
                     "rejected",
@@ -1047,14 +1264,6 @@ def _native_and_terminal_check(value: dict[str, Any]) -> dict[str, str] | None:
         has_delivery_ref = "deliveryEvidenceRef" in terminal
         if submitted != has_delivery_ref:
             return result("rejected", "DRT-12", "expiry delivery-reference presence does not match submission state")
-        projection = value.get("reputationProjection")
-        if not isinstance(projection, dict) or (
-            type(projection.get("buyerFault")) is not bool
-            or type(projection.get("sellerFault")) is not bool
-        ):
-            return result("error", "DRV-2", "reputation projection is malformed")
-        if projection["buyerFault"] or projection["sellerFault"]:
-            return result("rejected", "DRT-13", "decisionless expiry invents buyer or seller fault")
 
     return _native_event_semantics_check(value)
 

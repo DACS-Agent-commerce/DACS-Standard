@@ -31,17 +31,23 @@ positive capability predicates. Its `registrationStatus` is
 `not-a-deployment`; a verified control therefore still has
 `registrationEligible: false`.
 
-The protocol verifier evaluates the finality records embedded in signed
-funding and terminal artifacts and requires non-empty, canonical event-reference
-sets. A separate caller-supplied `verified` status cannot make a pending signed
-record final or make an empty event set identify a native action.
+The protocol verifier requires the finality records embedded in signed funding
+and terminal artifacts to use the exact DACS-4 `SettlementFinalityRecord`
+`block-depth` shape. It checks those records against non-empty canonical event
+references plus resolver observations of block identity, timestamp, and
+confirmation depth. A caller-supplied status or timestamp cannot make an
+under-confirmed event final, classify submission timing, or establish Vet
+freshness.
 
 Each lifecycle fixture also carries `reproductionInputs`: the public test-key
 seeds, role-bundle and Vet-record bodies, evaluation rule, delivered artifact or
-dispute case, runtime-bytecode preimage, native event/log inputs, and finality
-block-hash preimages. The verifier independently recomputes their keys, hashes,
-references, event identities, and positive bindings. These are synthetic inputs,
-not a live chain resolver, production identity registry, or eligible deployment.
+dispute case, runtime-bytecode preimage, and native event/log observations with
+their transaction and block-hash preimages. The verifier independently
+recomputes their keys, hashes, references, event identities, chain binding,
+ordering, and positive bindings. It also derives policy from the authenticated
+rail definition and checks accountability projections against authenticated
+findings. These are synthetic inputs, not a live chain resolver, production
+identity registry, or eligible deployment.
 
 The `externalEvidence` object is an explicit fixture boundary for authenticated
 resolver outcomes such as registry availability and cross-substrate ordering.

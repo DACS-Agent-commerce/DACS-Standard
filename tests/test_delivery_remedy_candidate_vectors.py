@@ -257,7 +257,9 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
 
     def test_signed_funding_and_terminal_records_cannot_bypass_finality_or_events(self):
         expected = {
+            "creation-finality-pending": ("indeterminate", "DRJ-2"),
             "funding-finality-pending": ("indeterminate", "DRF-6"),
+            "submission-finality-pending": ("indeterminate", "DRP-9"),
             "funding-events-empty": ("rejected", "DRF-3"),
             "terminal-finality-pending": ("indeterminate", "DRT-8"),
             "terminal-events-empty": ("rejected", "DRT-4"),
@@ -272,6 +274,10 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
     def test_candidate_domains_and_deadline_profile_match_the_spec(self):
         release = materialize_vector(
             self.vector_pack, self.vectors["release-complete-budget"]
+        )
+        self.assertEqual(
+            release["profileParameters"],
+            release["artifacts"]["railDefinition"]["profileParameters"],
         )
         self.assertEqual(
             release["profileParameters"]["deadlineProfile"],
@@ -290,6 +296,41 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "DRA-15",
         )
 
+    def test_finality_time_and_fault_projection_come_from_authenticated_inputs(self):
+        release = materialize_vector(
+            self.vector_pack, self.vectors["release-complete-budget"]
+        )
+        rejection = materialize_vector(
+            self.vector_pack, self.vectors["evaluator-rejection-refund"]
+        )
+        expected_finality_fields = {
+            "model", "finalityBlocks", "finalityObservedAt"
+        }
+        for name in ("funding", "terminal"):
+            self.assertEqual(
+                set(release["artifacts"][name]["finality"]),
+                expected_finality_fields,
+            )
+            self.assertEqual(
+                release["artifacts"][name]["finality"]["model"],
+                "block-depth",
+            )
+        events = {
+            item["eventName"]: item
+            for item in release["reproductionInputs"]["nativeEventInputs"]
+        }
+        self.assertEqual(
+            release["native"]["fundedAtSec"],
+            events["JobFunded"]["blockTimestampSec"],
+        )
+        self.assertLess(
+            events["JobSubmitted"]["blockTimestampSec"],
+            release["artifacts"]["agreement"]["submissionCutoffSec"],
+        )
+        self.assertTrue(release["submittedBeforeCutoff"])
+        self.assertFalse(release["reputationProjection"]["sellerFault"])
+        self.assertTrue(rejection["reputationProjection"]["sellerFault"])
+
     def test_reproduction_inputs_are_present_and_load_bearing(self):
         release = materialize_vector(
             self.vector_pack, self.vectors["release-complete-budget"]
@@ -306,6 +347,13 @@ class DeliveryRemedyCandidateVectorTests(unittest.TestCase):
             "delivered-artifact-input-mismatch": "DRE-3",
             "runtime-bytecode-preimage-mismatch": "DRJ-5",
             "native-event-transaction-preimage-mismatch": "DRT-4",
+            "native-event-kind-substitution": "DRT-4",
+            "native-event-chain-substitution": "DRT-4",
+            "funding-time-caller-substitution": "DRA-9",
+            "submitted-before-cutoff-claim-substitution": "DRT-12",
+            "detached-profile-projection-weakened": "DRP-5",
+            "release-invents-seller-fault": "DRT-14",
+            "rejected-refund-erases-seller-fault": "DRT-14",
             "terminal-event-payload-mismatch": "DRT-4",
             "funding-finality-block-preimage-mismatch": "DRF-6",
         }

@@ -143,12 +143,21 @@ def event_input(
     job_id: str,
     native_job_id: str,
     tag: str,
+    block_number: int,
+    block_timestamp_sec: int,
     event_name: str,
     arguments: dict[str, Any],
+    confirmations: int = 64,
 ) -> dict[str, Any]:
+    block_preimage = f"{job_id}:{tag}:block:{block_number}:{block_timestamp_sec}"
     return {
         "eventRef": copy.deepcopy(ref_value),
         "txHashPreimageUtf8": f"{job_id}:{tag}",
+        "blockNumber": block_number,
+        "blockHash": "0x" + hashlib.sha256(block_preimage.encode("ascii")).hexdigest(),
+        "blockHashPreimageUtf8": block_preimage,
+        "blockTimestampSec": block_timestamp_sec,
+        "confirmations": confirmations,
         "contractAddress": CONTRACT,
         "nativeJobId": native_job_id,
         "eventName": event_name,
@@ -156,13 +165,11 @@ def event_input(
     }
 
 
-def finality(job_id: str, tag: str, block_number: int) -> dict[str, Any]:
+def finality(event_timestamp_sec: int) -> dict[str, Any]:
     return {
-        "status": "finalized",
-        "chainId": CHAIN_ID,
-        "blockNumber": block_number,
-        "blockHash": "0x" + hashlib.sha256(f"{job_id}:{tag}:block".encode("ascii")).hexdigest(),
-        "confirmations": 64,
+        "model": "block-depth",
+        "finalityBlocks": 64,
+        "finalityObservedAt": (event_timestamp_sec + 128) * 1000,
     }
 
 
@@ -176,6 +183,16 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
         "expired-pre", "expired-post",
     }:
         raise ValueError(lifecycle)
+    created_at_sec = 1799989000
+    funded_at_sec = 1799990000
+    submitted_at_sec = 1799995000
+    terminal_at_sec = (
+        1799997000
+        if lifecycle == "pre-submission-rejected-refund"
+        else 1800007200
+        if lifecycle in {"expired-pre", "expired-post"}
+        else 1800001000
+    )
     pipeline = [
         {"kind": "commit-delivery-or-remedy-agreement"},
         {"kind": "job-escrow", "parameters": {"action": "fund", "rail": "pay-evm-erc8183:fixture-v1"}},
@@ -330,8 +347,8 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
         "token": TOKEN,
         "amountBaseUnits": "1000000",
         "fundingEventRefs": [event(job_id, "fund", 1)],
-        "finality": finality(job_id, "fund", 20000000),
-        "observedAt": 1799990000000,
+        "finality": finality(funded_at_sec),
+        "observedAt": (funded_at_sec + 128) * 1000,
     }, "orchestrator", DOMAINS["funding"])
     funding_ref = ref(funding, logical(job_id, "funding"))
 
@@ -456,8 +473,8 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
         "amountBaseUnits": "1000000",
         "recipient": recipient,
         "terminalEventRefs": [event(job_id, action, 2)],
-        "finality": finality(job_id, action, 20000100),
-        "observedAt": 1800007300000,
+        "finality": finality(terminal_at_sec),
+        "observedAt": (terminal_at_sec + 128) * 1000,
     }
     if decision_ref is not None:
         terminal_body["decisionRef"] = decision_ref
@@ -498,7 +515,7 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
         "token": TOKEN,
         "payoutReceiver": SELLER_ACCOUNT,
         "amountBaseUnits": "1000000",
-        "fundedAtSec": 1799990000,
+        "fundedAtSec": funded_at_sec,
         "description": "dacs-delivery-remedy:v1:" + agreement_hash,
         "deliverable": None if delivery is None else "0x" + artifact_hash(delivery),
         "reason": None if decision is None else "0x" + artifact_hash(decision),
@@ -529,6 +546,8 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
             job_id,
             native_job_id,
             "create",
+            19999900,
+            created_at_sec,
             "JobCreated",
             {
                 "client": BUYER_ACCOUNT,
@@ -543,6 +562,8 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
             job_id,
             native_job_id,
             "fund",
+            20000000,
+            funded_at_sec,
             "JobFunded",
             {"token": TOKEN, "amountBaseUnits": "1000000"},
         ),
@@ -556,6 +577,8 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
                 job_id,
                 native_job_id,
                 "submit",
+                20000050,
+                submitted_at_sec,
                 "JobSubmitted",
                 {"deliverable": native["deliverable"]},
             )
@@ -566,6 +589,8 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
             job_id,
             native_job_id,
             action,
+            20000100,
+            terminal_at_sec,
             {
                 "complete": "JobCompleted",
                 "reject": "JobRejected",
@@ -637,12 +662,10 @@ def make_base(lifecycle: str, job_id: str = JOB_A) -> dict[str, Any]:
                 "sha256": RUNTIME_HASH,
             },
             "nativeEventInputs": native_event_inputs,
-            "fundingFinalityBlockHashPreimageUtf8": f"{job_id}:fund:block",
-            "terminalFinalityBlockHashPreimageUtf8": f"{job_id}:{action}:block",
         },
         "reputationProjection": {
             "buyerFault": False,
-            "sellerFault": False,
+            "sellerFault": lifecycle == "rejected-refund",
             "releaseAloneEstablishesNonFinancialCompletion": False,
         },
         "submittedBeforeCutoff": lifecycle not in {"expired-pre", "pre-submission-rejected-refund"},
@@ -877,8 +900,11 @@ def build_vector_pack() -> dict[str, Any]:
     fixtures["unsupported-expiry-only-policy"] = unsupported_policy
 
     funding_pending = copy.deepcopy(fixtures["release"])
-    funding_pending["artifacts"]["funding"]["finality"]["status"] = "pending"
-    resign_funding_chain(funding_pending)
+    next(
+        item
+        for item in funding_pending["reproductionInputs"]["nativeEventInputs"]
+        if item["eventName"] == "JobFunded"
+    )["confirmations"] = 63
     fixtures["funding-finality-pending"] = funding_pending
 
     funding_events_empty = copy.deepcopy(fixtures["release"])
@@ -887,8 +913,11 @@ def build_vector_pack() -> dict[str, Any]:
     fixtures["funding-events-empty"] = funding_events_empty
 
     terminal_pending = copy.deepcopy(fixtures["release"])
-    terminal_pending["artifacts"]["terminal"]["finality"]["status"] = "pending"
-    resign_terminal(terminal_pending)
+    next(
+        item
+        for item in terminal_pending["reproductionInputs"]["nativeEventInputs"]
+        if item["eventName"] == "JobCompleted"
+    )["confirmations"] = 63
     fixtures["terminal-finality-pending"] = terminal_pending
 
     terminal_events_empty = copy.deepcopy(fixtures["release"])
@@ -997,7 +1026,7 @@ def build_vector_pack() -> dict[str, Any]:
         "DREB-9", "DREB-10", "DREB-11", "DREB-12", "DREB-13", "DREB-14",
         "DREB-15", "DREB-16", "DREB-17", "DREB-19", "DREB-20", "DREB-21",
         "DREB-22", "DREB-23", "DRT-4", "DRT-7", "DRT-8", "DRT-10",
-        "DRT-11", "DRT-12", "DRV-1", "DRV-2", "DRV-3", "DRV-4", "DRV-6",
+        "DRT-11", "DRT-12", "DRT-14", "DRV-1", "DRV-2", "DRV-3", "DRV-4", "DRV-6",
         "DRV-7", "DRQ-1", "DRQ-3", "DRQ-4",
     ]
     submitted_verified_rules = common_verified_rules + [
@@ -1066,6 +1095,7 @@ def build_vector_pack() -> dict[str, Any]:
         vector("evaluator-vet-failure", "release", "rejected", "DRA-9", "evaluator must have a fresh pass", [{"op": "replace", "path": ["evaluatorVetResult"], "value": "fail"}]),
         vector("nonpositive-evaluation-window", "release", "rejected", "DREB-14", "registered rail windows must be positive", [{"op": "replace", "path": ["profileParameters", "minimumEvaluationWindowSec"], "value": 0}]),
         vector("evaluation-window-too-short", "release", "rejected", "DREB-14", "the bound evaluation window must meet the pinned minimum", [{"op": "replace", "path": ["profileParameters", "minimumEvaluationWindowSec"], "value": 8000}]),
+        vector("detached-profile-projection-weakened", "release", "rejected", "DRP-5", "a detached profile projection cannot weaken the authenticated rail policy", [{"op": "replace", "path": ["profileParameters", "minimumEvaluationWindowSec"], "value": 1}]),
         vector("native-expiry-divergence", "release", "rejected", "DREB-12", "native expiredAt must equal the evaluation deadline", [{"op": "replace", "path": ["native", "expiredAt"], "value": 1800007201}]),
         vector("native-submission-cutoff-divergence", "release", "rejected", "DREB-13", "the native submission cutoff must equal the signed cutoff", [{"op": "replace", "path": ["native", "submissionCutoffSec"], "value": 1800000001}]),
         vector("native-submission-cutoff-unenforced", "release", "rejected", "DREB-13", "an SDK timer cannot replace native cutoff enforcement", [{"op": "replace", "path": ["native", "submissionCutoffEnforced"], "value": False}]),
@@ -1099,11 +1129,15 @@ def build_vector_pack() -> dict[str, Any]:
         vector("wrong-release-recipient", "wrong-release-recipient", "rejected", "DRT-5", "release goes only to the bound seller payout account"),
         vector("wrong-refund-recipient", "wrong-refund-recipient", "rejected", "DRT-6", "refund goes only to the client"),
         vector("release-overclaims-nonfinancial-completion", "release", "rejected", "DRL-6", "financial release alone cannot establish completion of every non-financial obligation", [{"op": "replace", "path": ["reputationProjection", "releaseAloneEstablishesNonFinancialCompletion"], "value": True}]),
+        vector("release-invents-seller-fault", "release", "rejected", "DRT-14", "a caller projection cannot contradict an authenticated seller-fulfilled finding", [{"op": "replace", "path": ["reputationProjection", "sellerFault"], "value": True}]),
+        vector("rejected-refund-erases-seller-fault", "rejected-refund", "rejected", "DRT-14", "a caller projection cannot erase the authenticated seller-fault finding", [{"op": "replace", "path": ["reputationProjection", "sellerFault"], "value": False}]),
         vector("nonzero-preterminal-payout", "release", "rejected", "DRL-7", "any preterminal provider payout is forbidden", [{"op": "replace", "path": ["native", "preterminalProviderPayoutBaseUnits"], "value": "1"}]),
         vector("nonzero-platform-fee", "release", "rejected", "DRT-7", "escrow fees must be zero", [{"op": "replace", "path": ["native", "platformFeeBP"], "value": 1}]),
-        vector("funding-finality-pending", "funding-finality-pending", "indeterminate", "DRF-6", "a signed pending funding record cannot unlock delivery"),
+        vector("creation-finality-pending", "release", "indeterminate", "DRJ-2", "an under-confirmed creation event cannot establish the native job", [{"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", 0, "confirmations"], "value": 63}]),
+        vector("funding-finality-pending", "funding-finality-pending", "indeterminate", "DRF-6", "under-confirmed funding-event evidence cannot unlock delivery"),
+        vector("submission-finality-pending", "release", "indeterminate", "DRP-9", "an under-confirmed submission event cannot bind the delivery to the native job", [{"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", 2, "confirmations"], "value": 63}]),
         vector("funding-events-empty", "funding-events-empty", "rejected", "DRF-3", "funding requires a non-empty authenticated event set"),
-        vector("terminal-finality-pending", "terminal-finality-pending", "indeterminate", "DRT-8", "a signed pending terminal record cannot establish disposition"),
+        vector("terminal-finality-pending", "terminal-finality-pending", "indeterminate", "DRT-8", "under-confirmed terminal-event evidence cannot establish disposition"),
         vector("terminal-events-empty", "terminal-events-empty", "rejected", "DRT-4", "terminal disposition requires a non-empty event set"),
         vector("portable-state-missing-funded", "release", "rejected", "DRL-4", "the portable lifecycle cannot skip the funded state", [{"op": "remove", "path": ["native", "portableStateHistory", 1]}]),
         vector("portable-state-unknown", "release", "rejected", "DRL-2", "additional native states require a deterministic portable mapping", [{"op": "replace", "path": ["native", "portableStateHistory", 1], "value": "claim-pending"}]),
@@ -1132,8 +1166,12 @@ def build_vector_pack() -> dict[str, Any]:
         vector("delivered-artifact-input-mismatch", "release", "rejected", "DRE-3", "the delivered-artifact preimage must resolve from the signed delivery reference", [{"op": "replace", "path": ["reproductionInputs", "deliveredArtifact", "payloadUtf8"], "value": "substituted"}]),
         vector("runtime-bytecode-preimage-mismatch", "release", "rejected", "DRJ-5", "the runtime bytecode preimage must reproduce the pinned hash", [{"op": "replace", "path": ["reproductionInputs", "runtimeBytecode", "value"], "value": "substituted runtime"}]),
         vector("native-event-transaction-preimage-mismatch", "release", "rejected", "DRT-4", "event transaction hashes must reproduce from committed inputs", [{"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", 3, "txHashPreimageUtf8"], "value": "substituted tx"}]),
+        vector("native-event-kind-substitution", "release", "rejected", "DRT-4", "event observations retain the exact EvmEventRef discriminator", [{"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", 3, "eventRef", "kind"], "value": "transaction"}]),
+        vector("native-event-chain-substitution", "release", "rejected", "DRT-4", "event observations retain the selected rail chain", [{"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", 3, "eventRef", "chainId"], "value": 10}]),
+        vector("funding-time-caller-substitution", "release", "rejected", "DRA-9", "a caller fundedAt value cannot replace the authenticated funding-event block timestamp", [{"op": "replace", "path": ["native", "fundedAtSec"], "value": 1799990001}]),
+        vector("submitted-before-cutoff-claim-substitution", "release", "rejected", "DRT-12", "submission classification derives from the authenticated event time", [{"op": "replace", "path": ["submittedBeforeCutoff"], "value": False}]),
         vector("terminal-event-payload-mismatch", "release", "rejected", "DRT-4", "terminal log inputs must match the claimed financial disposition", [{"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", 3, "arguments", "amountBaseUnits"], "value": "999999"}]),
-        vector("funding-finality-block-preimage-mismatch", "release", "rejected", "DRF-6", "the finalized funding block hash must reproduce from committed input", [{"op": "replace", "path": ["reproductionInputs", "fundingFinalityBlockHashPreimageUtf8"], "value": "substituted block"}]),
+        vector("funding-finality-block-preimage-mismatch", "release", "rejected", "DRF-6", "the finalized funding block hash must reproduce from committed input", [{"op": "replace", "path": ["reproductionInputs", "nativeEventInputs", 1, "blockHashPreimageUtf8"], "value": "substituted block"}]),
         vector("nonminimal-native-job-id", "release", "error", "DRJ-1", "native job identifiers use minimal unsigned decimal text", [{"op": "replace", "path": ["artifacts", "job", "nativeJobId"], "value": "01"}]),
         vector("noninteger-evaluation-sequence", "release", "error", "DRAA-2", "numeric address segments must be unsigned integers", [{"op": "replace", "path": ["artifacts", "evaluation", "evaluationSeq"], "value": "0"}]),
         vector("first-evaluation-sequence-not-zero", "release", "rejected", "DRAA-6", "the first evaluation sequence starts at zero", [{"op": "replace", "path": ["artifacts", "evaluation", "evaluationSeq"], "value": 1}]),

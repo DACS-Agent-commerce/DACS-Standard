@@ -5,8 +5,8 @@
   "generator": "scripts/generate_delivery_remedy_candidate_vectors.py",
   "verifier": "scripts/verify_delivery_remedy_candidate_vectors.py",
   "scope": "offline synthetic evidence only; does not register or make a rail available",
-  "hash": "9bf08825fcae4a5045dc3a1ca131aec5b5f8836990515fa6b3e4d28e3cd1e6a3",
-  "count": 123,
+  "hash": "10be299f7ba34637e3cb19cbd0548f6bc0f7862a5da67845db23b70eb0e7e98d",
+  "count": 132,
   "fixtures": {
     "release": {
       "candidateProfile": "delivery-or-remedy-v1",
@@ -224,17 +224,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -344,7 +342,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -360,13 +358,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -380,7 +376,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "3LzHcRDu4P-6KnOD4psrX60NDmCBQPeKlUhQ-UK7c_VaUGz7P2jdotASzTKOk8L1KKZdY3f0_p5m6F5AL0xtDA"
+            "value": "2UkobBeblRla_LPgbgSLOOBuJ46GBWK2JFOPqst27RXv4SwquA9pQBQ77jBzywTVlEeqG1nd5RWwfhBUvI0ADw"
           }
         }
       },
@@ -557,6 +553,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -576,6 +577,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -592,6 +598,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -607,6 +618,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -617,9 +633,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -862,17 +876,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -983,7 +995,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "rejected-refund",
           "disposition": "refund-to-client",
@@ -999,13 +1011,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xaa75c445df21b8ec294fd003e4993478e4856c91a4eb3a57d4c03685dbb8a341",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -1019,7 +1029,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "4m2QXQy0H0G8OR112uF2AJ3GXF-nwheMDjJ9lnAf1AU1skl00JIgJdbji5qOviftwNgFOOeNYTifRKezIAfFCw"
+            "value": "kDkh2R9ec7N6sKSDGXj69TbvtR3UqFWYkdadb7k3f4etE4O5c92t8Wh18X4BWN80n6BAkC1cEaIC2Mja8dRMCA"
           }
         }
       },
@@ -1196,6 +1206,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -1215,6 +1230,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -1231,6 +1251,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -1246,6 +1271,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject",
+            "blockNumber": 20000100,
+            "blockHash": "0x379d2abe5d04deeab492c5004dbf8d06a5ca6e78933da41f162470fd438139d7",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobRejected",
@@ -1256,13 +1286,11 @@
               "reason": "0xc08adfc25c1dbed1d189d31c95d718f494d318ddfae289609a5cac301bc6510e"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
-        "sellerFault": false,
+        "sellerFault": true,
         "releaseAloneEstablishesNonFinancialCompletion": false
       },
       "submittedBeforeCutoff": true,
@@ -1501,17 +1529,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "dispute": {
@@ -1530,7 +1556,7 @@
             {
               "kind": "storage-program",
               "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-              "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+              "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
             }
           ],
           "finding": {
@@ -1541,13 +1567,13 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
-            "value": "60qrsffB-bkNhxpX_UBAsx7hJJZdr3gKSHKH1JdBxg-ksHq2vSxIAl9MSDqrlNJxac1QSxGyi7dXEwVCWWh2DA"
+            "value": "Zit4GLKRs0wdRYRM43DSZ2zMSVrklTyZw04niJuKxjSgikK7sJz7satddVrPYhS9W3FIzmOhZ-UMILQc9Ia-Dw"
           }
         },
         "disputeRef": {
           "kind": "storage-program",
           "locator": "dacsx:dispute:01J8ME0SXKQ4T9V2RC5HJ6WX7D:01J8ME0SXKQ4T9V2RC5HJ6WX7F:outcome:0",
-          "contentHash": "6fec25d0d8ef0ea9a1ab1db557c189d2e61b25cfaa7f931ec806f32477f3bbd9"
+          "contentHash": "a610943e7135a98c78f6454ba60b11bf2d1bc053293c5b3ccfa0426c362a8d6c"
         },
         "decision": {
           "escrowDecisionVersion": "1",
@@ -1563,20 +1589,20 @@
             "ref": {
               "kind": "storage-program",
               "locator": "dacsx:dispute:01J8ME0SXKQ4T9V2RC5HJ6WX7D:01J8ME0SXKQ4T9V2RC5HJ6WX7F:outcome:0",
-              "contentHash": "6fec25d0d8ef0ea9a1ab1db557c189d2e61b25cfaa7f931ec806f32477f3bbd9"
+              "contentHash": "a610943e7135a98c78f6454ba60b11bf2d1bc053293c5b3ccfa0426c362a8d6c"
             }
           },
           "disposition": "refund-to-client",
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
-            "value": "Hb0J-SzG4JEoR90sBRSNPgh7llmxrNnuszkhPqlm3OYWTsBWemWnxwHmUjY_RP7Qbo8z9m00IkiCBKeXeJXrAQ"
+            "value": "ps5AIXNjqxt_Ura9Bm2wtCm0MRi3NRFGjbTj1lI7bTQQtDr0rYcayBgtxOMmP9NgvvUjatOsiq7fyRzwbIckCw"
           }
         },
         "decisionRef": {
           "kind": "storage-program",
           "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
-          "contentHash": "7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005"
+          "contentHash": "517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c"
         },
         "terminal": {
           "escrowTerminalEvidenceVersion": "1",
@@ -1590,7 +1616,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "rejected-refund",
           "disposition": "refund-to-client",
@@ -1606,22 +1632,20 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xaa75c445df21b8ec294fd003e4993478e4856c91a4eb3a57d4c03685dbb8a341",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799997128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1799997128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
-            "contentHash": "7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005"
+            "contentHash": "517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c"
           },
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "8W2SsmSfAw9zbhbu6OdQ79cU9SoLT3DdSoRy-Oo4sNVuHqUDDu1Tv7NQDF7d6TvUqi4arfV7ZNrlnGEldUyfCg"
+            "value": "6PXDzddv5fC9vHBLHKjLvsDDthPzJM61JOcOX_yK9mv1I0mFiU-X7LCsd44cmvp-ZzYiWFW2NiPbcn84K5AJAQ"
           }
         }
       },
@@ -1648,7 +1672,7 @@
       },
       "mappingSources": {
         "agreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
-        "decisionHash": "7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005"
+        "decisionHash": "517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c"
       },
       "native": {
         "chainId": 8453,
@@ -1668,7 +1692,7 @@
         "fundedAtSec": 1799990000,
         "description": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
         "deliverable": null,
-        "reason": "0x7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005",
+        "reason": "0x517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c",
         "submissionCutoffSec": 1800000000,
         "submissionCutoffEnforced": true,
         "expiredAt": 1800007200,
@@ -1789,6 +1813,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -1808,6 +1837,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -1824,6 +1858,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject",
+            "blockNumber": 20000100,
+            "blockHash": "0xc2379482f8ea39f351c8f2a657066e6a3d91d246db89c5aeb40abc838eaa3a06",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block:20000100:1799997000",
+            "blockTimestampSec": 1799997000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobRejected",
@@ -1831,12 +1870,10 @@
               "token": "0x5555555555555555555555555555555555555555",
               "amountBaseUnits": "1000000",
               "recipient": "0x1111111111111111111111111111111111111111",
-              "reason": "0x7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005"
+              "reason": "0x517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -1852,9 +1889,9 @@
           "mappedNativeValue": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5"
         },
         "decision": {
-          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22646973707574652d6f7574636f6d65222c22726566223a7b22636f6e74656e7448617368223a2236666563323564306438656630656139613161623164623535376331383964326536316232356366616137663933316563383036663332343737663362626439222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a646973707574653a30314a384d453053584b513454395632524335484a36575837443a30314a384d453053584b513454395632524335484a36575837463a6f7574636f6d653a30227d7d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a22726566756e642d746f2d636c69656e74222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
-          "contentHash": "7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005",
-          "mappedNativeValue": "0x7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005"
+          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22646973707574652d6f7574636f6d65222c22726566223a7b22636f6e74656e7448617368223a2261363130393433653731333561393863373866363435346261363062313162663264316263303533323933633562336363666130343236633336326138643663222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a646973707574653a30314a384d453053584b513454395632524335484a36575837443a30314a384d453053584b513454395632524335484a36575837463a6f7574636f6d653a30227d7d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a22726566756e642d746f2d636c69656e74222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
+          "contentHash": "517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c",
+          "mappedNativeValue": "0x517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c"
         }
       }
     },
@@ -2074,17 +2111,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "terminal": {
@@ -2099,7 +2134,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "expired-refund",
           "disposition": "refund-to-client",
@@ -2115,17 +2150,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xed0dda4c0fd98da1ff7abcb4e276174859530ec9ec8a58906c473eb6699c5369",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800007328000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800007328000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "R5HSDZvRPrKu234gpEoP46t22aAcbhcVhmnirXSujwGpO2VJT3yTvAPGd_-nZmFUBEr12byb_El2I8LHj8_wBw"
+            "value": "R-VEwFhc-1U54ZldLVfgx54_1854fUMuckAbsKjRLFvIn-2ScGjlH_j9odYzFMmKE9tLTmQ1cunsjHNqL7HrDw"
           }
         }
       },
@@ -2286,6 +2319,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -2305,6 +2343,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -2321,6 +2364,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund",
+            "blockNumber": 20000100,
+            "blockHash": "0x896c552744d4b8e05563f7b4ac2cf36d7da389e8bc5ae711781a4db9cf71f595",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block:20000100:1800007200",
+            "blockTimestampSec": 1800007200,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobExpired",
@@ -2331,9 +2379,7 @@
               "reason": null
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -2566,17 +2612,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -2614,7 +2658,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "expired-refund",
           "disposition": "refund-to-client",
@@ -2630,13 +2674,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xed0dda4c0fd98da1ff7abcb4e276174859530ec9ec8a58906c473eb6699c5369",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800007328000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800007328000,
           "deliveryEvidenceRef": {
             "kind": "storage-program",
             "locator": "fixture:evidence:01J8ME0SXKQ4T9V2RC5HJ6WX7D:delivery",
@@ -2645,7 +2687,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "CWh5x-VGd5YtT92wmHBDjx6tP4u4l2FzuuBac5jNqBEac7yz23DhwZlTpgSB9jOp_RWDTXtpzFAFRM_Mt0nLDA"
+            "value": "A5IaOMT-3QsAPgcQAxig_tEUQRdYFZifb5f2MfvizIVY1hLEGKxdIx6myxvm41PeDKB1skrY4Kf5mZxBTJiEAA"
           }
         }
       },
@@ -2821,6 +2863,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -2840,6 +2887,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -2856,6 +2908,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -2871,6 +2928,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund",
+            "blockNumber": 20000100,
+            "blockHash": "0x896c552744d4b8e05563f7b4ac2cf36d7da389e8bc5ae711781a4db9cf71f595",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block:20000100:1800007200",
+            "blockTimestampSec": 1800007200,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobExpired",
@@ -2881,9 +2943,7 @@
               "reason": null
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -3121,17 +3181,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -3241,7 +3299,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -3257,13 +3315,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -3277,7 +3333,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "3LzHcRDu4P-6KnOD4psrX60NDmCBQPeKlUhQ-UK7c_VaUGz7P2jdotASzTKOk8L1KKZdY3f0_p5m6F5AL0xtDA"
+            "value": "2UkobBeblRla_LPgbgSLOOBuJ46GBWK2JFOPqst27RXv4SwquA9pQBQ77jBzywTVlEeqG1nd5RWwfhBUvI0ADw"
           }
         }
       },
@@ -3454,6 +3510,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -3473,6 +3534,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -3489,6 +3555,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -3504,6 +3575,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -3514,9 +3590,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -3759,17 +3833,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -3879,7 +3951,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -3895,13 +3967,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -3915,7 +3985,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "3LzHcRDu4P-6KnOD4psrX60NDmCBQPeKlUhQ-UK7c_VaUGz7P2jdotASzTKOk8L1KKZdY3f0_p5m6F5AL0xtDA"
+            "value": "2UkobBeblRla_LPgbgSLOOBuJ46GBWK2JFOPqst27RXv4SwquA9pQBQ77jBzywTVlEeqG1nd5RWwfhBUvI0ADw"
           }
         }
       },
@@ -4092,6 +4162,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -4111,6 +4186,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -4127,6 +4207,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -4142,6 +4227,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -4152,9 +4242,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -4397,17 +4485,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -4517,7 +4603,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -4533,13 +4619,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -4553,7 +4637,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "ya7gTYy0ju0AYiIQEAE5cGWVsqwEeOU2HOjG-8ww03lPTPxnAdg_GZ3yWDA034LKiszB73p9qcnZtIFf7Hd6Bw"
+            "value": "8ovXtE6uDZJOCYDUssUqdVKOCRlspqi0iMa4uzhTiPtZXFzOl_5J150wpC2PcTUUsdTtMEqFXB6U1fiHWUlzAw"
           }
         }
       },
@@ -4730,6 +4814,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -4749,6 +4838,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -4765,6 +4859,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -4780,6 +4879,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -4790,9 +4894,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -5035,17 +5137,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -5156,7 +5256,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "rejected-refund",
           "disposition": "refund-to-client",
@@ -5172,13 +5272,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xaa75c445df21b8ec294fd003e4993478e4856c91a4eb3a57d4c03685dbb8a341",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -5192,7 +5290,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "7eVAqmK6EcXx8iQFKRMl6DpfT6nWduRdjptzGfMRtHzaS1OeLa_IZK1n33V5UzVlmnXWu3NP2IKBkcIDNNoECA"
+            "value": "zqvhayPLnVYX4ksVuxbIhtXbvUYKL9e8BrvNyi66FolrpHJQ_G5s3OL1ztwBmNQr2o4g9TsIouBDAGAbEyuiDw"
           }
         }
       },
@@ -5369,6 +5467,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -5388,6 +5491,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -5404,6 +5512,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -5419,6 +5532,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject",
+            "blockNumber": 20000100,
+            "blockHash": "0x379d2abe5d04deeab492c5004dbf8d06a5ca6e78933da41f162470fd438139d7",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobRejected",
@@ -5429,13 +5547,11 @@
               "reason": "0xc08adfc25c1dbed1d189d31c95d718f494d318ddfae289609a5cac301bc6510e"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
-        "sellerFault": false,
+        "sellerFault": true,
         "releaseAloneEstablishesNonFinancialCompletion": false
       },
       "submittedBeforeCutoff": true,
@@ -5674,17 +5790,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -5794,7 +5908,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -5810,13 +5924,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -5830,7 +5942,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "jt2n_Hrn0lrUdesap7IdIJ1HaXOrnHdwKkUr2q7HJnVRwFc-p1jjh4Q4kt4OXj1BcBcXIt8pZddbFwjPeNBOCg"
+            "value": "qqV5pXPHoo4h3pyIqOEwh-2-LuNxr95i-mlZDcavi22qZYLrhLH8wT_g7aoYlK_6gdRPuYy-Bnn1nMnwxN7JCw"
           }
         }
       },
@@ -6007,6 +6119,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -6026,6 +6143,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -6042,6 +6164,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -6057,6 +6184,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -6067,9 +6199,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -6312,17 +6442,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -6432,7 +6560,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -6448,13 +6576,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -6468,7 +6594,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "RO5mN3zVsf6ja4WklaNilJmhbAAnTWx2YTfq18ImxopvtQSmfi5r61DQVaHsV30RLLZJaTLBvqcEU0hSWvHXDg"
+            "value": "hy9FmFDYAk0AAOeDSd17TTbJt3yEWMzheEX6cdNmbYTra2dVVw91ZI42VlvLCvVCpeyU6PPpmhY4aCl6pShSBQ"
           }
         }
       },
@@ -6645,6 +6771,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -6664,6 +6795,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -6680,6 +6816,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -6695,6 +6836,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -6705,9 +6851,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -6950,17 +7094,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -7071,7 +7213,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "rejected-refund",
           "disposition": "refund-to-client",
@@ -7087,13 +7229,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xaa75c445df21b8ec294fd003e4993478e4856c91a4eb3a57d4c03685dbb8a341",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -7107,7 +7247,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "3_XEl6t_tjPb17CjIFrM9m08V0-UxMCysQ5Q0DnlziM0CRKxIuGzvH-0ZAx0DOuUMmb4l5BhWfXKnMOTRD6JAQ"
+            "value": "hkZWu6iZ5KGM13yaD6XxtOwnzOlH0P6A9IQVtN_d2X3x43r7leWj237-okKWlrjTaIgosEbYlaaaVGLRCPEHAQ"
           }
         }
       },
@@ -7284,6 +7424,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -7303,6 +7448,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -7319,6 +7469,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -7334,6 +7489,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject",
+            "blockNumber": 20000100,
+            "blockHash": "0x379d2abe5d04deeab492c5004dbf8d06a5ca6e78933da41f162470fd438139d7",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobRejected",
@@ -7344,13 +7504,11 @@
               "reason": "0xc08adfc25c1dbed1d189d31c95d718f494d318ddfae289609a5cac301bc6510e"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
-        "sellerFault": false,
+        "sellerFault": true,
         "releaseAloneEstablishesNonFinancialCompletion": false
       },
       "submittedBeforeCutoff": true,
@@ -7589,17 +7747,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "EwK3iloFPzplEexP6OJlF5NSkXrQL-C4SQqEKLqWFFVRgimLlCwC4bMSl6NgHl1HH5z31fYDqEiV3SNVPSv9DA"
+            "value": "6LNgDi0RvWtz-huLnQnziZuBBBmmcAyjQz88d5fcT6k3-weA5qgPNSdgWIz4liFmjxP33EYXXuZyA-ajvZasAw"
           }
         },
         "delivery": {
@@ -7709,7 +7865,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "40a025dc6eb75436e775e915ebbd8f4f0275f4251c03bed651fdda65bd3289f4"
+            "contentHash": "49e2f3559d41cea04187d690e026bae0bce7241f00941127788990653803cfbb"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -7725,13 +7881,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -7745,7 +7899,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "3CPtDyo4UA6S8K86w6lJmN7tvbFH9fZn0XFktAC_eT1v7uHJ1x8FSPCSVEUGobB8JT4rMhT0NfqtqR-1FBIKBA"
+            "value": "VWAz_xxPAjRzG6gVX75Gf448AvcidZf9irPiCa8bYmgCAr6oEKxi4amHDh6dKJeYWbIex9DrfAO20Cejn5XpDw"
           }
         }
       },
@@ -7922,6 +8076,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -7941,6 +8100,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -7957,6 +8121,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -7972,6 +8141,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -7982,9 +8156,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -8227,17 +8399,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "CR4OPXCf7PxYVTUEH8plfFJJVAnVbGgW2_33QxWzPWHPpWzT-5_kEjeE9Ielqv_NW7SqWLUltNqRjYTW6g5GCQ"
+            "value": "zQ5i8hc3mcXA27zS3qMpZG2EO_I7OjuP5b3hqgxR7v3XZWWwQkIDg5Lcc-OFVfxFWISevQbKZ-FX7WzsIdq6Aw"
           }
         },
         "delivery": {
@@ -8347,7 +8517,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "6df10cd6beaf6be113eee733bbae341fa8e66c73f8338bcea3787e719c53d864"
+            "contentHash": "8a2fc5849d81ef1d7cd2e7e9857db57a8a3b9930d1038e005054abe2eb1ff893"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -8363,13 +8533,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -8383,7 +8551,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "Hdyhz0YFAtcbMFb1-uUwUwHYqygRxC-fgLgBhpomS086ULCN7EtVao6O4-NjXLAmhSGiOydNuuNJ0Nifk3rWAQ"
+            "value": "FK1F51DH23HJrINk4eAcRyEMuf6_EzPQmk7ffbODZ4gqTnacgX_QP9dTQ6jbz-UKOKEsk0h7ZRHwM4avYSFSCQ"
           }
         }
       },
@@ -8560,6 +8728,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -8579,6 +8752,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -8595,6 +8773,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -8610,6 +8793,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -8620,9 +8808,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -8865,17 +9051,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "terminal": {
@@ -8890,7 +9074,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "expired-refund",
           "disposition": "refund-to-client",
@@ -8906,17 +9090,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xed0dda4c0fd98da1ff7abcb4e276174859530ec9ec8a58906c473eb6699c5369",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800007328000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800007328000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "vRRtZScpPUlfvlszwOP9k1R-kmiMO99yIw7-xK6ozvUbd4fQL9M0xsSJst275fQYcp4aYD1z-rUjIBUbBRNUCg"
+            "value": "NKGZGnLsD86pOONM3xmCviG2VRw_HSM-W36GY0FxQ38iSrCSBXGXpMGtMkE41psmOIkz7h97rZjH0Gg2r2Y3Aw"
           },
           "decisionRef": {
             "kind": "storage-program",
@@ -9082,6 +9264,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -9101,6 +9288,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -9117,6 +9309,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund",
+            "blockNumber": 20000100,
+            "blockHash": "0x896c552744d4b8e05563f7b4ac2cf36d7da389e8bc5ae711781a4db9cf71f595",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block:20000100:1800007200",
+            "blockTimestampSec": 1800007200,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobExpired",
@@ -9127,9 +9324,7 @@
               "reason": null
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -9362,17 +9557,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "terminal": {
@@ -9387,7 +9580,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "expired-refund",
           "disposition": "refund-to-client",
@@ -9403,17 +9596,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xed0dda4c0fd98da1ff7abcb4e276174859530ec9ec8a58906c473eb6699c5369",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800007328000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800007328000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "HsW8Oz_2msodQglqwatMSMutf5XTYuBYoEdcXICXe-qIcDTu1mrRT9qMpdkPyM50WzEKDD4SuJ9namp6c66aCw"
+            "value": "5h9V1znbPc9EbsDWHl3CndR9ttNc-PycMBxxpuXucjz0ec6sfSsy2CbCLb9H5HkhO4pYXG9UHs6ScNhFn7JNCw"
           },
           "deliveryEvidenceRef": {
             "kind": "storage-program",
@@ -9579,6 +9770,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -9598,6 +9794,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -9614,6 +9815,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund",
+            "blockNumber": 20000100,
+            "blockHash": "0x896c552744d4b8e05563f7b4ac2cf36d7da389e8bc5ae711781a4db9cf71f595",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block:20000100:1800007200",
+            "blockTimestampSec": 1800007200,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobExpired",
@@ -9624,9 +9830,7 @@
               "reason": null
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:claimRefund:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -9859,17 +10063,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -9907,7 +10109,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -9923,13 +10125,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -9943,7 +10143,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "3LzHcRDu4P-6KnOD4psrX60NDmCBQPeKlUhQ-UK7c_VaUGz7P2jdotASzTKOk8L1KKZdY3f0_p5m6F5AL0xtDA"
+            "value": "2UkobBeblRla_LPgbgSLOOBuJ46GBWK2JFOPqst27RXv4SwquA9pQBQ77jBzywTVlEeqG1nd5RWwfhBUvI0ADw"
           }
         }
       },
@@ -10119,6 +10319,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -10138,6 +10343,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -10154,6 +10364,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -10169,6 +10384,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -10179,9 +10399,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -10419,17 +10637,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "3iyAY7NQ_Yaig0yPWUBGCCgAZpmmHefT5oMHE2ZxzcNXEF95EcB5TRaZPylBPCtRgkeYs6pLQTvP-WRR19WzDQ"
+            "value": "e-jUGZYrMqjosRBaTNkwL_F7iItXkGGKzUSXPr7NG9lefElNMOzfb9UboIme2w2_19IEYwA3_L6YtsQV-phsCw"
           }
         },
         "delivery": {
@@ -10539,7 +10755,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "24fdd8273619d06267b3279c582915f0e7803857a0810c340f23e2ac59cf41f1"
+            "contentHash": "7f7fe02932036c1967f4bcfd291e98b07f919103987b370df6a79f724e4aaf55"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -10555,13 +10771,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -10575,7 +10789,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "M0rv4dxKi51PmFGGlI_tcrguw-PzhGrS8Wfe8-w5NBasCiwLPs_0KHWt0nkks1URLdrpUUIBF-KC2c3vH48dCg"
+            "value": "HJHWVZ3G2eZdKYx3S3t7TQQZWOvixjZkEKqMvH2rkI2wgvf7H2zFxK8Gf_YDVKvYnCGbXvFlUbghw8BpRZNhCg"
           }
         }
       },
@@ -10752,6 +10966,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -10771,6 +10990,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -10787,6 +11011,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -10802,6 +11031,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -10812,9 +11046,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -11057,17 +11289,15 @@
             }
           ],
           "finality": {
-            "status": "pending",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "4AXAcL6QvL4sxUNd7E2DllJazR57jjOZnDFrSOSp5mSw_TiOaKbJPS0zjTA93taojfacWNlkSVKUltjQOUmlAA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -11177,7 +11407,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "572002d6a142fde25d77ef82c13ac6d5453a77a2da64b267913179e0c62c1185"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -11193,13 +11423,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -11213,7 +11441,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "D_EKQa0alg-yx7nq1mJ8nCc0hs2SEocZMUec6hQVlefSHiskhDyvlr0JR5KyzuiPgHGqSK18hh8Skk4ry8AuDw"
+            "value": "2UkobBeblRla_LPgbgSLOOBuJ46GBWK2JFOPqst27RXv4SwquA9pQBQ77jBzywTVlEeqG1nd5RWwfhBUvI0ADw"
           }
         }
       },
@@ -11390,6 +11618,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -11409,6 +11642,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 63,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -11425,6 +11663,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -11440,6 +11683,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -11450,9 +11698,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -11688,17 +11934,15 @@
           "amountBaseUnits": "1000000",
           "fundingEventRefs": [],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "TPZen9iiP_6xurWj-Sg5yjX6egcgj7FDstBkjNXOGAHEv21S8sv4H_7JQNDWbc80LUZ-M0csTtfbeAqVZqDBAw"
+            "value": "F1jETFgLESppyxeGBkUeaTwPJ6C8BMxzy9vstgcfKZDWhxUkOgnn9LIPEhB1YvO8H6ZGOEolfsGalou61E6KAA"
           }
         },
         "delivery": {
@@ -11808,7 +12052,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "be48ead4d856af4a1e544083d672aa79e4d18599761acae8a06499ccf98435f8"
+            "contentHash": "ddfa1de89e267cb91daadd8c4510a3d435c2161bbc152c4c6010b20a69cd6ce9"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -11824,13 +12068,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -11844,7 +12086,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "dmgouEBcDiAzi5yUaZYKgH1tMpffr-gr_xykq9yvu6YugHB6WgXCB50gXmM33w2pvcUTWmIKlRGr1VtYxCjECw"
+            "value": "bHdsk5mA_WdOO2Rw0INgAqwiiBhCApZFmdJojPwXROSwYkJHX2CkBUJBs0Th6qjysVlf6K1PrRRiMJI_pmlKAA"
           }
         }
       },
@@ -12021,6 +12263,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -12040,6 +12287,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -12056,6 +12308,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -12071,6 +12328,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -12081,9 +12343,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -12326,17 +12586,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -12446,7 +12704,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -12462,13 +12720,11 @@
             }
           ],
           "finality": {
-            "status": "pending",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -12482,7 +12738,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "XRlxncl40zESKWWSVy04xA_bRdW3Vx83DMaje0Nbf-hRKzfS97P44bgYrppJC_B5ropaxRxFk9bJiuOhnAtWDg"
+            "value": "2UkobBeblRla_LPgbgSLOOBuJ46GBWK2JFOPqst27RXv4SwquA9pQBQ77jBzywTVlEeqG1nd5RWwfhBUvI0ADw"
           }
         }
       },
@@ -12659,6 +12915,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -12678,6 +12939,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -12694,6 +12960,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -12709,6 +12980,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 63,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -12719,9 +12995,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -12964,17 +13238,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -13084,7 +13356,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -13093,13 +13365,11 @@
           "recipient": "0x2222222222222222222222222222222222222222",
           "terminalEventRefs": [],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -13113,7 +13383,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "pVxdlH1FFXxYC0Ax3VtqRzYttIPi9FGK3ss43f5f0Eg_YqtJTEBoUP5jfUTO1hM8skT3ObuixX___GK_k7R6Cw"
+            "value": "C_pKfhG5TWoP_Cx40Fo0RnFDI3bPXxyxxBFAQwi1CDs2kz6fsBxAJmQ26Cz8EqA-or0bMA44bdlgwlGxP7m7Ag"
           }
         }
       },
@@ -13290,6 +13560,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -13309,6 +13584,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -13325,6 +13605,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -13340,6 +13625,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -13350,9 +13640,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -13595,17 +13883,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -13715,7 +14001,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -13731,13 +14017,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -13751,7 +14035,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "9IGte9RXpxPgYxq5RfF1fHmx6mO1GvdIhsqFBwxSmaiUYXnjqUE_YWqP-TDHGRDY9yr7w3psIvrVzVIcQKKhCg"
+            "value": "LuI6tqiiZDhUtZ46gBtELL_ZjS9AQ_uNnPKgSdpUdpYHUOXH4_cQ1TaGQu0-i_lSiHpg1WUr6Vbsi079VNdVDg"
           }
         }
       },
@@ -13928,6 +14212,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -13947,6 +14236,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -13963,6 +14257,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -13978,6 +14277,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -13988,9 +14292,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -14233,17 +14535,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "dispute": {
@@ -14262,7 +14562,7 @@
             {
               "kind": "storage-program",
               "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-              "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+              "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
             }
           ],
           "finding": {
@@ -14273,13 +14573,13 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
-            "value": "60qrsffB-bkNhxpX_UBAsx7hJJZdr3gKSHKH1JdBxg-ksHq2vSxIAl9MSDqrlNJxac1QSxGyi7dXEwVCWWh2DA"
+            "value": "Zit4GLKRs0wdRYRM43DSZ2zMSVrklTyZw04niJuKxjSgikK7sJz7satddVrPYhS9W3FIzmOhZ-UMILQc9Ia-Dw"
           }
         },
         "disputeRef": {
           "kind": "storage-program",
           "locator": "dacsx:dispute:01J8ME0SXKQ4T9V2RC5HJ6WX7D:01J8ME0SXKQ4T9V2RC5HJ6WX7F:outcome:0",
-          "contentHash": "6fec25d0d8ef0ea9a1ab1db557c189d2e61b25cfaa7f931ec806f32477f3bbd9"
+          "contentHash": "a610943e7135a98c78f6454ba60b11bf2d1bc053293c5b3ccfa0426c362a8d6c"
         },
         "decision": {
           "escrowDecisionVersion": "1",
@@ -14295,14 +14595,14 @@
             "ref": {
               "kind": "storage-program",
               "locator": "dacsx:dispute:01J8ME0SXKQ4T9V2RC5HJ6WX7D:01J8ME0SXKQ4T9V2RC5HJ6WX7F:outcome:0",
-              "contentHash": "6fec25d0d8ef0ea9a1ab1db557c189d2e61b25cfaa7f931ec806f32477f3bbd9"
+              "contentHash": "a610943e7135a98c78f6454ba60b11bf2d1bc053293c5b3ccfa0426c362a8d6c"
             }
           },
           "disposition": "refund-to-client",
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
-            "value": "Jy0M20bT_30GNu-RVsp9T3FljqQliG3uZB4mhpxgsEWKvaHoAsItSNaGt9eBL4RgMJ35QL-_kO8sLbU_x1BrBQ"
+            "value": "gk4vFkJ7IuETWrMa_hUysDEOfUJFRhPzQKWxsVkbjmQPpzxg9L2D_StJ_Fw27PI9If_f7kW3wSDC86jNMkhTBQ"
           },
           "deliveryEvidenceRef": {
             "kind": "storage-program",
@@ -14313,7 +14613,7 @@
         "decisionRef": {
           "kind": "storage-program",
           "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
-          "contentHash": "691e41489ec25bcf7dd1099e33d47b9dab20770382a17747eb75707ad02ea528"
+          "contentHash": "f03f35bdc2dbd19eceb0b17e76d3021f1a0e853580c897ca301c392521e9d7e1"
         },
         "terminal": {
           "escrowTerminalEvidenceVersion": "1",
@@ -14327,7 +14627,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "rejected-refund",
           "disposition": "refund-to-client",
@@ -14343,22 +14643,20 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xaa75c445df21b8ec294fd003e4993478e4856c91a4eb3a57d4c03685dbb8a341",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799997128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1799997128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
-            "contentHash": "691e41489ec25bcf7dd1099e33d47b9dab20770382a17747eb75707ad02ea528"
+            "contentHash": "f03f35bdc2dbd19eceb0b17e76d3021f1a0e853580c897ca301c392521e9d7e1"
           },
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "mQXuEqMSK__Q6Wxv5_8WPyN__4NHFuROzJDTPkuz0a3uuM5jUVDPJUXahLmrR7b-hBt8uUndtX2anOOshkLNDg"
+            "value": "U4DbsDN3pz1D7AmgvwvbOx0li_KVHbeaIo8vIv-aZl4vQeIz8Nn4cwgFGlzK5ZHC813LNEoF1qu9ZHKM6WMhBQ"
           }
         }
       },
@@ -14385,7 +14683,7 @@
       },
       "mappingSources": {
         "agreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
-        "decisionHash": "691e41489ec25bcf7dd1099e33d47b9dab20770382a17747eb75707ad02ea528"
+        "decisionHash": "f03f35bdc2dbd19eceb0b17e76d3021f1a0e853580c897ca301c392521e9d7e1"
       },
       "native": {
         "chainId": 8453,
@@ -14405,7 +14703,7 @@
         "fundedAtSec": 1799990000,
         "description": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
         "deliverable": null,
-        "reason": "0x691e41489ec25bcf7dd1099e33d47b9dab20770382a17747eb75707ad02ea528",
+        "reason": "0xf03f35bdc2dbd19eceb0b17e76d3021f1a0e853580c897ca301c392521e9d7e1",
         "submissionCutoffSec": 1800000000,
         "submissionCutoffEnforced": true,
         "expiredAt": 1800007200,
@@ -14526,6 +14824,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -14545,6 +14848,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -14561,6 +14869,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject",
+            "blockNumber": 20000100,
+            "blockHash": "0xc2379482f8ea39f351c8f2a657066e6a3d91d246db89c5aeb40abc838eaa3a06",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block:20000100:1799997000",
+            "blockTimestampSec": 1799997000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobRejected",
@@ -14568,12 +14881,10 @@
               "token": "0x5555555555555555555555555555555555555555",
               "amountBaseUnits": "1000000",
               "recipient": "0x1111111111111111111111111111111111111111",
-              "reason": "0x7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005"
+              "reason": "0x517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -14589,9 +14900,9 @@
           "mappedNativeValue": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5"
         },
         "decision": {
-          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22646973707574652d6f7574636f6d65222c22726566223a7b22636f6e74656e7448617368223a2236666563323564306438656630656139613161623164623535376331383964326536316232356366616137663933316563383036663332343737663362626439222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a646973707574653a30314a384d453053584b513454395632524335484a36575837443a30314a384d453053584b513454395632524335484a36575837463a6f7574636f6d653a30227d7d2c2264656c697665727945766964656e6365526566223a7b22636f6e74656e7448617368223a2263646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a65766964656e63653a696e76656e746564227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a22726566756e642d746f2d636c69656e74222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
-          "contentHash": "691e41489ec25bcf7dd1099e33d47b9dab20770382a17747eb75707ad02ea528",
-          "mappedNativeValue": "0x691e41489ec25bcf7dd1099e33d47b9dab20770382a17747eb75707ad02ea528"
+          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22646973707574652d6f7574636f6d65222c22726566223a7b22636f6e74656e7448617368223a2261363130393433653731333561393863373866363435346261363062313162663264316263303533323933633562336363666130343236633336326138643663222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a646973707574653a30314a384d453053584b513454395632524335484a36575837443a30314a384d453053584b513454395632524335484a36575837463a6f7574636f6d653a30227d7d2c2264656c697665727945766964656e6365526566223a7b22636f6e74656e7448617368223a2263646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364636463646364222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a22666978747572653a65766964656e63653a696e76656e746564227d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a22726566756e642d746f2d636c69656e74222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
+          "contentHash": "f03f35bdc2dbd19eceb0b17e76d3021f1a0e853580c897ca301c392521e9d7e1",
+          "mappedNativeValue": "0xf03f35bdc2dbd19eceb0b17e76d3021f1a0e853580c897ca301c392521e9d7e1"
         }
       }
     },
@@ -14811,17 +15122,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -14931,7 +15240,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -14947,13 +15256,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -14967,7 +15274,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "c7MxhVXCwGjQBbHJCI6ao402ANT4aEn_Uj5FxuYve2Hlu0T1zZV8Uxpz9KTxvmFE_hAxb5Cz6qvgHVuNe-kbCQ"
+            "value": "fl9R57tvMpuGW7EmXfuBDBAPny59-MTRv-wTqZPLfC0YxzA7a_JkOmY9AsXtnS8xNW9McqTGZ0LfYCuxVipTCA"
           }
         }
       },
@@ -15144,6 +15451,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -15163,6 +15475,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -15179,6 +15496,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -15194,6 +15516,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -15204,9 +15531,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -15449,17 +15774,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -15570,7 +15893,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "rejected-refund",
           "disposition": "refund-to-client",
@@ -15586,13 +15909,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xaa75c445df21b8ec294fd003e4993478e4856c91a4eb3a57d4c03685dbb8a341",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -15606,7 +15927,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "aSPdwOhoUTJuhunN0yTFJjlrd7zTh3uV3eNn00yAAs2M-Gc6CU455S_F7N0Qf0EizgBu9YFxNiBPLuqRhkYTAA"
+            "value": "71kDDmN-g9uKZxeBPivZ3-nRZuEFajj_8HzbiHmKnX99PV1xHDSR-LehjJtYa_Xh0IQ475TxOxFLuUM_1megCA"
           }
         }
       },
@@ -15783,6 +16104,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -15802,6 +16128,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -15818,6 +16149,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -15833,6 +16169,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject",
+            "blockNumber": 20000100,
+            "blockHash": "0x379d2abe5d04deeab492c5004dbf8d06a5ca6e78933da41f162470fd438139d7",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobRejected",
@@ -15843,13 +16184,11 @@
               "reason": "0xc08adfc25c1dbed1d189d31c95d718f494d318ddfae289609a5cac301bc6510e"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
-        "sellerFault": false,
+        "sellerFault": true,
         "releaseAloneEstablishesNonFinancialCompletion": false
       },
       "submittedBeforeCutoff": true,
@@ -16088,17 +16427,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "dispute": {
@@ -16117,7 +16454,7 @@
             {
               "kind": "storage-program",
               "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-              "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+              "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
             }
           ],
           "finding": {
@@ -16129,13 +16466,13 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
-            "value": "ve_0nBxTk_WJIY17ALctpbyQJGfphaxQ2Z616VyV2OPWgPYySchsTLJrgigcdnh4AUj_fPGjyrRq20btuKPIDg"
+            "value": "DliiL2ds2dqWJYhrMNMiV5zfgiFmQVK19cVawrjZ_Nr9oLOfQ84qdycJPpGwr_ape8vW5VkGk3oTfkP3iI1lAA"
           }
         },
         "disputeRef": {
           "kind": "storage-program",
           "locator": "dacsx:dispute:01J8ME0SXKQ4T9V2RC5HJ6WX7D:01J8ME0SXKQ4T9V2RC5HJ6WX7F:outcome:0",
-          "contentHash": "e8ddcdf58adb5aa1c055ec7f89ae6528f623b82cd96f2f192a0e5884ee16cf98"
+          "contentHash": "de3045db433c1692275e124a074e9846e267b29efc084de9c344f029d9cfb986"
         },
         "decision": {
           "escrowDecisionVersion": "1",
@@ -16151,20 +16488,20 @@
             "ref": {
               "kind": "storage-program",
               "locator": "dacsx:dispute:01J8ME0SXKQ4T9V2RC5HJ6WX7D:01J8ME0SXKQ4T9V2RC5HJ6WX7F:outcome:0",
-              "contentHash": "e8ddcdf58adb5aa1c055ec7f89ae6528f623b82cd96f2f192a0e5884ee16cf98"
+              "contentHash": "de3045db433c1692275e124a074e9846e267b29efc084de9c344f029d9cfb986"
             }
           },
           "disposition": "refund-to-client",
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:3333333333333333333333333333333333333333333333333333333333333333",
-            "value": "a8svp26cPyOe0aPvOPJwvLIbQhN8khp-HeTGhJja4DoMxriH1F-QxoErbAWf5zuvV2G9BzJqTdbz1-Z4h7MuCg"
+            "value": "7jftNgN8KjJqLF81eg6rTon-d9m0XcTukomKdt7z-0t9B2Uvu95gfyZCUVGKL0MR-Tyui29fpz9G2GCNSWPNCw"
           }
         },
         "decisionRef": {
           "kind": "storage-program",
           "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
-          "contentHash": "adc5029b1bf32f9818c7ad1b9ea2b70fd2ee2d968eb5fd00dbb086b5262fb950"
+          "contentHash": "4f53cdea9f0028238beb19115a1b552dbf1cdffa92331b4b1ffb8c0fa162dd6c"
         },
         "terminal": {
           "escrowTerminalEvidenceVersion": "1",
@@ -16178,7 +16515,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "rejected-refund",
           "disposition": "refund-to-client",
@@ -16194,22 +16531,20 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0xaa75c445df21b8ec294fd003e4993478e4856c91a4eb3a57d4c03685dbb8a341",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799997128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1799997128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
-            "contentHash": "adc5029b1bf32f9818c7ad1b9ea2b70fd2ee2d968eb5fd00dbb086b5262fb950"
+            "contentHash": "4f53cdea9f0028238beb19115a1b552dbf1cdffa92331b4b1ffb8c0fa162dd6c"
           },
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "Zg1j77KVvG1s49WMeGkXBLbyjDDJvoJbChuZrc5i47iDXv459fNWqfBZe1HKSlgAKWKCU58Y6B-5STHXhjRdCA"
+            "value": "ypPiCBhWP3dqMDuIC77mWMukA26QPNTB27AVdWPYF9mKPNM1yYFju6Mmz4bIFvgKdFVrss5-nmSNPwPUgvgGCg"
           }
         }
       },
@@ -16236,7 +16571,7 @@
       },
       "mappingSources": {
         "agreementHash": "70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
-        "decisionHash": "adc5029b1bf32f9818c7ad1b9ea2b70fd2ee2d968eb5fd00dbb086b5262fb950"
+        "decisionHash": "4f53cdea9f0028238beb19115a1b552dbf1cdffa92331b4b1ffb8c0fa162dd6c"
       },
       "native": {
         "chainId": 8453,
@@ -16256,7 +16591,7 @@
         "fundedAtSec": 1799990000,
         "description": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5",
         "deliverable": null,
-        "reason": "0xadc5029b1bf32f9818c7ad1b9ea2b70fd2ee2d968eb5fd00dbb086b5262fb950",
+        "reason": "0x4f53cdea9f0028238beb19115a1b552dbf1cdffa92331b4b1ffb8c0fa162dd6c",
         "submissionCutoffSec": 1800000000,
         "submissionCutoffEnforced": true,
         "expiredAt": 1800007200,
@@ -16377,6 +16712,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -16396,6 +16736,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -16412,6 +16757,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject",
+            "blockNumber": 20000100,
+            "blockHash": "0xc2379482f8ea39f351c8f2a657066e6a3d91d246db89c5aeb40abc838eaa3a06",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block:20000100:1799997000",
+            "blockTimestampSec": 1799997000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobRejected",
@@ -16419,12 +16769,10 @@
               "token": "0x5555555555555555555555555555555555555555",
               "amountBaseUnits": "1000000",
               "recipient": "0x1111111111111111111111111111111111111111",
-              "reason": "0x7505508c2a84b89ef5635cdb9a8e9c11b2c2984c8efb8ba8d4ec6a28edb49005"
+              "reason": "0x517962e15d6e658a6b0faad7a30ec79cffac3b09b5bbef3fe757292f36439d2c"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:reject:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -16440,9 +16788,9 @@
           "mappedNativeValue": "dacs-delivery-remedy:v1:70df1310a81ff603834fca6ed75d3ecabb8856260543cc7cbbf92c765d1b8fb5"
         },
         "decision": {
-          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22646973707574652d6f7574636f6d65222c22726566223a7b22636f6e74656e7448617368223a2265386464636466353861646235616131633035356563376638396165363532386636323362383263643936663266313932613065353838346565313663663938222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a646973707574653a30314a384d453053584b513454395632524335484a36575837443a30314a384d453053584b513454395632524335484a36575837463a6f7574636f6d653a30227d7d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a22726566756e642d746f2d636c69656e74222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
-          "contentHash": "adc5029b1bf32f9818c7ad1b9ea2b70fd2ee2d968eb5fd00dbb086b5262fb950",
-          "mappedNativeValue": "0xadc5029b1bf32f9818c7ad1b9ea2b70fd2ee2d968eb5fd00dbb086b5262fb950"
+          "canonicalUtf8Hex": "7b226261736973526566223a7b226b696e64223a22646973707574652d6f7574636f6d65222c22726566223a7b22636f6e74656e7448617368223a2264653330343564623433336331363932323735653132346130373465393834366532363762323965666330383464653963333434663032396439636662393836222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a646973707574653a30314a384d453053584b513454395632524335484a36575837443a30314a384d453053584b513454395632524335484a36575837463a6f7574636f6d653a30227d7d2c2264656c69766572794f7252656d65647941677265656d656e7448617368223a2237306466313331306138316666363033383334666361366564373564336563616262383835363236303534336363376362626639326337363564316238666235222c22646973706f736974696f6e223a22726566756e642d746f2d636c69656e74222c22657363726f774465636973696f6e56657273696f6e223a2231222c22657363726f774a6f62526566223a7b22636f6e74656e7448617368223a2234366139383137393762323731623933633438336234383963613236346635626364623265653430323337623437353234633062326231363263393134613831222c226b696e64223a2273746f726167652d70726f6772616d222c226c6f6361746f72223a2264616373783a64656c69766572792d72656d6564793a30314a384d453053584b513454395632524335484a36575837443a6a6f62227d2c226a6f624964223a2230314a384d453053584b513454395632524335484a3657583744227d",
+          "contentHash": "4f53cdea9f0028238beb19115a1b552dbf1cdffa92331b4b1ffb8c0fa162dd6c",
+          "mappedNativeValue": "0x4f53cdea9f0028238beb19115a1b552dbf1cdffa92331b4b1ffb8c0fa162dd6c"
         }
       }
     },
@@ -16662,17 +17010,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -16782,7 +17128,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "ab00f27778c2d9ca98b6ae11612f5826f978feafcca5849cc43aa69f2510eaa8"
+            "contentHash": "e8c313fd9310f938fe3d9da968522867431cab971d0f5c4f87a56ffdf5a5513f"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -16798,13 +17144,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "fixture:decision:substituted",
@@ -16818,7 +17162,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "G8d9qaid1J38q9Wk4thgqxDDExCcWhlZzDElnuCzww90I49kmfRrxbTxoguaUoGKKKx4ZewnHTvv1dfRFLJxCQ"
+            "value": "Mq00njU8syoD8Q4D5Xp9BtEn_taeO-lh1kg3sGQ0G2_w4-mT8Y2RfXnSYerwPth3NWIDyERR68AQio6ViD0EAQ"
           }
         }
       },
@@ -16995,6 +17339,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -17014,6 +17363,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -17030,6 +17384,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -17045,6 +17404,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -17055,9 +17419,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -17300,17 +17662,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "cLaIdSascZY6tZUd9iCyQi_4tcoDes59P7CoOBlVMRG5G-xaGEyrWToV2fOvRlpPyKdHie6WaC4EVOzFvUpfDA"
+            "value": "b0KgDlUSVIJTUmlxPcMHh7dWfDe_8ooeIMPbTf1S0M8PhNqIrb1HNnbOGDV6AzvKqupCGsKUmua8MlWS6FxVDg"
           }
         },
         "delivery": {
@@ -17436,13 +17796,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -17456,7 +17814,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "Lj2CXBJb-LyqnnIiAxdD-XrcCoipryV3jqPlMoiMQEo6RofYoPrf9G90xKWKyFL8FrUn-51YJL-YWdLcq4XAAg"
+            "value": "sH4XoN_qnxuOdslPJcWvxrioerofMJDRXNSXKt-tDviDl_YybtL3xC9NTO_QlJj2Yleo4VZzLlKCqHDxPBDjCQ"
           }
         }
       },
@@ -17633,6 +17991,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -17652,6 +18015,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -17668,6 +18036,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -17683,6 +18056,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -17693,9 +18071,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -17938,17 +18314,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "KdDPpJLnD_QJqk-dNJ0cWjIncBPU4jZzu_auS68EM61tFh0Tcv2EUWAuy-uRzCwBTHNCckmOZ93jN4ZWIbahCQ"
+            "value": "Y-Hrf6xfHm4AoxbNWe-HzduoGPKKAa2Sm_d8RjDtvgmDnNAgXAuBIi2OgfjMliI-7CE0py1uNdNH0x-8_huuDQ"
           }
         },
         "delivery": {
@@ -18058,7 +18432,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "f371ca43f09ed9e969470da962a88f3bbc5ff309af74f85abc8d81ca4ddf9850"
+            "contentHash": "fcb34695fd095cc06e0ff1d6f9ad314e0d3bcd1b95f80e8a37d4a7fa8c434898"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -18074,13 +18448,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -18094,7 +18466,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "Dl_IwfaoGUaYDNpdeukHTBAvQqw80QFOonjBTR67_Z8ERJ0Gp6TGkKrFzFyUbXWSpdhi-jIY7eHQO1WtgndSDQ"
+            "value": "ks4BavEQ8V0AZAOuAXddmYGtC6uYUlXGb_6VXmiHq_aWBDsbVDFhJHqTf2O1w2BGU6Kyj-2aF9VVyjqT7Nf-BA"
           }
         }
       },
@@ -18271,6 +18643,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -18290,6 +18667,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -18306,6 +18688,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -18321,6 +18708,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -18331,9 +18723,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -18576,17 +18966,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "Wn7aOry8RhMKpnzr5wl6RKr8zfNTrfjjVoF4hF1nK_VrY0M7-nTQZoogAAgeqXUGh05QFRAuhtJDon-EkAn2CQ"
+            "value": "0kmKov-NWDdc2QSraCjuZ5tjXrPta6PNkFZ2xdDGt8svIdoepTHAaMCCUaiTRUEx_s9DZBkowz-5hYcctSFKCA"
           }
         },
         "delivery": {
@@ -18696,7 +19084,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "5044e7a38d1a86148b685272623b4179e78b690977b92a4c3953e09be75aea6a"
+            "contentHash": "c2c36c4ca1f07223e6ec75022c26b3b3b6d8068eaabde91186168205272e2836"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -18712,13 +19100,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -18732,7 +19118,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "EM1odNaIya8FkDkJleSf3vEvGNHyBFuT7SDbI3cpTDutrSSSrOVc_yarWdZoWYTaA7-f4bGtDgddmQ2Op_smAA"
+            "value": "R99vyVhv-0uRbqtT0ytz55JMmzR17aXZeyzEqFCWwWYZzQqlF4Pt2pe_jrBkbcU-YW8Yp0xksTnwynMXTBc4BA"
           }
         }
       },
@@ -18909,6 +19295,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -18928,6 +19319,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -18944,6 +19340,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -18959,6 +19360,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -18969,9 +19375,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -19214,17 +19618,15 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000000,
-            "blockHash": "0x468309630df6425a27265034082c57c05fee3664410fc75ac17bcb0ce72f0b74",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1799990128000
           },
-          "observedAt": 1799990000000,
+          "observedAt": 1799990128000,
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "XrH9rI_TDH4q1jFCHkoZOgfgh-zPZcMAMWrYJSpotC04gbj9_a_UvihoJDJql5tEPugVvOxtEoivaFMPCAirCQ"
+            "value": "jGjr2bf88LqStLPfdTyZTYQIWGuJz1McbEEOP4g8R5PfTWgi8WboOFQOsX4O8s9njXoi5TRi1QKBeVLpA7RrBg"
           }
         },
         "delivery": {
@@ -19334,7 +19736,7 @@
           "fundingEvidenceRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:funding",
-            "contentHash": "2d95ab6dbca15d3617f3b767c87c4398d684ff6618d30b34184ed4f5acc3d09a"
+            "contentHash": "28b69bee313e74d704771f8f7c79f68d24d4931caa0d244b419d32b48ceea25a"
           },
           "terminalState": "released",
           "disposition": "release-to-provider",
@@ -19350,13 +19752,11 @@
             }
           ],
           "finality": {
-            "status": "finalized",
-            "chainId": 8453,
-            "blockNumber": 20000100,
-            "blockHash": "0x99156a08c758e07975c37978beba9a0cdfdc1938d4f29ef9e01023862b835ae8",
-            "confirmations": 64
+            "model": "block-depth",
+            "finalityBlocks": 64,
+            "finalityObservedAt": 1800001128000
           },
-          "observedAt": 1800007300000,
+          "observedAt": 1800001128000,
           "decisionRef": {
             "kind": "storage-program",
             "locator": "dacsx:delivery-remedy:01J8ME0SXKQ4T9V2RC5HJ6WX7D:decision",
@@ -19370,7 +19770,7 @@
           "signature": {
             "algorithm": "ed25519",
             "signer": "did:demos:agent:4444444444444444444444444444444444444444444444444444444444444444",
-            "value": "Lhafd1xlglnB-81KZUzb1AF1PAAKio_-R320XIJHUeP20P9mepUJI7m6msQJLCX8dzhC0Spve6e5G59H0OxuAw"
+            "value": "6nZM66ptLecH7pNe2eD3FfE_A0iXudN1X8-Lp14Zrby8PxeKSdbGzrzJNwKqP7p7e4DeB7f4NUwBZb4ShPpmCg"
           }
         }
       },
@@ -19547,6 +19947,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create",
+            "blockNumber": 19999900,
+            "blockHash": "0x25b1a0a3143b28122a35aac916986e89013addc4bbc6f76d918e6ad1ea5c00f2",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:create:block:19999900:1799989000",
+            "blockTimestampSec": 1799989000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCreated",
@@ -19566,6 +19971,11 @@
               "logIndex": 1
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund",
+            "blockNumber": 20000000,
+            "blockHash": "0xea8c2cbab04c7db03bbcea5a18bb35cbef787a816feda1b2a6fc67e96823e7ce",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block:20000000:1799990000",
+            "blockTimestampSec": 1799990000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobFunded",
@@ -19582,6 +19992,11 @@
               "logIndex": 0
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit",
+            "blockNumber": 20000050,
+            "blockHash": "0xed12ffded436322eb5e64a3644c0b0698d99171d22a1640279a4ee7e59d3b4e4",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:submit:block:20000050:1799995000",
+            "blockTimestampSec": 1799995000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobSubmitted",
@@ -19597,6 +20012,11 @@
               "logIndex": 2
             },
             "txHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete",
+            "blockNumber": 20000100,
+            "blockHash": "0x9a0c8db118246acced7b7ecdf8829eef31030a538044021797f5d7b766000d23",
+            "blockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block:20000100:1800001000",
+            "blockTimestampSec": 1800001000,
+            "confirmations": 64,
             "contractAddress": "0x8181818181818181818181818181818181818181",
             "nativeJobId": "1",
             "eventName": "JobCompleted",
@@ -19607,9 +20027,7 @@
               "reason": "0x0a1cd506467515f1a499431a7e0d7aecec0013c00f297787bdcb3587cf99fa24"
             }
           }
-        ],
-        "fundingFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:fund:block",
-        "terminalFinalityBlockHashPreimageUtf8": "01J8ME0SXKQ4T9V2RC5HJ6WX7D:complete:block"
+        ]
       },
       "reputationProjection": {
         "buyerFault": false,
@@ -19737,6 +20155,7 @@
         "DRT-10",
         "DRT-11",
         "DRT-12",
+        "DRT-14",
         "DRT-4",
         "DRT-5",
         "DRT-7",
@@ -19849,6 +20268,7 @@
         "DRT-10",
         "DRT-11",
         "DRT-12",
+        "DRT-14",
         "DRT-2",
         "DRT-4",
         "DRT-6",
@@ -19954,6 +20374,7 @@
         "DRT-10",
         "DRT-11",
         "DRT-12",
+        "DRT-14",
         "DRT-2",
         "DRT-4",
         "DRT-6",
@@ -20058,6 +20479,7 @@
         "DRT-11",
         "DRT-12",
         "DRT-13",
+        "DRT-14",
         "DRT-3",
         "DRT-4",
         "DRT-6",
@@ -20161,6 +20583,7 @@
         "DRT-11",
         "DRT-12",
         "DRT-13",
+        "DRT-14",
         "DRT-3",
         "DRT-4",
         "DRT-6",
@@ -21069,6 +21492,26 @@
       ]
     },
     {
+      "name": "detached-profile-projection-weakened",
+      "base": "release",
+      "expected": "rejected",
+      "expectedRule": "DRP-5",
+      "rules": [
+        "DRP-5"
+      ],
+      "note": "a detached profile projection cannot weaken the authenticated rail policy",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "profileParameters",
+            "minimumEvaluationWindowSec"
+          ],
+          "value": 1
+        }
+      ]
+    },
+    {
       "name": "native-expiry-divergence",
       "base": "release",
       "expected": "rejected",
@@ -21467,6 +21910,7 @@
         "DRT-10",
         "DRT-11",
         "DRT-12",
+        "DRT-14",
         "DRT-4",
         "DRT-5",
         "DRT-7",
@@ -21718,6 +22162,46 @@
       ]
     },
     {
+      "name": "release-invents-seller-fault",
+      "base": "release",
+      "expected": "rejected",
+      "expectedRule": "DRT-14",
+      "rules": [
+        "DRT-14"
+      ],
+      "note": "a caller projection cannot contradict an authenticated seller-fulfilled finding",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "reputationProjection",
+            "sellerFault"
+          ],
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "rejected-refund-erases-seller-fault",
+      "base": "rejected-refund",
+      "expected": "rejected",
+      "expectedRule": "DRT-14",
+      "rules": [
+        "DRT-14"
+      ],
+      "note": "a caller projection cannot erase the authenticated seller-fault finding",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "reputationProjection",
+            "sellerFault"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
       "name": "nonzero-preterminal-payout",
       "base": "release",
       "expected": "rejected",
@@ -21758,6 +22242,28 @@
       ]
     },
     {
+      "name": "creation-finality-pending",
+      "base": "release",
+      "expected": "indeterminate",
+      "expectedRule": "DRJ-2",
+      "rules": [
+        "DRJ-2"
+      ],
+      "note": "an under-confirmed creation event cannot establish the native job",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "reproductionInputs",
+            "nativeEventInputs",
+            0,
+            "confirmations"
+          ],
+          "value": 63
+        }
+      ]
+    },
+    {
       "name": "funding-finality-pending",
       "base": "funding-finality-pending",
       "expected": "indeterminate",
@@ -21765,8 +22271,30 @@
       "rules": [
         "DRF-6"
       ],
-      "note": "a signed pending funding record cannot unlock delivery",
+      "note": "under-confirmed funding-event evidence cannot unlock delivery",
       "patch": []
+    },
+    {
+      "name": "submission-finality-pending",
+      "base": "release",
+      "expected": "indeterminate",
+      "expectedRule": "DRP-9",
+      "rules": [
+        "DRP-9"
+      ],
+      "note": "an under-confirmed submission event cannot bind the delivery to the native job",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "reproductionInputs",
+            "nativeEventInputs",
+            2,
+            "confirmations"
+          ],
+          "value": 63
+        }
+      ]
     },
     {
       "name": "funding-events-empty",
@@ -21787,7 +22315,7 @@
       "rules": [
         "DRT-8"
       ],
-      "note": "a signed pending terminal record cannot establish disposition",
+      "note": "under-confirmed terminal-event evidence cannot establish disposition",
       "patch": []
     },
     {
@@ -22317,6 +22845,91 @@
       ]
     },
     {
+      "name": "native-event-kind-substitution",
+      "base": "release",
+      "expected": "rejected",
+      "expectedRule": "DRT-4",
+      "rules": [
+        "DRT-4"
+      ],
+      "note": "event observations retain the exact EvmEventRef discriminator",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "reproductionInputs",
+            "nativeEventInputs",
+            3,
+            "eventRef",
+            "kind"
+          ],
+          "value": "transaction"
+        }
+      ]
+    },
+    {
+      "name": "native-event-chain-substitution",
+      "base": "release",
+      "expected": "rejected",
+      "expectedRule": "DRT-4",
+      "rules": [
+        "DRT-4"
+      ],
+      "note": "event observations retain the selected rail chain",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "reproductionInputs",
+            "nativeEventInputs",
+            3,
+            "eventRef",
+            "chainId"
+          ],
+          "value": 10
+        }
+      ]
+    },
+    {
+      "name": "funding-time-caller-substitution",
+      "base": "release",
+      "expected": "rejected",
+      "expectedRule": "DRA-9",
+      "rules": [
+        "DRA-9"
+      ],
+      "note": "a caller fundedAt value cannot replace the authenticated funding-event block timestamp",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "native",
+            "fundedAtSec"
+          ],
+          "value": 1799990001
+        }
+      ]
+    },
+    {
+      "name": "submitted-before-cutoff-claim-substitution",
+      "base": "release",
+      "expected": "rejected",
+      "expectedRule": "DRT-12",
+      "rules": [
+        "DRT-12"
+      ],
+      "note": "submission classification derives from the authenticated event time",
+      "patch": [
+        {
+          "op": "replace",
+          "path": [
+            "submittedBeforeCutoff"
+          ],
+          "value": false
+        }
+      ]
+    },
+    {
       "name": "terminal-event-payload-mismatch",
       "base": "release",
       "expected": "rejected",
@@ -22353,7 +22966,9 @@
           "op": "replace",
           "path": [
             "reproductionInputs",
-            "fundingFinalityBlockHashPreimageUtf8"
+            "nativeEventInputs",
+            1,
+            "blockHashPreimageUtf8"
           ],
           "value": "substituted block"
         }

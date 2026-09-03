@@ -2,7 +2,7 @@
   "set": "bundle-settlement-evidence-bijection-v0.4",
   "spec": "DACS-5 §10.4.3 SEB-1..SEB-6",
   "artifactType": "EvidenceBoundFaultAttestationBundle",
-  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator requires an ordered, outcome-consistent execution prefix and derives phase keys locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. authenticatedRecordByRef represents independently resolved, job-bound SettlementEvidence content; record outcome and hashed supersedesEvidenceRef, not caller-supplied class or edge labels, determine ST-8 terminal selection. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
+  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator requires an ordered, outcome-consistent execution prefix and derives phase keys locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. authenticatedRecordByRef represents independently resolved, job-bound evidence content: payment members are SettlementEvidence and current delivery members are DeliveryEvidence. The record outcome and hashed supersedesEvidenceRef, not caller-supplied class or edge labels, determine ST-8 terminal selection. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
   "reasonCodes": [
     "ok",
     "execution-authority",
@@ -108,7 +108,7 @@
                 "kind": "storage-program",
                 "locator": "stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d"
               },
-              "contentHash": "63c4e219bd07ba667370256ebee96d2ab10cd358b66470fb7933cf99f52a0493"
+              "contentHash": "b951854ad97bb6ea9f3b337c6fda24e792e3f1a7cab016cf7d4bc27281dbee44"
             }
           }
         ],
@@ -126,7 +126,7 @@
               "kind": "storage-program",
               "locator": "stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d"
             },
-            "contentHash": "63c4e219bd07ba667370256ebee96d2ab10cd358b66470fb7933cf99f52a0493"
+            "contentHash": "b951854ad97bb6ea9f3b337c6fda24e792e3f1a7cab016cf7d4bc27281dbee44"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -136,12 +136,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "EUY6xaUsO3Ko7Hm_q9EEmR2C2VCtZ43T-VwJ1Q8wvye_fBpbUvC7_LH7BiJ8kUfN4vFxLRtGV3mXjb-_dhxrBg"
+            "value": "5HVrq0eP3tdrkH6BSGKPRPiy2YNXzcBuXdOhEoSyYwO7FaWr34KK4RhX7hBheZICUT2aSEHS6E1Hpb9yrn4LAw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "iys8vudbqkCFmT7mUgqIhiP9KvpRrjnyxDPjkHb1OfxWM4G9SLdVmZGOHSX3pFB9x-c2N9WZaZpUPIFensMOBQ"
+            "value": "kiJo86I5JTdNvLde6fRLnAh6Rctvih5kfFr5Hv1XV6Yfhs7U4IFfR1CGv4blVynE6KN1mC5Sh_K9E1ZQDEFtCg"
           }
         ]
       },
@@ -183,29 +183,30 @@
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d\"},\"contentHash\":\"63c4e219bd07ba667370256ebee96d2ab10cd358b66470fb7933cf99f52a0493\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d\"},\"contentHash\":\"b951854ad97bb6ea9f3b337c6fda24e792e3f1a7cab016cf7d4bc27281dbee44\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-standard-completed",
+            "phaseIndex": 3,
             "phase": "deliver-attested-payload",
             "outcome": "success",
             "observedAt": 1785772799003,
             "deliverableContentHash": "d69848e8ceef8567545b7f77df4e155600a74904c998674d9f4550f15a49b233",
             "deliverableAnchor": {
               "kind": "storage-program",
-              "locator": "stor-17c19ae9d46767e0a3120e3cf8f49484dda3dadb3562a39caa2a2ca6ae2d0fbc"
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-standard-completed:3"
             },
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-37ebce42c6ce39abb31340ab9c395e52fc0aac8c38e4238b02019982340ea2f6"
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-standard-completed:3:70e08efb722291f54af818e251a50a2070a13d905b2b587f0f1fd5922455374c:0"
               },
               "contentHash": "bc1a18127bc8bb54899a87c2db26f7d41b500330778158a1d46a241416d97be7"
             },
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "VtEd_8V_p3vV5UR6sQWZ4SJ548v2g_al8vpLRM_-87pS_moiVikMmdWTo5isbTUV6NsC3SlMjy6MP9hWYA8OBA"
+              "value": "qqT52SxGQG6P3oQjPkGPfdWsUsv2em-ukNgxPLS_2D9B83LKiNKumCN2f1Z5WCNrbQUuiDwt4rlhnOjueIcBAQ"
             }
           },
           "lifecycle": {
@@ -227,7 +228,7 @@
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-standard-completed:3"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-standard-completed:3"
         }
       },
       "verifiedReceiptByCanonicalRef": {
@@ -239,10 +240,10 @@
           "writer": "did:demos:seller",
           "nonce": 2
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d\"},\"contentHash\":\"63c4e219bd07ba667370256ebee96d2ab10cd358b66470fb7933cf99f52a0493\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-standard-completed:3",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d\"},\"contentHash\":\"b951854ad97bb6ea9f3b337c6fda24e792e3f1a7cab016cf7d4bc27281dbee44\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-standard-completed:3",
           "nativeAddress": "stor-beb2c41f378542cdb5195a6a6ebac0db83138ec150d1ccc849954cbbe2bec09d",
-          "contentHash": "63c4e219bd07ba667370256ebee96d2ab10cd358b66470fb7933cf99f52a0493",
+          "contentHash": "b951854ad97bb6ea9f3b337c6fda24e792e3f1a7cab016cf7d4bc27281dbee44",
           "transaction": "demos-testnet:tx-a4bc042030c5bf89ed8b3993acb65a63",
           "writer": "did:demos:seller",
           "nonce": 3
@@ -537,7 +538,7 @@
                 "kind": "storage-program",
                 "locator": "stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3"
               },
-              "contentHash": "42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a"
+              "contentHash": "ef1bf66c58735054fcaedfe201cf195f49a544f2cb3e39768f88c5c48ccaddb9"
             }
           }
         ],
@@ -562,7 +563,7 @@
               "kind": "storage-program",
               "locator": "stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3"
             },
-            "contentHash": "42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a"
+            "contentHash": "ef1bf66c58735054fcaedfe201cf195f49a544f2cb3e39768f88c5c48ccaddb9"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -572,12 +573,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "X2gfyfBJfoFPLAb65k7CWFxkdsYP7daFEj2UsxDYcXKqzarDBVB_b2yr3hUVgVr0Z-FrqcddHTZ2YOy3jfPKAQ"
+            "value": "NxcxSpLsB5WcuIytrI0iSqxggzBUCn6g25aWIlBwZ-cr7WmRW_v3TDT0CBsRABdaB-u0yKGCHzryXAI3IEjFDQ"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "W7MA2jT9efzN-fbx1GMXt0n05mkGr6ekpahhasP2NQ87fu2sfpjzAvB5oHbK1uGTys8l9Ca16ukkNs8HCjvbBQ"
+            "value": "aFYovIKRRLRa8fB5IriavGOBMZerciVOvSrkcfyismKQ9KPdJzp40Z0MlIe0hfmQH9kkdjIhLnN3C-TfdwgEBA"
           }
         ]
       },
@@ -652,18 +653,23 @@
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3\"},\"contentHash\":\"42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3\"},\"contentHash\":\"ef1bf66c58735054fcaedfe201cf195f49a544f2cb3e39768f88c5c48ccaddb9\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-repeated-pay-completed",
+            "phaseIndex": 2,
             "phase": "deliver-entitlement",
             "outcome": "success",
             "observedAt": 1785772799002,
             "deliverableContentHash": "ece31ec3efd7e51099599bfa3f1dec5aaf0c98bfb2a532f23fa5a86f059ac3c3",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:entitlement:SEB-AUTHORITY-repeated-pay-completed:2:0"
+            },
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "OeJU1QtxJt4_iVRvcA4-6oqPtWgtlbo_NZFeRxSlxno6qC4NQpVxnj-CPNVRVqb0hCk-nBaETSA53Od13QOGDw"
+              "value": "E4bnObVahWIx2QHaI9M0Pj0Al2FD0A3nLOVKjlTpXIwyzV35cb96-Z-x3GVKg7_Kee2mWsxbyDPTP8CZUx8NBQ"
             }
           },
           "lifecycle": {
@@ -692,7 +698,7 @@
           "phaseIndex": 2,
           "phaseKind": "deliver-entitlement",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-repeated-pay-completed:2"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-pay-completed:2"
         }
       },
       "verifiedReceiptByCanonicalRef": {
@@ -712,10 +718,10 @@
           "writer": "did:demos:seller",
           "nonce": 1
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3\"},\"contentHash\":\"42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-repeated-pay-completed:2",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3\"},\"contentHash\":\"ef1bf66c58735054fcaedfe201cf195f49a544f2cb3e39768f88c5c48ccaddb9\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-repeated-pay-completed:2",
           "nativeAddress": "stor-aff6d1e3a6653e3dba93e34268af2c782aa3101db6a11af66faa01e512b56ea3",
-          "contentHash": "42ec71611c11ed67adb3c91af4b77f2ae1a34e05763ddbaae8a08d37d0ab104a",
+          "contentHash": "ef1bf66c58735054fcaedfe201cf195f49a544f2cb3e39768f88c5c48ccaddb9",
           "transaction": "demos-testnet:tx-af2ff7ad447826b9813cb5fc485707c3",
           "writer": "did:demos:seller",
           "nonce": 2
@@ -776,7 +782,7 @@
                 "kind": "storage-program",
                 "locator": "stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62"
               },
-              "contentHash": "a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5"
+              "contentHash": "583adeac4e565f5ee7272d80f486218379845f0d64d8bb8409f06392ad4a9599"
             }
           }
         ],
@@ -787,7 +793,7 @@
               "kind": "storage-program",
               "locator": "stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62"
             },
-            "contentHash": "a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5"
+            "contentHash": "583adeac4e565f5ee7272d80f486218379845f0d64d8bb8409f06392ad4a9599"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -797,12 +803,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "nSAOzht-JQw-eJ7pvHe6EL-An3ZZBGO4oJnp-aJqIO4MBZAWM0T2HsMk19nRn-G0-iE4jFfoP8yQGxMMkKg-AA"
+            "value": "pBb0hRfGN7q85ZmvVCoLOwRNtHKJVvzgQ86ZyVUDtiF-0VvuJdZO9IXWja-eHja3bRbS6tzXsCP1nf7Uy1nuCg"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "_EisEf93AIBrY5zysRwZYjMzn1N7sXtzGdUOvpgaMm-JnzXPKj94h24p8-620d92Pcr8RMjbGDHKsGdowhtaAw"
+            "value": "uOX42QpILWw3kLI_AF4chd8Pj4MBAsJg0J5Ou7-tGmMbZWkM-BbZ46H0uqRmIZlUN6R3cAPlQlT49FgDGslPAg"
           }
         ]
       },
@@ -811,10 +817,11 @@
         "independentlyResolvable": false
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62\"},\"contentHash\":\"a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62\"},\"contentHash\":\"583adeac4e565f5ee7272d80f486218379845f0d64d8bb8409f06392ad4a9599\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-failed-delivery",
+            "phaseIndex": 0,
             "phase": "deliver-storage-program",
             "outcome": "failure",
             "observedAt": 1785772799000,
@@ -822,7 +829,7 @@
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "zSydBlvhT6gu9N5qO9PjWRftLX4hJm4WE4mdjz5PsHLV1aNhYqxIW_ymBl45722h2jHABjOYKneKjXjxod6RCQ"
+              "value": "QyULKsJKdmRnYKj5uVzzQCx3mNVOCBbqpkP4H8S1kVCRKGvmdpXMm4CqKcJ-guzrT-0WcsezjvxKY-KZy37fBg"
             }
           },
           "lifecycle": {
@@ -837,14 +844,14 @@
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-failed-delivery:0"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-failed-delivery:0"
         }
       },
       "verifiedReceiptByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62\"},\"contentHash\":\"a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-failed-delivery:0",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62\"},\"contentHash\":\"583adeac4e565f5ee7272d80f486218379845f0d64d8bb8409f06392ad4a9599\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-failed-delivery:0",
           "nativeAddress": "stor-1135ed5dc97951de785e0deeec20b380ed967ce3e00edecb77e44f0a509d2a62",
-          "contentHash": "a6339c03ca2b87c0574686a4d25404ca9765de475916308d7486569a95fdbcc5",
+          "contentHash": "583adeac4e565f5ee7272d80f486218379845f0d64d8bb8409f06392ad4a9599",
           "transaction": "demos-testnet:tx-2d5a9b4d461d155cc1066956ed543b5f",
           "writer": "did:demos:seller",
           "nonce": 0
@@ -1150,7 +1157,7 @@
                 "kind": "storage-program",
                 "locator": "stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86"
               },
-              "contentHash": "8049695a8f4a382063b9fb54e10d1e65e680f897677f582f3d14aaefc81d48fb"
+              "contentHash": "a9709c902d19e21d64c89c366fd62f63ebb572e8b04b5d7c40168e6ebdacb40f"
             }
           }
         ],
@@ -1168,7 +1175,7 @@
               "kind": "storage-program",
               "locator": "stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86"
             },
-            "contentHash": "8049695a8f4a382063b9fb54e10d1e65e680f897677f582f3d14aaefc81d48fb"
+            "contentHash": "a9709c902d19e21d64c89c366fd62f63ebb572e8b04b5d7c40168e6ebdacb40f"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -1178,12 +1185,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "AWXPo1GdHlwBtvkv_luSt_M2V3r66_waY4KMelPMCAogsvDWVZEAPd_1xn4Q09Ee0uzcYHxPKsylqjXMTxeSCQ"
+            "value": "ARenuJz7gEhc617TVEXg7eEni8rcB9Ws92_QRbCB65ZTn8K23AlhAcBcdytkygIcyqPFW84j4E6sU7WsLWddCw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "AfypScq7gEfCb5XSq7FQ3s0QIWOkX8YYC4Yg6JuCGM-C0jFIJBb7Wc9sZwvjBXf1lN4n4HnX_TO47fkMjcBkBA"
+            "value": "Zpmc-rhOG9iq71R1IKVFuRqyYQvJzU54I6Kh4z45t9QIiskbmgdv7b9hk-SDrBrS3Pp8L2LZzycRlUGOoPTDBw"
           }
         ]
       },
@@ -1225,29 +1232,30 @@
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86\"},\"contentHash\":\"8049695a8f4a382063b9fb54e10d1e65e680f897677f582f3d14aaefc81d48fb\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86\"},\"contentHash\":\"a9709c902d19e21d64c89c366fd62f63ebb572e8b04b5d7c40168e6ebdacb40f\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-bundle-signature",
+            "phaseIndex": 3,
             "phase": "deliver-attested-payload",
             "outcome": "success",
             "observedAt": 1785772799003,
             "deliverableContentHash": "edad9e061fa4182fbb5440bddc4fa9c110a694e07db318b80fe5fb4fa9f7c8c1",
             "deliverableAnchor": {
               "kind": "storage-program",
-              "locator": "stor-ec060a350eda981463615f84c635a998b77c4ef9547c1afe723f1ad09c83dab1"
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-invalid-bundle-signature:3"
             },
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-226f3b0942c868c520322bc3a3ae2e4e8fee13e31df1e26375381d86f847205a"
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-invalid-bundle-signature:3:7005d5530989043fd3c8b3f3049bc8a968ac868bbdd02eb8232501a86db743c4:0"
               },
               "contentHash": "54a49c3daffdbd9af62d5909bc707e61c9f0192dc26ec79837c907e1b4dc5bc2"
             },
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "9xi3Oyp1c5WxazQdr-ao-JUh1_ZPfYBWWqUPYrOuTclITYNwtG_hrKGzTefNMRUohIWjKbY1PjLMjiAUekHjBw"
+              "value": "LUJqdp9HY5yC_0jokBHESYTk0QvUtDvA9qthkAGyrnKC92YWttqsWOio4McudCUuzly9gofTPp-7yJlOl_5WDw"
             }
           },
           "lifecycle": {
@@ -1269,7 +1277,7 @@
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-bundle-signature:3"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-bundle-signature:3"
         }
       },
       "verifiedReceiptByCanonicalRef": {
@@ -1281,10 +1289,10 @@
           "writer": "did:demos:seller",
           "nonce": 2
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86\"},\"contentHash\":\"8049695a8f4a382063b9fb54e10d1e65e680f897677f582f3d14aaefc81d48fb\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-bundle-signature:3",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86\"},\"contentHash\":\"a9709c902d19e21d64c89c366fd62f63ebb572e8b04b5d7c40168e6ebdacb40f\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-bundle-signature:3",
           "nativeAddress": "stor-89aa086f9c25fa654ca4ca6c54d4904ea8b51409d332c6f078826088328c4d86",
-          "contentHash": "8049695a8f4a382063b9fb54e10d1e65e680f897677f582f3d14aaefc81d48fb",
+          "contentHash": "a9709c902d19e21d64c89c366fd62f63ebb572e8b04b5d7c40168e6ebdacb40f",
           "transaction": "demos-testnet:tx-48f2c6557c828e600059772bc64075eb",
           "writer": "did:demos:seller",
           "nonce": 3
@@ -1375,7 +1383,7 @@
                 "kind": "storage-program",
                 "locator": "stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f"
               },
-              "contentHash": "7710916bd22de8b386ab01bdca25b9b930ef41bb84cb354f30f187c768956902"
+              "contentHash": "21a03e7a9c3a5dd9c2779f41706a1acd6965b989916088c85db00880db09c4b9"
             }
           }
         ],
@@ -1393,7 +1401,7 @@
               "kind": "storage-program",
               "locator": "stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f"
             },
-            "contentHash": "7710916bd22de8b386ab01bdca25b9b930ef41bb84cb354f30f187c768956902"
+            "contentHash": "21a03e7a9c3a5dd9c2779f41706a1acd6965b989916088c85db00880db09c4b9"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -1403,12 +1411,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "AwWSIHTDltOf2pK_-R1_R8y7Aeepud9EMizkaibkTygeiBn7A9XG5b2Unb6CD71cDfzIItE7LgMHoBPt0TZ_CQ"
+            "value": "2wIpOziGi-Ksb1OmaSX5X-DjRWUpMq-gtC6Ut5Ji7Uo3qPMJV7zGjplol6_aVCt7G6PRy5SEGH0I-6Rg-Eb6Cw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "Ks3f13CgJWs7c8LKqr-gDpmyojYJDo5x0rBsgI7GiC7QDjzSxuckX1jTYbPmlTygNx6VIHAUttZE0sltCpYhAw"
+            "value": "p8C5lhdb5nFE_o0UuEeT5oEKVHAtZVdzGGdUUeYJNFx6xMiKjPqrU67d2mRY1EnqLxeXto_vKzb4pROCoB67DQ"
           }
         ]
       },
@@ -1450,29 +1458,30 @@
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f\"},\"contentHash\":\"7710916bd22de8b386ab01bdca25b9b930ef41bb84cb354f30f187c768956902\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f\"},\"contentHash\":\"21a03e7a9c3a5dd9c2779f41706a1acd6965b989916088c85db00880db09c4b9\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-mismatched-listing-signer",
+            "phaseIndex": 3,
             "phase": "deliver-attested-payload",
             "outcome": "success",
             "observedAt": 1785772799003,
             "deliverableContentHash": "77bd404269efb67022d9d65e4ffd89b4358d1fdcda6406ac94bb3f26725646f1",
             "deliverableAnchor": {
               "kind": "storage-program",
-              "locator": "stor-25eb43f5e0d3f3ca44b6f194ef368fbda772329b06b90a4b213ddbd0add564a9"
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-mismatched-listing-signer:3"
             },
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-aa4f59c484c6e519b801e71c9d2fcaa3661a61fbc948b2298e733234d8e92d88"
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-mismatched-listing-signer:3:1a955492e9af0638b11e4d20ca4afbf9d5bfe3ac6704745d3ed80d0c364df629:0"
               },
               "contentHash": "10387c712479337f77c52b74c90f117fe343cf2e70e50bafec8461407630f6c1"
             },
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "f07qr6MGCvnCOURP2OeEL7fDfEdEzejdOAlJ4CEYkZ4rf-9Mum-c5uKIQUAyY_0z8PT9_lVp7azbd8ampwTKDA"
+              "value": "setkbNX5TPHPZ72T51V62Tm8dj35wQ6lWOCSXhPQWcNAv9GYcgzMNpJ8-hwU45RYq2917Yw4d2spFKmhWPlTCg"
             }
           },
           "lifecycle": {
@@ -1494,7 +1503,7 @@
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-mismatched-listing-signer:3"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-mismatched-listing-signer:3"
         }
       },
       "verifiedReceiptByCanonicalRef": {
@@ -1506,10 +1515,10 @@
           "writer": "did:demos:seller",
           "nonce": 2
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f\"},\"contentHash\":\"7710916bd22de8b386ab01bdca25b9b930ef41bb84cb354f30f187c768956902\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-mismatched-listing-signer:3",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f\"},\"contentHash\":\"21a03e7a9c3a5dd9c2779f41706a1acd6965b989916088c85db00880db09c4b9\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-mismatched-listing-signer:3",
           "nativeAddress": "stor-179e6a8543e7309bde7dc9bc420a7e4bc77e73a88ec46cb5b15193d2670bbe7f",
-          "contentHash": "7710916bd22de8b386ab01bdca25b9b930ef41bb84cb354f30f187c768956902",
+          "contentHash": "21a03e7a9c3a5dd9c2779f41706a1acd6965b989916088c85db00880db09c4b9",
           "transaction": "demos-testnet:tx-7315dc9158019c4a8e1043355c43d69a",
           "writer": "did:demos:seller",
           "nonce": 3
@@ -1600,7 +1609,7 @@
                 "kind": "storage-program",
                 "locator": "stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc"
               },
-              "contentHash": "9cd61d8bcbe529137448ba77a88c9ecd162fc47334ba9db42d90c05e73c94cb6"
+              "contentHash": "63aba55340e0ec1a62db4b4c9f34ffe4ec5b326eea6cf571cd0f41abdc9868ee"
             }
           }
         ],
@@ -1618,7 +1627,7 @@
               "kind": "storage-program",
               "locator": "stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc"
             },
-            "contentHash": "9cd61d8bcbe529137448ba77a88c9ecd162fc47334ba9db42d90c05e73c94cb6"
+            "contentHash": "63aba55340e0ec1a62db4b4c9f34ffe4ec5b326eea6cf571cd0f41abdc9868ee"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -1628,12 +1637,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "8IAG8K2igZPXuWCJmJyW6t_WksKwdKwISLirM8h8TjdFfZLR_U1nWXJj9-8q-FXYNCboZI5o59lJ-IRDeo8wCw"
+            "value": "ecvbCFSvp7WPI1j9dT1DPndsL3ewWb8Ouyi0itPOcAQYiecAx5VP9R6XMtzliE7q_WaPeHwnZpbl_GVxDchiAA"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "yk88d7PH9V_oVS13j1T-Ws5bKwk_fA5dacz6TsDlEIstfXH6y7cNuM1Zf0qSpI9NlV4xl_BhCZoheovYQcYBAA"
+            "value": "VkhiCLqC8IoIiB6nL9gujnnul1t_YUYWSi-GsaUoBsUDhP0eSuARCJW_14Jhvoge6E0ygNpsHM7MG6DUEogXCw"
           }
         ]
       },
@@ -1675,29 +1684,30 @@
             "independentlyResolvable": true
           }
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc\"},\"contentHash\":\"9cd61d8bcbe529137448ba77a88c9ecd162fc47334ba9db42d90c05e73c94cb6\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc\"},\"contentHash\":\"63aba55340e0ec1a62db4b4c9f34ffe4ec5b326eea6cf571cd0f41abdc9868ee\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-completed-bundle-lifecycle",
+            "phaseIndex": 3,
             "phase": "deliver-attested-payload",
             "outcome": "success",
             "observedAt": 1785772799003,
             "deliverableContentHash": "f13c63b3d0d65e6276ebc6fcf277ffba41f96520ece55cdc7f7ac047ec4086de",
             "deliverableAnchor": {
               "kind": "storage-program",
-              "locator": "stor-be21e0e2d9edb4db26a3a325b4590aa0becf4550ac832c8acb3ec637e636027a"
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3"
             },
             "attestationRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "stor-e8ce4119024d795eaedb1902dc936d63ab0c0f46253353a13f4b50a384d34f78"
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3:c9d48cc27bbbf0a08eb3923ac993d557357fc4550cb68ee6a114c2956a821d3f:0"
               },
               "contentHash": "81c3e2a944791375a32b33fe22d36b69662ee1667a0395c752fa070cee06a3aa"
             },
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "bkhylKwDiD6Pm47qm63bp-Cep_FOsNxG4sCLQtLED9c5gDqexNrs2Xr8Vjv2wvT-c8dz1atqJ9qweqSnfIZ1BQ"
+              "value": "p8e_03XREtNYeqf2jlPUhpL27OP-g2XwbtP562XJqYa-1eSws1psRAEKb-UQ61OnjYQSNelC_DDvTVJNfMybAw"
             }
           },
           "lifecycle": {
@@ -1719,7 +1729,7 @@
           "phaseIndex": 3,
           "phaseKind": "deliver-attested-payload",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3"
         }
       },
       "verifiedReceiptByCanonicalRef": {
@@ -1731,10 +1741,10 @@
           "writer": "did:demos:seller",
           "nonce": 2
         },
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc\"},\"contentHash\":\"9cd61d8bcbe529137448ba77a88c9ecd162fc47334ba9db42d90c05e73c94cb6\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc\"},\"contentHash\":\"63aba55340e0ec1a62db4b4c9f34ffe4ec5b326eea6cf571cd0f41abdc9868ee\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-completed-bundle-lifecycle:3",
           "nativeAddress": "stor-5849668cf3203096c9334cd9e5b58de08bf321a9c31ab5ba3d4005992cf097bc",
-          "contentHash": "9cd61d8bcbe529137448ba77a88c9ecd162fc47334ba9db42d90c05e73c94cb6",
+          "contentHash": "63aba55340e0ec1a62db4b4c9f34ffe4ec5b326eea6cf571cd0f41abdc9868ee",
           "transaction": "demos-testnet:tx-fe722aecfe3224fb2233011b1d01aa96",
           "writer": "did:demos:seller",
           "nonce": 3
@@ -2294,7 +2304,7 @@
                 "kind": "storage-program",
                 "locator": "stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7"
               },
-              "contentHash": "d6e3f113618f367b251f5912e847c29ddd8bd42f2a17c3afc63f3b04d65de344"
+              "contentHash": "2836c857743252e83b7078a5b2e123368d50d0aca6441db04b82439820c8f995"
             }
           }
         ],
@@ -2305,7 +2315,7 @@
               "kind": "storage-program",
               "locator": "stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7"
             },
-            "contentHash": "d6e3f113618f367b251f5912e847c29ddd8bd42f2a17c3afc63f3b04d65de344"
+            "contentHash": "2836c857743252e83b7078a5b2e123368d50d0aca6441db04b82439820c8f995"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -2315,12 +2325,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "7Nw8fEF-EsgGWoUEdHd4Tp1ydpex3xzWMWmijf3-e1sa25pgi6r28jkPOQS8Gd2DC9XvaXZQuCMCoVtiiz0zCQ"
+            "value": "69s93Z7LM83R0pnpdiILMc_CoIaVQ7bwBBi3hhNgn5G4UuCcCmB19w7LOKxXMVCRbvz_emFtPVa8mKwzzO4qCg"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "F_56GaBn5N1Mp2XBLkLH3pZpQ8rOyE03tG28V089V6oyz_P79iguFfGDNfjtEIRm6NrWDrklyxQKIr1lDWsUAg"
+            "value": "OPkMq2DwHsdibuaHeWAB_pjGm4-a84EUjNIAQWpXu2X7r7UqBg0nbacWlyN35OhkwTwPlaibTT0Wpf0QNugZAQ"
           }
         ]
       },
@@ -2329,10 +2339,11 @@
         "independentlyResolvable": false
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7\"},\"contentHash\":\"d6e3f113618f367b251f5912e847c29ddd8bd42f2a17c3afc63f3b04d65de344\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7\"},\"contentHash\":\"2836c857743252e83b7078a5b2e123368d50d0aca6441db04b82439820c8f995\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-failed-outcome-error-class",
+            "phaseIndex": 0,
             "phase": "deliver-storage-program",
             "outcome": "failure",
             "observedAt": 1785772799000,
@@ -2340,7 +2351,7 @@
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "0Vg3OCyk7_xNrv58RrbnB_5fvu-vNHouAliCXTFtvz7Uq5Wz1Vb-th1oW3lmJkPrNNPdrHux03skeHdg9rhIAg"
+              "value": "tk3YELadDF8pk7Tl8crmvFdbercGBtAT2Fe0qGc6osnjUk8sBsWMh3KlX2E6Xp6dYgRpZvGnokenSfoJTk-LAA"
             }
           },
           "lifecycle": {
@@ -2355,14 +2366,14 @@
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-failed-outcome-error-class:0"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-failed-outcome-error-class:0"
         }
       },
       "verifiedReceiptByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7\"},\"contentHash\":\"d6e3f113618f367b251f5912e847c29ddd8bd42f2a17c3afc63f3b04d65de344\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-failed-outcome-error-class:0",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7\"},\"contentHash\":\"2836c857743252e83b7078a5b2e123368d50d0aca6441db04b82439820c8f995\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-failed-outcome-error-class:0",
           "nativeAddress": "stor-80ec80cf894c15d01f8e3ae636a4b03e381990e259671939810dced999167df7",
-          "contentHash": "d6e3f113618f367b251f5912e847c29ddd8bd42f2a17c3afc63f3b04d65de344",
+          "contentHash": "2836c857743252e83b7078a5b2e123368d50d0aca6441db04b82439820c8f995",
           "transaction": "demos-testnet:tx-642c53df13711d3962a7937f1cdcb42f",
           "writer": "did:demos:seller",
           "nonce": 0
@@ -2569,7 +2580,7 @@
                 "kind": "storage-program",
                 "locator": "stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe"
               },
-              "contentHash": "73a31347dde6d2199d7accdd8ba0ece767daff1daa2b7ae214e8f64c41d78246"
+              "contentHash": "a3ab4c85c5b4bc2ac1e95af99a2b25976bbb16db07fda55eed445b17b359244d"
             }
           }
         ],
@@ -2580,7 +2591,7 @@
               "kind": "storage-program",
               "locator": "stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe"
             },
-            "contentHash": "73a31347dde6d2199d7accdd8ba0ece767daff1daa2b7ae214e8f64c41d78246"
+            "contentHash": "a3ab4c85c5b4bc2ac1e95af99a2b25976bbb16db07fda55eed445b17b359244d"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -2590,12 +2601,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "u2q2lBqoFvbBQT3HUWrS2SoCWlXhTBnCUMyAlHdh-bMoc2uYY063M21XrxMVwaVz2XX6SbmSV4_JYCLO1qRmCg"
+            "value": "iNRSbtqycbRFZQ9-JzbdSp9cmWm8QTk4z2hOlj1VibBSq57N1_D2y8DliB6IHrvev5AmYgFu06OLh0XKNBY6Aw"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "rr9SorHuwLvn2-2JcIXu8DecDiYq5vLKo_56ZpekHQ5rzra3y4KiCdLpKZNNXWVYCk5Q9QoxpQY1G1MesLexAA"
+            "value": "9-jsc4XHAc9dtja7hTZuYVz1ehtSp-kiaae9AnGcVAf_CPgG-6tVFQ9SJ4A2t7HRpkZozYofdhPJ0-mE0gsZBQ"
           }
         ]
       },
@@ -2604,10 +2615,11 @@
         "independentlyResolvable": false
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe\"},\"contentHash\":\"73a31347dde6d2199d7accdd8ba0ece767daff1daa2b7ae214e8f64c41d78246\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe\"},\"contentHash\":\"a3ab4c85c5b4bc2ac1e95af99a2b25976bbb16db07fda55eed445b17b359244d\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-transient-retry-exhausted",
+            "phaseIndex": 0,
             "phase": "deliver-storage-program",
             "outcome": "failure",
             "observedAt": 1785772799000,
@@ -2615,7 +2627,7 @@
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "SRmeShnmCROjuU6y0cAElN2LTC6_lNZ4M1kmchXCXjBhq9_3S2h2QGOYAHCwGi0rbkwKjBJxhCE6DlmV-5DMDg"
+              "value": "K-QbyUpbniHvJpV3qgq9FGOJXRNMrXZe4HXoA6VOwVbgZCta_GC098wEQOvWJSST-SQE0w9XYM1uZVLPOz7CCA"
             }
           },
           "lifecycle": {
@@ -2630,14 +2642,14 @@
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-transient-retry-exhausted:0"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-transient-retry-exhausted:0"
         }
       },
       "verifiedReceiptByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe\"},\"contentHash\":\"73a31347dde6d2199d7accdd8ba0ece767daff1daa2b7ae214e8f64c41d78246\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-transient-retry-exhausted:0",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe\"},\"contentHash\":\"a3ab4c85c5b4bc2ac1e95af99a2b25976bbb16db07fda55eed445b17b359244d\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-transient-retry-exhausted:0",
           "nativeAddress": "stor-d124a9b4fb9847cb74e3e35e9c2b845b9ec3f70bbb86573b9e744e825a9c0ebe",
-          "contentHash": "73a31347dde6d2199d7accdd8ba0ece767daff1daa2b7ae214e8f64c41d78246",
+          "contentHash": "a3ab4c85c5b4bc2ac1e95af99a2b25976bbb16db07fda55eed445b17b359244d",
           "transaction": "demos-testnet:tx-8467ddc27477fc30b53a32e80a7ab9be",
           "writer": "did:demos:seller",
           "nonce": 0
@@ -2698,7 +2710,7 @@
                 "kind": "storage-program",
                 "locator": "stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474"
               },
-              "contentHash": "203b74ab5e83efafc3b0b600861b9cc2a7081ac6f9e58c8469c2580e77460a55"
+              "contentHash": "fb20ec54a8e431b94e1dec4df907e6b06c1c478bae4a743a64a7895fde29d991"
             }
           }
         ],
@@ -2709,7 +2721,7 @@
               "kind": "storage-program",
               "locator": "stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474"
             },
-            "contentHash": "203b74ab5e83efafc3b0b600861b9cc2a7081ac6f9e58c8469c2580e77460a55"
+            "contentHash": "fb20ec54a8e431b94e1dec4df907e6b06c1c478bae4a743a64a7895fde29d991"
           }
         ],
         "recipeRegistryVersion": 1,
@@ -2719,12 +2731,12 @@
           {
             "party": "did:demos:buyer",
             "algorithm": "ed25519",
-            "value": "tT10ayF-qzMRk-8KKPAUmanZmkF5wSIVgwzCT0jNdRw53QuGiTZTzDyGRvzLpMpRTrXsiIcBA2zDm5QUF2S3BA"
+            "value": "SnM3V-lwodQ-rY4GNYOyJZC0p4th9NI-qr2Kc7FgZ7AcET37gfR2lYrDdSJUq97zJN6159b3v97HGDPUH4VMAQ"
           },
           {
             "party": "did:demos:seller",
             "algorithm": "ed25519",
-            "value": "F3S_T5IqtnBR7JrGtcyqelGUWfaOWYiNzpaLKqyxuvgP1qKpWJQm0iOv0PPU2uDXfWqtuWzDwTWVB9s5DtJICw"
+            "value": "swnl-kCCFOxuqbJPnhPWJBRMGQdMO2g1z69rEdpdwaRSIJnd812LlueZHij7gcMyJPc4n4U068KtXSoUhzCVBw"
           }
         ]
       },
@@ -2733,10 +2745,11 @@
         "independentlyResolvable": false
       },
       "referenceValidationByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474\"},\"contentHash\":\"203b74ab5e83efafc3b0b600861b9cc2a7081ac6f9e58c8469c2580e77460a55\"}": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474\"},\"contentHash\":\"fb20ec54a8e431b94e1dec4df907e6b06c1c478bae4a743a64a7895fde29d991\"}": {
           "record": {
-            "evidenceVersion": "1",
+            "deliveryEvidenceVersion": "1",
             "jobId": "SEB-AUTHORITY-invalid-transient-not-exhausted",
+            "phaseIndex": 0,
             "phase": "deliver-storage-program",
             "outcome": "failure",
             "observedAt": 1785772799000,
@@ -2744,7 +2757,7 @@
             "signature": {
               "signer": "did:demos:seller",
               "algorithm": "ed25519",
-              "value": "zvN6IhMq9KF3_lfY0zYWJnrxuxZnvxtHTtakDNJQ6fQluwv5vbRygEx7NUf8AvBoNRlCsNc8f9jkRoSUlD9oAw"
+              "value": "LSlpJJLC-ndfJ6aOtZIKcqSduU155iGiCg7aE7o-RrPFbzgDQ9oXWeVfIIpfpQfr-Bkk9KUlXbtRRQdTR1EsCg"
             }
           },
           "lifecycle": {
@@ -2759,14 +2772,14 @@
           "phaseIndex": 0,
           "phaseKind": "deliver-storage-program",
           "phaseOrchestrator": "did:demos:seller",
-          "evidenceLogicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-transient-not-exhausted:0"
+          "evidenceLogicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-transient-not-exhausted:0"
         }
       },
       "verifiedReceiptByCanonicalRef": {
-        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474\"},\"contentHash\":\"203b74ab5e83efafc3b0b600861b9cc2a7081ac6f9e58c8469c2580e77460a55\"}": {
-          "logicalAddress": "dacs4:evidence:SEB-AUTHORITY-invalid-transient-not-exhausted:0",
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474\"},\"contentHash\":\"fb20ec54a8e431b94e1dec4df907e6b06c1c478bae4a743a64a7895fde29d991\"}": {
+          "logicalAddress": "dacs4:delivery:SEB-AUTHORITY-invalid-transient-not-exhausted:0",
           "nativeAddress": "stor-43aa9b453ee2056188f16bac5cf506acf56b907a533b9a0c781790d36cc2b474",
-          "contentHash": "203b74ab5e83efafc3b0b600861b9cc2a7081ac6f9e58c8469c2580e77460a55",
+          "contentHash": "fb20ec54a8e431b94e1dec4df907e6b06c1c478bae4a743a64a7895fde29d991",
           "transaction": "demos-testnet:tx-7f6da1e0b550b6f8797f0397474ab80e",
           "writer": "did:demos:seller",
           "nonce": 0

@@ -347,40 +347,93 @@ def credential_case(access_model: str = "buyer-only", include_credential: bool =
     return case
 
 
-def payload_record(index: int, payload_hash: str) -> dict:
-    method = {"kind": "self-signed"}
+def payload_record(index: int, payload_text: str) -> tuple[dict, dict, dict, dict]:
+    payload_hash = bytes_hash(payload_text.encode("utf-8"))
+    endpoint = f"https://api.example.test/delivery/{index}"
+    method = {
+        "kind": "consensus-backed-proxy",
+        "endpoint": {"method": "GET", "urlTemplate": endpoint},
+    }
+    transaction_value = hashlib.sha256(f"dahr:{JOB}:{index}".encode()).hexdigest()
     method_proof = {
-        "anchor": {"kind": "storage-program", "locator": f"dacs4:self-signed-proof:{JOB}:{index}"},
-        "contentHash": "b2" * 32, "signer": VERIFIER,
+        "kind": "demos-web2-request",
+        "request": {"method": "GET", "url": endpoint},
+        "response": {
+            "status": 200,
+            "data": payload_text,
+            "responseHash": payload_hash,
+            "responseHeadersHash": "b2" * 32,
+        },
+        "transaction": {
+            "kind": "demos-web2-request",
+            "value": transaction_value,
+            "state": "finalized",
+            "authenticated": True,
+        },
+        "proofValid": True,
+    }
+    method_address = f"dacs4:method-evidence:{JOB}:{index}"
+    method_proof_ref = {
+        "anchor": {"kind": "storage-program", "locator": method_address},
+        "contentHash": hash_hex(method_proof),
+        "signer": VERIFIER,
+    }
+    deliverable = {
+        "kind": "attested-payload",
+        "payloadFormat": "application/octet-stream",
+        "verificationMethod": method,
+    }
+    agreement = {
+        "jobId": JOB,
+        "agreementHash": AGREEMENT_HASH,
+        "deliverable": {
+            "deliverableType": "attested-payload",
+            "hash": hash_hex(deliverable),
+        },
     }
     artifact = {
         "payloadAttestationVersion": "1", "jobId": JOB,
-        "agreementHash": AGREEMENT_HASH, "deliverableSpecHash": "d1" * 32,
+        "agreementHash": AGREEMENT_HASH, "deliverableSpecHash": hash_hex(deliverable),
         "payloadFormat": "application/octet-stream", "payloadContentHash": payload_hash,
-        "verificationMethod": "self-signed", "verificationMethodHash": hash_hex(method),
+        "verificationMethod": "consensus-backed-proxy", "verificationMethodHash": hash_hex(method),
         "attempt": 0, "decision": "pass", "reason": "deterministic test proof",
-        "methodEvidenceRef": method_proof, "verifiedAt": 1786000001000 + index,
+        "methodEvidenceRef": method_proof_ref,
+        "methodTransactionRef": {"kind": "demos-web2-request", "value": transaction_value},
+        "verifiedAt": 1786000001000 + index,
         "signature": {"algorithm": "ed25519", "signer": VERIFIER, "value": ""},
     }
     sign(artifact, VERIFIER_SEED, PAYLOAD_DOMAIN)
-    return artifact
+    return artifact, method_proof, deliverable, agreement
 
 
 def attested_case() -> dict:
-    case = {"pipeline": [], "evidenceRecords": [], "artifactRecords": [], "credentials": []}
+    case = {
+        "pipeline": [], "evidenceRecords": [], "artifactRecords": [], "credentials": [],
+        "deliveryAuthorities": [],
+    }
     for index, payload in [(6, b"attested one"), (7, b"attested two")]:
         digest = bytes_hash(payload)
-        record = payload_record(index, digest)
+        payload_text = payload.decode("utf-8")
+        record, method_proof, deliverable, agreement = payload_record(index, payload_text)
         method_hash = record["verificationMethodHash"]
         record_address = f"dacs4:payload-attestation:{JOB}:{index}:{method_hash}:0"
         payload_address = f"dacs4:deliverable:{JOB}:{index}"
+        method_address = record["methodEvidenceRef"]["anchor"]["locator"]
         case["pipeline"].append({"index": index, "kind": "deliver-attested-payload"})
         case["artifactRecords"].extend([
             {"kind": "deliverable", "logicalAddress": payload_address,
-             "cleartextHash": digest, "storedHash": digest, "available": True},
+             "cleartextHash": digest, "cleartextUtf8": payload_text,
+             "storedHash": digest, "available": True},
             {"kind": "PayloadAttestationRecord", "logicalAddress": record_address,
              "artifact": record, "available": True},
+            {"kind": "methodEvidence", "logicalAddress": method_address,
+             "artifact": method_proof, "available": True},
         ])
+        case["deliveryAuthorities"].append({
+            "phaseIndex": index,
+            "deliverable": deliverable,
+            "agreement": agreement,
+        })
         case["evidenceRecords"].append({
             "logicalAddress": f"dacs4:delivery:{JOB}:{index}",
             "artifact": evidence(
@@ -558,6 +611,18 @@ def build_vectors() -> list[dict]:
     vectors.append(make("credential-renewal-mismatch", "fail", "binding renewal must equal signed record and address", credential_case, mutate_credential(lambda e: e["credentialDelivery"].update({"renewalSeq": 1}))))
     vectors.append(make("renewal-zero-evidence-replayed-as-renewal-one", "fail", "renewal evidence cannot be relabelled", credential_case, mutate_credential(lambda e: (e["credentialDelivery"].update({"renewalSeq": 1}), e["deliverableAnchor"].update({"locator": f"dacs4:entitlement:{JOB}:5:1"})))))
     vectors.append(make("credential-overclaims-valid-readable", "error", "action-bearing gate assertions require a new type", credential_case, mutate_credential(lambda e: e["credentialDelivery"].update({"asserts": ["delivered", "valid", "readable"]}))))
+    for field, value in (
+        ("valid", True),
+        ("readable", True),
+        ("asserts", ["delivered", "valid", "readable"]),
+    ):
+        vectors.append(make(
+            f"delivery-evidence-top-level-{field}-extension",
+            "error",
+            f"unknown top-level {field} is an unsupported action-bearing extension",
+            credential_case,
+            mutate_credential(lambda evidence, field=field, value=value: evidence.update({field: value})),
+        ))
 
     def unresolved(case: dict) -> None:
         case["credentials"][0]["available"] = False
@@ -577,6 +642,19 @@ def build_vectors() -> list[dict]:
         case["bundle"]["phaseSummary"][0]["outcome"] = "ok"
         case["bundle"]["phaseSummary"][0].pop("errorClass", None)
     vectors.append(make("success-delivery-missing-closure", "fail", "success evidence requires deliverableContentHash and deliverableAnchor", failed_storage_case, success_without_closure))
+
+    def delivery_outcome_contradicts_summary(case: dict) -> None:
+        artifact = case["evidenceRecords"][0]["artifact"]
+        artifact["outcome"] = "failure"
+        artifact["reason"] = "signed contradiction with the successful phase result"
+        refresh_evidence(case, 0)
+    vectors.append(make(
+        "delivery-outcome-contradicts-phase-summary",
+        "fail",
+        "signed DeliveryEvidence outcome must match the authenticated phaseSummary result",
+        credential_case,
+        delivery_outcome_contradicts_summary,
+    ))
 
     vectors.append(make("mixed-payment-and-delivery-evidence", "pass", "PDE-8 maps current delivery members without redefining payment membership", mixed_payment_delivery_case))
 
@@ -623,8 +701,8 @@ def build_document() -> dict:
     vectors = build_vectors()
     return {
         "set": "phase-bound-delivery-evidence-v0.7",
-        "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-6; DACS-5 §10.4.3; CORE §B.1/§B.7",
-        "decisionModel": "Current delivery evidence signs exact phase identity and artifact/credential closure; contradictions fail, malformed/unsupported input errors, and unavailable otherwise-valid private evidence remains indeterminate.",
+        "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7",
+        "decisionModel": "Current delivery evidence signs exact phase identity and artifact/credential closure; attested delivery resolves the payload, method proof, and authenticated native transaction; contradictions fail, malformed/unsupported input errors, and unavailable otherwise-valid private evidence remains indeterminate.",
         "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
         "hash": hash_hex(vectors),
         "count": len(vectors),

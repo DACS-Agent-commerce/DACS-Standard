@@ -23,6 +23,21 @@ ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
 PAYLOAD_DOMAIN = "dacs-payload-attestation:v1:"
 BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
 DELIVERY_KINDS = {"deliver-storage-program", "deliver-entitlement", "deliver-attested-payload"}
+DELIVERY_REQUIRED_FIELDS = {
+    "deliveryEvidenceVersion", "jobId", "phaseIndex", "phase", "outcome",
+    "observedAt", "signature",
+}
+DELIVERY_OPTIONAL_FIELDS = {
+    "reason", "deliverableContentHash", "deliverableAnchor", "attestationRef",
+    "credentialDelivery",
+}
+PAYLOAD_ATTESTATION_REQUIRED_FIELDS = {
+    "payloadAttestationVersion", "jobId", "agreementHash", "deliverableSpecHash",
+    "payloadFormat", "payloadContentHash", "verificationMethod",
+    "verificationMethodHash", "attempt", "decision", "reason", "verifiedAt",
+    "signature",
+}
+PAYLOAD_ATTESTATION_OPTIONAL_FIELDS = {"methodEvidenceRef", "methodTransactionRef"}
 
 
 def canonical_bytes(value):
@@ -211,23 +226,137 @@ def validate_delivery_artifact(case, evidence):
             return "error"
         record_address = supplied["anchor"]["locator"]
         record_entry = find_artifact(case, record_address, "PayloadAttestationRecord")
-        if record_entry is None or record_entry.get("available") is False:
+        if record_entry is None:
+            same_record_elsewhere = any(
+                entry.get("kind") == "PayloadAttestationRecord"
+                and isinstance(entry.get("artifact"), dict)
+                and artifact_hash(entry["artifact"]) == supplied.get("contentHash")
+                for entry in case["artifactRecords"]
+            )
+            return "fail" if same_record_elsewhere else "indeterminate"
+        if record_entry.get("available") is False:
             return "indeterminate"
         record = record_entry["artifact"]
         if supplied != artifact_ref(record_address, record):
             return "fail"
-        if not verify_signature(record, PAYLOAD_DOMAIN):
+        present = set(record)
+        if (
+            not PAYLOAD_ATTESTATION_REQUIRED_FIELDS <= present
+            or present - PAYLOAD_ATTESTATION_REQUIRED_FIELDS - PAYLOAD_ATTESTATION_OPTIONAL_FIELDS
+            or record.get("payloadAttestationVersion") != "1"
+            or "resultVersion" in record
+            or "evidenceVersion" in record
+            or not verify_signature(record, PAYLOAD_DOMAIN)
+        ):
             return "fail"
         method_hash, attempt = record.get("verificationMethodHash"), record.get("attempt")
+        if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 0:
+            return "error"
         if record_address != f"dacs4:payload-attestation:{job}:{index}:{method_hash}:{attempt}":
             return "fail"
         if (record.get("jobId") != job or record.get("payloadContentHash") != content_hash
                 or record.get("decision") != "pass"):
             return "fail"
+        authorities = [
+            item for item in case.get("deliveryAuthorities", [])
+            if item.get("phaseIndex") == index
+        ]
+        if len(authorities) != 1:
+            return "indeterminate"
+        authority = authorities[0]
+        deliverable = authority.get("deliverable")
+        agreement = authority.get("agreement")
+        method = deliverable.get("verificationMethod") if isinstance(deliverable, dict) else None
+        if (
+            not isinstance(deliverable, dict)
+            or deliverable.get("kind") != "attested-payload"
+            or not isinstance(method, dict)
+            or method.get("kind") != "consensus-backed-proxy"
+            or not isinstance(agreement, dict)
+            or agreement.get("jobId") != job
+            or agreement.get("agreementHash") != record.get("agreementHash")
+            or agreement.get("deliverable", {}).get("deliverableType") != "attested-payload"
+            or agreement.get("deliverable", {}).get("hash") != hash_hex(deliverable)
+            or record.get("deliverableSpecHash") != hash_hex(deliverable)
+            or record.get("payloadFormat") != deliverable.get("payloadFormat")
+            or record.get("verificationMethod") != method.get("kind")
+            or record.get("verificationMethodHash") != hash_hex(method)
+        ):
+            return "fail"
+        cleartext = payload.get("cleartextUtf8")
+        if (
+            not isinstance(cleartext, str)
+            or hashlib.sha256(cleartext.encode("utf-8")).hexdigest() != content_hash
+        ):
+            return "fail"
+        method_ref = record.get("methodEvidenceRef")
+        if not exact_ref_shape(method_ref):
+            return "error"
+        method_entry = find_artifact(
+            case, method_ref["anchor"]["locator"], "methodEvidence"
+        )
+        if method_entry is None or method_entry.get("available") is False:
+            return "indeterminate"
+        method_evidence = method_entry.get("artifact")
+        if (
+            not isinstance(method_evidence, dict)
+            or method_ref.get("contentHash") != hash_hex(method_evidence)
+            or method_evidence.get("proofValid") is not True
+        ):
+            return "fail"
+        endpoint = method.get("endpoint", {})
+        request = method_evidence.get("request", {})
+        response = method_evidence.get("response", {})
+        response_data = response.get("data")
+        transaction = method_evidence.get("transaction", {})
+        method_transaction = record.get("methodTransactionRef")
+        if (
+            request.get("method") != endpoint.get("method")
+            or request.get("url") != endpoint.get("urlTemplate")
+            or not isinstance(response.get("status"), int)
+            or not 200 <= response["status"] < 300
+            or not isinstance(response_data, str)
+            or response_data != cleartext
+            or response.get("responseHash")
+            != hashlib.sha256(response_data.encode("utf-8")).hexdigest()
+            or response.get("responseHash") != content_hash
+            or not isinstance(method_transaction, dict)
+            or transaction.get("kind") != method_transaction.get("kind")
+            or transaction.get("value") != method_transaction.get("value")
+            or transaction.get("state") not in {"included", "finalized"}
+            or transaction.get("authenticated") is not True
+        ):
+            return "fail"
         if "credentialDelivery" in evidence:
             return "fail"
         return "pass"
     return "error"
+
+
+def exact_delivery_evidence_shape(evidence):
+    if not isinstance(evidence, dict):
+        return False
+    present = set(evidence)
+    signature = evidence.get("signature")
+    index = evidence.get("phaseIndex")
+    observed_at = evidence.get("observedAt")
+    return (
+        DELIVERY_REQUIRED_FIELDS <= present
+        and not present - DELIVERY_REQUIRED_FIELDS - DELIVERY_OPTIONAL_FIELDS
+        and evidence.get("deliveryEvidenceVersion") == "1"
+        and "evidenceVersion" not in evidence
+        and isinstance(evidence.get("jobId"), str)
+        and bool(evidence["jobId"])
+        and isinstance(index, int)
+        and not isinstance(index, bool)
+        and index >= 0
+        and evidence.get("phase") in DELIVERY_KINDS
+        and evidence.get("outcome") in {"success", "failure"}
+        and isinstance(observed_at, (int, float))
+        and not isinstance(observed_at, bool)
+        and isinstance(signature, dict)
+        and set(signature) == {"algorithm", "signer", "value"}
+    )
 
 
 def evaluate(case):
@@ -250,6 +379,10 @@ def evaluate(case):
         return "error"
     delivery_summaries = [s for s in summaries if s.get("kind") in DELIVERY_KINDS]
     summary_pairs = {(s.get("index"), s.get("kind")) for s in delivery_summaries}
+    summary_by_pair = {
+        (summary.get("index"), summary.get("kind")): summary
+        for summary in delivery_summaries
+    }
     if (
         len(summary_pairs) != len(delivery_summaries)
         or not summary_pairs.issubset(pipeline_delivery_pairs)
@@ -280,7 +413,7 @@ def evaluate(case):
         if current and legacy:
             return "error"
         if current:
-            if set(artifact).intersection({"evidenceVersion"}):
+            if not exact_delivery_evidence_shape(artifact):
                 return "error"
             index, kind = artifact.get("phaseIndex"), artifact.get("phase")
             if isinstance(index, bool) or not isinstance(index, int) or index < 0:
@@ -338,6 +471,14 @@ def evaluate(case):
         else:
             return "error"
         if mapping in mapped:
+            return "fail"
+        summary = summary_by_pair.get(mapping)
+        expected_outcome = (
+            "success"
+            if isinstance(summary, dict) and summary.get("outcome") == "ok"
+            else "failure"
+        )
+        if not isinstance(summary, dict) or artifact.get("outcome") != expected_outcome:
             return "fail"
         mapped.append(mapping)
         ref_for_mapping[mapping] = supplied_ref
@@ -421,6 +562,32 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             mutate(artifact)
             with self.subTest(field=name):
                 self.assertFalse(verify_signature(artifact, DELIVERY_DOMAIN))
+
+    def test_attested_delivery_executes_the_resolved_dpa_chain(self):
+        vector = next(
+            item for item in self.data["vectors"]
+            if item["name"] == "repeated-attested-payload-each-attempt-zero"
+        )
+        self.assertEqual(evaluate(vector), "pass")
+        for entry in vector["evidenceRecords"]:
+            evidence = entry["artifact"]
+            supplied = evidence["attestationRef"]
+            payload_record_entry = find_artifact(
+                vector, supplied["anchor"]["locator"], "PayloadAttestationRecord"
+            )
+            self.assertIsNotNone(payload_record_entry)
+            payload_record = payload_record_entry["artifact"]
+            method_ref = payload_record["methodEvidenceRef"]
+            method_entry = find_artifact(
+                vector, method_ref["anchor"]["locator"], "methodEvidence"
+            )
+            self.assertIsNotNone(method_entry)
+            self.assertEqual(method_ref["contentHash"], hash_hex(method_entry["artifact"]))
+            self.assertTrue(method_entry["artifact"]["transaction"]["authenticated"])
+            self.assertEqual(
+                method_entry["artifact"]["response"]["responseHash"],
+                evidence["deliverableContentHash"],
+            )
 
     def test_spec_registers_type_domain_addresses_rules_and_versions(self):
         core = (ROOT / "spec" / "CORE.md").read_text(encoding="utf-8")

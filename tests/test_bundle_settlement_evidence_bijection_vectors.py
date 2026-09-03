@@ -52,7 +52,12 @@ def resign_evidence(record, seed):
         "algorithm": "ed25519",
         "value": "",
     }
-    payload = (R.SETTLEMENT_EVIDENCE_DOMAIN + R.settlement_evidence_hash(record)).encode("utf-8")
+    domain = (
+        R.DELIVERY_EVIDENCE_DOMAIN
+        if record.get("deliveryEvidenceVersion") == "1"
+        else R.SETTLEMENT_EVIDENCE_DOMAIN
+    )
+    payload = (domain + R.settlement_evidence_hash(record)).encode("utf-8")
     record["signature"]["value"] = encode(
         Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed)).sign(payload)
     )
@@ -347,6 +352,41 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.pubkeys,
             )
         )
+
+    def test_sequential_gate_dispatches_mixed_payment_and_current_delivery_evidence(self):
+        authority = self.data["executionAuthorities"]["standard-completed"]
+        records = {
+            resolution["record"]["phase"]: resolution["record"]
+            for resolution in authority["referenceValidationByCanonicalRef"].values()
+        }
+        payment = records["pay-dem"]
+        delivery = records["deliver-attested-payload"]
+        self.assertEqual(payment.get("evidenceVersion"), "1")
+        self.assertNotIn("deliveryEvidenceVersion", payment)
+        self.assertTrue(R._settlement_evidence_shape_valid(payment))
+        self.assertEqual(delivery.get("deliveryEvidenceVersion"), "1")
+        self.assertNotIn("evidenceVersion", delivery)
+        self.assertEqual(delivery.get("phaseIndex"), 3)
+        self.assertTrue(R._delivery_evidence_shape_valid(delivery))
+        self.assertEqual(
+            derive_phase_keys(authority, self.pubkeys),
+            ["2:pay-dem", "3:deliver-attested-payload"],
+        )
+
+        for field, value in (
+            ("valid", True),
+            ("readable", True),
+            ("asserts", ["delivered", "valid", "readable"]),
+        ):
+            mutated = copy.deepcopy(authority)
+            replace_top_record(
+                mutated,
+                "deliver-attested-payload",
+                lambda record, field=field, value=value: record.__setitem__(field, value),
+                self.data["seeds"],
+            )
+            with self.subTest(unknown_top_level_field=field):
+                self.assertIsNone(derive_phase_keys(mutated, self.pubkeys))
 
     def test_resolution_binding_rejects_every_unauthenticated_dimension(self):
         mutations = {

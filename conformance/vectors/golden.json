@@ -216,7 +216,7 @@
     }
   },
   "dispute": {
-    "status": "golden — reference-verifier-accepted (verifyBundle) + byte-stable",
+    "status": "candidate — output-only expectations; exact signed inputs and normative artifact contracts are not published here",
     "bundleRef": {
       "jobId": "DACS-VERIFY-0004",
       "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
@@ -250,10 +250,10 @@
       "nonCanonicalAmount": "fail",
       "unknownBundle": "fail"
     },
-    "inputs": "constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; divergent-bundle refs point to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json; HTLC-9 bundle ref points to conformance/fixtures/attestation-bundle-htlc9.json"
+    "inputs": "observed from inputs constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; the exact signed input/resolver pack is not published here; divergent-bundle refs point to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json; HTLC-9 bundle ref points to conformance/fixtures/attestation-bundle-htlc9.json"
   },
   "disclosure": {
-    "status": "golden — reference-verifier-accepted (verifyBundle) + byte-stable",
+    "status": "candidate — output-only expectations; exact signed inputs and normative artifact contracts are not published here",
     "bundleRef": {
       "jobId": "DACS-VERIFY-0004",
       "bundleHash": "e58180907d54d5d5eb983e67eebe1bef8682edf587e2d2cf5a3f5b94d91da847"
@@ -286,7 +286,7 @@
       "malformedKey": "error",
       "transcriptUnsigned": "fail"
     },
-    "inputs": "constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; dispute record points to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json"
+    "inputs": "observed from inputs constructed deterministically in github.com/mj-deving/dacs-verify conformance/run.ts from the seeds above; the exact signed input/resolver pack is not published here; dispute record points to conformance/fixtures/attestation-bundle-0004.json + attestation-bundle-0004-seller.json"
   },
   "settlement": {
     "status": "golden — reference-verifier-accepted + byte-stable",

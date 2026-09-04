@@ -52,22 +52,24 @@ def metadata(host: str, private: Ed25519PrivateKey) -> dict:
 
 
 def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
-                  producer_version: str = "0.6",
-                  claim_metadata: list[dict] | None = None) -> dict:
+                  claim_metadata: list[dict] | None = None,
+                  bundle_version: str | None = "1",
+                  presented_by: str | None = None) -> dict:
     metadata_items = claim_metadata or [md for _ in refs]
     if len(metadata_items) != len(refs):
         raise ValueError("claim metadata must align one-to-one with claim refs")
-    unsigned = {
-        "bundleVersion": "1",
-        "producerDacs1Version": producer_version,
+    unsigned = {}
+    if bundle_version is not None:
+        unsigned["bundleVersion"] = bundle_version
+    unsigned.update({
         "subject": "domain compatibility vector",
         "claims": [
             {"ref": ref, "metadata": {"demosGcrDomain": copy.deepcopy(claim_md)}}
             for ref, claim_md in zip(refs, metadata_items)
         ],
-        "presentedBy": refs[0],
+        "presentedBy": presented_by if presented_by is not None else refs[0],
         "presentedAt": NOW - 1_000,
-    }
+    })
     canonical = compact(unsigned)
     digest = hashlib.sha256(canonical).digest()
     signed = b"dacs-bundle-presentation:v1:" + digest
@@ -80,10 +82,32 @@ def signed_bundle(refs: list[str], md: dict, signer: Ed25519PrivateKey,
     }
 
 
+def producer_input(hosts: list[str], metadata_items: list[dict],
+                   presented_by_claim_index: int = 0) -> dict:
+    if len(hosts) != len(metadata_items):
+        raise ValueError("producer host inputs must align with metadata")
+    return {
+        "producerVersion": "dacs1-domain-v1",
+        "bundleVersion": "1",
+        "subject": "domain compatibility vector",
+        "claims": [
+            {
+                "nativeContext": "web2.domain",
+                "hostname": hostname,
+                "metadata": {"demosGcrDomain": copy.deepcopy(claim_md)},
+            }
+            for hostname, claim_md in zip(hosts, metadata_items)
+        ],
+        "presentedByClaimIndex": presented_by_claim_index,
+        "presentedAt": NOW - 1_000,
+    }
+
+
 def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
          signer: Ed25519PrivateKey, **extra: object) -> dict:
-    producer_version = str(extra.pop("producerDacs1Version", "0.6"))
     claim_metadata = extra.pop("claimMetadata", None)
+    bundle_version = extra.pop("bundleVersion", "1")
+    presented_by = extra.pop("presentedBy", None)
     registration_proof = str(extra.pop(
         "registrationProofPayload",
         proof_payload(key("dacs-275-domain-owner"), md["hostname"], md["account"]),
@@ -92,8 +116,10 @@ def case(name: str, expected: str, refs: list[str], md: dict, record: dict,
         "name": name,
         "expected": expected,
         "artifact": signed_bundle(
-            refs, md, signer, producer_version,
+            refs, md, signer,
             claim_metadata=claim_metadata if isinstance(claim_metadata, list) else None,
+            bundle_version=bundle_version if isinstance(bundle_version, str) else None,
+            presented_by=presented_by if isinstance(presented_by, str) else None,
         ),
         "authoritativeGcr": copy.deepcopy(record),
         "registrationValidation": {
@@ -127,8 +153,11 @@ def main() -> None:
     record = copy.deepcopy(md)
     vectors: list[dict] = []
 
-    vectors.append(case("canonical-production", "pass", [f"domain:{host}"], md, record, owner,
-                        want={"semanticClaims": [f"domain:{host}"], "freshControl": False}))
+    vectors.append(case(
+        "canonical-production", "pass", [f"domain:{host}"], md, record, owner,
+        producerInput=producer_input([host], [md]),
+        want={"semanticClaims": [f"domain:{host}"], "freshControl": False},
+    ))
 
     # DCR-1 exact length boundaries: 63 octets per label and 253 octets for the
     # complete host are admitted; one octet beyond either bound is malformed.
@@ -180,34 +209,88 @@ def main() -> None:
 
     vectors.append(case(
         "current-producer-u-label-rejected", "fail", ["domain:faß.example"],
-        idna_md, idna_md, owner, ruleRefs=["DCR-1"],
+        idna_md, idna_md, owner,
+        producerInput=producer_input(["faß.example"], [idna_md]), ruleRefs=["DCR-1"],
         want={"semanticClaims": [f"domain:{idna_host}"]},
     ))
 
     vectors.append(case(
         "current-producer-uppercase-host-rejected", "fail",
-        ["domain:Agent.Example"], md, record, owner, ruleRefs=["DCR-1"],
+        ["domain:Agent.Example"], md, record, owner,
+        producerInput=producer_input(["Agent.Example"], [md]), ruleRefs=["DCR-1"],
         want={"semanticClaims": [f"domain:{host}"]},
     ))
+
+    for name, ref, expected_host in [
+        ("reader-uppercase-domain-rejected-without-profile", "domain:Agent.Example", host),
+        ("reader-u-label-domain-rejected-without-profile", "domain:faß.example", idna_host),
+    ]:
+        expected_md = idna_md if expected_host == idna_host else md
+        vectors.append(case(
+            name, "fail", [ref], expected_md, expected_md, owner,
+            ruleRefs=["DCR-1"],
+            want={"semanticClaims": [f"domain:{expected_host}"]},
+        ))
 
     decomposed_input = "e\u0301xample.example"
     decomposed_host = "xn--xample-9ua.example"
     decomposed_md = metadata(decomposed_host, owner)
     vectors.append(case("legacy-decomposed-unicode-nfc-idna-read", "pass",
                         [f"web2:domain:{decomposed_input}"], decomposed_md, decomposed_md,
-                        owner, producerDacs1Version="0.5", unicodeInput=decomposed_input,
+                        owner, unicodeInput=decomposed_input,
                         want={"semanticClaims": [f"domain:{decomposed_host}"],
                               "originalBytesPreserved": True}))
 
     vectors.append(case(
         "legacy-mixed-case-ascii-read", "pass", ["web2:domain:Agent.Example"],
-        md, record, owner, producerDacs1Version="0.5", ruleRefs=["DCR-4"],
+        md, record, owner, ruleRefs=["DCR-4"],
         want={"semanticClaims": [f"domain:{host}"], "originalBytesPreserved": True},
     ))
 
+    vectors.append(case(
+        "legacy-alias-unknown-bundle-version-rejected", "error",
+        [f"web2:domain:{host}"], md, record, owner,
+        bundleVersion="2", ruleRefs=["DCR-4"],
+        want={"semanticClaims": []},
+    ))
+    vectors.append(case(
+        "legacy-alias-missing-bundle-version-rejected", "error",
+        [f"web2:domain:{host}"], md, record, owner,
+        bundleVersion=None, ruleRefs=["DCR-4"],
+        want={"semanticClaims": []},
+    ))
+
+    invalid_legacy = case(
+        "legacy-mixed-case-invalid-signature-rejected-before-fold", "fail",
+        ["web2:domain:Agent.Example"], md, record, owner,
+        ruleRefs=["DCR-4"],
+        want={"semanticClaims": []},
+    )
+    signature = bytearray.fromhex(invalid_legacy["artifact"]["signature"])
+    signature[0] ^= 1
+    invalid_legacy["artifact"]["signature"] = signature.hex()
+    vectors.append(invalid_legacy)
+
+    malformed_legacy = case(
+        "legacy-malformed-host-errors-after-signature-verification", "error",
+        ["web2:domain:agent..example"], md, record, owner,
+        ruleRefs=["DCR-4"], want={"semanticClaims": []},
+    )
+    vectors.append(malformed_legacy)
+    malformed_bad_signature = copy.deepcopy(malformed_legacy)
+    malformed_bad_signature["name"] = (
+        "legacy-malformed-host-invalid-signature-fails-before-normalization"
+    )
+    malformed_bad_signature["expected"] = "fail"
+    malformed_signature = bytearray.fromhex(
+        malformed_bad_signature["artifact"]["signature"]
+    )
+    malformed_signature[0] ^= 1
+    malformed_bad_signature["artifact"]["signature"] = malformed_signature.hex()
+    vectors.append(malformed_bad_signature)
+
     legacy = case("legacy-alias-original-byte-preservation", "pass",
                   [f"web2:domain:{host}"], md, record, owner,
-                  producerDacs1Version="0.5",
                   want={"semanticClaims": [f"domain:{host}"], "originalBytesPreserved": True})
     rewritten = copy.deepcopy(legacy["artifact"]["unsigned"])
     rewritten["claims"][0]["ref"] = f"domain:{host}"
@@ -217,7 +300,6 @@ def main() -> None:
 
     vectors.append(case("historical-alias-pair-deduplicates", "pass",
                         [f"domain:{host}", f"web2:domain:{host}"], md, record, owner,
-                        producerDacs1Version="0.5",
                         want={"semanticClaims": [f"domain:{host}"], "tierGain": False,
                               "oneOfGain": False}))
 
@@ -230,8 +312,34 @@ def main() -> None:
         ruleRefs=["DCR-5"],
         want={"semanticClaims": [f"domain:{host}", f"domain:{other_host}"]},
     ))
-    vectors.append(case("current-producer-dual-alias-rejected", "fail",
-                        [f"domain:{host}", f"web2:domain:{host}"], md, record, owner))
+    vectors.append(case(
+        "current-producer-dual-alias-rejected", "fail",
+        [f"domain:{host}", f"web2:domain:{host}"], md, record, owner,
+        producerInput=producer_input([host, host], [md, md]), ruleRefs=["DCR-5"],
+    ))
+    vectors.append(case(
+        "current-producer-dual-alias-with-mixed-case-rejected", "fail",
+        [f"domain:{host}", "web2:domain:Agent.Example"], md, record, owner,
+        producerInput=producer_input([host, "Agent.Example"], [md, md]),
+        ruleRefs=["DCR-5"],
+    ))
+    vectors.append(case(
+        "current-producer-single-legacy-alias-rejected", "fail",
+        [f"web2:domain:{host}"], md, record, owner,
+        producerInput=producer_input([host], [md]), ruleRefs=["DCR-3"],
+    ))
+    vectors.append(case(
+        "current-producer-single-mixed-case-legacy-alias-rejected", "fail",
+        ["web2:domain:Agent.Example"], md, record, owner,
+        producerInput=producer_input(["Agent.Example"], [md]), ruleRefs=["DCR-3"],
+    ))
+    vectors.append(case(
+        "current-producer-presented-by-legacy-alias-rejected", "fail",
+        [f"domain:{host}"], md, record, owner,
+        presentedBy=f"web2:domain:{host}",
+        producerInput=producer_input([host], [md]), ruleRefs=["DCR-1", "DCR-3"],
+        want={"semanticClaims": [f"domain:{host}"]},
+    ))
 
     for name, ref in [
         ("scheme-is-not-a-host", "domain:https://agent.example"),
@@ -411,14 +519,24 @@ def main() -> None:
         "spec": "DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6",
         "tier": "candidate",
         "description": "Canonical domain production, permanent signature-preserving Demos alias reads, semantic deduplication, and persistent GCR verification with genuine deterministic Ed25519 proofs.",
+        "adapterExecution": {
+            "producerCaseSelector": "producerInput is present",
+            "producerRequirement": "invoke the adapter's public current DACS-1 domain producer/serializer with producerInput and compare every emitted ClaimReference position plus the complete unsigned artifact to artifact.unsigned",
+            "readerRequirement": "when producerInput is absent, verify and evaluate the supplied signed artifact through the read/replay path",
+            "unsupportedProducerStatus": "abstain",
+            "forbiddenShortcut": "a reader-only replay of artifact is not a producer result",
+        },
         "modelNotes": [
             "sourceAuthentication and writerAuthorization are resolved verifier inputs modelling DGCR-1/DGCR-2 substrate evidence; they are not new DACS wire artifacts.",
             "authenticatedSr1Binding models an already-authenticated SR-1 resolver result bound to the exact presentation; it is not a caller assertion.",
+            "producerInput cases execute the reference current-domain producer/serializer; an adapter without that producer boundary records status=abstain and MUST NOT replay the supplied artifact through its reader as a substitute.",
+            "Readers apply permanent alias compatibility from the verified bundleVersion and alias spelling alone; mutable deployment/profile state cannot reclassify retained bytes.",
             "evaluationScope=semantic-claim-set isolates DCR-5 identity-set processing before per-claim GCR evaluation.",
         ],
         "provenance": {
             "issue": "DACS-Agent-commerce/DACS-Standard#275",
             "coverageIssue": "DACS-Agent-commerce/DACS-Standard#332",
+            "profileBoundaryIssue": "DACS-Agent-commerce/DACS-Standard#347",
             "generator": "scripts/generate_domain_gcr_vectors.py",
         },
         "count": len(vectors),

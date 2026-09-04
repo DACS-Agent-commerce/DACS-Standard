@@ -2,6 +2,9 @@
   "set": "sb2-collision-authority-v0.8",
   "spec": "DACS-4 §9.5.8 SB-2 authenticated collision authority",
   "tier": "candidate",
+  "supersedes": [
+    "sb2-settlement-uniqueness-v0.1"
+  ],
   "description": "Cross-job/phase collisions use finalized settlement-side authority; without it every competing claim is indeterminate and non-countable.",
   "count": 19,
   "hash": "2654e6259b91336a3f2ee06523d32820f709e6073bdf0af2e214ee1ed4e100a9",

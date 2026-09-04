@@ -17,6 +17,9 @@ import generate_sb2_collision_authority_vectors as generator  # noqa: E402
 
 
 VECTORS = ROOT / "conformance/vectors/security/sb2-collision-authority-v0.8.json"
+HISTORICAL_VECTORS = (
+    ROOT / "conformance/vectors/security/sb2-settlement-uniqueness-v0.1.json"
+)
 
 
 def outcome(
@@ -113,6 +116,24 @@ class Sb2CollisionAuthorityVectorTests(unittest.TestCase):
 
     def test_committed_file_is_deterministic(self):
         self.assertEqual(VECTORS.read_text(encoding="utf-8"), generator.rendered())
+
+    def test_historical_winner_corpus_is_machine_readably_superseded(self):
+        historical = json.loads(HISTORICAL_VECTORS.read_text(encoding="utf-8"))
+        self.assertEqual(historical["tier"], "historical")
+        self.assertEqual(
+            historical["conformanceProfile"],
+            {
+                "status": "superseded",
+                "currentCollisionAuthority": False,
+                "normativeScope": (
+                    "settlement-tx-id-canonicalisation-and-same-tuple-idempotency-only"
+                ),
+                "supersededBy": "sb2-collision-authority-v0.8",
+            },
+        )
+        self.assertEqual(
+            self.data["supersedes"], ["sb2-settlement-uniqueness-v0.1"]
+        )
 
     def test_every_vector_executes_to_pinned_group_result(self):
         for vector in self.data["vectors"]:

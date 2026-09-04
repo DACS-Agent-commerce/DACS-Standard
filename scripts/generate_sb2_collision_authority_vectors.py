@@ -349,6 +349,7 @@ def document() -> dict[str, Any]:
         "set": "sb2-collision-authority-v0.8",
         "spec": "DACS-4 §9.5.8 SB-2 authenticated collision authority",
         "tier": "candidate",
+        "supersedes": ["sb2-settlement-uniqueness-v0.1"],
         "description": (
             "Cross-job/phase collisions use finalized settlement-side authority; "
             "without it every competing claim is indeterminate and non-countable."

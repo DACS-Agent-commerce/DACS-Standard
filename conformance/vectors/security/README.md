@@ -42,6 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`legacy-bundle-admission-v0.6.json`](legacy-bundle-admission-v0.6.json) | DACS-5 v0.6 §10.4.1/§10.5.1 LAB-1..LAB-7 | 23 | `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -317,6 +318,32 @@ Each entry in `vectors[]`:
 | `want.readDispositions` | CORE SR-2 result per buyer/seller address where applicable |
 | `want.lookupDisposition` | DACS-5 consumer result: `one-sided`, `divergent`, or `indeterminate` |
 | `want.reputationEffect` | `include` only after authoritative absence; otherwise `exclude` |
+
+### `legacy-bundle-admission-v0.6.json` — DACS-5 §10.4.1/§10.5.1 LAB-1..LAB-7
+
+23 candidate vectors execute the transition from role-relative legacy
+`AttestationBundle` records to FAB/EBFAB production. Modern absolute-fault
+types are not made dependent on legacy-era proof. A legacy copy is reputation-
+eligible only when finalized history binds its exact content hash to the exact
+resolved buyer/seller role strictly before the governed per-substrate
+checkpoint.
+
+The adversarial cases cover fresh and backdated post-checkpoint legacy
+production, same-position refusal, buyer↔seller rebinding, hash and substrate
+mismatch, invalid steward signature/address binding, unavailable or conflicting
+checkpoint authority, and missing/pruned/reorged/unorderable anchor history.
+Every non-pass result remains audit-inspectable, creates no party fault, and is
+never converted into authoritative absence. Genuine historical presentation
+and same-role re-anchoring remain eligible through the original receipt without
+rewriting or re-signing the bundle.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_legacy_bundle_admission_vectors.py --write
+python3 scripts/generate_legacy_bundle_admission_vectors.py --check
+python3 -m unittest tests.test_legacy_bundle_admission_vectors -v
+```
 
 This is a candidate set. Independent cross-run convergence and golden promotion
 remain pending.

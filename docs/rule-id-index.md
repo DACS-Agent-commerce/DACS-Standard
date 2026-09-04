@@ -28,6 +28,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
+| LAA-* | Legacy agreement activation and historical-era admission | §9.5.1 | §14.4 |
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |

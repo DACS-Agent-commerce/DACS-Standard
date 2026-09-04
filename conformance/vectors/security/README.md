@@ -42,6 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`legacy-agreement-admission-v0.8.json`](legacy-agreement-admission-v0.8.json) | DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10 | 41 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -705,6 +706,35 @@ submission because an applicable binding cannot be resolved. `error` means a
 resolver/input error is surfaced as error, with no tier-3 downgrade and no
 payment. This set is candidate data only; cross-run convergence and any golden
 promotion remain pending.
+
+### `legacy-agreement-admission-v0.8.json` — §9.5.1 LAA-1..LAA-7 / §8.6 CA-10
+
+Forty-one candidate cases execute the governed transition from legacy
+`AgreementDocument` payment authority to `PayeeBoundAgreementDocument`. They
+cover fixed-address checkpoint resolution, steward/domain/address/policy
+authentication, finalized activation order, binding-qualified pre-activation
+absence, immediate current-session refusal, the zero-length in-flight policy,
+and CA-10 commitment-phase selection.
+
+Historical cases require the exact party-signed agreement, agreement-hash
+commitment, and settlement-evidence binding to carry finalized receipts
+on one authenticated substrate and one exact consensus ordering domain,
+strictly before the checkpoint. Authenticated absence on another substrate is
+inert; cross-order-domain scalar positions are never compared. Backdated
+`generatedAt` or `observedAt`, a late
+presentation/re-anchor, ordinary not-found, non-final receipts, same-position
+ambiguity, checkpoint conflict/reorg, and unavailable proof cannot manufacture
+current payment authority. The suite preserves the distinction between bytes
+that remain cryptographically inspectable and records eligible for current
+payment or historical settlement audit.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_legacy_agreement_admission_vectors.py --write
+python3 scripts/generate_legacy_agreement_admission_vectors.py --check
+python3 -m unittest tests.test_legacy_agreement_admission_vectors -v
+```
 
 ### `domain-claim-gcr-v0.4.json` — DACS-1 §6.3.1 DCR-1..DCR-8 / DACS-2 §7.3.10 DGCR-1..DGCR-6
 

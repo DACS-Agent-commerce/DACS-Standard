@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.5** (on the common DACS v0.1 baseline; v0.5 binds a `pay-alternative` Listing to exactly one complete `terms.rail` selection, validates payee-bound payout coverage against the DACS-4 APR effective pipeline, and signs any cross-job replacement through `priorPaymentDispositionRef`; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.6** (on the common DACS v0.1 baseline; v0.6 adds CA-10 so pay-bearing commitments obey the governed DACS-4 legacy-agreement activation checkpoint before selecting an agreement type; v0.5 binds a `pay-alternative` Listing to exactly one complete `terms.rail` selection, validates payee-bound payout coverage against the DACS-4 APR effective pipeline, and signs any cross-job replacement through `priorPaymentDispositionRef`; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -658,6 +658,17 @@ type AgreementCommitmentRecord = CommitmentRecord | FinalityCommitmentRecord
 - (CA-7) **Agreement binding.** A consumer MUST verify the agreement's required party signatures, recompute `agreementHash`, and match it to the applicable `AgreementCommitmentRecord`. When CA-4 is used, the separate agreement anchor's deployer, owner, and native address MUST NOT affect acceptance.
 - (CA-8) **Timestamp separation.** `FinalityCommitmentRecord.createdAt` is signed construction metadata. Its authoritative `committedAt` is not a record field: it is the consensus timestamp of the verified finalized receipt. A consumer MUST reject a finality-commitment flow that substitutes `createdAt`, `observedAt`, an RPC response time, or an indexer timestamp for `committedAt`. When consuming a legacy `CommitmentRecord`, a new reader MUST verify that its signed `committedAt` equals the authenticated historical anchor timestamp; mismatch is rejected.
 - (CA-9) **Minor-safe type distinction.** A producer conforming to DACS-3 v0.4 or later MUST emit `FinalityCommitmentRecord`, never the legacy type. A reader MUST select the type before signature or timestamp interpretation: exactly one of `dacsVersion: "1"` or `finalityCommitmentVersion: "1"` MUST be present. Both, neither, or an unsupported discriminator MUST be rejected. A reader MUST NOT coerce one type into the other by dropping `committedAt`, `createdAt`, `signature`, or either discriminator. A reader that supports only the legacy type safely rejects the structurally distinct finality type as unsupported under CORE §11.1.2.
+- (CA-10) **Legacy-agreement activation gate.** For a Listing whose effective
+  pipeline contains a DACS-4 `PaymentPhaseType`, the commitment handler MUST
+  resolve the DACS-4 §9.5.1 `LegacyAgreementActivationCheckpoint` under LAA-1
+  before selecting an agreement artifact. At or after activation it MUST reject
+  `commit-agreement` and require `commit-payee-bound-agreement`; authenticated
+  pre-activation absence permits the historical phase only before activation.
+  Unavailable, conflicting, pruned, reorged or otherwise indeterminate
+  checkpoint authority MUST NOT authorize a legacy pay-bearing commitment.
+  Payee-bound commitment remains available without using uncertainty as a
+  legacy fallback. A zero-pay pipeline is outside LAA and may retain
+  `commit-agreement`.
 
 > **Note (non-normative).** The orchestrator is accountable for causing the commitment phase to anchor successfully. It need not be the raw substrate key recorded as a StorageProgram deployer or owner. A buyer- or seller-submitted transaction therefore does not change which parties authored the agreement; their agreement signatures and the committed hash establish that fact.
 
@@ -706,7 +717,7 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 | negotiate-fixed-price | §8.4.1 procedure; signature collection; SR-2 anchoring |
 | negotiate-rfq | §8.4.2 procedure; RFQ-1 through RFQ-4; channel turn timeouts |
 | negotiate-sealed-envelope / negotiate-sealed-envelope-procurement | §8.4.3 procedure; SE-1 through SE-9; deterministic selection; rule-ref content-hash binding; mode-bound role assignment; same-bidder commit authority |
-| commit-agreement / commit-payee-bound-agreement | CA-1 through CA-9; artifact-specific signature, finalized receipt, timestamp separation, minor-safe type distinction, and conformance validation |
+| commit-agreement / commit-payee-bound-agreement | CA-1 through CA-10; artifact-specific signature, finalized receipt, timestamp separation, minor-safe type distinction, legacy-agreement activation gate for pay-bearing pipelines, and conformance validation |
 | Listing publisher | PS-1 through PS-3 |
 | Substrate without SR-4 | MUST support negotiate-fixed-price; MUST refuse negotiate-rfq, negotiate-sealed-envelope, and negotiate-sealed-envelope-procurement with a clear substrate-capability-missing error |
 
@@ -727,6 +738,15 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 **Sealed-envelope: commit anchored, reveal in channel.** The on-chain commit hash prevents back-dating/repudiation; the in-channel reveal avoids leaking losing bids — matching government sealed-bid practice.
 
 ### 8.11 Backwards compatibility
+
+**Legacy agreement activation.** DACS-3 v0.6 does not change the signed
+`AgreementDocument` or `PayeeBoundAgreementDocument` shapes. CA-10 consumes the
+distinct DACS-4 governed checkpoint before selecting the already-distinct
+commitment phase for a pay-bearing session. A pre-CA-10 producer can still
+verify and display historical legacy agreements, but it does not enforce the
+current activation profile and MUST NOT claim that conformance. Zero-pay
+pipelines retain the old agreement option because no runtime payout destination
+is introduced.
 
 **Commitment records.** DACS-3 v0.4 adds `FinalityCommitmentRecord` as a distinct artifact type; it does not mutate the v0.1-v0.3 `CommitmentRecord`. New producers emit only the finality type. New readers retain the legacy validation arm for historical audit, including the `"dacs-commitment:v1:"` signature and the cross-check between its signed `committedAt` and authenticated historical anchor time. Legacy readers encounter `finalityCommitmentVersion` instead of `dacsVersion` and reject the unsupported type before acting, as required by CA-9 and CORE §11.1.2.
 
@@ -757,6 +777,13 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 **Sealed-envelope same-bidder commit swapping.** *Threat:* one bidder anchors multiple in-window commitments and waits until reveal time to open whichever committed bid is then more favourable. Different implementations might also choose earliest, latest, or reject-all and derive different winners from the same anchored record set. *Mitigation:* SE-9 makes the earliest SR-2-anchored commit authoritative, uses ascending lowercase-hex `bidHash` as the same-anchor total-order limb, and makes every later same-bidder commit inert. A reveal opening only a later commit is excluded.
 
 **Agreement-listing mismatch.** *Threat:* a signed agreement contains terms outside the listing’s pricing band or with an unaccepted rail. *Mitigation:* validation rules; the declared agreement commitment phase must reject. Both sides also SHOULD validate before signing.
+
+**Fresh legacy agreement after payout-binding activation.** *Threat:* an
+orchestrator selects `commit-agreement` for a new pay-bearing session so the
+later payment can use a runtime destination, then backdates `generatedAt`.
+*Mitigation:* CA-10 resolves the fixed-address steward checkpoint and requires
+the payee-bound artifact/phase at or after its authenticated activation order;
+producer dates and an unavailable checkpoint do not authorize the legacy path.
 
 **Unrecognized pricing kind vacuous-pass.** *Threat:* a listing carries a `PricingSpec.kind` a reader does not implement (a newer kind, or a malformed one); the reader skips the price check it has no arm for and accepts an agreement whose `terms.price` was validated against nothing, letting an arbitrary amount settle. *Mitigation:* DACS-1 schema conformance rejects a value outside the reader's closed `PricingSpec` union, and MTR-5 independently requires commit-agreement to reject an unrecognized pricing kind with a recorded `unrecognized-pricing-kind` reason before any settle. A pre-metered reader therefore refuses `metered` at listing validation; a reader implementing MTR-5 also fails closed at the transaction gate for later unknown kinds. The metered arithmetic threat (a total that does not match `unitPrice × quantity`) is caught by MTR-4's recompute.
 

@@ -7,8 +7,8 @@
     "issue": "DACS-Agent-commerce/DACS-Standard#307",
     "generator": "hand-authored normative examples; independently recomputed by tests/test_cci_xm_rail_chain_applicability_vectors.py"
   },
-  "count": 20,
-  "hash": "c93dead49849ba2cf86827d0559c612a087ea8dee492b4a5fff62b90c1949390",
+  "count": 28,
+  "hash": "4d6301bfc705ae230c58cc9820c218621f59848f2dc61f1e20ea972d0939881a",
   "vectors": [
     {
       "name": "ethereum-mainnet-exact-chain-id-tier2",
@@ -391,6 +391,166 @@
         "railType": "evm-erc20",
         "asset": {"kind": "erc20", "chainId": 1},
         "network": {"kind": "evm", "chainId": 8453}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "asset-and-network-chain-id-match-admits-rail",
+      "expected": "pass",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "linkageDecision": "pass",
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:8453",
+        "claimChain": "eip155:8453",
+        "tier2Applicable": true,
+        "bindingTier": 2,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "native-evm-equal-positive-chain-id-admits-rail",
+      "expected": "pass",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-native:8453:ETH",
+        "railType": "evm-native",
+        "asset": {"kind": "native-evm", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "linkageDecision": "pass",
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": "eip155:8453",
+        "claimChain": "eip155:8453",
+        "tier2Applicable": true,
+        "bindingTier": 2,
+        "maySubmitPayment": true
+      }
+    },
+    {
+      "name": "native-evm-unequal-chain-id-rejects-rail",
+      "expected": "error",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-native:8453:ETH",
+        "railType": "evm-native",
+        "asset": {"kind": "native-evm", "chainId": 1},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "zero-asset-chain-id-rejects-rail",
+      "expected": "error",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 0},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "both-zero-chain-ids-reject-rail",
+      "expected": "error",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 0},
+        "network": {"kind": "evm", "chainId": 0}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "zero-network-chain-id-rejects-rail",
+      "expected": "error",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": 0}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "string-asset-chain-id-rejects-rail",
+      "expected": "error",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": "8453"},
+        "network": {"kind": "evm", "chainId": 8453}
+      },
+      "tier3AgreementAssertionPresent": true,
+      "want": {
+        "railChain": null,
+        "claimChain": "eip155:8453",
+        "tier2Applicable": false,
+        "bindingTier": null,
+        "maySubmitPayment": false,
+        "failedAt": "RD-5"
+      }
+    },
+    {
+      "name": "string-network-chain-id-rejects-rail",
+      "expected": "error",
+      "claim": "cci-xm:evm:8453:0x1111111111111111111111111111111111111111",
+      "railDefinition": {
+        "railId": "evm-erc20:8453:USDC",
+        "railType": "evm-erc20",
+        "asset": {"kind": "erc20", "chainId": 8453},
+        "network": {"kind": "evm", "chainId": "8453"}
       },
       "tier3AgreementAssertionPresent": true,
       "want": {

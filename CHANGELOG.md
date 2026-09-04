@@ -13,6 +13,27 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-X conformance provenance
+
+- **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9
+  transcript-disclosure manifest expectations from `golden` to `candidate`.
+  The repository does not ship their exact signed inputs, resolver context,
+  versioned dispute/disclosure artifacts, signature recipes, or an independent
+  executable predicate, so byte-stable expected strings cannot establish
+  conformance by themselves.
+- **Promotion gate made explicit** — the 17 expectations remain available for
+  DACS-X design work, but cannot return to `golden` until their public inputs
+  and normative contracts exist and an in-repository verifier consumes them.
+  A regression test pins the candidate status and the corrected integrated
+  golden/candidate totals.
+
+### Fixed — CORE canonicalization conformance
+
+- Retires the stale `canon-noninteger-throws` manifest row left behind by #345;
+  CORE §B.2 permits finite binary64 fractions, and the self-contained
+  `canonical-json-v0.1` corpus remains the executable authority for those bounds
+  (#354). The shared validator documentation now states the same rule.
+
 ### Fixed — Demos SR-2 bundle co-signing status
 
 - **Artifact signatures separated from transaction signatures** (#369) —
@@ -24,6 +45,28 @@ The format used per release:
   single-signature and bundle-suppression exceptions in §§10.4.1/10.11. Native
   transaction co-signing remains an optional optimization and cannot replace
   applicable artifact signatures or role-specific publication.
+
+### Fixed — lifecycle walkthrough current-wire compatibility
+
+- The executable lifecycle walkthrough now emits a canonical ULID `jobId`,
+  omits the non-schema `phaseIndex` from signed `SettlementEvidence`, recovers
+  the payment phase tuple from its canonical PC-2 logical address, authenticates
+  that tuple against the published logical/native/content binding and reference,
+  and emits failure evidence with `outcome: "failure"` and a non-empty `reason`
+  (#357). The signed bundle phase summary remains the delivery-phase binding.
+  The walkthrough's pinned DACS-4 v0.3 profile intentionally keeps the legacy
+  `evm` reference and does not advertise the v0.6+ SB-1 event-identity rule.
+
+### Fixed — DACS-4 RD-5 conformance data
+
+- **EVM rail chain-ID equality restored** (§9.4.3 RD-5; #352) — corrects the
+  stale golden manifest row that admitted matching asset/network kinds with
+  unequal `chainId` values even though RD-5 requires the same positive integer
+  and PB-2 derives payee applicability from that exact chain. The contradictory
+  positive is replaced by a fail candidate pending independent reference-run
+  convergence. The executable chain-applicability set now has explicit
+  equal-positive and mismatch controls for both `erc20` and `native-evm`, plus
+  zero and non-integer asset/network controls.
 
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 

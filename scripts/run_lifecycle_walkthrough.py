@@ -20,7 +20,7 @@ import sys
 import unicodedata
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -74,9 +74,11 @@ DOMAINS = {
 }
 
 NOW = 1781280000000
-JOB_ID = "walkthrough-261-0001"
+JOB_ID = "01KTY8ZJ00CW7KSECW3FS6PQPK"
 LISTING_ID = "minimum-lifecycle-0001"
 RAIL_ID = "evm-erc20:8453:USDC"
+JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
+PHASE_INDEX_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 
 
 def nfc_deep(value: Any) -> Any:
@@ -107,6 +109,27 @@ def canonical_json(value: Any) -> bytes:
         ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")
+
+
+def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
+    """Recover the PC-2 tuple from a canonical payment-evidence address."""
+
+    if not isinstance(logical_address, str):
+        raise ValueError("payment evidence logical address must be a string")
+    parts = logical_address.split(":")
+    if len(parts) not in {5, 6} or parts[:2] != ["dacs4", "payment"]:
+        raise ValueError("payment evidence logical address has the wrong shape")
+    if len(parts) == 6 and parts[5] != "resolved":
+        raise ValueError("payment evidence logical address has an unknown suffix")
+    job_id, encoded_rail, phase_text = parts[2:5]
+    if JOB_ID_RE.fullmatch(job_id) is None:
+        raise ValueError("payment evidence logical address carries a non-ULID jobId")
+    rail_id = unquote(encoded_rail)
+    if quote(rail_id, safe="") != encoded_rail:
+        raise ValueError("payment evidence railId is not canonically CF-4 encoded")
+    if PHASE_INDEX_RE.fullmatch(phase_text) is None:
+        raise ValueError("payment evidence phaseIndex is not a bare integer")
+    return job_id, rail_id, int(phase_text), len(parts) == 6
 
 
 def sha256_hex(value: bytes) -> str:
@@ -566,7 +589,6 @@ def evaluate_delivery_after_payment(
         "evidenceVersion": "1",
         "jobId": payment["jobId"],
         "phase": "deliver-storage-program",
-        "phaseIndex": 4,
         "observedAt": NOW + 6000,
     }
     phase_entry: dict[str, Any] = {
@@ -596,7 +618,12 @@ def evaluate_delivery_after_payment(
         }
         if error_class not in outcomes:
             raise ValueError("failed delivery result has an unsupported errorClass")
-        evidence.update({"outcome": "fail", "errorClass": error_class})
+        evidence.update(
+            {
+                "outcome": "failure",
+                "reason": f"delivery adapter reported {error_class} failure",
+            }
+        )
         phase_entry.update({"outcome": "fail", "errorClass": error_class})
         session_outcome = outcomes[error_class]
     return {
@@ -857,7 +884,6 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
         "evidenceVersion": "1",
         "jobId": JOB_ID,
         "phase": "pay-evm-erc20",
-        "phaseIndex": 3,
         "outcome": "success",
         "paymentTxRefs": [
             {"kind": "evm", "chainId": 8453, "txHash": "0x" + "26" * 32}
@@ -986,6 +1012,7 @@ def build_happy_path(substrate: FakeSubstrate) -> tuple[list[dict[str, Any]], di
         "agreement": agreement,
         "agreementRef": agreement_ref,
         "payment": payment,
+        "paymentTrace": payment_trace,
         "paymentRef": payment_ref,
         "delivery": delivery,
         "deliveryRef": delivery_ref,
@@ -1023,10 +1050,44 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     }
     if expected_vet != actual_party_vet:
         raise ValueError("agreement parties do not bind the DACS-2 records")
-    if payment["jobId"] != JOB_ID or payment["phase"] != kinds[payment["phaseIndex"]]:
-        raise ValueError("payment evidence does not match its pipeline phase")
-    if delivery["jobId"] != JOB_ID or delivery["phase"] != kinds[delivery["phaseIndex"]]:
-        raise ValueError("delivery evidence does not match its pipeline phase")
+    if JOB_ID_RE.fullmatch(JOB_ID) is None:
+        raise ValueError("walkthrough jobId is not a canonical ULID")
+    payment_entries = [
+        entry
+        for entry in bundle["phaseSummary"]
+        if entry.get("attestationRef") == context["paymentRef"]
+    ]
+    delivery_entries = [
+        entry
+        for entry in bundle["phaseSummary"]
+        if entry.get("attestationRef") == context["deliveryRef"]
+    ]
+    if len(payment_entries) != 1 or len(delivery_entries) != 1:
+        raise ValueError("settlement evidence is not bound to exactly one pipeline phase")
+    payment_entry, delivery_entry = payment_entries[0], delivery_entries[0]
+    payment_trace = context["paymentTrace"]
+    payment_binding = payment_trace["publishedBinding"]
+    if payment_binding["logicalAddress"] != payment_trace["logicalAddress"]:
+        raise ValueError("payment trace logical address diverges from its published binding")
+    if payment_binding["nativeAddress"] != context["paymentRef"]["anchor"]["locator"]:
+        raise ValueError("payment reference locator diverges from its published binding")
+    if payment_binding["contentSha256"] != payment_trace["anchoredBytesSha256"]:
+        raise ValueError("payment binding content hash diverges from the anchored bytes")
+    if payment_trace["artifactHash"] != context["paymentRef"]["contentHash"]:
+        raise ValueError("payment reference content hash diverges from the signed artifact")
+    payment_address = payment_anchor_tuple(payment_binding["logicalAddress"])
+    expected_payment_address = (
+        JOB_ID,
+        agreement["terms"]["rail"]["railId"],
+        payment_entry["index"],
+        False,
+    )
+    if payment_address != expected_payment_address:
+        raise ValueError("payment evidence anchor does not match the authenticated phase tuple")
+    if payment["jobId"] != JOB_ID or payment["phase"] != payment_entry["kind"]:
+        raise ValueError("payment evidence does not match its bundle phase")
+    if delivery["jobId"] != JOB_ID or delivery["phase"] != delivery_entry["kind"]:
+        raise ValueError("delivery evidence does not match its bundle phase")
     if bundle["agreementRef"] != context["agreementRef"]:
         raise ValueError("bundle does not reference the committed agreement")
     if bundle["vetRecords"] != list(context["vetRefs"].values()):

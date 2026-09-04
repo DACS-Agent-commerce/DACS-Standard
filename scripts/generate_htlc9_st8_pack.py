@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""Deterministic generator for the HTLC-9 / ST-8 asymmetric-settlement pack.
+
+Emits two signed ``SettlementEvidence`` fixtures (DACS-4 §9.5.4, §10.3.1 ST-8):
+
+* ``conformance/fixtures/settlement/htlc9-asymmetric.json`` — the interim
+  ``outcome: "failure"`` record (``dest-revealed-source-unclaimed``): the payer's
+  destination-side ``htlc-reveal`` has reached finality, the payee's source-side
+  claim has not landed yet. Non-terminal ``settle-asymmetric`` state.
+* ``conformance/fixtures/settlement/htlc9-asymmetric-resolved.json`` — the ST-8
+  ``:resolved`` record: ``outcome: "success"`` carrying ``settlementFinality``
+  (``model: "htlc-reveal"``), ``paymentAmount``, the full ``htlc-lock`` +
+  ``htlc-reveal`` + ``htlc-claim`` set, and ``supersedesEvidenceRef`` — a DACS-2
+  §7.5.2 AttestationRef (nested ``anchor``, bare-hex ``contentHash``) whose hash is
+  the §B.2 content hash of the interim record. No amendment is
+  used (DACS-4-SETTLE.md, "No ``correction`` amendment is used").
+
+Keys are derived from fixed public test seeds (the same convention as the
+``conformance/vectors/security`` generators), so the signatures are reproducible
+and ``--check`` fails loudly if the committed bytes drift from the generator.
+The signature is Ed25519 over ``"dacs-evidence:v1:" || sha256hex(JCS(record minus
+signature))`` — CORE §B.7 single-hash form. String values are NFC-normalised via
+``scripts/jcs.py`` (CF-1); member names are preserved.
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import jcs  # noqa: E402
+
+FIXTURE_DIR = ROOT / "conformance" / "fixtures" / "settlement"
+INTERIM_PATH = FIXTURE_DIR / "htlc9-asymmetric.json"
+RESOLVED_PATH = FIXTURE_DIR / "htlc9-asymmetric-resolved.json"
+
+EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+ORCHESTRATOR_SEED = bytes.fromhex("41" * 32)  # public test seed; never a production key
+ORCHESTRATOR_SIGNER = "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+INTERIM_SIGNATURE = "J9aWl1-dZrsE9Gch3-jMOVj0wKwH_ohFS3IlcNYIZMnoyKBT6uCTyX367zvPzMdnP2m57-1fnxATbKtJ7_K3Ag"
+RESOLVED_SIGNATURE = "DvJWDESPE7O5rHSFHhTo0pIg2CtkoAYONy6wf9csI9qEKHr9UyV-6AZ6FxqJnsAbh3i-SU8gTY8mWzrpLR7IBw"
+
+JOB_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"  # a valid 26-char Crockford ULID (CORE B.1); the old placeholder was not one
+SOURCE_CHAIN = 84532   # Base Sepolia: payer locks here, payee claims here
+DEST_CHAIN = 80002     # Polygon Amoy: payer reveals the preimage here
+CONTRACT = "0x0000000000000000000000000000000000000308"
+LOCK_TX = "0x" + "aa" * 32
+REVEAL_TX = "0x" + "bb" * 32
+CLAIM_TX = "0x" + "cc" * 32
+
+
+def canonical_bytes(value) -> bytes:
+    return jcs.canonicalize(value).encode("utf-8")
+
+
+def content_hash_hex(record: dict) -> str:
+    unsigned = {k: v for k, v in record.items() if k != "signature"}
+    return hashlib.sha256(canonical_bytes(unsigned)).hexdigest()
+
+
+def b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii")
+
+
+def signer_ref(seed: bytes) -> str:
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    except ImportError:  # pragma: no cover
+        raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
+    pub = Ed25519PrivateKey.from_private_bytes(seed).public_key()
+    return "cci:" + pub.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw).hex()
+
+
+def sign(record: dict, seed: bytes) -> None:
+    try:
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+    except ImportError:  # pragma: no cover
+        raise SystemExit("cryptography is required to sign the pack: python3 -m pip install cryptography")
+    payload = EVIDENCE_DOMAIN.encode("ascii") + content_hash_hex(record).encode("ascii")
+    record["signature"] = {
+        "algorithm": "ed25519",
+        "signer": signer_ref(seed),
+        "value": b64url(Ed25519PrivateKey.from_private_bytes(seed).sign(payload)),
+    }
+
+
+def attestation_ref(record: dict) -> dict:
+    """DACS-2 §7.5.2 AttestationRef to a stored record: nested anchor, bare-hex content hash.
+
+    Locator follows the storage-program convention used across the security corpora
+    (``stor-<sha256hex of the record's canonical form>``).
+    """
+    digest = content_hash_hex(record)
+    return {"anchor": {"kind": "storage-program", "locator": f"stor-{digest}"}, "contentHash": digest}
+
+
+def interim_record(signature_value: str | None = None) -> dict:
+    record = {
+        "evidenceVersion": "1",
+        "jobId": JOB_ID,
+        "observedAt": 1760000100000,
+        "outcome": "failure",
+        "paymentTxRefs": [
+            {"kind": "htlc-lock", "chainId": SOURCE_CHAIN, "contractAddress": CONTRACT, "lockTxHash": LOCK_TX},
+            {"kind": "htlc-reveal", "chainId": DEST_CHAIN, "contractAddress": CONTRACT, "revealTxHash": REVEAL_TX},
+        ],
+        "phase": "pay-cross-chain-htlc",
+        "reason": "dest-revealed-source-unclaimed",
+    }
+    if signature_value is None:
+        sign(record, ORCHESTRATOR_SEED)
+    else:
+        record["signature"] = {"algorithm": "ed25519", "signer": ORCHESTRATOR_SIGNER, "value": signature_value}
+    return record
+
+
+def resolved_record(interim: dict, signature_value: str | None = None) -> dict:
+    """The ST-8 :resolved record supersedes ``interim``: it carries the SAME htlc-lock and
+    htlc-reveal txRefs (copied, not re-stated) plus the payee's source-side htlc-claim."""
+    lock = next((r for r in interim.get("paymentTxRefs", []) if r.get("kind") == "htlc-lock"),
+                {"kind": "htlc-lock", "chainId": SOURCE_CHAIN, "contractAddress": CONTRACT, "lockTxHash": LOCK_TX})
+    reveal = next((r for r in interim.get("paymentTxRefs", []) if r.get("kind") == "htlc-reveal"),
+                  {"kind": "htlc-reveal", "chainId": DEST_CHAIN, "contractAddress": CONTRACT, "revealTxHash": REVEAL_TX})
+    record = {
+        "evidenceVersion": "1",
+        "jobId": interim["jobId"],
+        "observedAt": 1760000300000,
+        "outcome": "success",
+        "paymentAmount": {"amount": "25", "currency": "USDC"},
+        "paymentTxRefs": [
+            dict(lock),
+            dict(reveal),
+            {"kind": "htlc-claim", "chainId": lock["chainId"], "contractAddress": lock["contractAddress"], "claimTxHash": CLAIM_TX},
+        ],
+        "phase": "pay-cross-chain-htlc",
+        "settlementFinality": {"model": "htlc-reveal", "finalityObservedAt": 1760000290000},
+        "supersedesEvidenceRef": attestation_ref(interim),
+    }
+    if signature_value is None:
+        sign(record, ORCHESTRATOR_SEED)
+    else:
+        record["signature"] = {"algorithm": "ed25519", "signer": ORCHESTRATOR_SIGNER, "value": signature_value}
+    return record
+
+
+def build(use_precomputed_signatures: bool = False) -> dict[Path, dict]:
+    interim = interim_record(INTERIM_SIGNATURE if use_precomputed_signatures else None)
+    resolved = resolved_record(interim, RESOLVED_SIGNATURE if use_precomputed_signatures else None)
+    return {
+        INTERIM_PATH: {
+            "kind": "SettlementEvidenceCase",
+            "settlementEvidence": interim,
+            "specRefs": ["§9.5.4", "§9.7", "§10.3.1"],
+        },
+        RESOLVED_PATH: {
+            "kind": "SettlementEvidenceCase",
+            "settlementEvidence": resolved,
+            "specRefs": ["§9.5.4", "§9.7", "§10.3.1"],
+        },
+    }
+
+
+def render(data: dict) -> str:
+    return json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--check", action="store_true", help="fail if committed fixtures differ from the generator")
+    parser.add_argument("--write", action="store_true", help="write the fixtures")
+    args = parser.parse_args(argv)
+    # Check mode reconstructs the exact deterministic bytes with pinned signatures,
+    # so it remains dependency-free. Writing (and mutation tests) signs for real.
+    built = build(use_precomputed_signatures=not args.write)
+    if args.write:
+        FIXTURE_DIR.mkdir(parents=True, exist_ok=True)
+        for path, data in built.items():
+            path.write_text(render(data), encoding="utf-8")
+            print(f"wrote {path.relative_to(ROOT)}")
+        return 0
+    drift = [str(p.relative_to(ROOT)) for p, d in built.items()
+             if not p.exists() or p.read_text(encoding="utf-8") != render(d)]
+    if drift:
+        print("htlc9 st8 pack DRIFT: " + ", ".join(drift))
+        return 1
+    print("htlc9 st8 pack OK (deterministic generator output, 2 fixtures)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,5 +1,7 @@
+import copy
 import importlib.util
 import json
+import re
 import subprocess
 import unittest
 from pathlib import Path
@@ -92,6 +94,39 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             self.module.canonical_json(precomposed),
         )
 
+    def test_every_emitted_job_id_is_the_canonical_walkthrough_ulid(self):
+        job_ids = []
+
+        def collect(value):
+            if isinstance(value, dict):
+                if "jobId" in value:
+                    job_ids.append(value["jobId"])
+                for item in value.values():
+                    collect(item)
+            elif isinstance(value, list):
+                for item in value:
+                    collect(item)
+
+        collect(self.trace)
+        self.assertTrue(job_ids)
+        self.assertEqual(set(job_ids), {self.module.JOB_ID})
+        self.assertRegex(self.module.JOB_ID, r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
+
+    def test_payment_anchor_tuple_rejects_noncanonical_or_mismatched_shapes(self):
+        good = f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3A8453%3AUSDC:3"
+        self.assertEqual(
+            self.module.payment_anchor_tuple(good + ":resolved"),
+            (self.module.JOB_ID, self.module.RAIL_ID, 3, True),
+        )
+        for bad in [
+            "dacs4:payment:not-a-ulid:evm-erc20%3A8453%3AUSDC:3",
+            f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3a8453%3aUSDC:3",
+            f"dacs4:payment:{self.module.JOB_ID}:evm-erc20%3A8453%3AUSDC:03",
+            good + ":unknown",
+        ]:
+            with self.subTest(address=bad), self.assertRaises(ValueError):
+                self.module.payment_anchor_tuple(bad)
+
     def test_cross_stage_references_and_delivery_are_complete(self):
         listing = self.artifacts["listing-minimum-lifecycle"]
         agreement = self.artifacts["agreement-payee-bound-fixed-price"]
@@ -105,13 +140,26 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             step["kind"] for step in listing["artifact"]["pipeline"]
         ]
         self.assertIn("deliver-storage-program", pipeline_kinds)
+        self.assertRegex(
+            agreement["artifact"]["jobId"],
+            re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z"),
+        )
         self.assertEqual(
             agreement["artifact"]["listingRef"]["contentHash"],
             listing["artifactHash"],
         )
-        self.assertEqual(payment["artifact"]["phaseIndex"], 3)
-        self.assertEqual(delivery["artifact"]["phaseIndex"], 4)
+        self.assertNotIn("phaseIndex", payment["artifact"])
+        self.assertNotIn("phaseIndex", delivery["artifact"])
+        self.assertEqual(
+            self.module.payment_anchor_tuple(payment["logicalAddress"]),
+            (agreement["artifact"]["jobId"], self.module.RAIL_ID, 3, False),
+        )
         self.assertNotIn("settlementFinality", delivery["artifact"])
+        self.assertNotIn("SB-1", self.trace["stages"][3]["rules"])
+        self.assertEqual(
+            payment["artifact"]["paymentTxRefs"],
+            [{"kind": "evm", "chainId": 8453, "txHash": "0x" + "26" * 32}],
+        )
 
         bundle = buyer_bundle["artifact"]
         self.assertEqual(
@@ -149,6 +197,18 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             },
             {"buyer", "seller", "orchestrator"},
         )
+
+    def test_happy_path_authenticates_the_published_payment_binding(self):
+        stages, context = self.module.build_happy_path(self.module.FakeSubstrate())
+        candidate = copy.deepcopy(context)
+        candidate["paymentTrace"]["publishedBinding"]["logicalAddress"] = (
+            f"dacs4:payment:{self.module.JOB_ID}:"
+            "evm-erc20%3A8453%3AUSDC:4"
+        )
+        with self.assertRaisesRegex(
+            ValueError, "logical address diverges from its published binding"
+        ):
+            self.module.validate_happy_path(stages, candidate)
 
     def test_all_five_negative_examples_reject_or_classify(self):
         self.assertEqual(
@@ -203,9 +263,21 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             delivery["enforcementPath"], "evaluate_delivery_after_payment"
         )
         self.assertTrue(delivery["paymentRemainsRecorded"])
+        self.assertNotIn("phaseIndex", delivery["failureEvidence"]["artifact"])
+        self.assertEqual(
+            delivery["failureEvidence"]["artifact"]["outcome"], "failure"
+        )
+        self.assertTrue(delivery["failureEvidence"]["artifact"]["reason"])
+        self.assertNotIn("errorClass", delivery["failureEvidence"]["artifact"])
         self.assertEqual(
             delivery["resultingBundle"]["artifact"]["outcome"],
             "failed-counterparty",
+        )
+        self.assertEqual(
+            delivery["resultingBundle"]["artifact"]["phaseSummary"][-1][
+                "errorClass"
+            ],
+            "counterparty",
         )
         self.assertEqual(
             delivery["resultingBundle"]["artifact"]["settlementEvidence"][0],

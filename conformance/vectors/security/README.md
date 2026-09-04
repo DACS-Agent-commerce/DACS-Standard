@@ -33,12 +33,12 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
 | [`bundle-settlement-evidence-bijection-v0.4.json`](bundle-settlement-evidence-bijection-v0.4.json) | DACS-5 §10.4.3 SEB-1..SEB-6 | 30 | `fail` / `indeterminate` / `pass` |
 | [`canonical-json-v0.1.json`](canonical-json-v0.1.json) | CORE §B.2 RFC 8785 JCS + CF-1 | 25 | `fail` / `pass` |
-| [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 20 | `error` / `indeterminate` / `pass` |
+| [`cci-xm-rail-chain-applicability-v0.5.json`](cci-xm-rail-chain-applicability-v0.5.json) | DACS-1 §6.3.1 EVM cci-xm settlement-chain profile; DACS-4 §9.4.3 RD-5 and §9.5.1 PB-2 | 28 | `error` / `indeterminate` / `pass` |
 | [`channel-message-replay-v0.1.json`](channel-message-replay-v0.1.json) | DACS-3 §8.3.3 + CH-6 (channel-message replay / channelId reuse) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`claim-requirement-qualification-v0.3.json`](claim-requirement-qualification-v0.3.json) | DACS-2 §7.7.1 CRQ-1..CRQ-4 | 36 | `error` / `fail` / `indeterminate` / `pass` |
 | [`commitment-anchor-authority-v0.3.json`](commitment-anchor-authority-v0.3.json) | DACS-3 §8.6 CA-6/CA-7 | 4 | `fail` / `pass` |
 | [`commitment-record-compatibility-v0.1.json`](commitment-record-compatibility-v0.1.json) | DACS-3 §8.6 CA-6/CA-8/CA-9 and §8.11; CORE §11.1.2 | 10 | `fail` / `pass` |
-| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 52 | `error` / `fail` / `indeterminate` / `pass` |
+| [`domain-claim-gcr-v0.4.json`](domain-claim-gcr-v0.4.json) | DACS-1 §6.3.1 DCR-1..DCR-8; DACS-2 §7.3.10 DGCR-1..DGCR-6 | 63 | `error` / `fail` / `indeterminate` / `pass` |
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
@@ -136,7 +136,7 @@ python3 -m unittest tests.test_ap2_handler_safety_vectors -v
 
 ### `alternative-payment-projection-v0.1.json` — §9.9.1 APR-1..APR-8
 
-44 candidate vectors make the Listing-only `pay-alternative` projection
+45 candidate vectors make the Listing-only `pay-alternative` projection
 executable across DACS-1, DACS-3, DACS-4, and DACS-5. Deterministic Ed25519
 fixtures sign the Listing, complete DEM/x402/AP2 rail definitions, payee-bound
 Agreements, evidence-bound bundles, and prior-payment dispositions. The cases
@@ -195,7 +195,7 @@ python3 -m unittest tests.test_payload_attestation_vectors -v
 
 ### `cci-xm-rail-chain-applicability-v0.5.json` — §6.3.1 EVM profile + §9.4.3 RD-5 / §9.5.1 PB-2
 
-20 candidate vectors make the PB-2 EVM chain-applicability predicate
+28 candidate vectors make the PB-2 EVM chain-applicability predicate
 executable. Exact positive-decimal chain IDs map one-to-one to CAIP-2
 `eip155:<chainId>` and cover Ethereum mainnet, Base mainnet, Ethereum Sepolia,
 and Base Sepolia. A different numeric chain, a leading-zero or zero spelling,
@@ -210,8 +210,10 @@ not establish tier 2.
 The set also pins three fail-closed boundaries: an exact chain match becomes
 tier-2-applicable before SR-1 resolution, so an unavailable or erroneous
 linkage cannot downgrade to tier 3; conflicting EVM asset/network chain IDs
-fail RD-5; and an x402 resource rail that exposes no single EIP-155 chain in
-its pinned definition cannot gain tier 2 retroactively from a later receipt.
+fail RD-5, with equal-positive, unequal, zero, and non-integer controls for
+`erc20` plus equal-positive and unequal controls for `native-evm`; and an x402
+resource rail that exposes no single EIP-155 chain in its pinned definition
+cannot gain tier 2 retroactively from a later receipt.
 Run the dependency-free executable predicate with
 `python3 -m unittest tests.test_cci_xm_rail_chain_applicability_vectors -v`.
 
@@ -703,6 +705,35 @@ submission because an applicable binding cannot be resolved. `error` means a
 resolver/input error is surfaced as error, with no tier-3 downgrade and no
 payment. This set is candidate data only; cross-run convergence and any golden
 promotion remain pending.
+
+### `domain-claim-gcr-v0.4.json` — DACS-1 §6.3.1 DCR-1..DCR-8 / DACS-2 §7.3.10 DGCR-1..DGCR-6
+
+Sixty-three deterministic cases cover canonical `domain:` production,
+signature-preserving historical `web2:domain:` reads, semantic deduplication,
+presentation-bound control, and authenticated finalized Demos GCR verification.
+All bundles are deterministically signed with genuine Ed25519 operations; two
+negative cases deliberately corrupt their resulting signatures. Every registration
+proof carries a valid deterministic Ed25519 signature.
+
+Cases carrying `producerInput` require an adapter to invoke its public current
+DACS-1 domain producer/serializer and compare every emitted ClaimReference plus
+the complete unsigned artifact with the signed `artifact.unsigned`. Replaying
+the supplied artifact through a reader is not a producer result; an adapter
+without the producer boundary records `status: "abstain"` under `CROSS-RUN.md`.
+Reader-only cases apply permanent legacy compatibility from the verified
+`bundleVersion: "1"` bytes and alias spelling alone. Exact `domain:` spelling
+is scheme-selected without any profile sidecar, current production rejects
+single and dual legacy-alias emission in claims and `presentedBy`, and mutable
+deployment state cannot reclassify retained bytes. Paired signed and
+signature-corrupted malformed-host rows require `error` only after successful
+signature verification and `fail` before normalization otherwise.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_domain_gcr_vectors.py --check
+python3 -m unittest tests.test_domain_claim_gcr_vectors -v
+```
 
 ### `agreement-listing-v0.1.json` — §8.5.2 (agreement ↔ listing validation)
 

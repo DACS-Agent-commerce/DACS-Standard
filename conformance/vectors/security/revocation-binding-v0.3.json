@@ -1,6 +1,6 @@
 {
   "set": "revocation-binding-v0.3",
-  "spec": "DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution",
+  "spec": "DACS-1 v0.3 §6.3.4 RB-1..RB-6 historical revocation-marker discovery and fail-closed resolution",
   "provenance": {
     "generator": "DACS steward scenario matrix",
     "command": "independent runners apply each case's fixture and overrides",
@@ -10,7 +10,7 @@
     "#249 revocation marker logical-to-native binding",
     "live convention-named fixture incorporation pending contributor handoff"
   ],
-  "decisionModel": "A valid marker yields a revoked check and refuses the new session. A current integrity-consistent active record without a binding yields absent and permits revocation step 5 to pass. Missing required bindings, tuple/logical/hash/signature failures, unreachable anchors, stale records, and surface-integrity failures yield indeterminate and refuse the new session.",
+  "decisionModel": "Historical RB-only model: a valid marker yields revoked; an integrity-consistent active record without a binding yields discovery-only absent. Under DACS-1 v0.8 this absent result is partial/inert and cannot admit a new session without RSC-1..RSC-9 current-head non-membership. Missing required bindings, tuple/logical/hash/signature failures, unreachable anchors, stale records, and surface-integrity failures yield indeterminate.",
   "publicKeys": {
     "cci:8b0eb8717e3f16356ddcf56d421fb6a3dd2511d0a34af8507d760120fa423b05": "iw64cX4_FjVt3PVtQh-2o90lEdCjSvhQfXYBIPpCOwU"
   },
@@ -87,7 +87,7 @@
       }
     }
   },
-  "hash": "2c38f4450ec9cf60a2dc0bfbf2ad4bbcbd3f00ca720bb6938d813f98349ddf40",
+  "hash": "1ec3efde4748ddfb2d4adf6575dcec1accf70cb360f8881d5833570eb5d61b57",
   "count": 14,
   "vectors": [
     {
@@ -181,7 +181,7 @@
       "surface": {"kind": "well-known", "status": "active", "integrity": "current-indexHash", "binding": null},
       "markerRead": {"status": "not-applicable"},
       "want": {"revocationCheck": "absent", "session": "continue"},
-      "note": "A successful integrity-consistent active record is the current-model marker-absent path."
+      "note": "A successful integrity-consistent active record is the frozen historical RB-only absent path; it is not v0.8 current non-revocation."
     },
     {
       "name": "active-record-carrying-binding-is-inconsistent",

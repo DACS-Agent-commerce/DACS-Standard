@@ -566,7 +566,7 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
     def test_specs_define_all_presence_rules_and_versions(self):
         dacs1 = DACS1.read_text(encoding="utf-8")
         dacs2 = DACS2.read_text(encoding="utf-8")
-        self.assertIn("**DACS-1 v0.7**", dacs1)
+        self.assertIn("**DACS-1 v0.8**", dacs1)
         self.assertIn("**DACS-2 v0.6**", dacs2)
         for rule in range(1, 7):
             self.assertIn(f"**(PCR-{rule})", dacs1)

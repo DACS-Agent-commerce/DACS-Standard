@@ -59,7 +59,8 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
-| [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
+| [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 v0.3 §6.3.4 RB-1..RB-6 historical revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
+| [`revocation-state-completeness-v0.8.json`](revocation-state-completeness-v0.8.json) | DACS-1 v0.8 §6.3.4 RSC-1..RSC-9 authoritative revocation completeness | 15 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
@@ -382,10 +383,10 @@ fixture provenance and are not resolution inputs.
 Coverage includes logical-address derivation, marker content-hash and signature
 checks, the exact listing-tuple match, the retained `status: "revoked"`
 condition, unreachable anchors, stale or hash-inconsistent discovery state, and
-the current-model successful `absent` path. The expected top-level verdict is
-the new-session admission result: a verified revocation is `fail`, a completed
-active/no-binding check is `pass`, and any incomplete or inconsistent check is
-`indeterminate`.
+the historical RB-6 discovery-only `absent` path. This set predates RSC and
+does not establish v0.8 current new-session eligibility: its active/no-binding
+`pass` is only the frozen RB discovery result consumed as inert input by the
+current profile.
 
 Two multi-surface cases pin RB-6 precedence: a verified marker wins over an
 active mirror, while an indeterminate revoked record prevents another active
@@ -396,6 +397,32 @@ signature overrides, and `want` with the exact `RevocationCheck`, session
 effect, and failing step. The common `fixtures` block holds the listing context,
 signed markers, bindings, and producer-only Demos write inputs. Cross-running
 against the offered producer and reader fixtures remains pending.
+
+### `revocation-state-completeness-v0.8.json` — §6.3.4 RSC-1..RSC-9
+
+15 candidate vectors make current non-revocation independently reproducible.
+They bind a stable state-line locator and checkpoint into the authenticated
+Listing projection, verify genuine deterministic Ed25519 signatures on every
+state head and marker, authenticate the selected head as the latest finalized
+native value, replay the checkpoint chain, and recompute compact 256-level
+sparse-Merkle append and query proofs byte-for-byte.
+
+Positive controls cover current non-membership in a tree containing another
+listing's revocation and a revocation signed after an authenticated key
+rotation. Adversarial cases cover a censored tombstone, stale but valid signed
+head, two valid children of one head, corrupted non-membership, unavailable
+latest-state evidence, cross-tuple replay, unresolved marker, rollback below
+the Listing checkpoint, unauthorized rotation key, missing state reference,
+history gap, and producer time substituted for current-state authority.
+
+`listing.authenticated` and the authority/current-state dispositions are
+projections from the pre-existing Listing, key-lifecycle, and substrate-proof
+validators, not new signed wire fields. The independent evaluator still
+recomputes all corpus head/marker signatures, artifact hashes, receipt
+bindings, transition roots, current inclusion/non-membership roots, and exact
+tuple relations. Missing or conflicting proof is always `indeterminate`; only
+verified inclusion returns revoked and only verified current non-membership
+permits the session.
 
 ### `x402-receipt-hash-v0.1.json` — §9.5.7 X402-1..X402-4
 

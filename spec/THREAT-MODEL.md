@@ -79,6 +79,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Identity-bundle replay | network observer | §6.3.2 (session nonce) + §6.6 | mitigated |
 | Attestation-bundle replay across sessions | malicious counterparty | §10.11 (jobId bound into the bundle hash) | mitigated |
 | Catalog poisoning | malicious infrastructure | §6.3.6 (clients dereference anchors) | mitigated |
+| Withheld revocation tombstone or replayed old revocation head | malicious infrastructure / seller | §6.3.4 RSC-1..RSC-9 (Listing-bound stable line, authenticated latest finalized value, append-only head chain, exact sparse-Merkle proof) | mitigated for integrity when the substrate binding supplies current-state evidence; otherwise indeterminate/denial of service |
 | Anchor-receipt forgery / state promotion | malicious infrastructure or writer | CORE §5.1 SR2-4..SR2-6 (binding-defined authenticated evidence; logical/native/hash/transaction/writer/nonce checks; block/finality proof) | mitigated subject to substrate evidence security |
 | Anchor snapshot reordering / false replacement | malicious infrastructure or stale observer | CORE §5.1 SR2-7 (binding-defined authenticated evidence ordering; `observedAt` never establishes precedence; replacement independently verified) | mitigated; unresolved conflicts remain indeterminate |
 | Identity-claim substitution | malicious counterparty | §6.6 (pinned bundle hash) | mitigated |

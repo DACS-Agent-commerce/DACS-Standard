@@ -13,6 +13,20 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — authoritative listing-revocation completeness
+
+- **Current revocation state (RSC-1..RSC-9; #375)** — adds the
+  listing-bound `RevocationStateRef`, signed append-only `RevocationStateHead`,
+  compact sparse-Merkle inclusion/non-membership proof, and exact replay
+  context. A current new-session check authenticates the stable state line's
+  latest finalized value, head authority and key rotation, complete checkpoint
+  chain, one-revocation transitions, and exact listing tuple. Discovery-only
+  absence, a stale signed head, rollback, equivocation, censored tombstone,
+  invalid proof, or unavailable current-state authority is `indeterminate` and
+  cannot make a listing session-eligible. Verified revocation still takes
+  precedence, while already committed sessions retain their pinned in-flight
+  semantics.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

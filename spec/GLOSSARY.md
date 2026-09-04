@@ -69,6 +69,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **RatingRecord.** A signed rating from one party about another. §10.6.
 - **Recipe.** A DACS-2 binding of claim scheme to verification method, parsing rules, and defaults. §7.4.
 - **Recipe availability.** A normative field on every Recipe declaring operational status: live | operator_gated | closed_data | bilateral | mocked | disabled | failed. Verifiers MUST inspect before running. §7.4.5.
+- **RevocationStateHead.** The seller-signed, append-only sparse-Merkle head stored on the stable revocation state line bound into a Listing; current new-session readers require an authenticated latest-value proof plus exact tuple inclusion or non-membership under RSC-1..RSC-9. Defined in §6.3.4.
 - **Rail availability.** A normative field on every RailDefinition declaring operational status, with the same value set and semantics as recipe availability. Orchestrators MUST inspect before selecting. §9.4.4.
 - **RFQ (Request For Quote).** DACS-3 bilateral negotiation pattern; bounded multi-turn offer-and-counter. §8.4.2.
 - **Sealed-envelope.** DACS-3 sealed-bid procurement pattern. §8.4.3.

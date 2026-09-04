@@ -7,8 +7,8 @@
     "issue": "DACS-Agent-commerce/DACS-Standard#377",
     "generator": "scripts/generate_legacy_agreement_admission_vectors.py"
   },
-  "count": 34,
-  "hash": "3cab111bfbd885152efbd7f7ab9c6afea588d3b94553a1168f99717d12317f15",
+  "count": 41,
+  "hash": "8a2196522966ac2928f358a1c08f35beea941fb318d348e158fe2e450fb31ea3",
   "vectors": [
     {
       "name": "laa-current-payee-bound-success",
@@ -18,6 +18,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "payee-bound",
           "shape": "valid",
@@ -38,7 +43,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -47,7 +54,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -57,7 +66,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -77,6 +88,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "payee-bound",
           "shape": "valid",
@@ -97,7 +113,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -106,7 +124,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -116,7 +136,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -136,6 +158,11 @@
         "surface": "dacs4-laa",
         "operation": "commit-pay-bearing",
         "pipelineHasPayment": false,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -156,7 +183,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -165,7 +194,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -175,7 +206,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -195,6 +228,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -215,7 +253,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": true,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -224,7 +264,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -234,7 +276,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -254,6 +298,11 @@
         "surface": "dacs3-ca10",
         "operation": "commit-pay-bearing",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -274,7 +323,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": true,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -283,7 +334,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -293,7 +346,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -313,6 +368,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -333,7 +393,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -342,7 +404,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "110",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -352,7 +416,9 @@
           "receiptState": "finalized",
           "position": "120",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -372,6 +438,11 @@
         "surface": "dacs3-ca10",
         "operation": "commit-pay-bearing",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -392,7 +463,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -401,7 +474,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -411,7 +486,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -431,6 +508,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -451,7 +533,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -460,7 +544,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "110",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -470,7 +556,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -490,6 +578,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -510,7 +603,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -519,7 +614,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "absent",
@@ -529,7 +626,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -549,6 +648,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -569,7 +673,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -578,7 +684,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -588,7 +696,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -608,6 +718,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -628,7 +743,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -637,7 +754,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -647,7 +766,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "9999"
       },
@@ -667,6 +788,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -687,7 +813,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -696,7 +824,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -706,7 +836,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -726,6 +858,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -746,7 +883,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -755,7 +894,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -765,7 +906,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -778,6 +921,76 @@
       }
     },
     {
+      "name": "laa-other-substrate-absence-is-inert",
+      "expected": "fail",
+      "note": "authenticated absence on another substrate cannot evade this session's checkpoint",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "absent",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": true,
+          "createdAt": 1,
+          "substrate": "other-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
       "name": "laa-conflicting-checkpoints",
       "expected": "indeterminate",
       "note": "multiple authorized checkpoint candidates do not establish an activation order",
@@ -785,6 +998,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -805,7 +1023,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -814,7 +1034,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -824,7 +1046,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -844,6 +1068,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -864,7 +1093,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -873,7 +1104,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -883,7 +1116,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -903,6 +1138,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -923,7 +1163,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -932,7 +1174,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -942,7 +1186,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -962,6 +1208,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -982,7 +1233,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -991,7 +1244,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1001,7 +1256,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1021,6 +1278,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1041,7 +1303,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1050,7 +1314,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1060,7 +1326,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1080,6 +1348,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1100,7 +1373,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1109,7 +1384,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1119,7 +1396,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1139,6 +1418,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1159,7 +1443,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1168,7 +1454,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1178,7 +1466,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1198,6 +1488,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1218,7 +1513,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1227,7 +1524,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1237,7 +1536,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1257,6 +1558,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1277,7 +1583,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1286,7 +1594,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1296,7 +1606,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1316,6 +1628,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1336,7 +1653,9 @@
           "receiptState": "included",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1345,7 +1664,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1355,7 +1676,149 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-checkpoint-substrate-mismatch",
+      "expected": "fail",
+      "note": "the checkpoint substrate must equal the authenticated session and receipt substrate",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1,
+          "substrate": "other-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-cross-order-domain",
+      "expected": "indeterminate",
+      "note": "a checkpoint from another consensus ordering domain is not position-comparable",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:other-finality:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1375,6 +1838,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1395,7 +1863,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "unavailable",
@@ -1404,7 +1874,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1414,7 +1886,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1434,6 +1908,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1454,7 +1933,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1463,7 +1944,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1473,7 +1956,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1493,6 +1978,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1513,7 +2003,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1522,7 +2014,9 @@
           "signatureValid": true,
           "receiptState": "included",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1532,7 +2026,149 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-commitment-substrate-mismatch",
+      "expected": "fail",
+      "note": "a commitment receipt on another substrate cannot be ordered against this checkpoint",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "other-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-commitment-cross-order-domain",
+      "expected": "indeterminate",
+      "note": "equal-looking positions from different commitment order domains are incomparable",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:other-finality:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1552,6 +2188,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1572,7 +2213,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1581,7 +2224,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "unavailable",
@@ -1591,7 +2236,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1611,6 +2258,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1631,7 +2283,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1640,7 +2294,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1650,7 +2306,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1670,6 +2328,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1690,7 +2353,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1699,7 +2364,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1709,7 +2376,149 @@
           "receiptState": "included",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-settlement-substrate-mismatch",
+      "expected": "fail",
+      "note": "the DACS SettlementEvidence anchor receipt must share the checkpoint substrate",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "other-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-settlement-cross-order-domain",
+      "expected": "indeterminate",
+      "note": "a settlement-evidence receipt from another ordering domain is incomparable",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:other-finality:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1729,6 +2538,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1749,7 +2563,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1758,7 +2574,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "100",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1768,7 +2586,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1788,6 +2608,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1808,7 +2633,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1817,7 +2644,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "100",
-          "strictlyBeforeAtSamePosition": true
+          "strictlyBeforeAtSamePosition": true,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1827,7 +2656,9 @@
           "receiptState": "finalized",
           "position": "100",
           "strictlyBeforeAtSamePosition": true,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1847,6 +2678,11 @@
         "surface": "dacs4-laa",
         "operation": "historical-audit",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1867,7 +2703,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1876,7 +2714,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1886,7 +2726,9 @@
           "receiptState": "finalized",
           "position": "101",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": -5000
+          "observedAt": -5000,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1906,6 +2748,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "valid",
@@ -1926,7 +2773,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1935,7 +2784,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -1945,7 +2796,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },
@@ -1965,6 +2818,11 @@
         "surface": "dacs4-laa",
         "operation": "authorize-payment",
         "pipelineHasPayment": true,
+        "sessionAuthority": {
+          "state": "verified",
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
+        },
         "agreement": {
           "artifact": "legacy",
           "shape": "malformed",
@@ -1985,7 +2843,9 @@
           "receiptState": "finalized",
           "position": "100",
           "authenticatedAbsence": false,
-          "createdAt": 1
+          "createdAt": 1,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "commitment": {
           "resolution": "verified",
@@ -1994,7 +2854,9 @@
           "signatureValid": true,
           "receiptState": "finalized",
           "position": "80",
-          "strictlyBeforeAtSamePosition": null
+          "strictlyBeforeAtSamePosition": null,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "settlementEvidence": {
           "resolution": "verified",
@@ -2004,7 +2866,9 @@
           "receiptState": "finalized",
           "position": "90",
           "strictlyBeforeAtSamePosition": null,
-          "observedAt": 20
+          "observedAt": 20,
+          "substrate": "demos-mainnet",
+          "orderDomain": "demos-mainnet:demos-bft-final:genesis-v1"
         },
         "presentationPosition": "150"
       },

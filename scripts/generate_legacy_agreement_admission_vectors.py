@@ -14,6 +14,8 @@ OUTPUT = (
     ROOT / "conformance" / "vectors" / "security"
     / "legacy-agreement-admission-v0.8.json"
 )
+GOVERNING_SUBSTRATE = "demos-mainnet"
+ORDER_DOMAIN = "demos-mainnet:demos-bft-final:genesis-v1"
 
 
 def merge(base: dict, changes: dict | None) -> dict:
@@ -31,6 +33,11 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
         "surface": "dacs4-laa",
         "operation": operation,
         "pipelineHasPayment": True,
+        "sessionAuthority": {
+            "state": "verified",
+            "substrate": GOVERNING_SUBSTRATE,
+            "orderDomain": ORDER_DOMAIN,
+        },
         "agreement": {
             "artifact": artifact,
             "shape": "valid",
@@ -52,6 +59,8 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "position": "100",
             "authenticatedAbsence": False,
             "createdAt": 1,
+            "substrate": GOVERNING_SUBSTRATE,
+            "orderDomain": ORDER_DOMAIN,
         },
         "commitment": {
             "resolution": "verified",
@@ -61,6 +70,8 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "receiptState": "finalized",
             "position": "80",
             "strictlyBeforeAtSamePosition": None,
+            "substrate": GOVERNING_SUBSTRATE,
+            "orderDomain": ORDER_DOMAIN,
         },
         "settlementEvidence": {
             "resolution": "verified",
@@ -71,6 +82,8 @@ def base_input(*, operation: str = "historical-audit", artifact: str = "legacy")
             "position": "90",
             "strictlyBeforeAtSamePosition": None,
             "observedAt": 20,
+            "substrate": GOVERNING_SUBSTRATE,
+            "orderDomain": ORDER_DOMAIN,
         },
         "presentationPosition": "150",
     }
@@ -188,6 +201,12 @@ def vectors() -> list[dict]:
             operation="authorize-payment", changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": False}},
         ),
         case(
+            "laa-other-substrate-absence-is-inert", "fail",
+            "authenticated absence on another substrate cannot evade this session's checkpoint",
+            operation="authorize-payment",
+            changes={"checkpoint": {"resolution": "absent", "authenticatedAbsence": True, "substrate": "other-mainnet"}},
+        ),
+        case(
             "laa-conflicting-checkpoints", "indeterminate",
             "multiple authorized checkpoint candidates do not establish an activation order",
             changes={"checkpoint": {"resolution": "conflicting"}},
@@ -238,6 +257,16 @@ def vectors() -> list[dict]:
             changes={"checkpoint": {"receiptState": "included"}},
         ),
         case(
+            "laa-checkpoint-substrate-mismatch", "fail",
+            "the checkpoint substrate must equal the authenticated session and receipt substrate",
+            changes={"checkpoint": {"substrate": "other-mainnet"}},
+        ),
+        case(
+            "laa-checkpoint-cross-order-domain", "indeterminate",
+            "a checkpoint from another consensus ordering domain is not position-comparable",
+            changes={"checkpoint": {"orderDomain": "demos-mainnet:other-finality:genesis-v1"}},
+        ),
+        case(
             "laa-missing-commitment-era-proof", "indeterminate",
             "historical audit cannot infer agreement era without commitment authority",
             changes={"commitment": {"resolution": "unavailable"}},
@@ -253,6 +282,16 @@ def vectors() -> list[dict]:
             changes={"commitment": {"receiptState": "included"}},
         ),
         case(
+            "laa-commitment-substrate-mismatch", "fail",
+            "a commitment receipt on another substrate cannot be ordered against this checkpoint",
+            changes={"commitment": {"substrate": "other-mainnet"}},
+        ),
+        case(
+            "laa-commitment-cross-order-domain", "indeterminate",
+            "equal-looking positions from different commitment order domains are incomparable",
+            changes={"commitment": {"orderDomain": "demos-mainnet:other-finality:genesis-v1"}},
+        ),
+        case(
             "laa-missing-settlement-era-proof", "indeterminate",
             "old agreement alone cannot prove payment happened before activation",
             changes={"settlementEvidence": {"resolution": "unavailable"}},
@@ -266,6 +305,16 @@ def vectors() -> list[dict]:
             "laa-settlement-not-finalized", "indeterminate",
             "included-only settlement evidence is not historical authority",
             changes={"settlementEvidence": {"receiptState": "included"}},
+        ),
+        case(
+            "laa-settlement-substrate-mismatch", "fail",
+            "the DACS SettlementEvidence anchor receipt must share the checkpoint substrate",
+            changes={"settlementEvidence": {"substrate": "other-mainnet"}},
+        ),
+        case(
+            "laa-settlement-cross-order-domain", "indeterminate",
+            "a settlement-evidence receipt from another ordering domain is incomparable",
+            changes={"settlementEvidence": {"orderDomain": "demos-mainnet:other-finality:genesis-v1"}},
         ),
         case(
             "laa-same-position-unorderable", "indeterminate",

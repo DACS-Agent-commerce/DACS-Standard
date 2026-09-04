@@ -1,0 +1,883 @@
+{
+  "set": "sb2-collision-authority-v0.8",
+  "spec": "DACS-4 §9.5.8 SB-2 authenticated collision authority",
+  "tier": "candidate",
+  "description": "Cross-job/phase collisions use finalized settlement-side authority; without it every competing claim is indeterminate and non-countable.",
+  "count": 19,
+  "hash": "2654e6259b91336a3f2ee06523d32820f709e6073bdf0af2e214ee1ed4e100a9",
+  "vectors": [
+    {
+      "name": "single-record-no-collision-counts",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "authenticated-pinned-rail",
+          "state": "none"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [],
+        "reason": "no-collision",
+        "selectedBy": "no-collision",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "SB-2 does not require settlement-side authority until a collision appears."
+    },
+    {
+      "name": "idempotent-identical-record-counts-once",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "authenticated-pinned-rail",
+          "state": "none"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [],
+        "reason": "idempotent-same-tuple",
+        "selectedBy": "no-collision",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Repeated presentation of the same evidence hash is idempotent."
+    },
+    {
+      "name": "cross-job-finalized-binding-selects-a",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "finalized",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "authenticated-settlement-binding",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "The settlement's finalized job binding selects A and rejects B."
+    },
+    {
+      "name": "backdated-attacker-does-not-win",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "finalized",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "authenticated-settlement-binding",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "B has earlier observedAt but cannot override the binding to A."
+    },
+    {
+      "name": "equal-producer-timestamps-do-not-tie-break",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "finalized",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "authenticated-settlement-binding",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Equal timestamps and hash order are irrelevant when authority binds A."
+    },
+    {
+      "name": "reverse-arrival-order-same-authority",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "finalized",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          },
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "authenticated-settlement-binding",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Input and arrival order cannot change the selected tuple."
+    },
+    {
+      "name": "cross-phase-finalized-binding-selects-phase-one",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "finalized",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 2,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 500,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "authenticated-settlement-binding",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "The binding covers both jobId and phaseIndex."
+    },
+    {
+      "name": "no-binding-collision-voids-both",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "authenticated-pinned-rail",
+          "state": "none"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-without-authority",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "An unbound rail collision suspends both claims."
+    },
+    {
+      "name": "attacker-anchors-stolen-claim-first",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "authenticated-pinned-rail",
+          "state": "none"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {
+          "firstSr2Claim": "2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-without-authority",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "B's earlier SR-2 anchor and timestamp do not grant commercial authority."
+    },
+    {
+      "name": "authority-unavailable-voids-both",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "unavailable"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-unavailable",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Unavailable authority is non-countable, not first-observed wins."
+    },
+    {
+      "name": "authority-not-final-voids-both",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "included",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-not-final",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A non-final binding cannot choose a durable winner."
+    },
+    {
+      "name": "authority-pruned-voids-both",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "pruned"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-unavailable",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Pruned authority does not fall back to timestamps."
+    },
+    {
+      "name": "authority-reorged-before-finality-voids-both",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "reorged"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-not-final",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A pre-finality reorganisation suspends the whole collision group."
+    },
+    {
+      "name": "conflicting-finalized-authority-voids-both",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "conflicting-finalized"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-conflicting",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Conflicting purported finality cannot silently transfer credit."
+    },
+    {
+      "name": "malformed-authority-errors",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "malformed"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "error",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [],
+        "reason": "malformed-collision-authority",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Malformed authority is an error, not an ordering fallback."
+    },
+    {
+      "name": "binding-to-unpresented-tuple-rejects-both",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "finalized",
+          "jobId": "01KTY8ZJ02CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "fail",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "binding-matches-no-claim",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Neither claim matches the settlement's authenticated tuple."
+    },
+    {
+      "name": "later-anchor-hint-cannot-replace-finalized-binding",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "independently-verified-settlement",
+          "state": "finalized",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+          "phaseIndex": 1
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {
+          "replacementAnchorClaims": {
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "authenticated-settlement-binding",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A later outer anchor claiming B cannot replace finalized binding to A."
+    },
+    {
+      "name": "unsupported-atomic-first-claim-hint-is-inert",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "authenticated-pinned-rail",
+          "state": "none"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {
+          "atomicFirstClaim": "2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-without-authority",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "No atomic first-claim mechanism is registered in this revision."
+    },
+    {
+      "name": "distinct-event-identifiers-both-count",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "settlementAuthority": {
+          "source": "authenticated-pinned-rail",
+          "state": "none"
+        }
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:8",
+            "observedAt": 500,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [],
+        "reason": "no-collision",
+        "selectedBy": "no-collision",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Different log indices are different canonical settlement identifiers."
+    }
+  ]
+}

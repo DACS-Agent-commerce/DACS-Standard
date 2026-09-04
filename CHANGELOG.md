@@ -14,6 +14,21 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — authenticated reputation-window time
+
+- **Current DACS-5 reputation profile (AWT-1..AWT-8; #384)** — adds the
+  structurally distinct `AuthenticatedWindowReputationDerivation`, combining
+  settlement verification, job-bound replay, and exact-bundle SR-2 time
+  evidence. Window membership now uses only the independently verified
+  established/finalized anchor receipt's consensus `blockRef.timestamp`, after
+  bundle reconciliation, with inclusive boundaries. Missing, mismatched,
+  replacement/reorg-only, or unorderably conflicting proof is indeterminate
+  and non-countable; no path falls back to producer-set `finalisedAt`.
+- **Released shapes preserved** — the five older derivation shapes retain their
+  exact meanings as historical/partial signals and cannot claim current-profile
+  reputation. Replay binds and re-verifies the exact window receipt, while any
+  pre-current era claim requires authenticated profile-revision evidence.
+
 ### Fixed — authenticated Vet replay and reference consumers
 
 - **PB-2 EVM chain boundary aligned** (#362/#366) — EVM RailDefinition chain
@@ -165,7 +180,6 @@ The format used per release:
   create party fault during an outage. No historical downgrade profile is
   registered. Adds 22 deterministic disposition vectors covering all required
   issue cases and the explicitly weaker authenticated no-binding rail posture.
-
 
 ### Fixed — DACS-X conformance provenance
 

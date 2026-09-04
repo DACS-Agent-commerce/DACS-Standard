@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -13,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
 import generate_identity_bundle_hash_binding_vectors as generator  # noqa: E402
+import jcs  # noqa: E402
 
 
 VECTORS = ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json"
@@ -78,7 +81,18 @@ def evaluate(vector: dict) -> tuple[str, dict]:
     resolved = trusted["resolvedIdentityBundle"]
     if resolved["state"] == "unavailable":
         return result("indeterminate", "identity-bundle-unavailable")
-    if resolved["state"] != "present" or not BARE.fullmatch(resolved["bundleHash"]):
+    if resolved["state"] != "present":
+        return result("error", "invalid-resolved-identity-context")
+    bundle = resolved.get("identityBundleWithoutPresentation")
+    if not isinstance(bundle, dict) or "presentation" in bundle:
+        return result("error", "invalid-resolved-identity-context")
+    try:
+        resolved_digest = hashlib.sha256(
+            jcs.canonicalize(bundle).encode("utf-8")
+        ).hexdigest()
+    except (TypeError, ValueError):
+        return result("error", "invalid-resolved-identity-context")
+    if bundle.get("presentedBy") != resolved.get("primaryClaim"):
         return result("error", "invalid-resolved-identity-context")
 
     parties = (
@@ -92,7 +106,6 @@ def evaluate(vector: dict) -> tuple[str, dict]:
     if len({party["primaryClaim"] for party in parties}) != 1:
         return result("fail", "party-primary-claim-mismatch")
 
-    resolved_digest = resolved["bundleHash"]
     if agreement_digest != resolved_digest:
         return result("fail", "agreement-bundle-digest-mismatch")
     if protocol["compositeBundleHash"] != resolved_digest:
@@ -128,6 +141,41 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
 
     def test_committed_file_is_deterministic(self):
         self.assertEqual(VECTORS.read_text(encoding="utf-8"), generator.rendered())
+
+    def test_ibh1_is_recomputed_from_a_concrete_identity_bundle(self):
+        vector = self.cases["current-agreement-to-terminal-succeeds"]
+        resolved = vector["trustedContext"]["resolvedIdentityBundle"]
+        self.assertNotIn("bundleHash", resolved)
+        bundle = resolved["identityBundleWithoutPresentation"]
+        self.assertNotIn("presentation", bundle)
+        digest = hashlib.sha256(jcs.canonicalize(bundle).encode("utf-8")).hexdigest()
+        self.assertEqual(digest, generator.DIGEST)
+        self.assertEqual(
+            vector["protocolInput"]["agreementParty"]["bundleHash"], digest
+        )
+
+        tampered = copy.deepcopy(vector)
+        tampered["trustedContext"]["resolvedIdentityBundle"][
+            "identityBundleWithoutPresentation"
+        ]["presentedAt"] += 1
+        self.assertEqual(evaluate(tampered)[0], "fail")
+
+    def test_prefixed_payee_corpus_is_not_current_ibh_conformance(self):
+        path = ROOT / "conformance/vectors/security/payee-destination-binding-v0.1.json"
+        historical = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            historical["identityBundleHashProfile"],
+            {
+                "status": "historical-superseded",
+                "wireEncoding": "sha256-prefixed",
+                "currentAuthoring": False,
+                "supersededBy": "identity-bundle-hash-binding-v0.1",
+            },
+        )
+        self.assertEqual(
+            self.data["supersedesIdentityBundleHashProfiles"],
+            ["payee-destination-binding-v0.1"],
+        )
 
     def test_every_vector_executes_to_pinned_result(self):
         for vector in self.data["vectors"]:

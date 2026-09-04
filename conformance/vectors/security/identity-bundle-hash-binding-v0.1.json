@@ -2,9 +2,12 @@
   "set": "identity-bundle-hash-binding-v0.1",
   "spec": "CORE §B.2 IBH-1..IBH-6 cross-stage IdentityBundle digest binding",
   "tier": "candidate",
+  "supersedesIdentityBundleHashProfiles": [
+    "payee-destination-binding-v0.1"
+  ],
   "description": "One bare current digest encoding across DACS-2/3/5 with a typed, signature-preserving legacy DACS-3 agreement projection.",
   "count": 22,
-  "hash": "5a1f7389575438d34bb2ed21ce055fe48839086f009f067bd594c822745f10a4",
+  "hash": "9f7c3fcc426df499c1a1eae35af34c281e3befd1b405ef40b539663d7a827d60",
   "vectors": [
     {
       "name": "current-agreement-to-terminal-succeeds",
@@ -17,35 +20,48 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "pass",
       "want": {
         "authorizedForTerminalClosure": true,
         "reason": "current-byte-exact-binding",
-        "projectedBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "projectedBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "comparison": "byte-exact-current",
         "legacyAgreementBytesPreserved": false
       },
@@ -63,28 +79,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -109,28 +138,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72AB72AB72AB72AB72AB72AB72AB72AB72AB72AB72AB72AB72AB72AB72AB72AB"
+          "bundleHash": "9C5686E8D8B864B978DD6C8104EDFE4EDDB17E0EAEA7D7F776A30E2F27B93CF4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -155,28 +197,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -201,28 +256,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -247,28 +315,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -293,28 +374,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -339,14 +433,27 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
@@ -355,12 +462,12 @@
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -385,28 +492,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
         "compositeBundleHash": "51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -431,28 +551,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "paymentPayerBundleHash": "51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -477,18 +610,31 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
@@ -498,7 +644,7 @@
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -523,23 +669,36 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
@@ -569,28 +728,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "unavailable",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "indeterminate",
@@ -615,35 +787,48 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "pass",
       "want": {
         "authorizedForTerminalClosure": true,
         "reason": "legacy-typed-digest-binding",
-        "projectedBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "projectedBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "comparison": "typed-legacy-digest",
         "legacyAgreementBytesPreserved": true
       },
@@ -661,28 +846,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "indeterminate",
@@ -707,14 +905,27 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
@@ -723,12 +934,12 @@
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -753,28 +964,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "SHA256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "SHA256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -799,35 +1023,48 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "pass",
       "want": {
         "authorizedForTerminalClosure": true,
         "reason": "current-byte-exact-binding",
-        "projectedBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "projectedBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "comparison": "byte-exact-current",
         "legacyAgreementBytesPreserved": false
       },
@@ -845,28 +1082,41 @@
         "agreementIntegrity": "invalid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "sha256:72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -891,28 +1141,41 @@
         "agreementIntegrity": "invalid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -937,28 +1200,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "seller",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",
@@ -983,28 +1259,41 @@
         "agreementIntegrity": "valid",
         "resolvedIdentityBundle": {
           "state": "present",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001"
         }
       },
       "protocolInput": {
-        "compositeBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
-        "paymentPayerBundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab",
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
         "agreementParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "sessionParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHBUYER00001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         },
         "bundleParty": {
           "role": "buyer",
           "primaryClaim": "cci-lei:984500IBHSELLER0001",
-          "bundleHash": "72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab72ab"
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
         }
       },
       "expected": "fail",

@@ -24,6 +24,9 @@ The format used per release:
   historical prefix only after verification, and projects the same digest into
   a bare DACS-5 terminal field. Current prefix insertion/removal, wrong digest,
   role/claim substitution, and normalization-before-signature are rejected.
+  The earlier signed payee-destination corpus is machine-readably marked as a
+  historical prefixed-hash profile; current conformance independently derives
+  the digest from a concrete presentation-omitted `IdentityBundle`.
 
 ### Fixed — DACS-X conformance provenance
 

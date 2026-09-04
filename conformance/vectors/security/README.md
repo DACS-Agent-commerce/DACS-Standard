@@ -661,6 +661,13 @@ DACS-3 §8.5 defines the `PayeeBoundAgreementDocument` signature input as
 also exercise §B.7/SIG-2 by replaying legacy agreement signatures under the
 payee-bound domain and vice versa.
 
+The signed fixtures in this corpus predate IBH-1..IBH-6 and carry the historical
+`sha256:`-prefixed `AgreementParty.bundleHash`. Their top-level
+`identityBundleHashProfile` therefore marks that wire encoding
+`historical-superseded` and non-current. The PB/artifact decisions remain useful,
+but current IdentityBundleHash authoring and admission conformance comes only
+from `identity-bundle-hash-binding-v0.1.json`.
+
 This candidate set does not assign a failure class for the separate
 no-satisfiable-tier refusal case; that classification remains outside this
 artifact-compatibility repair packet.
@@ -1115,6 +1122,10 @@ the independently recomputed digest of the resolved signed IdentityBundle.
 Prefix insertion/removal, uppercase encoding, well-formed wrong digests, role
 substitution, primary-claim substitution, and unavailable bundle resolution
 all have deterministic non-pass outcomes.
+
+Each case carries a concrete `IdentityBundle` with `presentation` omitted, and
+the executable evaluator independently applies JCS and SHA-256 to those bytes.
+No trusted precomputed resolved-bundle hash is accepted as the IBH-1 result.
 
 The compatibility cases keep an authenticated legacy agreement's original
 `sha256:` field, agreement hash, signatures, and commitment byte-stable. Only

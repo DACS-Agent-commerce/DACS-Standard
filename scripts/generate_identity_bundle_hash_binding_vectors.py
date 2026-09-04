@@ -4,19 +4,36 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 from pathlib import Path
 from typing import Any
 
+import jcs
+
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json"
 
-DIGEST = "72ab" * 16
-OTHER_DIGEST = "51cd" * 16
 CLAIM = "cci-lei:984500IBHBUYER00001"
 OTHER_CLAIM = "cci-lei:984500IBHSELLER0001"
+IDENTITY_BUNDLE_WITHOUT_PRESENTATION = {
+    "bundleVersion": "1",
+    "presentedBy": CLAIM,
+    "presentedAt": 1_800_000_000_000,
+    "sessionNonce": "ibh-vector-session-nonce-000000000001",
+    "claims": [
+        {
+            "ref": CLAIM,
+            "metadata": {"fixture": "identity-bundle-hash-binding-v0.1"},
+        }
+    ],
+}
+DIGEST = hashlib.sha256(
+    jcs.canonicalize(IDENTITY_BUNDLE_WITHOUT_PRESENTATION).encode("utf-8")
+).hexdigest()
+OTHER_DIGEST = "51cd" * 16
 
 
 def party(bundle_hash: str, *, role: str = "buyer", claim: str = CLAIM) -> dict[str, str]:
@@ -30,7 +47,6 @@ def vector(
     legacy_anchor_authenticated: bool = True,
     agreement_integrity: str = "valid",
     resolved_state: str = "present",
-    resolved_hash: str = DIGEST,
     resolved_role: str = "buyer",
     resolved_claim: str = CLAIM,
     composite_hash: str = DIGEST,
@@ -51,6 +67,7 @@ def vector(
     preserves_legacy: bool = False,
     note: str,
 ) -> dict[str, Any]:
+    resolved_bundle = copy.deepcopy(IDENTITY_BUNDLE_WITHOUT_PRESENTATION)
     return {
         "name": name,
         "operation": "validate-identity-bundle-cross-stage-binding",
@@ -62,7 +79,7 @@ def vector(
             "agreementIntegrity": agreement_integrity,
             "resolvedIdentityBundle": {
                 "state": resolved_state,
-                "bundleHash": resolved_hash,
+                "identityBundleWithoutPresentation": resolved_bundle,
                 "role": resolved_role,
                 "primaryClaim": resolved_claim,
             },
@@ -274,6 +291,9 @@ def document() -> dict[str, Any]:
         "set": "identity-bundle-hash-binding-v0.1",
         "spec": "CORE §B.2 IBH-1..IBH-6 cross-stage IdentityBundle digest binding",
         "tier": "candidate",
+        "supersedesIdentityBundleHashProfiles": [
+            "payee-destination-binding-v0.1"
+        ],
         "description": (
             "One bare current digest encoding across DACS-2/3/5 with a typed, "
             "signature-preserving legacy DACS-3 agreement projection."

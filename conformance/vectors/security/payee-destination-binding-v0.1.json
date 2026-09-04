@@ -1,6 +1,12 @@
 {
   "set": "payee-destination-binding-v0.1",
   "spec": "DACS-3 §8.5/§8.6 PayeeBoundAgreementDocument compatibility; DACS-4 §9.5.1 PB-1..PB-3",
+  "identityBundleHashProfile": {
+    "status": "historical-superseded",
+    "wireEncoding": "sha256-prefixed",
+    "currentAuthoring": false,
+    "supersededBy": "identity-bundle-hash-binding-v0.1"
+  },
   "provenance": {
     "generator": "github.com/mj-deving/dacs-verify",
     "command": "bun scripts/emit-payee-binding-vectors.ts",

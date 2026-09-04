@@ -37,7 +37,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | --- | --- | --- | --- |
 | [`agreement-listing-v0.1.json`](agreement-listing-v0.1.json) | DACS §8.5.2 | 30 | `accept` / `indeterminate` / `reject` |
 | [`alternative-payment-projection-v0.1.json`](alternative-payment-projection-v0.1.json) | DACS-1 §6.3.4 LRR; DACS-3 §8.5.2; DACS-4 §9.9.1 APR-1..APR-8; DACS-5 §10.4.3 | 45 | `fail` / `indeterminate` / `pass` |
-| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 36 | `error` / `fail` / `pass` |
+| [`ap2-handler-safety-v0.6.json`](ap2-handler-safety-v0.6.json) | DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1 | 40 | `error` / `fail` / `pass` |
 | [`artifact-reference-shapes-v0.1.json`](artifact-reference-shapes-v0.1.json) | DACS-2 §7.5.2 AttestationRef; DACS-4 §9.3 ChainTxRef | 23 | `fail` / `pass` |
 | [`bundle-absence-evidence-v0.3.json`](bundle-absence-evidence-v0.3.json) | CORE §5 SR-2; DACS-5 §10.4.3 / §10.5.1 guard (iv) | 4 | `fail` / `indeterminate` / `pass` |
 | [`bundle-binding-v0.1.json`](bundle-binding-v0.1.json) | DACS-5 §10.4.2 BB-1..BB-8 + §10.4.1 faultedParty | 9 | `fail` / `indeterminate` / `pass` |
@@ -52,7 +52,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 43 | `error` / `fail` / `pass` |
+| [`job-id-grammar-v0.1.json`](job-id-grammar-v0.1.json) | CORE §11.1.2 and §B.1 JID-1..JID-4; DACS-5 §10.3 and §10.4.2 | 47 | `error` / `fail` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -122,7 +122,7 @@ python3 -m unittest tests.test_canonical_json_vectors -v
 
 ### `ap2-handler-safety-v0.6.json` — §9.5.6 checkout admission + AP2-3/AP2-6/AP2-7
 
-36 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
+40 candidate vectors execute the DACS-owned AP2 handler boundaries introduced
 in DACS-4 v0.6. They pin provider idempotency-key bytes, NFC handling,
 job/phase separation, malformed phase refusal, exact compact-JWS transaction-ID
 derivation, CheckoutMandate `_sd_alg` selection and SHA-256 fallback, signature-
@@ -130,9 +130,11 @@ byte sensitivity, and refusal of malformed or unsupported algorithms. The
 composed admission cases require separate verified CheckoutMandate and
 PaymentMandate artifacts, enforce the DACS signature profile, and reject a
 transaction-ID mismatch before AP2-7 reservation or provider submission. They
-also require authenticated corrective-profile admission, JID-1, and a valid
-phase index before hashing, resolution, metadata construction, reservation, or
-provider submission.
+also require verifier-owned corrective-profile context bound to the exact
+session and authenticated peer identity, JID-1, and a valid phase index before
+hashing, resolution, metadata construction, reservation, or provider
+submission. Missing, duplicate, identity-mismatched, session-mismatched,
+unauthenticated, and caller-copied profile authorities all fail closed.
 
 The same set executes first-use binding, exact-tuple retry/resume, cross-job and
 cross-phase replay refusal, and fail-closed conflicting-store handling. An exact
@@ -1121,16 +1123,17 @@ python3 -m unittest tests.test_presence_only_claim_vectors -v
 
 ### `job-id-grammar-v0.1.json` — CORE §B.1 JID-1..JID-4
 
-Forty-three deterministic cases pin the complete canonical DACS `jobId`
+Forty-seven deterministic cases pin the complete canonical DACS `jobId`
 grammar, byte-exact comparison, logical-address insertion, and the DACS-5
 bundle-address preimage. Invalid case, alias, overflow, whitespace, Unicode,
 type, and length inputs execute through an instrumented gate that must make
 zero hash and resolver calls. The buyer, seller, and orchestrator bundle cases
 also carry literal address known answers independent of the generator.
-Profile-admission cases resolve opaque peer references through
-implementation-owned authenticated state and require the exact configured
-release pin plus complete module tuple; caller-supplied matching objects do not
-establish admission.
+Profile-admission cases receive separate verifier-owned context and require it
+to bind the exact session and authenticated peer identity to the configured
+release pin plus complete module tuple. Missing, duplicate, identity-mismatched,
+session-mismatched, or unauthenticated records refuse; caller-supplied matching
+objects or copied reference labels do not establish admission.
 
 Regenerate and run with:
 

@@ -159,13 +159,15 @@ The format used per release:
   Unicode-normalize it. Cross-artifact equality is byte-exact. The DACS-5
   bundle address is now explicitly
   `stor-` plus the lowercase SHA-256 hex of
-  `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`. Adds 43 deterministic
+  `ASCII(jobId) || ASCII("-bundle-") || ASCII(role)`. Adds 47 deterministic
   vectors with three independent literal address known answers, Unicode/case/
   alias/overflow negatives, comparison cases, and executed zero-hash/
   zero-lookup assertions for malformed input. Exact-profile cases refuse
   caller-supplied matching objects—including empty, partial, and
-  unsupported-version tuples—because only implementation-authenticated peer
-  evidence can establish admission.
+  unsupported-version tuples and copied reference labels—because only
+  verifier-owned trusted context bound to the exact session and authenticated
+  peer identity can establish admission. Missing, duplicate, unauthenticated,
+  identity-mismatched, and session-mismatched authority all fail closed.
 - **Compatibility boundary** (CORE §11.1.2; PROFILE) — this change is not
   minor-additive. Live use requires the exact coordinated release/commit and
   complete module tuple to be authenticated before protocol action; mixed

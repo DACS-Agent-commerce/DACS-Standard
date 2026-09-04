@@ -55,38 +55,83 @@ AUTHORITATIVE_LOCAL_PROFILE = {
     "releasePin": AUTHORITATIVE_RELEASE_PIN,
     "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
 }
-# These opaque references model profiles whose provenance and peer identity have
-# already been authenticated by the implementation. Vector-supplied profile
-# objects are deliberately never trusted as admission authority.
-AUTHENTICATED_PEER_PROFILES = {
-    "fixture:peer-current": {
-        "releasePin": AUTHORITATIVE_RELEASE_PIN,
-        "moduleVersions": dict(AUTHORITATIVE_MODULE_VERSIONS),
-    },
-    "fixture:peer-wrong-pin": {
-        "releasePin": "f" * 40,
-        "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
-    },
-    "fixture:peer-partial-tuple": {
-        "releasePin": AUTHORITATIVE_RELEASE_PIN,
-        "moduleVersions": {
-            key: value
-            for key, value in AUTHORITATIVE_MODULE_VERSIONS.items()
-            if key != "dacs5"
-        },
-    },
-    "fixture:peer-extra-tuple": {
-        "releasePin": AUTHORITATIVE_RELEASE_PIN,
-        "moduleVersions": {
-            **AUTHORITATIVE_MODULE_VERSIONS,
-            "future": "0.1",
-        },
-    },
-    "fixture:peer-non-string-pin": {
-        "releasePin": 1,
-        "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
-    },
-    "fixture:peer-major-only": {"dacsVersion": "1"},
+CURRENT_SESSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+CURRENT_PEER_IDENTITY = "did:demos:agent:" + "22" * 32
+
+
+def trusted_profile_context(
+    *,
+    session_id=CURRENT_SESSION_ID,
+    expected_peer_identity=CURRENT_PEER_IDENTITY,
+    participant_identity=None,
+    profile=AUTHORITATIVE_LOCAL_PROFILE,
+    authenticated=True,
+    duplicate=False,
+):
+    participant = {
+        "identity": (
+            expected_peer_identity
+            if participant_identity is None
+            else participant_identity
+        ),
+        "authenticated": authenticated,
+        "profile": profile,
+    }
+    participants = [participant]
+    if duplicate:
+        participants.append(dict(participant))
+    return {
+        "sessionId": session_id,
+        "expectedPeerIdentity": expected_peer_identity,
+        "participants": participants,
+    }
+
+
+TRUSTED_PROFILE_CONTEXTS = {
+    "authenticated-corrective-profile-admitted": trusted_profile_context(),
+    "unauthenticated-peer-profile-refuses": trusted_profile_context(
+        authenticated=False
+    ),
+    "authenticated-different-release-pin-refuses": trusted_profile_context(
+        profile={
+            "releasePin": "f" * 40,
+            "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
+        }
+    ),
+    "authenticated-partial-module-tuple-refuses": trusted_profile_context(
+        profile={
+            "releasePin": AUTHORITATIVE_RELEASE_PIN,
+            "moduleVersions": {
+                key: value
+                for key, value in AUTHORITATIVE_MODULE_VERSIONS.items()
+                if key != "dacs5"
+            },
+        }
+    ),
+    "authenticated-extra-module-tuple-refuses": trusted_profile_context(
+        profile={
+            "releasePin": AUTHORITATIVE_RELEASE_PIN,
+            "moduleVersions": {**AUTHORITATIVE_MODULE_VERSIONS, "future": "0.1"},
+        }
+    ),
+    "authenticated-non-string-release-pin-refuses": trusted_profile_context(
+        profile={
+            "releasePin": 1,
+            "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
+        }
+    ),
+    "authenticated-major-only-discriminator-refuses": trusted_profile_context(
+        profile={"dacsVersion": "1"}
+    ),
+    "duplicate-authenticated-peer-profile-refuses": trusted_profile_context(
+        duplicate=True
+    ),
+    "authenticated-peer-identity-mismatch-refuses": trusted_profile_context(
+        participant_identity="did:demos:agent:" + "33" * 32
+    ),
+    "authenticated-session-mismatch-refuses": trusted_profile_context(
+        session_id="01ARZ3NDEKTSV4RRFFQ69G5FAW"
+    ),
 }
 
 
@@ -127,23 +172,45 @@ def is_exact_corrective_profile(profile):
     )
 
 
-def admit_authenticated_profile(vector):
-    # Raw profile objects are attacker-controlled vector inputs, even if their
-    # bytes happen to copy the locally configured profile exactly.
-    if "localProfile" in vector or "peerProfile" in vector:
-        raise ValueError("profile-admission")
-    peer_ref = vector.get("peerProfileRef")
-    if not isinstance(peer_ref, str):
-        raise ValueError("profile-admission")
-    peer = AUTHENTICATED_PEER_PROFILES.get(peer_ref)
-    if (
-        not is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE)
-        or not is_exact_corrective_profile(peer)
+def admit_authenticated_profile(vector, trusted_context):
+    # Profile objects and reference labels inside protocol input are attacker-
+    # controlled, even if their bytes copy trusted configuration exactly.
+    if any(
+        field in vector for field in ("localProfile", "peerProfile", "peerProfileRef")
     ):
         raise ValueError("profile-admission")
+    session_id = vector.get("sessionId")
+    peer_identity = vector.get("peerIdentity")
+    if not isinstance(session_id, str) or not isinstance(peer_identity, str):
+        raise ValueError("profile-admission")
+    if not isinstance(trusted_context, dict):
+        raise ValueError("profile-admission")
+    if trusted_context.get("sessionId") != session_id:
+        raise ValueError("profile-admission")
+    expected_peer_identity = trusted_context.get("expectedPeerIdentity")
+    if (
+        not isinstance(expected_peer_identity, str)
+        or peer_identity != expected_peer_identity
+    ):
+        raise ValueError("profile-admission")
+    participants = trusted_context.get("participants")
+    if not isinstance(participants, list):
+        raise ValueError("profile-admission")
+    matches = [
+        participant
+        for participant in participants
+        if isinstance(participant, dict)
+        and participant.get("identity") == expected_peer_identity
+    ]
+    if len(matches) != 1 or matches[0].get("authenticated") is not True:
+        raise ValueError("profile-admission")
+    if not is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE):
+        raise ValueError("profile-admission")
+    if not is_exact_corrective_profile(matches[0].get("profile")):
+        raise ValueError("profile-admission")
 
 
-def evaluate(vector):
+def evaluate(vector, trusted_context=None):
     metrics = {"hashCalls": 0, "lookupCalls": 0}
     operation = vector.get("operation")
     try:
@@ -169,7 +236,7 @@ def evaluate(vector):
             equal = left.encode("ascii") == right.encode("ascii")
             return ("pass" if equal else "fail"), {**metrics, "equal": equal}
         if operation == "profile-admit":
-            admit_authenticated_profile(vector)
+            admit_authenticated_profile(vector, trusted_context)
             return "pass", {**metrics, "profileAdmitted": True}
         raise ValueError("operation-validation")
     except ValueError as exc:
@@ -202,7 +269,8 @@ class JobIdGrammarVectorTests(unittest.TestCase):
     def test_every_vector_executes_to_pinned_verdict_and_effects(self):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
-                verdict, observed = evaluate(vector)
+                trusted_context = TRUSTED_PROFILE_CONTEXTS.get(vector["name"])
+                verdict, observed = evaluate(vector, trusted_context)
                 self.assertEqual(vector["expected"], verdict)
                 for key, value in vector.get("want", {}).items():
                     self.assertEqual(value, observed.get(key), key)
@@ -333,10 +401,11 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             vector for vector in self.data["vectors"]
             if vector["operation"] == "profile-admit"
         ]
-        self.assertEqual(12, len(cases))
+        self.assertEqual(16, len(cases))
         for case in cases:
             with self.subTest(case=case["name"]):
-                verdict, observed = evaluate(case)
+                trusted_context = TRUSTED_PROFILE_CONTEXTS.get(case["name"])
+                verdict, observed = evaluate(case, trusted_context)
                 self.assertEqual(case["expected"], verdict)
                 self.assertEqual(0, observed["hashCalls"])
                 self.assertEqual(0, observed["lookupCalls"])
@@ -353,6 +422,16 @@ class JobIdGrammarVectorTests(unittest.TestCase):
                 self.assertEqual("profile-admission", observed["failureStage"])
                 self.assertEqual(0, observed["hashCalls"])
                 self.assertEqual(0, observed["lookupCalls"])
+
+    def test_copied_blessed_reference_cannot_create_trusted_context(self):
+        mutant = dict(self.by_name["caller-supplied-matching-profile-refuses"])
+        mutant.pop("peerProfile")
+        mutant["peerProfileRef"] = "fixture:peer-current"
+        verdict, observed = evaluate(mutant)
+        self.assertEqual("error", verdict)
+        self.assertEqual("profile-admission", observed["failureStage"])
+        self.assertEqual(0, observed["hashCalls"])
+        self.assertEqual(0, observed["lookupCalls"])
 
     def test_corrective_tuple_matches_every_module_header_and_profile_row(self):
         profile = PROFILE.read_text(encoding="utf-8")
@@ -390,6 +469,9 @@ class JobIdGrammarVectorTests(unittest.TestCase):
         self.assertIn("[0-7][0-9A-HJKMNP-TV-Z]{25}", core)
         self.assertIn("jobId        = first-crockford 25crockford", core)
         self.assertNotIn("first-crockford 25*crockford", core)
+        self.assertIn("verifier- or orchestrator-owned trusted context", core)
+        self.assertIn("duplicate records for one expected participant", core)
+        self.assertIn("opaque reference label has no authority", core)
         self.assertIn("ASCII(jobId)", dacs5)
         self.assertIn("generate_job_id_grammar_vectors.py --check", workflow)
         self.assertIn("job-id-grammar-v0.1.json", readme)

@@ -34,12 +34,63 @@ AUTHORITATIVE_MODULE_VERSIONS = {
     "dacs4": "0.7",
     "dacs5": "0.5",
 }
-AUTHENTICATED_PEER_PROFILES = {
-    "fixture:peer-current": {
-        "releasePin": AUTHORITATIVE_RELEASE_PIN,
-        "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
-    },
+AUTHORITATIVE_LOCAL_PROFILE = {
+    "releasePin": AUTHORITATIVE_RELEASE_PIN,
+    "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
 }
+CURRENT_SESSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+CURRENT_PEER_IDENTITY = "did:demos:agent:" + "22" * 32
+
+
+def trusted_profile_context(
+    *,
+    session_id=CURRENT_SESSION_ID,
+    expected_peer_identity=CURRENT_PEER_IDENTITY,
+    participant_identity=None,
+    authenticated=True,
+    duplicate=False,
+):
+    participant = {
+        "identity": (
+            expected_peer_identity
+            if participant_identity is None
+            else participant_identity
+        ),
+        "authenticated": authenticated,
+        "profile": AUTHORITATIVE_LOCAL_PROFILE,
+    }
+    participants = [participant]
+    if duplicate:
+        participants.append(dict(participant))
+    return {
+        "sessionId": session_id,
+        "expectedPeerIdentity": expected_peer_identity,
+        "participants": participants,
+    }
+
+
+def trusted_context_for_ap2_case(case):
+    """Test harness context; deliberately not derived inside the oracle."""
+    name = case["name"]
+    if name == "ap2-admission-copied-profile-reference-refuses":
+        return None
+    if name == "ap2-admission-unauthenticated-profile-refuses":
+        return trusted_profile_context(authenticated=False)
+    if name == "ap2-admission-duplicate-profile-refuses":
+        return trusted_profile_context(duplicate=True)
+    if name == "ap2-admission-peer-identity-mismatch-refuses":
+        return trusted_profile_context(
+            participant_identity="did:demos:agent:" + "33" * 32
+        )
+    if name == "ap2-admission-session-mismatch-refuses":
+        return trusted_profile_context(
+            session_id="01ARZ3NDEKTSV4RRFFQ69G5FAW"
+        )
+    if name == "ap2-admission-noncanonical-job-errors":
+        return trusted_profile_context(session_id="cafe\u0301-job")
+    if name == "ap2-admission-overflow-job-errors":
+        return trusted_profile_context(session_id="8" + CURRENT_SESSION_ID[1:])
+    return trusted_profile_context()
 
 
 def canonical_json(value):
@@ -107,17 +158,11 @@ def evaluate_signature_policy(case):
     )
 
 
-def admits_current_profile(case):
-    if "localProfile" in case or "peerProfile" in case:
+def is_exact_corrective_profile(profile):
+    if not isinstance(profile, dict):
         return False
-    peer_ref = case.get("peerProfileRef")
-    if not isinstance(peer_ref, str):
-        return False
-    peer = AUTHENTICATED_PEER_PROFILES.get(peer_ref)
-    if not isinstance(peer, dict):
-        return False
-    pin = peer.get("releasePin")
-    modules = peer.get("moduleVersions")
+    pin = profile.get("releasePin")
+    modules = profile.get("moduleVersions")
     return (
         isinstance(pin, str)
         and pin == AUTHORITATIVE_RELEASE_PIN
@@ -128,7 +173,43 @@ def admits_current_profile(case):
     )
 
 
-def evaluate_checkout_payment_admission(case):
+def admits_current_profile(case, trusted_context):
+    if any(
+        field in case for field in ("localProfile", "peerProfile", "peerProfileRef")
+    ):
+        return False
+    session_id = case.get("jobId")
+    peer_identity = case.get("peerIdentity")
+    if not isinstance(session_id, str) or not isinstance(peer_identity, str):
+        return False
+    if not isinstance(trusted_context, dict):
+        return False
+    if trusted_context.get("sessionId") != session_id:
+        return False
+    expected_peer_identity = trusted_context.get("expectedPeerIdentity")
+    if (
+        not isinstance(expected_peer_identity, str)
+        or peer_identity != expected_peer_identity
+    ):
+        return False
+    participants = trusted_context.get("participants")
+    if not isinstance(participants, list):
+        return False
+    matches = [
+        participant
+        for participant in participants
+        if isinstance(participant, dict)
+        and participant.get("identity") == expected_peer_identity
+    ]
+    return (
+        len(matches) == 1
+        and matches[0].get("authenticated") is True
+        and is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE)
+        and is_exact_corrective_profile(matches[0].get("profile"))
+    )
+
+
+def evaluate_checkout_payment_admission(case, trusted_context=None):
     no_effects = {
         "hashCalls": 0,
         "resolverCalls": 0,
@@ -136,7 +217,7 @@ def evaluate_checkout_payment_admission(case):
         "reserveAp2Binding": False,
         "submitProviderPayment": False,
     }
-    if not admits_current_profile(case):
+    if not admits_current_profile(case, trusted_context):
         return "fail", None, no_effects
     job_id = case.get("jobId")
     phase_index = case.get("phaseIndex")
@@ -280,10 +361,13 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             case for case in self.data["vectors"]
             if case["op"] == "checkout-payment-admission"
         ]
-        self.assertEqual(len(cases), 11)
+        self.assertEqual(len(cases), 15)
         for case in cases:
             with self.subTest(case=case["name"]):
-                verdict, derived, effects = evaluate_checkout_payment_admission(case)
+                trusted_context = trusted_context_for_ap2_case(case)
+                verdict, derived, effects = evaluate_checkout_payment_admission(
+                    case, trusted_context
+                )
                 self.assertEqual(verdict, case["expected"])
                 for effect in (
                     "hashCalls",
@@ -305,10 +389,15 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             "ap2-admission-negative-phase-errors",
             "ap2-admission-unauthenticated-profile-refuses",
             "ap2-admission-caller-profile-refuses",
+            "ap2-admission-duplicate-profile-refuses",
+            "ap2-admission-peer-identity-mismatch-refuses",
+            "ap2-admission-session-mismatch-refuses",
+            "ap2-admission-copied-profile-reference-refuses",
         ):
             with self.subTest(case=name):
+                case = self.cases[name]
                 verdict, derived, effects = evaluate_checkout_payment_admission(
-                    self.cases[name]
+                    case, trusted_context_for_ap2_case(case)
                 )
                 self.assertIn(verdict, {"fail", "error"})
                 self.assertIsNone(derived)
@@ -325,7 +414,9 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
 
     def test_complete_chain_admission_composes_into_ap2_7_binding(self):
         case = self.cases["ap2-admission-complete-chain-match"]
-        verdict, transaction_id, effects = evaluate_checkout_payment_admission(case)
+        verdict, transaction_id, effects = evaluate_checkout_payment_admission(
+            case, trusted_context_for_ap2_case(case)
+        )
         self.assertEqual(verdict, "pass")
         self.assertTrue(effects["reserveAp2Binding"])
         binding_case = {
@@ -336,6 +427,24 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         }
         self.assertEqual(
             evaluate_transaction_binding(binding_case), ("pass", "bind-new", True)
+        )
+
+    def test_copied_blessed_reference_never_authorizes_ap2_effects(self):
+        mutant = dict(self.cases["ap2-admission-caller-profile-refuses"])
+        mutant.pop("peerProfile")
+        mutant["peerProfileRef"] = "fixture:peer-current"
+        verdict, derived, effects = evaluate_checkout_payment_admission(mutant)
+        self.assertEqual("fail", verdict)
+        self.assertIsNone(derived)
+        self.assertEqual(
+            effects,
+            {
+                "hashCalls": 0,
+                "resolverCalls": 0,
+                "metadataCalls": 0,
+                "reserveAp2Binding": False,
+                "submitProviderPayment": False,
+            },
         )
 
     def test_new_checkout_cases_cover_positive_negative_and_boundary(self):
@@ -404,6 +513,9 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         self.assertIn("base payload of the SD-JWT carrying the CheckoutMandate", spec)
         self.assertIn("MUST NOT reserve the AP2-7 binding", spec)
         self.assertIn("current Demos DAHR binding", spec)
+        self.assertIn("handler-owned trusted context", spec)
+        self.assertIn("duplicate participant records", spec)
+        self.assertIn("identity/session mismatch", spec)
         self.assertNotIn("AP2 v0.2's non-deterministic-signature requirement", spec)
         self.assertIn("ap2-handler-safety-v0.6.json", plan)
         self.assertIn("ap2-handler-safety-v0.6.json", readme)

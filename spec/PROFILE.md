@@ -57,6 +57,13 @@ MUST refuse before producing, signing, resolving, comparing, or acting on a
 JID-1 artifact. A pre-JID-1 artifact is archival input only and cannot be
 silently promoted into this profile.
 
+That authenticated authority MUST be verifier- or orchestrator-owned context
+outside caller-controlled artifacts and phase input, bound to the exact session
+and authenticated participant identity. Caller-supplied profile objects and
+opaque labels are not authority. Missing, duplicate, unauthenticated,
+identity-mismatched, or session-mismatched evidence fails closed before any
+protocol action.
+
 ## Qualified implementation claims
 
 The unqualified phrase **“DACS v0.1 conformant”** retains the full-profile meaning

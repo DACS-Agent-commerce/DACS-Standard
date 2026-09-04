@@ -13,11 +13,11 @@
       "dacs4": "0.7",
       "dacs5": "0.5"
     },
-    "peerEvidence": "peerProfileRef is resolved only through implementation-owned authenticated fixture state"
+    "peerEvidence": "verifier-owned context, separate from vector input, binds the exact session and expected peer identity"
   },
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "count": 43,
-  "hash": "886f12f511deba26cdd17e1fcf99c0beb1091f8737ba8ea871b6ba330e3d6601",
+  "count": 47,
+  "hash": "7677dfc92aa33edd4de4b4e4c4fe9f3aacf899a5380d8a8c9226bc5e8bb19722",
   "vectors": [
     {
       "name": "canonical-ulid",
@@ -414,11 +414,12 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "authenticated-corrective-profile-admitted",
       "operation": "profile-admit",
       "expected": "pass",
-      "peerProfileRef": "fixture:peer-current",
-      "note": "An implementation-authenticated peer reference resolves to the exact synthetic release and complete module tuple.",
+      "note": "Verifier-owned context authenticates the expected peer and session to the exact synthetic release and complete module tuple.",
       "want": {
         "profileAdmitted": true,
         "hashCalls": 0,
@@ -426,6 +427,8 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "missing-peer-profile-refuses",
       "operation": "profile-admit",
       "expected": "error",
@@ -437,11 +440,12 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "unauthenticated-peer-profile-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "peerProfileRef": "fixture:peer-unverified",
-      "note": "A caller-provided reference with no authenticated peer evidence refuses.",
+      "note": "Trusted context that does not authenticate the expected peer refuses.",
       "want": {
         "failureStage": "profile-admission",
         "hashCalls": 0,
@@ -449,6 +453,8 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "caller-supplied-matching-profile-refuses",
       "operation": "profile-admit",
       "expected": "error",
@@ -471,6 +477,8 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "caller-supplied-empty-profiles-refuse",
       "operation": "profile-admit",
       "expected": "error",
@@ -484,6 +492,8 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "caller-supplied-partial-profiles-refuse",
       "operation": "profile-admit",
       "expected": "error",
@@ -507,6 +517,8 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "caller-supplied-unsupported-profiles-refuse",
       "operation": "profile-admit",
       "expected": "error",
@@ -540,10 +552,11 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "authenticated-different-release-pin-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "peerProfileRef": "fixture:peer-wrong-pin",
       "note": "Authenticated evidence for a different immutable release is not inferred compatible.",
       "want": {
         "failureStage": "profile-admission",
@@ -552,10 +565,11 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "authenticated-partial-module-tuple-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "peerProfileRef": "fixture:peer-partial-tuple",
       "note": "Authenticated evidence must carry the complete coordinated module tuple.",
       "want": {
         "failureStage": "profile-admission",
@@ -564,10 +578,11 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "authenticated-extra-module-tuple-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "peerProfileRef": "fixture:peer-extra-tuple",
       "note": "An extra tuple member is not byte-exact equality with the configured profile.",
       "want": {
         "failureStage": "profile-admission",
@@ -576,10 +591,11 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "authenticated-non-string-release-pin-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "peerProfileRef": "fixture:peer-non-string-pin",
       "note": "A non-string value cannot be coerced into an immutable release pin.",
       "want": {
         "failureStage": "profile-admission",
@@ -588,11 +604,65 @@
       }
     },
     {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
       "name": "authenticated-major-only-discriminator-refuses",
       "operation": "profile-admit",
       "expected": "error",
-      "peerProfileRef": "fixture:peer-major-only",
       "note": "A major-only artifact discriminator cannot establish corrective-profile compatibility.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "name": "duplicate-authenticated-peer-profile-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "note": "Duplicate authenticated records for the expected peer are ambiguous and fail closed.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "name": "authenticated-peer-identity-mismatch-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "note": "A profile authenticated for a different peer cannot admit the expected participant.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "name": "authenticated-session-mismatch-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "note": "Profile evidence authenticated for another session cannot be replayed into this one.",
+      "want": {
+        "failureStage": "profile-admission",
+        "hashCalls": 0,
+        "lookupCalls": 0
+      }
+    },
+    {
+      "sessionId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "name": "copied-blessed-profile-reference-refuses",
+      "operation": "profile-admit",
+      "expected": "error",
+      "peerProfileRef": "fixture:peer-current",
+      "note": "Copying a locally meaningful label into caller input cannot manufacture trusted context.",
       "want": {
         "failureStage": "profile-admission",
         "hashCalls": 0,

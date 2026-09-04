@@ -3,6 +3,7 @@ import copy
 import hashlib
 import ipaddress
 import json
+import math
 import re
 import subprocess
 import unicodedata
@@ -199,6 +200,26 @@ def resign_bundle(bundle, key, signer):
             ),
         }],
     }
+    return changed
+
+
+def resign_composite_input(value):
+    changed = copy.deepcopy(value)
+    record = changed["record"]
+    unsigned = {
+        name: item for name, item in record.items() if name != "signature"
+    }
+    record_hash = hash_hex(unsigned)
+    verifier = fixture_private_key("verifier")
+    record["signature"] = {
+        "algorithm": "ed25519",
+        "signer": public_ref(verifier),
+        "value": b64url_encode(
+            verifier.sign((COMPOSITE_DOMAIN + record_hash).encode("ascii"))
+        ),
+    }
+    changed["recordRef"]["contentHash"] = record_hash
+    changed["recordRef"]["signer"] = public_ref(verifier)
     return changed
 
 
@@ -706,8 +727,54 @@ def valid_requirement(req):
             or item.get("scheme") not in KNOWN_SCHEMES
             or type(item.get("verificationRequired")) is not bool
             or (
+                "maxAge" in item
+                and (
+                    type(item["maxAge"]) is not int
+                    or not 0 <= item["maxAge"] <= SAFE_INT
+                )
+            )
+            or (
                 item.get("verificationRequired") is False
                 and ("maxAge" in item or "recipeVersion" in item)
+            )
+        ):
+            return False
+    return True
+
+
+def valid_supplementary_signals(signals):
+    if not isinstance(signals, list):
+        return False
+    for signal in signals:
+        if (
+            not isinstance(signal, dict)
+            or not {"source", "signalType", "value", "observedAt"} <= set(signal)
+            or set(signal) - {
+                "source", "signalType", "value", "observedAt", "attestation"
+            }
+            or not isinstance(signal.get("source"), str)
+            or not signal["source"]
+            or not isinstance(signal.get("signalType"), str)
+            or not signal["signalType"]
+            or isinstance(signal.get("value"), bool)
+            or not isinstance(signal.get("value"), (int, float, str))
+            or (
+                type(signal.get("value")) is int
+                and not -SAFE_INT <= signal["value"] <= SAFE_INT
+            )
+            or (
+                type(signal.get("value")) is float
+                and not math.isfinite(signal["value"])
+            )
+            or type(signal.get("observedAt")) is not int
+            or not 0 <= signal["observedAt"] <= SAFE_INT
+            or (
+                signal.get("source") == "external"
+                and not well_formed_attestation_ref(signal.get("attestation"))
+            )
+            or (
+                "attestation" in signal
+                and not well_formed_attestation_ref(signal["attestation"])
             )
         ):
             return False
@@ -864,10 +931,12 @@ def authenticate_production_aggregate(
         return None
 
     committed = record.get("freshness")
+    supplementary = record.get("supplementary")
     deal_specific = record.get("dealSpecific")
     resolved = value.get("resolvedResults")
     if (
         not isinstance(committed, list)
+        or not valid_supplementary_signals(supplementary)
         or not isinstance(deal_specific, list)
         or not isinstance(resolved, list)
     ):
@@ -1114,6 +1183,77 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 },
                 execute(changed, self.document),
             )
+
+    def test_supplementary_signals_are_signed_but_not_result_references(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "vet-oneof-error-over-fail"
+        )
+        evaluation = case["evaluations"]["result"]
+        record = evaluation["input"]["record"]
+        self.assertTrue(record["supplementary"])
+        resolved_refs = [
+            canonical_bytes(item["ref"])
+            for item in evaluation["input"]["resolvedResults"]
+        ]
+        committed_refs = [
+            canonical_bytes(item)
+            for item in record["freshness"] + record["dealSpecific"]
+        ]
+        self.assertEqual(committed_refs, resolved_refs)
+        self.assertTrue(all(
+            not isinstance(signal, dict)
+            or "anchor" not in signal
+            for signal in record["supplementary"]
+        ))
+        self.assertEqual(
+            case["expectedOutput"], execute(evaluation, self.document)
+        )
+
+        changed = copy.deepcopy(evaluation["input"])
+        changed["record"]["supplementary"][0]["observedAt"] = -1
+        changed = resign_composite_input(changed)
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            aggregate_output(
+                changed,
+                self.document["trustedContext"],
+                self.recipes,
+                self.result_context,
+            ),
+        )
+
+    def test_malformed_and_duplicate_resolved_entries_fail_without_throwing(self):
+        case = next(
+            item for item in self.cases
+            if item["name"]
+            == "vet-control-existence-only-lei-supporting-context"
+        )
+        evaluation = case["evaluations"]["result"]
+        mutations = ([None], [{}], [
+            copy.deepcopy(evaluation["input"]["resolvedResults"][0]),
+            copy.deepcopy(evaluation["input"]["resolvedResults"][0]),
+        ])
+        for resolved in mutations:
+            with self.subTest(resolved=resolved):
+                changed = copy.deepcopy(evaluation)
+                changed["input"]["resolvedResults"] = resolved
+                self.assertEqual("error", execute(changed, self.document))
+
+    def test_max_age_must_be_a_nonnegative_safe_integer(self):
+        case = next(
+            item for item in self.cases
+            if item["name"]
+            == "vet-control-existence-only-lei-supporting-context"
+        )
+        evaluation = case["evaluations"]["result"]
+        for max_age in ("60", -1, SAFE_INT + 1, True):
+            with self.subTest(max_age=max_age):
+                changed = copy.deepcopy(evaluation)
+                changed["input"]["requirement"]["required"][0][
+                    "maxAge"
+                ] = max_age
+                self.assertEqual("error", execute(changed, self.document))
 
     def test_authenticated_result_context_is_complete_and_independent(self):
         self.assertIsNotNone(self.result_context)

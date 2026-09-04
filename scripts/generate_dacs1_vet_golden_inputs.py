@@ -348,7 +348,12 @@ def signed_composite(
         "bundleHash": identity_bundle_hash(bundle),
         "requirementHash": hash_hex(req),
         "freshness": [],
-        "supplementary": [],
+        "supplementary": [{
+            "source": "dacs-5",
+            "signalType": "completion-count",
+            "value": 7,
+            "observedAt": NOW - 2_000,
+        }],
         "dealSpecific": result_refs,
         "overallDecision": decision,
         "generatedAt": NOW,

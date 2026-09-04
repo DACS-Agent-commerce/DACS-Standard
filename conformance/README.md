@@ -92,7 +92,11 @@ The disclosure vectors exercise DACS-X step 3 under steward sign-off **DP-1**: t
   requirement, bundle, and complete ordered result-reference set. Every case
   also resolves each result through an independent expected-authority,
   authenticated-source, and full-serialized-artifact binding; duplicate result
-  references and non-canonical exercised identifiers fail closed. Every case
+  references, malformed members, and non-canonical exercised identifiers fail
+  closed. The aggregation records carry a signed supplementary signal as well,
+  proving that DACS-2 `SupplementarySignal` values remain authenticated record
+  content without being misclassified as `VerifyResultRef` resolution inputs.
+  Every case
   pins its input hash, `MANIFEST.json` pins the whole file SHA-256, and
   `scripts/diff_vector_runs.py` exposes all 34 evaluations under stable
   `<case>::<evaluation>` identities. The legacy

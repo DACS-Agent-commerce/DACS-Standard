@@ -873,7 +873,7 @@
     ]
   },
   "count": 24,
-  "hash": "d45da9312e0ff427da20ef06d48b113414b5c1f4b6f8dc069c535cfcc134bd14",
+  "hash": "5fb4b85cea9f5fc36a4aa7971835ff48ca8a402eb12bc218b8da8d61531f70f3",
   "cases": [
     {
       "name": "dacs1-cci-lei-defect",
@@ -3832,7 +3832,7 @@
       "name": "vet-oneof-error-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, retryable error outranks a conclusive failing alternative.",
-      "inputHash": "63eb134c666a3a731f00797cdfb6427ff80058e5c6e79a7e6e58ec68aca1b051",
+      "inputHash": "af4910c9b57c9878c1967d58e6b142c5b856c5c0c41358cf92364018bfe9abeb",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -3845,7 +3845,14 @@
               "bundleHash": "04b64b199566c166a639a1eb55d97ce6e62edc8903e84e8d2af2bbed42abc746",
               "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
               "freshness": [],
-              "supplementary": [],
+              "supplementary": [
+                {
+                  "source": "dacs-5",
+                  "signalType": "completion-count",
+                  "value": 7,
+                  "observedAt": 1899999998000
+                }
+              ],
               "dealSpecific": [
                 {
                   "anchor": {
@@ -3869,7 +3876,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                "value": "GhpTxUZanhwYkwviMLw3c5dT9ya67yA_Jr6nj4lHsHBV0MLKsmk7hQflvLvLFShyf_D-tMHCium_tpjapwVdDQ"
+                "value": "vJURh1KW8SuX6o8m18urcF5KV4iz1dARrvPjIuAH0UFgU-ZDHx3F-TkYNf9Y0Ch9J4tsqjINDu8uvudS36BFCQ"
               }
             },
             "recordRef": {
@@ -3877,7 +3884,7 @@
                 "kind": "storage-program",
                 "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
               },
-              "contentHash": "2e39635f5f4777d8539f27592ab5daad8a0e4bd6a425df2e2c8ef4b5a61cc1c0",
+              "contentHash": "cc7555147222621e68754b707c995cbfce437c6388987b7951e537d33c3ca492",
               "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
@@ -4064,7 +4071,7 @@
       "name": "vet-oneof-indeterminate-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, indeterminate outranks fail when no error or pass exists.",
-      "inputHash": "9b04ba1f3e82a1515d04307827ce5c245e355bdd03ded3f516e7a7775d271410",
+      "inputHash": "dcb8837a0c78890ed9eb7e5e541c191d36ad63df9142557494fc93351e82a4c2",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -4077,7 +4084,14 @@
               "bundleHash": "a6c18a2306f0bc84e80cc4742ec0c4578146859b389444a6f2ddd3cb70cf3b9c",
               "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
               "freshness": [],
-              "supplementary": [],
+              "supplementary": [
+                {
+                  "source": "dacs-5",
+                  "signalType": "completion-count",
+                  "value": 7,
+                  "observedAt": 1899999998000
+                }
+              ],
               "dealSpecific": [
                 {
                   "anchor": {
@@ -4101,7 +4115,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                "value": "TkmWo9CBPuxnYPwDObepK6U6kGK4gdZi8S0AuwQWlqCauW6j4PVN1gTOmbBR9CgSE5FpetbNjUom5LZwsq6lCw"
+                "value": "zQFDSzhU7qliRCqSWrkZK3Y5WGDMHH7ILcr_PruVR2ZSq6f4TddOpI0VyehuDb99FztS6xIOeHt9-WiDHs-IBA"
               }
             },
             "recordRef": {
@@ -4109,7 +4123,7 @@
                 "kind": "storage-program",
                 "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
               },
-              "contentHash": "4c621c60b02b8469803c36d18a55524acc0e93952e4cf6fd214c277ac04bdd4d",
+              "contentHash": "d6ace1d7a2c01eb52be8acc06adff252cb0272e851bcee5df62246d18be67990",
               "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
@@ -4296,7 +4310,7 @@
       "name": "vet-cross-accumulator-fail-over-error",
       "spec": "§7.7.1",
       "summary": "A required hard fail outranks a separate oneOf error globally.",
-      "inputHash": "0b6a30daa13cb835ab64d788e7ee033ec1b9d30732af1040494dd5a04bba6f25",
+      "inputHash": "f263ea2a2eae0353826cd9e33ed1b55ede8297678035f8d4682575766257d29c",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -4309,7 +4323,14 @@
               "bundleHash": "04b64b199566c166a639a1eb55d97ce6e62edc8903e84e8d2af2bbed42abc746",
               "requirementHash": "647b7eb216c46142f051b8f2857e696fcfd7cf142543a0b6f4f4b9aca930cadf",
               "freshness": [],
-              "supplementary": [],
+              "supplementary": [
+                {
+                  "source": "dacs-5",
+                  "signalType": "completion-count",
+                  "value": 7,
+                  "observedAt": 1899999998000
+                }
+              ],
               "dealSpecific": [
                 {
                   "anchor": {
@@ -4333,7 +4354,7 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                "value": "KXtBJOF6JBIx1BJWLu-8coT2uco6eZ4ve_Nok0pDrU81X2-xYxriIq_e4XCf0LWwYGKRYxHrwRXTvgcr2lKMCw"
+                "value": "vA5nZtBZR1ZoDgN-eyBAb71l_qeoodKIkQJ4fwqqLMv5SXnFWN6E5fMciSHwaxnXMwcv4w9FLHMczVEL0kFXAA"
               }
             },
             "recordRef": {
@@ -4341,7 +4362,7 @@
                 "kind": "storage-program",
                 "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
               },
-              "contentHash": "4b4c00bf5ad6d2cba098e94fab5c05db8fbce5d470df0b4f6f80ef5ecbc64911",
+              "contentHash": "3b48030e03870f9eeee4526407e80aca62ee2c00bc23f33b15651f024ad24050",
               "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [

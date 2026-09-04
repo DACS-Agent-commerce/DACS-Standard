@@ -379,12 +379,12 @@ type PaymentPhaseInput = {
   agreement: AgreementArtifact         // pinned by the listing's agreement commitment phase
   rail: RailDefinition                 // pinned at session start
   payer: {
-    bundleHash: string
+    bundleHash: IdentityBundleHash     // exact bare-lowercase IBH-1 digest (CORE §B.2)
     primaryClaim: ClaimReference
     payingKey: ClaimReference          // MUST appear in payer's bundle.claims
   }
   payee: {
-    bundleHash: string
+    bundleHash: IdentityBundleHash     // exact bare-lowercase IBH-1 digest (CORE §B.2)
     primaryClaim: ClaimReference
     payeeAddress: string               // rail-specific destination
   }
@@ -392,6 +392,13 @@ type PaymentPhaseInput = {
   sessionContext: SessionContext
 }
 ```
+
+Both payment-party `bundleHash` values are current IBH-2 fields. A payment
+handler MUST match them byte-for-byte to the current SessionParty values and to
+the independently recomputed digest of each resolved signed IdentityBundle
+before any irreversible rail action. The IBH-4 legacy prefix exception belongs
+only to the signed DACS-3 AgreementParty comparison boundary; it never changes
+the payment input wire form.
 
 **Artifact gate and legacy behaviour.** Before interpreting agreement terms, a payer MUST select the DACS-3 artifact schema from its required version discriminator (§8.5). A payer that does not implement `PayeeBoundAgreementDocument` MUST reject that artifact as unsupported before invoking any pay handler; it MUST NOT discard `payeeBoundAgreementVersion` or `terms.payoutBindings` and retry it as an `AgreementDocument`. In particular, a DACS-4 v0.2 payer expects the required `agreementVersion` field, so the new artifact fails its legacy schema gate and no payment is submitted.
 

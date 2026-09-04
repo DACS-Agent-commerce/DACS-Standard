@@ -13,6 +13,18 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — cross-stage IdentityBundle hash encoding
+
+- **One current `bundleHash` wire form** (CORE §B.2 IBH-1..IBH-6; #378) —
+  `CompositeVerificationRecord`, `AgreementParty`, payment-party,
+  `SessionParty`, and `BundleParty` values now use exactly 64 lowercase
+  hexadecimal characters with no `sha256:` prefix. A narrow reader preserves
+  previously signed DACS-3
+  agreement bytes authenticated by the legacy commitment type, parses the
+  historical prefix only after verification, and projects the same digest into
+  a bare DACS-5 terminal field. Current prefix insertion/removal, wrong digest,
+  role/claim substitution, and normalization-before-signature are rejected.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

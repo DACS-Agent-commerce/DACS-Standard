@@ -132,6 +132,18 @@ validator-body-signed.
 
 **DACS-3 phase types are realised as DemosWork WorkSteps.** Each negotiation pattern compiles to a sequence of WorkSteps with context: "xm" | "web2" | "native" and DACS-defined content shapes.
 
+**Complete sealed-envelope candidate sets (not currently available).** Demos Storage Programs can anchor each positive commit/reveal record, but the current node/SDK mapping does not expose an authenticated current-finalized prefix enumeration or non-omission proof over bidder-owned writes. It therefore does not yet supply a `CandidateSetBindingRef` satisfying DACS-3 SAC-3/SAC-4. On Demos, `negotiate-sealed-envelope-complete` and `negotiate-sealed-envelope-procurement-complete` MUST currently fail with a capability-missing/`indeterminate` result; an SDK MUST NOT treat an Indexer query, L2PS inbox, or several successful Storage Program reads as a complete candidate set.
+
+A Demos candidate-set binding can become registrable only when the node/binding supplies all of the following for the session-derived `dacs3:auction:{jobId}` collection:
+
+- permissionless or policy-authorized bidder writes whose signed record bytes and unique logical address are preserved;
+- authenticated enumeration of every matching commit/reveal write at one exact finalized state, with a canonical native order key and proof bound to the exact record-set hash and count;
+- evidence that the referenced state is the latest acceptable finalized tip under a declared maximum-lag rule, not merely a valid older block;
+- deterministic fork/reorg reconciliation and authenticated independent-observer thresholds; and
+- independent later resolution of every included record and receipt, with conflicting writes or views surfaced rather than first-seen-selected.
+
+This is a node/binding requirement, not something the DACS SDK can manufacture from cached positive records. Historical §8.4.3 sealed-envelope flows remain available under their disclosed non-completeness semantics.
+
 **Operational transport notes (informative).** L2PS exposes two message-transport servers, and public-node availability differs between them. The L2PS messaging server (rollup-backed persistence, per-subnet isolation via l2psUid) is opt-in node configuration — a messaging-enabled flag, a dedicated messaging port, and subnet creation — and, as probed on the public testnet nodes 2026-07-09, is not exposed on either; the Kynesys documentation assumes a self-hosted node for it. A legacy signaling server is live on at least one public node and was verified end-to-end on the same probe (two peers registered with an ML-DSA proof, peer discovery, and an ML-KEM+AES-encrypted message relayed and decrypted); it is relay-only — no offline queue, no rollup persistence, no network isolation. Client gotcha: the messaging peer's advertised public key MUST be the ML-KEM (encapsulation) identity key, not the ML-DSA (signing) key the registration proof is signed with — peers fetch the advertised key for ML-KEM encapsulation, so advertising the signing key breaks message send. Practical consequence: DACS-3 private patterns can run today by composing ChannelSession over the legacy relay (client-side end-to-end encryption preserves CH-2), with a transport-adapter swap to the L2PS messaging server once a node exposes it; the SDK anticipates this seam via l2ps.channel.L2PSMessagingPeerLike.
 
 ### A.5 SR-5 — Native Bridges / Liquidity Tanks

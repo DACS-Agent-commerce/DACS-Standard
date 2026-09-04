@@ -10,7 +10,7 @@ A single alphabetical glossary across all five per-stage standards and the front
 
 A single alphabetical glossary across all five per-stage standards, the front matter, and the back matter. Terms defined in multiple chapters are cross-referenced. This glossary is informative; per-chapter definitions are normative.
 
-- **AgreementArtifact.** Either DACS-3 signed agreement type: the legacy AgreementDocument or the PayeeBoundAgreementDocument. Defined in §8.5.
+- **AgreementArtifact.** One of the three DACS-3 signed agreement types: the legacy AgreementDocument, the PayeeBoundAgreementDocument, or the complete-auction SealedSelectionAgreementDocument. Defined in §8.5.
 - **AgreementDocument.** The legacy DACS-3 signed agreement artifact. It preserves pre-payee-binding semantics and does not carry payout bindings. Defined in §8.5.
 - **Anchor / Anchored.** Stored on the substrate such that an anchor reference (substrate-native pointer plus content hash) is sufficient for any party with substrate access to retrieve canonical content and verify integrity. Realised by SR-2.
 - **AttestationBundle.** The frozen end-of-session artifact, signed by all parties, anchored via SR-2. The DACS-5 audit unit. Defined in §10.4. Legacy fault semantics: fault is read role-relatively from `outcome`. See FaultAttestationBundle.
@@ -27,6 +27,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **ClaimRequirement.** A listing-side declaration of which claims a buyer or seller bundle must include. Defined in §6.3.3.
 - **Commit-agreement.** The DACS-3 phase that anchors a legacy AgreementDocument hash on the public chain. Defined in §8.6.
 - **Commit-payee-bound-agreement.** The DACS-3 phase that anchors a PayeeBoundAgreementDocument hash on the public chain. Defined in §8.6.
+- **Commit-selection-bound-agreement.** The DACS-3 phase that anchors a SealedSelectionAgreementDocument after independently reproducing its complete auction selection receipt. Defined in §8.4.4/§8.6.
 - **CommitmentRecord.** The on-chain record produced by either DACS-3 agreement commitment phase. Defined in §8.6.
 - **CompositeVerificationRecord.** The document the DACS-2 vet-credentials phase produces, aggregating freshness checks, supplementary signals, and deal-specific claims. Defined in §7.7.
 - **Content hash.** sha256 hex of the canonical form of a document.
@@ -72,6 +73,8 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Rail availability.** A normative field on every RailDefinition declaring operational status, with the same value set and semantics as recipe availability. Orchestrators MUST inspect before selecting. §9.4.4.
 - **RFQ (Request For Quote).** DACS-3 bilateral negotiation pattern; bounded multi-turn offer-and-counter. §8.4.2.
 - **Sealed-envelope.** DACS-3 sealed-bid procurement pattern. §8.4.3.
+- **SealedSelectionAgreementDocument.** The DACS-3 agreement type that binds a finalized, independently reproducible complete sealed-auction selection receipt and payee destinations under the parties' signatures. §8.4.4/§8.5.
+- **SealedSelectionReceipt.** The orchestrator-signed DACS-3 receipt whose independently verified inputs enumerate the complete current finalized commit/reveal set, account for every record, and reproduce the built-in price-rule winner. §8.4.4.
 - **Session.** A per-transaction lifecycle from Identify through Verify.
 - **SessionContext.** The context object every phase handler receives. §B.5 (front matter).
 - **SessionRecord.** The orchestrator’s mutable working-state document. §10.3.

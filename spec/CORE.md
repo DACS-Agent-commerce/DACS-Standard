@@ -181,6 +181,7 @@ type AnchorReceipt = {
 | --- | --- |
 | DACS-1 active listing publication/discovery | `finalized`, and independently resolvable |
 | DACS-2 Vet result | verified durable `accepted` MAY permit reversible progression; `finalized` required by terminal bundle production |
+| DACS-3 complete sealed selection | `SealedSelectionReceipt` `finalized`, independently resolvable, and reproduced before agreement signatures |
 | DACS-3 agreement signature | valid required party signatures permit commitment submission; no SR-2 state is implied |
 | DACS-3 commitment | `finalized` before any payment or irreversible delivery |
 | DACS-4 payment | payment rail's declared finality; its SR-2 evidence anchor MAY catch up asynchronously |
@@ -257,6 +258,9 @@ Rule CF-4 (above) applies identically to every logical-address kind. Per address
 | --- | --- | --- |
 | `dacs1:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (listing) | `sellerPrimaryClaim` (a ClaimReference) | `listingId`, `v{listingVersion}` |
 | `dacs1-revoked:{sellerPrimaryClaim}:{listingId}:v{listingVersion}` (revocation marker) | `sellerPrimaryClaim` | `listingId`, `v{listingVersion}` |
+| `dacs3:auction:{jobId}:commit:{bidderClaim}:{bidHash}` (complete sealed commit) | `bidderClaim` | `jobId`, `commit`, `bidHash` |
+| `dacs3:auction:{jobId}:reveal:{bidderClaim}:{bidHash}` (complete sealed reveal) | `bidderClaim` | `jobId`, `reveal`, `bidHash` |
+| `dacs3:selection:{jobId}:{phaseIndex}` (complete sealed selection receipt) | none | `jobId`, `phaseIndex` |
 | `dacs4:payment:{jobId}:{railId}:{phaseIndex}` (+ optional `:resolved`, §9.5.1 PC-2) | `railId` — e.g. `evm-erc20:1:USDC` → `evm-erc20%3A1%3AUSDC` | `jobId`, `phaseIndex`, `resolved` |
 | `dacs4:payment-disposition:{priorJobId}:{priorPhaseIndex}:{dispositionId}` (§9.9.1 APR-6) | none | `priorJobId`, `priorPhaseIndex`, `dispositionId` |
 | `dacs4:payload-attestation:{jobId}:{verificationMethodHash}:{attempt}` (§9.6.3 DPA-1..DPA-9) | none — `verificationMethodHash` is lowercase hex and `attempt` is a non-negative integer | `jobId`, `verificationMethodHash`, `attempt` |
@@ -370,6 +374,9 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |
 | DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
+| DACS-3 complete sealed-auction record | "dacs-sealed-auction-record:v1:" | §8.4.4 |
+| DACS-3 sealed-selection receipt | "dacs-sealed-selection-receipt:v1:" | §8.4.4 |
+| DACS-3 sealed-selection agreement | "dacs-sealed-selection-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
@@ -607,7 +614,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `sealedAuctionRecordVersion`, `sealedSelectionReceiptVersion`, `sealedSelectionAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 The **§11.1.2 additivity contract** makes the major-only signal sufficient for *minor* skew, in both directions, with **no per-artifact minor-version field**:
 

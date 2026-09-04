@@ -270,15 +270,19 @@ substitution; missing, unverified, bare-locator, and unauthenticated-index
 candidates; absent artifact-specific authority; pre-gate versus late delivery;
 aborted-session retention; authenticated bundle/index references; conflicting
 authenticated presence/absence; equivalent carrier-class collapse;
-unsupported absence claims; and immutable-address equivocation. The concrete set is
+unregistered reference-surface and missing class-specific-check refusal;
+fractional/unsafe-number receipt-tuple handling; unsupported absence claims;
+and immutable-address equivocation. The concrete set is
 `conformance/vectors/security/sr2-logical-native-resolution-v0.1.json`.
 
 PA-2 recipe and rail consumers MUST also exercise both pinned registry kinds,
 hash-only and key-only first contact, first-contact and successor forks,
 same-key content successors, dual-authorized rotation, cumulative revocation,
 candidate classification before chain advance, latest rollback, exact
-sequence/hash historical replay from the accepted chain, JCS/NFC known answers
-and unsafe-number refusal, immutable snapshot enforcement,
+sequence/hash historical replay from the accepted chain, persisted-branch
+ancestry for latest upgrades, invalid-root filtering before fork counting,
+registry-index v1 shape/kind/revision validation, JCS/NFC/fractional known
+answers and unsafe-number disposition, immutable snapshot enforcement,
 signature-domain and discriminator refusal, recursive-evidence refusal,
 descriptor-to-receipt tuple binding, and authenticated definition-reference
 resolution. The concrete set is

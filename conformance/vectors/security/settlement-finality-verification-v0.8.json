@@ -1,0 +1,5255 @@
+{
+  "set": "settlement-finality-verification-v0.8",
+  "spec": "DACS-4 v0.8 §9.7.0 FV-1..FV-10; DACS-5 v0.6 §10.4.3/§10.5.1",
+  "tier": "candidate",
+  "description": "Consumer-verifiable canonical settlement finality across chain, BFT, composite and provider models.",
+  "provenance": {
+    "issue": "DACS-Agent-commerce/DACS-Standard#382",
+    "generator": "scripts/generate_settlement_finality_verification_vectors.py"
+  },
+  "count": 47,
+  "hash": "bd118b49dea36c9f17c8a23c85e4497d7f73eb054664147c584911e371cce86c",
+  "vectors": [
+    {
+      "name": "fv-block-depth-canonical-success",
+      "expected": "pass",
+      "note": "exact event is on the authenticated canonical path at required depth",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "profile-final",
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "verified"
+      }
+    },
+    {
+      "name": "fv-x402-canonical-event-success",
+      "expected": "pass",
+      "note": "x402 event uses the same canonical EVM finality verifier",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-x402",
+          "railDefinitionRef": {
+            "railId": "x402:default",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "profile-final",
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "verified"
+      }
+    },
+    {
+      "name": "fv-solana-finalized-success",
+      "expected": "pass",
+      "note": "instruction slot is rooted at the pinned finalized commitment",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-solana-spl",
+          "railDefinitionRef": {
+            "railId": "solana-spl:mainnet:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "commitment-level",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": "finalized",
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "commitment-level",
+            "settlement": {
+              "kind": "commitment-level",
+              "networkId": "solana:mainnet",
+              "genesisHash": "solana-mainnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredCommitment": "finalized"
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "solana:mainnet",
+          "genesisHash": "solana-mainnet-genesis",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": "finalized",
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "profile-final",
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "verified"
+      }
+    },
+    {
+      "name": "fv-demos-bft-final-success",
+      "expected": "pass",
+      "note": "Demos inclusion carries a valid active-set certificate above two-thirds signed weight",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-dem",
+          "railDefinitionRef": {
+            "railId": "demos-native:DEM",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "bft-final",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "demos-mainnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "contentHash": "validator-set-v8"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "demos:mainnet",
+          "genesisHash": "demos-mainnet-genesis",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": true,
+          "bftSignedWeight": 67,
+          "bftTotalWeight": 100,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "profile-final",
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "verified"
+      }
+    },
+    {
+      "name": "fv-provider-capture-provisional",
+      "expected": "pass",
+      "note": "authenticated provider capture passes but is explicitly provisional",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-ap2",
+          "railDefinitionRef": {
+            "railId": "ap2:provider",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          }
+        },
+        "context": {
+          "kind": "provider",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": null,
+          "genesisHash": null,
+          "transactionIncluded": null,
+          "selectedEventMatches": null,
+          "authority": "verified",
+          "canonicalPath": null,
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": true,
+          "providerBindingMatches": true,
+          "compositeStatus": null,
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "provisional-provider-capture",
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "verified"
+      }
+    },
+    {
+      "name": "fv-htlc-both-legs-success",
+      "expected": "pass",
+      "note": "source lock/claim and destination lock/reveal all verify under pinned profiles",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-claim:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "237ffcda90f1ab2e4c28a1cde095405586670ae3ad7d225240aac0febd4c1a91",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-reveal:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-reveal:event"
+            },
+            "inclusionBlock": {
+              "id": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+              "parentId": "6fe8e8229dcb65e64d55e230cdc42f1fbdcde34dc8fb6b5754e837953dff5806",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+                "parentId": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+                "position": "111",
+                "header": "header-chain:destination-reveal:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-reveal:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": true,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "profile-final",
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "verified"
+      }
+    },
+    {
+      "name": "fv-liquidity-tank-completed-success",
+      "expected": "pass",
+      "note": "source lock, destination release and coordinator completed state all verify",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-liquidity-tank",
+          "railDefinitionRef": {
+            "railId": "cross-chain-liquidity-tank:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "liquidity-tank",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "liquidity-tank",
+            "bridgeId": "tank:sepolia-amoy:usdc",
+            "coordinator": {
+              "kind": "bft-final",
+              "networkId": "demos:testnet",
+              "genesisHash": "demos-testnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "contentHash": "validator-set-v8"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            },
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:11155111",
+              "genesisHash": "0xgenesis-sepolia",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:80002",
+              "genesisHash": "0xgenesis-amoy",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "liquidity-tank",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": "verified"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": true,
+        "finalityClass": "profile-final",
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "verified"
+      }
+    },
+    {
+      "name": "fv-wrong-network",
+      "expected": "fail",
+      "note": "authenticated network identity differs from the signed rail profile",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:5",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-wrong-genesis",
+      "expected": "fail",
+      "note": "same chain label with the wrong genesis is rejected",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xwrong",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-wrong-transaction-inclusion",
+      "expected": "fail",
+      "note": "inclusion proof does not bind the signed transaction reference",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": false,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-wrong-log-index",
+      "expected": "fail",
+      "note": "included receipt does not contain the signed selected event",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": false,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-insufficient-depth",
+      "expected": "fail",
+      "note": "computed canonical depth is below the signed rail requirement",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "110",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-fake-confirmation-count",
+      "expected": "fail",
+      "note": "producer reports twelve but authenticated path proves only one confirmation",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "100",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-producer-selects-weaker-depth",
+      "expected": "fail",
+      "note": "producer report cannot lower the profile's depth",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 1,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-report-model-mismatch",
+      "expected": "fail",
+      "note": "producer model must exactly echo the rail-selected model",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-stale-fork",
+      "expected": "fail",
+      "note": "valid inclusion on a block proven outside the authenticated canonical path is non-final",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "stale-fork",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-conflicting-authenticated-heads",
+      "expected": "indeterminate",
+      "note": "profile cannot select between conflicting authenticated heads",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "conflicting",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-active-reorganization",
+      "expected": "indeterminate",
+      "note": "active reorganization defers finality without manufacturing failure",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "reorg",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-unresolved-replacement",
+      "expected": "indeterminate",
+      "note": "replacement status is reconciled before retry or finality",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "replaced",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-head-unavailable",
+      "expected": "indeterminate",
+      "note": "unavailable authenticated head cannot be replaced by producer values",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "unavailable",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-history-pruned",
+      "expected": "indeterminate",
+      "note": "pruned inclusion/ancestry history is not a pass or deterministic mismatch",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "pruned",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-head-observation-stale",
+      "expected": "indeterminate",
+      "note": "authenticated but stale head exceeds the rail freshness bound",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 61,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-solana-commitment-too-weak",
+      "expected": "fail",
+      "note": "confirmed cannot satisfy a finalized profile",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-solana-spl",
+          "railDefinitionRef": {
+            "railId": "solana-spl:mainnet:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "commitment-level",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": "finalized",
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "commitment-level",
+            "settlement": {
+              "kind": "commitment-level",
+              "networkId": "solana:mainnet",
+              "genesisHash": "solana-mainnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredCommitment": "finalized"
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "solana:mainnet",
+          "genesisHash": "solana-mainnet-genesis",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": "confirmed",
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-demos-certificate-invalid",
+      "expected": "fail",
+      "note": "invalid BFT certificate cannot establish inclusion finality",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-dem",
+          "railDefinitionRef": {
+            "railId": "demos-native:DEM",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "bft-final",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "demos-mainnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "contentHash": "validator-set-v8"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "demos:mainnet",
+          "genesisHash": "demos-mainnet-genesis",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": false,
+          "bftSignedWeight": 67,
+          "bftTotalWeight": 100,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-demos-quorum-insufficient",
+      "expected": "fail",
+      "note": "signed validator weight below two-thirds is insufficient",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-dem",
+          "railDefinitionRef": {
+            "railId": "demos-native:DEM",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "bft-final",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "bft-final",
+            "settlement": {
+              "kind": "bft-final",
+              "networkId": "demos:mainnet",
+              "genesisHash": "demos-mainnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "contentHash": "validator-set-v8"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "demos:mainnet",
+          "genesisHash": "demos-mainnet-genesis",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": true,
+          "bftSignedWeight": 66,
+          "bftTotalWeight": 100,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-provider-not-captured",
+      "expected": "fail",
+      "note": "authenticated non-capture cannot produce payment success",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-ap2",
+          "railDefinitionRef": {
+            "railId": "ap2:provider",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          }
+        },
+        "context": {
+          "kind": "provider",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": null,
+          "genesisHash": null,
+          "transactionIncluded": null,
+          "selectedEventMatches": null,
+          "authority": "verified",
+          "canonicalPath": null,
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": false,
+          "providerBindingMatches": true,
+          "compositeStatus": null,
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-provider-binding-mismatch",
+      "expected": "fail",
+      "note": "provider response must bind the exact session, amount and currency",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-ap2",
+          "railDefinitionRef": {
+            "railId": "ap2:provider",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          }
+        },
+        "context": {
+          "kind": "provider",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": null,
+          "genesisHash": null,
+          "transactionIncluded": null,
+          "selectedEventMatches": null,
+          "authority": "verified",
+          "canonicalPath": null,
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": true,
+          "providerBindingMatches": false,
+          "compositeStatus": null,
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-provider-attestation-unavailable",
+      "expected": "indeterminate",
+      "note": "unavailable SR-3 provider response remains indeterminate",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-ap2",
+          "railDefinitionRef": {
+            "railId": "ap2:provider",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "provider-receipt",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "provider-receipt",
+            "providerId": "provider:example",
+            "statusEndpointOrigin": "https://payments.example",
+            "captureStatuses": [
+              "captured"
+            ],
+            "sr3Binding": "provider-jws-v1",
+            "maxObservationAgeSec": 60,
+            "reversibility": "provisional-provider-capture"
+          }
+        },
+        "context": {
+          "kind": "provider",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": null,
+          "genesisHash": null,
+          "transactionIncluded": null,
+          "selectedEventMatches": null,
+          "authority": "unavailable",
+          "canonicalPath": null,
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": true,
+          "providerBindingMatches": true,
+          "compositeStatus": null,
+          "providerId": "provider:example",
+          "endpointOrigin": "https://payments.example"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-htlc-source-claim-missing",
+      "expected": "indeterminate",
+      "note": "missing source-claim authority leaves an asymmetric HTLC unresolved",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "unavailable",
+              "value": "source-claim-history-unavailable",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "237ffcda90f1ab2e4c28a1cde095405586670ae3ad7d225240aac0febd4c1a91",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-reveal:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-reveal:event"
+            },
+            "inclusionBlock": {
+              "id": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+              "parentId": "6fe8e8229dcb65e64d55e230cdc42f1fbdcde34dc8fb6b5754e837953dff5806",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+                "parentId": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+                "position": "111",
+                "header": "header-chain:destination-reveal:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-reveal:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": true,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-htlc-source-lock-missing",
+      "expected": "indeterminate",
+      "note": "unavailable source-lock proof cannot be replaced by the other three events",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "unavailable",
+              "value": "source-lock-history-unavailable",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-claim:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "237ffcda90f1ab2e4c28a1cde095405586670ae3ad7d225240aac0febd4c1a91",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-reveal:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-reveal:event"
+            },
+            "inclusionBlock": {
+              "id": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+              "parentId": "6fe8e8229dcb65e64d55e230cdc42f1fbdcde34dc8fb6b5754e837953dff5806",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+                "parentId": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+                "position": "111",
+                "header": "header-chain:destination-reveal:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-reveal:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": true,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-htlc-destination-lock-missing",
+      "expected": "indeterminate",
+      "note": "unavailable destination-lock proof cannot be replaced by the reveal",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-claim:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "unavailable",
+              "value": "destination-lock-history-unavailable",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "237ffcda90f1ab2e4c28a1cde095405586670ae3ad7d225240aac0febd4c1a91",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-reveal:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-reveal:event"
+            },
+            "inclusionBlock": {
+              "id": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+              "parentId": "6fe8e8229dcb65e64d55e230cdc42f1fbdcde34dc8fb6b5754e837953dff5806",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+                "parentId": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+                "position": "111",
+                "header": "header-chain:destination-reveal:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-reveal:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": true,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-htlc-destination-reveal-missing",
+      "expected": "indeterminate",
+      "note": "unavailable destination-reveal proof leaves the cross-chain result unresolved",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-claim:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "237ffcda90f1ab2e4c28a1cde095405586670ae3ad7d225240aac0febd4c1a91",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-reveal:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-reveal:event"
+            },
+            "inclusionBlock": {
+              "id": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+              "parentId": "6fe8e8229dcb65e64d55e230cdc42f1fbdcde34dc8fb6b5754e837953dff5806",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+                "parentId": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+                "position": "111",
+                "header": "header-chain:destination-reveal:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "unavailable",
+              "value": "destination-reveal-history-unavailable",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": true,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-htlc-observation-shape-missing",
+      "expected": "error",
+      "note": "omitting one of the four required observation arms is a structural impossibility",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-claim:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": null,
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": true,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "error"
+      }
+    },
+    {
+      "name": "fv-htlc-destination-reveal-wrong-network",
+      "expected": "fail",
+      "note": "the destination reveal must verify on the destination profile's exact network",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-claim:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "237ffcda90f1ab2e4c28a1cde095405586670ae3ad7d225240aac0febd4c1a91",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-reveal:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-reveal:event"
+            },
+            "inclusionBlock": {
+              "id": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+              "parentId": "6fe8e8229dcb65e64d55e230cdc42f1fbdcde34dc8fb6b5754e837953dff5806",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+                "parentId": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+                "position": "111",
+                "header": "header-chain:destination-reveal:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-reveal:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": true,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-htlc-preimage-contradiction",
+      "expected": "fail",
+      "note": "proved hashlock/preimage or contract contradiction rejects",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-htlc",
+          "railDefinitionRef": {
+            "railId": "cross-chain-htlc:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "htlc-reveal",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "htlc-reveal",
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:8453",
+              "genesisHash": "0xgenesis-base",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "htlc",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "sourceLock": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "aacce8fcded31c4ac6c5c3c50ad16046c0a829af2ecc8d9735ffbbcc5e125019",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+              "parentId": "065dc82414a130e64d7da662a1831e90e855f02780bfb09f82d8dccce8cb4a91",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "6c9524671337bb388df91b43493300cac4284701a369f52577703c654e3a98c3",
+                "parentId": "fe6ea43136bc4014bb0a8c378c38991a7b5ee7e6f7cdb5864c39c6ab28165425",
+                "position": "111",
+                "header": "header-chain:source-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "sourceClaim": {
+            "networkId": "eip155:1",
+            "genesisHash": "0xgenesis-mainnet",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "1",
+              "txHash": "2e60aee14d63b29d1a789f6a0bf7524f2315a0113af4094079b2cd13b209ccdf",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:source-claim:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:source-claim:event"
+            },
+            "inclusionBlock": {
+              "id": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+              "parentId": "18f12c59642a8ba7906d949f8403f31d255a9b914e75819a176ef34a5832014b",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "4fbc9c04315a20068e8b6d91c863dcceaccd91e05372902a0d7ba1f0190cf632",
+                "parentId": "23bdc87a9e6e030eda41d0136206d60e56e41b68a9a975020d2687216db23614",
+                "position": "111",
+                "header": "header-chain:source-claim:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:source-claim:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationLock": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "68789a54f83d0e9d02785cd18872f3e40458ba66c40f547b983f28b4586fc314",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-lock:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-lock:event"
+            },
+            "inclusionBlock": {
+              "id": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+              "parentId": "f9006b39820842caf44f0eb0af55bdd6d45b4624f4e07ee506cd401b7dbad037",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "0c5c90fb5f29691f9b5b6c3fedfad8fa80d37b73acdee088ebd22239787aafde",
+                "parentId": "e3f96390348c2faabbb48566e6f9d1de019634f956e484942b04d2f92fa65dae",
+                "position": "111",
+                "header": "header-chain:destination-lock:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-lock:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "destinationReveal": {
+            "networkId": "eip155:8453",
+            "genesisHash": "0xgenesis-base",
+            "transactionRef": {
+              "kind": "evm-event",
+              "chainId": "8453",
+              "txHash": "237ffcda90f1ab2e4c28a1cde095405586670ae3ad7d225240aac0febd4c1a91",
+              "logIndex": 0
+            },
+            "transactionInclusionProof": {
+              "kind": "receipt-merkle-proof",
+              "value": "proof:destination-reveal:transaction"
+            },
+            "selectedEventProof": {
+              "kind": "evm-log-proof",
+              "value": "proof:destination-reveal:event"
+            },
+            "inclusionBlock": {
+              "id": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+              "parentId": "6fe8e8229dcb65e64d55e230cdc42f1fbdcde34dc8fb6b5754e837953dff5806",
+              "position": "100"
+            },
+            "authenticatedHead": {
+              "id": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+              "position": "111",
+              "observedAt": 1900000000000
+            },
+            "ancestryProof": [
+              {
+                "childId": "16a33941a3d21e4e53901f3971ba8e8a540f36ef8ec5f2ef9661f88bbfe19272",
+                "parentId": "84a6615c0db096da5525853e41a7a04b7d942279a1abf365f127e9c5f34883db",
+                "position": "111",
+                "header": "header-chain:destination-reveal:111-to-100"
+              }
+            ],
+            "authorityEvidence": {
+              "kind": "rpc-quorum",
+              "value": "quorum:destination-reveal:2-of-3",
+              "sourceRefs": [
+                "rpc-a",
+                "rpc-b",
+                "rpc-c"
+              ]
+            }
+          },
+          "relation": {
+            "sourceContractMatches": true,
+            "destinationContractMatches": true,
+            "commonHashlockMatches": true,
+            "revealedPreimageMatches": false,
+            "amountsMatch": true,
+            "timelocksValid": true
+          },
+          "authority": "verified",
+          "canonicalPath": "valid"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-tank-not-completed",
+      "expected": "fail",
+      "note": "authenticated coordinator state not completed cannot be final",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-liquidity-tank",
+          "railDefinitionRef": {
+            "railId": "cross-chain-liquidity-tank:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "liquidity-tank",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "liquidity-tank",
+            "bridgeId": "tank:sepolia-amoy:usdc",
+            "coordinator": {
+              "kind": "bft-final",
+              "networkId": "demos:testnet",
+              "genesisHash": "demos-testnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "contentHash": "validator-set-v8"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            },
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:11155111",
+              "genesisHash": "0xgenesis-sepolia",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:80002",
+              "genesisHash": "0xgenesis-amoy",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "liquidity-tank",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": "mismatch"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-tank-destination-unavailable",
+      "expected": "indeterminate",
+      "note": "missing destination release authority leaves tank state unresolved",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-cross-chain-liquidity-tank",
+          "railDefinitionRef": {
+            "railId": "cross-chain-liquidity-tank:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "liquidity-tank",
+            "finalityBlocks": null,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "liquidity-tank",
+            "bridgeId": "tank:sepolia-amoy:usdc",
+            "coordinator": {
+              "kind": "bft-final",
+              "networkId": "demos:testnet",
+              "genesisHash": "demos-testnet-genesis",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "validatorSetRef": {
+                "contentHash": "validator-set-v8"
+              },
+              "quorumNumerator": 2,
+              "quorumDenominator": 3
+            },
+            "source": {
+              "kind": "block-depth",
+              "networkId": "eip155:11155111",
+              "genesisHash": "0xgenesis-sepolia",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            },
+            "destination": {
+              "kind": "block-depth",
+              "networkId": "eip155:80002",
+              "genesisHash": "0xgenesis-amoy",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "liquidity-tank",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": "unavailable"
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-rail-resolution-unavailable",
+      "expected": "indeterminate",
+      "note": "missing signed RailDefinition prevents profile selection",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "unavailable",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "indeterminate"
+      }
+    },
+    {
+      "name": "fv-rail-reference-mismatch",
+      "expected": "fail",
+      "note": "resolved rail bytes do not match the signed evidence reference",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": false,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-profile-malformed",
+      "expected": "error",
+      "note": "missing conditional profile fields are structural error",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "malformed",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "error"
+      }
+    },
+    {
+      "name": "fv-proof-kind-unsupported",
+      "expected": "error",
+      "note": "unknown proof encoding is not normalized or guessed",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": false,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "error"
+      }
+    },
+    {
+      "name": "fv-proof-position-malformed",
+      "expected": "error",
+      "note": "non-minimal signed position is rejected before arithmetic",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "+111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "error"
+      }
+    },
+    {
+      "name": "fv-cross-type-domain-replay",
+      "expected": "fail",
+      "note": "finality-bound bytes signed under the legacy evidence domain fail",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": false,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-multiple-discriminators",
+      "expected": "error",
+      "note": "both old and new evidence discriminators are structurally ambiguous",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "multiple",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "error"
+      }
+    },
+    {
+      "name": "fv-legacy-evidence-has-no-current-claim",
+      "expected": "fail",
+      "note": "legacy evidence remains historical and is not silently upgraded",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "legacy",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-deterministic-mismatch-precedes-outage",
+      "expected": "fail",
+      "note": "wrong network cannot be hidden behind an unrelated unavailable head",
+      "input": {
+        "surface": "dacs4-consumer",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:5",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "unavailable",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "111",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    },
+    {
+      "name": "fv-dacs5-rsv-reuses-same-verdict",
+      "expected": "fail",
+      "note": "DACS-5 RSV preserves the DACS-4 finality rejection",
+      "input": {
+        "surface": "dacs5-rsv",
+        "evidence": {
+          "discriminator": "finality-bound",
+          "signatureDomainMatches": true,
+          "outcome": "success",
+          "phase": "pay-evm-erc20",
+          "railDefinitionRef": {
+            "railId": "evm-erc20:1:USDC",
+            "railVersion": 8
+          },
+          "settlementFinality": {
+            "model": "block-depth",
+            "finalityBlocks": 12,
+            "finalityCommitmentLevel": null,
+            "finalityObservedAt": 1900000000000
+          }
+        },
+        "rail": {
+          "resolution": "verified",
+          "referenceMatches": true,
+          "agreementMatches": true,
+          "phaseMatches": true,
+          "profileShape": "valid",
+          "profile": {
+            "finalityProfileVersion": "1",
+            "model": "block-depth",
+            "settlement": {
+              "kind": "block-depth",
+              "networkId": "eip155:1",
+              "genesisHash": "0xgenesis-mainnet",
+              "observation": {
+                "method": "rpc-quorum",
+                "authorityRefs": [
+                  "rpc-a",
+                  "rpc-b",
+                  "rpc-c"
+                ],
+                "threshold": 2,
+                "maxHeadAgeSec": 60
+              },
+              "requiredDepth": 12
+            }
+          }
+        },
+        "context": {
+          "kind": "chain",
+          "shape": "valid",
+          "proofKindSupported": true,
+          "networkId": "eip155:1",
+          "genesisHash": "0xgenesis-mainnet",
+          "transactionIncluded": true,
+          "selectedEventMatches": true,
+          "authority": "verified",
+          "canonicalPath": "valid",
+          "headAgeSec": 10,
+          "inclusionPosition": "100",
+          "headPosition": "100",
+          "commitment": null,
+          "bftCertificateValid": null,
+          "bftSignedWeight": null,
+          "bftTotalWeight": null,
+          "providerCaptured": null,
+          "providerBindingMatches": null,
+          "compositeStatus": null
+        }
+      },
+      "want": {
+        "acceptedAsFinal": false,
+        "finalityClass": null,
+        "producerReportTrustedAsProof": false,
+        "dacs5RsvDecision": "rejected"
+      }
+    }
+  ]
+}

@@ -25,6 +25,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | FP-* | Final settlement data and transitive evidence/bundle propagation | §9.7 | §14.4 |
 | FR-* | Disclosed-fee reconciliation (informational) | §9.7.2 | §14.4 |
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |
+| FV-* | Consumer-verifiable canonical settlement finality | §9.7.0 | §14.4 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
@@ -45,7 +46,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RA-* | Recipe-family authoring and resolution | §7.4.3 | §14.2 |
 | RAV-* | Recipe availability values and consumers | §7.4.5 | §14.2 |
 | RAV-R* | Rail availability values and orchestrators | §9.4.4 | §14.4 |
-| RD-* | Delivery phase required data | §9.4.3 | §14.4 |
+| RD-* | Rail definition authoring and finality-profile requirements | §9.4.3 | §14.4 |
 | RFQ-* | RFQ negotiation turns | §8.4.2 | §14.3 |
 | RB-* | Listing-revocation marker binding, retained discovery, and fail-closed resolution | §6.3.4 | §14.1 |
 | RT-* | Rating bounds and derivation handling | §10.6.1 | §14.5 |

@@ -1,6 +1,6 @@
 {
-  "manifestSha256": "abf82dbc0d44360586487c8de8284221af8ae2b53e12becffd49b50b9f7e3eea",
+  "manifestSha256": "dfe9f7fc90b861fb82c50d2723edb7d341534de4aaf16926c4aa0834de542425",
   "profileSha256": "3fe2fba18ccd3eb6a9a7c87477a34c9b6e213cb54555784ae071c2d5f6edeb38",
   "settlementUniquenessVectorSha256": "31c9455dc0147f27cf7a7d47cb17ffc019016bf63aa366b9dbadd720f8b16b81",
-  "traceSha256": "bb770ba53f3c883ac1d73c25697fccc087b00c730bbfbfceac9763396423ba9d"
+  "traceSha256": "80051e8edee055a9da66cb149c12d2ddd74f94f65f71ee593a32ad473d842c6d"
 }

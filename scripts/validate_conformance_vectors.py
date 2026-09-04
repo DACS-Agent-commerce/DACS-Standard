@@ -137,10 +137,10 @@ def canonical_json(value: Any) -> bytes:
 
     Delegates to the stdlib-only ``jcs`` module (RFC 8785 over integers, strings,
     literals, arrays, objects — see its docstring) so the artifact hash is the JCS
-    serialisation rather than ``json.dumps``. On the all-ASCII, float-free vector
-    corpus the two coincide byte-for-byte. Per CF-1 the module NFC-normalises string
-    *values* only; member names are serialised and UTF-16-sorted as received. It
-    fails closed on floats and oversized integers.
+    serialisation rather than ``json.dumps``. Per CF-1 the module NFC-normalises
+    string *values* only; member names are serialised and UTF-16-sorted as received.
+    Finite binary64 fractions are supported; numbers outside the DACS magnitude
+    bound fail closed.
     """
 
     return jcs.canonicalize(value).encode("utf-8")

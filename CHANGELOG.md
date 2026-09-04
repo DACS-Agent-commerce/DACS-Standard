@@ -13,6 +13,22 @@ The format used per release:
 
 ## [Unreleased]
 
+### Changed — legacy agreement activation boundary
+
+- **Current pay-bearing sessions require payout binding** (#377) — adds the
+  steward-signed `LegacyAgreementActivationCheckpoint` and LAA-1..LAA-7. At
+  activation, new and in-flight pay-bearing sessions must use
+  `PayeeBoundAgreementDocument`; the v0.x transition has no caller-asserted
+  in-flight exception.
+- **Authenticated historical admission** — legacy agreement signatures remain
+  verifiable, but historical settlement authority requires exact agreement,
+  commitment, and settlement-evidence bindings with finalized receipts strictly
+  before the governed checkpoint. Backdated producer timestamps, local flags,
+  ordinary not-found responses, and missing era proof authorize no payment.
+- **Negotiation gate** — DACS-3 CA-10 applies the same checkpoint before a
+  pay-bearing commitment and retains legacy agreement selection only for
+  authenticated pre-activation or zero-pay flows.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

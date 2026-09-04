@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 registers the legacy-agreement activation-checkpoint signature domain; v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -374,6 +374,7 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
 | DACS-4 settlement evidence | "dacs-evidence:v1:" | §9.7 |
+| DACS-4 legacy-agreement activation checkpoint | "dacs-legacy-agreement-checkpoint:v1:" | §9.5.1 |
 | DACS-4 settlement amendment | "dacs-amendment:v1:" | §9.7.1 |
 | DACS-4 rail definition | "dacs-rail:v1:" | §9.4 |
 | DACS-4 entitlement record | "dacs-entitlement:v1:" | §9.6.2 |

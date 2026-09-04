@@ -12,6 +12,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/vectors/security/sb3-binding-required-v0.8.json"
+_USE_STATE = object()
 
 
 def rail(binding: str = "required") -> dict[str, str]:
@@ -56,11 +57,16 @@ def case(
     transfer: str = "match",
     caller_hint: str | None = None,
     unbound_posture: bool = False,
+    binding_evidence: Any = _USE_STATE,
+    omit_binding_evidence: bool = False,
 ) -> dict[str, Any]:
-    protocol_input: dict[str, Any] = {
-        "bindingEvidence": {"state": state},
-        "unboundTransferChecks": transfer,
-    }
+    protocol_input: dict[str, Any] = {"unboundTransferChecks": transfer}
+    if not omit_binding_evidence:
+        protocol_input["bindingEvidence"] = (
+            {"state": state}
+            if binding_evidence is _USE_STATE
+            else binding_evidence
+        )
     if caller_hint is not None:
         protocol_input["callerProfileHint"] = caller_hint
     vector: dict[str, Any] = {
@@ -145,6 +151,50 @@ def build_vectors() -> list[dict[str, Any]]:
             "malformed",
             "malformed-binding-evidence",
             "Malformed binding evidence is an error before transfer interpretation.",
+        ),
+        case(
+            "required-binding-unknown-state-error",
+            "future-state",
+            "error",
+            "malformed",
+            "malformed-binding-evidence",
+            "An unsupported state is malformed, not unavailable authority.",
+        ),
+        case(
+            "required-binding-missing-evidence-error",
+            "unused",
+            "error",
+            "malformed",
+            "malformed-binding-evidence",
+            "A missing binding-evidence member is a deterministic error.",
+            omit_binding_evidence=True,
+        ),
+        case(
+            "required-binding-null-evidence-error",
+            "unused",
+            "error",
+            "malformed",
+            "malformed-binding-evidence",
+            "A non-object binding-evidence value is a deterministic error.",
+            binding_evidence=None,
+        ),
+        case(
+            "required-binding-missing-state-error",
+            "unused",
+            "error",
+            "malformed",
+            "malformed-binding-evidence",
+            "A binding-evidence object without a state is malformed.",
+            binding_evidence={},
+        ),
+        case(
+            "required-binding-non-string-state-error",
+            "unused",
+            "error",
+            "malformed",
+            "malformed-binding-evidence",
+            "A non-string binding-evidence state is malformed.",
+            binding_evidence={"state": 7},
         ),
         case(
             "unrelated-exact-transfer-cannot-replace-binding",

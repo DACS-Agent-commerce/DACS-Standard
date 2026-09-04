@@ -37,7 +37,7 @@ The format used per release:
   The last two branches cannot fall back to a coincidentally matching transfer,
   cannot satisfy DACS-5 final verification or reputation admission, and do not
   create party fault during an outage. No historical downgrade profile is
-  registered. Adds 17 deterministic disposition vectors covering all required
+  registered. Adds 22 deterministic disposition vectors covering all required
   issue cases and the explicitly weaker authenticated no-binding rail posture.
 
 ### Fixed — DACS-X conformance provenance

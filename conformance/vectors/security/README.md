@@ -62,7 +62,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-collision-authority-v0.8.json`](sb2-collision-authority-v0.8.json) | DACS-4 §9.5.8 SB-2 authenticated collision authority | 19 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
-| [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 17 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
@@ -513,11 +513,12 @@ Candidate set; independent implementation cross-run pending.
 
 ### `sb3-binding-required-v0.8.json` — §9.5.8 SB-3 required-binding gate
 
-17 candidate vectors pin the DACS-4 v0.8 four-value result after a rail's
+22 candidate vectors pin the DACS-4 v0.8 four-value result after a rail's
 authenticated definition declares settlement-side binding. A verified match
 continues to the ordinary transfer checks; a verified mismatch fails; missing,
 RPC-unavailable, pruned, signature-unavailable, or reorged binding evidence is
-non-countable `indeterminate`; malformed evidence is `error`. None of those
+non-countable `indeterminate`; malformed, structurally invalid, or unknown-state
+evidence is `error` without raising. None of those
 non-match paths uses the unbound posture or creates party fault.
 
 The corpus makes an otherwise exact unrelated transfer inert, ignores caller

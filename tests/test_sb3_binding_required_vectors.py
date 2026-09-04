@@ -64,7 +64,22 @@ def evaluate(vector: dict) -> tuple[str, dict]:
     protocol_input = vector["protocolInput"]
 
     if binding_policy == "required":
-        state = protocol_input["bindingEvidence"]["state"]
+        evidence = protocol_input.get("bindingEvidence")
+        known_states = {
+            "match",
+            "mismatch",
+            "absent",
+            "malformed",
+            "unavailable-rpc",
+            "unavailable-pruned-history",
+            "unavailable-signature-authority",
+            "unavailable-reorged",
+        }
+        if not isinstance(evidence, dict) or set(evidence) != {"state"}:
+            return result("error", "malformed", "malformed-binding-evidence")
+        state = evidence.get("state")
+        if not isinstance(state, str) or state not in known_states:
+            return result("error", "malformed", "malformed-binding-evidence")
         if state == "malformed":
             return result("error", "malformed", "malformed-binding-evidence")
         if state == "mismatch":
@@ -145,8 +160,9 @@ class Sb3BindingRequiredVectorTests(unittest.TestCase):
 
     def test_unavailable_required_binding_is_non_countable_without_fault(self):
         for vector in self.data["vectors"]:
-            state = vector["protocolInput"]["bindingEvidence"]["state"]
-            if state.startswith("unavailable"):
+            evidence = vector["protocolInput"].get("bindingEvidence")
+            state = evidence.get("state") if isinstance(evidence, dict) else None
+            if isinstance(state, str) and state.startswith("unavailable"):
                 with self.subTest(name=vector["name"]):
                     expected, want = evaluate(vector)
                     self.assertEqual(expected, "indeterminate")
@@ -192,10 +208,31 @@ class Sb3BindingRequiredVectorTests(unittest.TestCase):
                 "required-binding-rpc-unavailable-indeterminate",
                 "required-binding-pruned-history-indeterminate",
                 "required-binding-malformed-error",
+                "required-binding-unknown-state-error",
+                "required-binding-missing-evidence-error",
+                "required-binding-null-evidence-error",
+                "required-binding-missing-state-error",
+                "required-binding-non-string-state-error",
                 "unrelated-exact-transfer-cannot-replace-binding",
                 "unproven-legacy-downgrade-ignored",
             }.issubset(self.cases)
         )
+
+    def test_malformed_or_unsupported_binding_shapes_never_raise(self):
+        names = {
+            "required-binding-malformed-error",
+            "required-binding-unknown-state-error",
+            "required-binding-missing-evidence-error",
+            "required-binding-null-evidence-error",
+            "required-binding-missing-state-error",
+            "required-binding-non-string-state-error",
+        }
+        for name in names:
+            with self.subTest(name=name):
+                expected, want = evaluate(self.cases[name])
+                self.assertEqual(expected, "error")
+                self.assertEqual(want["bindingDisposition"], "malformed")
+                self.assertEqual(want["reason"], "malformed-binding-evidence")
 
     def test_spec_and_dacs5_make_the_gate_load_bearing(self):
         spec = SPEC.read_text(encoding="utf-8")

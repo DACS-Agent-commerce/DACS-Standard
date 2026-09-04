@@ -3,8 +3,8 @@
   "spec": "DACS-4 §9.5.8 SB-3 required-binding four-value gate",
   "tier": "candidate",
   "description": "A rail-declared settlement-side binding cannot downgrade to unbound transfer evidence when missing, unavailable, pruned, reorged, or malformed.",
-  "count": 17,
-  "hash": "96df017a6b0f4435cd9a0e42759c2e8a09e023ffe461bd50447a880bd9e11069",
+  "count": 22,
+  "hash": "4b7459fa171a39414bf4caf2b4b7de7f297195159eecfc850cf69009108bc068",
   "vectors": [
     {
       "name": "required-binding-match-pass",
@@ -14,10 +14,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "match"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "pass",
       "want": {
@@ -40,10 +40,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "mismatch"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "fail",
       "want": {
@@ -66,10 +66,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "absent"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -92,10 +92,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "unavailable-rpc"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -118,10 +118,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "unavailable-pruned-history"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -144,10 +144,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "unavailable-signature-authority"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -170,10 +170,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "unavailable-reorged"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -196,10 +196,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "malformed"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "error",
       "want": {
@@ -215,6 +215,129 @@
       "note": "Malformed binding evidence is an error before transfer interpretation."
     },
     {
+      "name": "required-binding-unknown-state-error",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "unboundTransferChecks": "match",
+        "bindingEvidence": {
+          "state": "future-state"
+        }
+      },
+      "expected": "error",
+      "want": {
+        "bindingDisposition": "malformed",
+        "reason": "malformed-binding-evidence",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "An unsupported state is malformed, not unavailable authority."
+    },
+    {
+      "name": "required-binding-missing-evidence-error",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "unboundTransferChecks": "match"
+      },
+      "expected": "error",
+      "want": {
+        "bindingDisposition": "malformed",
+        "reason": "malformed-binding-evidence",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A missing binding-evidence member is a deterministic error."
+    },
+    {
+      "name": "required-binding-null-evidence-error",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "unboundTransferChecks": "match",
+        "bindingEvidence": null
+      },
+      "expected": "error",
+      "want": {
+        "bindingDisposition": "malformed",
+        "reason": "malformed-binding-evidence",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A non-object binding-evidence value is a deterministic error."
+    },
+    {
+      "name": "required-binding-missing-state-error",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "unboundTransferChecks": "match",
+        "bindingEvidence": {}
+      },
+      "expected": "error",
+      "want": {
+        "bindingDisposition": "malformed",
+        "reason": "malformed-binding-evidence",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A binding-evidence object without a state is malformed."
+    },
+    {
+      "name": "required-binding-non-string-state-error",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "unboundTransferChecks": "match",
+        "bindingEvidence": {
+          "state": 7
+        }
+      },
+      "expected": "error",
+      "want": {
+        "bindingDisposition": "malformed",
+        "reason": "malformed-binding-evidence",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A non-string binding-evidence state is malformed."
+    },
+    {
       "name": "unrelated-exact-transfer-cannot-replace-binding",
       "operation": "verify-sb3-binding-required",
       "trustedContext": {
@@ -222,10 +345,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "absent"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -248,10 +371,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "absent"
         },
-        "unboundTransferChecks": "match",
         "callerProfileHint": "binding-none"
       },
       "expected": "indeterminate",
@@ -275,10 +398,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "absent"
         },
-        "unboundTransferChecks": "match",
         "callerProfileHint": "legacy-pre-v0.8"
       },
       "expected": "indeterminate",
@@ -302,10 +425,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "mismatch",
         "bindingEvidence": {
           "state": "match"
-        },
-        "unboundTransferChecks": "mismatch"
+        }
       },
       "expected": "fail",
       "want": {
@@ -328,10 +451,10 @@
         "resolvedRailProfile": "x402-eip3009-binding-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "unavailable",
         "bindingEvidence": {
           "state": "match"
-        },
-        "unboundTransferChecks": "unavailable"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -354,10 +477,10 @@
         "resolvedRailProfile": "evm-erc20-unbound-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "absent"
-        },
-        "unboundTransferChecks": "match"
+        }
       },
       "expected": "pass",
       "want": {
@@ -380,10 +503,10 @@
         "resolvedRailProfile": "evm-erc20-unbound-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "mismatch",
         "bindingEvidence": {
           "state": "absent"
-        },
-        "unboundTransferChecks": "mismatch"
+        }
       },
       "expected": "fail",
       "want": {
@@ -406,10 +529,10 @@
         "resolvedRailProfile": "evm-erc20-unbound-v0.8"
       },
       "protocolInput": {
+        "unboundTransferChecks": "unavailable",
         "bindingEvidence": {
           "state": "absent"
-        },
-        "unboundTransferChecks": "unavailable"
+        }
       },
       "expected": "indeterminate",
       "want": {
@@ -429,10 +552,10 @@
       "operation": "verify-sb3-binding-required",
       "trustedContext": {},
       "protocolInput": {
+        "unboundTransferChecks": "match",
         "bindingEvidence": {
           "state": "match"
         },
-        "unboundTransferChecks": "match",
         "callerProfileHint": "binding-none"
       },
       "expected": "indeterminate",

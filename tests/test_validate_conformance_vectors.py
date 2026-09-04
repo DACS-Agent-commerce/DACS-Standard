@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_conformance_vectors.py"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
+GOLDEN_OUTPUTS = ROOT / "conformance" / "vectors" / "golden.json"
 VECTORS = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
 IDENTITY_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "identity-bundle.json"
 RATING_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "rating-record.json"
@@ -85,6 +86,40 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             result = run_validator("--manifest", str(manifest))
         self.assertNotEqual(result.returncode, 0, result.stdout)
         self.assertIn("spec MUST identify the closed registry at §B.7", result.stderr)
+
+    def test_output_only_dacsx_rows_are_candidates_not_goldens(self):
+        data = json.loads(MANIFEST.read_text())
+        outputs = json.loads(GOLDEN_OUTPUTS.read_text())
+        dacsx = [
+            case for case in data["cases"]
+            if case["area"] in {"dispute", "disclosure"}
+        ]
+        self.assertEqual(17, len(dacsx))
+        self.assertEqual(
+            {"dispute": 8, "disclosure": 9},
+            {
+                area: sum(case["area"] == area for case in dacsx)
+                for area in ("dispute", "disclosure")
+            },
+        )
+        for case in dacsx:
+            with self.subTest(case=case["id"]):
+                self.assertEqual("candidate", case["status"])
+                self.assertIn("output-only expectation", case["reason"])
+                self.assertIn("not published", case["reason"])
+        self.assertEqual(176, sum(
+            case["status"] == "golden" for case in data["cases"]
+        ))
+        self.assertEqual(60, sum(
+            case["status"] == "candidate" for case in data["cases"]
+        ))
+        for area in ("dispute", "disclosure"):
+            with self.subTest(output_area=area):
+                self.assertIn("candidate", outputs[area]["status"])
+                self.assertIn("output-only expectations", outputs[area]["status"])
+                self.assertNotIn("golden", outputs[area]["status"])
+                self.assertIn("constructed deterministically", outputs[area]["inputs"])
+                self.assertIn("exact signed input/resolver pack is not published", outputs[area]["inputs"])
 
     def test_vector_covers_all_five_dacs_stages_in_order(self):
         data = json.loads(VECTORS.read_text())

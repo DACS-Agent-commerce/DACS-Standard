@@ -29,6 +29,61 @@ The format used per release:
   settlement fixture. This establishes provider-test reference-backing without
   changing the rail's operator-gated production availability.
 
+### Fixed — DACS-X conformance provenance
+
+- **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9
+  transcript-disclosure manifest expectations from `golden` to `candidate`.
+  The repository does not ship their exact signed inputs, resolver context,
+  versioned dispute/disclosure artifacts, signature recipes, or an independent
+  executable predicate, so byte-stable expected strings cannot establish
+  conformance by themselves.
+- **Promotion gate made explicit** — the 17 expectations remain available for
+  DACS-X design work, but cannot return to `golden` until their public inputs
+  and normative contracts exist and an in-repository verifier consumes them.
+  A regression test pins the candidate status and the corrected integrated
+  golden/candidate totals.
+
+### Fixed — CORE canonicalization conformance
+
+- Retires the stale `canon-noninteger-throws` manifest row left behind by #345;
+  CORE §B.2 permits finite binary64 fractions, and the self-contained
+  `canonical-json-v0.1` corpus remains the executable authority for those bounds
+  (#354). The shared validator documentation now states the same rule.
+
+### Fixed — Demos SR-2 bundle co-signing status
+
+- **Artifact signatures separated from transaction signatures** (#369) —
+  corrects DEMOS-MAPPING §A.2 so a native multi-party Storage Program
+  transaction is not presented as an amber DACS v0.1 dependency. For non-abort
+  outcomes the bundle first carries every required DACS signature and each
+  required signing party anchors its role-specific copy through its own
+  owner-signed SR-2 write and verified receipt. Abort outcomes retain the
+  single-signature and bundle-suppression exceptions in §§10.4.1/10.11. Native
+  transaction co-signing remains an optional optimization and cannot replace
+  applicable artifact signatures or role-specific publication.
+
+### Fixed — lifecycle walkthrough current-wire compatibility
+
+- The executable lifecycle walkthrough now emits a canonical ULID `jobId`,
+  omits the non-schema `phaseIndex` from signed `SettlementEvidence`, recovers
+  the payment phase tuple from its canonical PC-2 logical address, authenticates
+  that tuple against the published logical/native/content binding and reference,
+  and emits failure evidence with `outcome: "failure"` and a non-empty `reason`
+  (#357). The signed bundle phase summary remains the delivery-phase binding.
+  The walkthrough's pinned DACS-4 v0.3 profile intentionally keeps the legacy
+  `evm` reference and does not advertise the v0.6+ SB-1 event-identity rule.
+
+### Fixed — DACS-4 RD-5 conformance data
+
+- **EVM rail chain-ID equality restored** (§9.4.3 RD-5; #352) — corrects the
+  stale golden manifest row that admitted matching asset/network kinds with
+  unequal `chainId` values even though RD-5 requires the same positive integer
+  and PB-2 derives payee applicability from that exact chain. The contradictory
+  positive is replaced by a fail candidate pending independent reference-run
+  convergence. The executable chain-applicability set now has explicit
+  equal-positive and mismatch controls for both `erc20` and `native-evm`, plus
+  zero and non-integer asset/network controls.
+
 ### Added — DACS-4 v0.6 pay-ap2 hardening
 
 - **(AP2-6)** pins the provider idempotency-key derivation byte-for-byte
@@ -165,8 +220,9 @@ The format used per release:
   authority remains `indeterminate`; and inclusion time, not query time,
   governs the effective window. The persistent record cannot satisfy a fresh
   `domain-tls-control` requirement and controls a domain only when the bundle
-  presentation verifies under the same GCR-bound account. Carries 52 genuine
-  deterministic Ed25519 vectors and changes the example producer output to
+  presentation verifies under the same GCR-bound account. Carries 63
+  deterministic Ed25519 vectors (61 valid and two deliberately corrupted)
+  and changes the example producer output to
   canonical `domain:`. The steward's signed registry publication remains a
   separate post-review operation.
 
@@ -181,6 +237,19 @@ The format used per release:
   writer authorization, finalized inclusion, presentation-bound SR-1 control,
   native context, and inclusion-time anti-reissue coverage. The generator is
   checked byte-for-byte in CI.
+
+- **Signed bundle-version and verify-before-fold boundary** (DACS-1
+  §6.3.1 DCR-1/DCR-4/DCR-5; #347) — removes the corpus-only
+  `producerDacs1Version == "0.6"` selector from signed bundle bytes. Exact
+  spelling now follows the `domain:` scheme without a profile sidecar. Because
+  frozen `IdentityBundle.bundleVersion: "1"` has no authenticated minor-version
+  discriminator, current alias emission is tested at the producer/serializer
+  boundary from structured `producerInput` while readers permanently accept
+  signature-valid legacy aliases; adapters without that producer boundary must
+  abstain rather than replay the reader fixture. Mutable deployment state cannot
+  reclassify retained bytes. Adds single- and dual-alias current-production
+  rejections, `presentedBy` coverage, and paired signed/signature-corrupted
+  malformed-host rows that make verify-before-fold ordering evaluator-falsifiable.
 
 ### Added — DACS-4 v0.5
 

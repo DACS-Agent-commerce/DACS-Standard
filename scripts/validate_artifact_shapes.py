@@ -54,6 +54,7 @@ REFERENCE_FIXTURES = (
     ROOT / "conformance" / "fixtures" / "settlement-evidence-payment-success.json",
     ROOT / "conformance" / "fixtures" / "settlement-evidence-delivery-success.json",
     ROOT / "conformance" / "fixtures" / "settlement" / "htlc9-asymmetric.json",
+    ROOT / "conformance" / "fixtures" / "settlement" / "htlc9-asymmetric-resolved.json",
     ROOT / "conformance" / "vectors" / "security" / "bundle-binding-v0.1.json",
 )
 

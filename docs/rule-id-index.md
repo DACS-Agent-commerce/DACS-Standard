@@ -54,6 +54,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | SB-* | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |
 | SE-* | Sealed-envelope negotiation | §8.4.3 | §14.3 |
 | SEB-* | SettlementEvidence exact-set and phase-bijection validation | §10.4.3 | §14.5 |
+| SPA-* | Signed participation admission, one-sided blame, and ordinary-rating admission | §10.3.2 / §10.5 | §14.5 |
 | SIG-* | Universal domain-separated signatures | §B.7 | §14.6 |
 | SN-* | Session-nonce provenance (verifier-generated anti-replay) | §B.8 | §14.6 |
 | SR2-* | SR-2 write lifecycle, portable receipts, visibility separation, and stage gates | §5.1 | §14.8 |

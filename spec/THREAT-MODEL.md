@@ -126,9 +126,10 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Attested-payload self-assertion or cross-session proof replay | malicious counterparty or orchestrator | §9.6.3 DPA-1..DPA-9 (method required before session; exact-byte method proof; job/agreement/spec/method binding; PayloadAttestationRecord required for success; settlement signature never substitutes) | mitigated subject to selected method's disclosed trust floor |
 | Refund laundering | malicious seller | §9.13 (anchored amendments) | mitigated |
 | Decimal-overflow on cross-decimal pay | implementation bug | §9.13 (string-decimal arithmetic) | mitigated |
-| Bundle forgery | malicious counterparty | §10.11 (co-signature requirement) | mitigated |
-| Bundle suppression | malicious counterparty | §10.11 + §10.4.3 authoritative-absence gate | mitigated when authoritative absence is available; otherwise indeterminate |
+| Bundle forgery / invented participant in one-sided blame | malicious counterparty | §10.11 + §10.3.2 SPA-1..SPA-6 (co-signature or exact target-signed active-obligation admission) | mitigated for current-profile reputation; older derivations are historical/partial |
+| Bundle suppression | malicious counterparty | §10.11 + §10.4.3 authoritative-absence gate + §10.3.2 SPA-1..SPA-6 participation gate | mitigated when both independent proofs are available; otherwise non-countable |
 | Bundle-copy read censorship (a hidden divergent copy appears one-sided) | malicious infrastructure | CORE §5 SR-2 absence evidence + §10.4.3 / §10.5.1 guard (iv) | mitigated for integrity; one-copy availability depends on the substrate binding |
+| Invented-roster or abort-session rating | malicious counterparty | §10.3.2 SPA-7 (fully signed completed bundle, authenticated successful rate phase, exact target role) | mitigated for current-profile reputation; older derivations are historical/partial |
 | Sybil reputation farming | sybil attacker | §10.11 (per-primary-claim keying) | mitigated for cross-tier; not for same-tier |
 | Reputation collusion | two colluding counterparties | §10.11 (volume disclosure + external signals) | partial — protocol cannot prevent |
 | Orchestrator error-class misclassification | malicious orchestrator | §10.11 (party-disagreement → aborted-by-other) | mitigated |
@@ -140,8 +141,8 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 
 ### 12.5 Composite trust property
 
-A DACS-5 bundle that validates against all per-chapter conformance rules and whose contained references all dereference and validate provides the following composite trust property to a consumer:
+A fully required-party-signed DACS-5 bundle that validates against all per-chapter conformance rules and whose contained references all dereference and validate provides the following composite trust property to a consumer. Clauses about agreement and settlement apply only when the corresponding authenticated artifacts are present. A single-signed abort bundle alone provides only the signer's authenticated claim and an audit pointer; it establishes the absent party's participation only when accompanied by that target's SPA-valid exact active-obligation admission:
 
-> "Two or more parties identified by the named primary claims (with the trust profile each claim’s scheme implies) participated in a session against the named listing version, agreed to the named terms, exchanged the named settlements, and produced this audit record. The substrate operator did not collude with the parties to forge the record. The recipe registry was not compromised at the time of the verifications. The composed external standards (W3C VC, TLSNotary, ACME, etc.) behaved per their own security models."
+> "The named signers (with the trust profile each primary-claim scheme implies) authenticated this exact audit record for the named listing and session. Where verified Agreement and settlement artifacts are present, they authenticate the named terms and recorded settlement facts under their own signer requirements. The substrate operator did not collude with the parties to forge the record. The recipe registry was not compromised at the time of the verifications. The composed external standards (W3C VC, TLSNotary, ACME, etc.) behaved per their own security models."
 
 This is the composite security claim of DACS v0.1. Each clause has explicit mitigation in the per-chapter sections; each has explicit residual risk in this chapter’s adversary model.

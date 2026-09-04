@@ -13,6 +13,26 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — signed participation before one-sided reputation
+
+- **Target-signed active-obligation admission (SPA-1..SPA-6; #373)** — adds
+  `SessionParticipationAdmission` under its own signature domain. The artifact
+  binds the exact job, Listing, canonical party/role roster, authenticated
+  effective-pipeline prefix, active phase, owed action, objective deadline,
+  applicable Agreement, and fresh signer nonce. Current-profile one-sided
+  blame against an absent non-signer now requires both authoritative bundle
+  absence and the alleged obligor's exact admission, finalized before the
+  deadline; the terminal bundle receipt must establish deadline passage.
+  Missing, rejected, or indeterminate participation evidence is non-countable
+  without creating a new fault.
+- **Authenticated ordinary ratings (SPA-7/SPA-8; #373)** — current-profile
+  ratings now require a fully signed completed bundle, independently verified
+  successful rate phase, exact included rating reference, and exact unique
+  rater/target roles. Abort/failure ratings, invented phases, and non-roster
+  targets are excluded. Replay binds the conditional admission evidence and
+  rejects omitted, substituted, or unused context. The five older derivation
+  shapes retain their released historical/partial meanings.
+
 ### Added — authenticated reputation-window time
 
 - **Current DACS-5 reputation profile (AWT-1..AWT-8; #384)** — adds the

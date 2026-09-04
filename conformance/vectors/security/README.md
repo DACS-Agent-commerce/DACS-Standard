@@ -65,6 +65,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-finality-verification-v0.8.json`](settlement-finality-verification-v0.8.json) | DACS-4 v0.8 §9.7.0 FV-1..FV-10; DACS-5 v0.6 §10.4.3/§10.5.1 | 42 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -1077,6 +1078,29 @@ Run the dependency-free executable checks from the repository root:
 
 ```sh
 python3 -m unittest tests.test_settlement_finalization_propagation_vectors -v
+```
+
+### `settlement-finality-verification-v0.8.json` — §9.7.0 FV-1..FV-10
+
+Forty-two candidate cases execute consumer-verifiable settlement finality for
+block-depth, commitment-level, BFT-final, provider-receipt, HTLC, and
+liquidity-tank profiles. The consumer derives the model and strength from the
+exact authenticated RailDefinition; the signed `SettlementFinalityRecord` is
+always treated as a producer report, never as proof.
+
+The cases cover canonical success, wrong network/genesis/transaction/event,
+insufficient depth or commitment, invalid or under-quorum Demos certificates,
+stale forks, conflicting or unavailable heads, reorg/replacement/pruned state,
+provider capture and binding, composite-leg disagreement, structural errors,
+legacy/cross-domain confusion, deterministic-mismatch precedence, and DACS-5
+RSV reuse. Provider capture passes only as `provisional-provider-capture`.
+
+Regenerate and execute from the repository root:
+
+```sh
+python3 scripts/generate_settlement_finality_verification_vectors.py --write
+python3 scripts/generate_settlement_finality_verification_vectors.py --check
+python3 -m unittest tests.test_settlement_finality_verification_vectors -v
 ```
 
 ### `presence-only-claim-requirement-v0.7.json` — §6.3.3 PCR-1..PCR-6 / §7.7.1

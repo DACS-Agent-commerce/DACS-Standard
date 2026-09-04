@@ -1,0 +1,415 @@
+{
+  "set": "raw-json-profile-v0.1",
+  "spec": "CORE §B.2 CF-5 raw JSON admission",
+  "tier": "candidate",
+  "description": "Raw UTF-8 JSON texts that preserve duplicate names and numeric tokens; two independent parsers must agree before JCS canonicalization.",
+  "count": 42,
+  "hash": "fbe1a33de4b045932ceed96f8ee649ec350c878870051f7405c0eb7c70cb0615",
+  "vectors": [
+    {
+      "name": "empty-object",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b7d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A well-formed JSON object is admitted."
+    },
+    {
+      "name": "maximum-safe-positive-integer",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":9007199254740991}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a393030373139393235343734303939317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The positive DACS safe-magnitude boundary is inclusive."
+    },
+    {
+      "name": "maximum-safe-negative-integer",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":-9007199254740991}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a2d393030373139393235343734303939317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The negative DACS safe-magnitude boundary is inclusive."
+    },
+    {
+      "name": "maximum-safe-exponent-spelling",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":9.007199254740991e15}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a393030373139393235343734303939317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "An exponent spelling exactly at the safe boundary is admitted."
+    },
+    {
+      "name": "exponent-equivalent-one",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":1e0}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A valid exponent spelling may normalize under JCS."
+    },
+    {
+      "name": "uppercase-exponent-plus",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":1E+0}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Lexical spelling is not confused with numeric profile admission."
+    },
+    {
+      "name": "negative-zero",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":-0.0}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a307d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Negative zero is admitted and JCS serializes it as zero."
+    },
+    {
+      "name": "valid-fraction-one-tenth",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":0.1}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a302e317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Finite bounded fractions remain valid after #345."
+    },
+    {
+      "name": "valid-fraction-trailing-zero",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":4.50}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a342e357d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A valid fractional lexical form may normalize under JCS."
+    },
+    {
+      "name": "minimum-positive-binary64",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"n\":5e-324}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b226e223a35652d3332347d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The minimum non-zero binary64 subnormal is representable."
+    },
+    {
+      "name": "escaped-member-name",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"\\u0061\":1}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b2261223a317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Duplicate detection compares decoded names; one escaped name is valid."
+    },
+    {
+      "name": "valid-surrogate-pair",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"s\":\"\\ud800\\udc00\"}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b2273223a22f0908080227d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A valid pair decodes to one Unicode scalar value."
+    },
+    {
+      "name": "values-only-nfc-after-admission",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": " \n {\"s\":\"cafe\\u0301\"}\t",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b2273223a22636166c3a9227d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "CF-5 admission precedes the existing values-only CF-1 NFC step."
+    },
+    {
+      "name": "nfc-and-nfd-member-names-distinct",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"é\":1,\"e\\u0301\":2}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b2265cc81223a322c22c3a9223a317d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Member names remain distinct and are not NFC-folded."
+    },
+    {
+      "name": "nested-distinct-members",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"a\":{\"x\":1},\"b\":[{\"x\":2}]}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b2261223a7b2278223a317d2c2262223a5b7b2278223a327d5d7d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The same member spelling may occur in distinct objects."
+    },
+    {
+      "name": "positive-two-to-the-53",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "2^53 is outside the inclusive DACS magnitude bound.",
+      "rawUtf8Text": "{\"n\":9007199254740992}"
+    },
+    {
+      "name": "negative-two-to-the-53",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "-2^53 is outside the inclusive DACS magnitude bound.",
+      "rawUtf8Text": "{\"n\":-9007199254740992}"
+    },
+    {
+      "name": "positive-rounded-unsafe-integer",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The raw token is checked before a binary64 parser can round it.",
+      "rawUtf8Text": "{\"n\":9007199254740993}"
+    },
+    {
+      "name": "negative-rounded-unsafe-integer",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "The raw negative token is checked before binary64 rounding.",
+      "rawUtf8Text": "{\"n\":-9007199254740993}"
+    },
+    {
+      "name": "unsafe-exponent-spelling",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-OUTSIDE-DACS-MAGNITUDE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Exponent notation cannot bypass the mathematical magnitude check.",
+      "rawUtf8Text": "{\"n\":9.007199254740992e15}"
+    },
+    {
+      "name": "binary64-overflow",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-NOT-BINARY64",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A syntactically valid number that overflows binary64 is refused.",
+      "rawUtf8Text": "{\"n\":1e309}"
+    },
+    {
+      "name": "binary64-underflow",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "NUMBER-NOT-BINARY64",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A non-zero token that collapses to binary64 zero is refused.",
+      "rawUtf8Text": "{\"n\":1e-9999}"
+    },
+    {
+      "name": "duplicate-top-level-member",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "DUPLICATE-MEMBER",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A parser's first/last-member policy cannot choose the signed amount.",
+      "rawUtf8Text": "{\"amount\":\"1\",\"amount\":\"100\"}"
+    },
+    {
+      "name": "duplicate-nested-member",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "DUPLICATE-MEMBER",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Duplicate rejection applies at every object nesting level.",
+      "rawUtf8Text": "{\"terms\":{\"price\":1,\"price\":2}}"
+    },
+    {
+      "name": "duplicate-member-inside-array",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "DUPLICATE-MEMBER",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Objects inside arrays receive the same duplicate check.",
+      "rawUtf8Text": "[{\"sequence\":1,\"sequence\":2}]"
+    },
+    {
+      "name": "duplicate-escape-equivalent-member",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "DUPLICATE-MEMBER",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Names are compared after JSON escape decoding, before object collapse.",
+      "rawUtf8Text": "{\"a\":1,\"\\u0061\":2}"
+    },
+    {
+      "name": "lone-high-surrogate-value",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "INVALID-UNICODE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A lone high surrogate is not a Unicode scalar value.",
+      "rawUtf8Text": "{\"s\":\"\\ud800\"}"
+    },
+    {
+      "name": "lone-low-surrogate-value",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "INVALID-UNICODE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A lone low surrogate is not a Unicode scalar value.",
+      "rawUtf8Text": "{\"s\":\"\\udc00\"}"
+    },
+    {
+      "name": "lone-surrogate-member-name",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "profile",
+      "expectedErrorCode": "INVALID-UNICODE",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Member names must also contain only Unicode scalar values.",
+      "rawUtf8Text": "{\"\\ud800\":1}"
+    },
+    {
+      "name": "nan-extension",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "NON-JSON-CONSTANT",
+      "rule": "CORE §B.2 CF-5",
+      "note": "NaN is a parser extension, not JSON.",
+      "rawUtf8Text": "{\"n\":NaN}"
+    },
+    {
+      "name": "positive-infinity-extension",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "NON-JSON-CONSTANT",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Infinity is a parser extension, not JSON.",
+      "rawUtf8Text": "{\"n\":Infinity}"
+    },
+    {
+      "name": "negative-infinity-extension",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "NON-JSON-CONSTANT",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Negative Infinity is a parser extension, not JSON.",
+      "rawUtf8Text": "{\"n\":-Infinity}"
+    },
+    {
+      "name": "trailing-non-whitespace",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "TRAILING-DATA",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Non-whitespace bytes after the JSON value are refused.",
+      "rawUtf8Text": "{\"n\":1} trailing"
+    },
+    {
+      "name": "two-json-values",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "TRAILING-DATA",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A second JSON value cannot be ignored.",
+      "rawUtf8Text": "{\"n\":1}{\"n\":2}"
+    },
+    {
+      "name": "utf8-bom",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "BOM",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A BOM is not silently stripped from signed wire bytes.",
+      "rawUtf8Text": "﻿{\"n\":1}"
+    },
+    {
+      "name": "invalid-utf8",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "INVALID-UTF8",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Ill-formed UTF-8 is rejected before JSON parsing.",
+      "rawHex": "7b2273223a22eda080227d"
+    },
+    {
+      "name": "leading-zero-number",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "INVALID-JSON",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A non-JSON leading-zero form is refused rather than normalized.",
+      "rawUtf8Text": "{\"n\":01}"
+    },
+    {
+      "name": "leading-plus-number",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "INVALID-JSON",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A leading plus sign is not JSON number syntax.",
+      "rawUtf8Text": "{\"n\":+1}"
+    },
+    {
+      "name": "unterminated-object",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "INVALID-JSON",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Incomplete JSON never reaches canonicalization.",
+      "rawUtf8Text": "{\"n\":1"
+    },
+    {
+      "name": "unescaped-control",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "INVALID-JSON",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Unescaped C0 controls are invalid JSON string content.",
+      "rawUtf8Text": "{\"s\":\"\u0001\"}"
+    },
+    {
+      "name": "invalid-string-escape",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "INVALID-JSON",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Non-JSON escape extensions are refused.",
+      "rawUtf8Text": "{\"s\":\"\\x41\"}"
+    },
+    {
+      "name": "comment-extension",
+      "operation": "admit-raw-json-then-canonicalize",
+      "expected": "reject",
+      "expectedStage": "parse",
+      "expectedErrorCode": "INVALID-JSON",
+      "rule": "CORE §B.2 CF-5",
+      "note": "Comments are not JSON and cannot be stripped before hashing.",
+      "rawUtf8Text": "{\"n\":1/*comment*/}"
+    }
+  ]
+}

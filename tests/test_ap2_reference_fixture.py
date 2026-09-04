@@ -25,18 +25,20 @@ FIXTURE = (
     / "settlement"
     / "settlement-ap2-reference.json"
 )
+DACS4 = ROOT / "spec" / "DACS-4-SETTLE.md"
+DEMOS_MAPPING = ROOT / "spec" / "DEMOS-MAPPING.md"
 OFFICIAL_AP2_COMMIT = "e1ea56db72a6385bce3e5c1112b3a56ce60acb43"
 ULID_RE = re.compile(r"[0-9A-HJKMNP-TV-Z]{26}\Z")
-PINNED_DAHR_TX_HASH = "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+PINNED_DAHR_TX_HASH = "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
 PINNED_DAHR_BLOCK = {
     "number": 213605,
-    "hash": "bcfb1766fc2a987adf734209687a01e443dd8eb29005e487a8ae4f27f295ab13",
+    "hash": "fd0977fba4ef15128801401c30648b643f67b3e638df1cf27aa5f6ed9134ddc0",
 }
 PINNED_DAHR_VALIDATORS = frozenset(
     {
-        "0x24c664d9ef529f798e979357c6a7a01088226eefe05cfdb77fb42841f771e156",
-        "0xc8bc5866fecf583bc1232f04fa54fd2c5a6f7c15b91c517ac60f468cdc0b8c82",
-        "0xdad5ae081825bcf93353bb76157ae8368c33fee6fc0f692b85155bb37e4ae0ab",
+        "0x41e8fde132ad670e534cd8b275d2cd7eec77733c66f8db48a1cada7fabfc4555",
+        "0xb4740ba4e0f7e0576f11e8149dbbb2529c212213db679831fb5d1b221e84552d",
+        "0xed3234b276d4ceda57d59bad14fbaf5a773c0f318c999de3a60d53c5a5b34c05",
     }
 )
 
@@ -45,9 +47,22 @@ def b64url(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
+def parse_json_without_duplicate_keys(value: str):
+    def reject_duplicates(pairs):
+        parsed = {}
+        for key, item in pairs:
+            if key in parsed:
+                raise ValueError("duplicate JSON member")
+            parsed[key] = item
+        return parsed
+
+    return json.loads(value, object_pairs_hook=reject_duplicates)
+
+
 def dahr_snapshot_valid(fixture: dict) -> bool:
     """Authenticate the pinned DAHR transaction, block, and AP2 commitment."""
     try:
+        agreement = fixture["agreement"]
         provider = fixture["provider"]
         payment_ref = fixture["evidence"]["paymentTxRefs"][0]
         dahr = fixture["dahr"]
@@ -77,6 +92,34 @@ def dahr_snapshot_valid(fixture: dict) -> bool:
         message = content["data"][1]["message"]
         request = message["web2Request"]["raw"]
         response = message["web2Request"]["result"]
+        response_bytes = provider["statusResponseBytes"]
+        if not isinstance(response_bytes, str):
+            return False
+        if (
+            hashlib.sha256(response_bytes.encode("utf-8")).hexdigest()
+            != response["responseHash"]
+        ):
+            return False
+        status_projection = parse_json_without_duplicate_keys(response_bytes)
+        if status_projection != provider["statusProjection"]:
+            return False
+        expected_minor = Decimal(agreement["amount"]) * (
+            Decimal(10) ** agreement["currencyMinorUnits"]
+        )
+        if expected_minor != expected_minor.to_integral_value():
+            return False
+        if not (
+            status_projection["object"] == "payment_intent"
+            and status_projection["status"] == "succeeded"
+            and status_projection["id"] == payment_ref["providerRef"]
+            and status_projection["amount"] == int(expected_minor)
+            and status_projection["amount_received"] == int(expected_minor)
+            and status_projection["currency"].upper() == agreement["currency"]
+            and status_projection["metadata"]["dacs_job_id"] == agreement["jobId"]
+            and status_projection["metadata"]["dacs_agreement_hash"]
+            == agreement["agreementHash"]
+        ):
+            return False
         if not (
             content["type"] == "web2Request"
             and content["data"][0] == "web2Request"
@@ -155,7 +198,10 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
         self.assertEqual(fixture["fixtureVersion"], "1")
         self.assertEqual(fixture["provenance"]["officialAp2Commit"], OFFICIAL_AP2_COMMIT)
         self.assertEqual(fixture["officialAp2"]["officialAp2Commit"], OFFICIAL_AP2_COMMIT)
-        self.assertIn("no AP2, Stripe, or Demos private key", fixture["provenance"]["note"])
+        self.assertIn(
+            "not a live-network or production-provider receipt",
+            fixture["provenance"]["note"],
+        )
         self.assertEqual(
             fixture["officialAp2"]["request"]["merchantSignatureGeneration"],
             "non-deterministic",
@@ -207,6 +253,13 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
         agreement = fixture["agreement"]
         provider = fixture["provider"]
         status = provider["statusProjection"]
+        response_bytes = provider["statusResponseBytes"]
+        self.assertEqual(parse_json_without_duplicate_keys(response_bytes), status)
+        self.assertEqual(
+            hashlib.sha256(response_bytes.encode("utf-8")).hexdigest(),
+            provider["statusResponseHash"],
+        )
+        self.assertTrue(fixture["expected"]["providerResponseBytesBindProjection"])
         self.assertRegex(agreement["jobId"], ULID_RE)
         self.assertEqual(status["status"], "succeeded")
         self.assertEqual(status["metadata"]["dacs_job_id"], agreement["jobId"])
@@ -233,8 +286,38 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
             "value": provider["attestedAnchorTxRef"],
         })
 
+    def test_normative_rules_forbid_detached_provider_projection(self):
+        dacs4 = DACS4.read_text(encoding="utf-8")
+        demos = DEMOS_MAPPING.read_text(encoding="utf-8")
+        self.assertIn("parse the provider-reported status", dacs4)
+        self.assertIn("from those same bytes", dacs4)
+        self.assertIn("separately stored field projection MUST NOT substitute", dacs4)
+        self.assertIn("derive the provider status", demos)
+        self.assertIn("A detached or caller-supplied projection", demos)
+
     def test_dahr_transaction_and_finality_are_cryptographically_bound(self):
         self.assertTrue(dahr_snapshot_valid(self.fixture))
+
+    def test_public_seeds_reproduce_the_fixture_trust_keys(self):
+        fixture = self.fixture
+        writer = ed25519.Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(fixture["seeds"]["dahrWriter"])
+        )
+        writer_id = "0x" + writer.public_key().public_bytes_raw().hex()
+        self.assertEqual(
+            writer_id,
+            fixture["dahr"]["signedTransaction"]["content"]["from"],
+        )
+
+        validators = {
+            "0x"
+            + ed25519.Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed))
+            .public_key()
+            .public_bytes_raw()
+            .hex()
+            for seed in fixture["seeds"]["dahrValidators"]
+        }
+        self.assertEqual(validators, PINNED_DAHR_VALIDATORS)
 
     def test_dahr_binding_mutations_are_rejected(self):
         def request(fixture):
@@ -249,6 +332,22 @@ class Ap2ReferenceFixtureTests(unittest.TestCase):
             lambda f: response(f).__setitem__("status", 202),
             lambda f: response(f).__setitem__("responseHash", "00" * 32),
             lambda f: response(f).__setitem__("responseHeadersHash", "00" * 32),
+            lambda f: f["provider"].__setitem__("statusResponseBytes", "{}"),
+            lambda f: f["provider"]["statusProjection"].__setitem__(
+                "status", "failed"
+            ),
+            lambda f: f["provider"]["statusProjection"]["metadata"].__setitem__(
+                "dacs_job_id", "01K4AP2PAY0000000000000005"
+            ),
+            lambda f: f["provider"]["statusProjection"].__setitem__(
+                "amount", 49
+            ),
+            lambda f: f["provider"]["statusProjection"].__setitem__(
+                "amount_received", 49
+            ),
+            lambda f: f["provider"]["statusProjection"].__setitem__(
+                "currency", "eur"
+            ),
             lambda f: f["dahr"]["signedTransaction"]["signature"].__setitem__("data", "0x" + "00" * 64),
             lambda f: f["dahr"]["canonicalTransaction"].__setitem__("status", "pending"),
             lambda f: f["dahr"]["block"].__setitem__("status", "pending"),

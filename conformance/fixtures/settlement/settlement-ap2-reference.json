@@ -4,8 +4,8 @@
     "officialAp2Repository": "https://github.com/google-agentic-commerce/AP2",
     "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
     "generator": "official AP2 Python SDK MandateClient + DACS reference fixture",
-    "dahrCapturedAt": "2026-09-02T09:10:38Z",
-    "note": "The AP2 presentations, JWKs, and Demos transaction evidence are public conformance material; no AP2, Stripe, or Demos private key is included. The raw Stripe response is not published because it contains a test-mode client secret."
+    "fixtureGeneratedAt": "2026-09-02T09:10:38Z",
+    "note": "The AP2 presentations and JWKs come from the official AP2 SDK. The provider response and Demos wire evidence are deterministic public conformance replay data, not a live-network or production-provider receipt; every signing seed is public test material and no production secret is included."
   },
   "officialAp2": {
     "officialAp2Commit": "e1ea56db72a6385bce3e5c1112b3a56ce60acb43",
@@ -76,12 +76,12 @@
     "currencyMinorUnits": 2
   },
   "provider": {
-    "statusResource": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK",
+    "statusResource": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference",
     "statusProjection": {
       "amount": 50,
       "amount_received": 50,
       "currency": "usd",
-      "id": "pi_3UBABjCpim7jxEbV1YYfnbDK",
+      "id": "pi_dacs_reference",
       "metadata": {
         "dacs_agreement_hash": "ad389f48689a1e8300bfd48fa7831723d8c4f4276df814964adeac671b8f3097",
         "dacs_job_id": "01K4AP2PAY0000000000000004"
@@ -89,18 +89,19 @@
       "object": "payment_intent",
       "status": "succeeded"
     },
-    "projectionNote": "Selected non-secret fields from the live response. Authentication uses the raw-response hash committed by dahr.signedTransaction; the raw body is intentionally not published because it contains a provider client secret.",
-    "statusResponseHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b",
+    "statusResponseBytes": "{\"amount\":50,\"amount_received\":50,\"currency\":\"usd\",\"id\":\"pi_dacs_reference\",\"metadata\":{\"dacs_agreement_hash\":\"ad389f48689a1e8300bfd48fa7831723d8c4f4276df814964adeac671b8f3097\",\"dacs_job_id\":\"01K4AP2PAY0000000000000004\"},\"object\":\"payment_intent\",\"status\":\"succeeded\"}",
+    "projectionNote": "statusResponseBytes is the exact replayable UTF-8 body committed by the DAHR responseHash. statusProjection MUST be parsed from those bytes without reserialisation and cannot be supplied independently.",
+    "statusResponseHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2",
     "statusResponseHeadersHash": "a9f03a1c11cecca2b7079c398685ddf65891a8f1ab5a8ada6666e6fb2aa0f5e9",
-    "attestedAnchorTxRef": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+    "attestedAnchorTxRef": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
   },
   "dahr": {
-    "network": "Demos testnet via https://node2.demos.sh",
+    "network": "Deterministic Demos DAHR conformance replay; not a live network receipt",
     "signedTransaction": {
       "content": {
         "type": "web2Request",
-        "from": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
-        "to": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+        "from": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
+        "to": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
         "amount": "0",
         "data": [
           "web2Request",
@@ -114,7 +115,7 @@
                   "action": "startProxy",
                   "parameters": [],
                   "method": "GET",
-                  "url": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK",
+                  "url": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference",
                   "headers": {},
                   "stage": {
                     "origin": {
@@ -125,7 +126,7 @@
                 },
                 "result": {
                   "sessionId": "11ffe28c8d1fa22110c5019ca32198187b180cf835089e8d1896070fbc59bf66",
-                  "targetUrl": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK",
+                  "targetUrl": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference",
                   "timestamp": 1788340238794,
                   "status": 200,
                   "headers": {
@@ -151,7 +152,7 @@
                     "x-stripe-routing-context-priority-tier": "api-testmode",
                     "x-wc": "3c3"
                   },
-                  "responseHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b",
+                  "responseHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2",
                   "responseHeadersHash": "a9f03a1c11cecca2b7079c398685ddf65891a8f1ab5a8ada6666e6fb2aa0f5e9",
                   "statusText": "OK"
                 },
@@ -172,18 +173,18 @@
           "additional_fee": "0",
           "rpc_address": null
         },
-        "from_ed25519_address": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+        "from_ed25519_address": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
         "gcr_edits": [
           {
             "type": "assign",
-            "account": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+            "account": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
             "context": "web2",
             "txhash": "",
             "isRollback": false
           },
           {
             "type": "balance",
-            "account": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+            "account": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
             "operation": "remove",
             "amount": "1000000000",
             "txhash": "",
@@ -192,7 +193,7 @@
           {
             "type": "nonce",
             "operation": "add",
-            "account": "0xc03bf582a421b90d6d4e1d0c9f488759168a077afbb2d09567d468bc9aef3c30",
+            "account": "0x6ee091fd280a9b68554fa73c588125d47d3425c68a26ba236b4dad90f90a8f92",
             "amount": 1,
             "txhash": "",
             "isRollback": false
@@ -201,21 +202,21 @@
       },
       "signature": {
         "type": "ed25519",
-        "data": "0xf302566d80e283a9125ed3a67db4204afb35856ac734acff4cc2ec791c2fdb81465fb19a803f85c09b68856a6ee23b2df549ed40c7976cc2f3cd0e3cbb46e104"
+        "data": "0x76028091467f4ba2398f88617d4e5e6b7e8f9177023db5fc67372c556e5d08d9b58a3079fff3eb5a90f9790a5b82a699e8a704ad4acec90f358277bf24b05907"
       },
-      "hash": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+      "hash": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
     },
     "canonicalTransaction": {
-      "hash": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5",
+      "hash": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010",
       "status": "confirmed",
       "blockNumber": 213605
     },
     "block": {
       "number": 213605,
-      "hash": "bcfb1766fc2a987adf734209687a01e443dd8eb29005e487a8ae4f27f295ab13",
+      "hash": "fd0977fba4ef15128801401c30648b643f67b3e638df1cf27aa5f6ed9134ddc0",
       "content": {
         "ordered_transactions": [
-          "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+          "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
         ],
         "encrypted_transactions_hashes": {},
         "per_address_transactions": {},
@@ -223,9 +224,9 @@
         "previousHash": "1d047827a8f334a8c82ef1ff4171191bb4a38c6dd123e7d61b79cf6d7539d728",
         "timestamp": 1788340247,
         "peerlist": [
-          "0x24c664d9ef529f798e979357c6a7a01088226eefe05cfdb77fb42841f771e156",
-          "0xc8bc5866fecf583bc1232f04fa54fd2c5a6f7c15b91c517ac60f468cdc0b8c82",
-          "0xdad5ae081825bcf93353bb76157ae8368c33fee6fc0f692b85155bb37e4ae0ab"
+          "0x41e8fde132ad670e534cd8b275d2cd7eec77733c66f8db48a1cada7fabfc4555",
+          "0xb4740ba4e0f7e0576f11e8149dbbb2529c212213db679831fb5d1b221e84552d",
+          "0xed3234b276d4ceda57d59bad14fbaf5a773c0f318c999de3a60d53c5a5b34c05"
         ],
         "l2ps_partecipating_nodes": {},
         "l2ps_banned_nodes": {},
@@ -237,9 +238,9 @@
       "status": "confirmed",
       "validationData": {
         "signatures": {
-          "0xc8bc5866fecf583bc1232f04fa54fd2c5a6f7c15b91c517ac60f468cdc0b8c82": "0x20a9b285ffcb9be6efd4dc77b5378fb565804d15983e402cbcbb846b2efbc4cf08042a2722ac5c9b393145d8ec60e75fbde74038a7af875cee5dde4f9571250e",
-          "0xdad5ae081825bcf93353bb76157ae8368c33fee6fc0f692b85155bb37e4ae0ab": "0x6554afedd96d551ea57b45dc324c6580a9e5513bc480db9a23d00ae0085395b8190ea97685dcaffb499dbf5ba4406cfc12bff215981f5191eb9c604fecb24f00",
-          "0x24c664d9ef529f798e979357c6a7a01088226eefe05cfdb77fb42841f771e156": "0xe82561ea802402485aa1fd55044bf6298caf2f0782de1334173b33c6cd854f83e060cc7d492fc5ce9920a63ed42e7ffd28024bf68fc8bb991314f3c759eaea0e"
+          "0x41e8fde132ad670e534cd8b275d2cd7eec77733c66f8db48a1cada7fabfc4555": "0x79fdc0a20aaadef1fcfbe9f0536dae531205e85957958192664c868f8a516cf3f67b7fa6f932308d19c4192732f8128cb4b1b70a5897dc41ace7572390e98f08",
+          "0xb4740ba4e0f7e0576f11e8149dbbb2529c212213db679831fb5d1b221e84552d": "0x6544106afb643064f35d9bae948b390a3b4abaf2f2770b72948eb22da3f298887430c1e22afab8b5fbdd298722920db58ec959df615152bb0982a673c50d4f04",
+          "0xed3234b276d4ceda57d59bad14fbaf5a773c0f318c999de3a60d53c5a5b34c05": "0xe42f84619ce6040de2c76e5707f577b7e56b8ae77b7c34879ee93aca51b0c4a760203b2e9a5c19af4fac40eef8414fffaf7043f15d124c70df7ed4d29c29590c"
         }
       }
     }
@@ -251,17 +252,17 @@
         "kind": "ap2-sr3",
         "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
         "protocolVersion": "0.2",
-        "providerRef": "pi_3UBABjCpim7jxEbV1YYfnbDK",
+        "providerRef": "pi_dacs_reference",
         "receiptAttestation": {
           "anchor": {
             "kind": "https",
-            "locator": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK"
+            "locator": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference"
           },
-          "contentHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b"
+          "contentHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2"
         },
         "receiptTransactionRef": {
           "kind": "demos-web2-request",
-          "value": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+          "value": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
         }
       }
     ],
@@ -270,7 +271,7 @@
         "kind": "storage-program",
         "locator": "dacs4:payment:01K4AP2PAY0000000000000004:ap2%3Astripe-paymentintents:2"
       },
-      "contentHash": "fb6d89eeae1f56a271e4aea0b19eeb3c702dba4ac683a0bf89835d30621ed45b"
+      "contentHash": "af45b06493a419deb211a4bf4b958a2100b5b1b9cc51d412e64d5b1338b1c235"
     }
   },
   "evidence": {
@@ -287,17 +288,17 @@
         "kind": "ap2-sr3",
         "mandateId": "QKCvZFRc96LwiCjshHf4O_ILcPmuw6RrXqXX1hjsQ88",
         "protocolVersion": "0.2",
-        "providerRef": "pi_3UBABjCpim7jxEbV1YYfnbDK",
+        "providerRef": "pi_dacs_reference",
         "receiptAttestation": {
           "anchor": {
             "kind": "https",
-            "locator": "https://api.stripe.com/v1/payment_intents/pi_3UBABjCpim7jxEbV1YYfnbDK"
+            "locator": "https://provider.example/dacs/ap2/payment-status/pi_dacs_reference"
           },
-          "contentHash": "eaa737194d1ba9f81334b6c9a9512728341ec5ae47055c2e2edd596b5335323b"
+          "contentHash": "f42fc9ef8246edfea1f5b5a1e0654e3fa494a62ba93e0bbd8a2b5391db6cbbc2"
         },
         "receiptTransactionRef": {
           "kind": "demos-web2-request",
-          "value": "3a9948685860fef0f13d603632f22bd210846c0a8374f210784f3d5f649f14c5"
+          "value": "75a2ac2e8cf8baf514b8a0e2b0c7caef36f330f3488d3a011f85400a968ae010"
         }
       }
     ],
@@ -309,15 +310,21 @@
     "signature": {
       "algorithm": "ed25519",
       "signer": "did:demos:orchestrator",
-      "value": "0rFOd3o4srGPnRHjqVtsKrTrfIJ602Wm45noXBe5XwjsBNqQg-F8Pru3WK7F3u2GR-RCKP66kGe-Fc9SD_gDCg"
+      "value": "EhaAU_BSuOGv3dVpuDppXqrewBYllv7OCZikw9dn4QN4ERR4qp7nFC9anrI3smaQmDWIj3z_gEcOwwQbpRucCA"
     }
   },
-  "evidenceHash": "fb6d89eeae1f56a271e4aea0b19eeb3c702dba4ac683a0bf89835d30621ed45b",
+  "evidenceHash": "af45b06493a419deb211a4bf4b958a2100b5b1b9cc51d412e64d5b1338b1c235",
   "publicKeys": {
     "did:demos:orchestrator": "maekceCtXQ62avDhCrkykrlD64Bd6XkRY320vgwHLkI"
   },
   "seeds": {
-    "orchestrator": "e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4"
+    "orchestrator": "e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4",
+    "dahrWriter": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+    "dahrValidators": [
+      "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3",
+      "d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4"
+    ]
   },
   "expected": {
     "officialMandatesVerify": true,
@@ -326,6 +333,7 @@
     "providerStatusBindsSession": true,
     "providerStatusBindsAgreement": true,
     "providerStatusMatchesAmountCurrency": true,
+    "providerResponseBytesBindProjection": true,
     "jobIdIsCanonicalUlid": true,
     "receiptAttestationMatchesDahrCommitment": true,
     "dahrTransactionHashVerifies": true,

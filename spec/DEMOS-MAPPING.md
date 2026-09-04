@@ -95,7 +95,12 @@ Implementations MUST NOT label that transaction hash as a `storage-program`
 AttestationRef locator: a `web2Request` transaction is not a Storage Program
 record and cannot satisfy the DACS-2 §7.5.2 fetch-and-hash algorithm as one.
 Consumers authenticate the referenced transaction and response commitment by
-the same inclusion checks in (a)–(c) below.
+the same inclusion checks in (a)–(c) below. The AP2 verifier MUST obtain the
+exact returned UTF-8 body, require its SHA-256 hash to equal the authenticated
+`responseHash`, and derive the provider status, `providerRef`, amount, currency,
+and AP2-1 metadata from that body. A detached or caller-supplied projection of
+those fields cannot establish settlement, even when another response hash is
+authentic.
 
 **DAHR-backed payload attestation (normative Demos binding).** DAHR supplies
 the method-native evidence for a DACS-4 §9.6.3

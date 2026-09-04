@@ -15,13 +15,22 @@ ROOT = Path(__file__).resolve().parents[1]
 TARGET = ROOT / "conformance" / "vectors" / "security" / "bundle-settlement-evidence-bijection-v0.4.json"
 
 
-def make_listing(name, pipeline, signing_keys, signer_role="seller"):
+def make_listing(name, pipeline, signing_keys, signer_role="seller", job_id=None):
     listing = {
         "listingId": f"listing-seb-{name}",
         "listingVersion": 1,
         "sellerPrimaryClaim": F.CLAIMS["seller"],
         "pipeline": [{"kind": kind} for kind in pipeline],
     }
+    delivery_steps = [
+        (index, phase) for index, phase in enumerate(pipeline)
+        if phase.startswith("deliver-")
+    ]
+    if delivery_steps:
+        phase_index, phase = delivery_steps[0]
+        listing["offering"] = {
+            "deliverable": F.delivery_spec(job_id, phase, phase_index),
+        }
     payload = (F.LISTING_DOMAIN + F.listing_hash(listing)).encode("utf-8")
     listing["signature"] = {
         "signer": F.CLAIMS[signer_role],
@@ -43,18 +52,20 @@ def authority_reference(name, phase_key):
 
 
 def make_authority(name, definition, signing_keys):
+    job_id = f"SEB-AUTHORITY-{name}"
     listing = make_listing(
         name,
         definition["listingPipeline"],
         signing_keys,
         definition.get("listingSignerRole", "seller"),
+        job_id,
     )
     phase_summary = []
     settlement_evidence = []
     reference_validation_by_canonical_ref = {}
     session_execution_authority_by_phase_key = {}
     verified_receipt_by_canonical_ref = {}
-    job_id = f"SEB-AUTHORITY-{name}"
+    delivery_artifact_authority_by_phase_key = {}
     default_lifecycle = definition["defaultReferenceLifecycle"]
     for source in definition["phaseSummary"]:
         entry = copy.deepcopy(source)
@@ -98,24 +109,41 @@ def make_authority(name, definition, signing_keys):
                 }.get(entry["kind"], evidence_reason)
             if definition.get("evidenceReasonOverride") is not None:
                 evidence_reason = definition["evidenceReasonOverride"]
-            record, ref = F.make_evidence(
-                job_id,
-                entry["kind"],
-                entry["index"],
-                signing_keys,
-                outcome="success" if entry["outcome"] == "ok" else "failure",
-                reason=evidence_reason,
-                supersedes=(
-                    None if definition.get("omitSt8Supersedes") else supersedes
-                ),
-                label_suffix=":resolved" if st8_resolved else "",
-            )
+            if entry["kind"].startswith("deliver-"):
+                record, ref, delivery_closure = F.make_current_delivery_evidence(
+                    job_id,
+                    entry["kind"],
+                    entry["index"],
+                    signing_keys,
+                    outcome="success" if entry["outcome"] == "ok" else "failure",
+                    reason=evidence_reason,
+                    mutation=definition.get("innerArtifactMutation"),
+                )
+            else:
+                record, ref = F.make_evidence(
+                    job_id,
+                    entry["kind"],
+                    entry["index"],
+                    signing_keys,
+                    outcome="success" if entry["outcome"] == "ok" else "failure",
+                    reason=evidence_reason,
+                    supersedes=(
+                        None if definition.get("omitSt8Supersedes") else supersedes
+                    ),
+                    label_suffix=":resolved" if st8_resolved else "",
+                )
+                delivery_closure = None
             entry["attestationRef"] = ref
             settlement_evidence.append(ref)
             phase_key = f"{entry['index']}:{entry['kind']}"
-            session_execution_authority_by_phase_key[phase_key] = (
-                F.make_session_execution_authority(job_id, entry["kind"], entry["index"])
+            execution_authority = F.make_session_execution_authority(
+                job_id, entry["kind"], entry["index"]
             )
+            if isinstance(delivery_closure, dict):
+                if "agreementHash" in delivery_closure:
+                    execution_authority["agreementHash"] = delivery_closure["agreementHash"]
+                delivery_artifact_authority_by_phase_key[phase_key] = delivery_closure
+            session_execution_authority_by_phase_key[phase_key] = execution_authority
             verified_receipt_by_canonical_ref[F.canonical(ref).decode("utf-8")] = (
                 F.make_verified_anchor_receipt(
                     ref, job_id, entry["kind"], entry["index"], resolved=st8_resolved)
@@ -177,6 +205,7 @@ def make_authority(name, definition, signing_keys):
         "referenceValidationByCanonicalRef": reference_validation_by_canonical_ref,
         "sessionExecutionAuthorityByPhaseKey": session_execution_authority_by_phase_key,
         "verifiedReceiptByCanonicalRef": verified_receipt_by_canonical_ref,
+        "deliveryArtifactAuthorityByPhaseKey": delivery_artifact_authority_by_phase_key,
         "bundleLifecycle": bundle_lifecycle,
     }
 
@@ -204,6 +233,9 @@ def generate(source):
         "independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. "
         "authenticatedRecordByRef represents independently resolved, job-bound evidence content: "
         "payment members are SettlementEvidence and current delivery members are DeliveryEvidence. "
+        "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved, lifecycle-gated "
+        "deliverable, entitlement/credential, or payload-attestation/method-proof closure required "
+        "before a successful current DeliveryEvidence member can authorize its phase. "
         "The record outcome and hashed supersedesEvidenceRef, not "
         "caller-supplied class or edge labels, determine ST-8 terminal selection. Completed "
         "authorities require finalized and independently resolvable evidence; failed or "
@@ -287,6 +319,47 @@ def generate(source):
         definitions["single-htlc-completed"]
     )
     definitions["invalid-completed-st8-missing-supersedes"]["omitSt8Supersedes"] = True
+
+    inner_mutations = {
+        "invalid-deliverable-locator-closure": (
+            "standard-completed", "deliverable-locator"
+        ),
+        "invalid-attestation-locator-closure": (
+            "standard-completed", "attestation-locator"
+        ),
+        "invalid-attestation-content-hash-closure": (
+            "standard-completed", "attestation-content-hash"
+        ),
+        "invalid-entitlement-locator-closure": (
+            "repeated-pay-completed", "entitlement-locator"
+        ),
+        "invalid-credential-delivery-omitted": (
+            "repeated-pay-completed", "omit-credential-delivery"
+        ),
+    }
+    for authority_name, (source_name, mutation) in inner_mutations.items():
+        definitions[authority_name] = copy.deepcopy(definitions[source_name])
+        definitions[authority_name]["innerArtifactMutation"] = mutation
+
+    for authority_name in inner_mutations:
+        vector_name = f"bundle-settlement-bijection-{authority_name}-reject"
+        if any(vector["name"] == vector_name for vector in data["vectors"]):
+            continue
+        data["vectors"].append({
+            "name": vector_name,
+            "expected": "fail",
+            "input": {
+                "executionAuthorityRef": authority_name,
+                "topLevelRefs": [],
+                "resolvedReferencePhaseKeys": {},
+                "pointerMap": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {
+                "disposition": "rejected",
+                "reasonCode": "execution-authority",
+            },
+        })
 
     direct_success_name = "bundle-settlement-bijection-cross-chain-direct-success-pass"
     if not any(vector["name"] == direct_success_name for vector in data["vectors"]):

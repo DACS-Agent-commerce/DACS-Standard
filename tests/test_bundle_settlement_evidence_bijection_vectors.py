@@ -119,6 +119,7 @@ def derive_phase_keys(authority, pubkeys):
         authority.get("bundleLifecycle"),
         authority.get("sessionExecutionAuthorityByPhaseKey"),
         authority.get("verifiedReceiptByCanonicalRef"),
+        authority.get("deliveryArtifactAuthorityByPhaseKey"),
     )
     return phase_keys if ok else None
 
@@ -387,6 +388,53 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             )
             with self.subTest(unknown_top_level_field=field):
                 self.assertIsNone(derive_phase_keys(mutated, self.pubkeys))
+
+    def test_current_delivery_requires_the_resolved_phase_specific_inner_closure(self):
+        valid = {
+            "standard-completed": ["2:pay-dem", "3:deliver-attested-payload"],
+            "repeated-pay-completed": [
+                "0:pay-dem", "1:pay-dem", "2:deliver-entitlement"
+            ],
+        }
+        for authority_name, expected in valid.items():
+            authority = self.data["executionAuthorities"][authority_name]
+            with self.subTest(valid=authority_name):
+                self.assertEqual(derive_phase_keys(authority, self.pubkeys), expected)
+
+            missing = copy.deepcopy(authority)
+            missing["deliveryArtifactAuthorityByPhaseKey"] = {}
+            with self.subTest(missing_closure=authority_name):
+                self.assertIsNone(derive_phase_keys(missing, self.pubkeys))
+
+        invalid_names = (
+            "invalid-deliverable-locator-closure",
+            "invalid-attestation-locator-closure",
+            "invalid-attestation-content-hash-closure",
+            "invalid-entitlement-locator-closure",
+            "invalid-credential-delivery-omitted",
+        )
+        for authority_name in invalid_names:
+            authority = self.data["executionAuthorities"][authority_name]
+            with self.subTest(resigned_inner_attack=authority_name):
+                bundle_ok, _ = R._bundle_signatures_valid(
+                    authority["bundle"], self.pubkeys
+                )
+                self.assertTrue(bundle_ok)
+                delivery_records = [
+                    resolution["record"]
+                    for resolution in authority["referenceValidationByCanonicalRef"].values()
+                    if resolution.get("record", {}).get("deliveryEvidenceVersion") == "1"
+                ]
+                self.assertEqual(len(delivery_records), 1)
+                record = delivery_records[0]
+                signature = record["signature"]
+                self.assertTrue(R.verify_sig(
+                    self.pubkeys[signature["signer"]],
+                    R.DELIVERY_EVIDENCE_DOMAIN,
+                    R.delivery_evidence_hash(record),
+                    signature["value"],
+                ))
+                self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
 
     def test_resolution_binding_rejects_every_unauthenticated_dimension(self):
         mutations = {
@@ -714,7 +762,10 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 "standard-completed",
                 "deliver-attested-payload",
                 lambda record: record.__setitem__(
-                    "deliverableAnchor", {"kind": "payload-store", "locator": "payload-1"}
+                    "deliverableAnchor", {
+                        "kind": "payload-store",
+                        "locator": record["deliverableAnchor"]["locator"],
+                    }
                 ),
             ),
         )

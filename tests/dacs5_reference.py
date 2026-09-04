@@ -45,6 +45,8 @@ EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
+ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
+PAYLOAD_ATTESTATION_DOMAIN = "dacs-payload-attestation:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
@@ -1048,6 +1050,300 @@ def _delivery_evidence_shape_valid(record):
     return True
 
 
+def _artifact_content_hash(record):
+    if not isinstance(record, dict):
+        return None
+    unsigned = {key: value for key, value in record.items() if key != "signature"}
+    try:
+        return hashlib.sha256(canonical(unsigned)).hexdigest()
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+
+
+def _signed_inner_artifact_valid(record, domain, pubkeys, expected_signer=None):
+    if not isinstance(record, dict) or not isinstance(pubkeys, dict):
+        return False
+    signature = record.get("signature")
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or signature.get("algorithm") != "ed25519"
+        or not isinstance(signature.get("signer"), str)
+        or signature["signer"] not in pubkeys
+        or (expected_signer is not None and signature["signer"] != expected_signer)
+    ):
+        return False
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    content_hash = _artifact_content_hash(record)
+    return bool(
+        canonical_ok
+        and content_hash
+        and verify_sig(
+            pubkeys[signature["signer"]], domain, content_hash, signature["value"]
+        )
+    )
+
+
+def _resolved_delivery_dependency_valid(entry, completed):
+    if not isinstance(entry, dict) or entry.get("available") is not True:
+        return False
+    lifecycle = entry.get("lifecycle")
+    if not isinstance(lifecycle, dict):
+        return False
+    if completed:
+        return (
+            lifecycle.get("state") == "finalized"
+            and lifecycle.get("independentlyResolvable") is True
+        )
+    return _string_member(lifecycle.get("state"), {"included", "finalized"})
+
+
+def _validate_current_delivery_artifact_closure(
+    record,
+    phase_key,
+    listing,
+    bundle,
+    pubkeys,
+    execution,
+    closure,
+):
+    """Validate the phase-specific inner closure for successful DeliveryEvidence."""
+    if record.get("outcome") != "success":
+        return (True, "ok")
+    if not isinstance(execution, dict) or not isinstance(closure, dict):
+        return (False, "successful delivery lacks resolved inner-artifact authority")
+    phase = record.get("phase")
+    phase_index = record.get("phaseIndex")
+    job_id = record.get("jobId")
+    if phase_key != f"{phase_index}:{phase}":
+        return (False, "delivery closure phase key does not match signed evidence")
+    completed = bundle.get("outcome") == "completed"
+
+    def dependency(name):
+        value = closure.get(name)
+        return value if _resolved_delivery_dependency_valid(value, completed) else None
+
+    deliverable_address = f"dacs4:deliverable:{job_id}:{phase_index}"
+    anchor = record.get("deliverableAnchor")
+    if phase == "deliver-storage-program":
+        if set(closure) != {"deliverable"}:
+            return (False, "storage delivery closure is incomplete or ambiguous")
+        delivered = dependency("deliverable")
+        if (
+            delivered is None
+            or anchor != {"kind": "storage-program", "locator": deliverable_address}
+            or delivered.get("logicalAddress") != deliverable_address
+            or delivered.get("cleartextHash") != record.get("deliverableContentHash")
+        ):
+            return (False, "storage deliverable does not close over the exact job and phase")
+        cleartext = delivered.get("cleartextUtf8")
+        if (
+            not isinstance(cleartext, str)
+            or hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
+            != record.get("deliverableContentHash")
+            or "attestationRef" in record
+            or "credentialDelivery" in record
+        ):
+            return (False, "storage deliverable bytes or phase-only fields are invalid")
+        return (True, "ok")
+
+    parties = {
+        party.get("role"): party.get("primaryClaim")
+        for party in bundle.get("parties", [])
+        if isinstance(party, dict)
+    }
+    if phase == "deliver-entitlement":
+        entitlement_entry = dependency("entitlementRecord")
+        if entitlement_entry is None:
+            return (False, "entitlement delivery lacks a resolved finalized record")
+        entitlement = entitlement_entry.get("artifact")
+        if not isinstance(entitlement, dict):
+            return (False, "resolved entitlement record is malformed")
+        renewal_seq = entitlement.get("renewalSeq")
+        entitlement_address = (
+            f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
+        )
+        required = {
+            "entitlementVersion", "jobId", "grantee", "grantor", "startsAt",
+            "endsAt", "scope", "renewable", "renewalSeq", "signature",
+        }
+        optional = {"serviceEndpoint", "credentialRef"}
+        if (
+            not required <= set(entitlement)
+            or set(entitlement) - required - optional
+            or entitlement.get("entitlementVersion") != "1"
+            or entitlement.get("jobId") != job_id
+            or entitlement.get("grantee") != parties.get("buyer")
+            or entitlement.get("grantor") != parties.get("seller")
+            or isinstance(renewal_seq, bool)
+            or not isinstance(renewal_seq, int)
+            or renewal_seq < 0
+            or renewal_seq > _MAX_SAFE_JSON_INTEGER
+            or not _non_boolean_number(entitlement.get("startsAt"))
+            or not _non_boolean_number(entitlement.get("endsAt"))
+            or entitlement["endsAt"] < entitlement["startsAt"]
+            or not isinstance(entitlement.get("scope"), dict)
+            or not isinstance(entitlement.get("renewable"), bool)
+            or not _signed_inner_artifact_valid(
+                entitlement,
+                ENTITLEMENT_DOMAIN,
+                pubkeys,
+                expected_signer=parties.get("seller"),
+            )
+            or anchor != {"kind": "storage-program", "locator": entitlement_address}
+            or entitlement_entry.get("logicalAddress") != entitlement_address
+            or record.get("deliverableContentHash")
+            != _artifact_content_hash(entitlement)
+            or "attestationRef" in record
+        ):
+            return (False, "entitlement record does not close over the exact job and phase")
+
+        credential_ref = entitlement.get("credentialRef")
+        binding = record.get("credentialDelivery")
+        if credential_ref is None:
+            if binding is not None or set(closure) != {"entitlementRecord"}:
+                return (False, "credential-free entitlement has contradictory delivery data")
+            return (True, "ok")
+        if binding is None or set(closure) != {"entitlementRecord", "credential"}:
+            return (False, "credential entitlement lacks its exact delivery binding")
+        credential = dependency("credential")
+        ref_value = credential_ref.get("ref") if isinstance(credential_ref, dict) else None
+        if (
+            credential is None
+            or not _attestation_ref_shape_valid(ref_value)
+            or canonical(binding.get("credentialRef")) != canonical(credential_ref)
+            or binding.get("renewalSeq") != renewal_seq
+            or credential.get("credentialRef") != credential_ref
+            or credential.get("storedContentHash") != ref_value.get("contentHash")
+            or credential.get("cleartextHash")
+            != binding.get("credentialCleartextHash")
+        ):
+            return (False, "credential delivery does not close over the signed entitlement")
+        return (True, "ok")
+
+    if phase != "deliver-attested-payload":
+        return (False, "unsupported delivery phase closure")
+    if set(closure) != {
+        "agreementHash", "deliverable", "payloadAttestationRecord", "methodEvidence"
+    }:
+        return (False, "attested-payload closure is incomplete or ambiguous")
+    delivered = dependency("deliverable")
+    attestation_entry = dependency("payloadAttestationRecord")
+    method_entry = dependency("methodEvidence")
+    if delivered is None or attestation_entry is None or method_entry is None:
+        return (False, "attested payload dependency is unresolved or below lifecycle threshold")
+    if (
+        not isinstance(anchor, dict)
+        or anchor.get("locator") != deliverable_address
+        or delivered.get("logicalAddress") != deliverable_address
+        or delivered.get("cleartextHash") != record.get("deliverableContentHash")
+    ):
+        return (False, "attested payload does not close over the exact job and phase")
+    cleartext = delivered.get("cleartextUtf8")
+    if (
+        not isinstance(cleartext, str)
+        or hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
+        != record.get("deliverableContentHash")
+    ):
+        return (False, "attested payload bytes do not match delivery evidence")
+
+    attestation_ref = record.get("attestationRef")
+    payload_record = attestation_entry.get("artifact")
+    if not isinstance(payload_record, dict) or not _attestation_ref_shape_valid(attestation_ref):
+        return (False, "payload attestation reference or record is malformed")
+    required = {
+        "payloadAttestationVersion", "jobId", "agreementHash",
+        "deliverableSpecHash", "payloadFormat", "payloadContentHash",
+        "verificationMethod", "verificationMethodHash", "attempt", "decision",
+        "reason", "methodEvidenceRef", "methodTransactionRef", "verifiedAt",
+        "signature",
+    }
+    if set(payload_record) != required:
+        return (False, "payload attestation record does not satisfy its closed pass shape")
+    attempt = payload_record.get("attempt")
+    method_hash = payload_record.get("verificationMethodHash")
+    attestation_address = (
+        f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:{attempt}"
+    )
+    signature = payload_record.get("signature")
+    if (
+        isinstance(attempt, bool)
+        or not isinstance(attempt, int)
+        or attempt < 0
+        or attempt > _MAX_SAFE_JSON_INTEGER
+        or attestation_ref.get("anchor")
+        != {"kind": "storage-program", "locator": attestation_address}
+        or attestation_entry.get("logicalAddress") != attestation_address
+        or attestation_ref.get("contentHash") != _artifact_content_hash(payload_record)
+        or (
+            "signer" in attestation_ref
+            and isinstance(signature, dict)
+            and attestation_ref.get("signer") != signature.get("signer")
+        )
+        or not _signed_inner_artifact_valid(
+            payload_record, PAYLOAD_ATTESTATION_DOMAIN, pubkeys
+        )
+    ):
+        return (False, "payload attestation does not bind its exact phase-indexed artifact")
+
+    offering = listing.get("offering")
+    deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
+    method = (
+        deliverable_spec.get("verificationMethod")
+        if isinstance(deliverable_spec, dict) else None
+    )
+    if (
+        not isinstance(method, dict)
+        or deliverable_spec.get("kind") != "attested-payload"
+        or payload_record.get("jobId") != job_id
+        or payload_record.get("agreementHash") != execution.get("agreementHash")
+        or payload_record.get("agreementHash") != closure.get("agreementHash")
+        or payload_record.get("deliverableSpecHash")
+        != _artifact_content_hash(deliverable_spec)
+        or payload_record.get("payloadFormat") != deliverable_spec.get("payloadFormat")
+        or payload_record.get("payloadContentHash")
+        != record.get("deliverableContentHash")
+        or payload_record.get("verificationMethod") != method.get("kind")
+        or payload_record.get("verificationMethodHash") != _artifact_content_hash(method)
+        or payload_record.get("decision") != "pass"
+        or "credentialDelivery" in record
+    ):
+        return (False, "payload attestation does not bind authenticated commerce context")
+
+    method_ref = payload_record.get("methodEvidenceRef")
+    method_evidence = method_entry.get("artifact")
+    if not _attestation_ref_shape_valid(method_ref) or not isinstance(method_evidence, dict):
+        return (False, "method evidence reference or record is malformed")
+    endpoint = method.get("endpoint")
+    request = method_evidence.get("request")
+    response = method_evidence.get("response")
+    transaction = method_evidence.get("transaction")
+    transaction_ref = payload_record.get("methodTransactionRef")
+    if (
+        method_entry.get("logicalAddress") != method_ref.get("anchor", {}).get("locator")
+        or method_ref.get("contentHash") != _artifact_content_hash(method_evidence)
+        or not isinstance(endpoint, dict)
+        or not isinstance(request, dict)
+        or not isinstance(response, dict)
+        or not isinstance(transaction, dict)
+        or request.get("method") != endpoint.get("method")
+        or request.get("url") != endpoint.get("urlTemplate")
+        or isinstance(response.get("status"), bool)
+        or not isinstance(response.get("status"), int)
+        or not 200 <= response["status"] < 300
+        or response.get("data") != cleartext
+        or response.get("responseHash") != record.get("deliverableContentHash")
+        or method_evidence.get("proofValid") is not True
+        or not isinstance(transaction_ref, dict)
+        or transaction_ref.get("kind") != transaction.get("kind")
+        or transaction_ref.get("value") != transaction.get("value")
+        or not _string_member(transaction.get("state"), {"included", "finalized"})
+        or transaction.get("authenticated") is not True
+    ):
+        return (False, "payload method proof does not authenticate the delivered bytes")
+    return (True, "ok")
+
+
 def _evidence_wire_type(record):
     """Classify an evidence artifact by its exclusive structural discriminator."""
     if not isinstance(record, dict):
@@ -1176,6 +1472,7 @@ def validate_ebfab(
     bundle_lifecycle,
     session_execution_authority_by_phase_key,
     verified_receipt_by_canonical_ref,
+    delivery_artifact_authority_by_phase_key=None,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
@@ -1195,6 +1492,10 @@ def validate_ebfab(
         or not isinstance(bundle_lifecycle, dict)
         or not isinstance(session_execution_authority_by_phase_key, dict)
         or not isinstance(verified_receipt_by_canonical_ref, dict)
+        or (
+            delivery_artifact_authority_by_phase_key is not None
+            and not isinstance(delivery_artifact_authority_by_phase_key, dict)
+        )
     ):
         return (False, "missing listing, key, exact reference, or bundle-lifecycle authority", None)
     ok, reason = _bundle_signatures_valid(bundle, pubkeys)
@@ -1430,6 +1731,23 @@ def validate_ebfab(
         )
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
             return (False, "evidence record contradicts the signed phase result", None)
+        if evidence_type == "delivery":
+            delivery_authority = (
+                delivery_artifact_authority_by_phase_key
+                if isinstance(delivery_artifact_authority_by_phase_key, dict)
+                else {}
+            )
+            closure_ok, closure_reason = _validate_current_delivery_artifact_closure(
+                record,
+                phase_key,
+                listing,
+                bundle,
+                pubkeys,
+                session_execution_authority_by_phase_key.get(phase_key),
+                delivery_authority.get(phase_key),
+            )
+            if not closure_ok:
+                return (False, closure_reason, None)
         actual_keys.append(phase_key)
         authenticated_records.append((ref, resolution, record, phase_key, resolved_record))
     if (
@@ -1610,6 +1928,7 @@ def _tagged_copy_valid_for_derive(tagged):
         authority.get("bundleLifecycle"),
         authority.get("sessionExecutionAuthorityByPhaseKey"),
         authority.get("verifiedReceiptByCanonicalRef"),
+        authority.get("deliveryArtifactAuthorityByPhaseKey"),
     )
     return ok
 
@@ -2091,6 +2410,7 @@ def resolve_absolute_fault_pointer(
             ebfab_authority.get("bundleLifecycle"),
             ebfab_authority.get("sessionExecutionAuthorityByPhaseKey"),
             ebfab_authority.get("verifiedReceiptByCanonicalRef"),
+            ebfab_authority.get("deliveryArtifactAuthorityByPhaseKey"),
         )
         if not seb_ok:
             return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}

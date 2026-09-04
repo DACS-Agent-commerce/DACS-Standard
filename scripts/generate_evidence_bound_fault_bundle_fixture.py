@@ -32,6 +32,8 @@ DOMAINS = {
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 DELIVERY_EVIDENCE_DOMAIN = "dacs-delivery-evidence:v1:"
+ENTITLEMENT_DOMAIN = "dacs-entitlement:v1:"
+PAYLOAD_ATTESTATION_DOMAIN = "dacs-payload-attestation:v1:"
 POINTER_DOMAINS = {
     "fault": "dacs-fault-bundle-pointer:v1:",
     "evidence-bound": "dacs-evidence-bound-fault-bundle-pointer:v1:",
@@ -76,6 +78,17 @@ def listing_hash(listing):
 def evidence_hash(record):
     unsigned = {key: value for key, value in record.items() if key != "signature"}
     return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def sign_artifact(record, signing_key, signer, domain):
+    record["signature"] = {
+        "signer": signer,
+        "algorithm": "ed25519",
+        "value": "",
+    }
+    payload = (domain + evidence_hash(record)).encode("utf-8")
+    record["signature"]["value"] = b64u(signing_key.sign(payload))
+    return record
 
 
 def pointer_hash(pointer):
@@ -221,6 +234,243 @@ def make_evidence(job_id, phase, phase_index, signing_keys, *, outcome="success"
     return record, ref
 
 
+def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
+                                   outcome="success", reason=None, mutation=None):
+    """Create DeliveryEvidence plus the resolved, phase-specific inner closure."""
+    if outcome == "failure":
+        record, ref = make_evidence(
+            job_id, phase, phase_index, signing_keys, outcome=outcome, reason=reason
+        )
+        return record, ref, None
+
+    artifact_lifecycle = {"state": "finalized", "independentlyResolvable": True}
+    closure = {}
+    fields = {}
+    if phase == "deliver-storage-program":
+        cleartext = f"storage delivery:{job_id}:{phase_index}"
+        digest = hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
+        address = f"dacs4:deliverable:{job_id}:{phase_index}"
+        fields = {
+            "deliverableContentHash": digest,
+            "deliverableAnchor": {"kind": "storage-program", "locator": address},
+        }
+        closure["deliverable"] = {
+            "logicalAddress": address,
+            "cleartextUtf8": cleartext,
+            "cleartextHash": digest,
+            "available": True,
+            "lifecycle": artifact_lifecycle,
+        }
+    elif phase == "deliver-entitlement":
+        renewal_seq = 0
+        credential_cleartext = f"credential:{job_id}:{phase_index}:{renewal_seq}"
+        credential_cleartext_hash = hashlib.sha256(
+            credential_cleartext.encode("utf-8")
+        ).hexdigest()
+        credential_ref = {
+            "ref": {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": (
+                        f"dacs4:credential:{job_id}:{phase_index}:{renewal_seq}"
+                    ),
+                },
+                "contentHash": credential_cleartext_hash,
+                "signer": CLAIMS["seller"],
+            },
+            "accessModel": "buyer-only",
+        }
+        entitlement = {
+            "entitlementVersion": "1",
+            "jobId": job_id,
+            "grantee": CLAIMS["buyer"],
+            "grantor": CLAIMS["seller"],
+            "startsAt": 1785772799000,
+            "endsAt": 1785859199000,
+            "scope": {"service": "https://service.example.test", "tier": "pro"},
+            "serviceEndpoint": "https://service.example.test/access",
+            "renewable": True,
+            "renewalSeq": renewal_seq,
+            "credentialRef": credential_ref,
+        }
+        sign_artifact(
+            entitlement,
+            signing_keys["seller"],
+            CLAIMS["seller"],
+            ENTITLEMENT_DOMAIN,
+        )
+        address = f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
+        fields = {
+            "deliverableContentHash": evidence_hash(entitlement),
+            "deliverableAnchor": {"kind": "storage-program", "locator": address},
+            "credentialDelivery": {
+                "credentialRef": copy.deepcopy(credential_ref),
+                "credentialCleartextHash": credential_cleartext_hash,
+                "renewalSeq": renewal_seq,
+            },
+        }
+        closure["entitlementRecord"] = {
+            "logicalAddress": address,
+            "artifact": entitlement,
+            "available": True,
+            "lifecycle": artifact_lifecycle,
+        }
+        closure["credential"] = {
+            "credentialRef": copy.deepcopy(credential_ref),
+            "cleartextHash": credential_cleartext_hash,
+            "storedContentHash": credential_cleartext_hash,
+            "available": True,
+            "lifecycle": artifact_lifecycle,
+        }
+    elif phase == "deliver-attested-payload":
+        cleartext = f"attested payload:{job_id}:{phase_index}"
+        digest = hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
+        spec = delivery_spec(job_id, phase, phase_index)
+        method = spec["verificationMethod"]
+        method_hash = hashlib.sha256(canonical(method)).hexdigest()
+        agreement_hash = hashlib.sha256(
+            f"agreement:{job_id}".encode("utf-8")
+        ).hexdigest()
+        transaction_value = hashlib.sha256(
+            f"dahr:{job_id}:{phase_index}".encode("utf-8")
+        ).hexdigest()
+        method_evidence = {
+            "kind": "demos-web2-request",
+            "request": {
+                "method": method["endpoint"]["method"],
+                "url": method["endpoint"]["urlTemplate"],
+            },
+            "response": {
+                "status": 200,
+                "data": cleartext,
+                "responseHash": digest,
+            },
+            "transaction": {
+                "kind": "demos-web2-request",
+                "value": transaction_value,
+                "state": "finalized",
+                "authenticated": True,
+            },
+            "proofValid": True,
+        }
+        method_address = f"dacs4:method-evidence:{job_id}:{phase_index}"
+        method_ref = {
+            "anchor": {"kind": "storage-program", "locator": method_address},
+            "contentHash": hashlib.sha256(canonical(method_evidence)).hexdigest(),
+            "signer": CLAIMS["orchestrator"],
+        }
+        payload_attestation = {
+            "payloadAttestationVersion": "1",
+            "jobId": job_id,
+            "agreementHash": agreement_hash,
+            "deliverableSpecHash": hashlib.sha256(canonical(spec)).hexdigest(),
+            "payloadFormat": spec["payloadFormat"],
+            "payloadContentHash": digest,
+            "verificationMethod": method["kind"],
+            "verificationMethodHash": method_hash,
+            "attempt": 0,
+            "decision": "pass",
+            "reason": "deterministic test proof",
+            "methodEvidenceRef": method_ref,
+            "methodTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": transaction_value,
+            },
+            "verifiedAt": 1785772800000 + phase_index,
+        }
+        sign_artifact(
+            payload_attestation,
+            signing_keys["orchestrator"],
+            CLAIMS["orchestrator"],
+            PAYLOAD_ATTESTATION_DOMAIN,
+        )
+        payload_address = f"dacs4:deliverable:{job_id}:{phase_index}"
+        attestation_address = (
+            f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:0"
+        )
+        attestation_ref = {
+            "anchor": {"kind": "storage-program", "locator": attestation_address},
+            "contentHash": evidence_hash(payload_attestation),
+            "signer": CLAIMS["orchestrator"],
+        }
+        fields = {
+            "deliverableContentHash": digest,
+            "deliverableAnchor": {
+                "kind": "storage-program",
+                "locator": payload_address,
+            },
+            "attestationRef": attestation_ref,
+        }
+        closure.update({
+            "agreementHash": agreement_hash,
+            "deliverable": {
+                "logicalAddress": payload_address,
+                "cleartextUtf8": cleartext,
+                "cleartextHash": digest,
+                "available": True,
+                "lifecycle": artifact_lifecycle,
+            },
+            "payloadAttestationRecord": {
+                "logicalAddress": attestation_address,
+                "artifact": payload_attestation,
+                "available": True,
+                "lifecycle": artifact_lifecycle,
+            },
+            "methodEvidence": {
+                "logicalAddress": method_address,
+                "artifact": method_evidence,
+                "available": True,
+                "lifecycle": artifact_lifecycle,
+            },
+        })
+    else:
+        raise ValueError(f"unsupported delivery phase: {phase}")
+
+    if mutation == "deliverable-locator":
+        fields["deliverableAnchor"]["locator"] = (
+            f"dacs4:deliverable:ATTACKER-JOB:{phase_index}"
+        )
+    elif mutation == "attestation-locator":
+        fields["attestationRef"]["anchor"]["locator"] = (
+            f"dacs4:payload-attestation:ATTACKER-JOB:{phase_index}:deadbeef:0"
+        )
+    elif mutation == "attestation-content-hash":
+        fields["attestationRef"]["contentHash"] = "de" * 32
+    elif mutation == "entitlement-locator":
+        fields["deliverableAnchor"]["locator"] = (
+            f"dacs4:entitlement:ATTACKER-JOB:{phase_index}:777"
+        )
+    elif mutation == "omit-credential-delivery":
+        fields.pop("credentialDelivery", None)
+    elif mutation is not None:
+        raise ValueError(f"unsupported inner-artifact mutation: {mutation}")
+
+    record = {
+        "deliveryEvidenceVersion": "1",
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "phase": phase,
+        "outcome": "success",
+        **fields,
+        "observedAt": 1785772799000 + phase_index,
+    }
+    sign_artifact(
+        record,
+        signing_keys["seller"],
+        CLAIMS["seller"],
+        DELIVERY_EVIDENCE_DOMAIN,
+    )
+    label = f"{job_id}:{phase_index}:{phase}"
+    ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}",
+        },
+        "contentHash": evidence_hash(record),
+    }
+    return record, ref, closure
+
+
 def make_session_execution_authority(job_id, phase, phase_index, *, signer_role="seller",
                                      rail_id="test-rail"):
     signer = CLAIMS[signer_role]
@@ -263,13 +513,45 @@ def make_verified_anchor_receipt(ref, job_id, phase, phase_index, *, signer_role
     }
 
 
-def make_listing(signing_keys):
+def delivery_spec(job_id, phase, phase_index):
+    if phase == "deliver-attested-payload":
+        return {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+                "kind": "consensus-backed-proxy",
+                "endpoint": {
+                    "method": "GET",
+                    "urlTemplate": f"https://api.example.test/delivery/{job_id}/{phase_index}",
+                },
+            },
+        }
+    if phase == "deliver-entitlement":
+        return {
+            "kind": "entitlement",
+            "durationSec": 86400,
+            "renewable": True,
+        }
+    return {"kind": "storage-program", "payloadFormat": "application/octet-stream"}
+
+
+def make_listing(signing_keys, job_id="EBFAB-COMPAT-1", pipeline=None):
+    pipeline = list(pipeline or ["pay-dem"])
     listing = {
         "listingId": "listing-ebfab-compat",
         "listingVersion": 1,
         "sellerPrimaryClaim": CLAIMS["seller"],
-        "pipeline": [{"kind": "pay-dem"}],
+        "pipeline": [{"kind": phase} for phase in pipeline],
     }
+    delivery_steps = [
+        (index, phase) for index, phase in enumerate(pipeline)
+        if phase.startswith("deliver-")
+    ]
+    if delivery_steps:
+        phase_index, phase = delivery_steps[0]
+        listing["offering"] = {
+            "deliverable": delivery_spec(job_id, phase, phase_index),
+        }
     payload = (LISTING_DOMAIN + listing_hash(listing)).encode("utf-8")
     listing["signature"] = {
         "signer": CLAIMS["seller"],

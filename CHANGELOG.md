@@ -13,6 +13,27 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-4 v0.8 AP2 receipt references
+
+- **Provider resource and SR-3 transaction are now distinct** (DACS-4 §9.3,
+  §9.5.6 AP2-2; Demos mapping §A.3; #360) — adds the minor-safe `ap2-sr3`
+  `ChainTxRef` arm while freezing the existing `ap2` arm. The new arm requires
+  both `receiptAttestation` and `receiptTransactionRef`, so older closed-union
+  readers reject it safely before AP2-specific action. The
+  `receiptAttestation` locator identifies the provider-status resource and its
+  content hash commits to the authenticated raw response; a native SR-3
+  transaction is carried separately when the binding exposes one. Current
+  Demos DAHR uses `{ kind: "demos-web2-request", value: txHash }` and MUST NOT
+  mislabel its `web2Request` transaction as a Storage Program locator. AP2-2
+  now requires every provider-status assertion to be parsed from the exact
+  returned bytes whose hash DAHR authenticates; a detached projection cannot
+  borrow an unrelated authentic hash. Adds exact positive/negative shape
+  vectors and a public official-AP2-backed settlement fixture with replayable
+  non-secret provider bytes and deterministic DAHR wire evidence. The fixture
+  does not claim to be the live provider/network receipt. This establishes
+  provider-test reference-backing without changing the rail's operator-gated
+  production availability.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

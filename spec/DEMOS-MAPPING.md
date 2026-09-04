@@ -86,6 +86,22 @@ Because this binding has no qualifying pre-consensus `accepted` evidence, a DACS
 - 🟡 oauth-attested method depends on a Demos-side OAuth attester. If not built, the method is 🔵 third-party.
 - 🔵 W3C Verifiable Credentials, TLSNotary (external proof library — distinct from the 🟢 cci-tlsn:* native context), zkTLS (Reclaim, Pluto), ACME challenges for domain-tls-control.
 
+**DAHR-backed AP2 receipt binding (normative Demos binding).** For DACS-4
+§9.5.6 AP2-2, the transaction reference MUST use the distinct `ap2-sr3` arm.
+Its `receiptAttestation` identifies the fetched provider status resource and
+commits to the exact returned bytes; the DAHR `txHash` is carried separately as
+`receiptTransactionRef = { kind: "demos-web2-request", value: txHash }`.
+Implementations MUST NOT label that transaction hash as a `storage-program`
+AttestationRef locator: a `web2Request` transaction is not a Storage Program
+record and cannot satisfy the DACS-2 §7.5.2 fetch-and-hash algorithm as one.
+Consumers authenticate the referenced transaction and response commitment by
+the same inclusion checks in (a)–(c) below. The AP2 verifier MUST obtain the
+exact returned UTF-8 body, require its SHA-256 hash to equal the authenticated
+`responseHash`, and derive the provider status, `providerRef`, amount, currency,
+and AP2-1 metadata from that body. A detached or caller-supplied projection of
+those fields cannot establish settlement, even when another response hash is
+authentic.
+
 **DAHR-backed payload attestation (normative Demos binding).** DAHR supplies
 the method-native evidence for a DACS-4 §9.6.3
 `PayloadAttestationRecord`; it does not itself supply the DACS commerce
@@ -101,7 +117,11 @@ binding. For
   transaction commits to the requested canonical URL, HTTP method, request
   body hash when present, response status, `responseHash`, and
   `responseHeadersHash`, and require those request inputs to equal the signed
-  listing's complete `verificationMethod` configuration;
+  listing's complete `verificationMethod` configuration. The consensus verifier
+  MUST obtain the authorized validator roster from an independently authenticated
+  network profile, validator-set epoch, or equivalent trust anchor; a `peerlist`
+  or signer roster carried only inside the candidate block MUST NOT authenticate
+  itself;
 - (c) it MUST obtain the returned `data` string, encode it as UTF-8 without
   reserialisation, require `sha256(UTF8(data)) == responseHash`, and deliver
   those exact bytes so

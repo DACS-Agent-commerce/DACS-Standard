@@ -707,6 +707,9 @@ def _chain_tx_ref_shape_valid(ref):
     elif kind == "ap2":
         string_fields = {"mandateId", "providerRef", "protocolVersion"}
         optional = {"receiptAttestation"}
+    elif kind == "ap2-sr3":
+        string_fields = {"mandateId", "providerRef", "protocolVersion"}
+        required |= {"receiptAttestation", "receiptTransactionRef"}
     elif kind == "x402":
         string_fields = {"httpResource", "paymentReceiptHash", "protocolVersion"}
         optional_strings = {"settlementTxHash"}
@@ -753,8 +756,15 @@ def _chain_tx_ref_shape_valid(ref):
         ref["cluster"], {"mainnet", "devnet", "testnet"}
     ):
         return False
-    if kind == "ap2" and "receiptAttestation" in ref:
-        return _attestation_ref_shape_valid(ref["receiptAttestation"])
+    if kind in {"ap2", "ap2-sr3"} and "receiptAttestation" in ref:
+        if not _attestation_ref_shape_valid(ref["receiptAttestation"]):
+            return False
+    if kind == "ap2-sr3":
+        tx_ref = ref["receiptTransactionRef"]
+        if not isinstance(tx_ref, dict) or set(tx_ref) != {"kind", "value"}:
+            return False
+        if not all(_nonempty_jcs_string(tx_ref.get(field)) for field in ("kind", "value")):
+            return False
     return True
 
 
@@ -777,7 +787,7 @@ def _payment_tx_refs_match_phase(phase, refs, *, success):
             not success or "releaseTxHash" in refs[0]
         )
     if phase == "pay-ap2":
-        return len(kinds) == 1 and kinds[0] == "ap2" and (
+        return len(kinds) == 1 and kinds[0] in {"ap2", "ap2-sr3"} and (
             not success or "receiptAttestation" in refs[0]
         )
     if phase == "pay-x402":

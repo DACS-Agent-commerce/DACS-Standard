@@ -1,0 +1,452 @@
+{
+  "set": "sb3-binding-required-v0.8",
+  "spec": "DACS-4 §9.5.8 SB-3 required-binding four-value gate",
+  "tier": "candidate",
+  "description": "A rail-declared settlement-side binding cannot downgrade to unbound transfer evidence when missing, unavailable, pruned, reorged, or malformed.",
+  "count": 17,
+  "hash": "96df017a6b0f4435cd9a0e42759c2e8a09e023ffe461bd50447a880bd9e11069",
+  "vectors": [
+    {
+      "name": "required-binding-match-pass",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "match"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "pass",
+      "want": {
+        "bindingDisposition": "satisfied",
+        "reason": "verified-binding-and-transfer",
+        "usedUnboundPosture": false,
+        "countable": true,
+        "finalVerificationSatisfied": true,
+        "reputationEligible": true,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A verified exact job/phase binding permits the remaining settlement checks."
+    },
+    {
+      "name": "required-binding-mismatch-fail",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "mismatch"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "fail",
+      "want": {
+        "bindingDisposition": "rejected",
+        "reason": "binding-mismatch",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A well-formed verified binding to another job cannot settle this one."
+    },
+    {
+      "name": "required-binding-absent-indeterminate",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "absent"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "required-binding-absent",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "Missing required binding is non-countable, not unbound acceptance."
+    },
+    {
+      "name": "required-binding-rpc-unavailable-indeterminate",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "unavailable-rpc"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "binding-authority-unavailable",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "An RPC outage cannot become acceptance or party fault."
+    },
+    {
+      "name": "required-binding-pruned-history-indeterminate",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "unavailable-pruned-history"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "binding-authority-unavailable",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "Pruned binding history remains non-countable."
+    },
+    {
+      "name": "required-binding-smart-account-check-unavailable",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "unavailable-signature-authority"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "binding-authority-unavailable",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "An unavailable ERC-1271 check does not downgrade to transfer-only proof."
+    },
+    {
+      "name": "required-binding-reorged-indeterminate",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "unavailable-reorged"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "binding-authority-unavailable",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A reorganisation that removes binding evidence suspends acceptance."
+    },
+    {
+      "name": "required-binding-malformed-error",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "malformed"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "error",
+      "want": {
+        "bindingDisposition": "malformed",
+        "reason": "malformed-binding-evidence",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "Malformed binding evidence is an error before transfer interpretation."
+    },
+    {
+      "name": "unrelated-exact-transfer-cannot-replace-binding",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "absent"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "required-binding-absent",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "Even an exact asset/amount/payer/payee transfer does not prove job authorization."
+    },
+    {
+      "name": "caller-unbound-downgrade-ignored",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "absent"
+        },
+        "unboundTransferChecks": "match",
+        "callerProfileHint": "binding-none"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "required-binding-absent",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "Caller policy cannot override the authenticated required-binding rail."
+    },
+    {
+      "name": "unproven-legacy-downgrade-ignored",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "absent"
+        },
+        "unboundTransferChecks": "match",
+        "callerProfileHint": "legacy-pre-v0.8"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "unresolved",
+        "reason": "required-binding-absent",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A legacy label without an authenticated compatibility profile grants no fallback."
+    },
+    {
+      "name": "binding-match-but-transfer-mismatch-fail",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "match"
+        },
+        "unboundTransferChecks": "mismatch"
+      },
+      "expected": "fail",
+      "want": {
+        "bindingDisposition": "satisfied",
+        "reason": "unbound-transfer-mismatch",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "SB-3 satisfaction does not bypass SB-1/amount/payee verification."
+    },
+    {
+      "name": "binding-match-but-transfer-unavailable-indeterminate",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "x402-eip3009-binding-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "match"
+        },
+        "unboundTransferChecks": "unavailable"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "satisfied",
+        "reason": "unbound-transfer-unavailable",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "Binding success does not turn unavailable ledger checks into pass."
+    },
+    {
+      "name": "authenticated-unbound-rail-exact-transfer-pass",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "evm-erc20-unbound-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "absent"
+        },
+        "unboundTransferChecks": "match"
+      },
+      "expected": "pass",
+      "want": {
+        "bindingDisposition": "not-required",
+        "reason": "verified-unbound-transfer",
+        "usedUnboundPosture": true,
+        "countable": true,
+        "finalVerificationSatisfied": true,
+        "reputationEligible": true,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A rail that authentically declares no binding retains the weaker posture."
+    },
+    {
+      "name": "authenticated-unbound-rail-transfer-mismatch-fail",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "evm-erc20-unbound-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "absent"
+        },
+        "unboundTransferChecks": "mismatch"
+      },
+      "expected": "fail",
+      "want": {
+        "bindingDisposition": "not-required",
+        "reason": "unbound-transfer-mismatch",
+        "usedUnboundPosture": true,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "The weaker posture still requires exact transfer checks."
+    },
+    {
+      "name": "authenticated-unbound-rail-ledger-unavailable",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {
+        "authority": "authenticated-agreement-pinned-rail",
+        "resolvedRailProfile": "evm-erc20-unbound-v0.8"
+      },
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "absent"
+        },
+        "unboundTransferChecks": "unavailable"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "not-required",
+        "reason": "unbound-transfer-unavailable",
+        "usedUnboundPosture": true,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "An unbound rail also remains indeterminate when its ledger evidence is unavailable."
+    },
+    {
+      "name": "rail-binding-policy-unavailable-indeterminate",
+      "operation": "verify-sb3-binding-required",
+      "trustedContext": {},
+      "protocolInput": {
+        "bindingEvidence": {
+          "state": "match"
+        },
+        "unboundTransferChecks": "match",
+        "callerProfileHint": "binding-none"
+      },
+      "expected": "indeterminate",
+      "want": {
+        "bindingDisposition": "policy-unresolved",
+        "reason": "authenticated-rail-policy-unavailable",
+        "usedUnboundPosture": false,
+        "countable": false,
+        "finalVerificationSatisfied": false,
+        "reputationEligible": false,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-3",
+      "note": "A caller cannot select a policy when the signed pinned rail cannot be resolved."
+    }
+  ]
+}

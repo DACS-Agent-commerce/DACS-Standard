@@ -1866,7 +1866,7 @@
       "id": "pb3-sb3-absent-fallback-not-imported",
       "area": "settlement",
       "spec": "§9.5.1",
-      "summary": "PB-3: SB-3 fallback semantics are settlement-evidence semantics and cannot downgrade an applicable-but-unresolvable tier-2 pre-pay gate.",
+      "summary": "PB-3: the separate SB-3 binding-required disposition cannot bypass or downgrade an applicable-but-unresolvable tier-2 pre-pay gate.",
       "status": "candidate",
       "want": "indeterminate"
     },

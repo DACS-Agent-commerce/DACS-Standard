@@ -1,0 +1,2020 @@
+{
+  "set": "legacy-agreement-admission-v0.8",
+  "spec": "DACS-4 v0.8 §9.5.1 LAA-1..LAA-7; DACS-3 v0.6 §8.6 CA-10",
+  "tier": "candidate",
+  "description": "Governed legacy-agreement activation and authenticated historical settlement admission.",
+  "provenance": {
+    "issue": "DACS-Agent-commerce/DACS-Standard#377",
+    "generator": "scripts/generate_legacy_agreement_admission_vectors.py"
+  },
+  "count": 34,
+  "hash": "3cab111bfbd885152efbd7f7ab9c6afea588d3b94553a1168f99717d12317f15",
+  "vectors": [
+    {
+      "name": "laa-current-payee-bound-success",
+      "expected": "pass",
+      "note": "current pay-bearing settlement uses the destination-bound artifact",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "payee-bound",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": true
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": true,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": true,
+        "legacyBytesCryptographicallyInspectable": false,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-payee-bound-does-not-fallback-on-checkpoint-outage",
+      "expected": "pass",
+      "note": "checkpoint uncertainty never forces the safe current artifact onto legacy",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "payee-bound",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": true
+        },
+        "checkpoint": {
+          "resolution": "unavailable",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": true,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": true,
+        "legacyBytesCryptographicallyInspectable": false,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-zero-pay-legacy-outside-gate",
+      "expected": "pass",
+      "note": "a pipeline with no payment introduces no runtime payout destination",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "commit-pay-bearing",
+        "pipelineHasPayment": false,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-preactivation-authoritative-absence-allows-legacy",
+      "expected": "pass",
+      "note": "binding-qualified absence at an authenticated head proves activation has not occurred",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "absent",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": true,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": true,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": true,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-ca10-preactivation-legacy-commit",
+      "expected": "pass",
+      "note": "CA-10 permits legacy commitment only under authenticated preactivation absence",
+      "input": {
+        "surface": "dacs3-ca10",
+        "operation": "commit-pay-bearing",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "absent",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": true,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": true,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": true,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-fresh-legacy-after-checkpoint",
+      "expected": "fail",
+      "note": "a current legacy agreement cannot authorize payment after activation",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "110",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "120",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-ca10-postactivation-legacy-commit",
+      "expected": "fail",
+      "note": "CA-10 rejects commit-agreement for a current pay-bearing session",
+      "input": {
+        "surface": "dacs3-ca10",
+        "operation": "commit-pay-bearing",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-backdated-generated-at",
+      "expected": "fail",
+      "note": "backdating agreement metadata cannot overcome a post-checkpoint commitment",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": -1000,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "110",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-no-in-flight-transition",
+      "expected": "fail",
+      "note": "a pre-checkpoint commitment cannot initiate payment after immediate activation",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "absent",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-authentic-historical-settlement",
+      "expected": "pass",
+      "note": "exact commitment and settlement evidence finalized strictly before the checkpoint",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": true,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-later-presentation-preserves-historical-era",
+      "expected": "pass",
+      "note": "presentation after activation does not change verified original anchor order",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "9999"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": true,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-checkpoint-unavailable",
+      "expected": "indeterminate",
+      "note": "transport failure is not proof that activation has not occurred",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "unavailable",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-ordinary-not-found",
+      "expected": "indeterminate",
+      "note": "unqualified not-found is not binding-qualified authoritative absence",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "absent",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-conflicting-checkpoints",
+      "expected": "indeterminate",
+      "note": "multiple authorized checkpoint candidates do not establish an activation order",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "conflicting",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-checkpoint-reorged",
+      "expected": "indeterminate",
+      "note": "a reorged checkpoint receipt does not establish activation authority",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "reorged",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-checkpoint-signature-invalid",
+      "expected": "fail",
+      "note": "checkpoint must be signed by the authorized steward",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": false,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-signer-unauthorized",
+      "expected": "fail",
+      "note": "a valid signature from a non-steward is not checkpoint authority",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": false,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-address-mismatch",
+      "expected": "fail",
+      "note": "checkpoint fetched away from its derived fixed address is rejected",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": false,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-policy-mismatch",
+      "expected": "fail",
+      "note": "an artifact signed for another transition policy is not this checkpoint",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": false,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-cross-domain-signature",
+      "expected": "fail",
+      "note": "a signature under another artifact domain cannot activate the gate",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-agreement:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-malformed",
+      "expected": "error",
+      "note": "malformed checkpoint bytes are structural error",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "malformed",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-multiple-discriminators",
+      "expected": "error",
+      "note": "ambiguous checkpoint type is rejected before policy action",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "multiple",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-checkpoint-not-finalized",
+      "expected": "indeterminate",
+      "note": "included-only checkpoint does not yet establish activation",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "included",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-missing-commitment-era-proof",
+      "expected": "indeterminate",
+      "note": "historical audit cannot infer agreement era without commitment authority",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "unavailable",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-commitment-hash-mismatch",
+      "expected": "fail",
+      "note": "a real old commitment for different agreement bytes does not qualify",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": false,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-commitment-not-finalized",
+      "expected": "indeterminate",
+      "note": "non-final commitment history is not era proof",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "included",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-missing-settlement-era-proof",
+      "expected": "indeterminate",
+      "note": "old agreement alone cannot prove payment happened before activation",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "unavailable",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-settlement-binding-mismatch",
+      "expected": "fail",
+      "note": "settlement evidence for another agreement cannot qualify history",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": false,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-settlement-not-finalized",
+      "expected": "indeterminate",
+      "note": "included-only settlement evidence is not historical authority",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "included",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-same-position-unorderable",
+      "expected": "indeterminate",
+      "note": "same block without authenticated transaction order is not strictly earlier",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "indeterminate"
+      }
+    },
+    {
+      "name": "laa-same-position-strict-order",
+      "expected": "pass",
+      "note": "binding-authenticated same-block transaction order can prove strict precedence",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "strictlyBeforeAtSamePosition": true
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "strictlyBeforeAtSamePosition": true,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": true,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "continue"
+      }
+    },
+    {
+      "name": "laa-backdated-evidence-observed-at",
+      "expected": "fail",
+      "note": "producer evidence time cannot make a post-checkpoint receipt historical",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "historical-audit",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "verified",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "101",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": -5000
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": true,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-deterministic-mismatch-precedes-outage",
+      "expected": "fail",
+      "note": "bad agreement signature cannot be hidden by checkpoint unavailability",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "valid",
+          "partySignaturesValid": false,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "unavailable",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": false,
+        "dacs5Admission": "rejected"
+      }
+    },
+    {
+      "name": "laa-malformed-agreement",
+      "expected": "error",
+      "note": "malformed agreement is an error even when checkpoint proof is unavailable",
+      "input": {
+        "surface": "dacs4-laa",
+        "operation": "authorize-payment",
+        "pipelineHasPayment": true,
+        "agreement": {
+          "artifact": "legacy",
+          "shape": "malformed",
+          "partySignaturesValid": true,
+          "contentHash": "agreement-hash-a",
+          "generatedAt": 10,
+          "pbVerified": false
+        },
+        "checkpoint": {
+          "resolution": "unavailable",
+          "discriminator": "legacyAgreementCheckpointVersion:1",
+          "shape": "valid",
+          "signatureValid": true,
+          "signatureDomain": "dacs-legacy-agreement-checkpoint:v1:",
+          "stewardAuthorized": true,
+          "addressMatches": true,
+          "policyMatches": true,
+          "receiptState": "finalized",
+          "position": "100",
+          "authenticatedAbsence": false,
+          "createdAt": 1
+        },
+        "commitment": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementHashMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "80",
+          "strictlyBeforeAtSamePosition": null
+        },
+        "settlementEvidence": {
+          "resolution": "verified",
+          "shape": "valid",
+          "agreementBindingMatches": true,
+          "signatureValid": true,
+          "receiptState": "finalized",
+          "position": "90",
+          "strictlyBeforeAtSamePosition": null,
+          "observedAt": 20
+        },
+        "presentationPosition": "150"
+      },
+      "want": {
+        "currentPaymentEligible": false,
+        "historicalAuditEligible": false,
+        "paymentSideEffects": false,
+        "legacyBytesCryptographicallyInspectable": false,
+        "dacs5Admission": "rejected"
+      }
+    }
+  ]
+}

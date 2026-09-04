@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.6** on the common DACS v0.1 baseline. v0.6 makes current production of the absolute-fault bundle types enforceable through the LAB-1..LAB-7 activation checkpoint and admits a legacy `AttestationBundle` to reputation only with authenticated pre-checkpoint role-anchor evidence. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -319,6 +319,73 @@ A consumer that does not support `EvidenceBoundFaultAttestationBundle` MUST reje
 
 Except for discriminator, signature-domain, extended-pointer, and SEB-specific rules, every rule naming `FaultAttestationBundle` also applies to `EvidenceBoundFaultAttestationBundle`. For pair reconciliation both are absolute-fault types: any pair of absolute-fault copies uses the `faultedParty` plus outcome-class rule, including a mixed pair of these two types. Only an `EvidenceBoundFaultAttestationBundle` copy makes an SEB claim.
 
+The transition from role-relative legacy bundles to absolute-fault production is
+activated per substrate by this distinct governed artifact:
+
+```
+type LegacyBundleActivationCheckpoint = {
+  legacyBundleCheckpointVersion: "1"
+  substrate: string                    // exact CORE §5.1 substrate identifier
+  policy: "legacy-attestation-pre-checkpoint-only"
+  createdAt: number                    // signed metadata; never the activation clock
+  signature: ComponentSignature        // signer is the authorized DACS registry steward
+}
+```
+
+Its canonical form omits `signature`; `checkpoint_hash` is the lowercase-hex
+SHA-256 digest of that canonical form. It is signed over
+`"dacs-legacy-bundle-checkpoint:v1:" || checkpoint_hash` and anchored through
+SR-2 at `dacs5:legacy-bundle-checkpoint:v1:{substrate}`, with `substrate`
+encoded as one CORE §B.1 CF-4 variable segment. `signature.signer` MUST identify
+the active DACS steward authorized under §11.1.1 at the checkpoint receipt's
+position. The activation checkpoint is the authenticated order position
+derived from this artifact's own finalized AnchorReceipt and its binding-
+defined evidence, not `createdAt`, `observedAt`, or an application clock. The
+address is immutable for one substrate and DACS major-version line.
+
+On a write-input-mapping substrate, including Demos, that logical address does
+not identify the native Storage Program by itself. The checkpoint producer MUST
+also publish this distinct signed mapping object:
+
+```
+type LegacyBundleCheckpointBinding = {
+  checkpointBindingVersion: "1"
+  substrate: string                    // exact checkpoint/bundle substrate
+  logicalAddress: string               // exact CF-4 checkpoint logical address
+  nativeAddress: string                // actual write-input-derived address
+  checkpointContentHash: string        // hash of the resolved checkpoint
+  anchorTx: string                     // exact native anchor transaction
+  signer: ClaimReference               // authorized steward signing the checkpoint
+  signature: ComponentSignature        // over the binding domain below
+}
+```
+
+Its canonical form omits `signature`; it is signed over
+`"dacs-legacy-bundle-checkpoint-binding:v1:" ||
+lowerhex(SHA-256(canonical(binding)))`. `signature.signer` MUST equal `signer`,
+and that signer MUST be the §11.1.1 steward authorized at the checkpoint's
+finalized receipt position. The producer publishes the binding on the
+steward's §6.3.5 well-known index or a §6.3.6 DACS catalog and MAY additionally
+deliver it directly to consumers. A discovery surface is only a carrier; the
+signature and receipt checks below establish authority.
+
+For a requested substrate, the consumer derives
+`dacs5:legacy-bundle-checkpoint:v1:{CF-4(substrate)}`, discovers binding
+candidates for that exact address, and verifies the binding signature,
+supported version, substrate, derived logical address, native address,
+checkpoint hash, anchor transaction, and steward authority before use. It then
+fetches the checkpoint from `nativeAddress` and verifies its closed shape,
+signature, substrate/policy, canonical hash, and finalized AnchorReceipt. The
+receipt MUST bind the same substrate, logical/native addresses, checkpoint
+hash, anchor transaction, native writer and nonce and MUST carry the Demos BFT
+finality/order evidence required by DEMOS-MAPPING §A.2. Missing binding
+discovery or unavailable record/receipt proof is `indeterminate`; a malformed,
+badly signed, internally inconsistent, or wrongly addressed candidate is
+invalid; multiple conflicting steward-authorized candidates are
+`indeterminate`. A consumer MUST NOT query the logical address as a Demos native
+address, infer a native address from a Storage Program name, or accept a caller-
+configured native address.
+
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
 Per the §B.2 canonical-form template, omit `signatures` and `anchoredByRole` identically for all three bundle types. Every other field is hashed, including exactly one type discriminator and `faultedParty` on either absolute-fault type. The **attestation-bundle hash** (`attestation_bundle_hash`) is sha256(canonical_form), hex-encoded. Each `BundleSignature.value` MUST use the matching domain-separated payload:
@@ -353,9 +420,9 @@ signature over `signed_bytes`, not over the raw bundle hash.
 
 *Example.* A seller aborts. The buyer anchors `{outcome: "aborted-by-other", anchoredByRole: "buyer", faultedParty: "seller"}` and the seller's own copy anchors `{outcome: "aborted-by-self", anchoredByRole: "seller", faultedParty: "seller"}`. The role-relative `outcome` spelling differs, but both name the seller, so the absolute attribution is identical and the deriver reads fault from `faultedParty` (§10.5.1).
 
-Under DACS-5 v0.4 a producer claiming SEB-1..SEB-6 exact-set conformance MUST anchor `EvidenceBoundFaultAttestationBundle` records. Existing `AttestationBundle` and `FaultAttestationBundle` records remain valid under their released semantics; neither gains the SEB contract retroactively.
+Under DACS-5 v0.4 a producer claiming SEB-1..SEB-6 exact-set conformance MUST anchor `EvidenceBoundFaultAttestationBundle` records. Existing `AttestationBundle` and `FaultAttestationBundle` records remain cryptographically valid under their released semantics; neither gains the SEB contract retroactively. Current reputation admission of an `AttestationBundle` is additionally subject to LAB-1..LAB-7 below.
 
-> **Note (non-normative).** `faultedParty` makes fault role-invariant. On the legacy `AttestationBundle`, fault is read from the role-relative `outcome` through the unhashed `anchoredByRole`, so a counterparty could re-anchor a single-signed abort under its own role and silently reverse blame. Hashing fault as an absolute party closes that rebind: it either contradicts the mapping and is rejected, or forces a re-signed divergent copy that voids the side under §10.4.3(d). Legacy `AttestationBundle` records are never rewritten and keep the pre-faultedParty residual; `FaultAttestationBundle` closes it under v0.3.
+> **Note (non-normative).** `faultedParty` makes fault role-invariant. On the legacy `AttestationBundle`, fault is read from the role-relative `outcome` through the unhashed `anchoredByRole`, so unrestricted current production or cross-role re-anchoring could silently reverse blame. Hashing fault as an absolute party closes the defect for new types. LAB-1..LAB-7 confine the legacy residual to role-specific copies proven finalized before the governed checkpoint: a later different-role anchor has no qualifying history and is non-countable. Historical `AttestationBundle` records are never rewritten and keep their original semantics; `FaultAttestationBundle` closes the encoding defect under v0.3.
 
 The three registered bundle prefixes prevent cross-protocol and cross-type signature replay even if hash bytes collide.
 
@@ -365,6 +432,58 @@ Verification and signer rules:
 - Required signers: buyer + seller. If the orchestrator is a distinct party (not buyer or seller), the orchestrator signature is also REQUIRED.
 - Bundles whose outcome is `completed`, `failed-perm`, `failed-counterparty`, or `failed-substrate` and that are missing any required signature MUST be rejected by consumers.
 - A bundle whose outcome is `aborted-by-self` or `aborted-by-other` MAY carry a single signature; consumers MUST NOT reject it on that basis but MUST classify it per the bundle-suppression rule in §10.11.
+
+**Legacy reputation admission (LAB-1..LAB-7).** These rules qualify whether a
+cryptographically valid legacy `AttestationBundle` may enter reconciliation or
+any reputation metric. They do not rewrite it or make its historical format
+invalid for audit.
+
+- **(LAB-1) Governed checkpoint.** For the bundle anchor's substrate, a consumer
+  MUST resolve exactly one `LegacyBundleActivationCheckpoint`, verify its
+  discriminator, shape, steward signature, logical/native address binding, and
+  finalized AnchorReceipt, and derive activation order only from that receipt.
+  On a write-input-mapping substrate, resolution MUST pass the signed
+  `LegacyBundleCheckpointBinding` discovery and verification path above.
+  A merely signed object, caller-selected checkpoint, or locally configured
+  timestamp is not authority. Multiple conflicting authorized checkpoint
+  candidates, unavailable proof, an unresolved reorganisation, or an
+  unorderable receipt is `indeterminate`.
+- **(LAB-2) Current production.** At or after the checkpoint, a conforming
+  producer MUST emit `FaultAttestationBundle`, or
+  `EvidenceBoundFaultAttestationBundle` when claiming SEB. It MUST NOT emit a
+  new `AttestationBundle` for a current session.
+- **(LAB-3) Historical anchor proof.** A legacy `AttestationBundle` is eligible
+  for reputation only when independently verified receipt history proves that
+  the exact bundle content hash had a finalized anchor at its role-specific
+  logical/native address at a position strictly before the checkpoint. The
+  bundle's self-reported `finalisedAt`, any producer timestamp, and a
+  caller-supplied creation date are ignored. Same-block/round evidence counts as
+  earlier only when the binding authenticates a strict transaction order.
+- **(LAB-4) Role-bound history.** The qualifying pre-checkpoint receipt MUST be
+  for the exact role against which the copy resolves under §10.4.2, and that
+  role MUST equal `anchoredByRole`. A pre-checkpoint buyer copy does not qualify
+  a later seller-role re-anchor of the same hash. Every role copy is qualified
+  independently.
+- **(LAB-5) Replay without upgrade.** A later presentation or re-anchor of the
+  same bytes under the same role remains eligible only while the original
+  qualifying pre-checkpoint receipt is verified. Consumers preserve the legacy
+  bytes, hash, signatures, outcome semantics and original receipt evidence;
+  they MUST NOT re-sign or reinterpret the object as an absolute-fault type.
+- **(LAB-6) Non-qualifying legacy disposition.** A first finalized anchor at or
+  after the checkpoint, a content-hash or role mismatch, invalid checkpoint or
+  anchor proof, and a backdated fresh object are `ineligible`: the bundle stays
+  cryptographically inspectable but contributes to no rating, fault, volume,
+  count, numerator, denominator, or `bundleRefs`. Missing, unavailable,
+  conflicting, pruned, reorged, or unorderable checkpoint/anchor evidence is
+  `indeterminate` and has the same non-counting effect without creating party
+  fault.
+- **(LAB-7) Admission precedes reconciliation.** Apply LAB independently to
+  every legacy copy after ordinary type/signature/address validation and before
+  BB-6 selection, pair reconciliation, one-copy attribution, RSV, ratings, or
+  metrics. Returned but ineligible/indeterminate legacy content is not
+  authoritative absence for the other role. Replayable derivations that include
+  a legacy bundle MUST retain hash-bound checkpoint and qualifying receipt
+  evidence sufficient to reproduce LAB; otherwise the legacy entry is excluded.
 
 #### 10.4.2 Anchoring
 
@@ -598,7 +717,7 @@ type ReputationDerivation = {
 }
 ```
 
-**`ReplayableReputationDerivation` (released replayable receipt).** This historical v1 type remains byte- and meaning-compatible: `replayableDerivationVersion: "1"` does not require a `resolvedJobId` member and a consumer MUST NOT treat an extension with that name as action-bearing. It carries the previously released `resolutionContext` needed to reproduce legacy/FAB reconciliation. Like `ReputationDerivation`, it is unsigned derivation-record data and has no CORE §B.7 domain.
+**`ReplayableReputationDerivation` (released replayable receipt).** This historical v1 type retains its wire discriminator and metric meanings: `replayableDerivationVersion: "1"` does not require a `resolvedJobId` member and a consumer MUST NOT treat an extension with that name as action-bearing. It carries the previously released `resolutionContext` needed to reproduce legacy/FAB reconciliation. LAB adds optional era-evidence members that a current producer MUST populate when this type includes a legacy copy; an older receipt without them remains historical/partial rather than current-action-bearing (§10.10). Like `ReputationDerivation`, it is unsigned derivation-record data and has no CORE §B.7 domain.
 
 A consumer that does not support this type MUST reject an object carrying `replayableDerivationVersion` as unsupported, and MUST NOT reinterpret it as a `ReputationDerivation` by discarding the discriminator (CORE §11.1.2 new-type refusal). Conversely a replay consumer MUST reject an object lacking `replayableDerivationVersion: "1"` or carrying `derivationVersion`: no replay claim exists on the legacy type.
 
@@ -641,6 +760,7 @@ type ResolutionContextEntry = {
   roleEvidence:                                   // exactly ONE of (XOR — the authenticated backing for resolvedRole):
     | { kind: "binding"; binding: BundleBinding }  // write-input substrate: the verified BB-4/BB-5 binding; binding.bundleContentHash MUST equal contentHash and binding.role MUST equal resolvedRole
     | { kind: "address"; resolvedAddress: string } // pure-mapping substrate: the anchor address whose role segment MUST equal resolvedRole
+  legacyEraEvidence?: LegacyBundleEraEvidence     // REQUIRED iff the authoritative copy is an AttestationBundle
   bb6Context?: {                                  // REQUIRED iff roleEvidence.kind == "binding": the BB-6 multiplicity inputs to reproduce why the authoritative copy won selection
     candidateBindings: BundleBinding[]            // the BB-4-valid, BB-5(checks 1-5) candidate set the deriver resolved over for (jobId, resolvedRole)
     partyMap: object | null                       // the authenticated {signer -> role} role-holder map used to prune pre-fetch, or null if none was available
@@ -651,6 +771,7 @@ type ResolutionContextEntry = {
   counterpartyRoleEvidence?:                       // REQUIRED iff counterpartyDisposition == "present": same XOR shape as roleEvidence, authenticating the OTHER role under which the counterparty copy resolved
     | { kind: "binding"; binding: BundleBinding }  // binding.jobId == the entry's jobId, binding.role == the counterparty's role, binding.bundleContentHash == counterpartyRef.contentHash
     | { kind: "address"; resolvedAddress: string } // pure-mapping substrate: the counterparty anchor address whose role segment MUST equal the counterparty's role
+  counterpartyLegacyEraEvidence?: LegacyBundleEraEvidence  // REQUIRED iff the present counterparty copy is an AttestationBundle
   absenceEvidenceRef?: { kind: string; locator: string; contentHash: string }   // REQUIRED iff counterpartyDisposition == "absent": a hash-bound reference to the AbsenceEvidence object; contentHash MUST equal sha256(canonical(AbsenceEvidence)) and the object MUST be dereferenceable at replay
   absenceBinding?: BundleBinding                   // REQUIRED iff counterpartyDisposition == "absent" on a write-input substrate: the BB-4-valid binding resolving the MISSING side's nativeAddress (role == the missing side's role, jobId == the entry's jobId); its nativeAddress MUST equal the dereferenced AbsenceEvidence.nativeAddress
 }
@@ -659,6 +780,15 @@ type AbsenceEvidence = {
   kind: string                                    // the substrate absence-evidence mechanism (e.g. "non-membership-proof"); CORE §5 owns policy semantics, DACS-5 defines only the binding relation
   nativeAddress: string                           // the missing side's native address the authoritative-absence read was performed against
   finalizedStateRef: string                       // the finalized state / finality anchor the CORE §5 policy evaluated absence against
+}
+
+type LegacyBundleEraEvidence = {
+  bundleContentHash: string                       // exact legacy copy hash; equals its ResolutionContextEntry/counterpartyRef contentHash
+  resolvedRole: "buyer" | "seller"                // exact role under which this copy resolved
+  checkpointRef: AttestationRef                   // exact governed LegacyBundleActivationCheckpoint
+  checkpointBinding?: LegacyBundleCheckpointBinding // REQUIRED on a write-input-mapping substrate; omitted only for a pure mapping
+  checkpointReceipt: AnchorReceipt                // finalized receipt establishing checkpoint total-order position
+  historicalAnchorReceipt: AnchorReceipt          // finalized exact-hash/exact-role anchor strictly before checkpointReceipt
 }
 ```
 
@@ -678,7 +808,7 @@ type JobBoundResolutionContextEntry = ResolutionContextEntry & {
 
 The released v1 path neither requires nor acts on `resolvedJobId`; adding, removing, or changing such an unknown extension cannot strengthen or alter its semantics. A job-bound consumer instead verifies `resolvedJobId` against the dereferenced authoritative copy and uses it for every role, counterparty, candidate-binding, and absence-binding job relation before reconciliation. EBFAB is not admissible to the released v1 derivation path. A producer replaying EBFAB with released metric semantics uses `JobBoundReplayableReputationDerivation`; a producer also claiming RSV-1 through RSV-4 uses `ReplayableSettlementVerifiedReputationDerivation`, whose context is job-bound by definition.
 
-**Settlement-verified type boundary (normative).** The two `*SettlementVerified*` types are the only derivation types that apply RSV-1 through RSV-4, settlement-reference multiset comparison, and the successful-payment floor for volume. Their shared fields have the settlement-verified meanings defined in §10.5.1. A producer claiming those semantics MUST emit exactly one matching settlement-verified discriminator and MUST NOT emit `derivationVersion`, `replayableDerivationVersion`, `jobBoundReplayableDerivationVersion`, or the sibling settlement-verified discriminator. A consumer that does not support the encountered settlement-verified discriminator MUST reject the object as unsupported before type-specific action; it MUST NOT discard or rename the discriminator and reinterpret the object as either released version-1 type. Conversely, `ReputationDerivation` and `ReplayableReputationDerivation` retain their DACS-5 v0.3 meanings and MUST NOT be evaluated under RSV. The discriminator therefore distinguishes pre-RSV from RSV-enforced output using object bytes alone, without repository-revision knowledge.
+**Settlement-verified type boundary (normative).** The two `*SettlementVerified*` types are the only derivation types that apply RSV-1 through RSV-4, settlement-reference multiset comparison, and the successful-payment floor for volume. Their shared fields have the settlement-verified meanings defined in §10.5.1. A producer claiming those semantics MUST emit exactly one matching settlement-verified discriminator and MUST NOT emit `derivationVersion`, `replayableDerivationVersion`, `jobBoundReplayableDerivationVersion`, or the sibling settlement-verified discriminator. A consumer that does not support the encountered settlement-verified discriminator MUST reject the object as unsupported before type-specific action; it MUST NOT discard or rename the discriminator and reinterpret the object as either released version-1 type. Conversely, `ReputationDerivation` and `ReplayableReputationDerivation` retain their DACS-5 v0.3 metric meanings and MUST NOT be evaluated under RSV; LAB is a current-use input-admission trust gate shared by all types, not an RSV metric rule. The discriminator therefore distinguishes pre-RSV from RSV-enforced output using object bytes alone, without repository-revision knowledge.
 
 A supported replay receipt's `resolutionContext`:
 
@@ -686,13 +816,18 @@ A supported replay receipt's `resolutionContext`:
 - MUST NOT, in a published receipt, include a one-copy jobId whose entry lacks a valid `absenceEvidenceRef`. §10.5.1 guard (iv) already excludes it from the metrics, so publication likewise requires the evidence that qualified the inclusion;
 - MAY share a `contentHash` across two different jobIds only if byte-identical, in which case those entries deduplicate with `bundleRefs`.
 
-Replay consumes each entry's `roleEvidence`, its `bb6Context` when `roleEvidence.kind == "binding"`, and either `counterpartyRef` + `counterpartyRoleEvidence` (present) or `absenceEvidenceRef` + `absenceBinding` (absent). A receipt whose entry omits any member REQUIRED for its disposition is non-conforming.
+Replay consumes each entry's `roleEvidence`, its `bb6Context` when `roleEvidence.kind == "binding"`, the applicable `legacyEraEvidence` / `counterpartyLegacyEraEvidence`, and either `counterpartyRef` + `counterpartyRoleEvidence` (present) or `absenceEvidenceRef` + `absenceBinding` (absent). A receipt whose entry omits any member REQUIRED for its disposition or bundle type is non-conforming.
 
-Three relations make each authenticated copy independently checkable at replay:
+Four relations make each authenticated copy independently checkable at replay:
 
 - **Counterparty authentication.** `anchoredByRole` is excluded from the §10.4.1 bundle hash, so a bare `counterpartyRef` cannot authenticate the role under which the counterparty copy resolved. The entry MUST carry the verified `counterpartyRoleEvidence` that did; its binding, when present, has `jobId` equal to the entry's jobId, `role` equal to the counterparty's role, and `bundleContentHash` equal to `counterpartyRef.contentHash`.
 - **BB-6 reproduction.** A binding-backed entry MUST carry the `bb6Context` multiplicity inputs that reproduce why the authoritative copy won BB-6 selection. A replay that re-runs BB-6 over `candidateBindings` under `partyMap` and `budget` and reaches a `resolvedNativeAddress` other than `roleEvidence.binding.nativeAddress` is non-conforming.
 - **Absence relation.** `absenceBinding.nativeAddress` MUST equal the dereferenced `AbsenceEvidence.nativeAddress`. `absenceBinding` MUST itself be BB-4-valid, with `role` equal to the missing side's role and `jobId` equal to the entry's jobId. BB-5 check 8 (`bundleContentHash` byte-equality with fetched content) is inapplicable to `absenceBinding` — the missing side's bundle never anchored, so no fetched content exists to match; the binding is verified per BB-4 with `jobId` and `role` equality and the `nativeAddress` relation above.
+- **Legacy-era relation.** Each legacy copy MUST have its corresponding era
+  evidence. Its bundle hash and resolved role MUST match that copy; the
+  checkpoint reference, steward signature and receipt MUST satisfy LAB-1, and
+  `historicalAnchorReceipt` MUST satisfy LAB-3/LAB-4 strictly before it. Era
+  evidence attached to a modern absolute-fault copy has no effect.
 
 A deriver publishing a released-semantics replayable receipt emits `replayableDerivationVersion: "1"` in place of `derivationVersion`. A deriver making the stronger requested-session binding claim while retaining released metric semantics emits `jobBoundReplayableDerivationVersion: "1"`. A settlement-verified replayable receipt emits `replayableSettlementVerifiedDerivationVersion: "1"` and no other derivation discriminator. Both job-bound forms include `resolvedJobId` in every context entry. All three set `resolutionContext := [entry(b) for b in reconciled]` in the same canonical ascending-`contentHash` order as `bundleRefs`.
 
@@ -707,6 +842,11 @@ A deriver publishing a released-semantics replayable receipt emits `replayableDe
 - **re-check absence** — dereference `AbsenceEvidence`, require `absenceEvidenceRef.contentHash` to equal its `sha256(canonical)`, verify `absenceBinding` per the absence relation, and require `absenceBinding.nativeAddress` to equal `AbsenceEvidence.nativeAddress`.
 - **job-bound types only** — require each non-empty `resolvedJobId` to equal the dereferenced authoritative copy's `jobId` and use that trusted value, rather than returned content, in every job-binding check. The released v1 type performs its historical checks against the authenticated copy's `jobId` and makes no stronger claim.
 - **EBFAB in either job-bound type** — resolve and re-verify the signed listing, exact SettlementEvidence resolutions including authenticated phase-orchestrator authority, transitive ST-8 evidence, and bundle/evidence lifecycle state referenced by the EBFAB. A replay implementation whose configured authority resolvers cannot recover that material MUST refuse; it MUST NOT rederive while silently dropping SEB validation.
+- **legacy `AttestationBundle` in any replayable type** — re-resolve and verify
+  the governed checkpoint and the copy's exact-hash, exact-role pre-checkpoint
+  AnchorReceipt under LAB-1..LAB-7. Missing or non-reproducible era evidence
+  makes the receipt unverifiable; a replayer MUST NOT silently admit the legacy
+  copy or reinterpret it as an absolute-fault type.
 
 The discriminators are unsigned but type-authoritative. A consumer MUST reject any receipt carrying no recognized derivation discriminator, multiple derivation discriminators, or a discriminator inconsistent with its claimed type. In particular it MUST NOT strip a settlement-verified discriminator and process the remaining fields under released v1 semantics.
 
@@ -717,6 +857,12 @@ The discriminators are unsigned but type-authoritative. A consumer MUST reject a
 The algorithm below is `derive_settlement_verified` and emits `SettlementVerifiedReputationDerivation` or its replayable counterpart. The released `derive` algorithm and its two version-1 output types retain the DACS-5 v0.3 semantics; implementations MUST NOT label output from this algorithm with either released discriminator. For an executable current definition, released `derive` is the algorithm below with exactly three settlement-verified limbs disabled: it uses only the §10.4.3 divergence predicate, does not call `verify_presented_settlement_evidence`, and applies the released volume rule (a completed bundle with a valid `agreementRef` contributes its Agreement price without requiring presented successful-payment evidence). All other reconciliation, denominator, rating, ordering, windowing, and receipt rules are shared.
 
 The job-bound `derive_job_bound` path retains the released metric semantics but emits `JobBoundReplayableReputationDerivation`; it is the minimum replayable path for EBFAB. A replayable settlement-verified derivation applies both the job-bound and RSV requirements and emits `ReplayableSettlementVerifiedReputationDerivation`.
+
+LAB is applied as the current-use trust admission precondition before the
+selected derivation algorithm. It changes neither a released metric formula nor
+the meaning of an existing discriminator. An implementation reproducing an old
+receipt without LAB evidence may compute its recorded historical result, but
+MUST NOT present that result as current-action-bearing reputation (§10.10).
 
 *Input precondition: each admitted input copy is resolution-context-tagged with the role under which it resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate). A job-bound derivation additionally carries the trusted requested `jobId` from the role address or verified `BundleBinding`; it MUST equal the dereferenced copy before that copy may enter grouping or fallback. EBFAB requires this job-bound path. The released replayable v1 path retains its historical input contract and does not consume `resolvedJobId`.*
 
@@ -765,6 +911,12 @@ derive_settlement_verified(party, bundles, windowStart, windowEnd):
                AND anchoredByRole_matches_resolution_context(b)
                AND faultedParty_consistent_if_absolute(b)
                AND seb_valid_if_ebfab(b)]
+    # (2c) LAB-1..LAB-7: a legacy copy enters reputation only with authenticated,
+    #      exact-hash, exact-role anchor history strictly before the governed checkpoint.
+    #      Ineligible/indeterminate returned content is excluded but remains a present
+    #      response: it MUST NOT establish absence for the other role.
+    copies := [b for b in copies where b is not AttestationBundle
+               OR legacy_bundle_admission(b, trusted_resolution_context) == "eligible"]
     copies := [b for b in copies where b.anchoredByRole in {"buyer", "seller"}]   // orchestrator copies are evidence-only
     # (3) BB-6 multiplicity: canonically-equal same-role copies collapse to one; among
     #     divergent same-role copies a fully-§10.4.1-signed copy takes precedence over
@@ -943,6 +1095,16 @@ A fourth normative guard applies to any one-copy jobId:
 
 - (iv) **authoritative absence before one-copy attribution** — the missing buyer/seller address MUST have the §10.4.3 disposition `absent` before the present copy may be selected, perspective-flipped, or used to attribute an abort. In the job-bound path, each resolution tag MUST carry the trusted requested `jobId` established from the role address or verified `BundleBinding`; a consumer binds returned content and every rejection to that requested identity, never to returned content's self-asserted `jobId`. Returned content that is an invalid EBFAB — including content that omits or alters its `jobId` — is rejected for the requested session, not absent; an older copy on the other side therefore cannot become authoritative through this guard. A missing, unqualified, or `indeterminate` read disposition excludes the jobId from ALL metrics. Implementations MUST retain the two-address read dispositions as derivation context and MUST NOT add them to any signed bundle type. EBFAB or any stronger job-binding claim is published only as `JobBoundReplayableReputationDerivation` or, when RSV semantics are also claimed, `ReplayableSettlementVerifiedReputationDerivation`; the released `ReplayableReputationDerivation` v1 remains unchanged and makes no such claim. A caller that supplies one raw copy without that context has not established absence, so the deriver MUST exclude it.
 
+A fifth normative guard applies to every legacy copy:
+
+- (v) **authenticated historical era before legacy reputation** — apply
+  LAB-1..LAB-7 before adding an `AttestationBundle` to `copies`. A qualifying
+  entry carries the exact role-specific pre-checkpoint receipt and checkpoint
+  proof in trusted derivation context. An ineligible or indeterminate legacy
+  copy is excluded from all metrics and MUST NOT be treated as absence that
+  promotes the other role's copy. `FaultAttestationBundle` and
+  `EvidenceBoundFaultAttestationBundle` do not require legacy-era proof.
+
 **Presented SettlementEvidence admission (RSV-1..RSV-4; settlement-verified types only).** This guard runs on the selected `authoritative` copy before it enters `reconciled`. When both buyer and seller copies exist, the settlement-verified divergence limb first requires their canonical `settlementEvidence[]` reference multisets to agree; comparison uses each full canonical `AttestationRef`, including multiplicity, while array order alone is immaterial. A producer therefore cannot make its own semantically contradictory reference silently control the other copy's settlement-verified reputation input:
 
 - (RSV-1) `verify_presented_settlement_evidence` MUST resolve every `AttestationRef` in `authoritative.settlementEvidence`, verify its content hash and SettlementEvidence signature, and return exactly `verified`, `rejected`, or `indeterminate`. Whether the presented multiset is complete is the separate §10.4.3 production rule, not this guard.
@@ -1103,9 +1265,10 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Role | Requirements |
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
-| Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
-| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run SEB-1..SEB-6 on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile by EBFAB > FAB > legacy only after validity and non-divergence |
-| Reputation deriver | Select the output type before derivation; apply RSV-1 through RSV-4 only for a settlement-verified discriminator, require a job-bound replay type for EBFAB, and preserve released v1 semantics otherwise; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the applicable algorithm's `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt |
+| Checkpoint producer | At the per-substrate transition, the §11.1.1 active steward signs and finalizes exactly one `LegacyBundleActivationCheckpoint` at its CF-4-derived logical address; the receipt order, never an object timestamp, activates LAB |
+| Bundle producer | Before the governed checkpoint, MAY preserve historical legacy production; at or after it, MUST anchor `FaultAttestationBundle`, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6 (LAB-2); set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3 |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); apply LAB-1..LAB-7 to each legacy copy before BB-6/pair selection and never reinterpret excluded returned content as absence; run SEB-1..SEB-6 on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile by EBFAB > FAB > legacy only after validity, legacy-era admission, and non-divergence |
+| Reputation deriver | Select the output type before derivation; exclude every legacy copy lacking reproducible exact-role pre-checkpoint evidence under LAB-1..LAB-7; apply RSV-1 through RSV-4 only for a settlement-verified discriminator, require a job-bound replay type for EBFAB, and preserve released v1 metric formulas otherwise; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the applicable algorithm's `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` and its required era/resolution evidence per the §10.5.3 determinism receipt |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |
 
@@ -1135,17 +1298,27 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 
 **Operator-marketplace ratings.** A marketplace migrating to DACS-5 MAY backfill historical ratings as operator-signed RatingRecord-equivalents; new DACS-5 ratings stand alone and are clearly distinguishable from the operator-signed history.
 
+**Legacy bundle history.** LAB does not invalidate or rewrite a historical
+`AttestationBundle`. A current consumer may display and audit its original
+bytes, signatures, role-relative outcome, and receipt even when its era proof
+is missing. Only current reputation eligibility changes: the copy counts when
+its exact-hash, exact-role pre-checkpoint anchor is reproducible. Released
+derivation records remain mathematically reproducible under their recorded
+historical profile, but a current consumer MUST label one historical/partial
+and MUST NOT use it as current reputation unless every included legacy copy
+also satisfies LAB.
+
 **Audit-log standards.** A consumer MAY convert a DACS-5 bundle to RFC 5424 / OpenTelemetry at read time; DACS-5 defines only the bundle.
 
 ### 10.11 Security considerations
 
 **HTLC asymmetric-loss metric blind spot (known residual).** On a window-expired ST-8 asymmetric loss, both legs map to `settle-failed`/`settlement-atomicity` → `failed-counterparty` (§10.3.1). DACS-5 v0.1 cannot distinguish, at the metric level, the **payer who already received destination value** from the **payee who is owed source value** — the payer's copy reads `failed-counterparty` (and, perspective-flipped, may even read as party-fault), so neither `completionRate` nor `counterpartyFaultRate` reflects who actually profited. This is a DACS-X dispute concern, not resolvable in v0.1's blame model; consumers SHOULD treat any `failed-counterparty` whose phaseSummary carries an HTLC-9 `settlement-atomicity` marker as requiring out-of-band review rather than as a clean counterparty fault.
 
-**Bundle forgery.** *Threat:* an attacker produces a fake bundle claiming a session that did not happen, hoping to influence reputation. *Mitigation:* the bundle must be co-signed by both parties; signatures use domain-separated payloads; consumers verify both signatures against the parties’ verified primary claims. A unilateral bundle cannot influence the counterparty’s reputation.
+**Bundle forgery.** *Threat:* an attacker produces a fake bundle claiming a session that did not happen, hoping to influence reputation. *Mitigation:* non-abort bundles must be co-signed by both parties; signatures use domain-separated payloads; consumers verify each signature against the party's verified primary claim. Abort bundles retain the explicitly single-signed suppression path, so co-signing alone is not a complete participation proof. LAB-1..LAB-7 additionally prevent a freshly produced or cross-role-rebound legacy single-signed abort from entering current reputation. Broader proof that a counterparty participated in a unilateral abort claim remains outside this historical-era fix.
 
-**Bundle suppression.** *Threat:* a party who performed badly in a session refuses to sign the bundle, hoping to prevent its publication. *Mitigation:* the counterparty's bundle attempt records the non-signer's claimed outcome. Consumers MUST apply the `aborted-by-self`/`aborted-by-other` attribution only after the missing role's address is authoritatively absent under §10.4.3. The non-signer's reputation takes the appropriate hit when that gate is satisfied.
+**Bundle suppression.** *Threat:* a party who performed badly in a session refuses to sign the bundle, hoping to prevent its publication. *Mitigation:* the counterparty's bundle attempt records the non-signer's claimed outcome. Consumers MUST apply the `aborted-by-self`/`aborted-by-other` attribution only after the missing role's address is authoritatively absent under §10.4.3. At or after the LAB checkpoint, that attempt uses an absolute-fault bundle; a legacy attempt is countable only with its exact-role pre-checkpoint proof. The non-signer's reputation takes the appropriate hit only when both the absence and applicable era gates are satisfied.
 
-*Implementation note:* a one-sided bundle MUST follow the same canonical form and signing rules. The absent counterparty signature flags the claimed outcome, while the SR-2 absence evidence qualifies its use for reputation. The §10.4.1 missing-signature rejection applies only to non-abort outcomes, so a single-signed abort bundle reaches this classification rather than being rejected.
+*Implementation note:* a one-sided bundle MUST follow the same canonical form and signing rules. The absent counterparty signature flags the claimed outcome, while the SR-2 absence evidence qualifies its use for reputation. The §10.4.1 missing-signature rejection applies only to non-abort outcomes, so a single-signed abort bundle reaches this classification rather than being rejected. A current single-signed producer uses `FaultAttestationBundle`/EBFAB; a legacy `AttestationBundle` reaches attribution only when LAB separately authenticates its historical exact-role anchor.
 
 **Bundle-copy read censorship.** *Threat:* malicious read infrastructure withholds one anchored copy so two divergent bundles appear to be a clean one-copy session. *Mitigation:* §10.4.3 applies the CORE SR-2 absence-evidence policy before any one-sided classification, and §10.5.1 guard (iv) excludes an unqualified one-copy jobId from every reputation metric. A binding without authoritative absence support therefore loses one-copy reputation availability but does not fail open into party blame.
 

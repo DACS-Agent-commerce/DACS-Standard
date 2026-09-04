@@ -1,0 +1,2062 @@
+{
+  "set": "legacy-bundle-admission-v0.6",
+  "spec": "DACS-5 v0.6 §10.4.1/§10.5.1 LAB-1..LAB-7",
+  "tier": "candidate",
+  "description": "Legacy AttestationBundle authenticated-era admission, role binding, and fail-closed reputation effects.",
+  "provenance": {
+    "issue": "DACS-Agent-commerce/DACS-Standard#381",
+    "generator": "scripts/generate_legacy_bundle_admission_vectors.py"
+  },
+  "count": 23,
+  "hash": "8696f7482750e3772285e19d1af2344afdf7f094f5b8b3cf416c085aaaafd3ca",
+  "vectors": [
+    {
+      "name": "lab-modern-fab-checkpoint-unavailable",
+      "expected": "pass",
+      "note": "LAB applies only to legacy AttestationBundle; a valid FAB does not need era proof",
+      "input": {
+        "bundle": {
+          "type": "fault",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "unavailable"
+        },
+        "historicalAnchor": null
+      },
+      "want": {
+        "admissionDisposition": "eligible",
+        "reputationEffect": "include",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-modern-ebfab-no-era-proof",
+      "expected": "pass",
+      "note": "EBFAB admission follows its normal type/SEB gates, not legacy-era proof",
+      "input": {
+        "bundle": {
+          "type": "evidence-bound-fault",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": null,
+        "historicalAnchor": null
+      },
+      "want": {
+        "admissionDisposition": "eligible",
+        "reputationEffect": "include",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-authentic-historical-buyer",
+      "expected": "pass",
+      "note": "exact-hash buyer-role anchor finalized strictly before the governed checkpoint",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "eligible",
+        "reputationEffect": "include",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-authentic-historical-seller",
+      "expected": "pass",
+      "note": "each role qualifies independently; exact seller-role history is eligible",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "seller",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "seller",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "seller",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "eligible",
+        "reputationEffect": "include",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-historical-replay-after-checkpoint",
+      "expected": "pass",
+      "note": "later presentation does not erase the original qualifying pre-checkpoint anchor",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 250,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "eligible",
+        "reputationEffect": "include",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-same-role-reanchor-keeps-original-proof",
+      "expected": "pass",
+      "note": "a same-role re-anchor after activation remains eligible only through its original receipt",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 180,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "eligible",
+        "reputationEffect": "include",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-cross-role-rebind-rejected",
+      "expected": "fail",
+      "note": "buyer-role history cannot qualify the same bytes resolved under seller role",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "seller",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "seller",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-fresh-legacy-post-checkpoint",
+      "expected": "fail",
+      "note": "a first legacy anchor after activation is audit-only and non-countable",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 101
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-same-order-not-strictly-before",
+      "expected": "fail",
+      "note": "checkpoint equality does not satisfy the strict-before relation",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 100
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-backdated-fresh-legacy",
+      "expected": "fail",
+      "note": "producer finalisedAt cannot backdate a post-checkpoint anchor",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 1
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 130
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-content-hash-mismatch",
+      "expected": "fail",
+      "note": "historical proof for different bytes does not qualify the returned bundle",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "0000000000000000000000000000000000000000000000000000000000000000",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-anchor-substrate-mismatch",
+      "expected": "fail",
+      "note": "history on another substrate cannot satisfy this checkpoint/anchor relation",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "other-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-checkpoint-signature-invalid",
+      "expected": "fail",
+      "note": "an invalid steward signature is deterministic invalidity, not activation authority",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "A7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-checkpoint-signer-unauthorized",
+      "expected": "fail",
+      "note": "a valid signature by a non-steward signer cannot activate the legacy boundary",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:a494f73252558ea59148c052ac00de4056aae56edd6cde2d3461f69ee3d11cfc",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:a494f73252558ea59148c052ac00de4056aae56edd6cde2d3461f69ee3d11cfc",
+                  "value": "NftquVBo83hKlHzovXhb4QPPxYbZGb6O-T5lBgfWuNOlMnN-I2WBLjjQmA2H0ddF-Xw3fKbUocRkIzV9fG3cBQ"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:a494f73252558ea59148c052ac00de4056aae56edd6cde2d3461f69ee3d11cfc",
+                  "value": "TEIN_YezC-pg1IDcB0mGHPkQuJfWoRux1NGRdaeXaSPTFR684J1ARP80UGI1geS71k5ZWwU6ZU9Smze7ZmuUDQ"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "a494f73252558ea59148c052ac00de4056aae56edd6cde2d3461f69ee3d11cfc",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-checkpoint-address-mismatch",
+      "expected": "fail",
+      "note": "a checkpoint not bound to the derived substrate address is invalid",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet:wrong",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "MUWyw9yVSlufWMOJaAMXOTBtO--en5skrJEI5NY5bU6QZ_aouulTvmNieLUt1gRR1_ytkRkbw-HsGlblIYSkBw"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "ineligible",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-checkpoint-unavailable",
+      "expected": "indeterminate",
+      "note": "unavailable governed checkpoint proof cannot admit or fault a legacy copy",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "unavailable"
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-checkpoint-conflicting",
+      "expected": "indeterminate",
+      "note": "multiple conflicting authorized checkpoint candidates fail closed",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              },
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ffffffffffffffffffffffffffffffffffffffff",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "22ea5a3a3c08953bab96c73b989621f1c8cde5e7a4238ac423ac9e8592210674",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "FfkclnY28wu6ObzoTWzUN8gdKjJn6Sc-fw6g3U2HqcRnqSDxgpbtOF3Gx0TjrRxsQln0DGw8gldzDF_GtUuWAA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-checkpoint-reorged",
+      "expected": "indeterminate",
+      "note": "an unresolved checkpoint reorganization has no stable activation position",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "reorged",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "reorged",
+                "observationDisposition": "indeterminate",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-checkpoint-order-unavailable",
+      "expected": "indeterminate",
+      "note": "a finalized checkpoint without authenticated total order cannot activate LAB",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\"}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-anchor-history-missing",
+      "expected": "indeterminate",
+      "note": "missing earliest/exact historical receipt cannot establish creation era",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": null
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-anchor-history-pruned",
+      "expected": "indeterminate",
+      "note": "pruned role-anchor history is not converted into ineligibility or fault",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "pruned"
+        }
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-anchor-history-reorged",
+      "expected": "indeterminate",
+      "note": "reorged historical anchor evidence fails closed pending stable proof",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "reorged",
+          "ordered": true,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 99
+        }
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    },
+    {
+      "name": "lab-anchor-order-unavailable",
+      "expected": "indeterminate",
+      "note": "same-block evidence without authenticated strict ordering cannot qualify",
+      "input": {
+        "bundle": {
+          "type": "legacy",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "anchoredByRole": "buyer",
+          "finalisedAt": 90
+        },
+        "resolvedRole": "buyer",
+        "bundleAnchorSubstrate": "demos-mainnet",
+        "presentedAtOrder": 150,
+        "checkpoint": {
+          "state": "finalized",
+          "authorizedStewards": [
+            "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692"
+          ],
+          "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+            "candidateBindings": [
+              {
+                "checkpointBindingVersion": "1",
+                "substrate": "demos-mainnet",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "checkpointContentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "anchorTx": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531",
+                "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "nCtG7OX_GalixxvUwd6NKeHwp7fySf0RUjPSts8fNtn1vfGOHqQ5a8HRMMxuJ15dup7vh1Hok8o3RiZtyIRhCA"
+                }
+              }
+            ]
+          },
+          "anchoredRecords": {
+            "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d": {
+              "artifact": {
+                "legacyBundleCheckpointVersion": "1",
+                "substrate": "demos-mainnet",
+                "policy": "legacy-attestation-pre-checkpoint-only",
+                "createdAt": 1800000000000,
+                "signature": {
+                  "algorithm": "ed25519",
+                  "signer": "key:af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                  "value": "g7pgXH8V3O6XEmWsAUcoaDDk-5mpYHo0F1uD87viDJIfmGRrWpuS-ifMP9lvT7npbORG-j9Mbe54qc6h9-9LCw"
+                }
+              },
+              "receipt": {
+                "receiptVersion": "1",
+                "substrate": "demos-mainnet",
+                "finalityProfile": "demos-bft-final",
+                "logicalAddress": "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet",
+                "nativeAddress": "stor-ff2d7bd9681c66cc0a7f9a8af06fb394d3aa166d",
+                "contentHash": "784d71103d3170b6a868c6dcecb7c35b5a7903e8ec815d0fd91b478e2f71be26",
+                "transactionRef": {
+                  "kind": "demos-transaction",
+                  "value": "f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531"
+                },
+                "writer": "af018961212af24c911eec5fba6e38e20e14b55d6b07551c8f5685c6323be692",
+                "nonce": "41",
+                "state": "finalized",
+                "observationDisposition": "established",
+                "observedAt": 1800000000500,
+                "blockRef": {
+                  "id": "b95b4c0d2558507957e1200e3e1d2d29ddfd8167d716f2206194a9543d8161d7",
+                  "height": "100",
+                  "timestamp": 1800000000100
+                },
+                "evidence": {
+                  "kind": "demos-bft-final",
+                  "value": "{\"blockHeight\":\"100\",\"transactionHash\":\"f180c1675ba59098c5e986f39f92825075b4e343ecc82dbb8126fa36246e3531\",\"transactionIndex\":0}"
+                }
+              }
+            }
+          }
+        },
+        "historicalAnchor": {
+          "state": "finalized",
+          "ordered": false,
+          "substrate": "demos-mainnet",
+          "role": "buyer",
+          "contentHash": "e19e1d44ec189520445891c425b8299733e9d94ccc294c6e8d3a31d8320d0c61",
+          "order": 100
+        }
+      },
+      "want": {
+        "admissionDisposition": "indeterminate",
+        "reputationEffect": "exclude",
+        "auditInspectable": true,
+        "authoritativeAbsence": false,
+        "partyFaultCreatedByGate": false
+      }
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 registers the DACS-5 legacy-bundle activation-checkpoint signature domain; v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -382,6 +382,8 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-5 attestation bundle | "dacs-bundle:v1:" | §10.4.1 |
 | DACS-5 fault attestation bundle | "dacs-fault-bundle:v1:" | §10.4.1 |
 | DACS-5 evidence-bound fault attestation bundle | "dacs-evidence-bound-fault-bundle:v1:" | §10.4.1 |
+| DACS-5 legacy-bundle activation checkpoint | "dacs-legacy-bundle-checkpoint:v1:" | §10.4.1 |
+| DACS-5 legacy-bundle checkpoint binding | "dacs-legacy-bundle-checkpoint-binding:v1:" | §10.4.1 |
 | DACS-5 BundleBinding | "dacs-bundle-binding:v1:" | §10.4.2 |
 | DACS-5 FaultAttestationBundle extended pointer | "dacs-fault-bundle-pointer:v1:" | §10.4.2 |
 | DACS-5 EvidenceBoundFaultAttestationBundle extended pointer | "dacs-evidence-bound-fault-bundle-pointer:v1:" | §10.4.2 |

@@ -51,6 +51,55 @@ def chain_profile(model: str = "block-depth") -> dict:
     return profile
 
 
+def chain_observation(profile: dict, label: str) -> dict:
+    transaction_hash = hashlib.sha256(f"fv:{label}:transaction".encode()).hexdigest()
+    inclusion_block = hashlib.sha256(f"fv:{label}:block:100".encode()).hexdigest()
+    head_block = hashlib.sha256(f"fv:{label}:block:111".encode()).hexdigest()
+    network_id = profile["networkId"]
+    chain_id = network_id.split(":", 1)[1] if network_id.startswith("eip155:") else network_id
+    return {
+        "networkId": network_id,
+        "genesisHash": profile["genesisHash"],
+        "transactionRef": {
+            "kind": "evm-event",
+            "chainId": chain_id,
+            "txHash": transaction_hash,
+            "logIndex": 0,
+        },
+        "transactionInclusionProof": {
+            "kind": "receipt-merkle-proof",
+            "value": f"proof:{label}:transaction",
+        },
+        "selectedEventProof": {
+            "kind": "evm-log-proof",
+            "value": f"proof:{label}:event",
+        },
+        "inclusionBlock": {
+            "id": inclusion_block,
+            "parentId": hashlib.sha256(f"fv:{label}:block:99".encode()).hexdigest(),
+            "position": "100",
+        },
+        "authenticatedHead": {
+            "id": head_block,
+            "position": "111",
+            "observedAt": 1_900_000_000_000,
+        },
+        "ancestryProof": [
+            {
+                "childId": head_block,
+                "parentId": inclusion_block,
+                "position": "111",
+                "header": f"header-chain:{label}:111-to-100",
+            }
+        ],
+        "authorityEvidence": {
+            "kind": "rpc-quorum",
+            "value": f"quorum:{label}:2-of-3",
+            "sourceRefs": copy.deepcopy(profile["observation"]["authorityRefs"]),
+        },
+    }
+
+
 def base_input(model: str = "block-depth") -> dict:
     settlement = chain_profile(model if model in {
         "block-depth", "commitment-level", "bft-final"
@@ -201,7 +250,29 @@ def model_input(model: str) -> dict:
         }
         value["rail"]["profile"] = profile
         report["finalityBlocks"] = None
-        context.update({"kind": "htlc", "compositeStatus": "verified"})
+        value["context"] = {
+            "kind": "htlc",
+            "shape": "valid",
+            "proofKindSupported": True,
+            "sourceLock": chain_observation(profile["source"], "source-lock"),
+            "sourceClaim": chain_observation(profile["source"], "source-claim"),
+            "destinationLock": chain_observation(
+                profile["destination"], "destination-lock"
+            ),
+            "destinationReveal": chain_observation(
+                profile["destination"], "destination-reveal"
+            ),
+            "relation": {
+                "sourceContractMatches": True,
+                "destinationContractMatches": True,
+                "commonHashlockMatches": True,
+                "revealedPreimageMatches": True,
+                "amountsMatch": True,
+                "timelocksValid": True,
+            },
+            "authority": "verified",
+            "canonicalPath": "valid",
+        }
     elif model == "liquidity-tank":
         value["evidence"]["phase"] = "pay-cross-chain-liquidity-tank"
         value["evidence"]["railDefinitionRef"] = {
@@ -288,8 +359,13 @@ def vectors() -> list[dict]:
         case("fv-provider-not-captured", "fail", "authenticated non-capture cannot produce payment success", model="provider-receipt", changes={"context": {"providerCaptured": False}}),
         case("fv-provider-binding-mismatch", "fail", "provider response must bind the exact session, amount and currency", model="provider-receipt", changes={"context": {"providerBindingMatches": False}}),
         case("fv-provider-attestation-unavailable", "indeterminate", "unavailable SR-3 provider response remains indeterminate", model="provider-receipt", changes={"context": {"authority": "unavailable"}}),
-        case("fv-htlc-source-claim-missing", "indeterminate", "missing source-claim authority leaves an asymmetric HTLC unresolved", model="htlc-reveal", changes={"context": {"compositeStatus": "unavailable"}}),
-        case("fv-htlc-preimage-contradiction", "fail", "proved hashlock/preimage or contract contradiction rejects", model="htlc-reveal", changes={"context": {"compositeStatus": "mismatch"}}),
+        case("fv-htlc-source-claim-missing", "indeterminate", "missing source-claim authority leaves an asymmetric HTLC unresolved", model="htlc-reveal", changes={"context": {"sourceClaim": {"authorityEvidence": {"kind": "unavailable", "value": "source-claim-history-unavailable", "sourceRefs": ["rpc-a", "rpc-b", "rpc-c"]}}}}),
+        case("fv-htlc-source-lock-missing", "indeterminate", "unavailable source-lock proof cannot be replaced by the other three events", model="htlc-reveal", changes={"context": {"sourceLock": {"authorityEvidence": {"kind": "unavailable", "value": "source-lock-history-unavailable", "sourceRefs": ["rpc-a", "rpc-b", "rpc-c"]}}}}),
+        case("fv-htlc-destination-lock-missing", "indeterminate", "unavailable destination-lock proof cannot be replaced by the reveal", model="htlc-reveal", changes={"context": {"destinationLock": {"authorityEvidence": {"kind": "unavailable", "value": "destination-lock-history-unavailable", "sourceRefs": ["rpc-a", "rpc-b", "rpc-c"]}}}}),
+        case("fv-htlc-destination-reveal-missing", "indeterminate", "unavailable destination-reveal proof leaves the cross-chain result unresolved", model="htlc-reveal", changes={"context": {"destinationReveal": {"authorityEvidence": {"kind": "unavailable", "value": "destination-reveal-history-unavailable", "sourceRefs": ["rpc-a", "rpc-b", "rpc-c"]}}}}),
+        case("fv-htlc-observation-shape-missing", "error", "omitting one of the four required observation arms is a structural impossibility", model="htlc-reveal", changes={"context": {"destinationReveal": None}}),
+        case("fv-htlc-destination-reveal-wrong-network", "fail", "the destination reveal must verify on the destination profile's exact network", model="htlc-reveal", changes={"context": {"destinationReveal": {"networkId": "eip155:1"}}}),
+        case("fv-htlc-preimage-contradiction", "fail", "proved hashlock/preimage or contract contradiction rejects", model="htlc-reveal", changes={"context": {"relation": {"revealedPreimageMatches": False}}}),
         case("fv-tank-not-completed", "fail", "authenticated coordinator state not completed cannot be final", model="liquidity-tank", changes={"context": {"compositeStatus": "mismatch"}}),
         case("fv-tank-destination-unavailable", "indeterminate", "missing destination release authority leaves tank state unresolved", model="liquidity-tank", changes={"context": {"compositeStatus": "unavailable"}}),
         case("fv-rail-resolution-unavailable", "indeterminate", "missing signed RailDefinition prevents profile selection", changes={"rail": {"resolution": "unavailable"}}),

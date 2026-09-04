@@ -1244,8 +1244,18 @@ type FinalityVerificationContext =
     }
   | {
       kind: "htlc"
-      source: AuthenticatedChainObservation
-      destination: AuthenticatedChainObservation
+      sourceLock: AuthenticatedChainObservation
+      sourceClaim: AuthenticatedChainObservation
+      destinationLock: AuthenticatedChainObservation
+      destinationReveal: AuthenticatedChainObservation
+      relation: {
+        sourceContractMatches: boolean
+        destinationContractMatches: boolean
+        commonHashlockMatches: boolean
+        revealedPreimageMatches: boolean
+        amountsMatch: boolean
+        timelocksValid: boolean
+      }
     }
   | {
       kind: "liquidity-tank"
@@ -1332,7 +1342,12 @@ summary of what it allegedly proves.
 - **(FV-9) Composite and provider models.** `htlc-reveal` requires FV verification
   of the source lock and claim plus the destination lock/reveal, their exact
   contracts, common hashlock/preimage relation, amounts and timelocks; success
-  requires the source claim at source finality. `liquidity-tank` requires the
+  requires the source claim at source finality. Each of those four HTLC events
+  MUST occupy its own `AuthenticatedChainObservation` arm in the `htlc` context,
+  with its own transaction/event inclusion proof, authenticated head/path, and
+  authority evidence under the corresponding source or destination profile. A
+  shared observation or aggregate status label cannot represent or replace any
+  of the four proofs. `liquidity-tank` requires the
   exact source lock, destination release and authenticated coordinator state
   `completed`, all under their pinned profiles. `provider-receipt` verifies the
   exact SR-3-attested response bytes, provider/session/amount/currency bindings,

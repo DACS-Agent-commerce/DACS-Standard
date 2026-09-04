@@ -24,12 +24,89 @@ KNOWN_MODELS = {
     "block-depth", "commitment-level", "bft-final", "provider-receipt",
     "htlc-reveal", "liquidity-tank",
 }
+HTLC_OBSERVATIONS = {
+    "sourceLock", "sourceClaim", "destinationLock", "destinationReveal"
+}
+HTLC_RELATIONS = {
+    "sourceContractMatches",
+    "destinationContractMatches",
+    "commonHashlockMatches",
+    "revealedPreimageMatches",
+    "amountsMatch",
+    "timelocksValid",
+}
 
 
 def canonical_json(value):
     return json.dumps(
         value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
     ).encode("utf-8")
+
+
+def validate_htlc_observation(observation, profile):
+    required = {
+        "networkId",
+        "genesisHash",
+        "transactionRef",
+        "transactionInclusionProof",
+        "selectedEventProof",
+        "inclusionBlock",
+        "authenticatedHead",
+        "ancestryProof",
+        "authorityEvidence",
+    }
+    if not isinstance(observation, dict) or not required.issubset(observation):
+        return "error"
+    authority = observation.get("authorityEvidence")
+    if not isinstance(authority, dict) or not authority.get("sourceRefs"):
+        return "error"
+    if authority.get("kind") == "unavailable":
+        return "indeterminate"
+    if authority.get("kind") != "rpc-quorum" or not authority.get("value"):
+        return "error"
+    if observation.get("networkId") != profile.get("networkId"):
+        return "fail"
+    if observation.get("genesisHash") != profile.get("genesisHash"):
+        return "fail"
+    transaction = observation.get("transactionRef")
+    inclusion = observation.get("transactionInclusionProof")
+    selected_event = observation.get("selectedEventProof")
+    if (
+        not isinstance(transaction, dict)
+        or transaction.get("kind") != "evm-event"
+        or not isinstance(inclusion, dict)
+        or inclusion.get("kind") != "receipt-merkle-proof"
+        or not inclusion.get("value")
+        or not isinstance(selected_event, dict)
+        or selected_event.get("kind") != "evm-log-proof"
+        or not selected_event.get("value")
+    ):
+        return "error"
+    inclusion_block = observation.get("inclusionBlock")
+    head = observation.get("authenticatedHead")
+    if not isinstance(inclusion_block, dict) or not isinstance(head, dict):
+        return "error"
+    if not POSITION_RE.fullmatch(str(inclusion_block.get("position", ""))):
+        return "error"
+    if not POSITION_RE.fullmatch(str(head.get("position", ""))):
+        return "error"
+    ancestry = observation.get("ancestryProof")
+    if not isinstance(ancestry, list) or not ancestry:
+        return "error"
+    first_link = ancestry[0]
+    if (
+        not isinstance(first_link, dict)
+        or first_link.get("childId") != head.get("id")
+        or first_link.get("parentId") != inclusion_block.get("id")
+    ):
+        return "fail"
+    required_depth = profile.get("requiredDepth")
+    if type(required_depth) is not int or required_depth <= 0:
+        return "error"
+    depth = int(head["position"]) - int(inclusion_block["position"]) + 1
+    if depth < required_depth:
+        return "fail"
+    return "pass"
 
 
 def evaluate(value):
@@ -151,12 +228,32 @@ def evaluate(value):
             required_fields |= {"bridgeId", "coordinator"}
         if not required_fields.issubset(profile):
             return "error", None
-        if context.get("compositeStatus") == "mismatch":
-            return "fail", None
-        if context.get("compositeStatus") == "unavailable":
-            return "indeterminate", None
-        if context.get("compositeStatus") != "verified":
-            return "error", None
+        if model == "htlc-reveal":
+            relation = context.get("relation")
+            if not isinstance(relation, dict) or set(relation) != HTLC_RELATIONS:
+                return "error", None
+            if any(type(relation[field]) is not bool for field in HTLC_RELATIONS):
+                return "error", None
+            observation_results = [
+                validate_htlc_observation(
+                    context.get(field),
+                    profile["source"] if field.startswith("source") else profile["destination"],
+                )
+                for field in sorted(HTLC_OBSERVATIONS)
+            ]
+            if "error" in observation_results:
+                return "error", None
+            if not all(relation.values()) or "fail" in observation_results:
+                return "fail", None
+            if "indeterminate" in observation_results:
+                return "indeterminate", None
+        else:
+            if context.get("compositeStatus") == "mismatch":
+                return "fail", None
+            if context.get("compositeStatus") == "unavailable":
+                return "indeterminate", None
+            if context.get("compositeStatus") != "verified":
+                return "error", None
         freshness_limit = None
 
     # A deterministic contradiction above cannot be hidden by an outage below.
@@ -182,7 +279,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
 
     def test_vector_hash_count_and_names_are_exact(self):
         vectors = self.data["vectors"]
-        self.assertEqual(self.data["count"], 42)
+        self.assertEqual(self.data["count"], 47)
         self.assertEqual(self.data["count"], len(vectors))
         self.assertEqual(len({case["name"] for case in vectors}), len(vectors))
         self.assertEqual(
@@ -211,12 +308,35 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             "fv-active-reorganization", "fv-head-unavailable",
             "fv-fake-confirmation-count", "fv-demos-bft-final-success",
             "fv-dacs5-rsv-reuses-same-verdict",
+            "fv-htlc-source-lock-missing",
+            "fv-htlc-source-claim-missing",
+            "fv-htlc-destination-lock-missing",
+            "fv-htlc-destination-reveal-missing",
+            "fv-htlc-observation-shape-missing",
+            "fv-htlc-destination-reveal-wrong-network",
         }
         self.assertTrue(required_names.issubset(self.cases))
         self.assertEqual(
             evaluate(self.cases["fv-deterministic-mismatch-precedes-outage"]["input"])[0],
             "fail",
         )
+
+    def test_htlc_context_carries_four_independent_observations(self):
+        context = self.cases["fv-htlc-both-legs-success"]["input"]["context"]
+        self.assertNotIn("compositeStatus", context)
+        self.assertTrue(HTLC_OBSERVATIONS.issubset(context))
+        transaction_hashes = {
+            context[field]["transactionRef"]["txHash"]
+            for field in HTLC_OBSERVATIONS
+        }
+        self.assertEqual(len(transaction_hashes), 4)
+        for field in HTLC_OBSERVATIONS:
+            observation = context[field]
+            self.assertIn("transactionInclusionProof", observation)
+            self.assertIn("selectedEventProof", observation)
+            self.assertIn("authenticatedHead", observation)
+            self.assertIn("ancestryProof", observation)
+            self.assertIn("authorityEvidence", observation)
 
     def test_generator_check_is_enforced(self):
         result = subprocess.run(

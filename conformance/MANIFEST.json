@@ -159,7 +159,7 @@
       "status": "golden",
       "reason": "steward-corrected from §B.7 + executable exact-membership predicate",
       "want": {
-        "count": 29,
+        "count": 30,
         "separators": [
           "dacs-agreement:v1:",
           "dacs-amendment:v1:",
@@ -178,6 +178,7 @@
           "dacs-fault-bundle-pointer:v1:",
           "dacs-fault-bundle:v1:",
           "dacs-finality-commitment:v1:",
+          "dacs-legacy-bundle-checkpoint-binding:v1:",
           "dacs-legacy-bundle-checkpoint:v1:",
           "dacs-listing:v1:",
           "dacs-payee-bound-agreement:v1:",

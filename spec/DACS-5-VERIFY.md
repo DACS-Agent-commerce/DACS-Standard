@@ -343,6 +343,49 @@ derived from this artifact's own finalized AnchorReceipt and its binding-
 defined evidence, not `createdAt`, `observedAt`, or an application clock. The
 address is immutable for one substrate and DACS major-version line.
 
+On a write-input-mapping substrate, including Demos, that logical address does
+not identify the native Storage Program by itself. The checkpoint producer MUST
+also publish this distinct signed mapping object:
+
+```
+type LegacyBundleCheckpointBinding = {
+  checkpointBindingVersion: "1"
+  substrate: string                    // exact checkpoint/bundle substrate
+  logicalAddress: string               // exact CF-4 checkpoint logical address
+  nativeAddress: string                // actual write-input-derived address
+  checkpointContentHash: string        // hash of the resolved checkpoint
+  anchorTx: string                     // exact native anchor transaction
+  signer: ClaimReference               // authorized steward signing the checkpoint
+  signature: ComponentSignature        // over the binding domain below
+}
+```
+
+Its canonical form omits `signature`; it is signed over
+`"dacs-legacy-bundle-checkpoint-binding:v1:" ||
+lowerhex(SHA-256(canonical(binding)))`. `signature.signer` MUST equal `signer`,
+and that signer MUST be the §11.1.1 steward authorized at the checkpoint's
+finalized receipt position. The producer publishes the binding on the
+steward's §6.3.5 well-known index or a §6.3.6 DACS catalog and MAY additionally
+deliver it directly to consumers. A discovery surface is only a carrier; the
+signature and receipt checks below establish authority.
+
+For a requested substrate, the consumer derives
+`dacs5:legacy-bundle-checkpoint:v1:{CF-4(substrate)}`, discovers binding
+candidates for that exact address, and verifies the binding signature,
+supported version, substrate, derived logical address, native address,
+checkpoint hash, anchor transaction, and steward authority before use. It then
+fetches the checkpoint from `nativeAddress` and verifies its closed shape,
+signature, substrate/policy, canonical hash, and finalized AnchorReceipt. The
+receipt MUST bind the same substrate, logical/native addresses, checkpoint
+hash, anchor transaction, native writer and nonce and MUST carry the Demos BFT
+finality/order evidence required by DEMOS-MAPPING §A.2. Missing binding
+discovery or unavailable record/receipt proof is `indeterminate`; a malformed,
+badly signed, internally inconsistent, or wrongly addressed candidate is
+invalid; multiple conflicting steward-authorized candidates are
+`indeterminate`. A consumer MUST NOT query the logical address as a Demos native
+address, infer a native address from a Storage Program name, or accept a caller-
+configured native address.
+
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
 Per the §B.2 canonical-form template, omit `signatures` and `anchoredByRole` identically for all three bundle types. Every other field is hashed, including exactly one type discriminator and `faultedParty` on either absolute-fault type. The **attestation-bundle hash** (`attestation_bundle_hash`) is sha256(canonical_form), hex-encoded. Each `BundleSignature.value` MUST use the matching domain-separated payload:
@@ -399,6 +442,8 @@ invalid for audit.
   MUST resolve exactly one `LegacyBundleActivationCheckpoint`, verify its
   discriminator, shape, steward signature, logical/native address binding, and
   finalized AnchorReceipt, and derive activation order only from that receipt.
+  On a write-input-mapping substrate, resolution MUST pass the signed
+  `LegacyBundleCheckpointBinding` discovery and verification path above.
   A merely signed object, caller-selected checkpoint, or locally configured
   timestamp is not authority. Multiple conflicting authorized checkpoint
   candidates, unavailable proof, an unresolved reorganisation, or an
@@ -741,6 +786,7 @@ type LegacyBundleEraEvidence = {
   bundleContentHash: string                       // exact legacy copy hash; equals its ResolutionContextEntry/counterpartyRef contentHash
   resolvedRole: "buyer" | "seller"                // exact role under which this copy resolved
   checkpointRef: AttestationRef                   // exact governed LegacyBundleActivationCheckpoint
+  checkpointBinding?: LegacyBundleCheckpointBinding // REQUIRED on a write-input-mapping substrate; omitted only for a pure mapping
   checkpointReceipt: AnchorReceipt                // finalized receipt establishing checkpoint total-order position
   historicalAnchorReceipt: AnchorReceipt          // finalized exact-hash/exact-role anchor strictly before checkpointReceipt
 }

@@ -127,7 +127,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Refund laundering | malicious seller | §9.13 (anchored amendments) | mitigated |
 | Decimal-overflow on cross-decimal pay | implementation bug | §9.13 (string-decimal arithmetic) | mitigated |
 | Bundle forgery | malicious counterparty | §10.11 (co-signature requirement) | mitigated |
-| Fresh or cross-role-rebound legacy single-signed abort poisons current reputation | malicious counterparty | §10.4.1 LAB-1..LAB-7 + §10.5.1 guard (v) (governed checkpoint; exact-hash/exact-role pre-checkpoint receipt) | mitigated for current reputation; historical weak-form bytes remain audit-visible |
+| Fresh or cross-role-rebound legacy single-signed abort poisons current reputation | malicious counterparty | §10.4.1 LAB-1..LAB-7 + §10.5.1 guard (v) (governed checkpoint; on Demos, steward-signed logical→native checkpoint binding plus exact finalized receipt; exact-hash/exact-role pre-checkpoint receipt) | mitigated for current reputation; historical weak-form bytes remain audit-visible |
 | Bundle suppression | malicious counterparty | §10.11 + §10.4.3 authoritative-absence gate | mitigated when authoritative absence is available; otherwise indeterminate |
 | Bundle-copy read censorship (a hidden divergent copy appears one-sided) | malicious infrastructure | CORE §5 SR-2 absence evidence + §10.4.3 / §10.5.1 guard (iv) | mitigated for integrity; one-copy availability depends on the substrate binding |
 | Sybil reputation farming | sybil attacker | §10.11 (per-primary-claim keying) | mitigated for cross-tier; not for same-tier |

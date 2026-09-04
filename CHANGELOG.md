@@ -20,6 +20,12 @@ The format used per release:
   finalized receipt, producers use FAB/EBFAB; a legacy `AttestationBundle`
   affects current reputation only when finalized receipt history proves its
   exact hash at the exact role address strictly before the checkpoint.
+- **Demos-native checkpoint discovery** — adds the steward-signed
+  `LegacyBundleCheckpointBinding`, published through the steward well-known
+  index or a DACS catalog. Consumers verify its exact logical/native/hash/anchor
+  tuple, resolve the real checkpoint, and authenticate the finalized Demos
+  receipt; a caller-supplied address or bare logical-address lookup has no
+  authority.
 - **Fresh/rebound legacy copies fail closed** — post-checkpoint, backdated,
   cross-role-rebound, or otherwise invalid legacy copies remain audit-visible
   but non-countable. Missing, conflicting, pruned, reorged, or unorderable era

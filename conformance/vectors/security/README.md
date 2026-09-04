@@ -328,6 +328,13 @@ eligible only when finalized history binds its exact content hash to the exact
 resolved buyer/seller role strictly before the governed per-substrate
 checkpoint.
 
+Every eligible control resolves a signed `LegacyBundleCheckpointBinding` from
+the Demos discovery surface, verifies real Ed25519 signatures on the binding and
+checkpoint, fetches the bound native record, and validates a complete finalized
+AnchorReceipt including logical/native address, content hash, transaction,
+writer, nonce, BFT proof and consensus order. No pre-asserted
+`signatureValid`/`addressBound` booleans enter the decision.
+
 The adversarial cases cover fresh and backdated post-checkpoint legacy
 production, same-position refusal, buyer↔seller rebinding, hash and substrate
 mismatch, invalid steward signature/address binding, unavailable or conflicting

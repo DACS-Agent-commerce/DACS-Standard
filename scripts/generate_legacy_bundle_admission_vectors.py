@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import copy
 import hashlib
 import json
 from pathlib import Path
+
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+import jcs
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,21 +22,142 @@ OUTPUT = (
 )
 CHECKPOINT_ORDER = 100
 LEGACY_HASH = hashlib.sha256(b"dacs-lab-legacy-bundle").hexdigest()
+CHECKPOINT_DOMAIN = b"dacs-legacy-bundle-checkpoint:v1:"
+BINDING_DOMAIN = b"dacs-legacy-bundle-checkpoint-binding:v1:"
+SUBSTRATE = "demos-mainnet"
+LOGICAL_ADDRESS = "dacs5:legacy-bundle-checkpoint:v1:demos-mainnet"
+NATIVE_ADDRESS = "stor-" + hashlib.sha256(
+    b"lab-steward:legacy-bundle-checkpoint:41:lab-v1"
+).hexdigest()[:40]
+ANCHOR_TX = hashlib.sha256(b"lab-checkpoint-anchor-tx").hexdigest()
+
+
+def key(label: str) -> Ed25519PrivateKey:
+    return Ed25519PrivateKey.from_private_bytes(hashlib.sha256(label.encode()).digest())
+
+
+STEWARD_KEY = key("dacs-lab-authorized-steward")
+OUTSIDER_KEY = key("dacs-lab-unauthorized-signer")
+
+
+def claim(private: Ed25519PrivateKey) -> str:
+    public = private.public_key().public_bytes(
+        serialization.Encoding.Raw, serialization.PublicFormat.Raw
+    )
+    return "key:" + public.hex()
+
+
+STEWARD_CLAIM = claim(STEWARD_KEY)
+
+
+def canonical(value: object) -> bytes:
+    return jcs.canonicalize(value).encode("utf-8")
+
+
+def content_hash(value: dict) -> str:
+    unsigned = {key: item for key, item in value.items() if key != "signature"}
+    return hashlib.sha256(canonical(unsigned)).hexdigest()
+
+
+def signature(value: dict, private: Ed25519PrivateKey, domain: bytes) -> dict:
+    digest = content_hash(value)
+    encoded = base64.urlsafe_b64encode(
+        private.sign(domain + digest.encode("ascii"))
+    ).decode("ascii").rstrip("=")
+    return {
+        "algorithm": "ed25519",
+        "signer": claim(private),
+        "value": encoded,
+    }
 
 
 def checkpoint(**overrides: object) -> dict:
-    value = {
-        "state": "finalized",
-        "unique": True,
-        "ordered": True,
-        "stewardAuthorized": True,
-        "signatureValid": True,
-        "addressBound": True,
-        "substrate": "demos-mainnet",
-        "order": CHECKPOINT_ORDER,
+    state = str(overrides.pop("state", "finalized"))
+    unique = bool(overrides.pop("unique", True))
+    ordered = bool(overrides.pop("ordered", True))
+    signature_valid = bool(overrides.pop("signatureValid", True))
+    steward_authorized = bool(overrides.pop("stewardAuthorized", True))
+    address_bound = bool(overrides.pop("addressBound", True))
+    if overrides:
+        raise ValueError(f"unsupported checkpoint overrides: {sorted(overrides)}")
+
+    signer_key = STEWARD_KEY if steward_authorized else OUTSIDER_KEY
+    artifact = {
+        "legacyBundleCheckpointVersion": "1",
+        "substrate": SUBSTRATE,
+        "policy": "legacy-attestation-pre-checkpoint-only",
+        "createdAt": 1_800_000_000_000,
     }
-    value.update(overrides)
-    return value
+    artifact["signature"] = signature(artifact, signer_key, CHECKPOINT_DOMAIN)
+    if not signature_valid:
+        original = artifact["signature"]["value"]
+        artifact["signature"]["value"] = ("A" if original[0] != "A" else "B") + original[1:]
+
+    checkpoint_hash = content_hash(artifact)
+    bound_logical = LOGICAL_ADDRESS if address_bound else LOGICAL_ADDRESS + ":wrong"
+    binding = {
+        "checkpointBindingVersion": "1",
+        "substrate": SUBSTRATE,
+        "logicalAddress": bound_logical,
+        "nativeAddress": NATIVE_ADDRESS,
+        "checkpointContentHash": checkpoint_hash,
+        "anchorTx": ANCHOR_TX,
+        "signer": claim(signer_key),
+    }
+    binding["signature"] = signature(binding, signer_key, BINDING_DOMAIN)
+
+    evidence_value = json.dumps(
+        {
+            "blockHeight": str(CHECKPOINT_ORDER),
+            **({"transactionIndex": 0} if ordered else {}),
+            "transactionHash": ANCHOR_TX,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    receipt = {
+        "receiptVersion": "1",
+        "substrate": SUBSTRATE,
+        "finalityProfile": "demos-bft-final",
+        "logicalAddress": LOGICAL_ADDRESS,
+        "nativeAddress": NATIVE_ADDRESS,
+        "contentHash": checkpoint_hash,
+        "transactionRef": {"kind": "demos-transaction", "value": ANCHOR_TX},
+        "writer": claim(signer_key).removeprefix("key:"),
+        "nonce": "41",
+        "state": state,
+        "observationDisposition": (
+            "established" if state == "finalized" else "indeterminate"
+        ),
+        "observedAt": 1_800_000_000_500,
+        "blockRef": {
+            "id": hashlib.sha256(b"lab-checkpoint-block").hexdigest(),
+            "height": str(CHECKPOINT_ORDER),
+            "timestamp": 1_800_000_000_100,
+        },
+        "evidence": {"kind": "demos-bft-final", "value": evidence_value},
+    }
+
+    candidates = [binding]
+    if not unique:
+        conflicting = copy.deepcopy(binding)
+        conflicting["nativeAddress"] = "stor-" + "f" * 40
+        conflicting["anchorTx"] = hashlib.sha256(b"lab-conflicting-anchor").hexdigest()
+        conflicting["signature"] = signature(conflicting, signer_key, BINDING_DOMAIN)
+        candidates.append(conflicting)
+
+    return {
+        "state": state,
+        "authorizedStewards": [STEWARD_CLAIM],
+        "discovery": {
+            "mechanism": "steward-well-known-or-dacs-catalog",
+            "requestedLogicalAddress": LOGICAL_ADDRESS,
+            "candidateBindings": candidates,
+        },
+        "anchoredRecords": {
+            NATIVE_ADDRESS: {"artifact": artifact, "receipt": receipt}
+        },
+    }
 
 
 def anchor(**overrides: object) -> dict:
@@ -74,6 +202,7 @@ def case(
                 "finalisedAt": finalised_at,
             },
             "resolvedRole": resolved_role,
+            "bundleAnchorSubstrate": SUBSTRATE,
             "presentedAtOrder": presentation_order,
             "checkpoint": checkpoint_value,
             "historicalAnchor": anchor_value,

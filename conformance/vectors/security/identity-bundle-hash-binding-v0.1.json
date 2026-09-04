@@ -1,0 +1,1311 @@
+{
+  "set": "identity-bundle-hash-binding-v0.1",
+  "spec": "CORE §B.2 IBH-1..IBH-6 cross-stage IdentityBundle digest binding",
+  "tier": "candidate",
+  "supersedesIdentityBundleHashProfiles": [
+    "payee-destination-binding-v0.1"
+  ],
+  "description": "One bare current digest encoding across DACS-2/3/5 with a typed, signature-preserving legacy DACS-3 agreement projection.",
+  "count": 22,
+  "hash": "9f7c3fcc426df499c1a1eae35af34c281e3befd1b405ef40b539663d7a827d60",
+  "vectors": [
+    {
+      "name": "current-agreement-to-terminal-succeeds",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "authorizedForTerminalClosure": true,
+        "reason": "current-byte-exact-binding",
+        "projectedBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "comparison": "byte-exact-current",
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Every current stage carries the same bare lowercase digest."
+    },
+    {
+      "name": "current-agreement-prefixed-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "invalid-current-agreement-encoding",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Equal decoded bytes do not make a prefixed current agreement valid."
+    },
+    {
+      "name": "current-agreement-uppercase-hex-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9C5686E8D8B864B978DD6C8104EDFE4EDDB17E0EAEA7D7F776A30E2F27B93CF4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "invalid-current-agreement-encoding",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Current hexadecimal is lowercase and is never normalized on read."
+    },
+    {
+      "name": "current-composite-prefixed-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "invalid-composite-encoding",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "The legacy exception never applies to a DACS-2 composite record."
+    },
+    {
+      "name": "current-payment-input-prefixed-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "invalid-payment-encoding",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "The legacy exception never applies to a DACS-4 payment-party input."
+    },
+    {
+      "name": "current-session-prefixed-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "invalid-session-encoding",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "SessionParty always uses the current bare form."
+    },
+    {
+      "name": "current-terminal-prefixed-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "invalid-terminal-encoding",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "BundleParty always uses the current bare form."
+    },
+    {
+      "name": "wrong-agreement-digest-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "agreement-bundle-digest-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "A well-encoded but wrong agreement digest cannot bind the resolved bundle."
+    },
+    {
+      "name": "wrong-composite-digest-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "composite-bundle-digest-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "The Vet record must bind the same resolved bundle."
+    },
+    {
+      "name": "wrong-payment-input-digest-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "payment-bundle-digest-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "A payment handler must bind the same resolved bundle before a rail action."
+    },
+    {
+      "name": "wrong-session-digest-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "session-bundle-digest-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Session state cannot substitute a different IdentityBundle."
+    },
+    {
+      "name": "wrong-terminal-digest-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "terminal-bundle-digest-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Terminal audit output cannot substitute a different IdentityBundle."
+    },
+    {
+      "name": "identity-bundle-unavailable-is-indeterminate",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "unavailable",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "identity-bundle-unavailable",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Digest strings alone do not replace independent bundle resolution."
+    },
+    {
+      "name": "legacy-prefixed-agreement-projects-to-bare-terminal",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "legacy",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "authorizedForTerminalClosure": true,
+        "reason": "legacy-typed-digest-binding",
+        "projectedBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "comparison": "typed-legacy-digest",
+        "legacyAgreementBytesPreserved": true
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Verified legacy agreement bytes remain unchanged while DACS-5 emits bare hex."
+    },
+    {
+      "name": "legacy-prefixed-agreement-without-anchor-proof-is-indeterminate",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "legacy",
+          "legacyAnchorAuthenticated": false
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "legacy-context-not-authenticated",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "A legacy spelling without authenticated commitment-era context is audit-only."
+    },
+    {
+      "name": "legacy-prefixed-wrong-digest-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "legacy",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "sha256:51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd51cd"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "agreement-bundle-digest-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "The typed legacy comparison does not weaken digest equality."
+    },
+    {
+      "name": "legacy-uppercase-prefix-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "legacy",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "SHA256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "invalid-legacy-agreement-encoding",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Only the exact frozen lowercase prefix is readable."
+    },
+    {
+      "name": "legacy-bare-agreement-remains-byte-exact",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "legacy",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "pass",
+      "want": {
+        "authorizedForTerminalClosure": true,
+        "reason": "current-byte-exact-binding",
+        "projectedBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "comparison": "byte-exact-current",
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "A legacy commitment does not force prefix insertion into an already bare value."
+    },
+    {
+      "name": "prefix-insertion-invalidates-signed-agreement",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "invalid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "sha256:9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "agreement-integrity-failed",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "A reader cannot add the prefix before checking the signed bytes."
+    },
+    {
+      "name": "prefix-removal-invalidates-signed-legacy-agreement",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "legacy",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "invalid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "agreement-integrity-failed",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Projection never rewrites the agreement field covered by its signatures."
+    },
+    {
+      "name": "agreement-role-substitution-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "seller",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "party-role-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Digest equality cannot move a bundle between commercial roles."
+    },
+    {
+      "name": "terminal-primary-claim-substitution-rejected",
+      "operation": "validate-identity-bundle-cross-stage-binding",
+      "trustedContext": {
+        "commitment": {
+          "type": "finality",
+          "legacyAnchorAuthenticated": true
+        },
+        "agreementIntegrity": "valid",
+        "resolvedIdentityBundle": {
+          "state": "present",
+          "identityBundleWithoutPresentation": {
+            "bundleVersion": "1",
+            "presentedBy": "cci-lei:984500IBHBUYER00001",
+            "presentedAt": 1800000000000,
+            "sessionNonce": "ibh-vector-session-nonce-000000000001",
+            "claims": [
+              {
+                "ref": "cci-lei:984500IBHBUYER00001",
+                "metadata": {
+                  "fixture": "identity-bundle-hash-binding-v0.1"
+                }
+              }
+            ]
+          },
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001"
+        }
+      },
+      "protocolInput": {
+        "compositeBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "paymentPayerBundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4",
+        "agreementParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "sessionParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHBUYER00001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        },
+        "bundleParty": {
+          "role": "buyer",
+          "primaryClaim": "cci-lei:984500IBHSELLER0001",
+          "bundleHash": "9c5686e8d8b864b978dd6c8104edfe4eddb17e0eaea7d7f776a30e2f27b93cf4"
+        }
+      },
+      "expected": "fail",
+      "want": {
+        "authorizedForTerminalClosure": false,
+        "reason": "party-primary-claim-mismatch",
+        "projectedBundleHash": null,
+        "comparison": null,
+        "legacyAgreementBytesPreserved": false
+      },
+      "rule": "CORE §B.2 IBH-1..IBH-6",
+      "note": "Digest equality cannot move a bundle to another canonical primary claim."
+    }
+  ]
+}

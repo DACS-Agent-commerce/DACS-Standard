@@ -27,6 +27,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | FS-* | FeeSchedule disclosure on agreement artifacts | §8.5.3 | §14.3 |
 | GOV-* | Registry governance & phase disclosure | §11.1.1 / §7.4.4 | §14.7 |
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
+| IBH-* | Cross-stage IdentityBundle digest derivation, wire encoding, and legacy-agreement terminal projection | §B.2 | §14.3 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
 | LP-* | Listing publishers | §6.3 | §14.1 |

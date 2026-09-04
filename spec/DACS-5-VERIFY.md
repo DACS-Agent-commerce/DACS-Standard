@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.6** on the common DACS v0.1 baseline. v0.6 requires the shared bare-lowercase `IdentityBundleHash` in current session and terminal party records and defines the exact typed projection for an authenticated legacy DACS-3 agreement. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -60,7 +60,7 @@ type SessionState =
   | "substrate-failure-paused" | "failed-substrate"
 type SessionParty = {
   role: "buyer" | "seller" | "orchestrator"
-  bundleHash: string                         // sha256 of the verified IdentityBundle
+  bundleHash: IdentityBundleHash             // exact bare-lowercase IBH-1 digest of the verified IdentityBundle (CORE §B.2)
   primaryClaim: ClaimReference               // bundle.presentedBy
   vetRecordRef?: AttestationRef              // post-Vet
 }
@@ -230,7 +230,7 @@ type BundleParty = {
 
   role: "buyer" | "seller" | "orchestrator"
 
-  bundleHash: string
+  bundleHash: IdentityBundleHash
 
   primaryClaim: ClaimReference
 
@@ -264,6 +264,24 @@ type BundleSignature = {
 
 }
 ```
+
+**Cross-stage IdentityBundle binding.** Every current `SessionParty.bundleHash`
+and `BundleParty.bundleHash` MUST satisfy CORE §B.2 IBH-1..IBH-3. Before a
+terminal bundle is accepted, a consumer MUST resolve each buyer and seller's
+signed IdentityBundle, recompute its IBH-1 digest, and find exactly one
+`AgreementParty` with the same role and canonical primary claim. The digest
+must match the AgreementParty, SessionParty and BundleParty. An orchestrator
+that is not an agreement party is checked between its resolved IdentityBundle,
+SessionParty and BundleParty instead.
+
+For an agreement authenticated by a legacy DACS-3 `CommitmentRecord`, the
+AgreementParty alone MAY use the exact historical `sha256:<64-lowercase-hex>`
+form after the complete IBH-4 validation. The consumer compares its tagged
+decoded digest at this one boundary and emits the SessionParty and BundleParty
+values as bare lowercase hex. It MUST preserve the original agreement and its
+reference unchanged. Missing resolution, ambiguous party matching, unsupported
+legacy context, or a role, primary-claim or digest mismatch blocks terminal
+closure; prefix insertion/removal never repairs a signed artifact.
 
 **FaultAttestationBundle (v0.3 production type).** The absolute-fault variant of the end-of-session artifact. Identical to `AttestationBundle` in every shared field's meaning; it differs in exactly two ways: its version literal is `faultBundleVersion` (its structural discriminator — CORE §11.1.2 new-type refusal), and it carries the REQUIRED hashed `faultedParty`. It signs under its own `dacs-fault-bundle:v1:` domain (§B.7).
 

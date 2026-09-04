@@ -4,7 +4,7 @@
 
 ## Chapter 8 — DACS-3: Negotiate
 
-**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.5** (on the common DACS v0.1 baseline; v0.5 binds a `pay-alternative` Listing to exactly one complete `terms.rail` selection, validates payee-bound payout coverage against the DACS-4 APR effective pipeline, and signs any cross-job replacement through `priorPaymentDispositionRef`; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
+**Stage:** Negotiate (3rd of 5). **Status:** Draft — **DACS-3 v0.6** (on the common DACS v0.1 baseline; v0.6 requires the CORE §B.2 bare-lowercase `IdentityBundleHash` in current AgreementParty values and confines the historical `sha256:` spelling to the authenticated legacy-commitment reader; v0.5 binds a `pay-alternative` Listing to exactly one complete `terms.rail` selection, validates payee-bound payout coverage against the DACS-4 APR effective pipeline, and signs any cross-job replacement through `priorPaymentDispositionRef`; v0.4 removes the commitment-timestamp circularity, makes the commitment signature explicit, and requires a finalized commitment before irreversible Settle effects; v0.3 adds the optional `feeSchedule` cost-disclosure on agreement artifacts §8.5.3, the optional `AgreementParty.encryptionKey` binding for `encrypt-to-buyer` private delivery, DACS-4 §9.6.1, sealed-envelope procurement role binding / SE-8 and same-bidder commit authority / SE-9, the minor-safe `PayeeBoundAgreementDocument` plus `commit-payee-bound-agreement` phase for DACS-4 §9.5.1 PB-1, and metered-pricing quantity carriage `terms.meteredQuantity` with the MTR-1..5 recompute + unrecognized-pricing-kind fail-closed rules §8.5.2). **Depends on:** SR-2 (required for public commitments), SR-4 (required for genuinely private negotiation patterns); references DACS-1 listings and DACS-2 verified bundles. **Used by:** DACS-4 (pricing + rail input to settlement), DACS-5 (agreement reference in session bundle).
 
 ### 8.1 Abstract
 
@@ -372,7 +372,7 @@ type AgreementParty = {
 
   role: "buyer" | "seller" | "bidder-non-winning"
 
-  bundleHash: string                   // sha256 of the post-Vet IdentityBundle
+  bundleHash: IdentityBundleHash       // exact bare-lowercase IBH-1 digest of the post-Vet IdentityBundle (CORE §B.2)
 
   primaryClaim: ClaimReference         // pulled from bundle.presentedBy
 
@@ -456,6 +456,15 @@ type AgreementSignature = {
 
 }
 ```
+
+For every agreement produced under this revision, each
+`AgreementParty.bundleHash` MUST satisfy CORE §B.2 IBH-1..IBH-3. The
+commitment handler verifies the resolved signed IdentityBundle and the
+corresponding CompositeVerificationRecord before it accepts the value. The
+frozen `sha256:<64-lowercase-hex>` spelling is readable only through IBH-4 when
+the agreement is authenticated by a legacy `CommitmentRecord`; it is invalid
+for a `FinalityCommitmentRecord` and MUST NOT be emitted by a current agreement
+producer.
 
 An artifact MUST carry exactly one of `agreementVersion` and `payeeBoundAgreementVersion`; carrying both or neither is invalid. `AgreementDocument` MUST NOT carry `terms.payoutBindings` or `terms.priorPaymentDispositionRef`. `PayeeBoundAgreementDocument.terms.payoutBindings` is REQUIRED and MUST contain exactly one entry for every concrete payment invocation in the pinned listing's DACS-4 effective pipeline, and no entry for any other invocation. For an ordinary listing that effective pipeline is the signed pipeline unchanged; for `pay-alternative`, APR-4 places the selected concrete handler at the projection phase's original index. Each entry's `railId` MUST equal that concrete phase's `parameters.rail`; `phaseIndex` is its bare-integer pipeline index (`BundlePhaseEntry.index`, §9.5.1 PC-2). The `(railId, phaseIndex)` key MUST be unique. `priorPaymentDispositionRef`, when present, is action-bearing signed replacement metadata and MUST satisfy APR-6 before the new Agreement is committed or authorized; it is not an informational `additionalTerms` value. These rules place every payment destination and replacement claim under every party signature and the agreement hash, while keeping the legacy artifact's meaning unchanged.
 
@@ -609,7 +618,7 @@ type CommitPayeeBoundAgreementOutput = PhaseHandlerResult & {
 
 1. require the artifact selected by the phase kind (`AgreementDocument` for `commit-agreement`; `PayeeBoundAgreementDocument` for `commit-payee-bound-agreement`), then compute `agreementHash = sha256(canonical_JCS(agreement))` with signatures omitted;
 2. verify all required signatures are present and valid;
-3. validate the agreement against the listing per §8.5.2. The **value checks** (currency / band / rail / deliverable / pattern) gate **here**; the two **`committedAt`-relative checks** (deadline, `notAfter`) are re-evaluated against the finalized receipt timestamp after step 6, per the §8.5.2 ordering note. Any validation failure MUST cause the phase to fail with class `permanent`;
+3. validate the agreement against the listing per §8.5.2 and require every `AgreementParty.bundleHash` to use the current IBH-2 wire form and match the independently resolved IdentityBundle and CompositeVerificationRecord. The **value checks** (currency / band / rail / deliverable / pattern) gate **here**; the two **`committedAt`-relative checks** (deadline, `notAfter`) are re-evaluated against the finalized receipt timestamp after step 6, per the §8.5.2 ordering note. Any validation failure MUST cause the phase to fail with class `permanent`;
 4. construct a `FinalityCommitmentRecord`. The earlier `CommitmentRecord` remains a read-only legacy artifact so historical sessions stay verifiable:
 
 ```
@@ -655,7 +664,7 @@ type AgreementCommitmentRecord = CommitmentRecord | FinalityCommitmentRecord
 - (CA-4) The agreement artifact itself MAY be anchored separately (publicly or privately). For institutional flows, the agreement artifact is typically NOT anchored on the public chain — only its hash is. Parties retain the agreement artifact off-chain (or encrypted-anchored).
 - (CA-5) A commitment handler MUST reject the other phase's artifact type before signature or listing-term interpretation. It MUST NOT coerce a `PayeeBoundAgreementDocument` into an `AgreementDocument`, or vice versa, by dropping an unknown version discriminator or `terms.payoutBindings`.
 - (CA-6) **Commitment authority.** The authenticated session orchestrator is the protocol authority for the commitment phase. For a `FinalityCommitmentRecord`, a consumer MUST verify the embedded step 5 signature under `"dacs-finality-commitment:v1:"` against that orchestrator's primary claim. For a legacy `CommitmentRecord`, it MUST verify the historical external/carried signature under `"dacs-commitment:v1:"`. The SR-2 transaction submitter, deployer, owner, and native address MUST NOT establish agreement authority or a buyer/seller role.
-- (CA-7) **Agreement binding.** A consumer MUST verify the agreement's required party signatures, recompute `agreementHash`, and match it to the applicable `AgreementCommitmentRecord`. When CA-4 is used, the separate agreement anchor's deployer, owner, and native address MUST NOT affect acceptance.
+- (CA-7) **Agreement binding.** A consumer MUST verify the agreement's required party signatures, recompute `agreementHash`, and match it to the applicable `AgreementCommitmentRecord`. It MUST then apply the IBH-2 current form for `FinalityCommitmentRecord`, or the narrowly tagged IBH-4 compatibility reader for a legacy `CommitmentRecord`, before comparing any party bundle digest. When CA-4 is used, the separate agreement anchor's deployer, owner, and native address MUST NOT affect acceptance.
 - (CA-8) **Timestamp separation.** `FinalityCommitmentRecord.createdAt` is signed construction metadata. Its authoritative `committedAt` is not a record field: it is the consensus timestamp of the verified finalized receipt. A consumer MUST reject a finality-commitment flow that substitutes `createdAt`, `observedAt`, an RPC response time, or an indexer timestamp for `committedAt`. When consuming a legacy `CommitmentRecord`, a new reader MUST verify that its signed `committedAt` equals the authenticated historical anchor timestamp; mismatch is rejected.
 - (CA-9) **Minor-safe type distinction.** A producer conforming to DACS-3 v0.4 or later MUST emit `FinalityCommitmentRecord`, never the legacy type. A reader MUST select the type before signature or timestamp interpretation: exactly one of `dacsVersion: "1"` or `finalityCommitmentVersion: "1"` MUST be present. Both, neither, or an unsupported discriminator MUST be rejected. A reader MUST NOT coerce one type into the other by dropping `committedAt`, `createdAt`, `signature`, or either discriminator. A reader that supports only the legacy type safely rejects the structurally distinct finality type as unsupported under CORE §11.1.2.
 
@@ -729,6 +738,14 @@ A DACS-1 listing’s pipeline declares which negotiation pattern is used. Each P
 ### 8.11 Backwards compatibility
 
 **Commitment records.** DACS-3 v0.4 adds `FinalityCommitmentRecord` as a distinct artifact type; it does not mutate the v0.1-v0.3 `CommitmentRecord`. New producers emit only the finality type. New readers retain the legacy validation arm for historical audit, including the `"dacs-commitment:v1:"` signature and the cross-check between its signed `committedAt` and authenticated historical anchor time. Legacy readers encounter `finalityCommitmentVersion` instead of `dacsVersion` and reject the unsupported type before acting, as required by CA-9 and CORE §11.1.2.
+
+**IdentityBundle hash spelling.** Current agreement authoring uses the bare
+`IdentityBundleHash` in CORE §B.2. Previously signed agreements that used the
+`sha256:` spelling are not rewritten: after all ordinary agreement and legacy
+commitment checks, IBH-4 parses their digest into a tagged compatibility value.
+DACS-5 applies the deterministic IBH-5 projection into its bare terminal field.
+The prefix exception is not a general string-normalisation rule and cannot be
+used with a `FinalityCommitmentRecord`.
 
 **Institutional RFQ workflows.** A negotiate-rfq run maps to existing bilateral RFQ as a Bloomberg-chat RFQ maps to a Symphony RFQ: same semantic shape, different transport (the SR-4 channel). Existing desks wrap their negotiation logic as a DACS-3 phase without changing it.
 

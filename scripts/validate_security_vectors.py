@@ -52,6 +52,9 @@ KNOWN_VERDICTS = {
 
 VERDICT_FIELDS = ("expected", "decision")
 
+HISTORICAL_PREFIXED_PB_SET = "payee-destination-binding-v0.1"
+CURRENT_IBH_SET = "identity-bundle-hash-binding-v0.1"
+
 
 def canonical_encodings(vectors: list) -> dict[str, bytes]:
     """The accepted canonical encodings of the vectors array (see docstring)."""
@@ -86,6 +89,31 @@ def validate_set(path: str) -> tuple[list[str], int]:
     stem = name[:-len(".json")]
     if data["set"] != stem:
         errors.append(f"{name}: 'set' is '{data['set']}' but filename stem is '{stem}'")
+
+    # The original PB corpus remains useful for its destination-binding and
+    # artifact-gate decisions, but its signed fixtures carry the historical
+    # sha256-prefixed AgreementParty encoding. It must never be advertised as
+    # current IdentityBundleHash wire conformance.
+    if stem == HISTORICAL_PREFIXED_PB_SET:
+        required_profile = {
+            "status": "historical-superseded",
+            "wireEncoding": "sha256-prefixed",
+            "currentAuthoring": False,
+            "supersededBy": CURRENT_IBH_SET,
+        }
+        if data.get("identityBundleHashProfile") != required_profile:
+            errors.append(
+                f"{name}: identityBundleHashProfile must be exactly "
+                f"{required_profile!r}"
+            )
+
+    if stem == CURRENT_IBH_SET:
+        supersedes = data.get("supersedesIdentityBundleHashProfiles")
+        if supersedes != [HISTORICAL_PREFIXED_PB_SET]:
+            errors.append(
+                f"{name}: current IBH set must explicitly supersede "
+                f"{HISTORICAL_PREFIXED_PB_SET}"
+            )
 
     vectors = data["vectors"]
     if not isinstance(vectors, list) or not vectors:

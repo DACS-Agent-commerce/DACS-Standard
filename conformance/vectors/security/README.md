@@ -42,6 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
+| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6 cross-stage IdentityBundle digest binding | 22 | `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -660,6 +661,13 @@ DACS-3 §8.5 defines the `PayeeBoundAgreementDocument` signature input as
 also exercise §B.7/SIG-2 by replaying legacy agreement signatures under the
 payee-bound domain and vice versa.
 
+The signed fixtures in this corpus predate IBH-1..IBH-6 and carry the historical
+`sha256:`-prefixed `AgreementParty.bundleHash`. Their top-level
+`identityBundleHashProfile` therefore marks that wire encoding
+`historical-superseded` and non-current. The PB/artifact decisions remain useful,
+but current IdentityBundleHash authoring and admission conformance comes only
+from `identity-bundle-hash-binding-v0.1.json`.
+
 This candidate set does not assign a failure class for the separate
 no-satisfiable-tier refusal case; that classification remains outside this
 artifact-compatibility repair packet.
@@ -1103,6 +1111,35 @@ Regenerate and execute it from the repository root:
 ```sh
 python3 scripts/generate_presence_only_claim_vectors.py --check
 python3 -m unittest tests.test_presence_only_claim_vectors -v
+```
+
+### `identity-bundle-hash-binding-v0.1.json` — CORE §B.2 IBH-1..IBH-6
+
+Twenty-two candidate vectors pin one IdentityBundle digest from DACS-2 Vet through
+the DACS-3 agreement and DACS-5 session/terminal party records. Current fields
+accept only a bare 64-character lowercase hexadecimal value and compare it with
+the independently recomputed digest of the resolved signed IdentityBundle.
+Prefix insertion/removal, uppercase encoding, well-formed wrong digests, role
+substitution, primary-claim substitution, and unavailable bundle resolution
+all have deterministic non-pass outcomes.
+
+Each case carries a concrete `IdentityBundle` with `presentation` omitted, and
+the executable evaluator independently applies JCS and SHA-256 to those bytes.
+No trusted precomputed resolved-bundle hash is accepted as the IBH-1 result.
+
+The compatibility cases keep an authenticated legacy agreement's original
+`sha256:` field, agreement hash, signatures, and commitment byte-stable. Only
+the legacy commitment reader may decode that exact spelling into a tagged
+digest for comparison; DACS-5 emits the matching terminal value in current bare
+form. The same decoded bytes do not make a prefixed current agreement, DACS-2
+composite record, DACS-4 payment input, SessionParty, or BundleParty valid.
+
+Regenerate and execute with:
+
+```sh
+python3 scripts/generate_identity_bundle_hash_binding_vectors.py --write
+python3 scripts/generate_identity_bundle_hash_binding_vectors.py --check
+python3 -m unittest tests.test_identity_bundle_hash_binding_vectors -v
 ```
 
 ## Status

@@ -417,6 +417,24 @@ The activation position and time come exclusively from this artifact's own
 verified finalized `AnchorReceipt` and binding-defined consensus evidence, not
 `createdAt`, an agreement timestamp, a caller clock, or an indexer.
 
+The **LAA ordering domain** is the authenticated tuple formed by the
+`AnchorReceipt.substrate`, its `finalityProfile`, and the binding-defined
+consensus ledger/genesis identifier that orders transactions within that
+profile. Receipt positions are comparable only inside one exact ordering
+domain. For payment admission, the governing substrate/order domain comes from
+the authenticated session's selected SR-2 binding and agreement-commitment
+anchor context; for historical audit it MUST also equal the domain independently
+read from the verified commitment receipt. A caller does not select it. The
+checkpoint resolver MUST derive its fixed address for that exact substrate,
+and authenticated absence on any other substrate has no effect. The checkpoint,
+agreement-commitment and SettlementEvidence receipts whose positions are
+compared MUST all bind the same substrate and exact ordering domain. A proved
+different substrate is a mismatch; same-named positions from different or
+unavailable order domains are unorderable and therefore `indeterminate`. The
+SettlementEvidence's foreign payment transaction may naturally use another
+network; this rule concerns the SR-2 receipts that order DACS artifacts, not the
+payment rail's native transaction order.
+
 **Artifact gate and legacy behaviour.** Before interpreting agreement terms, a payer MUST select the DACS-3 artifact schema from its required version discriminator (§8.5). A payer that does not implement `PayeeBoundAgreementDocument` MUST reject that artifact as unsupported before invoking any pay handler; it MUST NOT discard `payeeBoundAgreementVersion` or `terms.payoutBindings` and retry it as an `AgreementDocument`. In particular, a DACS-4 v0.2 payer expects the required `agreementVersion` field, so the new artifact fails its legacy schema gate and no payment is submitted.
 
 The legacy `AgreementDocument` remains byte-verifiable with its pre-PB
@@ -430,7 +448,8 @@ before any wallet, provider, bridge, idempotency reservation, or other payment
 side effect:
 
 - **(LAA-1) Governed activation authority.** Resolve the checkpoint only at its
-  fixed per-substrate logical address. If present, verify its exclusive
+  fixed logical address for the authenticated session/commitment substrate and
+  LAA ordering domain defined above. If present, verify its exclusive
   discriminator and complete shape, steward signature, logical/native address
   binding, finalized receipt, and binding-defined consensus order. A caller-
   selected object, local feature flag, cached date, `createdAt`, or unsigned
@@ -458,7 +477,8 @@ side effect:
   signatures, (b) an exact `AgreementCommitmentRecord` whose `agreementHash`
   recomputes from those bytes, (c) that commitment's finalized receipt, and
   (d) the legacy settlement-evidence record's finalized receipt, with both
-  receipts strictly ordered before the checkpoint. Same-block/round evidence
+  receipts on the same substrate and in the same exact LAA ordering domain as
+  the checkpoint, strictly ordered before it. Same-block/round evidence
   counts as earlier only when the binding authenticates a strict transaction
   order. A later presentation or re-anchor does not change the original era.
 - **(LAA-5) Timestamps are not era proof.** `AgreementDocument.generatedAt`,

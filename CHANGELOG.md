@@ -23,8 +23,10 @@ The format used per release:
 - **Authenticated historical admission** — legacy agreement signatures remain
   verifiable, but historical settlement authority requires exact agreement,
   commitment, and settlement-evidence bindings with finalized receipts strictly
-  before the governed checkpoint. Backdated producer timestamps, local flags,
-  ordinary not-found responses, and missing era proof authorize no payment.
+  before the governed checkpoint on one authenticated substrate and one exact
+  finality/genesis ordering domain. Another substrate's checkpoint absence and
+  cross-domain scalar positions are inert. Backdated producer timestamps, local
+  flags, ordinary not-found responses, and missing era proof authorize no payment.
 - **Negotiation gate** — DACS-3 CA-10 applies the same checkpoint before a
   pay-bearing commitment and retains legacy agreement selection only for
   authenticated pre-activation or zero-pay flows.

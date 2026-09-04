@@ -46,12 +46,16 @@ def before_checkpoint(record, checkpoint_position):
     return "indeterminate"
 
 
-def validate_record(record, binding_field):
+def validate_record(record, binding_field, substrate, order_domain):
     if record.get("shape") != "valid":
         return "error"
     if record.get(binding_field) is not True or record.get("signatureValid") is not True:
         return "fail"
     if record.get("receiptState") != "finalized":
+        return "indeterminate"
+    if record.get("substrate") != substrate:
+        return "fail"
+    if record.get("orderDomain") != order_domain:
         return "indeterminate"
     return "pass"
 
@@ -71,8 +75,20 @@ def evaluate(value):
     if value.get("pipelineHasPayment") is False:
         return "pass"
 
+    session = value.get("sessionAuthority")
+    if not isinstance(session, dict) or session.get("state") != "verified":
+        return "indeterminate"
+    substrate = session.get("substrate")
+    order_domain = session.get("orderDomain")
+    if not isinstance(substrate, str) or not isinstance(order_domain, str):
+        return "error"
+
     checkpoint = value["checkpoint"]
     resolution = checkpoint.get("resolution")
+    if checkpoint.get("substrate") != substrate:
+        return "fail"
+    if checkpoint.get("orderDomain") != order_domain:
+        return "indeterminate"
     if resolution == "absent":
         return "pass" if checkpoint.get("authenticatedAbsence") is True else "indeterminate"
     if resolution in {"unavailable", "conflicting", "reorged", "pruned"}:
@@ -106,10 +122,14 @@ def evaluate(value):
             return "indeterminate"
         if record.get("resolution") != "verified":
             return "error"
-    result = validate_record(commitment, "agreementHashMatches")
+    result = validate_record(
+        commitment, "agreementHashMatches", substrate, order_domain
+    )
     if result != "pass":
         return result
-    result = validate_record(settlement, "agreementBindingMatches")
+    result = validate_record(
+        settlement, "agreementBindingMatches", substrate, order_domain
+    )
     if result != "pass":
         return result
 
@@ -134,7 +154,7 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
 
     def test_hash_count_and_names_are_exact(self):
         vectors = self.data["vectors"]
-        self.assertEqual(self.data["count"], 34)
+        self.assertEqual(self.data["count"], 41)
         self.assertEqual(self.data["count"], len(vectors))
         self.assertEqual(len({case["name"] for case in vectors}), len(vectors))
         self.assertEqual(
@@ -170,6 +190,13 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
             "laa-same-position-unorderable",
             "laa-deterministic-mismatch-precedes-outage",
             "laa-ca10-postactivation-legacy-commit",
+            "laa-other-substrate-absence-is-inert",
+            "laa-checkpoint-substrate-mismatch",
+            "laa-checkpoint-cross-order-domain",
+            "laa-commitment-substrate-mismatch",
+            "laa-commitment-cross-order-domain",
+            "laa-settlement-substrate-mismatch",
+            "laa-settlement-cross-order-domain",
         }
         self.assertTrue(required.issubset(self.cases))
         case = self.cases["laa-deterministic-mismatch-precedes-outage"]
@@ -177,6 +204,23 @@ class LegacyAgreementAdmissionVectorTests(unittest.TestCase):
         self.assertTrue(
             self.cases["laa-fresh-legacy-after-checkpoint"]["want"]
             ["legacyBytesCryptographicallyInspectable"]
+        )
+
+    def test_all_comparable_receipts_share_one_authenticated_order_domain(self):
+        value = self.cases["laa-authentic-historical-settlement"]["input"]
+        authority = value["sessionAuthority"]
+        for record_name in ("checkpoint", "commitment", "settlementEvidence"):
+            record = value[record_name]
+            self.assertEqual(record["substrate"], authority["substrate"])
+            self.assertEqual(record["orderDomain"], authority["orderDomain"])
+        self.assertEqual(evaluate(value), "pass")
+        self.assertEqual(
+            evaluate(self.cases["laa-other-substrate-absence-is-inert"]["input"]),
+            "fail",
+        )
+        self.assertEqual(
+            evaluate(self.cases["laa-commitment-cross-order-domain"]["input"]),
+            "indeterminate",
         )
 
     def test_generator_check_is_enforced(self):

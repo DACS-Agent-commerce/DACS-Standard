@@ -18,6 +18,15 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "conformance/vectors/security/raw-json-profile-v0.1.json"
+MAX_NESTING_DEPTH = 128
+
+
+def nested_array(depth: int) -> str:
+    return "[" * depth + "0" + "]" * depth
+
+
+def nested_object(depth: int) -> str:
+    return '{"a":' * depth + "0" + "}" * depth
 
 
 def accepted(name: str, raw: str, canonical: str, note: str) -> dict[str, Any]:
@@ -144,6 +153,32 @@ def build_vectors() -> list[dict[str, Any]]:
             '{"a":{"x":1},"b":[{"x":2}]}',
             '{"a":{"x":1},"b":[{"x":2}]}',
             "The same member spelling may occur in distinct objects.",
+        ),
+        accepted(
+            "maximum-container-depth-array",
+            nested_array(MAX_NESTING_DEPTH),
+            nested_array(MAX_NESTING_DEPTH),
+            "The host-independent 128-container depth boundary is inclusive for arrays.",
+        ),
+        accepted(
+            "maximum-container-depth-object",
+            nested_object(MAX_NESTING_DEPTH),
+            nested_object(MAX_NESTING_DEPTH),
+            "The host-independent 128-container depth boundary is inclusive for objects.",
+        ),
+        rejected(
+            "over-maximum-container-depth-array",
+            nested_array(MAX_NESTING_DEPTH + 1),
+            "profile",
+            "JSON-NESTING-TOO-DEEP",
+            "Depth 129 is rejected before parser recursion or canonicalization.",
+        ),
+        rejected(
+            "over-maximum-container-depth-object",
+            nested_object(MAX_NESTING_DEPTH + 1),
+            "profile",
+            "JSON-NESTING-TOO-DEEP",
+            "Object nesting uses the same depth rule as arrays.",
         ),
         rejected(
             "positive-two-to-the-53",

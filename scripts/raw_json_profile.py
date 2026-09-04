@@ -32,6 +32,7 @@ from typing import Any, Callable
 
 
 SAFE_MAGNITUDE = Decimal(2**53 - 1)
+MAX_NESTING_DEPTH = 128
 _NUMBER_RE = re.compile(r"-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?")
 
 
@@ -85,6 +86,35 @@ def _pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _contains_surrogate(text: str) -> bool:
     return any(0xD800 <= ord(ch) <= 0xDFFF for ch in text)
+
+
+def _check_nesting(text: str) -> None:
+    """Enforce CF-5's host-independent container-depth bound iteratively."""
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for char in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char in "[{":
+            depth += 1
+            if depth > MAX_NESTING_DEPTH:
+                raise _error(
+                    "profile",
+                    "JSON-NESTING-TOO-DEEP",
+                    f"container nesting exceeds {MAX_NESTING_DEPTH}",
+                )
+        elif char in "]}" and depth:
+            depth -= 1
 
 
 def _admit_number(token: str) -> int | float:
@@ -143,6 +173,7 @@ def loads(raw: bytes | str) -> Any:
     """Admit raw JSON through the CPython-backed CF-5 parser."""
 
     text = _decode(raw)
+    _check_nesting(text)
     try:
         parsed = json.loads(
             text,
@@ -158,7 +189,14 @@ def loads(raw: bytes | str) -> Any:
         raise _error("parse", code, str(exc)) from exc
     except RecursionError as exc:
         raise _error("parse", "INVALID-JSON", str(exc)) from exc
-    return _admit_tree(parsed)
+    try:
+        return _admit_tree(parsed)
+    except RawJsonProfileError:
+        raise
+    except RecursionError as exc:  # defensive: CF-5's depth check must prevent this
+        raise _error(
+            "profile", "JSON-NESTING-TOO-DEEP", "tree admission exceeded host limits"
+        ) from exc
 
 
 class _ReferenceParser:
@@ -308,11 +346,15 @@ def loads_reference(raw: bytes | str) -> Any:
     """Admit raw JSON through the independent recursive-descent parser."""
 
     try:
-        return _admit_tree(_ReferenceParser(_decode(raw)).parse())
+        text = _decode(raw)
+        _check_nesting(text)
+        return _admit_tree(_ReferenceParser(text).parse())
     except RawJsonProfileError:
         raise
     except RecursionError as exc:
-        raise _error("parse", "INVALID-JSON", "JSON nesting exceeds parser limits") from exc
+        raise _error(
+            "profile", "JSON-NESTING-TOO-DEEP", "processing exceeded host limits"
+        ) from exc
 
 
 def classify(parser: Callable[[bytes | str], Any], raw: bytes | str) -> tuple[str, str | None]:

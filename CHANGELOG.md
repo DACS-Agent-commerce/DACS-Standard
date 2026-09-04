@@ -21,8 +21,11 @@ The format used per release:
   single-value, and strict-JSON checks before JCS, hashing, signature
   verification, or schema decisions. Parse, DACS-profile, and canonicalisation
   failures remain distinct; rejected bytes acquire no content hash or signature
-  authority. Adds 42 raw-text vectors, including nested/escape-equivalent
-  duplicate keys, safe-magnitude boundaries and exponent spellings, negative
+  authority. The profile now caps JSON container nesting at an inclusive 128
+  so parser, admission, and canonicalizer recursion limits cannot disagree or
+  escape as host exceptions. Adds 46 raw-text vectors covering depth
+  boundaries, nested/escape-equivalent duplicate keys, safe-magnitude
+  boundaries and exponent spellings, negative
   zero/fractions, overflow/underflow, parser extensions, lone surrogates,
   invalid UTF-8, BOM, comments, malformed syntax, and trailing data, reproduced
   by both the standard-library adapter and an independent recursive-descent

@@ -55,7 +55,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`presence-only-claim-requirement-v0.7.json`](presence-only-claim-requirement-v0.7.json) | DACS-1 §6.3.3 PCR-1..PCR-6; DACS-2 §7.7.1 | 38 | `error` / `fail` / `indeterminate` / `pass` |
 | [`private-deliverables-v0.1.json`](private-deliverables-v0.1.json) | DACS-4 §9.3 / §9.6.1 / §9.6.2 (DV-1..DV-6) | 16 | `ACL-dropped` / `clean-negative` / `fail` / `indeterminate` / `pass` / `readable` |
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
-| [`raw-json-profile-v0.1.json`](raw-json-profile-v0.1.json) | CORE §B.2 CF-5 raw JSON admission | 42 | `accept` / `reject` |
+| [`raw-json-profile-v0.1.json`](raw-json-profile-v0.1.json) | CORE §B.2 CF-5 raw JSON admission | 46 | `accept` / `reject` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
@@ -112,11 +112,13 @@ python3 -m unittest tests.test_canonical_json_vectors -v
 
 ### `raw-json-profile-v0.1.json` — CORE §B.2 CF-5
 
-42 raw UTF-8 JSON cases execute the mandatory admission step that precedes
+46 raw UTF-8 JSON cases execute the mandatory admission step that precedes
 object-model JCS. Unlike ordinary JSON fixtures, each case carries its source as
 `rawUtf8Text` or `rawHex`, so duplicate decoded member names, hostile numeric
 tokens, trailing data, a BOM, invalid UTF-8, parser extensions, and lone
-surrogates cannot disappear while the vector file itself is loaded.
+surrogates cannot disappear while the vector file itself is loaded. Boundary
+cases admit exactly 128 nested array/object containers and reject depth 129
+with `JSON-NESTING-TOO-DEEP`, independent of host recursion limits.
 
 Positive cases pin the exact later JCS bytes. Negative cases separately name a
 `parse` or DACS `profile` refusal and never carry canonical output. The standard

@@ -107,6 +107,18 @@ class RawJsonProfileVectorTests(unittest.TestCase):
         admitted = profile.loads(raw_bytes(accepted_vector))
         self.assertEqual(jcs.canonicalize(admitted), '{"n":0}')
 
+    def test_deep_inputs_never_escape_as_recursion_errors(self):
+        for raw in (
+            b"[" * 600 + b"0" + b"]" * 600,
+            b'{"a":' * 600 + b"0" + b"}" * 600,
+        ):
+            for parser in (profile.loads, profile.loads_reference):
+                with self.subTest(parser=parser.__name__, prefix=raw[:1]):
+                    self.assertEqual(
+                        profile.classify(parser, raw),
+                        ("reject-profile", "JSON-NESTING-TOO-DEEP"),
+                    )
+
     def test_required_boundaries_and_hostile_forms_are_present(self):
         names = {vector["name"] for vector in self.data["vectors"]}
         self.assertTrue(
@@ -123,6 +135,10 @@ class RawJsonProfileVectorTests(unittest.TestCase):
                 "duplicate-top-level-member",
                 "duplicate-nested-member",
                 "duplicate-member-inside-array",
+                "maximum-container-depth-array",
+                "maximum-container-depth-object",
+                "over-maximum-container-depth-array",
+                "over-maximum-container-depth-object",
                 "trailing-non-whitespace",
                 "nan-extension",
                 "positive-infinity-extension",
@@ -137,6 +153,8 @@ class RawJsonProfileVectorTests(unittest.TestCase):
         self.assertIn("MUST complete before", core)
         self.assertIn("duplicate decoded object member name", core)
         self.assertIn("MUST NOT first parse an external document into a lossy", core)
+        self.assertIn("container nesting depth exceeds **128**", core)
+        self.assertIn("JSON-NESTING-TOO-DEEP", core)
 
 
 if __name__ == "__main__":

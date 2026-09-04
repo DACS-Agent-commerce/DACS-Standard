@@ -14,7 +14,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | BR-* | Bundle readers for IdentityBundle | §6.3.2 | §14.1 |
 | CA-* | Agreement commitment phase validation | §8.6 | §14.3 |
 | CD-* | Canonical decimal handling | §8.5.1 | §14.6 |
-| CF-* | Canonical form and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
+| CF-* | Canonical form, raw JSON admission, and logical-address encoding | §B.1 / §B.2 / §6.3.4 | §14.6 |
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |

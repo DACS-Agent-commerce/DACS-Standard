@@ -106,6 +106,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Channel-operator forking | channel operator | §8.12 (monotonic sequence + cross-check) | mitigated |
 | Offer replay across sessions | network observer | §8.12 (channelId in envelope) | mitigated |
 | Cross-artifact signature replay | malicious counterparty | §B.7 universal domain separators | mitigated |
+| Duplicate-member or pre-rounding JSON ambiguity before signature/hash verification | malicious counterparty / implementation divergence | §B.2 CF-5 (strict raw UTF-8 JSON admission before object-model JCS; duplicate decoded names and out-of-profile raw number tokens reject) | mitigated |
 | HTLC asymmetric-loss blame ambiguity (window-expired ST-8 reads failed-counterparty for both sides) | time / malicious counterparty | §10.11 (out-of-band review of settlement-atomicity-marked failed-counterparty) | partial — DACS-X dispute concern |
 | HTLC free-option abandonment (payer declines reveal after market move; payee capital locked) | malicious counterparty | §9.5.4 HTLC-10 (prefer liquidity-tank or payer stake; DACS-5 records the pattern) | partial — known HTLC property, not standardised in v0.1 |
 | Sealed-envelope front-running | competing bidder | §8.12 (hash commitment + private channel) | mitigated |

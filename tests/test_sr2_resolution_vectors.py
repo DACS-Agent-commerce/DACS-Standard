@@ -109,6 +109,21 @@ class SR2ResolutionVectorTests(unittest.TestCase):
             "pass",
         )
 
+    def test_transport_copy_permutations_preserve_classified_identity(self):
+        expected = {
+            "invalid-first-root-copy-cannot-suppress-valid-identity": "pass",
+            "invalid-first-root-copy-cannot-suppress-unresolved-identity": "indeterminate",
+            "invalid-first-successor-copy-cannot-suppress-valid-identity": "pass",
+            "invalid-first-successor-copy-cannot-suppress-unresolved-identity": "indeterminate",
+        }
+        for name, verdict in expected.items():
+            with self.subTest(vector=name, order="invalid-first"):
+                self.assertEqual(evaluate_vector(self.vectors[name]), verdict)
+            reversed_vector = copy.deepcopy(self.vectors[name])
+            reversed_vector["input"]["descriptors"].reverse()
+            with self.subTest(vector=name, order="reversed"):
+                self.assertEqual(evaluate_vector(reversed_vector), verdict)
+
     def test_historical_replay_uses_exact_accepted_descriptor_identity(self):
         self.assertEqual(
             evaluate_vector(self.vectors["historical-replay-uses-recorded-sequence"]),

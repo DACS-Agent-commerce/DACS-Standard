@@ -127,8 +127,10 @@ The format used per release:
   binds the registry-index v1 shape/kind/revision, requires every accepted
   latest head to descend from the persisted descriptor pair, and discards
   invalid same-key roots before fork counting. Closed snapshot, entry, and
-  entry-anchor shapes reject unknown members, while byte-identical repeated
-  transport copies collapse before fork counting. Canonicalization failures in
+  entry-anchor shapes reject unknown members. Every transport copy is classified
+  before same-hash descriptor identities collapse and forks are counted, so an
+  invalid-signature copy cannot suppress a valid or unresolved copy by arriving
+  first. Canonicalization failures in
   receipt tuples and resolved definitions now return fail-closed dispositions
   instead of escaping the reference evaluator. Registers
   `dacs-registry-bootstrap:v1:` and adds deterministic positive, negative,

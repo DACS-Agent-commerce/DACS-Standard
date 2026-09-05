@@ -589,6 +589,15 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         sibling["authorizationSignature"]["value"] = "AA"
         case["descriptors"].append(sibling)
 
+    def invalid_first_root_copy(case: dict[str, Any], *, unavailable: bool = False) -> None:
+        case["trustPin"] = {"authorityKeyId": OLD_KEY}
+        valid = case["descriptors"][0]
+        invalid = copy.deepcopy(valid)
+        invalid["authorizationSignature"]["value"] = "AA"
+        case["descriptors"] = [invalid, valid]
+        if unavailable:
+            case["verifiedEvidenceValues"] = []
+
     vectors = [
         bootstrap_vector(
             "valid-recipe-registry-root",
@@ -618,6 +627,18 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "pass",
             "a pin-matching root with an invalid signature is discarded before fork classification",
             invalid_key_pinned_root_sibling,
+        ),
+        bootstrap_vector(
+            "invalid-first-root-copy-cannot-suppress-valid-identity",
+            "pass",
+            "transport copies are classified before same-hash root identities collapse",
+            invalid_first_root_copy,
+        ),
+        bootstrap_vector(
+            "invalid-first-root-copy-cannot-suppress-unresolved-identity",
+            "indeterminate",
+            "an invalid transport copy cannot erase an unavailable same-hash root identity",
+            lambda c: invalid_first_root_copy(c, unavailable=True),
         ),
         bootstrap_vector(
             "transport-without-release-pin-is-rejected",
@@ -935,6 +956,17 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
         successor = add_successor(case)
         case["descriptors"].append(copy.deepcopy(successor))
 
+    def invalid_first_successor_copy(
+        case: dict[str, Any], *, unavailable: bool = False
+    ) -> None:
+        valid = add_successor(case)
+        invalid = copy.deepcopy(valid)
+        invalid["authorizationSignature"]["value"] = "AA"
+        case["descriptors"] = [case["descriptors"][0], invalid, valid]
+        if unavailable:
+            evidence = valid["indexAnchorReceipt"]["evidence"]["value"]
+            case["verifiedEvidenceValues"].remove(evidence)
+
     def duplicate_root(case: dict[str, Any]) -> None:
         case["trustPin"] = {"authorityKeyId": OLD_KEY}
         case["descriptors"].append(copy.deepcopy(case["descriptors"][0]))
@@ -945,6 +977,18 @@ def build_bootstrap_vectors() -> list[dict[str, Any]]:
             "duplicate-successor-transport-copy-collapses", "pass",
             "byte-identical transport copies name one descriptor rather than a fork",
             duplicate_successor,
+        ),
+        bootstrap_vector(
+            "invalid-first-successor-copy-cannot-suppress-valid-identity",
+            "pass",
+            "transport copies are classified before same-hash successor identities collapse",
+            invalid_first_successor_copy,
+        ),
+        bootstrap_vector(
+            "invalid-first-successor-copy-cannot-suppress-unresolved-identity",
+            "indeterminate",
+            "an invalid transport copy cannot erase an unavailable same-hash successor identity",
+            lambda c: invalid_first_successor_copy(c, unavailable=True),
         ),
         bootstrap_vector(
             "valid-and-unavailable-successors-remain-unresolved", "indeterminate",

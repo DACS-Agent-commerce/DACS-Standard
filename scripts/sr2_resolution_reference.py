@@ -14,7 +14,7 @@ import hashlib
 import math
 import re
 from copy import deepcopy
-from typing import Any
+from typing import Any, Callable
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -501,6 +501,29 @@ def _definition_result(head: dict[str, Any], case: dict[str, Any]) -> str:
     return "pass"
 
 
+def _classify_descriptor_identities(
+    candidates: list[dict[str, Any]],
+    classify: Callable[[dict[str, Any]], str],
+) -> tuple[list[dict[str, Any]], bool]:
+    """Classify every transport copy, then collapse its descriptor identity."""
+    identities: dict[str, tuple[str, dict[str, Any]]] = {}
+    for candidate in candidates:
+        candidate_hash = _try_descriptor_hash(candidate)
+        try:
+            status = classify(candidate)
+        except (TypeError, ValueError, UnicodeError):
+            status = "fail"
+        if candidate_hash is None or status not in {"pass", "indeterminate"}:
+            continue
+        previous = identities.get(candidate_hash)
+        if previous is None or status == "pass":
+            identities[candidate_hash] = (status, candidate)
+    return (
+        [candidate for status, candidate in identities.values() if status == "pass"],
+        any(status == "indeterminate" for status, _ in identities.values()),
+    )
+
+
 def evaluate_bootstrap(case: dict[str, Any]) -> str:
     descriptors = case.get("descriptors")
     if not isinstance(descriptors, list) or not descriptors:
@@ -513,23 +536,9 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
         roots = [d for d in roots if _try_descriptor_hash(d) == pin["descriptorHash"]]
     if "authorityKeyId" in pin:
         roots = [d for d in roots if d.get("authorityKeyId") == pin["authorityKeyId"]]
-    valid_roots: list[dict[str, Any]] = []
-    indeterminate_root_seen = False
-    classified_root_hashes: set[str] = set()
-    for candidate in roots:
-        candidate_hash = _try_descriptor_hash(candidate)
-        if candidate_hash is not None:
-            if candidate_hash in classified_root_hashes:
-                continue
-            classified_root_hashes.add(candidate_hash)
-        try:
-            status = _validate_root(candidate, case)
-        except (TypeError, ValueError, UnicodeError):
-            status = "fail"
-        if status == "pass":
-            valid_roots.append(candidate)
-        elif status == "indeterminate":
-            indeterminate_root_seen = True
+    valid_roots, indeterminate_root_seen = _classify_descriptor_identities(
+        roots, lambda candidate: _validate_root(candidate, case)
+    )
     if len(valid_roots) > 1:
         return "indeterminate"
     if valid_roots and indeterminate_root_seen:
@@ -548,26 +557,10 @@ def evaluate_bootstrap(case: dict[str, Any]) -> str:
             if isinstance(d, dict)
             and d.get("supersedesDescriptorHash") == head_hash
         ]
-        distinct_candidates: list[dict[str, Any]] = []
-        candidate_hashes: set[str] = set()
-        for candidate in candidates:
-            candidate_hash = _try_descriptor_hash(candidate)
-            if candidate_hash is not None:
-                if candidate_hash in candidate_hashes:
-                    continue
-                candidate_hashes.add(candidate_hash)
-            distinct_candidates.append(candidate)
-        valid: list[dict[str, Any]] = []
-        indeterminate_seen = False
-        for candidate in distinct_candidates:
-            try:
-                result = _validate_successor(head, candidate, case)
-            except (TypeError, ValueError, UnicodeError):
-                result = "fail"
-            if result == "pass":
-                valid.append(candidate)
-            elif result == "indeterminate":
-                indeterminate_seen = True
+        valid, indeterminate_seen = _classify_descriptor_identities(
+            candidates,
+            lambda candidate: _validate_successor(head, candidate, case),
+        )
         if len(valid) > 1:
             return "indeterminate"
         if indeterminate_seen and valid:

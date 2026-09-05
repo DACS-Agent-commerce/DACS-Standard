@@ -280,7 +280,8 @@ hash-only and key-only first contact, first-contact and successor forks,
 same-key content successors, dual-authorized rotation, cumulative revocation,
 candidate classification before chain advance, latest rollback, exact
 sequence/hash historical replay from the accepted chain, persisted-branch
-ancestry for latest upgrades, invalid-root filtering before fork counting,
+ancestry for latest upgrades, transport-copy classification before descriptor-
+hash collapse and fork counting, invalid-root filtering before fork counting,
 registry-index v1 shape/kind/revision validation, JCS/NFC/fractional known
 answers and unsafe-number disposition, immutable snapshot enforcement,
 signature-domain and discriminator refusal, recursive-evidence refusal,

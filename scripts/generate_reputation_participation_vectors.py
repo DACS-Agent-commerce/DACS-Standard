@@ -162,14 +162,15 @@ def one_sided_input(
         "admittedAt": 99_999_999,
     }
     bundle = {
+        "bundleType": "FaultAttestationBundle",
         "jobId": JOB,
         "listingRef": copy.deepcopy(LISTING_REF),
         "parties": copy.deepcopy(PARTIES),
         "phaseSummary": copy.deepcopy(prefix),
         "outcome": "aborted-by-other",
         "anchoredByRole": "buyer",
-        "signerRoles": ["buyer"],
-        "faultedRole": "seller",
+        "verifiedSignerRoles": ["buyer"],
+        "faultedParty": "seller",
         "timeout": copy.deepcopy(timeout),
         "windowReceipt": bundle_receipt(),
     }
@@ -318,13 +319,46 @@ def build_vectors() -> list[dict]:
     ]
 
     self_admitted = changed(base, lambda x: (
-        x["bundle"].update({"signerRoles": ["seller"], "anchoredByRole": "seller", "outcome": "aborted-by-self"}),
+        x["bundle"].update({"verifiedSignerRoles": ["seller"], "anchoredByRole": "seller", "outcome": "aborted-by-self"}),
         x.update({"participationEvidence": None}),
     ))
     vectors.append(vector(
         "spa-single-signed-self-blame-needs-no-external-admission", "pass",
         "the blamed party's exact terminal-bundle signature is its own admission",
         self_admitted, want(admitted=True, blame=True),
+    ))
+
+    legacy_with_admission = copy.deepcopy(base)
+    legacy_with_admission["bundle"]["bundleType"] = "AttestationBundle"
+    legacy_with_admission["bundle"].pop("faultedParty")
+    vectors.append(vector(
+        "spa-legacy-one-sided-blame-requires-external-admission", "pass",
+        "legacy role-relative blame is admitted only through the target's separate SPA",
+        legacy_with_admission, admitted_blame,
+    ))
+
+    legacy_role_flip = copy.deepcopy(legacy_with_admission)
+    legacy_role_flip["bundle"]["verifiedSignerRoles"] = ["seller"]
+    legacy_role_flip["participationEvidence"] = None
+    vectors.append(vector(
+        "spa-legacy-reanchored-signer-cannot-self-admit", "indeterminate",
+        "a blamed signer cannot self-admit legacy bytes whose unsigned anchor role changes their meaning",
+        legacy_role_flip, excluded,
+    ))
+
+    prefix_with_evidence = copy.deepcopy(base)
+    prefix_with_evidence["bundle"]["phaseSummary"][0].update({
+        "txRefs": [{"kind": "demos-tx", "value": "tx-vet-a"}],
+        "attestationRef": {
+            "anchor": {"kind": "storage-program", "locator": "vet-record-a"},
+            "contentHash": "ab" * 32,
+            "signer": SELLER,
+        },
+    })
+    vectors.append(vector(
+        "spa-prefix-projection-allows-authenticated-bundle-evidence", "pass",
+        "optional bundle phase evidence is outside the three-field participation-prefix projection",
+        prefix_with_evidence, admitted_blame,
     ))
 
     cases = [
@@ -359,7 +393,7 @@ def build_vectors() -> list[dict]:
         ("spa-bundle-before-deadline", "fail", "a bundle anchored before deadline cannot prove timeout", lambda x: x["bundle"]["windowReceipt"]["blockRef"].update({"timestamp": 1_999})),
         ("spa-cross-substrate-clock", "indeterminate", "unrelated substrate clocks cannot establish the deadline interval", lambda x: x["bundle"]["windowReceipt"].update({"substrate": "evm:1"})),
         ("spa-unorderable-admission-history", "indeterminate", "conflicting admission receipt history cannot be cherry-picked", lambda x: x["participationEvidence"].update({"admissionReceiptHistory": [{**copy.deepcopy(x["participationEvidence"]["admissionReceipt"]), "historyDisposition": "unorderable"}]})),
-        ("spa-unexpected-evidence-on-self-admitted-path", "fail", "unused conditional evidence makes replay non-conforming", lambda x: x["bundle"].update({"signerRoles": ["seller"], "anchoredByRole": "seller", "outcome": "aborted-by-self"})),
+        ("spa-unexpected-evidence-on-self-admitted-path", "fail", "unused conditional evidence makes replay non-conforming", lambda x: x["bundle"].update({"verifiedSignerRoles": ["seller"], "anchoredByRole": "seller", "outcome": "aborted-by-self"})),
     ]
     for name, expected, note, mutate in cases:
         source = base

@@ -81,6 +81,25 @@ def mapped_obligation(kind):
     return None
 
 
+def attributed_fault_role(bundle):
+    bundle_type = bundle.get("bundleType")
+    if bundle_type in {
+        "FaultAttestationBundle", "EvidenceBoundFaultAttestationBundle"
+    }:
+        role = bundle.get("faultedParty")
+        return role if role in {"buyer", "seller"} else None
+    if bundle_type != "AttestationBundle" or "faultedParty" in bundle:
+        return None
+    anchored_role = bundle.get("anchoredByRole")
+    if anchored_role not in {"buyer", "seller"}:
+        return None
+    if bundle.get("outcome") == "aborted-by-self":
+        return anchored_role
+    if bundle.get("outcome") == "aborted-by-other":
+        return "seller" if anchored_role == "buyer" else "buyer"
+    return None
+
+
 def evaluate_one_sided(data):
     if data.get("authoritativeAbsenceValid") is not True:
         return "indeterminate", result()
@@ -88,14 +107,25 @@ def evaluate_one_sided(data):
     bundle = data.get("bundle")
     if not isinstance(bundle, dict):
         return "fail", result()
-    faulted_role = bundle.get("faultedRole")
-    signer_roles = bundle.get("signerRoles")
-    if not isinstance(signer_roles, list):
+    faulted_role = attributed_fault_role(bundle)
+    signer_roles = bundle.get("verifiedSignerRoles")
+    if (
+        faulted_role is None
+        or not isinstance(signer_roles, list)
+        or len(signer_roles) != len(set(signer_roles))
+        or any(role not in {"buyer", "seller", "orchestrator"} for role in signer_roles)
+    ):
         return "fail", result()
 
-    # The blamed party signed the exact terminal artifact: no separate SPA is
-    # consumed, and SPA-8 rejects a stray conditional context entry.
-    if faulted_role in signer_roles:
+    # Only an absolute bundle's hashed faultedParty can self-admit blame. A
+    # legacy role-relative outcome can change meaning when its unsigned
+    # anchoredByRole projection changes, so it always follows the SPA path.
+    if (
+        bundle.get("bundleType") in {
+            "FaultAttestationBundle", "EvidenceBoundFaultAttestationBundle"
+        }
+        and faulted_role in signer_roles
+    ):
         if data.get("participationEvidence") is not None:
             return "fail", result()
         return "pass", result(admitted=True, blame=True)
@@ -158,7 +188,19 @@ def evaluate_one_sided(data):
     ]
     if admission.get("completedPrefix") != expected_prefix:
         return "fail", result()
-    if bundle.get("phaseSummary") != expected_prefix:
+    phase_summary = bundle.get("phaseSummary")
+    if not isinstance(phase_summary, list) or len(phase_summary) != index:
+        return "fail", result()
+    projected_prefix = []
+    for entry in phase_summary:
+        if not isinstance(entry, dict):
+            return "fail", result()
+        projected_prefix.append({
+            "index": entry.get("index"),
+            "kind": entry.get("kind"),
+            "outcome": entry.get("outcome"),
+        })
+    if projected_prefix != expected_prefix:
         return "fail", result()
 
     mapping = mapped_obligation(kind)
@@ -366,6 +408,9 @@ class ReputationParticipationVectorTests(unittest.TestCase):
             "spa-wrong-deadline",
             "spa-wrong-action",
             "spa-phase-never-active",
+            "spa-legacy-one-sided-blame-requires-external-admission",
+            "spa-legacy-reanchored-signer-cannot-self-admit",
+            "spa-prefix-projection-allows-authenticated-bundle-evidence",
             "spa-rating-on-abort",
             "spa-rating-non-roster-target",
         }

@@ -21,6 +21,8 @@ CORE = ROOT / "spec" / "CORE.md"
 MAPPING = ROOT / "spec" / "DEMOS-MAPPING.md"
 HEAD_DOMAIN = "dacs-revocation-state-head:v1:"
 MARKER_DOMAIN = "dacs-revocation:v1:"
+CURRENT_STATE_DOMAIN = "dacs-rsc-conformance-current-state:v1:"
+CURRENT_STATE_POLICY = "rsc-conformance-test-current-value-v1"
 ZERO_HASH = "00" * 32
 
 
@@ -214,7 +216,62 @@ def validate_transition(head, previous, previous_digest, context):
     ) == head.get("rootHash")
 
 
-def evaluate(data):
+def current_state_message(state_ref, context, evidence):
+    payload = {
+        "policy": evidence.get("policy"),
+        "finalizedStateId": evidence.get("finalizedStateId"),
+        "logicalAddress": state_ref.get("logicalAddress"),
+        "nativeAddress": state_ref.get("anchor", {}).get("locator"),
+        "headContentHash": context.get("headRef", {}).get("contentHash"),
+        "headReceiptHash": hash_hex(context.get("headReceipt")),
+    }
+    return (CURRENT_STATE_DOMAIN + hash_hex(payload)).encode("ascii")
+
+
+def verify_current_state(state_ref, context, public_key):
+    evidence = context.get("currentStateEvidence")
+    receipt = context.get("headReceipt")
+    head_ref = context.get("headRef")
+    if (
+        not isinstance(evidence, dict)
+        or set(evidence) != {"policy", "finalizedStateId", "valueContentHash", "evidence"}
+        or evidence.get("policy") != CURRENT_STATE_POLICY
+        or not isinstance(receipt, dict)
+        or not isinstance(head_ref, dict)
+        or evidence.get("valueContentHash") != head_ref.get("contentHash")
+        or evidence.get("finalizedStateId") != receipt.get("blockRef", {}).get("id")
+        or receipt.get("substrate") != "conformance:test"
+        or receipt.get("finalityProfile") != "rsc-conformance-test-finality-v1"
+    ):
+        return False
+    signature = evidence.get("evidence")
+    if not isinstance(signature, dict) or signature.get("kind") != "ed25519-signature":
+        return False
+    try:
+        Ed25519PublicKey.from_public_bytes(bytes.fromhex(public_key)).verify(
+            decode_b64url(signature.get("value", "")),
+            current_state_message(state_ref, context, evidence),
+        )
+    except (TypeError, ValueError, InvalidSignature):
+        return False
+    return True
+
+
+def discovery_disposition(discovery, context, target):
+    if not isinstance(discovery, dict) or discovery.get("integrityConsistent") is not True:
+        return "indeterminate"
+    status = discovery.get("status")
+    if status == "active" and "revocationRef" not in discovery:
+        return "absent"
+    if status == "revoked":
+        ref = discovery.get("revocationRef")
+        if isinstance(ref, dict) and resolve_marker(context, ref, target) is not None:
+            return "revoked"
+        return "indeterminate"
+    return "indeterminate"
+
+
+def evaluate(data, current_state_public_key):
     listing = data.get("listing")
     if data.get("currentProfile") is not True or not isinstance(listing, dict):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
@@ -234,15 +291,19 @@ def evaluate(data):
     context = data.get("resolutionContext")
     if not isinstance(context, dict):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-    evidence = context.get("currentStateEvidence")
-    if (
-        not isinstance(evidence, dict)
-        or set(evidence) != {"policy", "finalizedStateId", "valueContentHash", "evidence"}
-        or evidence.get("policy") != "demos-current-state-v1"
-    ):
+
+    target = {
+        "sellerPrimaryClaim": listing.get("sellerPrimaryClaim"),
+        "listingId": listing.get("listingId"),
+        "listingVersion": listing.get("listingVersion"),
+        "listingContentHash": listing.get("listingContentHash"),
+    }
+    rb_disposition = discovery_disposition(data.get("discovery"), context, target)
+    if rb_disposition == "revoked":
+        return "fail", {"revocationCheck": "revoked", "session": "refuse"}
+    if not verify_current_state(state_ref, context, current_state_public_key):
         return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
-    if evidence.get("evidence", {}).get("value") != "current-proof":
-        return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+    evidence = context["currentStateEvidence"]
 
     history = context.get("headHistory")
     if not isinstance(history, list) or not history:
@@ -316,12 +377,6 @@ def evaluate(data):
                     return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
                 return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
 
-    target = {
-        "sellerPrimaryClaim": listing.get("sellerPrimaryClaim"),
-        "listingId": listing.get("listingId"),
-        "listingVersion": listing.get("listingVersion"),
-        "listingContentHash": listing.get("listingContentHash"),
-    }
     key = hash_hex(target)
     proof = context.get("stateProof")
     if not isinstance(proof, dict) or proof.get("revocationStateProofVersion") != "1":
@@ -331,6 +386,8 @@ def evaluate(data):
     disposition = proof.get("disposition")
     if disposition == "absent":
         if "revocationRef" in proof or proof_root(key, proof.get("proof"), EMPTY[0]) != current.get("rootHash"):
+            return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
+        if rb_disposition == "indeterminate":
             return "indeterminate", {"revocationCheck": "indeterminate", "session": "refuse"}
         return "pass", {"revocationCheck": "absent", "session": "continue"}
     if disposition == "revoked":
@@ -358,7 +415,9 @@ class RevocationStateCompletenessTests(unittest.TestCase):
     def test_independent_evaluator(self):
         for vector in self.document["vectors"]:
             with self.subTest(vector=vector["name"]):
-                expected, want = evaluate(vector["input"])
+                expected, want = evaluate(
+                    vector["input"], self.document["publicKeys"]["currentStateAuthority"]
+                )
                 self.assertEqual((expected, want), (vector["expected"], vector["want"]))
 
     def test_acceptance_cases_are_explicit(self):
@@ -370,7 +429,23 @@ class RevocationStateCompletenessTests(unittest.TestCase):
             "rsc-invalid-nonmembership",
             "rsc-valid-active-nonmembership",
             "rsc-valid-revocation-inclusion",
+            "rsc-rb4-discovered-marker-precedes-nonmembership",
+            "rsc-rb5-indeterminate-precedes-nonmembership",
         } <= names)
+
+    def test_positive_current_state_proof_is_cryptographic_and_test_only(self):
+        self.assertEqual(self.document["testBinding"]["scope"], "conformance-harness-only")
+        self.assertFalse(self.document["testBinding"]["productionEligible"])
+        positive = next(
+            item for item in self.document["vectors"]
+            if item["name"] == "rsc-valid-active-nonmembership"
+        )
+        tampered = json.loads(json.dumps(positive["input"]))
+        tampered["resolutionContext"]["currentStateEvidence"]["finalizedStateId"] = "block-other"
+        self.assertEqual(
+            evaluate(tampered, self.document["publicKeys"]["currentStateAuthority"])[0],
+            "indeterminate",
+        )
 
     def test_generator_is_deterministic(self):
         completed = subprocess.run(

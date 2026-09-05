@@ -60,7 +60,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 v0.3 §6.3.4 RB-1..RB-6 historical revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
-| [`revocation-state-completeness-v0.8.json`](revocation-state-completeness-v0.8.json) | DACS-1 v0.8 §6.3.4 RSC-1..RSC-9 authoritative revocation completeness | 15 | `fail` / `indeterminate` / `pass` |
+| [`revocation-state-completeness-v0.8.json`](revocation-state-completeness-v0.8.json) | DACS-1 v0.8 §6.3.4 RSC-1..RSC-9 authoritative revocation completeness | 17 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |

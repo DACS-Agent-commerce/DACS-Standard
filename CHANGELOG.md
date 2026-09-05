@@ -13,6 +13,24 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — corrective-profile consumer and AP2 composition boundaries
+
+- **Atomic AP2-7 admission composition** (DACS-4 §9.5.6 AP2-7; #343) —
+  composes verified CheckoutMandate/PaymentMandate admission with one
+  handler-owned atomic binding-store decision before provider metadata or
+  submission. Only `bind-new` can submit a new payment; exact-tuple retries,
+  cross-job/cross-phase replay, caller store assertions, malformed entries,
+  duplicate entries, and conflicting entries all produce zero new provider
+  payments.
+- **Current DACS-5 consumers require trusted profile authority** (DACS-5
+  §10.4.2 BB-5 / §10.5 Replay; CORE §11.1.2; #343) — current logical-address,
+  BB-5 binding, resolution-context, and reputation-replay paths now require
+  verifier-owned authority for the exact release pin, complete module tuple,
+  exact session, and authenticated participant before address derivation. A
+  canonical pre-correction ULID or copied profile assertion cannot promote a
+  historical artifact. Explicitly named legacy replay paths preserve frozen
+  historical bytes and semantics without current authority or effects.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

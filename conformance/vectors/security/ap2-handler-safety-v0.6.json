@@ -1,9 +1,9 @@
 {
   "set": "ap2-handler-safety-v0.6",
   "spec": "DACS-4 v0.7 profile: §9.5.6 AP2-3/AP2-6/AP2-7 plus CORE §11.1.2 and JID-1",
-  "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, authenticated synthetic-profile and JID/phase admission ordering, checkout/payment admission, and retry/replay consumption are executed; the fixture release pin is not a published release or live deployment profile; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
-  "hash": "9e13e6ced430c72f221f7b7006ea92b09682e80600f0159dcad4fd45bc8253ec",
-  "count": 40,
+  "scope": "candidate handler predicates: idempotency-key and transaction-id derivation, authenticated synthetic-profile and JID/phase admission ordering, checkout/payment admission atomically composed with handler-owned AP2-7 store decisions, and retry/replay consumption are executed; the fixture release pin is not a published release or live deployment profile; provider capability, mandate cryptographic verification, and signature generation are modeled inputs",
+  "hash": "bc19f9b9613e37a7e06178673c093f450d65aaf0c83a6317b26ed53b6395bb0a",
+  "count": 59,
   "vectors": [
     {
       "name": "ap2-key-base",
@@ -130,11 +130,236 @@
         "hashCalls": 2,
         "resolverCalls": 1,
         "metadataCalls": 1,
+        "bindingStoreCalls": 1,
+        "bindingAction": "bind-new",
+        "operationOrder": [
+          "atomicBindingStoreDecision",
+          "constructProviderMetadata",
+          "submitProviderPayment"
+        ],
         "reserveAp2Binding": true,
         "submitProviderPayment": true,
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
       },
       "note": "separate verified CheckoutMandate and PaymentMandate artifacts with a matching digest admit side effects"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-composed-same-tuple-inflight-resumes",
+      "caseClass": "positive",
+      "expected": "pass",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "bindingAction": "resume-existing",
+        "operationOrder": [
+          "atomicBindingStoreDecision"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "the composed handler resolves an in-flight exact-tuple retry and creates no new provider payment"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-composed-same-tuple-settled-resumes",
+      "caseClass": "positive",
+      "expected": "pass",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "bindingAction": "resume-settlement",
+        "operationOrder": [
+          "atomicBindingStoreDecision"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "the composed handler resolves a settled exact-tuple retry without metadata construction or another provider payment"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-composed-cross-job-replay-refuses",
+      "caseClass": "negative",
+      "expected": "fail",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "bindingAction": "reject-replay",
+        "operationOrder": [
+          "atomicBindingStoreDecision"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "a valid current-profile presentation for another session is rejected by the authoritative store before provider work"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 4,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-composed-cross-phase-replay-refuses",
+      "caseClass": "negative",
+      "expected": "fail",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "bindingAction": "reject-replay",
+        "operationOrder": [
+          "atomicBindingStoreDecision"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "a valid presentation at another phase is rejected by the authoritative store before provider work"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-composed-duplicate-bindings-refuse",
+      "caseClass": "negative",
+      "expected": "error",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "bindingAction": "refuse-conflict",
+        "operationOrder": [
+          "atomicBindingStoreDecision"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "duplicate authoritative entries fail closed before provider work"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-composed-conflicting-bindings-refuse",
+      "caseClass": "negative",
+      "expected": "error",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "bindingAction": "refuse-conflict",
+        "operationOrder": [
+          "atomicBindingStoreDecision"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "conflicting authoritative entries fail closed before provider work"
+    },
+    {
+      "op": "checkout-payment-admission",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "peerIdentity": "did:demos:agent:2222222222222222222222222222222222222222222222222222222222222222",
+      "checkoutMandatePresent": true,
+      "checkoutMandateVerified": true,
+      "paymentMandatePresent": true,
+      "paymentMandateVerified": true,
+      "checkoutJws": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJjaGVja291dF9pZCI6ImNoZWNrb3V0LTEyMyIsImN1cnJlbmN5IjoiVVNEIiwidG90YWwiOiIxMC4wMCJ9.AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QA",
+      "algorithm": "ES256",
+      "signatureGeneration": "non-deterministic",
+      "paymentTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "name": "ap2-composed-caller-store-assertion-cannot-authorize",
+      "caseClass": "negative",
+      "priorBindings": [],
+      "expected": "pass",
+      "want": {
+        "hashCalls": 2,
+        "resolverCalls": 1,
+        "metadataCalls": 0,
+        "bindingStoreCalls": 1,
+        "bindingAction": "resume-existing",
+        "operationOrder": [
+          "atomicBindingStoreDecision"
+        ],
+        "reserveAp2Binding": false,
+        "submitProviderPayment": false,
+        "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+      },
+      "note": "a caller-supplied empty-store assertion is ignored; the handler-owned in-flight binding prevents a new provider payment"
     },
     {
       "op": "checkout-payment-admission",
@@ -156,6 +381,9 @@
         "hashCalls": 2,
         "resolverCalls": 1,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false,
         "derivedTransactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
@@ -182,6 +410,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -207,6 +438,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -232,6 +466,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -258,6 +495,9 @@
         "hashCalls": 1,
         "resolverCalls": 1,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -283,6 +523,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -308,6 +551,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -333,6 +579,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -358,6 +607,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -394,6 +646,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -419,6 +674,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -444,6 +702,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -469,6 +730,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -495,6 +759,9 @@
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": null,
+        "operationOrder": [],
         "reserveAp2Binding": false,
         "submitProviderPayment": false
       },
@@ -624,6 +891,240 @@
         "submitNewPayment": false
       },
       "note": "a corrupt or racy binding store fails closed instead of selecting a winner"
+    },
+    {
+      "name": "ap2-null-binding-store-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": null,
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a null authoritative store snapshot fails closed"
+    },
+    {
+      "name": "ap2-scalar-binding-store-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": "empty",
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a scalar authoritative store snapshot fails closed"
+    },
+    {
+      "name": "ap2-null-binding-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        null
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a null store member fails closed rather than raising"
+    },
+    {
+      "name": "ap2-scalar-binding-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        7
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a scalar store member fails closed rather than raising"
+    },
+    {
+      "name": "ap2-partial-binding-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a partial store member fails the closed decision shape"
+    },
+    {
+      "name": "ap2-wrong-type-transaction-id-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": 1,
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a non-string stored transactionId fails closed"
+    },
+    {
+      "name": "ap2-wrong-type-job-id-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": 1,
+          "phaseIndex": 3,
+          "state": "in-flight"
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a non-string stored jobId fails closed"
+    },
+    {
+      "name": "ap2-wrong-type-phase-index-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": "3",
+          "state": "in-flight"
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a non-integer stored phaseIndex fails closed"
+    },
+    {
+      "name": "ap2-wrong-type-state-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": 1
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "a non-string stored state fails closed"
+    },
+    {
+      "name": "ap2-unknown-state-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "pending"
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "an unknown stored state fails closed"
+    },
+    {
+      "name": "ap2-extra-field-binding-entry-errors",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight",
+          "trusted": true
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "an open-shaped store member cannot add a caller-controlled decision field"
+    },
+    {
+      "name": "ap2-duplicate-stored-bindings-error",
+      "op": "transaction-binding",
+      "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+      "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      "phaseIndex": 3,
+      "priorBindings": [
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        },
+        {
+          "transactionId": "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU",
+          "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+          "phaseIndex": 3,
+          "state": "in-flight"
+        }
+      ],
+      "expected": "error",
+      "want": {
+        "action": "refuse-conflict",
+        "submitNewPayment": false
+      },
+      "note": "even byte-identical duplicate store entries fail closed"
     },
     {
       "name": "ap2-checkout-randomized-signature-pass",

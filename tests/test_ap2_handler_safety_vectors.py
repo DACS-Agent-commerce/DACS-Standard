@@ -1,9 +1,12 @@
 import base64
+import copy
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 import re
 import subprocess
 import sys
+import threading
 import unicodedata
 import unittest
 from pathlib import Path
@@ -90,7 +93,34 @@ def trusted_context_for_ap2_case(case):
         return trusted_profile_context(session_id="cafe\u0301-job")
     if name == "ap2-admission-overflow-job-errors":
         return trusted_profile_context(session_id="8" + CURRENT_SESSION_ID[1:])
+    if name == "ap2-composed-cross-job-replay-refuses":
+        return trusted_profile_context(session_id="01ARZ3NDEKTSV4RRFFQ69G5FAW")
     return trusted_profile_context()
+
+
+def authoritative_binding_store_for_ap2_case(case):
+    """Handler-owned store fixture; never recovered from checkout input."""
+    transaction_id = "rtXpY7wp4o7vknuw0ZaOpynbfydEGvpoFkFUiRFpYJU"
+    existing = {
+        "transactionId": transaction_id,
+        "jobId": CURRENT_SESSION_ID,
+        "phaseIndex": 3,
+        "state": "in-flight",
+    }
+    settled = {**existing, "state": "settled"}
+    stores = {
+        "ap2-composed-same-tuple-inflight-resumes": [existing],
+        "ap2-composed-same-tuple-settled-resumes": [settled],
+        "ap2-composed-cross-job-replay-refuses": [existing],
+        "ap2-composed-cross-phase-replay-refuses": [existing],
+        "ap2-composed-duplicate-bindings-refuse": [existing, dict(existing)],
+        "ap2-composed-conflicting-bindings-refuse": [
+            existing,
+            {**existing, "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAW"},
+        ],
+        "ap2-composed-caller-store-assertion-cannot-authorize": [existing],
+    }
+    return stores.get(case["name"], [])
 
 
 def canonical_json(value):
@@ -126,19 +156,34 @@ def derive_transaction_id(checkout_jws, sd_alg=MISSING):
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
-def evaluate_transaction_binding(case):
-    prior = case["priorBindings"]
+def evaluate_transaction_binding(transaction_id, job_id, phase_index, prior):
+    """Pure classification oracle; not itself a stateful reservation."""
     if not isinstance(prior, list):
         return "error", "refuse-conflict", False
-    matches = [entry for entry in prior if entry.get("transactionId") == case["transactionId"]]
+    required = {"transactionId", "jobId", "phaseIndex", "state"}
+    for entry in prior:
+        if not isinstance(entry, dict) or set(entry) != required:
+            return "error", "refuse-conflict", False
+        if (
+            not isinstance(entry.get("transactionId"), str)
+            or not entry["transactionId"]
+            or not isinstance(entry.get("jobId"), str)
+            or JOB_ID_RE.fullmatch(entry["jobId"]) is None
+            or type(entry.get("phaseIndex")) is not int
+            or entry["phaseIndex"] < 0
+            or not isinstance(entry.get("state"), str)
+            or entry["state"] not in {"in-flight", "settled"}
+        ):
+            return "error", "refuse-conflict", False
+    matches = [entry for entry in prior if entry["transactionId"] == transaction_id]
     if len(matches) > 1:
         return "error", "refuse-conflict", False
     if not matches:
         return "pass", "bind-new", True
     bound = matches[0]
     same_tuple = (
-        bound.get("jobId") == case["jobId"]
-        and bound.get("phaseIndex") == case["phaseIndex"]
+        bound["jobId"] == job_id
+        and bound["phaseIndex"] == phase_index
     )
     if not same_tuple:
         return "fail", "reject-replay", False
@@ -147,6 +192,23 @@ def evaluate_transaction_binding(case):
     if bound.get("state") == "in-flight":
         return "pass", "resume-existing", False
     return "error", "refuse-conflict", False
+
+
+BINDING_STORE_LOCK = threading.Lock()
+
+
+def reserve_or_resolve_transaction_binding(transaction_id, job_id, phase_index, store):
+    """Serialized in-process fixture CAS; production requires a durable atomic store."""
+    with BINDING_STORE_LOCK:
+        result = evaluate_transaction_binding(transaction_id, job_id, phase_index, store)
+        if result == ("pass", "bind-new", True):
+            store.append({
+                "transactionId": transaction_id,
+                "jobId": job_id,
+                "phaseIndex": phase_index,
+                "state": "in-flight",
+            })
+        return result
 
 
 def evaluate_signature_policy(case):
@@ -209,11 +271,16 @@ def admits_current_profile(case, trusted_context):
     )
 
 
-def evaluate_checkout_payment_admission(case, trusted_context=None):
+def evaluate_checkout_payment_admission(
+    case, trusted_context=None, authoritative_binding_store=None, provider_submit=None
+):
     no_effects = {
         "hashCalls": 0,
         "resolverCalls": 0,
         "metadataCalls": 0,
+        "bindingStoreCalls": 0,
+        "bindingAction": None,
+        "operationOrder": [],
         "reserveAp2Binding": False,
         "submitProviderPayment": False,
     }
@@ -250,9 +317,28 @@ def evaluate_checkout_payment_admission(case, trusted_context=None):
         return "error", None, effects
     if case.get("paymentTransactionId") != transaction_id:
         return "fail", transaction_id, effects
-    effects["metadataCalls"] += 1
+    effects["bindingStoreCalls"] += 1
+    effects["operationOrder"].append("atomicBindingStoreDecision")
+    binding_verdict, binding_action, submit_new = reserve_or_resolve_transaction_binding(
+        transaction_id,
+        job_id,
+        phase_index,
+        authoritative_binding_store,
+    )
+    effects["bindingAction"] = binding_action
+    if binding_verdict != "pass":
+        return binding_verdict, transaction_id, effects
+    if not submit_new:
+        return "pass", transaction_id, effects
     effects["reserveAp2Binding"] = True
+    effects["metadataCalls"] += 1
+    effects["operationOrder"].append("constructProviderMetadata")
     effects["submitProviderPayment"] = True
+    effects["operationOrder"].append("submitProviderPayment")
+    if provider_submit is not None:
+        # The reservation is deliberately retained if submission fails or is
+        # ambiguous. An exact retry resolves the existing in-flight operation.
+        provider_submit(transaction_id)
     return "pass", transaction_id, effects
 
 
@@ -361,18 +447,23 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             case for case in self.data["vectors"]
             if case["op"] == "checkout-payment-admission"
         ]
-        self.assertEqual(len(cases), 15)
+        self.assertEqual(len(cases), 22)
         for case in cases:
             with self.subTest(case=case["name"]):
                 trusted_context = trusted_context_for_ap2_case(case)
                 verdict, derived, effects = evaluate_checkout_payment_admission(
-                    case, trusted_context
+                    case,
+                    trusted_context,
+                    authoritative_binding_store_for_ap2_case(case),
                 )
                 self.assertEqual(verdict, case["expected"])
                 for effect in (
                     "hashCalls",
                     "resolverCalls",
                     "metadataCalls",
+                    "bindingStoreCalls",
+                    "bindingAction",
+                    "operationOrder",
                     "reserveAp2Binding",
                     "submitProviderPayment",
                 ):
@@ -397,7 +488,9 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             with self.subTest(case=name):
                 case = self.cases[name]
                 verdict, derived, effects = evaluate_checkout_payment_admission(
-                    case, trusted_context_for_ap2_case(case)
+                    case,
+                    trusted_context_for_ap2_case(case),
+                    authoritative_binding_store_for_ap2_case(case),
                 )
                 self.assertIn(verdict, {"fail", "error"})
                 self.assertIsNone(derived)
@@ -407,27 +500,44 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                         "hashCalls": 0,
                         "resolverCalls": 0,
                         "metadataCalls": 0,
+                        "bindingStoreCalls": 0,
+                        "bindingAction": None,
+                        "operationOrder": [],
                         "reserveAp2Binding": False,
                         "submitProviderPayment": False,
                     },
                 )
 
-    def test_complete_chain_admission_composes_into_ap2_7_binding(self):
-        case = self.cases["ap2-admission-complete-chain-match"]
-        verdict, transaction_id, effects = evaluate_checkout_payment_admission(
-            case, trusted_context_for_ap2_case(case)
-        )
-        self.assertEqual(verdict, "pass")
-        self.assertTrue(effects["reserveAp2Binding"])
-        binding_case = {
-            "transactionId": transaction_id,
-            "jobId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
-            "phaseIndex": 3,
-            "priorBindings": [],
-        }
-        self.assertEqual(
-            evaluate_transaction_binding(binding_case), ("pass", "bind-new", True)
-        )
+    def test_complete_chain_admission_composes_atomic_ap2_7_decision(self):
+        for name in (
+            "ap2-admission-complete-chain-match",
+            "ap2-composed-same-tuple-inflight-resumes",
+            "ap2-composed-same-tuple-settled-resumes",
+            "ap2-composed-cross-job-replay-refuses",
+            "ap2-composed-cross-phase-replay-refuses",
+            "ap2-composed-duplicate-bindings-refuse",
+            "ap2-composed-conflicting-bindings-refuse",
+            "ap2-composed-caller-store-assertion-cannot-authorize",
+        ):
+            case = self.cases[name]
+            with self.subTest(case=name):
+                verdict, transaction_id, effects = evaluate_checkout_payment_admission(
+                    case,
+                    trusted_context_for_ap2_case(case),
+                    authoritative_binding_store_for_ap2_case(case),
+                )
+                self.assertEqual(verdict, case["expected"])
+                self.assertEqual(transaction_id, case["want"]["derivedTransactionId"])
+                self.assertEqual(effects["bindingAction"], case["want"]["bindingAction"])
+                self.assertEqual(effects["operationOrder"], case["want"]["operationOrder"])
+                self.assertEqual(
+                    effects["submitProviderPayment"],
+                    case["want"]["submitProviderPayment"],
+                )
+                if effects["bindingAction"] != "bind-new":
+                    self.assertFalse(effects["reserveAp2Binding"])
+                    self.assertFalse(effects["submitProviderPayment"])
+                    self.assertEqual(effects["metadataCalls"], 0)
 
     def test_copied_blessed_reference_never_authorizes_ap2_effects(self):
         mutant = dict(self.cases["ap2-admission-caller-profile-refuses"])
@@ -442,10 +552,57 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
                 "hashCalls": 0,
                 "resolverCalls": 0,
                 "metadataCalls": 0,
+                "bindingStoreCalls": 0,
+                "bindingAction": None,
+                "operationOrder": [],
                 "reserveAp2Binding": False,
                 "submitProviderPayment": False,
             },
         )
+
+    def test_same_store_reserves_once_and_rejects_cross_tuple_replay(self):
+        case = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(case)
+        store = []
+        first = evaluate_checkout_payment_admission(case, context, store)
+        self.assertTrue(first[2]["submitProviderPayment"])
+        self.assertEqual(store, [{"transactionId": first[1], "jobId": case["jobId"], "phaseIndex": case["phaseIndex"], "state": "in-flight"}])
+        snapshot = copy.deepcopy(store)
+        for replay in (case, self.cases["ap2-composed-cross-job-replay-refuses"], self.cases["ap2-composed-cross-phase-replay-refuses"]):
+            result = evaluate_checkout_payment_admission(replay, trusted_context_for_ap2_case(replay), store)
+            self.assertEqual(result[2]["bindingAction"], "resume-existing" if replay is case else "reject-replay")
+            self.assertFalse(result[2]["submitProviderPayment"])
+            self.assertFalse(result[2]["reserveAp2Binding"])
+            self.assertEqual(result[2]["metadataCalls"], 0)
+            self.assertEqual(store, snapshot)
+
+    def test_concurrent_calls_share_one_atomic_reservation(self):
+        case = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(case)
+        store = []
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(lambda _: evaluate_checkout_payment_admission(case, context, store), range(4)))
+        self.assertEqual(sum(r[2]["submitProviderPayment"] for r in results), 1)
+        self.assertEqual(len(store), 1)
+
+    def test_provider_failure_keeps_reservation_for_recovery(self):
+        case = self.cases["ap2-admission-complete-chain-match"]
+        context = trusted_context_for_ap2_case(case)
+        store = []
+        calls = []
+        def ambiguous_provider(transaction_id):
+            self.assertEqual(len(store), 1)
+            self.assertEqual(store[0]["transactionId"], transaction_id)
+            self.assertEqual(store[0]["state"], "in-flight")
+            calls.append(transaction_id)
+            raise RuntimeError("simulated lost provider response")
+        with self.assertRaisesRegex(RuntimeError, "simulated lost"):
+            evaluate_checkout_payment_admission(case, context, store, ambiguous_provider)
+        retry = evaluate_checkout_payment_admission(case, context, store, ambiguous_provider)
+        self.assertEqual(retry[2]["bindingAction"], "resume-existing")
+        self.assertFalse(retry[2]["submitProviderPayment"])
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(store), 1)
 
     def test_new_checkout_cases_cover_positive_negative_and_boundary(self):
         classes = {
@@ -457,10 +614,15 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
 
     def test_transaction_binding_executes_retry_and_replay_rules(self):
         cases = [case for case in self.data["vectors"] if case["op"] == "transaction-binding"]
-        self.assertEqual(len(cases), 6)
+        self.assertEqual(len(cases), 18)
         for case in cases:
             with self.subTest(case=case["name"]):
-                verdict, action, submit_new = evaluate_transaction_binding(case)
+                verdict, action, submit_new = evaluate_transaction_binding(
+                    case.get("transactionId"),
+                    case.get("jobId"),
+                    case.get("phaseIndex"),
+                    case.get("priorBindings"),
+                )
                 self.assertEqual(verdict, case["expected"])
                 self.assertEqual(action, case["want"]["action"])
                 self.assertEqual(submit_new, case["want"]["submitNewPayment"])
@@ -471,10 +633,43 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
             "ap2-same-tuple-settled-resumes-evidence",
         ):
             case = self.cases[name]
-            verdict, action, submit_new = evaluate_transaction_binding(case)
+            verdict, action, submit_new = evaluate_transaction_binding(
+                case["transactionId"],
+                case["jobId"],
+                case["phaseIndex"],
+                case["priorBindings"],
+            )
             self.assertEqual(verdict, "pass")
             self.assertTrue(action.startswith("resume-"))
             self.assertFalse(submit_new)
+
+    def test_malformed_binding_store_fails_closed_in_composed_handler(self):
+        base = self.cases["ap2-admission-complete-chain-match"]
+        malformed = [
+            case
+            for case in self.data["vectors"]
+            if case["op"] == "transaction-binding" and case["expected"] == "error"
+        ]
+        self.assertGreaterEqual(len(malformed), 10)
+        for store_case in malformed:
+            with self.subTest(case=store_case["name"]):
+                verdict, transaction_id, effects = evaluate_checkout_payment_admission(
+                    base,
+                    trusted_context_for_ap2_case(base),
+                    store_case.get("priorBindings"),
+                )
+                self.assertEqual(verdict, "error")
+                self.assertEqual(
+                    transaction_id, base["want"]["derivedTransactionId"]
+                )
+                self.assertEqual(effects["bindingStoreCalls"], 1)
+                self.assertEqual(effects["bindingAction"], "refuse-conflict")
+                self.assertEqual(
+                    effects["operationOrder"], ["atomicBindingStoreDecision"]
+                )
+                self.assertEqual(effects["metadataCalls"], 0)
+                self.assertFalse(effects["reserveAp2Binding"])
+                self.assertFalse(effects["submitProviderPayment"])
 
     def test_checkout_signature_policy_uses_the_dacs_strict_profile(self):
         cases = [case for case in self.data["vectors"] if case["op"] == "checkout-signature-policy"]
@@ -512,6 +707,8 @@ class Ap2HandlerSafetyVectorTests(unittest.TestCase):
         self.assertIn("CheckoutMandate + PaymentMandate", spec)
         self.assertIn("base payload of the SD-JWT carrying the CheckoutMandate", spec)
         self.assertIn("MUST NOT reserve the AP2-7 binding", spec)
+        self.assertIn("handler-owned authoritative store", spec)
+        self.assertIn("only branch that may create provider metadata", spec)
         self.assertIn("current Demos DAHR binding", spec)
         self.assertIn("handler-owned trusted context", spec)
         self.assertIn("duplicate participant records", spec)

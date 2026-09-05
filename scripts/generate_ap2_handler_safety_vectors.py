@@ -119,14 +119,26 @@ def admission_want(
     hash_calls: int = 0,
     resolver_calls: int = 0,
     metadata_calls: int = 0,
+    binding_store_calls: int = 0,
+    binding_action: str | None = None,
     reserve: bool = False,
     submit: bool = False,
     derived_transaction_id: object = MISSING,
 ) -> dict[str, object]:
+    operation_order: list[str] = []
+    if binding_store_calls:
+        operation_order.append("atomicBindingStoreDecision")
+    if metadata_calls:
+        operation_order.append("constructProviderMetadata")
+    if submit:
+        operation_order.append("submitProviderPayment")
     want: dict[str, object] = {
         "hashCalls": hash_calls,
         "resolverCalls": resolver_calls,
         "metadataCalls": metadata_calls,
+        "bindingStoreCalls": binding_store_calls,
+        "bindingAction": binding_action,
+        "operationOrder": operation_order,
         "reserveAp2Binding": reserve,
         "submitProviderPayment": submit,
     }
@@ -238,6 +250,8 @@ def vectors() -> list[dict[str, object]]:
                 hash_calls=2,
                 resolver_calls=1,
                 metadata_calls=1,
+                binding_store_calls=1,
+                binding_action="bind-new",
                 reserve=True,
                 submit=True,
                 derived_transaction_id=tx,
@@ -245,6 +259,122 @@ def vectors() -> list[dict[str, object]]:
             "note": (
                 "separate verified CheckoutMandate and PaymentMandate artifacts with a "
                 "matching digest admit side effects"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-same-tuple-inflight-resumes",
+            "caseClass": "positive",
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resume-existing",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "the composed handler resolves an in-flight exact-tuple retry and "
+                "creates no new provider payment"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-same-tuple-settled-resumes",
+            "caseClass": "positive",
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resume-settlement",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "the composed handler resolves a settled exact-tuple retry without "
+                "metadata construction or another provider payment"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-cross-job-replay-refuses",
+            "caseClass": "negative",
+            "jobId": job_b,
+            "expected": "fail",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="reject-replay",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "a valid current-profile presentation for another session is rejected "
+                "by the authoritative store before provider work"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-cross-phase-replay-refuses",
+            "caseClass": "negative",
+            "phaseIndex": 4,
+            "expected": "fail",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="reject-replay",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "a valid presentation at another phase is rejected by the authoritative "
+                "store before provider work"
+            ),
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-duplicate-bindings-refuse",
+            "caseClass": "negative",
+            "expected": "error",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="refuse-conflict",
+                derived_transaction_id=tx,
+            ),
+            "note": "duplicate authoritative entries fail closed before provider work",
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-conflicting-bindings-refuse",
+            "caseClass": "negative",
+            "expected": "error",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="refuse-conflict",
+                derived_transaction_id=tx,
+            ),
+            "note": "conflicting authoritative entries fail closed before provider work",
+        },
+        {
+            **admission_common,
+            "name": "ap2-composed-caller-store-assertion-cannot-authorize",
+            "caseClass": "negative",
+            "priorBindings": [],
+            "expected": "pass",
+            "want": admission_want(
+                hash_calls=2,
+                resolver_calls=1,
+                binding_store_calls=1,
+                binding_action="resume-existing",
+                derived_transaction_id=tx,
+            ),
+            "note": (
+                "a caller-supplied empty-store assertion is ignored; the handler-owned "
+                "in-flight binding prevents a new provider payment"
             ),
         },
         {
@@ -459,6 +589,141 @@ def vectors() -> list[dict[str, object]]:
             "note": "a corrupt or racy binding store fails closed instead of selecting a winner",
         },
         {
+            "name": "ap2-null-binding-store-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": None,
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a null authoritative store snapshot fails closed",
+        },
+        {
+            "name": "ap2-scalar-binding-store-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": "empty",
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a scalar authoritative store snapshot fails closed",
+        },
+        {
+            "name": "ap2-null-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [None],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a null store member fails closed rather than raising",
+        },
+        {
+            "name": "ap2-scalar-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [7],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a scalar store member fails closed rather than raising",
+        },
+        {
+            "name": "ap2-partial-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [{"transactionId": tx, "jobId": job_a, "phaseIndex": 3}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a partial store member fails the closed decision shape",
+        },
+        {
+            "name": "ap2-wrong-type-transaction-id-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"transactionId": 1}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-string stored transactionId fails closed",
+        },
+        {
+            "name": "ap2-wrong-type-job-id-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"jobId": 1}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-string stored jobId fails closed",
+        },
+        {
+            "name": "ap2-wrong-type-phase-index-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"phaseIndex": "3"}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-integer stored phaseIndex fails closed",
+        },
+        {
+            "name": "ap2-wrong-type-state-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"state": 1}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "a non-string stored state fails closed",
+        },
+        {
+            "name": "ap2-unknown-state-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "pending")],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "an unknown stored state fails closed",
+        },
+        {
+            "name": "ap2-extra-field-binding-entry-errors",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [binding(tx, job_a, 3, "in-flight") | {"trusted": True}],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "an open-shaped store member cannot add a caller-controlled decision field",
+        },
+        {
+            "name": "ap2-duplicate-stored-bindings-error",
+            "op": "transaction-binding",
+            "transactionId": tx,
+            "jobId": job_a,
+            "phaseIndex": 3,
+            "priorBindings": [
+                binding(tx, job_a, 3, "in-flight"),
+                binding(tx, job_a, 3, "in-flight"),
+            ],
+            "expected": "error",
+            "want": {"action": "refuse-conflict", "submitNewPayment": False},
+            "note": "even byte-identical duplicate store entries fail closed",
+        },
+        {
             "name": "ap2-checkout-randomized-signature-pass",
             "op": "checkout-signature-policy",
             "algorithm": "ES256",
@@ -533,7 +798,8 @@ def render() -> str:
         "scope": (
             "candidate handler predicates: idempotency-key and transaction-id derivation, "
             "authenticated synthetic-profile and JID/phase admission ordering, checkout/payment "
-            "admission, and retry/replay consumption are executed; the fixture release pin is "
+            "admission atomically composed with handler-owned AP2-7 store decisions, and "
+            "retry/replay consumption are executed; the fixture release pin is "
             "not a published release or live deployment profile; "
             "provider capability, mandate cryptographic verification, and signature generation "
             "are modeled inputs"

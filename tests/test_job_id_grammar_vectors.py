@@ -28,6 +28,7 @@ MODULE_SPECS = {
     "dacs5": (ROOT / "spec/DACS-5-VERIFY.md", "DACS-5", "DACS-5-VERIFY"),
 }
 LEGACY_ADDRESS_SUITES = (
+    ROOT / "scripts/generate_dacs5_reputation_vectors.py",
     ROOT / "tests/test_bundle_binding_vectors.py",
     ROOT / "tests/test_round9_ordering_contract_vectors.py",
     ROOT / "tests/test_round10_validation_predicate_vectors.py",
@@ -35,26 +36,15 @@ LEGACY_ADDRESS_SUITES = (
 )
 
 JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
-RELEASE_PIN_RE = re.compile(r"[0-9a-f]{40}\Z", re.ASCII)
 ROLES = {"buyer", "seller", "orchestrator"}
 KNOWN_ADDRESSES = {
     "buyer": "stor-180e77cf120910a90212df45f4ed0c7dce8b7ee57c8d66d7f402a7b5e3fe307b",
     "seller": "stor-831775f318b0d4aac57d082789fa5efd8f74583d2dfc0e267bcbe4c284224840",
     "orchestrator": "stor-4cadaaae064cc2257f3e101842e4ae24fd4a481fdb7dea35082f30e7ad2311d0",
 }
-AUTHORITATIVE_RELEASE_PIN = "0000000000000000000000000000000000000001"
-AUTHORITATIVE_MODULE_VERSIONS = {
-    "core": "0.3",
-    "dacs1": "0.7",
-    "dacs2": "0.6",
-    "dacs3": "0.5",
-    "dacs4": "0.7",
-    "dacs5": "0.5",
-}
-AUTHORITATIVE_LOCAL_PROFILE = {
-    "releasePin": AUTHORITATIVE_RELEASE_PIN,
-    "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
-}
+AUTHORITATIVE_RELEASE_PIN = DACS5_REFERENCE.AUTHORITATIVE_RELEASE_PIN
+AUTHORITATIVE_MODULE_VERSIONS = DACS5_REFERENCE.AUTHORITATIVE_MODULE_VERSIONS
+AUTHORITATIVE_LOCAL_PROFILE = DACS5_REFERENCE.AUTHORITATIVE_LOCAL_PROFILE
 CURRENT_SESSION_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 CURRENT_PEER_IDENTITY = "did:demos:agent:" + "22" * 32
 
@@ -68,23 +58,14 @@ def trusted_profile_context(
     authenticated=True,
     duplicate=False,
 ):
-    participant = {
-        "identity": (
-            expected_peer_identity
-            if participant_identity is None
-            else participant_identity
-        ),
-        "authenticated": authenticated,
-        "profile": profile,
-    }
-    participants = [participant]
-    if duplicate:
-        participants.append(dict(participant))
-    return {
-        "sessionId": session_id,
-        "expectedPeerIdentity": expected_peer_identity,
-        "participants": participants,
-    }
+    return DACS5_REFERENCE.trusted_profile_context(
+        session_id,
+        expected_peer_identity,
+        participant_identity=participant_identity,
+        profile=profile,
+        authenticated=authenticated,
+        duplicate=duplicate,
+    )
 
 
 TRUSTED_PROFILE_CONTEXTS = {
@@ -157,19 +138,7 @@ def derive_bundle(job_id, role, metrics):
 
 
 def is_exact_corrective_profile(profile):
-    if not isinstance(profile, dict):
-        return False
-    release_pin = profile.get("releasePin")
-    module_versions = profile.get("moduleVersions")
-    return (
-        isinstance(release_pin, str)
-        and RELEASE_PIN_RE.fullmatch(release_pin) is not None
-        and release_pin == AUTHORITATIVE_RELEASE_PIN
-        and isinstance(module_versions, dict)
-        and set(module_versions) == set(AUTHORITATIVE_MODULE_VERSIONS)
-        and all(isinstance(value, str) for value in module_versions.values())
-        and module_versions == AUTHORITATIVE_MODULE_VERSIONS
-    )
+    return DACS5_REFERENCE.is_exact_corrective_profile(profile)
 
 
 def admit_authenticated_profile(vector, trusted_context):
@@ -183,30 +152,9 @@ def admit_authenticated_profile(vector, trusted_context):
     peer_identity = vector.get("peerIdentity")
     if not isinstance(session_id, str) or not isinstance(peer_identity, str):
         raise ValueError("profile-admission")
-    if not isinstance(trusted_context, dict):
-        raise ValueError("profile-admission")
-    if trusted_context.get("sessionId") != session_id:
-        raise ValueError("profile-admission")
-    expected_peer_identity = trusted_context.get("expectedPeerIdentity")
-    if (
-        not isinstance(expected_peer_identity, str)
-        or peer_identity != expected_peer_identity
+    if not DACS5_REFERENCE.admits_current_profile(
+        session_id, peer_identity, trusted_context
     ):
-        raise ValueError("profile-admission")
-    participants = trusted_context.get("participants")
-    if not isinstance(participants, list):
-        raise ValueError("profile-admission")
-    matches = [
-        participant
-        for participant in participants
-        if isinstance(participant, dict)
-        and participant.get("identity") == expected_peer_identity
-    ]
-    if len(matches) != 1 or matches[0].get("authenticated") is not True:
-        raise ValueError("profile-admission")
-    if not is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE):
-        raise ValueError("profile-admission")
-    if not is_exact_corrective_profile(matches[0].get("profile")):
         raise ValueError("profile-admission")
 
 
@@ -285,14 +233,27 @@ class JobIdGrammarVectorTests(unittest.TestCase):
 
     def test_shared_dacs5_helper_gates_current_derivation_and_marks_legacy(self):
         job_id = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+        authority = trusted_profile_context()
         self.assertEqual(
             KNOWN_ADDRESSES["buyer"],
-            DACS5_REFERENCE.logical_address(job_id, "buyer"),
+            DACS5_REFERENCE.logical_address(
+                job_id,
+                "buyer",
+                participant_identity=CURRENT_PEER_IDENTITY,
+                trusted_contexts=authority,
+            ),
         )
         for malformed in ("8" + job_id[1:], "cafe\u0301-job", "J"):
             with self.subTest(jobId=malformed):
                 with self.assertRaisesRegex(ValueError, "job-id-validation"):
-                    DACS5_REFERENCE.logical_address(malformed, "buyer")
+                    DACS5_REFERENCE.logical_address(
+                        malformed,
+                        "buyer",
+                        participant_identity=CURRENT_PEER_IDENTITY,
+                        trusted_contexts=trusted_profile_context(
+                            session_id=malformed
+                        ),
+                    )
 
         # Historical vector suites must name their frozen path explicitly; it
         # cannot be mistaken for current JID-1 authority.
@@ -302,7 +263,9 @@ class JobIdGrammarVectorTests(unittest.TestCase):
         )
 
     def test_real_bb5_consumer_defaults_to_current_profile(self):
-        legacy_job = "not-a-current-job"
+        # This models a pre-correction artifact whose identifier happened already
+        # to be a canonical ULID: identical address bytes do not promote it.
+        legacy_job = CURRENT_SESSION_ID
         binding = {
             "bindingVersion": "1",
             "jobId": legacy_job,
@@ -326,7 +289,17 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             expected_role="seller",
         )
         self.assertFalse(current["ok"])
-        self.assertIn("job-id-validation", current["reason"])
+        self.assertIn("current-profile-admission", current["reason"])
+
+        admitted = DACS5_REFERENCE.verify_binding(
+            binding,
+            None,
+            expected_jobid=legacy_job,
+            expected_role="seller",
+            participant_identity=CURRENT_PEER_IDENTITY,
+            trusted_contexts=trusted_profile_context(),
+        )
+        self.assertTrue(admitted["ok"])
 
         archival = DACS5_REFERENCE.verify_legacy_binding(
             binding,
@@ -343,13 +316,24 @@ class JobIdGrammarVectorTests(unittest.TestCase):
             return "attacker-selected-address"
 
         address_ok, address_reason = DACS5_REFERENCE._post_fetch_address_valid(
-            {"jobId": legacy_job},
+            {
+                "jobId": "not-a-current-job",
+                "parties": [
+                    {
+                        "role": "seller",
+                        "primaryClaim": CURRENT_PEER_IDENTITY,
+                    }
+                ],
+            },
             "attacker-selected-address",
             "seller",
             "aa" * 32,
             None,
-            expected_jobid=legacy_job,
+            expected_jobid="not-a-current-job",
             pure_mapping_resolver=permissive_resolver,
+            trusted_contexts=trusted_profile_context(
+                session_id="not-a-current-job"
+            ),
         )
         self.assertFalse(address_ok)
         self.assertIn("job-id-validation", address_reason)

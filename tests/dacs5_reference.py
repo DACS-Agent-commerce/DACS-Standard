@@ -198,6 +198,105 @@ def pointer_hash(pointer):
 
 CURRENT_JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z", re.ASCII)
 CURRENT_BUNDLE_ROLES = {"buyer", "seller", "orchestrator"}
+AUTHORITATIVE_RELEASE_PIN = "0000000000000000000000000000000000000001"
+AUTHORITATIVE_MODULE_VERSIONS = {
+    "core": "0.3",
+    "dacs1": "0.7",
+    "dacs2": "0.6",
+    "dacs3": "0.5",
+    "dacs4": "0.7",
+    "dacs5": "0.5",
+}
+AUTHORITATIVE_LOCAL_PROFILE = {
+    "releasePin": AUTHORITATIVE_RELEASE_PIN,
+    "moduleVersions": AUTHORITATIVE_MODULE_VERSIONS,
+}
+
+
+def trusted_profile_context(
+        session_id, expected_peer_identity, *, participant_identity=None,
+        profile=None, authenticated=True, duplicate=False):
+    """Build explicit test authority; callers must never derive it from an artifact."""
+    participant = {
+        "identity": (
+            expected_peer_identity
+            if participant_identity is None
+            else participant_identity
+        ),
+        "authenticated": authenticated,
+        "profile": AUTHORITATIVE_LOCAL_PROFILE if profile is None else profile,
+    }
+    participants = [participant]
+    if duplicate:
+        participants.append(dict(participant))
+    return {
+        "sessionId": session_id,
+        "expectedPeerIdentity": expected_peer_identity,
+        "participants": participants,
+    }
+
+
+def is_exact_corrective_profile(profile):
+    """Require the exact corrective pin and complete closed module tuple."""
+    return (
+        isinstance(profile, dict)
+        and set(profile) == {"releasePin", "moduleVersions"}
+        and isinstance(profile.get("releasePin"), str)
+        and profile["releasePin"] == AUTHORITATIVE_RELEASE_PIN
+        and isinstance(profile.get("moduleVersions"), dict)
+        and set(profile["moduleVersions"]) == set(AUTHORITATIVE_MODULE_VERSIONS)
+        and all(isinstance(value, str) for value in profile["moduleVersions"].values())
+        and profile["moduleVersions"] == AUTHORITATIVE_MODULE_VERSIONS
+    )
+
+
+def admits_current_profile(session_id, participant_identity, trusted_contexts):
+    """CORE §11.1.2 admission from verifier-owned context, never wire input."""
+    if not isinstance(session_id, str) or not isinstance(participant_identity, str):
+        return False
+    if isinstance(trusted_contexts, dict):
+        contexts = [trusted_contexts]
+    elif isinstance(trusted_contexts, list):
+        contexts = trusted_contexts
+    else:
+        return False
+    if not contexts or not is_exact_corrective_profile(AUTHORITATIVE_LOCAL_PROFILE):
+        return False
+    for context in contexts:
+        if not isinstance(context, dict) or set(context) != {
+            "sessionId", "expectedPeerIdentity", "participants"
+        }:
+            return False
+        if (
+            not isinstance(context.get("sessionId"), str)
+            or not isinstance(context.get("expectedPeerIdentity"), str)
+            or not isinstance(context.get("participants"), list)
+            or not context["participants"]
+        ):
+            return False
+        for participant in context["participants"]:
+            if (
+                not isinstance(participant, dict)
+                or set(participant) != {"identity", "authenticated", "profile"}
+                or not isinstance(participant.get("identity"), str)
+                or type(participant.get("authenticated")) is not bool
+                or not is_exact_corrective_profile(participant.get("profile"))
+            ):
+                return False
+    matches = [
+        context
+        for context in contexts
+        if context["sessionId"] == session_id
+        and context["expectedPeerIdentity"] == participant_identity
+    ]
+    if len(matches) != 1:
+        return False
+    participants = [
+        participant
+        for participant in matches[0]["participants"]
+        if participant["identity"] == participant_identity
+    ]
+    return len(participants) == 1 and participants[0]["authenticated"] is True
 
 
 def validate_current_job_id(job_id):
@@ -207,13 +306,21 @@ def validate_current_job_id(job_id):
     return job_id
 
 
-def logical_address(job_id, role):
-    """Derive a current-profile address after byte-exact JID-1 validation."""
+def _current_logical_address(job_id, role):
+    """Internal derivation; a current public entry point gates before calling it."""
     validated = validate_current_job_id(job_id)
     if role not in CURRENT_BUNDLE_ROLES:
         raise ValueError("role-validation")
     preimage = validated.encode("ascii") + b"-bundle-" + role.encode("ascii")
     return "stor-" + hashlib.sha256(preimage).hexdigest()
+
+
+def logical_address(job_id, role, *, participant_identity=None,
+                    trusted_contexts=None):
+    """Derive a current address only after exact participant-profile admission."""
+    if not admits_current_profile(job_id, participant_identity, trusted_contexts):
+        raise ValueError("current-profile-admission")
+    return _current_logical_address(job_id, role)
 
 
 def legacy_logical_address(job_id, role):
@@ -287,7 +394,8 @@ def verify_sig(pubkey_bytes, domain, content_hash, sig_value):
 
 
 def _verify_binding(binding, pubkeys, *, expected_jobid, expected_role,
-                    expected_content_hash=None, address_deriver):
+                    expected_content_hash=None, expected_signer=None,
+                    address_deriver):
     """BB-4 + targeted BB-5 checks on a BundleBinding, for receipt replay (round-6 blocker #2).
 
     Structural checks ALWAYS run (both modes, pre-crypto): (round-11) the §B.7/§10.4.2 BundleBinding
@@ -340,6 +448,8 @@ def _verify_binding(binding, pubkeys, *, expected_jobid, expected_role,
         return {"ok": False, "reason": "BB-5: binding.jobId != %r" % (expected_jobid,)}
     if binding.get("role") != expected_role:
         return {"ok": False, "reason": "BB-5: binding.role != %r" % (expected_role,)}
+    if expected_signer is not None and binding.get("signer") != expected_signer:
+        return {"ok": False, "reason": "BB-5: binding.signer != authenticated participant"}
     try:
         expected_address = address_deriver(binding.get("jobId"), binding.get("role"))
     except ValueError as exc:
@@ -365,15 +475,21 @@ def _verify_binding(binding, pubkeys, *, expected_jobid, expected_role,
 
 
 def verify_binding(binding, pubkeys, *, expected_jobid, expected_role,
-                   expected_content_hash=None):
-    """Verify a current-profile BB-5 binding; JID-1 runs before derivation."""
+                   expected_content_hash=None, participant_identity=None,
+                   trusted_contexts=None):
+    """Verify current BB-5 only after exact session/participant profile admission."""
+    if not admits_current_profile(
+        expected_jobid, participant_identity, trusted_contexts
+    ):
+        return {"ok": False, "reason": "current-profile-admission"}
     return _verify_binding(
         binding,
         pubkeys,
         expected_jobid=expected_jobid,
         expected_role=expected_role,
         expected_content_hash=expected_content_hash,
-        address_deriver=logical_address,
+        expected_signer=participant_identity,
+        address_deriver=_current_logical_address,
     )
 
 
@@ -1619,12 +1735,28 @@ def _post_fetch_address_valid_with_profile(
 def _post_fetch_address_valid(fetched, resolved_address, expected_role,
                               expected_content_hash, pubkeys,
                               expected_jobid=None,
-                              pure_mapping_resolver=None):
-    """Validate a current-profile address arm; JID-1 precedes every resolver."""
+                              pure_mapping_resolver=None,
+                              trusted_contexts=None):
+    """Validate a current address arm after exact participant-profile admission."""
+    if not isinstance(fetched, dict):
+        return (False, "fetched copy is not an object")
+    job_id = fetched.get("jobId")
+    participants = fetched.get("parties")
+    role_holders = [
+        participant.get("primaryClaim")
+        for participant in participants
+        if isinstance(participant, dict)
+        and participant.get("role") == expected_role
+        and isinstance(participant.get("primaryClaim"), str)
+    ] if isinstance(participants, list) else []
+    if len(role_holders) != 1 or not admits_current_profile(
+        job_id, role_holders[0] if role_holders else None, trusted_contexts
+    ):
+        return (False, "current-profile-admission")
     resolver = (
         pure_mapping_resolver
         if pure_mapping_resolver is not None
-        else logical_address
+        else _current_logical_address
     )
     return _post_fetch_address_valid_with_profile(
         fetched,
@@ -1975,7 +2107,8 @@ def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
 
 
 def resolve_absolute_fault_pointer(
-    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None
+    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None,
+    trusted_contexts=None
 ):
     """Validate FAB/EBFAB pointer type, domain, signature, and triple identity.
 
@@ -2089,6 +2222,10 @@ def resolve_absolute_fault_pointer(
             expected_jobid=dereferenced_bundle["jobId"],
             expected_role=dereferenced_bundle["anchoredByRole"],
             expected_content_hash=recomputed,
+            participant_identity=(
+                binding.get("signer") if isinstance(binding, dict) else None
+            ),
+            trusted_contexts=trusted_contexts,
         )
         if not binding_result["ok"]:
             return {"ok": False, "reason": "binding invalid: " + binding_result["reason"]}
@@ -2972,8 +3109,26 @@ def _validate_resolution_context(derivation, deref, evidence_deref=None, pubkeys
 
 def validate_resolution_context(derivation, deref, evidence_deref=None,
                                 pubkeys=None, anchor_deref=None,
-                                pure_mapping_resolver=None):
-    """Validate current-profile replay context; JID-1 is the default authority."""
+                                pure_mapping_resolver=None,
+                                trusted_contexts=None):
+    """Validate current replay context with explicit verifier-owned authority."""
+    def current_binding_verifier(binding, keys, **expected):
+        participant_identity = (
+            binding.get("signer") if isinstance(binding, dict) else None
+        )
+        return verify_binding(
+            binding,
+            keys,
+            participant_identity=participant_identity,
+            trusted_contexts=trusted_contexts,
+            **expected,
+        )
+
+    def current_address_validator(*args, **kwargs):
+        return _post_fetch_address_valid(
+            *args, trusted_contexts=trusted_contexts, **kwargs
+        )
+
     return _validate_resolution_context(
         derivation,
         deref,
@@ -2981,8 +3136,8 @@ def validate_resolution_context(derivation, deref, evidence_deref=None,
         pubkeys,
         anchor_deref=anchor_deref,
         pure_mapping_resolver=pure_mapping_resolver,
-        binding_verifier=verify_binding,
-        address_validator=_post_fetch_address_valid,
+        binding_verifier=current_binding_verifier,
+        address_validator=current_address_validator,
     )
 
 
@@ -3109,8 +3264,26 @@ def _replay_receipt(derivation, deref, party, window_start, window_end,
 
 def replay_receipt(derivation, deref, party, window_start, window_end,
                    evidence_deref=None, pubkeys=None, anchor_deref=None,
-                   pure_mapping_resolver=None, ebfab_authority_resolver=None):
-    """Replay a current-profile receipt; JID-1 is enforced before derivation."""
+                   pure_mapping_resolver=None, ebfab_authority_resolver=None,
+                   trusted_contexts=None):
+    """Replay a current receipt only with explicit verifier-owned profile authority."""
+    def current_binding_verifier(binding, keys, **expected):
+        participant_identity = (
+            binding.get("signer") if isinstance(binding, dict) else None
+        )
+        return verify_binding(
+            binding,
+            keys,
+            participant_identity=participant_identity,
+            trusted_contexts=trusted_contexts,
+            **expected,
+        )
+
+    def current_address_validator(*args, **kwargs):
+        return _post_fetch_address_valid(
+            *args, trusted_contexts=trusted_contexts, **kwargs
+        )
+
     return _replay_receipt(
         derivation,
         deref,
@@ -3122,8 +3295,8 @@ def replay_receipt(derivation, deref, party, window_start, window_end,
         anchor_deref,
         pure_mapping_resolver,
         ebfab_authority_resolver,
-        binding_verifier=verify_binding,
-        address_validator=_post_fetch_address_valid,
+        binding_verifier=current_binding_verifier,
+        address_validator=current_address_validator,
     )
 
 

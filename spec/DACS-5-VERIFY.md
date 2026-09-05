@@ -720,7 +720,7 @@ The job-bound `derive_job_bound` path retains the released metric semantics but 
 
 *Input precondition: each admitted input copy is resolution-context-tagged with the role under which it resolved (the anchor-address role on a pure-mapping substrate; the verified `BundleBinding`'s role per BB-4/BB-5 on a write-input substrate). A job-bound derivation additionally carries the trusted requested `jobId` from the role address or verified `BundleBinding`; it MUST equal the dereferenced copy before that copy may enter grouping or fallback. EBFAB requires this job-bound path. The released replayable v1 path retains its historical input contract and does not consume `resolvedJobId`.*
 
-*Settlement uniqueness (SB-2, §9.5.8): across the bundles reconciled below, a `settlement-tx-id` bound to more than one `(jobId, phaseIndex)` is counted once (earliest `observedAt`), so a reused settlement transaction cannot inflate `observedTransactionalVolume` or completion across jobs.*
+*Settlement uniqueness (SB-2, §9.5.8): before metrics, group the complete presented evidence set by canonical `settlement-tx-id`. If a group claims multiple `(jobId, phaseIndex)` tuples, count only the tuple selected by independently verified finalized settlement-side authority and reject its competitors; without one authoritative tuple, exclude every member of the collision group as `indeterminate`. `observedAt`, evidence/hash order, arrival order, and first SR-2 publication never choose a winner. Discovery of a later collision requires recomputation and removal of any provisional count. This is consumer-view uniqueness, not proof of global evidence-set completeness.*
 
 ```
 derive_settlement_verified(party, bundles, windowStart, windowEnd):

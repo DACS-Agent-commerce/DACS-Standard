@@ -73,6 +73,9 @@ jobs:
       - name: Verify SB-3 required-binding vectors are deterministic
         run: python3 scripts/generate_sb3_binding_required_vectors.py --check
 
+      - name: Verify SB-2 collision-authority vectors are deterministic
+        run: python3 scripts/generate_sb2_collision_authority_vectors.py --check
+
       - name: Verify security vector index is in sync
         run: python3 scripts/generate_security_vector_index.py --check
 

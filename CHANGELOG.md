@@ -13,6 +13,20 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-4 v0.8 settlement collision authority
+
+- **SB-2 no longer trusts producer time** (§9.5.8; #380) — a canonical
+  settlement identifier claimed by distinct `(jobId, phaseIndex)` tuples is
+  resolved only by independently verified finalized settlement-side authority.
+  Without one exact authoritative tuple, every competitor is `indeterminate`
+  and non-countable; discovery of a later collision revokes any provisional
+  count. `observedAt`, evidence hashes, arrival order, SR-2 anchor order, and an
+  unauthenticated first-claim hint never select a winner. No atomic first-claim
+  mechanism is registered. Adds 19 deterministic group vectors covering
+  backdating, equal timestamps, cross-job/phase claims, stolen-first anchor,
+  missing/unavailable/pruned/conflicting/reorganised authority, final binding,
+  replacement hints, and distinct batched events.
+
 ### Fixed — DACS-4 v0.8 settlement-side binding downgrade
 
 - **Declared SB-3 binding is mandatory** (§9.5.8; #379) — a rail's

@@ -21,6 +21,8 @@ SET_NAME = "revocation-state-completeness-v0.8"
 SPEC = "DACS-1 v0.8 §6.3.4 RSC-1..RSC-9 authoritative revocation completeness"
 HEAD_DOMAIN = "dacs-revocation-state-head:v1:"
 MARKER_DOMAIN = "dacs-revocation:v1:"
+CURRENT_STATE_DOMAIN = "dacs-rsc-conformance-current-state:v1:"
+CURRENT_STATE_POLICY = "rsc-conformance-test-current-value-v1"
 ZERO_HASH = "00" * 32
 
 
@@ -71,6 +73,7 @@ def cf4(value: str) -> str:
 SELLER_KEY = private_key("rsc-seller-initial")
 ROTATED_KEY = private_key("rsc-seller-rotated")
 OUTSIDER_KEY = private_key("rsc-outsider")
+CURRENT_STATE_KEY = private_key("rsc-test-current-state-authority")
 SELLER = "did:example:seller"
 LISTING_ID = "compute-hour"
 LISTING_VERSION = 3
@@ -224,8 +227,8 @@ def append_head(previous: dict, prior_leaves: dict[str, dict], target: dict, ref
 def receipt(value: dict, sequence: int) -> dict:
     return {
         "receiptVersion": "1",
-        "substrate": "demos:testnet",
-        "finalityProfile": "demos-bft-final-plus-current-state-v1",
+        "substrate": "conformance:test",
+        "finalityProfile": "rsc-conformance-test-finality-v1",
         "logicalAddress": LOGICAL_ADDRESS,
         "nativeAddress": NATIVE_ADDRESS,
         "contentHash": artifact_hash(value),
@@ -240,8 +243,21 @@ def receipt(value: dict, sequence: int) -> dict:
             "height": str(100 + sequence),
             "timestamp": 1_780_000_000_000 + sequence,
         },
-        "evidence": {"kind": "demos-finality-proof", "value": f"proof-{sequence}"},
+        "evidence": {"kind": "rsc-conformance-test-finality", "value": f"proof-{sequence}"},
     }
+
+
+def current_state_message(head_ref_value: dict, head_receipt: dict,
+                          finalized_state_id: str) -> bytes:
+    payload = {
+        "policy": CURRENT_STATE_POLICY,
+        "finalizedStateId": finalized_state_id,
+        "logicalAddress": LOGICAL_ADDRESS,
+        "nativeAddress": NATIVE_ADDRESS,
+        "headContentHash": head_ref_value["contentHash"],
+        "headReceiptHash": hash_hex(head_receipt),
+    }
+    return (CURRENT_STATE_DOMAIN + hash_hex(payload)).encode("ascii")
 
 
 def marker_receipt(ref: dict, suffix: str) -> dict:
@@ -320,6 +336,7 @@ def context(current: dict, leaves: dict[str, dict], *, target: dict = TARGET,
             history: list[dict] | None = None) -> dict:
     current_ref = head_ref(current)
     current_receipt = receipt(current, int(current["sequence"]))
+    finalized_state_id = current_receipt["blockRef"]["id"]
     if history is None:
         history = [history_item(GENESIS)]
         if current["sequence"] != "0":
@@ -340,10 +357,15 @@ def context(current: dict, leaves: dict[str, dict], *, target: dict = TARGET,
         "headReceipt": current_receipt,
         "headReceiptHistory": [item["receipt"] for item in history],
         "currentStateEvidence": {
-            "policy": "demos-current-state-v1",
-            "finalizedStateId": "block-200",
+            "policy": CURRENT_STATE_POLICY,
+            "finalizedStateId": finalized_state_id,
             "valueContentHash": current_ref["contentHash"],
-            "evidence": {"kind": "demos-current-state-proof", "value": "current-proof"},
+            "evidence": {
+                "kind": "ed25519-signature",
+                "value": b64url(CURRENT_STATE_KEY.sign(
+                    current_state_message(current_ref, current_receipt, finalized_state_id)
+                )),
+            },
         },
         "headHistory": copy.deepcopy(history),
         "stateProof": proof,
@@ -361,10 +383,13 @@ def changed(value: dict, mutation) -> dict:
 def input_for(current: dict, leaves: dict[str, dict], *, target: dict = TARGET,
               checkpoint: dict = GENESIS, discovery_status: str = "active",
               history: list[dict] | None = None) -> dict:
+    discovery = {"status": discovery_status, "integrityConsistent": True}
+    if discovery_status == "revoked":
+        discovery["revocationRef"] = copy.deepcopy(TARGET_REF)
     return {
         "currentProfile": True,
         "listing": listing(checkpoint),
-        "discovery": {"status": discovery_status, "integrityConsistent": True},
+        "discovery": discovery,
         "resolutionContext": context(current, leaves, target=target, history=history),
     }
 
@@ -395,7 +420,7 @@ def build_vectors() -> list[dict]:
     )
 
     bad_nonmembership = changed(active, lambda x: x["resolutionContext"]["stateProof"]["proof"]["siblings"].append({"height": 0, "hash": "aa" * 32}))
-    missing_latest = changed(active, lambda x: x["resolutionContext"]["currentStateEvidence"].update({"evidence": {"kind": "demos-current-state-proof", "value": "invalid"}}))
+    missing_latest = changed(active, lambda x: x["resolutionContext"]["currentStateEvidence"].update({"evidence": {"kind": "ed25519-signature", "value": "invalid"}}))
     wrong_tuple = changed(active, lambda x: x["resolutionContext"].update({"stateProof": state_proof(OTHER_HEAD, OTHER_LEAVES, OTHER)}))
 
     unresolved_marker = changed(revoked, lambda x: x["resolutionContext"].update({"resolvedMarkers": [item for item in x["resolutionContext"]["resolvedMarkers"] if item["revocationRef"]["contentHash"] != TARGET_REF["contentHash"]]}))
@@ -421,6 +446,23 @@ def build_vectors() -> list[dict]:
     producer_time_only["producerSaysLatestAt"] = 9_999_999_999_999
     producer_time_only["resolutionContext"]["currentStateEvidence"]["policy"] = "producer-time-only"
 
+    discovered_marker = copy.deepcopy(active)
+    discovered_marker["discovery"] = {
+        "status": "revoked",
+        "integrityConsistent": True,
+        "revocationRef": copy.deepcopy(TARGET_REF),
+    }
+    discovered_marker["resolutionContext"]["resolvedMarkers"].append(
+        resolved_marker(TARGET_REF, TARGET_MARKER, SELLER_KEY, LISTING_ID)
+    )
+
+    rb5_indeterminate = copy.deepcopy(active)
+    rb5_indeterminate["discovery"] = {
+        "status": "revoked",
+        "integrityConsistent": True,
+        "revocationRef": changed(TARGET_REF, lambda x: x["anchor"].update({"locator": "storage-program:unreachable"})),
+    }
+
     return [
         vector("rsc-valid-active-nonmembership", "pass", "an exact empty-leaf proof against the authenticated current head admits a new session", active, "absent"),
         vector("rsc-valid-revocation-inclusion", "fail", "an exact inclusion proof and marker refuse the revoked listing", revoked, "revoked"),
@@ -437,6 +479,8 @@ def build_vectors() -> list[dict]:
         vector("rsc-historical-listing-without-state-ref", "indeterminate", "an old listing remains audit-readable but cannot enter the current new-session profile", no_state_ref, "indeterminate"),
         vector("rsc-checkpoint-history-gap", "indeterminate", "a later head cannot substitute for the complete checkpoint chain", history_gap, "indeterminate"),
         vector("rsc-producer-time-cannot-prove-latest", "indeterminate", "producer time cannot replace an authenticated current-state policy", producer_time_only, "indeterminate"),
+        vector("rsc-rb4-discovered-marker-precedes-nonmembership", "fail", "a verified discovered marker cannot be ignored even when the state proof says absent", discovered_marker, "revoked"),
+        vector("rsc-rb5-indeterminate-precedes-nonmembership", "indeterminate", "an unresolved discovered revocation record prevents state non-membership from returning absent", rb5_indeterminate, "indeterminate"),
     ]
 
 
@@ -452,6 +496,13 @@ def document() -> dict:
             "initial": public_hex(SELLER_KEY),
             "rotated": public_hex(ROTATED_KEY),
             "outsider": public_hex(OUTSIDER_KEY),
+            "currentStateAuthority": public_hex(CURRENT_STATE_KEY),
+        },
+        "testBinding": {
+            "policy": CURRENT_STATE_POLICY,
+            "scope": "conformance-harness-only",
+            "productionEligible": False,
+            "note": "This deterministic signed-current-value adapter does not claim a deployed Demos capability.",
         },
         "hash": hashlib.sha256(encoded).hexdigest(),
         "count": len(vectors),

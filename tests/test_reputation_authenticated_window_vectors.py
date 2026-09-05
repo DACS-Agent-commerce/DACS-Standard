@@ -397,7 +397,7 @@ class AuthenticatedWindowVectorTests(unittest.TestCase):
 
     def test_spec_pins_current_profile_and_legacy_boundary(self):
         text = SPEC.read_text(encoding="utf-8")
-        self.assertIn("**DACS-5 v0.6**", text)
+        self.assertIn("**DACS-5 v0.7**", text)
         self.assertIn('authenticatedWindowDerivationVersion: "1"', text)
         self.assertIn('windowingBasis: "sr2-finalized-inclusion-timestamp"', text)
         self.assertIn("(AWT-1)", text)

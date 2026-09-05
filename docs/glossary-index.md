@@ -17,6 +17,7 @@ This non-normative index maps commonly referenced DACS terms to their canonical 
 | Payment rail | [§9.4](../spec/DACS-4-SETTLE.md#94-payment-rail-registry) | Registry entry describing a supported payment path. |
 | PayloadAttestationRecord | [§9.6.3](../spec/DACS-4-SETTLE.md#963-deliver-attested-payload) | DACS-4 exact-payload and commerce-binding wrapper around method-native evidence. |
 | RatingRecord | [§10.6](../spec/DACS-5-VERIFY.md#106-the-rate-phase-optional) | Optional per-direction counterparty rating artifact. |
+| SessionParticipationAdmission | [§10.3.2](../spec/DACS-5-VERIFY.md#1032-signed-participation-admission-spa-1spa-8) | Target-signed active-obligation evidence required for current-profile one-sided blame against an absent non-signer. |
 | SettlementEvidence | [§9.7](../spec/DACS-4-SETTLE.md#97-settlement-evidence) | Anchored DACS-4 evidence produced by settle/deliver phases. |
 | VerifyResult | [§7.5](../spec/DACS-2-VET.md#75-verifyresult) | DACS-2 single-method verification result. |
 

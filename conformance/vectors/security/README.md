@@ -58,6 +58,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
 | [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated reputation-window time | 73 | `error` / `fail` / `indeterminate` / `pass` |
+| [`reputation-participation-admission-v0.7.json`](reputation-participation-admission-v0.7.json) | DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8 signed participation and rating admission | 58 | `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -374,6 +375,44 @@ adapter's independently verified native-proof projection, not new wire fields.
 The independent test evaluator reproduces the time disposition, membership,
 replay and clock source; the set remains candidate pending an external
 cross-run.
+
+### `reputation-participation-admission-v0.7.json` — DACS-5 v0.7 §10.3.2/§10.5 SPA-1..SPA-8
+
+58 candidate vectors close the gap between authoritative absence and prior
+participation. Positive arms cover vet, negotiate, commit, payment, and
+delivery obligations, legacy one-sided blame backed by an external admission,
+and an absolute-fault bundle whose hashed `faultedParty` signed its own terminal
+abort. A legacy role-relative signer never takes that shortcut: a re-anchored
+`aborted-by-other` negative demonstrates why separate SPA evidence remains
+required. Completed-prefix comparison uses the exact `(index, kind, outcome)`
+projection and admits authenticated `BundlePhaseEntry` evidence members outside
+that projection.
+The one-sided adversarial arms cover a never-participating victim, invalid or
+wrong-party signatures, cross-job replay, listing/roster/role rebinding,
+wrong deadline/action/state, a phase that never became active, incomplete or
+contradictory lifecycle prefixes, raw `pay-alternative`, agreement mismatch,
+nonce malformation/reuse, and admission/bundle receipt timing, binding,
+history, and clock-domain failures. Producer `admittedAt` is expressly inert.
+
+The rating arms require a fully signed completed bundle, independently verified
+Listing/effective pipeline, successful exact-index `rate` phase, exact included
+reference, valid rating signature, and unique rater/target role membership.
+They reject ratings on abort/failure, an invented or failed phase, an unsigned
+completed bundle, cross-job references, self-rating, non-roster parties, and
+wrong target roles. The independent evaluator consumes the post-reconciliation
+projection and returns only admitted or excluded current-profile effects;
+semantic contradictions fail, while unavailable authenticated authority stays
+indeterminate and non-countable.
+
+Every admission and rating artifact carries a deterministic Ed25519 signature;
+the independent test recomputes canonical hashes, domain-separated payloads,
+signatures, and `AttestationRef.contentHash` bindings. `listing.verified`, the
+effective-pipeline projection, `receipt.evidenceValid`, and
+`writerAuthorized`, `bundleType`, and `verifiedSignerRoles` are outputs of the
+pre-existing Listing/APR/bundle/SR-2 validators, not new wire fields introduced
+by this corpus. On an absolute-fault projection, `faultedParty` is the verified
+hashed bundle field; on a legacy projection, attribution is derived from the
+role-relative outcome only after the anchor-role integrity check.
 
 ### `reputation-settlement-semantics-v0.4.json` — DACS-5 v0.4 §10.5.1 RSV-1..RSV-4
 

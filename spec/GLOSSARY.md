@@ -74,6 +74,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Sealed-envelope.** DACS-3 sealed-bid procurement pattern. §8.4.3.
 - **Session.** A per-transaction lifecycle from Identify through Verify.
 - **SessionContext.** The context object every phase handler receives. §B.5 (front matter).
+- **SessionParticipationAdmission.** The obligor-signed DACS-5 artifact acknowledging an exact active phase, due action, roster, completed prefix, and consensus deadline; required before a current-profile one-sided bundle may blame an absent non-signer. Defined in §10.3.2.
 - **SessionRecord.** The orchestrator’s mutable working-state document. §10.3.
 - **settle-asymmetric.** Non-terminal DACS-5 session state for the HTLC-9 cross-chain open case (payer claimed the destination, payee's source claim not yet final); resolves forward to settle-completed on a final htlc-claim, or to settle-failed on window expiry. §10.3.1 (ST-8).
 - **SettlementAmendment.** A post-settlement record for refunds and corrections. §9.7.1.

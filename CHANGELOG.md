@@ -13,6 +13,19 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — DACS-4 v0.8 settlement-side binding downgrade
+
+- **Declared SB-3 binding is mandatory** (§9.5.8; #379) — a rail's
+  authenticated pinned definition, not caller/evidence metadata, decides
+  whether settlement-side job binding is required. Verified match continues;
+  mismatch fails; absence or unavailable/pruned/reorganised authority is
+  `indeterminate` and non-countable; malformed binding evidence is `error`.
+  The last two branches cannot fall back to a coincidentally matching transfer,
+  cannot satisfy DACS-5 final verification or reputation admission, and do not
+  create party fault during an outage. No historical downgrade profile is
+  registered. Adds 22 deterministic disposition vectors covering all required
+  issue cases and the explicitly weaker authenticated no-binding rail posture.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

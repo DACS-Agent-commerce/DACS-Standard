@@ -8,12 +8,16 @@ import copy
 import hashlib
 import json
 from pathlib import Path
+import sys
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import validate_conformance_vectors as vcv  # noqa: E402
+
 OUTPUT = (
     ROOT / "conformance" / "vectors" / "security"
     / "presence-only-claim-requirement-v0.7.json"
@@ -25,9 +29,7 @@ COMPOSITE_DOMAIN = "dacs-composite:v1:"
 
 
 def canonical_bytes(value: object) -> bytes:
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    return vcv.canonical_json(value)
 
 
 def hash_hex(value: object) -> str:
@@ -148,7 +150,7 @@ def result_ref(result: dict, label: str) -> dict:
             "kind": "storage-program",
             "locator": f"demos:presence-vector:{label}",
         },
-        "contentHash": hash_hex(result),
+        "contentHash": vcv.artifact_hash_hex("VerifyResult", result),
         "recipeVersion": result["recipeVersion"],
     }
 

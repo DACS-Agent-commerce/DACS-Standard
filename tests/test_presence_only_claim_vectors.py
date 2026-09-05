@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 import subprocess
+import sys
 import unittest
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+import validate_conformance_vectors as vcv  # noqa: E402
+
 VECTORS = (
     ROOT / "conformance" / "vectors" / "security"
     / "presence-only-claim-requirement-v0.7.json"
@@ -28,13 +32,15 @@ LEI = re.compile(r"^[0-9A-Z]{20}$")
 
 
 def canonical_bytes(value):
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    return vcv.canonical_json(value)
 
 
 def hash_hex(value):
     return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def signed_component_hash(value):
+    return vcv.artifact_hash_hex("VerifyResult", value)
 
 
 def b64url_decode(value):
@@ -216,7 +222,7 @@ def classify_verified(vector, requirement, exact_ref=None):
         if result is None:
             outcomes.append("indeterminate")
             continue
-        if hash_hex(result) != reference["contentHash"]:
+        if signed_component_hash(result) != reference["contentHash"]:
             outcomes.append("error")
             continue
         if not verify_component(result, VERIFY_RESULT_DOMAIN):
@@ -490,6 +496,36 @@ class PresenceOnlyClaimVectorTests(unittest.TestCase):
                 self.assertTrue(
                     verify_component(resolved["artifact"], VERIFY_RESULT_DOMAIN), name
                 )
+
+    def test_every_result_reference_uses_the_core_b2_signed_scope(self):
+        resolved = [
+            item
+            for vector in self.document["vectors"]
+            for item in vector["resolvedResults"]
+        ]
+        self.assertTrue(resolved)
+        for item in resolved:
+            with self.subTest(locator=item["ref"]["anchor"]["locator"]):
+                self.assertEqual(
+                    signed_component_hash(item["artifact"]),
+                    item["ref"]["contentHash"],
+                )
+
+    def test_signature_mutation_preserves_reference_hash_but_fails_authentication(self):
+        item = next(
+            item
+            for vector in self.document["vectors"]
+            for item in vector["resolvedResults"]
+        )
+        original = item["artifact"]
+        mutated = json.loads(json.dumps(original))
+        signature = mutated["signature"]["value"]
+        mutated["signature"]["value"] = (
+            ("A" if signature[0] != "A" else "B") + signature[1:]
+        )
+        self.assertEqual(signed_component_hash(original), signed_component_hash(mutated))
+        self.assertEqual(item["ref"]["contentHash"], signed_component_hash(mutated))
+        self.assertFalse(verify_component(mutated, VERIFY_RESULT_DOMAIN))
 
     def test_presence_only_members_have_no_result_refs_in_passing_records(self):
         for vector in self.document["vectors"]:

@@ -14,7 +14,7 @@
     "verifier": "4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147"
   },
   "count": 38,
-  "hash": "54780a82e0cd511a8dd4f9323f39452d4c4c5c96728116e1fe496db84b19ec6a",
+  "hash": "74948747ddfc95b8fba7b63c0f807b96cb37d2cb9a2f5c78ca77c8d503aa81a4",
   "vectors": [
     {
       "name": "required-presence-key-with-issued-at",
@@ -319,7 +319,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:optional-fail"
               },
-              "contentHash": "07d9cb6436c08a500804ba991e80060acb92482acfa0b06757b9eeff48e0469a",
+              "contentHash": "b6dcfc74b0a5e5a0622326455b6317bc3834ac4db75c734c419aa8113329198c",
               "recipeVersion": 1
             }
           }
@@ -329,7 +329,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "iAC5x_Jd6ep_sgnXbJ0rfcf190gV5KSNetcEsTv4At9XnGvwxZn-XuaAb4QW9-hjTNLkibSkymWMtqTcKQQICQ"
+              "signature": "zn1rPAVksntECrOZHxdF37gC2MmgpJiCRcmx9rFIWumK8eowPCPcMqVeF4x95jX7d4Wq6CLa5F0SHavm_iFDAQ"
             }
           ]
         }
@@ -347,7 +347,7 @@
         "recordVersion": "1",
         "jobId": "pcr-optional-failing-verification-does-not-defeat-presence",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "c849d52fc2940cfdbe226d067e84378859f3c34cbaa2e9978550f0d7c7dca39b",
+        "bundleHash": "d31316f5403bb2a827bafec391b5db6db914e53b19407b9d4add50e3f7d8cc79",
         "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
         "freshness": [],
         "supplementary": [],
@@ -357,7 +357,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "yl8tDywvJ0SppFvdLbwALFtol6MsaXXtT41nET4YkwN1qfDeIWSULOxb2kFPLfkqjZDk5mxKRNKx_helaV5TBQ"
+          "value": "CSjhc-B6ch8d4t8lI2ANbdwj2sNTapfrh9OSbLQNYUhqs4YsMa-3CzY4I7QizVcSHZcWo7ffmSTMkUiQPgaECQ"
         }
       },
       "resolvedResults": [
@@ -367,7 +367,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:optional-fail"
             },
-            "contentHash": "07d9cb6436c08a500804ba991e80060acb92482acfa0b06757b9eeff48e0469a",
+            "contentHash": "b6dcfc74b0a5e5a0622326455b6317bc3834ac4db75c734c419aa8113329198c",
             "recipeVersion": 1
           },
           "artifact": {
@@ -418,7 +418,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:optional-stale"
               },
-              "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+              "contentHash": "ae9c2d463dd04c9e0020fdc037fae063c8103f688a819d067414fd8b3d32ff22",
               "recipeVersion": 1
             }
           }
@@ -428,7 +428,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "cJefwT1CvCc5_k7zqrZrWCjtdKky9YxCJmgQyuG7vWd5F9zfTk7k65Vj3r-RRFCgdSmvVzfBfob0Qt-RO_zOAw"
+              "signature": "KXQjIMmFeU2Bk0QMtX1RT6V-KVoyuZPopBe_LJ-ezjFxbaSOxOTUxghRfPbewhuUctQXvZ932j8lreVwG012CA"
             }
           ]
         }
@@ -446,7 +446,7 @@
         "recordVersion": "1",
         "jobId": "pcr-optional-stale-verification-does-not-defeat-presence",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "de1cdf030b3f49104f3e3af16f8e1f2ca57b720b3915e159132be8ca2a1d71ec",
+        "bundleHash": "c0f5bc57845a0565f666c45f32b22a7d4599547ec9e6369cf627dfda09ffffdb",
         "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
         "freshness": [],
         "supplementary": [],
@@ -456,7 +456,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "_vD03weAkmyN4COWSrjT7OvhoMJI0RnLZ1TF7-nbLbIYNsKPvNLtzzrYi4mdSPG6IeVFI_Wg2EHHCmhQhMSBCg"
+          "value": "PZJ5Mxb2v26Avo_q5YQn6GAIs5n_m01gEyvr3pnppr3H3Jq97Oihi9KQ3OlqUUVqEy3UCxvU4VBDnxNU3EIpDw"
         }
       },
       "resolvedResults": [
@@ -466,7 +466,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:optional-stale"
             },
-            "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+            "contentHash": "ae9c2d463dd04c9e0020fdc037fae063c8103f688a819d067414fd8b3d32ff22",
             "recipeVersion": 1
           },
           "artifact": {
@@ -1296,7 +1296,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:did-pass"
               },
-              "contentHash": "0be26a22e71302544826d507decac96e71e9b3bedc5dbcda0d54917f14794495",
+              "contentHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
               "recipeVersion": 1
             }
           }
@@ -1306,7 +1306,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "F6kR0B_h_TU0c73lLlIrSv-qSt35XVUAd-C3MuLKNOBYWJqERJFRSSsTaeUqCbZjjkYAJPve4Y2sF8CVWPhZAA"
+              "signature": "5mHFysLw4OG7W-xg62uR_a3z2Lwtx58tFSo0J0NJ46fxgsFJoZuIzNv2p5mV01EqLiIUc3_u8fkx9iEzmA22Dw"
             }
           ]
         }
@@ -1328,7 +1328,7 @@
         "recordVersion": "1",
         "jobId": "pcr-mixed-required-presence-and-verified-pass",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "e4d0a7559b7d91f7f6c955dfdb75eecc526266fae2c6aac1bbed331ba3832f3c",
+        "bundleHash": "a0187eb748684c45442c7327fdfa97dc9e5848189f4730a10387a3a3617a09a0",
         "requirementHash": "8e701933bade7d80fab66d436996356913c14bc9e63f547c875fd628748ec916",
         "freshness": [],
         "supplementary": [],
@@ -1338,7 +1338,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:did-pass"
             },
-            "contentHash": "0be26a22e71302544826d507decac96e71e9b3bedc5dbcda0d54917f14794495",
+            "contentHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
             "recipeVersion": 1
           }
         ],
@@ -1347,7 +1347,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "pcHPxAFJkb8tcZauNTXtA5O_6T9RzO0Q58vSO45O2qP_8rldJNSenBNUGnZJYHXn3UrXJPQxBH_f6895sY2jDg"
+          "value": "GAAArUYR9auKp2o7iQIJQku2pnRkoWJkrWMWtSrkgb3xbeqOXdwzo7mJs1xSKYmc40TBm-YYKEqHucSnCnrfCg"
         }
       },
       "resolvedResults": [
@@ -1357,7 +1357,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:did-pass"
             },
-            "contentHash": "0be26a22e71302544826d507decac96e71e9b3bedc5dbcda0d54917f14794495",
+            "contentHash": "4bf025890c8a9e96b83b8e08284ec1d3f0187c7099ad8c724193bab78a688a8b",
             "recipeVersion": 1
           },
           "artifact": {
@@ -1412,7 +1412,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:did-fail"
               },
-              "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+              "contentHash": "3ff084775469bd16ac93412e97c65e8303a527235185e67b5372df2afa8170fa",
               "recipeVersion": 1
             }
           }
@@ -1422,7 +1422,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "frbVCqOJug9FWLVtsYgxnCWLkusG9aKW6WMs761yfCnxpAlATB00jv7UYk26nV7N07ZSoxu3ePBtZsFnIcnqAA"
+              "signature": "mu1Y6ksTdB1pDDQ9f1HWU4Ix491DfB6eSyum3olbyNZg_53XTKTqnCHVTkEtB5psDH3y8916FSvRckZM9e0bCw"
             }
           ]
         }
@@ -1444,7 +1444,7 @@
         "recordVersion": "1",
         "jobId": "pcr-mixed-required-verified-failure-dominates",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "1b7f915927976033030ab43a4acf4853484bfb8bf681418039f5d960f4197bb7",
+        "bundleHash": "acc1065ec250fee159251e227177309038b22a022533b91735df17d43f46a948",
         "requirementHash": "8e701933bade7d80fab66d436996356913c14bc9e63f547c875fd628748ec916",
         "freshness": [],
         "supplementary": [],
@@ -1454,7 +1454,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:did-fail"
             },
-            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "contentHash": "3ff084775469bd16ac93412e97c65e8303a527235185e67b5372df2afa8170fa",
             "recipeVersion": 1
           }
         ],
@@ -1463,7 +1463,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "NdNvHv1Vi5vXm2MLjOkqA8xLux_aC9O5iUiw0yefWdmRVY2Iaj8w87HB-F-S07esKn6x--nEGNASZl2_xkztCQ"
+          "value": "PQ3F4oIML53r4ofrfJLMnILJzdqD_UwDTGeRON9j0G0cg6Souxhp7Tk1W6cs7aVEYa8w1VCbAOTr3cDN-DLUAA"
         }
       },
       "resolvedResults": [
@@ -1473,7 +1473,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:did-fail"
             },
-            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "contentHash": "3ff084775469bd16ac93412e97c65e8303a527235185e67b5372df2afa8170fa",
             "recipeVersion": 1
           },
           "artifact": {
@@ -1528,7 +1528,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:did-fail"
               },
-              "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+              "contentHash": "3ff084775469bd16ac93412e97c65e8303a527235185e67b5372df2afa8170fa",
               "recipeVersion": 1
             }
           }
@@ -1538,7 +1538,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "frbVCqOJug9FWLVtsYgxnCWLkusG9aKW6WMs761yfCnxpAlATB00jv7UYk26nV7N07ZSoxu3ePBtZsFnIcnqAA"
+              "signature": "mu1Y6ksTdB1pDDQ9f1HWU4Ix491DfB6eSyum3olbyNZg_53XTKTqnCHVTkEtB5psDH3y8916FSvRckZM9e0bCw"
             }
           ]
         }
@@ -1563,7 +1563,7 @@
         "recordVersion": "1",
         "jobId": "pcr-mixed-oneof-presence-beats-verified-failure",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "1b7f915927976033030ab43a4acf4853484bfb8bf681418039f5d960f4197bb7",
+        "bundleHash": "acc1065ec250fee159251e227177309038b22a022533b91735df17d43f46a948",
         "requirementHash": "a108875d82a011c8edebfea6c3b095cbc67a5eb0c2b773effe37b670138f3732",
         "freshness": [],
         "supplementary": [],
@@ -1573,7 +1573,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:did-fail"
             },
-            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "contentHash": "3ff084775469bd16ac93412e97c65e8303a527235185e67b5372df2afa8170fa",
             "recipeVersion": 1
           }
         ],
@@ -1582,7 +1582,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "0ikdqY3MlfQ4PBpvQPw9YiCv6B_2KNIbt2yheMtK0z2szVJMnoaAAn6ZHoze4VojoXLoPHWCeFS7_qpg_ht6DQ"
+          "value": "1plpvVjJRfcWJENAKeNFie1K9DJaknbX8JbL0CGOyxuLDni5jwZGclJEHPLVzNqpz9KMYNenx2J2iTiT4gqjCA"
         }
       },
       "resolvedResults": [
@@ -1592,7 +1592,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:did-fail"
             },
-            "contentHash": "b1520b2e89521c02482969b37996c3793e1c5f9007bdf4a3ccf15b78a9788c9c",
+            "contentHash": "3ff084775469bd16ac93412e97c65e8303a527235185e67b5372df2afa8170fa",
             "recipeVersion": 1
           },
           "artifact": {
@@ -1702,7 +1702,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:synthetic-presence"
               },
-              "contentHash": "d45c0908af78234320afe1bf9e1276bc1ff9dfeac86f7bd56325f1226b21c744",
+              "contentHash": "6f5b5b5e15787c6f58342b9bb3c710a365e027f475d1f62f7215c02b93ca95ca",
               "recipeVersion": 1
             }
           }
@@ -1712,7 +1712,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "qxZQc4PZgazlz_-ioye8zNP6Xae_vv_FgaUOsztxc8Ka8-Dq2tzGfF5n7ecqFDQUpLVDCBolZAYEK_ecsxvKCQ"
+              "signature": "GMpgt46dt6DB3bkX0nT-qfhh6YLNjAtuJgfZ7coNOub3ylPAh6D_ZHumBgMFjiLJJc803_1EXPv93viQ43BJCA"
             }
           ]
         }
@@ -1730,7 +1730,7 @@
         "recordVersion": "1",
         "jobId": "pcr-synthetic-presence-verify-result-rejected",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "f4cdc2f65ba87cbbf173b8e6c9d5781e9bf2ff5840183566594eec6db7a8c39a",
+        "bundleHash": "f445e13e5727af784017d0840f50745ef90ad259aa5ca8224e05a25544b783ee",
         "requirementHash": "1851dbb8a9b91caa7f0e89eb7ab08546d435a981294c1983f89334c1522c93cd",
         "freshness": [],
         "supplementary": [],
@@ -1740,7 +1740,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:synthetic-presence"
             },
-            "contentHash": "d45c0908af78234320afe1bf9e1276bc1ff9dfeac86f7bd56325f1226b21c744",
+            "contentHash": "6f5b5b5e15787c6f58342b9bb3c710a365e027f475d1f62f7215c02b93ca95ca",
             "recipeVersion": 1
           }
         ],
@@ -1749,7 +1749,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "ke3jK1YxW4Owk6Wv2jPo9vAWIF7vAzfUV3h9fb243zzT34lAK-xT3Ug7yqZ00xISoaaRqtWHmst8e_xyvApYAA"
+          "value": "zE5JIU-u2qp6EGhnrFJk6pZh1xXimUfcq6oSWgqP60JDWVj-lz7Gk-g1isZJsM79rF7c2uRB1MoMvE5Zv-zNCw"
         }
       },
       "resolvedResults": [
@@ -1759,7 +1759,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:synthetic-presence"
             },
-            "contentHash": "d45c0908af78234320afe1bf9e1276bc1ff9dfeac86f7bd56325f1226b21c744",
+            "contentHash": "6f5b5b5e15787c6f58342b9bb3c710a365e027f475d1f62f7215c02b93ca95ca",
             "recipeVersion": 1
           },
           "artifact": {
@@ -2346,7 +2346,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:optional-stale"
               },
-              "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+              "contentHash": "ae9c2d463dd04c9e0020fdc037fae063c8103f688a819d067414fd8b3d32ff22",
               "recipeVersion": 1
             }
           }
@@ -2356,7 +2356,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "cJefwT1CvCc5_k7zqrZrWCjtdKky9YxCJmgQyuG7vWd5F9zfTk7k65Vj3r-RRFCgdSmvVzfBfob0Qt-RO_zOAw"
+              "signature": "KXQjIMmFeU2Bk0QMtX1RT6V-KVoyuZPopBe_LJ-ezjFxbaSOxOTUxghRfPbewhuUctQXvZ932j8lreVwG012CA"
             }
           ]
         }
@@ -2375,7 +2375,7 @@
         "recordVersion": "1",
         "jobId": "pcr-stale-optional-key-result-does-not-remove-key-control",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "de1cdf030b3f49104f3e3af16f8e1f2ca57b720b3915e159132be8ca2a1d71ec",
+        "bundleHash": "c0f5bc57845a0565f666c45f32b22a7d4599547ec9e6369cf627dfda09ffffdb",
         "requirementHash": "fbe0bf4f54ff40d6eb76d1972374ae8d6b064ac0d0a8b4dce01a907aa6c8a852",
         "freshness": [],
         "supplementary": [],
@@ -2385,7 +2385,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "KeIyhoTiKRPtu9qxuejgc5pzaGr7OaYw-31IP0wi9u9vHxpFayJx0FOCXZKR5RU8H-MKad7lb_qSIvGMmPBkCA"
+          "value": "vEvqhV_nP_R4T20HjGy-2QUZS4-akR8nIk86d8BoJatyeW6Wnf4Mrhp606vAVC5neBVF8Rg5A7FkZWvm6XgyAw"
         }
       },
       "resolvedResults": [
@@ -2395,7 +2395,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:optional-stale"
             },
-            "contentHash": "e29244cf4483b6373a1a0c0b01c55893a8a63ae4528cefc52547a20f7df5bcc1",
+            "contentHash": "ae9c2d463dd04c9e0020fdc037fae063c8103f688a819d067414fd8b3d32ff22",
             "recipeVersion": 1
           },
           "artifact": {
@@ -2450,7 +2450,7 @@
                 "kind": "storage-program",
                 "locator": "demos:presence-vector:second-key-pass"
               },
-              "contentHash": "892ce7583084450477ad31f06c1405e6dac0e9d0cfd1e72e3bc3d91aed40646f",
+              "contentHash": "252e77cd6272d773152318901eaac577ecfb52a7382c03bf3e92fbd61b8d15b8",
               "recipeVersion": 1
             }
           }
@@ -2460,7 +2460,7 @@
           "signatures": [
             {
               "ref": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-              "signature": "5n7gyhfmSP-Ecg6JddifWe_5LxNmV6bz2xFqhkA1Ca9NWMQhptlZ4luOibTcYwk0UcvXq1fPD5orLLLctmPODw"
+              "signature": "ASDX-v0kJhBNsywlT6WvGQzLkGJE6K8ANGBewCNv9pHDngqEblIXzKi_rSJXeLt5ELf6WFq74qjM65R9I0-RAA"
             }
           ]
         }
@@ -2483,7 +2483,7 @@
         "recordVersion": "1",
         "jobId": "pcr-different-verified-same-scheme-cannot-launder-selector",
         "evaluatedParty": "key:3e0c64a197b57289ac8da36924f1323065d72a30c8528442933dd1a6130fef81",
-        "bundleHash": "f6d7576d79e3bc626ccc41c11d857400571e2cc1db00d8267e0dce11a840de7d",
+        "bundleHash": "232f4909c1e543c7a2a61642578bb64d2d2c4812d4df9886188b562aeb51519f",
         "requirementHash": "be38c83f8fb0337c0a6e5518153194abcdb2b87bdf39c9b2928a7b9ec1c42d23",
         "freshness": [],
         "supplementary": [],
@@ -2493,7 +2493,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:second-key-pass"
             },
-            "contentHash": "892ce7583084450477ad31f06c1405e6dac0e9d0cfd1e72e3bc3d91aed40646f",
+            "contentHash": "252e77cd6272d773152318901eaac577ecfb52a7382c03bf3e92fbd61b8d15b8",
             "recipeVersion": 1
           }
         ],
@@ -2502,7 +2502,7 @@
         "signature": {
           "algorithm": "ed25519",
           "signer": "key:4a4aef08c88dca4d205fdd8ce8fbcf3ee684b79c688b86c80f633089fb60e147",
-          "value": "XlxoZK5eYXhSmxSsqOeSVzSVSHutPgvI9Cf7LJEyAk_PmSA7XwMJu72nIViAJOy4-rgOQHISPf9oDKu07dQZAw"
+          "value": "KFi-okcIwXZUuSdyoysRNqvYu5IsCIJQVfNN1EvzxuOfP9A7JIWjQMoZgVxFQ8XY5UGujnaEOo0UTkzKtH4nAQ"
         }
       },
       "resolvedResults": [
@@ -2512,7 +2512,7 @@
               "kind": "storage-program",
               "locator": "demos:presence-vector:second-key-pass"
             },
-            "contentHash": "892ce7583084450477ad31f06c1405e6dac0e9d0cfd1e72e3bc3d91aed40646f",
+            "contentHash": "252e77cd6272d773152318901eaac577ecfb52a7382c03bf3e92fbd61b8d15b8",
             "recipeVersion": 1
           },
           "artifact": {

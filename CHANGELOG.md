@@ -13,6 +13,21 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — authenticated reputation-window time
+
+- **Current DACS-5 reputation profile (AWT-1..AWT-8; #384)** — adds the
+  structurally distinct `AuthenticatedWindowReputationDerivation`, combining
+  settlement verification, job-bound replay, and exact-bundle SR-2 time
+  evidence. Window membership now uses only the independently verified
+  established/finalized anchor receipt's consensus `blockRef.timestamp`, after
+  bundle reconciliation, with inclusive boundaries. Missing, mismatched,
+  replacement/reorg-only, or unorderably conflicting proof is indeterminate
+  and non-countable; no path falls back to producer-set `finalisedAt`.
+- **Released shapes preserved** — the five older derivation shapes retain their
+  exact meanings as historical/partial signals and cannot claim current-profile
+  reputation. Replay binds and re-verifies the exact window receipt, while any
+  pre-current era claim requires authenticated profile-revision evidence.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

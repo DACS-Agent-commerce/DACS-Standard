@@ -57,6 +57,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`rail-availability-selection-v0.1.json`](rail-availability-selection-v0.1.json) | DACS-4 §9.4.4 (RAV-R1/R2/R3/R5); DACS-1 §6.3.4 (LRR-6) | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`receipt-rederivation-v0.3.json`](receipt-rederivation-v0.3.json) | DACS-5 §10.5 ReplayableReputationDerivation replay (authenticated per-copy validation) + §10.5.3 (1)-(3); round-6 blockers #1/#2 | 16 | `fail` / `pass` |
 | [`recipe-parser-applicability-v0.5.json`](recipe-parser-applicability-v0.5.json) | DACS-2 §7.4.1/§7.6 PRA-1..PRA-5 parser applicability | 22 | `error` / `pass` |
+| [`reputation-authenticated-window-v0.6.json`](reputation-authenticated-window-v0.6.json) | DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated reputation-window time | 73 | `error` / `fail` / `indeterminate` / `pass` |
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
@@ -338,6 +339,41 @@ removed, duplicated, or substituted references make the two copies divergent,
 as does the same content hash under a different anchor. A pure array reorder
 remains unified. `expected` is the comparison check (`pass`/`fail`);
 `want.lookupDisposition` carries the protocol result (`unified`/`divergent`).
+
+### `reputation-authenticated-window-v0.6.json` — DACS-5 v0.6 §10.5 AWT-1..AWT-8
+
+73 candidate vectors pin the current reputation profile's exact clock and
+fail-closed boundary. They cover producer backdating/future-dating, large
+wall-clock skew, both inclusive window boundaries, ignored `observedAt`,
+missing or non-final receipts, invalid native proof, and every exact-bundle
+binding field, including the expected anchor transaction. Replacement and
+reorg histories require an authenticated predecessor/replacement relation and
+a separately finalized canonical inclusion; unrelated or relation-less
+transactions are non-countable. Conflicting finalized transactions, blocks,
+timestamps, or native order become non-countable rather than selecting a
+favourable value. Replay arms carry concrete `windowReceipt` and multi-entry
+`windowReceiptHistory` objects and re-verify their bundle, transaction, proof,
+timestamp, replacement and native-order bindings. Malformed nested receipt,
+time, evidence, transaction and ordering values fail closed without raising.
+
+The type-boundary arms require the exclusive
+`authenticatedWindowDerivationVersion: "1"` discriminator and
+`sr2-finalized-inclusion-timestamp` basis. Released derivation shapes never
+satisfy a current-profile request. Every one of the five released
+discriminators has a current-rejection case and a historical-policy case. The
+historical positive uses an explicit verified adapter projection bound to the
+trusted policy, authority, producer, session, exact profile/commit and
+pre-current revision relation; substitutions on each relation reject.
+
+`input` models one authoritative bundle after reconciliation plus all known
+SR-2 snapshots. It therefore executes AWT-6 window membership after the
+post-reconciliation precondition; it does not independently execute the
+two-copy reconcile-before-window ordering. `evidenceValid`, authenticated
+replacement relations, `historyDisposition`, and `nativeOrder` are the
+adapter's independently verified native-proof projection, not new wire fields.
+The independent test evaluator reproduces the time disposition, membership,
+replay and clock source; the set remains candidate pending an external
+cross-run.
 
 ### `reputation-settlement-semantics-v0.4.json` — DACS-5 v0.4 §10.5.1 RSV-1..RSV-4
 

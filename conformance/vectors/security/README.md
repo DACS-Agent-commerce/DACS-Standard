@@ -62,7 +62,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | DACS §9.5.8 (SB-2); SB-1 key | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
-| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-10 | 27 | `fail` / `indeterminate` / `pass` |
+| [`sealed-auction-completeness-v0.6.json`](sealed-auction-completeness-v0.6.json) | DACS-3 §8.4.4 SAC-1..SAC-10 | 42 | `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
 | [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
@@ -83,23 +83,30 @@ _Regenerate with `python3 scripts/generate_security_vector_index.py --write`._
 
 ### `sealed-auction-completeness-v0.6.json` — §8.4.4 SAC-1..SAC-10
 
-25 deterministic cases exercise the structurally distinct complete
+42 deterministic cases exercise the structurally distinct complete
 sealed-envelope profile. Real Ed25519 signatures cover bidder commit/reveal
 records, the selection receipt, its modeled candidate-set binding proof, and
 the publisher/winner agreement. The independent evaluator derives record
 authority, deadlines, bidder eligibility, CD-1 price ordering, the SE-5
 tie-break, receipt contents, and agreement closure from the signed inputs.
 An independent Node.js evaluator separately reproduces the exact candidate-set
-root, receipt content hash, and winner for the price/tie controls, providing a
-second-runtime byte check rather than two calls through the Python oracle.
+root, receipt content hash, malformed-price refusal, exact arbitrary-length
+ordering, inclusive reserve result, and winner for the price/tie controls,
+providing a second-runtime byte check rather than two calls through the Python
+oracle.
 
 Attack cases cover an omitted better reveal, a valid but stale signed set,
 missing proof, finalized fork conflict, unavailable winning record or bidder
 key, unavailable binding definition or selection-receipt anchor, a signed lying winner, receipt-reference
 substitution, agreement-price mismatch, invalid/late/wrong-address reveals,
-and proof-count disagreement. Malformed signatures or anchor/address
+proof-count disagreement, non-finite/exponent/non-string amounts, malformed
+PriceTerm shapes, and noncanonical decimal strings. Malformed signatures,
+prices, or anchor/address
 contradictions reject the whole selection; a valid signed reveal that fails to
-open its authoritative commit is instead accounted for and excluded.
+open its authoritative commit is instead accounted for and excluded. Canonical
+zero and negative prices are likewise excluded before selection. Long integer
+and fractional controls pin exact lowest/highest ordering and inclusive reserve
+floor/ceiling comparison without floating point or context-limited arithmetic.
 `first-acceptable` and `rule-ref` are refused
 before fetch/execution because the complete profile has no registered
 deterministic VM. The fixture's deterministic test binding exercises the

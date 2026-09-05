@@ -2,10 +2,12 @@ import base64
 import copy
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import unittest
-from decimal import Decimal, InvalidOperation
+from functools import cmp_to_key
+from itertools import zip_longest
 from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
@@ -23,6 +25,7 @@ RECORD_DOMAIN = "dacs-sealed-auction-record:v1:"
 RECEIPT_DOMAIN = "dacs-sealed-selection-receipt:v1:"
 AGREEMENT_DOMAIN = "dacs-sealed-selection-agreement:v1:"
 BINDING_DOMAIN = "test-candidate-set-proof:v1:"
+UNSIGNED_CD1 = re.compile(r"^(?:0|[1-9][0-9]*)(?:\.[0-9]*[1-9])?$")
 
 
 def canonical(value):
@@ -82,6 +85,48 @@ def compare_ref(left, right):
     return left == right
 
 
+def inspect_amount(value):
+    if isinstance(value, str) and UNSIGNED_CD1.fullmatch(value):
+        whole, _, fraction = value.partition(".")
+        return ("non-positive" if value == "0" else "positive"), (whole, fraction)
+    if (
+        isinstance(value, str)
+        and value.startswith("-")
+        and UNSIGNED_CD1.fullmatch(value[1:])
+    ):
+        whole, _, fraction = value[1:].partition(".")
+        return "non-positive", (whole, fraction)
+    return "malformed", None
+
+
+def inspect_price(price):
+    if not isinstance(price, dict):
+        return "malformed", None
+    keys = set(price)
+    if not {"amount", "currency"} <= keys <= {"amount", "currency", "unit"}:
+        return "malformed", None
+    if not isinstance(price["currency"], str):
+        return "malformed", None
+    if "unit" in price and not isinstance(price["unit"], str):
+        return "malformed", None
+    return inspect_amount(price["amount"])
+
+
+def compare_amounts(left, right):
+    left_whole, left_fraction = left
+    right_whole, right_fraction = right
+    if len(left_whole) != len(right_whole):
+        return -1 if len(left_whole) < len(right_whole) else 1
+    if left_whole != right_whole:
+        return -1 if left_whole < right_whole else 1
+    for left_digit, right_digit in zip_longest(
+        left_fraction, right_fraction, fillvalue="0"
+    ):
+        if left_digit != right_digit:
+            return -1 if left_digit < right_digit else 1
+    return 0
+
+
 class Evaluator:
     def __init__(self, vector):
         self.vector = vector
@@ -124,6 +169,19 @@ class Evaluator:
             return "indeterminate"
         if self.receipt.get("sealedSelectionReceiptVersion") != "1":
             return "fail"
+        pricing = self.listing.get("pricing")
+        if "pricing" in self.listing:
+            if (
+                not isinstance(pricing, dict)
+                or pricing.get("kind") != "auction"
+                or pricing.get("selectionRule") != rule
+            ):
+                return "fail"
+            if "reservePrice" in pricing:
+                reserve = pricing["reservePrice"]
+                reserve_status, _ = inspect_price(reserve)
+                if reserve_status != "positive" or reserve.get("currency") != "USD":
+                    return "fail"
         for key, expected in (
             ("jobId", self.listing.get("listingRef") and self.agreement.get("jobId")),
             ("listingRef", self.listing.get("listingRef")),
@@ -216,6 +274,11 @@ class Evaluator:
                                 reason = "malformed-record"
                         except (KeyError, TypeError, ValueError):
                             reason = "malformed-record"
+                        if reason is None:
+                            bid = record.get("bid")
+                            price = bid.get("price") if isinstance(bid, dict) else None
+                            if inspect_price(price)[0] == "malformed":
+                                reason = "malformed-record"
                     elif kind not in {"commit", "reveal"}:
                         reason = "malformed-record"
                     if reason is None:
@@ -245,6 +308,8 @@ class Evaluator:
         bidders = sorted({record.get("bidderClaim") for record in records.values() if isinstance(record, dict) and record.get("bidderClaim")})
         bid_decisions = []
         eligible = []
+        reserve = self.listing.get("pricing", {}).get("reservePrice")
+        reserve_amount = inspect_price(reserve)[1] if reserve is not None else None
         decision_index = {
             decision["recordContentHash"]: index
             for index, decision in enumerate(record_decisions)
@@ -300,16 +365,25 @@ class Evaluator:
                 })
                 continue
             reveal_entry, reveal = reveal_pair
-            price = reveal.get("bid", {}).get("price", {})
+            price = reveal["bid"]["price"]
             reason = None
-            try:
-                amount = Decimal(price.get("amount"))
-            except (InvalidOperation, TypeError):
-                amount = Decimal(0)
+            amount_status, amount = inspect_price(price)
+            if amount_status == "malformed" or amount is None:
+                raise AssertionError("malformed reveal price passed the record gate")
             if price.get("currency") != "USD":
                 reason = "currency-mismatch"
-            elif amount <= 0:
+            elif amount_status == "non-positive":
                 reason = "non-positive-price"
+            elif reserve_amount is not None:
+                reserve_order = compare_amounts(amount, reserve_amount)
+                if (
+                    self.receipt["selectionRule"] == "lowest-price"
+                    and reserve_order > 0
+                ) or (
+                    self.receipt["selectionRule"] == "highest-price"
+                    and reserve_order < 0
+                ):
+                    reason = "reserve-price"
             decision = {
                 "bidderClaim": bidder,
                 "authoritativeCommitRef": commit_ref,
@@ -325,12 +399,21 @@ class Evaluator:
 
         if not eligible:
             return record_decisions, bid_decisions, None
-        direction = Decimal(1) if self.receipt["selectionRule"] == "lowest-price" else Decimal(-1)
-        eligible.sort(key=lambda item: (
-            item[4] * direction,
-            item[0]["anchorReceipt"]["blockRef"]["timestamp"],
-            item[1]["bidHash"],
-        ))
+        def compare_candidates(left, right):
+            order = compare_amounts(left[4], right[4])
+            if self.receipt["selectionRule"] == "highest-price":
+                order = -order
+            if order:
+                return order
+            left_time = left[0]["anchorReceipt"]["blockRef"]["timestamp"]
+            right_time = right[0]["anchorReceipt"]["blockRef"]["timestamp"]
+            if left_time != right_time:
+                return -1 if left_time < right_time else 1
+            return (left[1]["bidHash"] > right[1]["bidHash"]) - (
+                left[1]["bidHash"] < right[1]["bidHash"]
+            )
+
+        eligible.sort(key=cmp_to_key(compare_candidates))
         commit_entry, commit, reveal_entry, reveal, _ = eligible[0]
         winner = {
             "bidderClaim": commit["bidderClaim"],
@@ -454,14 +537,41 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         actual = {item["name"]: item for item in json.loads(result.stdout)}
+        controls = {
+            "auction-pricing-without-reserve",
+            "trailing-linebreak-price-amounts-rejected",
+            "complete-lowest-price",
+            "complete-highest-price",
+            "equal-price-earliest-commit",
+            "equal-price-equal-time-bidhash",
+            "fractional-price-full-precision",
+            "nonfinite-price-amounts-rejected",
+            "snan-and-exponent-price-amounts-rejected",
+            "non-string-price-amounts-rejected",
+            "malformed-price-shapes-rejected",
+            "noncanonical-price-amounts-rejected",
+            "noncanonical-decimal-shapes-rejected",
+            "zero-and-negative-prices-excluded",
+            "long-integer-lowest-price",
+            "long-integer-highest-price",
+            "long-fraction-lowest-price",
+            "long-fraction-highest-price",
+            "long-fraction-inclusive-reserve-ceiling",
+            "long-fraction-inclusive-reserve-floor",
+        }
+        self.assertEqual(set(actual), controls)
         for vector in self.data["vectors"]:
             if vector["name"] not in actual:
                 continue
             item = actual[vector["name"]]
             self.assertEqual(item["recordSetHash"], vector["receipt"]["completenessEvidence"]["recordSetHash"])
             self.assertEqual(item["receiptContentHash"], digest(unsigned(vector["receipt"])))
-            self.assertEqual(item["winnerBidderClaim"], vector["receipt"]["winner"]["bidderClaim"])
-            self.assertEqual(item["winnerBidHash"], vector["receipt"]["winner"]["bidHash"])
+            self.assertEqual(item["verdict"], vector["expected"])
+            if vector["expected"] == "pass":
+                self.assertEqual(item["winnerBidderClaim"], vector["receipt"]["winner"]["bidderClaim"])
+                self.assertEqual(item["winnerBidHash"], vector["receipt"]["winner"]["bidHash"])
+            elif "price" in vector["name"] or "decimal" in vector["name"]:
+                self.assertEqual(item["malformedPriceCount"], 3)
 
     def test_every_vector_matches_independent_evaluator(self):
         for vector in self.data["vectors"]:
@@ -487,8 +597,60 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "valid-signed-bidhash-mismatch-excluded",
             "short-salt-reveal-rejects-selection",
             "equal-price-equal-time-bidhash",
+            "nonfinite-price-amounts-rejected",
+            "snan-and-exponent-price-amounts-rejected",
+            "non-string-price-amounts-rejected",
+            "malformed-price-shapes-rejected",
+            "noncanonical-price-amounts-rejected",
+            "noncanonical-decimal-shapes-rejected",
+            "zero-and-negative-prices-excluded",
+            "long-integer-lowest-price",
+            "long-integer-highest-price",
+            "long-fraction-lowest-price",
+            "long-fraction-highest-price",
+            "long-fraction-inclusive-reserve-ceiling",
+            "long-fraction-inclusive-reserve-floor",
         }
         self.assertTrue(required.issubset(names))
+
+    def test_non_positive_prices_are_excluded_before_selection(self):
+        vector = next(
+            item for item in self.data["vectors"]
+            if item["name"] == "zero-and-negative-prices-excluded"
+        )
+        excluded = [
+            decision for decision in vector["receipt"]["bidDecisions"]
+            if decision.get("reason") == "non-positive-price"
+        ]
+        self.assertEqual(len(excluded), 2)
+        self.assertEqual({decision["price"]["amount"] for decision in excluded}, {"0", "-1"})
+
+    def test_long_reserve_bounds_are_exact_and_inclusive(self):
+        for name, excluded_count in (
+            ("long-fraction-inclusive-reserve-ceiling", 2),
+            ("long-fraction-inclusive-reserve-floor", 2),
+        ):
+            with self.subTest(vector=name):
+                vector = next(item for item in self.data["vectors"] if item["name"] == name)
+                reserve = vector["listing"]["pricing"]["reservePrice"]
+                winner = vector["receipt"]["winner"]
+                self.assertEqual(winner["price"], reserve)
+                self.assertEqual(
+                    sum(
+                        decision.get("reason") == "reserve-price"
+                        for decision in vector["receipt"]["bidDecisions"]
+                    ),
+                    excluded_count,
+                )
+
+    def test_optional_reserve_is_distinct_from_malformed_present_reserve(self):
+        control = next(item for item in self.data["vectors"] if item["name"] == "auction-pricing-without-reserve")
+        self.assertEqual(Evaluator(control).evaluate(), "pass")
+        for value in (None, [], "1", {"amount": "1"}, {"amount": "0", "currency": "USD"}):
+            changed = copy.deepcopy(control)
+            changed["listing"]["pricing"]["reservePrice"] = value
+            with self.subTest(reserve=value):
+                self.assertEqual(Evaluator(changed).evaluate(), "fail")
 
     def test_unsupported_rules_fail_before_runtime_outcome_is_read(self):
         cases = [

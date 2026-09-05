@@ -7,7 +7,9 @@ import base64
 import copy
 import hashlib
 import json
-from decimal import Decimal, InvalidOperation
+import re
+from functools import cmp_to_key
+from itertools import zip_longest
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
@@ -55,6 +57,8 @@ CLAIMS = {
     for name in ("bidder-a", "bidder-b", "bidder-c", "publisher", "orchestrator")
 }
 BIDDER_NAMES = ("bidder-a", "bidder-b", "bidder-c")
+CD1_AMOUNT = re.compile(r"^(0|[1-9][0-9]*)(\.[0-9]*[1-9])?$")
+PRICE_KEYS = frozenset({"amount", "currency", "unit"})
 
 
 def canonical(value: object) -> bytes:
@@ -116,15 +120,59 @@ def bid_hash(bid: dict, salt: bytes) -> str:
     return hashlib.sha256(RECORD_DOMAIN.replace("auction-record", "bid").encode() + bid_digest + salt).hexdigest()
 
 
+def decimal_parts(value: object) -> tuple[str, str] | None:
+    """Return unsigned CD-1 digits without converting or rewriting signed bytes."""
+    if not isinstance(value, str) or not CD1_AMOUNT.fullmatch(value):
+        return None
+    whole, _, fraction = value.partition(".")
+    return whole, fraction
+
+
+def classify_amount(value: object) -> tuple[str, tuple[str, str] | None]:
+    parts = decimal_parts(value)
+    if parts is not None:
+        return ("non-positive" if value == "0" else "positive"), parts
+    if isinstance(value, str) and value.startswith("-"):
+        magnitude = decimal_parts(value[1:])
+        if magnitude is not None:
+            return "non-positive", magnitude
+    return "malformed", None
+
+
+def price_amount(price: object) -> tuple[str, tuple[str, str] | None]:
+    if (
+        not isinstance(price, dict)
+        or not {"amount", "currency"} <= set(price) <= PRICE_KEYS
+        or not isinstance(price.get("currency"), str)
+        or ("unit" in price and not isinstance(price["unit"], str))
+    ):
+        return "malformed", None
+    return classify_amount(price["amount"])
+
+
+def compare_decimal_parts(left: tuple[str, str], right: tuple[str, str]) -> int:
+    """Compare arbitrary-length canonical non-negative decimals exactly."""
+    left_whole, left_fraction = left
+    right_whole, right_fraction = right
+    if len(left_whole) != len(right_whole):
+        return -1 if len(left_whole) < len(right_whole) else 1
+    if left_whole != right_whole:
+        return -1 if left_whole < right_whole else 1
+    for left_digit, right_digit in zip_longest(left_fraction, right_fraction, fillvalue="0"):
+        if left_digit != right_digit:
+            return -1 if left_digit < right_digit else 1
+    return 0
+
+
 def logical_address(kind: str, bidder_claim: str, value: str) -> str:
     encoded = bidder_claim.replace("%", "%25").replace(":", "%3A")
     return f"dacs3:auction:{JOB_ID}:{kind}:{encoded}:{value}"
 
 
-def make_record_pair(name: str, amount: str, commit_time: int, reveal_time: int, ordinal: int) -> tuple[list[dict], dict]:
+def make_record_pair(name: str, price: object, commit_time: int, reveal_time: int, ordinal: int) -> tuple[list[dict], dict]:
     claim = CLAIMS[name]
     bid = {
-        "price": {"amount": amount, "currency": "USD"},
+        "price": copy.deepcopy(price),
         "deliverable": {"deliverableType": "digital", "hash": "ab" * 32},
     }
     salt = seed("salt " + name)
@@ -190,7 +238,12 @@ def make_record_pair(name: str, amount: str, commit_time: int, reveal_time: int,
     return entries, {commit_hash: commit, reveal_hash: reveal}
 
 
-def base_material(prices: tuple[str, str, str] = ("100", "80", "120"), *, equal_commit_time: bool = False) -> tuple[list[dict], dict]:
+def base_material(
+    prices: tuple[object, object, object] = ("100", "80", "120"),
+    *,
+    equal_commit_time: bool = False,
+    price_overrides: dict[str, object] | None = None,
+) -> tuple[list[dict], dict]:
     entries: list[dict] = []
     records: dict[str, dict] = {}
     for index, (name, amount) in enumerate(zip(BIDDER_NAMES, prices), start=1):
@@ -199,7 +252,7 @@ def base_material(prices: tuple[str, str, str] = ("100", "80", "120"), *, equal_
             commit_time = COMMIT_DEADLINE - 20_000
         pair_entries, pair_records = make_record_pair(
             name,
-            amount,
+            (price_overrides or {}).get(name, {"amount": amount, "currency": "USD"}),
             commit_time,
             COMMIT_DEADLINE + 20_000 + index * 2_000,
             index,
@@ -272,6 +325,11 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
                         decode_salt(record.get("salt"))
                     except (TypeError, ValueError):
                         reason = "malformed-record"
+                    if reason is None:
+                        bid = record.get("bid")
+                        price = bid.get("price") if isinstance(bid, dict) else None
+                        if price_amount(price)[0] == "malformed":
+                            reason = "malformed-record"
                 want_address = logical_address(
                     kind or "", record["bidderClaim"], record["bidHash"]
                 )
@@ -300,7 +358,10 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
         })
 
     bid_decisions: list[dict] = []
-    eligible: list[tuple[dict, dict, dict, dict]] = []
+    eligible: list[tuple[dict, dict, dict, dict, tuple[str, str]]] = []
+    reserve_parts = decimal_parts(reserve) if reserve is not None else None
+    if reserve is not None and (reserve_parts is None or reserve == "0"):
+        raise ValueError("fixture reserve must be a positive CD-1 amount")
     decision_index = {
         decision["recordContentHash"]: index
         for index, decision in enumerate(record_decisions)
@@ -357,16 +418,20 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
         reveal_entry, reveal = reveal_pair
         price = reveal["bid"]["price"]
         reason = None
-        try:
-            amount = Decimal(price["amount"])
-        except (InvalidOperation, KeyError, TypeError):
-            amount = Decimal(0)
+        amount_status, amount = price_amount(price)
+        if amount_status == "malformed" or amount is None:
+            raise AssertionError("malformed reveal price passed the record gate")
         if price.get("currency") != "USD":
             reason = "currency-mismatch"
-        elif amount <= 0:
+        elif amount_status == "non-positive":
             reason = "non-positive-price"
-        elif reserve is not None and ((selection_rule == "lowest-price" and amount > Decimal(reserve)) or (selection_rule == "highest-price" and amount < Decimal(reserve))):
-            reason = "reserve-price"
+        elif reserve_parts is not None:
+            reserve_comparison = compare_decimal_parts(amount, reserve_parts)
+            if (
+                (selection_rule == "lowest-price" and reserve_comparison > 0)
+                or (selection_rule == "highest-price" and reserve_comparison < 0)
+            ):
+                reason = "reserve-price"
         decision = {
             "bidderClaim": bidder,
             "authoritativeCommitRef": commit_ref,
@@ -378,16 +443,26 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
         }
         bid_decisions.append(decision)
         if reason is None:
-            eligible.append((commit_entry, commit, reveal_entry, reveal))
+            eligible.append((commit_entry, commit, reveal_entry, reveal, amount))
 
     if selection_rule not in {"lowest-price", "highest-price"} or not eligible:
         return record_decisions, bid_decisions, None
-    eligible.sort(key=lambda value: (
-        Decimal(value[3]["bid"]["price"]["amount"]) * (1 if selection_rule == "lowest-price" else -1),
-        value[0]["anchorReceipt"]["blockRef"]["timestamp"],
-        value[1]["bidHash"],
-    ))
-    commit_entry, commit, reveal_entry, reveal = eligible[0]
+    def compare_candidates(left, right):
+        price_order = compare_decimal_parts(left[4], right[4])
+        if selection_rule == "highest-price":
+            price_order = -price_order
+        if price_order:
+            return price_order
+        left_time = left[0]["anchorReceipt"]["blockRef"]["timestamp"]
+        right_time = right[0]["anchorReceipt"]["blockRef"]["timestamp"]
+        if left_time != right_time:
+            return -1 if left_time < right_time else 1
+        return (left[1]["bidHash"] > right[1]["bidHash"]) - (
+            left[1]["bidHash"] < right[1]["bidHash"]
+        )
+
+    eligible.sort(key=cmp_to_key(compare_candidates))
+    commit_entry, commit, reveal_entry, reveal, _ = eligible[0]
     winner = {
         "bidderClaim": commit["bidderClaim"],
         "authoritativeCommitRef": commit_entry["recordRef"],
@@ -400,9 +475,18 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
     return record_decisions, bid_decisions, winner
 
 
-def signed_receipt(entries: list[dict], records: dict, *, selection_rule: str = "lowest-price", state: dict = CURRENT_STATE) -> dict:
+def signed_receipt(
+    entries: list[dict],
+    records: dict,
+    *,
+    selection_rule: str = "lowest-price",
+    reserve: str | None = None,
+    state: dict = CURRENT_STATE,
+) -> dict:
     collection_prefix = "dacs3:auction:" + JOB_ID
-    record_decisions, bid_decisions, winner = derive(entries, records, selection_rule=selection_rule)
+    record_decisions, bid_decisions, winner = derive(
+        entries, records, selection_rule=selection_rule, reserve=reserve
+    )
     receipt = {
         "sealedSelectionReceiptVersion": "1",
         "jobId": JOB_ID,
@@ -503,7 +587,18 @@ def selection_receipt_anchor(receipt: dict) -> dict:
     }
 
 
-def make_vector(name: str, expected: str, reason: str, entries: list[dict], records: dict, receipt: dict, agreement: dict, **context_overrides) -> dict:
+def make_vector(
+    name: str,
+    expected: str,
+    reason: str,
+    entries: list[dict],
+    records: dict,
+    receipt: dict,
+    agreement: dict,
+    *,
+    reserve: str | None = None,
+    **context_overrides,
+) -> dict:
     context = {
         "bindingDefinitionResolved": True,
         "bindingPublicKey": public_key("binding"),
@@ -520,23 +615,30 @@ def make_vector(name: str, expected: str, reason: str, entries: list[dict], reco
         "selectionReceiptAnchor": selection_receipt_anchor(receipt),
     }
     context.update(context_overrides)
+    listing = {
+        "listingRef": LISTING_REF,
+        "publisherClaim": CLAIMS["publisher"],
+        "phaseIndex": PHASE_INDEX,
+        "phaseKind": "negotiate-sealed-envelope-procurement-complete",
+        "parameters": {
+            "commitDeadline": COMMIT_DEADLINE,
+            "revealWindow": 120,
+            "selectionRule": receipt["selectionRule"],
+            "candidateSetBinding": receipt["candidateSetBinding"],
+            "auctionMode": "procurement",
+        },
+    }
+    if reserve is not None:
+        listing["pricing"] = {
+            "kind": "auction",
+            "selectionRule": receipt["selectionRule"],
+            "reservePrice": {"amount": reserve, "currency": "USD"},
+        }
     return {
         "name": name,
         "expected": expected,
         "reason": reason,
-        "listing": {
-            "listingRef": LISTING_REF,
-            "publisherClaim": CLAIMS["publisher"],
-            "phaseIndex": PHASE_INDEX,
-            "phaseKind": "negotiate-sealed-envelope-procurement-complete",
-            "parameters": {
-                "commitDeadline": COMMIT_DEADLINE,
-                "revealWindow": 120,
-                "selectionRule": receipt["selectionRule"],
-                "candidateSetBinding": receipt["candidateSetBinding"],
-                "auctionMode": "procurement",
-            },
-        },
+        "listing": listing,
         "receipt": receipt,
         "agreement": agreement,
         "context": context,
@@ -550,6 +652,9 @@ def build() -> dict:
     receipt = signed_receipt(entries, records)
     agreement = signed_agreement(receipt)
     vectors.append(make_vector("complete-lowest-price", "pass", "complete current set selects bidder B", entries, records, receipt, agreement))
+    no_reserve = make_vector("auction-pricing-without-reserve", "pass", "optional reservePrice may be absent from valid auction pricing", entries, records, receipt, agreement)
+    no_reserve["listing"]["pricing"] = {"kind": "auction", "selectionRule": "lowest-price"}
+    vectors.append(no_reserve)
 
     high_receipt = signed_receipt(entries, records, selection_rule="highest-price")
     vectors.append(make_vector("complete-highest-price", "pass", "highest price deterministically selects bidder C", entries, records, high_receipt, signed_agreement(high_receipt)))
@@ -723,6 +828,145 @@ def build() -> dict:
     fractional_entries, fractional_records = base_material(("80.05", "80.5", "120"))
     fractional_receipt = signed_receipt(fractional_entries, fractional_records)
     vectors.append(make_vector("fractional-price-full-precision", "pass", "CD-1 decimals compare at full precision without binary floating point", fractional_entries, fractional_records, fractional_receipt, signed_agreement(fractional_receipt)))
+
+    malformed_price_cases = (
+        (
+            "trailing-linebreak-price-amounts-rejected",
+            ("1\n", "1\r", "1\r\n"),
+            None,
+            "trailing line terminators are not canonical decimals, including JavaScript dollar-anchor edge cases",
+        ),
+        (
+            "nonfinite-price-amounts-rejected",
+            ("Infinity", "-Infinity", "NaN"),
+            None,
+            "non-finite amount spellings make authenticated reveal records malformed",
+        ),
+        (
+            "snan-and-exponent-price-amounts-rejected",
+            ("sNaN", "1e3", "1e999999999999999999999999999999999999"),
+            None,
+            "signaling NaN and ordinary or enormous exponents are not CD-1 amounts",
+        ),
+        (
+            "non-string-price-amounts-rejected",
+            (1, None, []),
+            None,
+            "number, null, and array amounts make authenticated reveal records malformed",
+        ),
+        (
+            "malformed-price-shapes-rejected",
+            ("1", "1", "1"),
+            {
+                "bidder-a": [],
+                "bidder-b": {"currency": "USD"},
+                "bidder-c": {"amount": "1", "currency": 840},
+            },
+            "non-object, missing-member, and wrong-typed PriceTerm shapes reject selection",
+        ),
+        (
+            "noncanonical-price-amounts-rejected",
+            ("01", "1.0", "+1"),
+            None,
+            "leading zero, trailing fractional zero, and plus-sign forms are not CD-1",
+        ),
+        (
+            "noncanonical-decimal-shapes-rejected",
+            (".1", "1.", " 1"),
+            None,
+            "missing whole or fractional digits and surrounding whitespace are not CD-1",
+        ),
+    )
+    for name, prices, overrides, reason in malformed_price_cases:
+        malformed_entries, malformed_records = base_material(
+            prices, price_overrides=overrides
+        )
+        malformed_receipt = signed_receipt(malformed_entries, malformed_records)
+        vectors.append(make_vector(
+            name,
+            "fail",
+            reason,
+            malformed_entries,
+            malformed_records,
+            malformed_receipt,
+            signed_agreement(malformed_receipt),
+        ))
+
+    non_positive_entries, non_positive_records = base_material(("0", "-1", "100"))
+    non_positive_receipt = signed_receipt(
+        non_positive_entries, non_positive_records, selection_rule="highest-price"
+    )
+    vectors.append(make_vector(
+        "zero-and-negative-prices-excluded",
+        "pass",
+        "canonical zero and negative amounts are excluded before highest-price selection",
+        non_positive_entries,
+        non_positive_records,
+        non_positive_receipt,
+        signed_agreement(non_positive_receipt),
+    ))
+
+    long_integer = "12345678901234567890123456789012345678901234567890"
+    long_fraction = "0." + "1234567890" * 6
+    exact_cases = (
+        (
+            "long-integer-lowest-price",
+            (long_integer + "2", long_integer + "1", long_integer + "3"),
+            "lowest-price",
+            None,
+            "arbitrary-length integers differing beyond decimal context precision select the exact lowest suffix",
+        ),
+        (
+            "long-integer-highest-price",
+            (long_integer + "1", long_integer + "2", long_integer + "3"),
+            "highest-price",
+            None,
+            "arbitrary-length integers differing beyond decimal context precision select the exact highest suffix",
+        ),
+        (
+            "long-fraction-lowest-price",
+            (long_fraction + "2", long_fraction + "1", long_fraction + "3"),
+            "lowest-price",
+            None,
+            "arbitrary-length fractions differing at the final digit select the exact lowest suffix",
+        ),
+        (
+            "long-fraction-highest-price",
+            (long_fraction + "1", long_fraction + "2", long_fraction + "3"),
+            "highest-price",
+            None,
+            "arbitrary-length fractions differing at the final digit select the exact highest suffix",
+        ),
+        (
+            "long-fraction-inclusive-reserve-ceiling",
+            (long_fraction + "2", long_fraction + "3", long_fraction + "4"),
+            "lowest-price",
+            long_fraction + "2",
+            "a long price equal to the lowest-price reserve ceiling remains eligible while larger suffixes do not",
+        ),
+        (
+            "long-fraction-inclusive-reserve-floor",
+            (long_fraction + "1", long_fraction + "2", "0.1"),
+            "highest-price",
+            long_fraction + "2",
+            "a long price equal to the highest-price reserve floor remains eligible while smaller values do not",
+        ),
+    )
+    for name, prices, rule, reserve, reason in exact_cases:
+        exact_entries, exact_records = base_material(prices)
+        exact_receipt = signed_receipt(
+            exact_entries, exact_records, selection_rule=rule, reserve=reserve
+        )
+        vectors.append(make_vector(
+            name,
+            "pass",
+            reason,
+            exact_entries,
+            exact_records,
+            exact_receipt,
+            signed_agreement(exact_receipt),
+            reserve=reserve,
+        ))
 
     wrong_address_entries = copy.deepcopy(entries)
     for entry in wrong_address_entries:

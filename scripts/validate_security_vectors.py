@@ -54,6 +54,7 @@ VERDICT_FIELDS = ("expected", "decision")
 
 HISTORICAL_SB2_SET = "sb2-settlement-uniqueness-v0.1"
 CURRENT_SB2_SET = "sb2-collision-authority-v0.8"
+SB1_EVENT_IDENTITY_SET = "settlement-event-identity-v0.6"
 
 
 def canonical_encodings(vectors: list) -> dict[str, bytes]:
@@ -121,6 +122,29 @@ def validate_set(path: str) -> tuple[list[str], int]:
             errors.append(
                 f"{name}: current SB-2 set must explicitly supersede "
                 f"{HISTORICAL_SB2_SET}"
+            )
+
+    if stem == SB1_EVENT_IDENTITY_SET:
+        required_profile = {
+            "status": "partially-superseded",
+            "currentCollisionAuthority": False,
+            "normativeScope": (
+                "sb1-event-identity-projection-and-same-tuple-idempotency-only"
+            ),
+            "historicalCollisionVectors": ["same-event-second-job-rejected"],
+            "currentCollisionAuthoritySet": CURRENT_SB2_SET,
+        }
+        if data.get("tier") != "candidate":
+            errors.append(f"{name}: SB-1 event-identity set must have tier 'candidate'")
+        if data.get("conformanceProfile") != required_profile:
+            errors.append(
+                f"{name}: SB-1 event-identity conformanceProfile must be exactly "
+                f"{required_profile!r}"
+            )
+        if "SB-2" in data.get("spec", ""):
+            errors.append(
+                f"{name}: partially superseded event-identity set must not claim "
+                "current SB-2 coverage"
             )
 
     vectors = data["vectors"]

@@ -22,10 +22,15 @@ The format used per release:
   and non-countable; discovery of a later collision revokes any provisional
   count. `observedAt`, evidence hashes, arrival order, SR-2 anchor order, and an
   unauthenticated first-claim hint never select a winner. No atomic first-claim
-  mechanism is registered. Adds 19 deterministic group vectors covering
-  backdating, equal timestamps, cross-job/phase claims, stolen-first anchor,
-  missing/unavailable/pruned/conflicting/reorganised authority, final binding,
-  replacement hints, and distinct batched events.
+  mechanism is registered. Adds 32 deterministic group vectors covering
+  backdating, equal timestamps, cross-job/phase claims, two-group authority
+  substitution, missing/mismatched settlement and rail/profile dimensions,
+  Permit2/AP2 job-only phase ambiguity, EIP-3009 exact-phase authority,
+  stolen-first anchor, unavailable/pruned/conflicting/reorganised authority,
+  replacement hints, and distinct batched events. The executable DACS-5
+  consumer regression removes a late unresolved collision from count,
+  denominators, volume, and per-currency transaction count without assigning
+  party fault.
 
 ### Fixed — DACS-4 v0.8 settlement-side binding downgrade
 

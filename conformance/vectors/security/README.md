@@ -60,13 +60,13 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`reputation-settlement-reference-divergence-v0.4.json`](reputation-settlement-reference-divergence-v0.4.json) | DACS-5 v0.4 §10.5.1 settlement-verified reference-multiset divergence limb | 6 | `fail` / `pass` |
 | [`reputation-settlement-semantics-v0.4.json`](reputation-settlement-semantics-v0.4.json) | DACS-5 v0.4 §10.5.1 RSV-1..RSV-4; settlement-verified types; consumes existing DACS-4 rules | 17 | `accept` / `indeterminate` / `reject` |
 | [`revocation-binding-v0.3.json`](revocation-binding-v0.3.json) | DACS-1 §6.3.4 RB-1..RB-6 revocation-marker discovery and fail-closed resolution | 14 | `fail` / `indeterminate` / `pass` |
-| [`sb2-collision-authority-v0.8.json`](sb2-collision-authority-v0.8.json) | DACS-4 §9.5.8 SB-2 authenticated collision authority | 19 | `error` / `fail` / `indeterminate` / `pass` |
+| [`sb2-collision-authority-v0.8.json`](sb2-collision-authority-v0.8.json) | DACS-4 §9.5.8 SB-2 authenticated collision authority | 32 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb2-settlement-uniqueness-v0.1.json`](sb2-settlement-uniqueness-v0.1.json) | Historical DACS v0.1 §9.5.8 (SB-2); SB-1 key only | 20 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-binding-required-v0.8.json`](sb3-binding-required-v0.8.json) | DACS-4 §9.5.8 SB-3 required-binding four-value gate | 22 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sb3-eip3009-nonce-v0.1.json`](sb3-eip3009-nonce-v0.1.json) | DACS-4 §9.5.8 (SB-3 EIP-3009 nonce binding) | 14 | `error` / `fail` / `pass` |
 | [`sealed-envelope-deadline-v0.1.json`](sealed-envelope-deadline-v0.1.json) | DACS-3 §8.4.3 (SE-2/SE-3/SE-4 + CH-3 + commitment binding) | 15 | `error` / `fail` / `indeterminate` / `pass` |
 | [`sealed-envelope-multicommit-v0.1.json`](sealed-envelope-multicommit-v0.1.json) | DACS-3 §8.4.3 (SE-9 same-bidder commit authority) | 4 | `fail` / `pass` |
-| [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1/SB-2 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
+| [`settlement-event-identity-v0.6.json`](settlement-event-identity-v0.6.json) | DACS-4 §9.5.8 SB-1 signed event identity and legacy replay | 28 | `error` / `fail` / `indeterminate` / `pass` |
 | [`settlement-finalization-propagation-v0.3.json`](settlement-finalization-propagation-v0.3.json) | DACS-4 §9.7 FP-1..FP-4; DACS-5 §10.4.1 and §10.4.3 | 6 | `fail` / `pass` |
 | [`signature-value-encoding-v0.1.json`](signature-value-encoding-v0.1.json) | CORE §B.7 SIG-6 | 10 | `accept` / `reject` |
 | [`sr2-anchor-lifecycle-v0.1.json`](sr2-anchor-lifecycle-v0.1.json) | CORE §5.1 SR2-1..SR2-9; DACS-1 §6.3.4 LP-1; DACS-2 §7.8 VPC-3/VPC-5; DACS-3 §8.6 CA-1/CA-8; DACS-4 §9.5.1 PC-7 and §9.9 PIPE-6; DACS-5 §10.3.1 ST-11 | 25 | `fail` / `pass` |
@@ -537,7 +537,7 @@ python3 scripts/generate_sb3_binding_required_vectors.py --check
 python3 -m unittest tests.test_sb3_binding_required_vectors -v
 ```
 
-### `settlement-event-identity-v0.6.json` — §9.5.8 SB-1/SB-2 signed projection
+### `settlement-event-identity-v0.6.json` — §9.5.8 SB-1 signed projection
 
 Twenty-eight genuinely signed `SettlementEvidence` vectors exercise the DACS-4 v0.6
 event-identity boundary before SB-2 consumes a key. Current EVM, Solana, and
@@ -550,11 +550,14 @@ only when exactly one ledger event matches. Multiple matches or unavailable
 ledger data remain `indeterminate`, and an unsigned caller/indexer coordinate is
 ignored.
 
-The set includes batched transfers with distinct keys, cross-job reuse, missing
-and malformed coordinates, a signed-index/ledger mismatch, legacy unambiguous
+The set includes batched transfers with distinct keys, missing and malformed
+coordinates, a signed-index/ledger mismatch, legacy unambiguous
 and ambiguous replay, discriminator stripping, cross-type signature replay,
 three independently signed full-address mismatch negatives, and a CF-4 rail
-segment positive.
+segment positive. Its retained `same-event-second-job-rejected` result records
+the historical first-claim behavior only: the top-level `conformanceProfile`
+machine-limits current applicability to SB-1 identity projection and same-tuple
+idempotency and points collision authority to `sb2-collision-authority-v0.8`.
 Regenerate and execute it with:
 
 ```bash
@@ -635,12 +638,16 @@ npx tsx conformance/security-vectors/sb2-settlement-uniqueness/run.mts
 
 ### `sb2-collision-authority-v0.8.json` — §9.5.8 SB-2 collision authority
 
-19 candidate group vectors execute the current rule over a complete presented
-evidence set. A finalized settlement-side binding to one exact job and phase
-selects that tuple and rejects competitors. With no binding, unavailable or
-pruned evidence, non-final/reorganised authority, or conflicting purported
-finality, every competing tuple is `indeterminate` and none counts. Malformed
-authority is `error`; a binding to no presented claim rejects all claims.
+32 candidate group vectors execute the current rule over a complete presented
+evidence set. A finalized per-settlement relation must match the canonical
+settlement ID, authenticated pinned rail/profile, job, and phase before it can
+select that tuple and reject competitors. Authority for one group cannot select
+the same tuple in another. Missing/mismatched dimensions, unavailable or pruned
+evidence, non-final/reorganised authority, or conflicting purported finality
+leave every competitor `indeterminate`. EIP-3009 supplies the exact-phase
+positive; current Permit2 and AP2 job-only bindings leave same-job cross-phase
+groups unresolved even when a caller appends a phase field. Malformed authority
+is `error`; an exact binding to no presented claim rejects all claims.
 
 Producer `observedAt`, evidence-hash order, arrival order, and SR-2 anchor order
 are inert. The set proves that a stolen claim anchored first cannot win, later
@@ -648,6 +655,9 @@ collision discovery removes a provisional count, outer replacement hints
 cannot override finalized settlement authority, and an unregistered atomic
 first-claim hint grants nothing. Same-tuple repetition remains idempotent and
 different event indices in a batched transaction remain separate settlements.
+An independent executable DACS-5 consumer regression also proves that late
+unresolved collision discovery removes prior bundle count, fault denominators,
+volume, and per-currency transaction count without creating party fault.
 
 Regenerate and execute with:
 

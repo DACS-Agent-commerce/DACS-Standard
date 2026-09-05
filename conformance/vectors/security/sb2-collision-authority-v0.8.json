@@ -5,18 +5,45 @@
   "supersedes": [
     "sb2-settlement-uniqueness-v0.1"
   ],
-  "description": "Cross-job/phase collisions use finalized settlement-side authority; without it every competing claim is indeterminate and non-countable.",
-  "count": 19,
-  "hash": "2654e6259b91336a3f2ee06523d32820f709e6073bdf0af2e214ee1ed4e100a9",
+  "authorityRelation": {
+    "scope": "per-canonical-settlement-and-pinned-rail-profile",
+    "requiredDimensions": [
+      "settlementTxId",
+      "railId",
+      "railProfile",
+      "jobId",
+      "phaseIndex"
+    ],
+    "currentProfileDimensions": {
+      "pay-x402/eip-3009:dacs-sb3-v1": [
+        "jobId",
+        "phaseIndex"
+      ],
+      "pay-x402/permit2:witness-job-v1": [
+        "jobId"
+      ],
+      "pay-ap2/provider-metadata:dacs-job-id-v1": [
+        "jobId"
+      ]
+    }
+  },
+  "description": "Each cross-job/phase collision group requires finalized authority bound to its exact canonical settlement, pinned rail/profile, job, and phase; without that complete relation every competitor is indeterminate.",
+  "count": 32,
+  "hash": "197e6a7b2221e2ed256fb3aa694ed7df8326255840cdc216cf43566d3c487927",
   "vectors": [
     {
       "name": "single-record-no-collision-counts",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "authenticated-pinned-rail",
-          "state": "none"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": []
       },
       "protocolInput": {
         "records": [
@@ -49,10 +76,15 @@
       "name": "idempotent-identical-record-counts-once",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "authenticated-pinned-rail",
-          "state": "none"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": []
       },
       "protocolInput": {
         "records": [
@@ -93,12 +125,31 @@
       "name": "cross-job-finalized-binding-selects-a",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "finalized",
-          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -141,12 +192,31 @@
       "name": "backdated-attacker-does-not-win",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "finalized",
-          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -189,12 +259,31 @@
       "name": "equal-producer-timestamps-do-not-tie-break",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "finalized",
-          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -237,12 +326,31 @@
       "name": "reverse-arrival-order-same-authority",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "finalized",
-          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -282,15 +390,34 @@
       "note": "Input and arrival order cannot change the selected tuple."
     },
     {
-      "name": "cross-phase-finalized-binding-selects-phase-one",
+      "name": "cross-phase-eip3009-exact-binding-selects-phase-one",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "finalized",
-          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -327,16 +454,27 @@
         "partyFaultCreatedByThisGate": false
       },
       "rule": "DACS-4 §9.5.8 SB-2",
-      "note": "The binding covers both jobId and phaseIndex."
+      "note": "The EIP-3009 nonce authenticates both jobId and phaseIndex."
     },
     {
       "name": "no-binding-collision-voids-both",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "authenticated-pinned-rail",
-          "state": "none"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": []
       },
       "protocolInput": {
         "records": [
@@ -378,10 +516,21 @@
       "name": "attacker-anchors-stolen-claim-first",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "authenticated-pinned-rail",
-          "state": "none"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": []
       },
       "protocolInput": {
         "records": [
@@ -425,10 +574,29 @@
       "name": "authority-unavailable-voids-both",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "unavailable"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "unavailable",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -470,12 +638,31 @@
       "name": "authority-not-final-voids-both",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "included",
-          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "included",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -517,10 +704,29 @@
       "name": "authority-pruned-voids-both",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "pruned"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "pruned",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -562,10 +768,29 @@
       "name": "authority-reorged-before-finality-voids-both",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "reorged"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "reorged",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -607,10 +832,29 @@
       "name": "conflicting-finalized-authority-voids-both",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "conflicting-finalized"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "conflicting-finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -652,10 +896,29 @@
       "name": "malformed-authority-errors",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "malformed"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "malformed",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -694,12 +957,31 @@
       "name": "binding-to-unpresented-tuple-rejects-both",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "finalized",
-          "jobId": "01KTY8ZJ02CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ02CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -741,12 +1023,31 @@
       "name": "later-anchor-hint-cannot-replace-finalized-binding",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "independently-verified-settlement",
-          "state": "finalized",
-          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
-          "phaseIndex": 1
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -794,10 +1095,21 @@
       "name": "unsupported-atomic-first-claim-hint-is-inert",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "authenticated-pinned-rail",
-          "state": "none"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": []
       },
       "protocolInput": {
         "records": [
@@ -838,13 +1150,564 @@
       "note": "No atomic first-claim mechanism is registered in this revision."
     },
     {
-      "name": "distinct-event-identifiers-both-count",
+      "name": "two-groups-one-authority-does-not-substitute",
       "operation": "resolve-sb2-collision-group",
       "trustedContext": {
-        "settlementAuthority": {
-          "source": "authenticated-pinned-rail",
-          "state": "none"
-        }
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "5555555555555555555555555555555555555555555555555555555555555555",
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          },
+          {
+            "contentHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "observedAt": 700,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "5555555555555555555555555555555555555555555555555555555555555555",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "observedAt": 600,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111"
+        ],
+        "rejectedEvidenceHashes": [
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "indeterminateEvidenceHashes": [
+          "4444444444444444444444444444444444444444444444444444444444444444",
+          "5555555555555555555555555555555555555555555555555555555555555555"
+        ],
+        "reason": "collision-authority-settlement-mismatch",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Authority for the first canonical settlement cannot select the same tuple in the second group."
+    },
+    {
+      "name": "two-groups-each-exact-authority-selects-independently",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "5555555555555555555555555555555555555555555555555555555555555555",
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          },
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          },
+          {
+            "contentHash": "4444444444444444444444444444444444444444444444444444444444444444",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "observedAt": 700,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "5555555555555555555555555555555555555555555555555555555555555555",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "observedAt": 600,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "pass",
+      "want": {
+        "countedEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "5555555555555555555555555555555555555555555555555555555555555555"
+        ],
+        "rejectedEvidenceHashes": [
+          "2222222222222222222222222222222222222222222222222222222222222222",
+          "4444444444444444444444444444444444444444444444444444444444444444"
+        ],
+        "indeterminateEvidenceHashes": [],
+        "reason": "authenticated-settlement-binding",
+        "selectedBy": "settlement-authority",
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Each collision group is selected only by its own exact settlement relation."
+    },
+    {
+      "name": "authority-missing-settlement-id-does-not-select",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-settlement-mismatch",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A relation without the canonical settlement identifier proves no authority for this group."
+    },
+    {
+      "name": "authority-mismatched-settlement-id-does-not-select",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd:9",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-settlement-mismatch",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Authority authenticated for another settlement cannot be substituted into this group."
+    },
+    {
+      "name": "authority-missing-rail-profile-does-not-select",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-profile-mismatch",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A relation without the authenticated pinned profile proves no authority for this group."
+    },
+    {
+      "name": "authority-mismatched-rail-id-does-not-select",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "wrong-x402-rail",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-profile-mismatch",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Authority under another pinned rail cannot select this group's record."
+    },
+    {
+      "name": "authority-mismatched-profile-does-not-select",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/permit2:witness-job-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK"
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-profile-mismatch",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A Permit2 proof cannot substitute for the pinned EIP-3009 profile."
+    },
+    {
+      "name": "eip3009-missing-phase-proof-is-indeterminate",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK"
+          }
+        ]
       },
       "protocolInput": {
         "records": [
@@ -858,7 +1721,391 @@
           },
           {
             "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 2,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 500,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "reason": "collision-authority-phase-unproven",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "An incomplete EIP-3009 relation cannot select a phase."
+    },
+    {
+      "name": "permit2-job-only-cross-phase-is-indeterminate",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/permit2:witness-job-v1"
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/permit2:witness-job-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/permit2:witness-job-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK"
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 2,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 500,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "reason": "collision-authority-phase-unproven",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "The existing Permit2 witness authenticates jobId but not phaseIndex."
+    },
+    {
+      "name": "ap2-job-only-cross-phase-is-indeterminate",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "usd-ap2",
+            "railProfile": "pay-ap2/provider-metadata:dacs-job-id-v1"
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "usd-ap2",
+            "railProfile": "pay-ap2/provider-metadata:dacs-job-id-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "usd-ap2",
+            "railProfile": "pay-ap2/provider-metadata:dacs-job-id-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK"
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 2,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 500,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "reason": "collision-authority-phase-unproven",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "The existing AP2 provider metadata authenticates jobId but not phaseIndex."
+    },
+    {
+      "name": "permit2-caller-phase-claim-adds-no-authority",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/permit2:witness-job-v1"
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/permit2:witness-job-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/permit2:witness-job-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 2,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 500,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "3333333333333333333333333333333333333333333333333333333333333333"
+        ],
+        "reason": "collision-authority-phase-unproven",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A phase field cannot add an authentication dimension that Permit2 does not sign."
+    },
+    {
+      "name": "unproven-authority-source-does-not-select",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": [
+          {
+            "source": "producer-report",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        ]
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
             "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {}
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-authority-unproven",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "A producer report is not independently authenticated settlement authority."
+    },
+    {
+      "name": "protocol-input-authority-claim-is-inert",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": []
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "2222222222222222222222222222222222222222222222222222222222222222",
+            "jobId": "01KTY8ZJ01CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 1000,
+            "sr2AnchorOrder": 1
+          }
+        ],
+        "hints": {
+          "settlementAuthority": {
+            "source": "independently-verified-settlement",
+            "state": "finalized",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1
+          }
+        }
+      },
+      "expected": "indeterminate",
+      "want": {
+        "countedEvidenceHashes": [],
+        "rejectedEvidenceHashes": [],
+        "indeterminateEvidenceHashes": [
+          "1111111111111111111111111111111111111111111111111111111111111111",
+          "2222222222222222222222222222222222222222222222222222222222222222"
+        ],
+        "reason": "collision-without-authority",
+        "selectedBy": null,
+        "partyFaultCreatedByThisGate": false
+      },
+      "rule": "DACS-4 §9.5.8 SB-2",
+      "note": "Claimant-controlled protocol input cannot manufacture trusted authority."
+    },
+    {
+      "name": "distinct-event-identifiers-both-count",
+      "operation": "resolve-sb2-collision-group",
+      "trustedContext": {
+        "verifiedRailContexts": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:8",
+            "railId": "base-usdc-x402",
+            "railProfile": "pay-x402/eip-3009:dacs-sb3-v1"
+          }
+        ],
+        "settlementAuthorities": []
+      },
+      "protocolInput": {
+        "records": [
+          {
+            "contentHash": "1111111111111111111111111111111111111111111111111111111111111111",
+            "jobId": "01KTY8ZJ00CW7KSECW3FS6PQPK",
+            "phaseIndex": 1,
+            "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:7",
+            "observedAt": 2000,
+            "sr2AnchorOrder": 2
+          },
+          {
+            "contentHash": "3333333333333333333333333333333333333333333333333333333333333333",
+            "jobId": "01KTY8ZJ02CW7KSECW3FS6PQPK",
             "phaseIndex": 1,
             "settlementTxId": "evm:1:abababababababababababababababababababababababababababababababab:8",
             "observedAt": 500,

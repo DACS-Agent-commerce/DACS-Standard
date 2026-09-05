@@ -7,7 +7,7 @@ rounded before the DACS safe-magnitude check.  This module implements CORE
 CF-5: validate the UTF-8 JSON text and its raw number tokens before returning an
 object model that may be passed to :mod:`jcs`.
 
-Two independent parsers are exposed for the conformance corpus:
+Two independent bytes-only parsers are exposed for the conformance corpus:
 
 ``loads``
     CPython's JSON parser with token-preserving numeric hooks and a
@@ -17,8 +17,11 @@ Two independent parsers are exposed for the conformance corpus:
     A small recursive-descent parser used only as an independent executable
     oracle.  It shares the profile predicates, but not CPython's JSON parser.
 
-Both raise :class:`RawJsonProfileError` with ``stage`` equal to ``"parse"`` or
-``"profile"``.  Canonicalization is deliberately a later, separate operation.
+Both require the exact externally received bytes; decoded ``str`` input is
+refused because it cannot prove that the original byte sequence passed strict
+UTF-8 admission.  Both raise :class:`RawJsonProfileError` with ``stage`` equal
+to ``"parse"`` or ``"profile"``.  Canonicalization is deliberately a later,
+separate operation.
 """
 
 from __future__ import annotations
@@ -54,16 +57,16 @@ def _error(stage: str, code: str, message: str) -> RawJsonProfileError:
     return RawJsonProfileError(stage, code, message)
 
 
-def _decode(raw: bytes | str) -> str:
-    if isinstance(raw, bytes):
-        try:
-            text = raw.decode("utf-8", errors="strict")
-        except UnicodeDecodeError as exc:
-            raise _error("parse", "INVALID-UTF8", "input is not well-formed UTF-8") from exc
-    elif isinstance(raw, str):
-        text = raw
-    else:
-        raise TypeError("raw JSON input must be bytes or str")
+def _decode(raw: bytes) -> str:
+    if not isinstance(raw, bytes):
+        raise TypeError(
+            "CF-5 external admission requires the exact received JSON bytes; "
+            "decoded text is not admissible"
+        )
+    try:
+        text = raw.decode("utf-8", errors="strict")
+    except UnicodeDecodeError as exc:
+        raise _error("parse", "INVALID-UTF8", "input is not well-formed UTF-8") from exc
     if text.startswith("\ufeff"):
         raise _error("parse", "BOM", "a UTF-8 BOM is not part of a DACS JSON text")
     return text
@@ -169,8 +172,8 @@ def _admit_tree(value: Any) -> Any:
     return value
 
 
-def loads(raw: bytes | str) -> Any:
-    """Admit raw JSON through the CPython-backed CF-5 parser."""
+def loads(raw: bytes) -> Any:
+    """Admit exact received bytes through the CPython-backed CF-5 parser."""
 
     text = _decode(raw)
     _check_nesting(text)
@@ -342,8 +345,8 @@ class _ReferenceParser:
         return int(token, 16)
 
 
-def loads_reference(raw: bytes | str) -> Any:
-    """Admit raw JSON through the independent recursive-descent parser."""
+def loads_reference(raw: bytes) -> Any:
+    """Admit exact received bytes through the independent reference parser."""
 
     try:
         text = _decode(raw)
@@ -357,7 +360,7 @@ def loads_reference(raw: bytes | str) -> Any:
         ) from exc
 
 
-def classify(parser: Callable[[bytes | str], Any], raw: bytes | str) -> tuple[str, str | None]:
+def classify(parser: Callable[[bytes], Any], raw: bytes) -> tuple[str, str | None]:
     """Return the conformance verdict and optional refusal code for ``parser``."""
 
     try:

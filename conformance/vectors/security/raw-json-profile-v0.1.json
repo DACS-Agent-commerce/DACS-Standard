@@ -3,8 +3,8 @@
   "spec": "CORE §B.2 CF-5 raw JSON admission",
   "tier": "candidate",
   "description": "Raw UTF-8 JSON texts that preserve duplicate names and numeric tokens; two independent parsers must agree before JCS canonicalization.",
-  "count": 46,
-  "hash": "469023708869a06e190934d50e0112e76818c2c600b0d6ed4237d7bc65417950",
+  "count": 47,
+  "hash": "a0d54253fffda2850281f3492f4dbe3ec2de213f977aa912a2440ba6258e2981",
   "vectors": [
     {
       "name": "empty-object",
@@ -113,6 +113,15 @@
       "canonicalUtf8Hex": "7b2273223a22f0908080227d",
       "rule": "CORE §B.2 CF-5",
       "note": "A valid pair decodes to one Unicode scalar value."
+    },
+    {
+      "name": "literal-replacement-character",
+      "operation": "admit-raw-json-then-canonicalize",
+      "rawUtf8Text": "{\"s\":\"�\"}",
+      "expected": "accept",
+      "canonicalUtf8Hex": "7b2273223a22efbfbd227d",
+      "rule": "CORE §B.2 CF-5",
+      "note": "A literal replacement character encoded as valid UTF-8 is admitted."
     },
     {
       "name": "values-only-nfc-after-admission",

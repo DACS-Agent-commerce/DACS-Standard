@@ -137,6 +137,12 @@ def build_vectors() -> list[dict[str, Any]]:
             "A valid pair decodes to one Unicode scalar value.",
         ),
         accepted(
+            "literal-replacement-character",
+            '{"s":"�"}',
+            '{"s":"�"}',
+            "A literal replacement character encoded as valid UTF-8 is admitted.",
+        ),
+        accepted(
             "values-only-nfc-after-admission",
             ' \n {"s":"cafe\\u0301"}\t',
             '{"s":"café"}',

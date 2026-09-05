@@ -21,15 +21,17 @@ The format used per release:
   single-value, and strict-JSON checks before JCS, hashing, signature
   verification, or schema decisions. Parse, DACS-profile, and canonicalisation
   failures remain distinct; rejected bytes acquire no content hash or signature
-  authority. The profile now caps JSON container nesting at an inclusive 128
+  authority. The in-repository external admission APIs now require the exact
+  received bytes and refuse decoded strings whose source bytes may have been
+  transformed. The profile caps JSON container nesting at an inclusive 128
   so parser, admission, and canonicalizer recursion limits cannot disagree or
-  escape as host exceptions. Adds 46 raw-text vectors covering depth
+  escape as host exceptions. Adds 47 raw-text vectors covering depth
   boundaries, nested/escape-equivalent duplicate keys, safe-magnitude
   boundaries and exponent spellings, negative
   zero/fractions, overflow/underflow, parser extensions, lone surrogates,
-  invalid UTF-8, BOM, comments, malformed syntax, and trailing data, reproduced
-  by both the standard-library adapter and an independent recursive-descent
-  parser.
+  invalid UTF-8, a valid literal replacement character, BOM, comments, malformed
+  syntax, and trailing data, reproduced by both the standard-library adapter and
+  an independent recursive-descent parser.
 
 ### Fixed — DACS-X conformance provenance
 

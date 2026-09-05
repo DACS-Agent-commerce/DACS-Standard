@@ -30,7 +30,8 @@ matter, not a CF-1 normalisation matter.
 CF-5 is intentionally not implemented here: by the time ``canonicalize``
 receives a language object, duplicate member names and raw numeric spellings may
 already have been lost. Externally supplied DACS JSON bytes must first pass
-``raw_json_profile.loads`` (or an equivalent strict raw-input gate); only its
+``raw_json_profile.loads`` with the exact received bytes (or an equivalent
+strict raw-input gate); decoded text does not establish CF-5 admission. Only an
 accepted object model reaches this module.
 """
 

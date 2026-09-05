@@ -107,6 +107,30 @@ class RawJsonProfileVectorTests(unittest.TestCase):
         admitted = profile.loads(raw_bytes(accepted_vector))
         self.assertEqual(jcs.canonicalize(admitted), '{"n":0}')
 
+    def test_external_admission_requires_exact_received_bytes(self):
+        malformed = bytes.fromhex("7b2273223a22ff227d")
+        lossy_text = malformed.decode("utf-8", errors="replace")
+
+        for parser in (profile.loads, profile.loads_reference):
+            with self.subTest(parser=parser.__name__, form="malformed-bytes"):
+                with self.assertRaises(profile.RawJsonProfileError) as raised:
+                    parser(malformed)
+                self.assertEqual(raised.exception.stage, "parse")
+                self.assertEqual(raised.exception.code, "INVALID-UTF8")
+
+            with self.subTest(parser=parser.__name__, form="lossy-decoded-str"):
+                with self.assertRaisesRegex(TypeError, "exact received JSON bytes"):
+                    parser(lossy_text)  # type: ignore[arg-type]
+
+            with self.subTest(parser=parser.__name__, form="exact-valid-utf8"):
+                self.assertEqual(parser(b'{"s":"caf\xc3\xa9"}'), {"s": "café"})
+
+            with self.subTest(parser=parser.__name__, form="literal-replacement"):
+                self.assertEqual(
+                    parser(b'{"s":"\xef\xbf\xbd"}'),
+                    {"s": "�"},
+                )
+
     def test_deep_inputs_never_escape_as_recursion_errors(self):
         for raw in (
             b"[" * 600 + b"0" + b"]" * 600,
@@ -132,6 +156,7 @@ class RawJsonProfileVectorTests(unittest.TestCase):
                 "exponent-equivalent-one",
                 "negative-zero",
                 "valid-fraction-one-tenth",
+                "literal-replacement-character",
                 "duplicate-top-level-member",
                 "duplicate-nested-member",
                 "duplicate-member-inside-array",
@@ -152,7 +177,9 @@ class RawJsonProfileVectorTests(unittest.TestCase):
         self.assertIn("Raw JSON admission (rule CF-5)", core)
         self.assertIn("MUST complete before", core)
         self.assertIn("duplicate decoded object member name", core)
-        self.assertIn("MUST NOT first parse an external document into a lossy", core)
+        self.assertIn("MUST NOT first decode or parse an external document", core)
+        self.assertIn("MUST accept the exact received byte sequence", core)
+        self.assertIn("caller assertion, decoded string, or re-serialised object", core)
         self.assertIn("container nesting depth exceeds **128**", core)
         self.assertIn("JSON-NESTING-TOO-DEEP", core)
 

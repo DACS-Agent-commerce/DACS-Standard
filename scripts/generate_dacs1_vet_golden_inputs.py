@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate complete inputs for the 29 manifest DACS-1/Vet golden cases.
+"""Generate complete inputs for the 30 manifest DACS-1/Vet golden cases.
 
 The historical manifest outputs were produced by constructors embedded in the
 external dacs-verify runner.  This generator replaces that hidden provenance
@@ -731,6 +731,41 @@ def build_cases() -> list[dict]:
         unresolved_qualification,
         {label: "error" for label in unresolved_qualification},
     )
+
+    unresolved_member = member(
+        "lei", verified=True, recipe_version=None,
+        parameters={"verificationMethod": "unregistered-method"},
+    )
+    add_case(
+        cases,
+        "vet-crq2-preflight-cannot-be-masked",
+        "§7.7.1 CRQ-2 and CRQ-4",
+        "An unresolved selected family is an evaluation-wide preflight error before either precedence ladder.",
+        {
+            "requiredFailMask": evaluation(
+                "decision",
+                supporting_bundle,
+                requirement([
+                    unresolved_member,
+                    member("finra-crd", verified=False),
+                ]),
+                resolved=[registry_result],
+            ),
+            "oneOfPassMask": evaluation(
+                "decision",
+                supporting_bundle,
+                requirement(
+                    [],
+                    one_of=[[
+                        member("lei", verified=True),
+                        unresolved_member,
+                    ]],
+                ),
+                resolved=[registry_result],
+            ),
+        },
+        {"requiredFailMask": "error", "oneOfPassMask": "error"},
+    )
     add_case(
         cases,
         "vet-control-existence-only-lei-presentedby-reject",
@@ -1089,8 +1124,8 @@ def build_cases() -> list[dict]:
         },
     )
 
-    assert len(cases) == 29
-    assert len({case["name"] for case in cases}) == 29
+    assert len(cases) == 30
+    assert len({case["name"] for case in cases}) == 30
     return cases
 
 
@@ -1201,7 +1236,7 @@ def main() -> int:
             "python3 scripts/generate_dacs1_vet_golden_inputs.py --write"
         )
         return 1
-    print("dacs1/vet golden inputs OK (29 cases)")
+    print("dacs1/vet golden inputs OK (30 cases)")
     return 0
 
 

@@ -15,7 +15,7 @@ The format used per release:
 
 ### Fixed — executable DACS-1 / Vet golden inputs
 
-- The 29 DACS-1/Vet manifest cases now use only registered DACS-2 method
+- The 30 DACS-1/Vet manifest cases now use only registered DACS-2 method
   kinds and resolve every result against an exact, signed recipe family. The
   three aggregation cases exercise CRQ-1 through signed composite records and
   the production `VetCredentialsInput`/trusted-session boundary, including
@@ -25,14 +25,15 @@ The format used per release:
   hash in addition to the signature-excluded `VerifyResultRef.contentHash`;
   result references must be unique and every exercised identifier must be in
   its scheme's canonical form. Aggregate outputs retain only the normative
-  decision and reasons. Five additional CRQ-2 cases pin exact-family explicit
+  decision and reasons. Six additional CRQ-2 cases pin exact-family explicit
   and implicit-latest resolution, reject another selected method family,
   require verified parameters from authenticated `VerifyResult.data` rather
   than signed claim metadata, and fail closed on malformed or unresolved
-  requirement selectors;
+  requirement selectors, and ensure unresolved qualification preflight cannot
+  be masked by either ordinary decision-precedence ladder;
   VPC-4 terminal attribution is derived separately (`fail` maps to
   `counterparty`, never `permanent`). The cross-run tool rejects the
-  superseded control-gate sketch and exposes all 42 replacement evaluations
+  superseded control-gate sketch and exposes all 44 replacement evaluations
   under stable `<case>::<evaluation>` names (#363).
 ### Fixed — DACS-X conformance provenance
 

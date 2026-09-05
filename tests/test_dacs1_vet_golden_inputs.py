@@ -699,6 +699,23 @@ def classify_member(value, req, recipes, result_context, exact_ref=None):
     return "fail"
 
 
+def qualification_preflight(value, req, recipes, result_context):
+    if req.get("verificationRequired") is False:
+        return True
+    parameters = req.get("parameters") or {}
+    selected_method = parameters.get("verificationMethod")
+    if (
+        selected_method is not None
+        and effective_recipe_version(req, selected_method, recipes) is None
+    ):
+        return False
+    return all(
+        result_outcome(value, claim, req, recipes, result_context)
+        != "qualification-error"
+        for claim in matching_claims(value, req)
+    )
+
+
 def presented_control(value, recipes, result_context):
     bundle = value["bundle"]
     presented = bundle["presentedBy"]
@@ -900,6 +917,15 @@ def evaluate(value, recipes, result_context):
             return "error", ["malformed verification reference"]
     if resolved_by_ref(value) is None:
         return "error", ["duplicate or malformed resolved result reference"]
+    members = [
+        *req.get("required", []),
+        *(member for group in req.get("oneOf", []) for member in group),
+    ]
+    if any(
+        not qualification_preflight(value, member, recipes, result_context)
+        for member in members
+    ):
+        return "error", ["unresolved recipe family or version"]
     failures = []
     errors = []
     indeterminates = []
@@ -1149,9 +1175,9 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
 
     def test_count_set_hash_names_and_input_hashes(self):
         self.assertEqual("dacs1-vet-golden-inputs-v0.1", self.document["set"])
-        self.assertEqual(29, self.document["count"])
-        self.assertEqual(29, len(self.cases))
-        self.assertEqual(29, len({case["name"] for case in self.cases}))
+        self.assertEqual(30, self.document["count"])
+        self.assertEqual(30, len(self.cases))
+        self.assertEqual(30, len({case["name"] for case in self.cases}))
         self.assertEqual(self.document["hash"], hash_hex(self.cases))
         for case in self.cases:
             with self.subTest(case=case["name"]):
@@ -1172,7 +1198,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         binding = manifest["inputBindings"][self.document["set"]]
         self.assertEqual(str(FIXTURE.relative_to(ROOT)), binding["path"])
         self.assertEqual(hashlib.sha256(self.raw).hexdigest(), binding["sha256"])
-        self.assertEqual(29, binding["caseCount"])
+        self.assertEqual(30, binding["caseCount"])
         fixture_by_name = {case["name"]: case for case in self.cases}
         manifest_cases = {
             case["id"]: case
@@ -1230,6 +1256,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             "vet-crq2-selected-method-excludes-other-family",
             "vet-crq2-malformed-requirement-fields",
             "vet-crq2-unresolved-family-or-version-errors",
+            "vet-crq2-preflight-cannot-be-masked",
         }, names)
 
     def test_signed_unknown_or_unregistered_family_method_is_rejected(self):

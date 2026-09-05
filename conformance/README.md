@@ -6,7 +6,7 @@ An independent, third-party set of conformance vectors for the DACS v0.1 full-pr
 
 Surface labels travel with each vector:
 
-- **GOLDEN (180)** — byte-stable reference outputs plus steward-corrected regressions pinned by executable predicates. Counts: 6 canonicalize, 5 decimal, 5 signing, 2 artifact-reference-shape, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 36 settlement, 36 verify, 29 vet, 19 negotiate, and 12 governance checks.
+- **GOLDEN (181)** — byte-stable reference outputs plus steward-corrected regressions pinned by executable predicates. Counts: 6 canonicalize, 5 decimal, 5 signing, 2 artifact-reference-shape, 24 DACS-1, 2 addressing, 4 §10.4 bundle, 36 settlement, 36 verify, 30 vet, 19 negotiate, and 12 governance checks.
 - **CANDIDATE (60)** — 29 `PayeeBoundAgreementDocument` / PB-1..PB-3 and RD-5 vectors, 14 historical reputation outputs whose one-copy inputs lack authoritative-absence context, and 17 output-only DACS-X dispute/disclosure expectations awaiting public signed inputs and normative artifact contracts.
 
 ## Why
@@ -43,7 +43,7 @@ five deterministic failure examples without importing a live substrate SDK.
 
 Regenerate externally sourced outputs from the public verifier mirror with
 `bun conformance/run.ts --emit`, then copy those outputs back here. Regenerate
-the 29 Standard-owned DACS-1/Vet inputs separately with
+the 30 Standard-owned DACS-1/Vet inputs separately with
 `python3 scripts/generate_dacs1_vet_golden_inputs.py --write`; the external
 emitter is not their authority. Deterministic by construction: every key and
 signature is derived from fixed public seeds and every timestamp is pinned, so
@@ -68,7 +68,7 @@ test inputs. DACS-X inputs pin bundle fixtures by `(jobId,bundleHash)`.
 - `settlement`: 36 golden vectors plus the corrected RD-5 chain-ID candidate, §14.4 SettlementEvidence verification — PC-1..7 (anchor, attestationRef→evidence hash, outcome classification, currency-resolution, settlementFinality, anchor-pending cross-chain return), per-rail success (incl. `pay-x402` gasless-USDC-on-Base, §9.5.7), HTLC finality parameters, RD-5 railType↔asset/network coherence, §9.5.1/PIPE-5 amount==agreement.terms.price, CD-1/§9.3 amount canonicalisation, and the `dacs-4-evidence` signature.
 - `candidate`: 60 candidate vectors — 29 §8.5/§8.6 `PayeeBoundAgreementDocument` / PB-1..PB-3 and corrected RD-5 cases; 14 pre-guard-(iv) reputation outputs retained for regeneration after valid resolution context is available; and the 17 output-only DACS-X dispute/disclosure expectations described above.
 - `verify`: 49 golden vectors, §14.5 DACS-5 Verify — two-sided logical-address derivation `stor-{sha256(jobId+"-bundle-"+role)}` (§10.4.2) with jobId binding; native-address resolution on a write-input substrate goes through the signed `BundleBinding` (§10.4.2 BB-1..BB-8; fail-closed + multiplicity-void + suppression-diligence resolution vectors to follow via dacs-verify); §10.4.3(a-d) consumption (one-sided→aborted-by-self per §10.11, unified, divergent — "divergent" is a **consumer verdict, NOT an `outcome` enum value**; presence-mismatched `phaseSummary` entry sets are divergent; advisory-only skew is unified; divergent copies are dispute evidence but their jobId is excluded from DACS-5 reputation), the ST-1..8 transition table + state→outcome mapping (§10.3.1, incl. the non-terminal `settle-asymmetric` HTLC-9 open state, ST-8), and reputation derivation (§10.5.1 — two-sided per-jobId reconciliation via `anchoredByRole` with `perspective_flip` of a counterparty-anchored copy per §10.11; `party_fault_denom` excludes `failed-substrate`; divergent jobIds are excluded from all metrics; null≠zero; rating aggregation with `(rater,jobId,targetRole)` de-duplication; deterministic receipt `windowingBasis` + sorted `bundleRefs`; `observedTransactionalVolume` grouped by currency). The guard-(iv) golden excludes raw one-copy inputs lacking authoritative-absence context; the 14 affected historical metric outputs are candidates, not current goldens.
-- `vet`: 29 golden vectors, DACS-2 method contract, retry semantics, MA-1..3 resolution, freshness, CRQ-2 family/version and authenticated-result parameter qualification, oneOf/cross-accumulator precedence, and counterparty-malformed fault attribution.
+- `vet`: 30 golden vectors, DACS-2 method contract, retry semantics, MA-1..3 resolution, freshness, CRQ-2 family/version and authenticated-result parameter qualification, preflight-before-precedence, oneOf/cross-accumulator precedence, and counterparty-malformed fault attribution.
 - `negotiate`: 19 golden vectors, §8.4.3 / §8.5.1 / §8.5.2 listing-conformance checks including CD-1 price validation, negotiable band math, sealed-envelope role assignment, required signer coverage, and commit rejection for SE-8.
 - `governance`: 12 golden vectors, §14.7 GOV-1..3 steward disclosure and pin-time anchoring-phase checks.
 
@@ -84,7 +84,7 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
 - `fixtures/attestation-bundle-htlc9.json` — the full byte-stable HTLC-9 asymmetric-settlement fixture.
 - `fixtures/evidence-bound-fault-bundle-compatibility-v0.4.json` — deterministic signed listing/EBFAB fixture covering bundle and extended-pointer domains, discriminator/type-swap refusal, cross-type replay, signed-but-SEB-invalid rejection, EBFAB/EBFAB member divergence, and EBFAB authority across every older bundle type.
 - `fixtures/identity/dacs1-vet-golden-inputs-v0.1.json` — complete,
-  deterministic current-wire inputs for the 13 DACS-1 and 16 Vet golden
+  deterministic current-wire inputs for the 13 DACS-1 and 17 Vet golden
   manifest cases that previously existed only inside `dacs-verify`. Every
   bundle, available result, recipe, and composite record carries a genuine
   signature. The three aggregation cases bind the signed record to the exact
@@ -98,7 +98,7 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
   content without being misclassified as `VerifyResultRef` resolution inputs.
   Every case
   pins its input hash, `MANIFEST.json` pins the whole file SHA-256, and
-  `scripts/diff_vector_runs.py` exposes all 42 evaluations under stable
+  `scripts/diff_vector_runs.py` exposes all 44 evaluations under stable
   `<case>::<evaluation>` identities. The legacy
   `control-gate-vectors.json` policy sketch is retained only as superseded
   history and is rejected by the cross-run tool; its abbreviated references

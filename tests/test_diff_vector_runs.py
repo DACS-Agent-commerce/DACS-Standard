@@ -92,7 +92,7 @@ class DiffVectorRunsTests(unittest.TestCase):
 
     def test_replacement_expands_all_named_evaluations(self):
         expected = load_expected("dacs1-vet-golden-inputs-v0.1")
-        self.assertEqual(42, len(expected))
+        self.assertEqual(44, len(expected))
         self.assertIn("dacs1-cci-lei-defect::result", expected)
         self.assertIn("dacs1-freshness-fail-closed::expiresOnly", expected)
         self.assertEqual(

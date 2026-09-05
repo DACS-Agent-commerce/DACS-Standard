@@ -17,6 +17,20 @@ OUTPUT = (
 SET_NAME = "reputation-authenticated-window-v0.6"
 SPEC = "DACS-5 v0.6 §10.5 AWT-1..AWT-8 authenticated reputation-window time"
 
+ANCHOR_TRANSACTION_REF = {"kind": "demos-tx", "value": "tx-window-a"}
+LEGACY_PROFILE_COMMIT = "3426faaebc09948d57a3a6d30fd6795df579b68f"
+TRUSTED_ERA_POLICY = {
+    "policyId": "dacs-test-era-policy-v1",
+    "adapter": "conformance-harness-profile-era-v1",
+    "authority": "did:demos:steward",
+    "producer": "did:demos:legacy-reputation-producer",
+    "sessionId": "01K4AWT0000000000000000001",
+    "profile": "dacs-next-dacs-5-v0.5",
+    "commit": LEGACY_PROFILE_COMMIT,
+    "currentProfile": "dacs-next-dacs-5-v0.6",
+    "revisionRelation": "predates-current",
+}
+
 BUNDLE = {
     "substrate": "demos:testnet",
     "logicalAddress": "stor-" + "11" * 32,
@@ -24,6 +38,7 @@ BUNDLE = {
     "contentHash": "22" * 32,
     "writer": "demos1buyer",
     "nonce": "7",
+    "transactionRef": copy.deepcopy(ANCHOR_TRANSACTION_REF),
 }
 
 
@@ -36,10 +51,12 @@ def receipt(
     block_id: str = "block-20",
     native_order: int = 20,
     history: str = "canonical",
+    bundle: dict | None = None,
 ) -> dict:
+    bound_bundle = BUNDLE if bundle is None else bundle
     item = {
         "receiptVersion": "1",
-        **copy.deepcopy(BUNDLE),
+        **copy.deepcopy(bound_bundle),
         "finalityProfile": "demos-bft-final",
         "transactionRef": {"kind": "demos-tx", "value": transaction},
         "state": state,
@@ -66,12 +83,75 @@ def current_input(receipts: list[dict] | None = None, **changes) -> dict:
         "bundleFinalisedAt": 2_000,
         "bundle": copy.deepcopy(BUNDLE),
         "knownReceipts": copy.deepcopy([receipt()] if receipts is None else receipts),
-        "replayMutation": None,
+        "replayContext": None,
         "historicalPolicy": False,
+        "trustedEraPolicy": None,
         "eraEvidence": None,
     }
     item.update(copy.deepcopy(changes))
     return item
+
+
+def replacement_receipt(*, relation_valid: bool = True) -> dict:
+    item = receipt(
+        state="accepted", timestamp=None, history="replaced", native_order=18
+    )
+    replacement = {"kind": "demos-tx", "value": "tx-window-b"}
+    item["replacementTransactionRef"] = replacement
+    item["replacementRelation"] = {
+        "kind": "demos-authenticated-replacement",
+        "predecessor": copy.deepcopy(ANCHOR_TRANSACTION_REF),
+        "replacement": copy.deepcopy(replacement),
+        "evidenceValid": relation_valid,
+    }
+    return item
+
+
+def canonical_history(receipts: list[dict]) -> list[dict]:
+    """Order valid replay fixtures by native order and canonical-byte hash."""
+    unique = {}
+    for item in receipts:
+        encoded = json.dumps(
+            item, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+        unique[encoded] = item
+    return [
+        copy.deepcopy(item)
+        for _, item in sorted(
+            unique.items(),
+            key=lambda pair: (
+                pair[1]["nativeOrder"], hashlib.sha256(pair[0]).hexdigest()
+            ),
+        )
+    ]
+
+
+def replay_input(receipts: list[dict], selected: dict) -> dict:
+    return current_input(
+        receipts,
+        replayContext={
+            "windowReceipt": copy.deepcopy(selected),
+            "windowReceiptHistory": canonical_history(receipts),
+        },
+    )
+
+
+def verified_era_evidence() -> dict:
+    return {
+        "kind": "verified-profile-era-projection",
+        "verificationDisposition": "verified",
+        **copy.deepcopy(TRUSTED_ERA_POLICY),
+    }
+
+
+def historical_input(discriminator: str, *, verified: bool) -> dict:
+    return current_input(
+        derivationDiscriminators={discriminator: "1"},
+        windowingBasis="finalisedAt",
+        historicalPolicy=verified,
+        trustedEraPolicy=copy.deepcopy(TRUSTED_ERA_POLICY) if verified else None,
+        eraEvidence=verified_era_evidence() if verified else None,
+    )
 
 
 def want(
@@ -207,13 +287,26 @@ def build_vectors() -> list[dict]:
             current_input([mismatched]), indeterminate,
         ))
 
-    replaced = receipt(state="accepted", timestamp=None, history="replaced", native_order=18)
-    replaced["replacementTransactionRef"] = {"kind": "demos-tx", "value": "tx-window-b"}
+    replaced = replacement_receipt()
+    unverified_replacement = replacement_receipt(relation_valid=False)
     vectors += [
+        vector(
+            "awt-wrong-sole-transaction-indeterminate", "indeterminate",
+            "a finalized receipt for an unrelated transaction does not bind the selected anchor",
+            current_input([receipt("tx-unrelated")]), indeterminate,
+        ),
         vector(
             "awt-replaced-original-without-final-replacement", "indeterminate",
             "a replaced transaction is inert until its replacement independently finalizes",
             current_input([replaced]), indeterminate,
+        ),
+        vector(
+            "awt-finalized-replacement-without-authenticated-relation", "indeterminate",
+            "a finalized replacement is unusable when its predecessor relation is not authenticated",
+            current_input([
+                unverified_replacement,
+                receipt("tx-window-b", native_order=21, block_id="block-21"),
+            ]), indeterminate,
         ),
         vector(
             "awt-finalized-exact-replacement-pass", "pass",
@@ -250,8 +343,11 @@ def build_vectors() -> list[dict]:
         ),
         vector(
             "awt-two-finalized-transactions-conflict", "indeterminate",
-            "two surviving finalized transaction identities cannot be cherry-picked",
-            current_input([receipt(), receipt("tx-window-b")]), indeterminate,
+            "two authenticated surviving finalized transaction identities cannot be cherry-picked",
+            current_input([
+                receipt(), replaced,
+                receipt("tx-window-b", native_order=21, block_id="block-21"),
+            ]), indeterminate,
         ),
         vector(
             "awt-same-transaction-conflicting-blocks", "indeterminate",
@@ -277,26 +373,6 @@ def build_vectors() -> list[dict]:
             "awt-wrong-current-window-basis", "error",
             "the current discriminator accepts only its single finalized-inclusion basis",
             current_input(windowingBasis="finalisedAt"), indeterminate,
-        ),
-        vector(
-            "awt-replay-missing-selected-receipt", "fail",
-            "replay refuses context that omits the exact receipt used for membership",
-            current_input(replayMutation="omit-windowReceipt"), indeterminate,
-        ),
-        vector(
-            "awt-replay-missing-receipt-history", "fail",
-            "replay refuses context that omits the receipt history used for conflict checks",
-            current_input(replayMutation="omit-windowReceiptHistory"), indeterminate,
-        ),
-        vector(
-            "awt-replay-substituted-timestamp", "fail",
-            "replay refuses substitution of a different authenticated timestamp",
-            current_input(replayMutation="substitute-blockRef.timestamp"), indeterminate,
-        ),
-        vector(
-            "awt-replay-misordered-history", "fail",
-            "replay refuses receipt history ordered by observer time instead of native order",
-            current_input(replayMutation="misorder-windowReceiptHistory"), indeterminate,
         ),
         vector(
             "awt-current-plus-legacy-discriminator", "error",
@@ -325,15 +401,6 @@ def build_vectors() -> list[dict]:
             want(countable=False, member=False, timestamp=None, current=False),
         ),
         vector(
-            "awt-legacy-is-not-current", "fail",
-            "a released derivation cannot satisfy a current-profile request",
-            current_input(
-                derivationDiscriminators={"derivationVersion": "1"},
-                windowingBasis="finalisedAt",
-            ),
-            want(countable=False, member=False, timestamp=None, current=False),
-        ),
-        vector(
             "awt-legacy-producer-time-is-not-era-evidence", "fail",
             "computedAt and finalisedAt cannot authenticate a pre-current production era",
             current_input(
@@ -343,25 +410,149 @@ def build_vectors() -> list[dict]:
             ),
             want(countable=False, member=False, timestamp=None, current=False),
         ),
-        vector(
-            "awt-legacy-authenticated-era-historical-only", "pass",
-            "authenticated profile pinning may admit a legacy receipt only as historical/partial",
-            current_input(
-                derivationDiscriminators={"replayableDerivationVersion": "1"},
-                windowingBasis="finalisedAt", historicalPolicy=True,
-                eraEvidence={
-                    "kind": "authenticated-profile-commit",
-                    "authenticated": True,
-                    "commit": "4bb9e48a1095ab32c06c25b7c0b52018d3ce4091",
-                    "profile": "dacs-5-v0.3",
-                },
-            ),
-            want(
-                countable=False, member=False, timestamp=None,
-                current=False, historical=True,
-            ),
-        ),
     ]
+
+    replay_receipts = [
+        replaced,
+        receipt("tx-window-b", native_order=21, block_id="block-21"),
+    ]
+    selected_replay_receipt = replay_receipts[1]
+    valid_replay = replay_input(replay_receipts, selected_replay_receipt)
+    vectors.append(vector(
+        "awt-replay-concrete-history-pass", "pass",
+        "replay re-verifies the selected replacement and its native-ordered concrete history",
+        valid_replay, verified,
+    ))
+
+    missing_selected = copy.deepcopy(valid_replay)
+    missing_selected["replayContext"].pop("windowReceipt")
+    vectors.append(vector(
+        "awt-replay-missing-selected-receipt", "fail",
+        "replay refuses context that omits the exact receipt used for membership",
+        missing_selected, indeterminate,
+    ))
+
+    missing_history = copy.deepcopy(valid_replay)
+    missing_history["replayContext"].pop("windowReceiptHistory")
+    vectors.append(vector(
+        "awt-replay-missing-receipt-history", "fail",
+        "replay refuses context that omits the receipt history used for conflict checks",
+        missing_history, indeterminate,
+    ))
+
+    substituted_timestamp = copy.deepcopy(valid_replay)
+    substituted_timestamp["replayContext"]["windowReceipt"]["blockRef"]["timestamp"] = 2_001
+    vectors.append(vector(
+        "awt-replay-substituted-timestamp", "fail",
+        "replay refuses a concrete selected receipt with a substituted timestamp",
+        substituted_timestamp, indeterminate,
+    ))
+
+    substituted_transaction = copy.deepcopy(valid_replay)
+    substituted_transaction["replayContext"]["windowReceipt"]["transactionRef"] = {
+        "kind": "demos-tx", "value": "tx-attacker"
+    }
+    vectors.append(vector(
+        "awt-replay-substituted-transaction", "fail",
+        "replay refuses a selected receipt rebound to another transaction",
+        substituted_transaction, indeterminate,
+    ))
+
+    substituted_proof = copy.deepcopy(valid_replay)
+    substituted_proof["replayContext"]["windowReceipt"]["evidence"]["value"] = "proof-other"
+    vectors.append(vector(
+        "awt-replay-substituted-native-proof", "fail",
+        "replay refuses changed concrete native proof bytes",
+        substituted_proof, indeterminate,
+    ))
+
+    misordered_history = copy.deepcopy(valid_replay)
+    misordered_history["replayContext"]["windowReceiptHistory"].reverse()
+    vectors.append(vector(
+        "awt-replay-misordered-history", "fail",
+        "replay refuses concrete history ordered opposite binding-native order",
+        misordered_history, indeterminate,
+    ))
+
+    malformed_receipts = []
+    for name, note, mutate in (
+        ("transaction-ref-array", "a non-object transactionRef fails closed", lambda r: r.__setitem__("transactionRef", [])),
+        ("block-ref-array", "a non-object blockRef fails closed", lambda r: r.__setitem__("blockRef", [])),
+        ("timestamp-string", "a non-integer block timestamp fails closed", lambda r: r["blockRef"].__setitem__("timestamp", "2000")),
+        ("timestamp-container", "a container block timestamp fails closed", lambda r: r["blockRef"].__setitem__("timestamp", [])),
+        ("native-order-container", "a container native order fails closed", lambda r: r.__setitem__("nativeOrder", [])),
+        ("history-disposition-container", "a container history disposition fails closed", lambda r: r.__setitem__("historyDisposition", [])),
+        ("native-evidence-array", "a non-object native evidence projection fails closed", lambda r: r.__setitem__("evidence", [])),
+    ):
+        malformed = receipt()
+        mutate(malformed)
+        malformed_receipts.append(vector(
+            f"awt-malformed-{name}-indeterminate", "indeterminate", note,
+            current_input([malformed]), indeterminate,
+        ))
+    vectors.extend(malformed_receipts)
+
+    legacy_want = want(
+        countable=False, member=False, timestamp=None, current=False, historical=True
+    )
+    rejected_legacy_want = want(
+        countable=False, member=False, timestamp=None, current=False
+    )
+    for discriminator, slug in (
+        ("derivationVersion", "derivation"),
+        ("replayableDerivationVersion", "replayable-derivation"),
+        ("jobBoundReplayableDerivationVersion", "job-bound-replayable-derivation"),
+        ("settlementVerifiedDerivationVersion", "settlement-verified-derivation"),
+        (
+            "replayableSettlementVerifiedDerivationVersion",
+            "replayable-settlement-verified-derivation",
+        ),
+    ):
+        vectors.append(vector(
+            f"awt-{slug}-cannot-claim-current", "fail",
+            f"{discriminator} cannot satisfy a current-profile request",
+            historical_input(discriminator, verified=False), rejected_legacy_want,
+        ))
+        vectors.append(vector(
+            f"awt-{slug}-verified-era-is-historical-only", "pass",
+            f"a verified exact pre-current profile may admit {discriminator} only as historical/partial",
+            historical_input(discriminator, verified=True), legacy_want,
+        ))
+
+    for field, value in (
+        ("verificationDisposition", "unverified"),
+        ("producer", "did:demos:other-producer"),
+        ("sessionId", "01K4AWT0000000000000000002"),
+        ("profile", "dacs-next-dacs-5-v0.4"),
+        ("commit", "0" * 40),
+        ("revisionRelation", "same-as-current"),
+    ):
+        mismatched_era = historical_input("replayableDerivationVersion", verified=True)
+        mismatched_era["eraEvidence"][field] = value
+        vectors.append(vector(
+            f"awt-era-{field.lower()}-mismatch-rejected", "fail",
+            f"the verified era projection must bind exact {field} to trusted policy",
+            mismatched_era, rejected_legacy_want,
+        ))
+
+    mismatched_policy = historical_input("replayableDerivationVersion", verified=True)
+    mismatched_policy["trustedEraPolicy"]["policyId"] = "attacker-policy"
+    vectors.append(vector(
+        "awt-era-trust-policy-mismatch-rejected", "fail",
+        "caller-selected trust policy cannot authenticate a historical profile",
+        mismatched_policy, rejected_legacy_want,
+    ))
+
+    coordinated_tampering = historical_input(
+        "replayableDerivationVersion", verified=True
+    )
+    coordinated_tampering["trustedEraPolicy"]["policyId"] = "attacker-policy"
+    coordinated_tampering["eraEvidence"]["policyId"] = "attacker-policy"
+    vectors.append(vector(
+        "awt-era-coordinated-policy-and-evidence-tampering-rejected", "fail",
+        "the harness trust anchor is immutable even when caller policy and evidence agree",
+        coordinated_tampering, rejected_legacy_want,
+    ))
     return vectors
 
 
@@ -377,7 +568,10 @@ def document() -> dict:
         ),
         "inputModel": (
             "one post-reconciliation authoritative bundle and all known SR-2 receipt snapshots; "
-            "evidenceValid/historyDisposition/nativeOrder model binding-authenticated native verification"
+            "the corpus executes AWT-6 membership after that disclosed precondition but does not "
+            "independently execute two-copy reconciliation ordering; evidenceValid, authenticated "
+            "replacement relations, historyDisposition, and nativeOrder model binding-authenticated "
+            "native verification"
         ),
         "hash": hashlib.sha256(encoded).hexdigest(),
         "count": len(vectors),

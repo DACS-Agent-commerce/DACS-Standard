@@ -43,6 +43,11 @@ PARSER_METHODS = {
     "verifiable-credential", "tlsnotary", "zktls",
     "consensus-backed-proxy", "evm-rpc",
 }
+RECIPE_AVAILABILITIES = {
+    "live", "operator_gated", "closed_data", "bilateral", "mocked",
+    "disabled", "failed",
+}
+NON_OPERATIONAL_EXPLICIT_AVAILABILITIES = {"mocked", "disabled", "failed"}
 KEY = re.compile(r"^[0-9a-f]{64}$")
 LEI = re.compile(r"^[0-9A-Z]{20}$")
 FINRA_CRD = re.compile(r"^[1-9][0-9]*$")
@@ -264,7 +269,7 @@ def authenticated_recipe_registry(document):
             or kind not in KNOWN_METHODS
             or type(version) is not int
             or version < 1
-            or recipe.get("availability") != "live"
+            or recipe.get("availability") not in RECIPE_AVAILABILITIES
             or recipe.get("governance", {}).get("proposedBy")
             != RECIPE_STEWARD_REF
         ):
@@ -555,14 +560,65 @@ def matching_claims(value, req, exact_ref=None):
         ):
             continue
         parameters = req.get("parameters")
-        if parameters is not None:
+        if req.get("verificationRequired") is False and parameters is not None:
             metadata = item.get("metadata")
             if not isinstance(metadata, dict) or any(
-                metadata.get(key) != item for key, item in parameters.items()
+                key not in metadata
+                or canonical_bytes(metadata[key]) != canonical_bytes(required)
+                for key, required in parameters.items()
             ):
                 continue
         matches.append(item)
     return matches
+
+
+def effective_recipe_version(req, method, recipes):
+    if not isinstance(method, str) or not method or not isinstance(recipes, dict):
+        return None
+    family = sorted(
+        version
+        for scheme, family_method, version in recipes
+        if scheme == req.get("scheme") and family_method == method
+    )
+    if not family:
+        return None
+    if "recipeVersion" in req:
+        expected = req["recipeVersion"]
+        recipe = recipes.get((req.get("scheme"), method, expected))
+        if (
+            recipe is None
+            or recipe.get("availability")
+            in NON_OPERATIONAL_EXPLICIT_AVAILABILITIES
+        ):
+            return None
+        return expected
+    expected = family[-1]
+    recipe = recipes.get((req.get("scheme"), method, expected))
+    if recipe is None or recipe.get("availability") != "live":
+        return None
+    return expected
+
+
+def parameters_match(result, req):
+    parameters = req.get("parameters")
+    if parameters is None:
+        return True
+    method = parameters.get("verificationMethod")
+    if method is not None and result.get("method") != method:
+        return False
+    required_data = {
+        key: value
+        for key, value in parameters.items()
+        if key != "verificationMethod"
+    }
+    if not required_data:
+        return True
+    data = result.get("data")
+    return isinstance(data, dict) and all(
+        key in data
+        and canonical_bytes(data[key]) == canonical_bytes(required)
+        for key, required in required_data.items()
+    )
 
 
 def result_outcome(value, claim, req, recipes, result_context):
@@ -583,14 +639,21 @@ def result_outcome(value, claim, req, recipes, result_context):
         result.get("scheme") != scheme
         or result.get("identifier") != identifier
         or result.get("recipeVersion") != reference["recipeVersion"]
-        or result.get("recipeVersion") != req.get("recipeVersion")
     ):
         return "fail"
+    parameters = req.get("parameters") or {}
+    selected_method = parameters.get("verificationMethod", result.get("method"))
+    expected_version = effective_recipe_version(req, selected_method, recipes)
+    if expected_version is None:
+        return "qualification-error"
+    if (
+        result.get("method") != selected_method
+        or result.get("recipeVersion") != expected_version
+    ):
+        return "not-applicable"
     decision = result.get("decision")
     if decision not in {"pass", "fail", "indeterminate", "error"}:
         return "error"
-    if decision != "pass":
-        return decision
     verified_at = result.get("verifiedAt")
     valid_until = result.get("validUntil")
     if type(verified_at) is not int or type(valid_until) is not int:
@@ -601,22 +664,35 @@ def result_outcome(value, claim, req, recipes, result_context):
         valid_until,
         expires_at if type(expires_at) is int else SAFE_INT,
     )
-    if valid_until < verified_at or now > effective_expiry:
+    if valid_until < verified_at:
         return "fail"
+    if now > effective_expiry:
+        return "not-applicable"
     max_age = req.get("maxAge")
     if max_age is not None and now > verified_at + max_age * 1_000:
+        return "not-applicable"
+    if decision == "pass" and not parameters_match(result, req):
         return "fail"
-    return "pass"
+    return decision
 
 
 def classify_member(value, req, recipes, result_context, exact_ref=None):
     matches = matching_claims(value, req, exact_ref)
     if req.get("verificationRequired") is False:
         return "pass" if matches else "fail"
+    parameters = req.get("parameters") or {}
+    selected_method = parameters.get("verificationMethod")
+    if (
+        selected_method is not None
+        and effective_recipe_version(req, selected_method, recipes) is None
+    ):
+        return "error"
     outcomes = [
         result_outcome(value, item, req, recipes, result_context)
         for item in matches
     ]
+    if "qualification-error" in outcomes:
+        return "error"
     for outcome in ("pass", "fail", "error", "indeterminate"):
         if outcome in outcomes:
             return outcome
@@ -713,7 +789,11 @@ def selector_authorized(value, req, recipes, result_context):
 
 
 def valid_requirement(req):
-    if not isinstance(req, dict) or req.get("requirementVersion") != "1":
+    if (
+        not isinstance(req, dict)
+        or req.get("requirementVersion") != "1"
+        or not all_safe_integers(req)
+    ):
         return False
     required = req.get("required")
     one_of = req.get("oneOf", [])
@@ -727,6 +807,13 @@ def valid_requirement(req):
             or item.get("scheme") not in KNOWN_SCHEMES
             or type(item.get("verificationRequired")) is not bool
             or (
+                "recipeVersion" in item
+                and (
+                    type(item["recipeVersion"]) is not int
+                    or not 1 <= item["recipeVersion"] <= SAFE_INT
+                )
+            )
+            or (
                 "maxAge" in item
                 and (
                     type(item["maxAge"]) is not int
@@ -736,6 +823,25 @@ def valid_requirement(req):
             or (
                 item.get("verificationRequired") is False
                 and ("maxAge" in item or "recipeVersion" in item)
+            )
+            or (
+                "parameters" in item
+                and (
+                    not isinstance(item["parameters"], dict)
+                    or any(
+                        not isinstance(key, str) or not key
+                        for key in item["parameters"]
+                    )
+                    or (
+                        "verificationMethod" in item["parameters"]
+                        and (
+                            not isinstance(
+                                item["parameters"]["verificationMethod"], str
+                            )
+                            or not item["parameters"]["verificationMethod"]
+                        )
+                    )
+                )
             )
         ):
             return False
@@ -1043,9 +1149,9 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
 
     def test_count_set_hash_names_and_input_hashes(self):
         self.assertEqual("dacs1-vet-golden-inputs-v0.1", self.document["set"])
-        self.assertEqual(24, self.document["count"])
-        self.assertEqual(24, len(self.cases))
-        self.assertEqual(24, len({case["name"] for case in self.cases}))
+        self.assertEqual(29, self.document["count"])
+        self.assertEqual(29, len(self.cases))
+        self.assertEqual(29, len({case["name"] for case in self.cases}))
         self.assertEqual(self.document["hash"], hash_hex(self.cases))
         for case in self.cases:
             with self.subTest(case=case["name"]):
@@ -1066,7 +1172,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         binding = manifest["inputBindings"][self.document["set"]]
         self.assertEqual(str(FIXTURE.relative_to(ROOT)), binding["path"])
         self.assertEqual(hashlib.sha256(self.raw).hexdigest(), binding["sha256"])
-        self.assertEqual(24, binding["caseCount"])
+        self.assertEqual(29, binding["caseCount"])
         fixture_by_name = {case["name"]: case for case in self.cases}
         manifest_cases = {
             case["id"]: case
@@ -1115,6 +1221,16 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 for result in evaluation["input"]["resolvedResults"]
             },
         )
+
+    def test_crq2_regression_cases_are_manifest_bound(self):
+        names = {case["name"] for case in self.cases}
+        self.assertLessEqual({
+            "vet-crq2-implicit-latest-family-version",
+            "vet-crq2-metadata-only-parameter-rejected",
+            "vet-crq2-selected-method-excludes-other-family",
+            "vet-crq2-malformed-requirement-fields",
+            "vet-crq2-unresolved-family-or-version-errors",
+        }, names)
 
     def test_signed_unknown_or_unregistered_family_method_is_rejected(self):
         resolved = next(

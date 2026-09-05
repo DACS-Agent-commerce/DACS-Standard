@@ -286,6 +286,20 @@
         "attestation": {
           "anchor": {
             "kind": "storage-program",
+            "locator": "demos:dacs-363:attestation:crq2-result-parameters"
+          },
+          "contentHash": "c55c2773c09c6f4b3ecc110f7560870251b929091e890e515aebcd288a81830f",
+          "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+        },
+        "scheme": "lei",
+        "method": "consensus-backed-proxy",
+        "recipeVersion": 1,
+        "resultSigner": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+      },
+      {
+        "attestation": {
+          "anchor": {
+            "kind": "storage-program",
             "locator": "demos:dacs-363:attestation:dacs1-freshness-expired"
           },
           "contentHash": "2b37259e3454fb48e1775c6f64bd3c5cf6dacd22c25356f9a375d84ce01e7adc",
@@ -621,6 +635,17 @@
         "ref": {
           "anchor": {
             "kind": "storage-program",
+            "locator": "demos:dacs-363:result:crq2-result-parameters"
+          },
+          "contentHash": "dabc518e460a81b54f9ee810780ae59b2a51992f1c1c5aaaf1fe484f19abe015",
+          "recipeVersion": 1
+        },
+        "serializedArtifactHash": "46b959adf3ea5d38b72974ec1137fe99d95a7a3847f0770e7da5b80bed779a17"
+      },
+      {
+        "ref": {
+          "anchor": {
+            "kind": "storage-program",
             "locator": "demos:dacs-363:result:dacs1-freshness-expired"
           },
           "contentHash": "6ee003989aeb15dabdd225f9f442930795d4f328d616eca4386f4247a6e545d4",
@@ -872,8 +897,8 @@
       }
     ]
   },
-  "count": 24,
-  "hash": "5fb4b85cea9f5fc36a4aa7971835ff48ca8a402eb12bc218b8da8d61531f70f3",
+  "count": 29,
+  "hash": "0426a721f75c9f7466bb62496600da5ddcc3f598277de27fe039a54b7679dcf8",
   "cases": [
     {
       "name": "dacs1-cci-lei-defect",
@@ -1303,6 +1328,771 @@
         }
       },
       "expectedOutput": "pass"
+    },
+    {
+      "name": "vet-crq2-implicit-latest-family-version",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "An omitted recipeVersion resolves the exact authenticated family's latest live version.",
+      "inputHash": "639fd1b18f3eea7866968140ca19c11b95c689b3bc51422fdf2af69fba8b6514",
+      "evaluations": {
+        "result": {
+          "operation": "decision",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:registry-lei"
+                    },
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                    "recipeVersion": 1
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:registry-lei"
+                  },
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic registry-lei pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:registry-lei"
+                    },
+                    "contentHash": "3c28ffeb92fbf48aef351a821c26c9f7f2bef47d8cde59f1853fe6917503bf2d",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
+                  }
+                },
+                "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expectedOutput": "pass"
+    },
+    {
+      "name": "vet-crq2-metadata-only-parameter-rejected",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "Signed claim metadata cannot substitute for a required authenticated VerifyResult value.",
+      "inputHash": "f232118e223cd4f0009fef194b80d2e4677fc9ab568dfbc479d68277c17cc0a7",
+      "evaluations": {
+        "result": {
+          "operation": "decision",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:crq2-result-parameters"
+                    },
+                    "contentHash": "dabc518e460a81b54f9ee810780ae59b2a51992f1c1c5aaaf1fe484f19abe015",
+                    "recipeVersion": 1
+                  },
+                  "metadata": {
+                    "sanctioned": false
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "R-T0Xlhe5lUjCJLUrWWgpaleFI3KBHt6-ulppA7K0eVZDHZ1e5HiUd7huuohVerWnaTu33l7ndQ4mQx1QsywDQ"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:crq2-result-parameters"
+                  },
+                  "contentHash": "dabc518e460a81b54f9ee810780ae59b2a51992f1c1c5aaaf1fe484f19abe015",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic crq2-result-parameters pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:crq2-result-parameters"
+                    },
+                    "contentHash": "c55c2773c09c6f4b3ecc110f7560870251b929091e890e515aebcd288a81830f",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "data": {
+                    "registrationStatus": "ISSUED"
+                  },
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "oDqyGqyRUy0rmihDJPI9IXaDOJVyUlMkI27UO-6k5z6Tn3WoQ-Yj5NKsoXIWFmI536dn4d5mjgKiqLgX0wYADg"
+                  }
+                },
+                "serializedArtifactHash": "46b959adf3ea5d38b72974ec1137fe99d95a7a3847f0770e7da5b80bed779a17"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true,
+                  "recipeVersion": 1,
+                  "parameters": {
+                    "sanctioned": false
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expectedOutput": "fail"
+    },
+    {
+      "name": "vet-crq2-selected-method-excludes-other-family",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "A result from another authenticated method family cannot satisfy the selected family.",
+      "inputHash": "74857c27c7062b147292cb22416417e208c549623cd18e4c72df6f413e71cc5c",
+      "evaluations": {
+        "result": {
+          "operation": "decision",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:registry-lei"
+                    },
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                    "recipeVersion": 1
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:registry-lei"
+                  },
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic registry-lei pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:registry-lei"
+                    },
+                    "contentHash": "3c28ffeb92fbf48aef351a821c26c9f7f2bef47d8cde59f1853fe6917503bf2d",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
+                  }
+                },
+                "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true,
+                  "parameters": {
+                    "verificationMethod": "verifiable-credential"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expectedOutput": "fail"
+    },
+    {
+      "name": "vet-crq2-malformed-requirement-fields",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "Malformed version, parameter, and method selectors fail closed without throwing.",
+      "inputHash": "91b902fe074bcb1bd950dc0eaf44dfeed68062afc0cd1c4d4d71005a49cfd50c",
+      "evaluations": {
+        "stringRecipeVersion": {
+          "operation": "decision-no-throw",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:registry-lei"
+                    },
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                    "recipeVersion": 1
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:registry-lei"
+                  },
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic registry-lei pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:registry-lei"
+                    },
+                    "contentHash": "3c28ffeb92fbf48aef351a821c26c9f7f2bef47d8cde59f1853fe6917503bf2d",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
+                  }
+                },
+                "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true,
+                  "recipeVersion": "1"
+                }
+              ]
+            }
+          }
+        },
+        "arrayParameters": {
+          "operation": "decision-no-throw",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:registry-lei"
+                    },
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                    "recipeVersion": 1
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:registry-lei"
+                  },
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic registry-lei pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:registry-lei"
+                    },
+                    "contentHash": "3c28ffeb92fbf48aef351a821c26c9f7f2bef47d8cde59f1853fe6917503bf2d",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
+                  }
+                },
+                "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true,
+                  "recipeVersion": 1,
+                  "parameters": []
+                }
+              ]
+            }
+          }
+        },
+        "booleanVerificationMethod": {
+          "operation": "decision-no-throw",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:registry-lei"
+                    },
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                    "recipeVersion": 1
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:registry-lei"
+                  },
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic registry-lei pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:registry-lei"
+                    },
+                    "contentHash": "3c28ffeb92fbf48aef351a821c26c9f7f2bef47d8cde59f1853fe6917503bf2d",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
+                  }
+                },
+                "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true,
+                  "recipeVersion": 1,
+                  "parameters": {
+                    "verificationMethod": false
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expectedOutput": {
+        "stringRecipeVersion": {
+          "decision": "error",
+          "throws": false
+        },
+        "arrayParameters": {
+          "decision": "error",
+          "throws": false
+        },
+        "booleanVerificationMethod": {
+          "decision": "error",
+          "throws": false
+        }
+      }
+    },
+    {
+      "name": "vet-crq2-unresolved-family-or-version-errors",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "An absent selected family or explicit version is an error before classification.",
+      "inputHash": "1dff6fe482c6e46b22313cf80a80b6dd8cc19ab57e8efc78eb087885f03682d4",
+      "evaluations": {
+        "missingFamily": {
+          "operation": "decision",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:registry-lei"
+                    },
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                    "recipeVersion": 1
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:registry-lei"
+                  },
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic registry-lei pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:registry-lei"
+                    },
+                    "contentHash": "3c28ffeb92fbf48aef351a821c26c9f7f2bef47d8cde59f1853fe6917503bf2d",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
+                  }
+                },
+                "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true,
+                  "parameters": {
+                    "verificationMethod": "oauth-attested"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "missingExplicitVersion": {
+          "operation": "decision",
+          "input": {
+            "evaluatedAt": 1900000000000,
+            "bundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+              "presentedAt": 1900000000000,
+              "claims": [
+                {
+                  "ref": "lei:984500ABCDEF12345678",
+                  "issuedAt": 1899999999000,
+                  "verifiedBy": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:result:registry-lei"
+                    },
+                    "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                    "recipeVersion": 1
+                  }
+                },
+                {
+                  "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                  "issuedAt": 1899999999000
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                  }
+                ]
+              }
+            },
+            "resolvedResults": [
+              {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-363:result:registry-lei"
+                  },
+                  "contentHash": "56109a919a711f06df617e2ce21fb47a14ed2213d60d32bba2ad54dc1ef294f1",
+                  "recipeVersion": 1
+                },
+                "artifact": {
+                  "resultVersion": "1",
+                  "scheme": "lei",
+                  "identifier": "984500ABCDEF12345678",
+                  "recipeVersion": 1,
+                  "method": "consensus-backed-proxy",
+                  "decision": "pass",
+                  "reason": "deterministic registry-lei pass",
+                  "attestation": {
+                    "anchor": {
+                      "kind": "storage-program",
+                      "locator": "demos:dacs-363:attestation:registry-lei"
+                    },
+                    "contentHash": "3c28ffeb92fbf48aef351a821c26c9f7f2bef47d8cde59f1853fe6917503bf2d",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59"
+                  },
+                  "fetchedAt": 1899999998000,
+                  "verifiedAt": 1899999999000,
+                  "validUntil": 1900000060000,
+                  "signature": {
+                    "algorithm": "ed25519",
+                    "signer": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
+                    "value": "SqRE9gjlTHxL0t7STUpgorp8QFT7rwJFZA5CeF0lt0YHvbF02ejaF0zwTFFNCJ0wvCIlh5os2RLAmiVQb0ccCg"
+                  }
+                },
+                "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
+              }
+            ],
+            "requirement": {
+              "requirementVersion": "1",
+              "required": [
+                {
+                  "scheme": "lei",
+                  "verificationRequired": true,
+                  "recipeVersion": 99
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expectedOutput": {
+        "missingFamily": "error",
+        "missingExplicitVersion": "error"
+      }
     },
     {
       "name": "vet-control-existence-only-lei-presentedby-reject",

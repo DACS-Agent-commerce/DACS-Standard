@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate complete inputs for the 24 manifest DACS-1/Vet golden cases.
+"""Generate complete inputs for the 29 manifest DACS-1/Vet golden cases.
 
 The historical manifest outputs were produced by constructors embedded in the
 external dacs-verify runner.  This generator replaces that hidden provenance
@@ -102,13 +102,16 @@ def member(
     *,
     verified: bool,
     max_age: int | None = None,
-    recipe_version: int = 1,
+    recipe_version: int | None = 1,
+    parameters: dict | None = None,
 ) -> dict:
     out = {"scheme": scheme, "verificationRequired": verified}
-    if verified:
+    if verified and recipe_version is not None:
         out["recipeVersion"] = recipe_version
     if max_age is not None:
         out["maxAge"] = max_age
+    if parameters is not None:
+        out["parameters"] = copy.deepcopy(parameters)
     return out
 
 
@@ -603,6 +606,131 @@ def build_cases() -> list[dict]:
         )},
         "pass",
     )
+
+    implicit_latest_lei = requirement([
+        member("lei", verified=True, recipe_version=None)
+    ])
+    add_case(
+        cases,
+        "vet-crq2-implicit-latest-family-version",
+        "§7.7.1 CRQ-2",
+        "An omitted recipeVersion resolves the exact authenticated family's latest live version.",
+        {"result": evaluation(
+            "decision", supporting_bundle, implicit_latest_lei,
+            resolved=[registry_result],
+        )},
+        "pass",
+    )
+
+    constrained_claim, constrained_result = verified_claim(
+        LEI_A,
+        "pass",
+        "crq2-result-parameters",
+        method="consensus-backed-proxy",
+        data={"registrationStatus": "ISSUED"},
+    )
+    constrained_claim["metadata"] = {"sanctioned": False}
+    constrained_bundle = signed_bundle(
+        [constrained_claim], presented_by=PRESENTER_REF
+    )
+    constrained_req = requirement([
+        member(
+            "lei", verified=True,
+            parameters={"sanctioned": False},
+        )
+    ])
+    add_case(
+        cases,
+        "vet-crq2-metadata-only-parameter-rejected",
+        "§7.7.1 CRQ-2",
+        "Signed claim metadata cannot substitute for a required authenticated VerifyResult value.",
+        {"result": evaluation(
+            "decision", constrained_bundle, constrained_req,
+            resolved=[constrained_result],
+        )},
+        "fail",
+    )
+
+    selected_other_family = requirement([
+        member(
+            "lei", verified=True, recipe_version=None,
+            parameters={"verificationMethod": "verifiable-credential"},
+        )
+    ])
+    add_case(
+        cases,
+        "vet-crq2-selected-method-excludes-other-family",
+        "§7.7.1 CRQ-2",
+        "A result from another authenticated method family cannot satisfy the selected family.",
+        {"result": evaluation(
+            "decision", supporting_bundle, selected_other_family,
+            resolved=[registry_result],
+        )},
+        "fail",
+    )
+
+    malformed_requirements = {}
+    for label, mutate in (
+        (
+            "stringRecipeVersion",
+            lambda item: item.update({"recipeVersion": "1"}),
+        ),
+        (
+            "arrayParameters",
+            lambda item: item.update({"parameters": []}),
+        ),
+        (
+            "booleanVerificationMethod",
+            lambda item: item.update({
+                "parameters": {"verificationMethod": False}
+            }),
+        ),
+    ):
+        malformed = copy.deepcopy(verified_lei)
+        mutate(malformed["required"][0])
+        malformed_requirements[label] = evaluation(
+            "decision-no-throw", supporting_bundle, malformed,
+            resolved=[registry_result],
+        )
+    add_case(
+        cases,
+        "vet-crq2-malformed-requirement-fields",
+        "§7.7.1 CRQ-2",
+        "Malformed version, parameter, and method selectors fail closed without throwing.",
+        malformed_requirements,
+        {
+            label: {"decision": "error", "throws": False}
+            for label in malformed_requirements
+        },
+    )
+
+    unresolved_qualification = {}
+    for label, mutate in (
+        (
+            "missingFamily",
+            lambda item: item.update({
+                "parameters": {"verificationMethod": "oauth-attested"}
+            }),
+        ),
+        (
+            "missingExplicitVersion",
+            lambda item: item.update({"recipeVersion": 99}),
+        ),
+    ):
+        unresolved = copy.deepcopy(implicit_latest_lei)
+        mutate(unresolved["required"][0])
+        unresolved_qualification[label] = evaluation(
+            "decision", supporting_bundle, unresolved,
+            resolved=[registry_result],
+        )
+    add_case(
+        cases,
+        "vet-crq2-unresolved-family-or-version-errors",
+        "§7.7.1 CRQ-2",
+        "An absent selected family or explicit version is an error before classification.",
+        unresolved_qualification,
+        {label: "error" for label in unresolved_qualification},
+    )
     add_case(
         cases,
         "vet-control-existence-only-lei-presentedby-reject",
@@ -961,8 +1089,8 @@ def build_cases() -> list[dict]:
         },
     )
 
-    assert len(cases) == 24
-    assert len({case["name"] for case in cases}) == 24
+    assert len(cases) == 29
+    assert len({case["name"] for case in cases}) == 29
     return cases
 
 
@@ -1073,7 +1201,7 @@ def main() -> int:
             "python3 scripts/generate_dacs1_vet_golden_inputs.py --write"
         )
         return 1
-    print("dacs1/vet golden inputs OK (24 cases)")
+    print("dacs1/vet golden inputs OK (29 cases)")
     return 0
 
 

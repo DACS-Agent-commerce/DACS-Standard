@@ -3,15 +3,15 @@
   "generator": "github.com/mj-deving/dacs-verify",
   "note": "Proposed / non-normative. Outputs originated in github.com/mj-deving/dacs-verify; inputBindings identifies Standard-owned executable reconstructions where the external runner did not serialize its inputs.",
   "surfaces": {
-    "golden": "175 vectors — 6 canonicalize + 5 decimal + 5 signing + 2 artifact-reference-shape + 24 dacs1 + 2 addressing + 4 bundle + 36 settlement + 36 verify + 24 vet + 19 negotiate + 12 governance; byte-stable and reference-verifier-accepted or steward-corrected by an executable regression predicate.",
+    "golden": "180 vectors — 6 canonicalize + 5 decimal + 5 signing + 2 artifact-reference-shape + 24 dacs1 + 2 addressing + 4 bundle + 36 settlement + 36 verify + 29 vet + 19 negotiate + 12 governance; byte-stable and reference-verifier-accepted or steward-corrected by an executable regression predicate.",
     "candidate": "60 vectors — 29 PayeeBoundAgreementDocument/PB-1..PB-3 and RD-5 cases, 14 legacy reputation outputs that require regeneration with valid §10.5.1 guard-(iv) resolution context, and 17 DACS-X dispute/disclosure output-only expectations awaiting public signed inputs and normative artifact contracts (#99/#351)."
   },
   "inputBindings": {
     "dacs1-vet-golden-inputs-v0.1": {
       "path": "conformance/fixtures/identity/dacs1-vet-golden-inputs-v0.1.json",
-      "sha256": "6c4f58d5b8577e1adf1d7b9d19206fc9566d15664a7b38f8b6f48abf08bf1046",
-      "caseCount": 24,
-      "scope": "The 13 DACS-1 and 11 Vet manifest cases listed under the same IDs in the bound fixture."
+      "sha256": "495fe98e4a95cd156cfb3991e7e2d03a8993f1c29ca07bb10b0acf995fc5e5ac",
+      "caseCount": 29,
+      "scope": "The 13 DACS-1 and 16 Vet manifest cases listed under the same IDs in the bound fixture."
     }
   },
   "cases": [
@@ -717,6 +717,67 @@
         "reasons": [
           "required failing or absent: lei"
         ]
+      }
+    },
+    {
+      "id": "vet-crq2-implicit-latest-family-version",
+      "area": "vet",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "An omitted recipeVersion resolves the exact authenticated family's latest live version.",
+      "status": "golden",
+      "reason": "steward-corrected executable CRQ-2 regression + byte-stable",
+      "want": "pass"
+    },
+    {
+      "id": "vet-crq2-metadata-only-parameter-rejected",
+      "area": "vet",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "Signed claim metadata cannot substitute for a required authenticated VerifyResult value.",
+      "status": "golden",
+      "reason": "steward-corrected executable CRQ-2 regression + byte-stable",
+      "want": "fail"
+    },
+    {
+      "id": "vet-crq2-selected-method-excludes-other-family",
+      "area": "vet",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "A result from another authenticated method family cannot satisfy the selected family.",
+      "status": "golden",
+      "reason": "steward-corrected executable CRQ-2 regression + byte-stable",
+      "want": "fail"
+    },
+    {
+      "id": "vet-crq2-malformed-requirement-fields",
+      "area": "vet",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "Malformed version, parameter, and method selectors fail closed without throwing.",
+      "status": "golden",
+      "reason": "steward-corrected executable CRQ-2 regression + byte-stable",
+      "want": {
+        "stringRecipeVersion": {
+          "decision": "error",
+          "throws": false
+        },
+        "arrayParameters": {
+          "decision": "error",
+          "throws": false
+        },
+        "booleanVerificationMethod": {
+          "decision": "error",
+          "throws": false
+        }
+      }
+    },
+    {
+      "id": "vet-crq2-unresolved-family-or-version-errors",
+      "area": "vet",
+      "spec": "§7.7.1 CRQ-2",
+      "summary": "An absent selected family or explicit version is an error before classification.",
+      "status": "golden",
+      "reason": "steward-corrected executable CRQ-2 regression + byte-stable",
+      "want": {
+        "missingFamily": "error",
+        "missingExplicitVersion": "error"
       }
     },
     {

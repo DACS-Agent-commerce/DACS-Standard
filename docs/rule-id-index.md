@@ -48,6 +48,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | RD-* | Delivery phase required data | §9.4.3 | §14.4 |
 | RFQ-* | RFQ negotiation turns | §8.4.2 | §14.3 |
 | RB-* | Listing-revocation marker binding, retained discovery, and fail-closed resolution | §6.3.4 | §14.1 |
+| RSC-* | Current listing-revocation state head, append-only completeness proofs, and new-session admission | §6.3.4 | §14.1 |
 | RT-* | Rating bounds and derivation handling | §10.6.1 | §14.5 |
 | RSV-* | SettlementEvidence semantic admission before reputation | §10.5.1 | §14.5 |
 | SB-* | Session-bound settlement evidence (full PC-2 address binding, signed event identity, deterministic projection, legacy replay, tx↔session binding, anti-double-count) | §9.5.8 | §14.4 |

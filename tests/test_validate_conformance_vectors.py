@@ -14,6 +14,13 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "validate_conformance_vectors.py"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 GOLDEN_OUTPUTS = ROOT / "conformance" / "vectors" / "golden.json"
+AP2_FIXTURE = (
+    ROOT
+    / "conformance"
+    / "fixtures"
+    / "settlement"
+    / "settlement-ap2-reference.json"
+)
 VECTORS = ROOT / "conformance" / "vectors" / "dacs-v0.1-happy-path.json"
 IDENTITY_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "identity-bundle.json"
 RATING_EXAMPLE = ROOT / "conformance" / "vectors" / "examples" / "rating-record.json"
@@ -283,6 +290,89 @@ class ConformanceVectorValidationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
         self.assertIn("validated manifest", result.stdout)
         self.assertNotIn("validated 2 vectors", result.stdout)
+
+    def _write_ap2_golden_tree(self, base: Path):
+        conformance = base / "conformance"
+        fixture_dir = conformance / "fixtures" / "settlement"
+        fixture_dir.mkdir(parents=True)
+        vectors_dir = conformance / "vectors"
+        vectors_dir.mkdir()
+        fixture = fixture_dir / AP2_FIXTURE.name
+        shutil.copy2(AP2_FIXTURE, fixture)
+        repository_settlement = json.loads(GOLDEN_OUTPUTS.read_text())["settlement"]
+        settlement = {
+            "ap2Fixture": repository_settlement["ap2Fixture"],
+            "ap2JobId": repository_settlement["ap2JobId"],
+            "ap2EvidenceHash": repository_settlement["ap2EvidenceHash"],
+            "decisions": {
+                "ap2ReferencePass": repository_settlement["decisions"][
+                    "ap2ReferencePass"
+                ]
+            },
+        }
+        golden = vectors_dir / "golden.json"
+        golden.write_text(
+            json.dumps({"settlement": settlement}), encoding="utf-8"
+        )
+        manifest = conformance / "MANIFEST.json"
+        manifest.write_text("{}\n", encoding="utf-8")
+        return manifest, golden, fixture
+
+    def test_ap2_golden_pins_match_recomputed_fixture_evidence(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertEqual(errors, [])
+
+    def test_ap2_golden_rejects_stale_hash_job_and_decision_pins(self):
+        cases = [
+            (
+                "hash",
+                lambda data: data["settlement"].__setitem__(
+                    "ap2EvidenceHash", "00" * 32
+                ),
+                "settlement.ap2EvidenceHash MUST equal",
+            ),
+            (
+                "job",
+                lambda data: data["settlement"].__setitem__(
+                    "ap2JobId", "01K4AP2PAY0000000000000005"
+                ),
+                "settlement.ap2JobId MUST equal",
+            ),
+            (
+                "decision",
+                lambda data: data["settlement"]["decisions"].__setitem__(
+                    "ap2ReferencePass", "fail"
+                ),
+                "settlement.decisions.ap2ReferencePass MUST equal",
+            ),
+        ]
+        validator = load_vector_validator()
+        for name, mutate, expected in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, _fixture = self._write_ap2_golden_tree(
+                    Path(tmp)
+                )
+                data = json.loads(golden.read_text())
+                mutate(data)
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_ap2_golden_rejects_unsigned_fixture_evidence_drift(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+            data = json.loads(fixture.read_text())
+            data["evidence"]["paymentAmount"]["amount"] = "0.6"
+            fixture.write_text(json.dumps(data), encoding="utf-8")
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertTrue(
+            any("ap2Fixture evidenceHash MUST equal" in error for error in errors),
+            errors,
+        )
 
 
 class B2ConformanceHashTests(unittest.TestCase):

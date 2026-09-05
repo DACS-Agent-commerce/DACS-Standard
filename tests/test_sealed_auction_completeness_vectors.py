@@ -210,9 +210,15 @@ class Evaluator:
                         reason = "malformed-record"
                     elif kind == "reveal" and not reveal_complete:
                         reason = "malformed-record"
+                    elif kind == "reveal":
+                        try:
+                            if len(decode_b64url(record["salt"])) < 32:
+                                reason = "malformed-record"
+                        except (KeyError, TypeError, ValueError):
+                            reason = "malformed-record"
                     elif kind not in {"commit", "reveal"}:
                         reason = "malformed-record"
-                    else:
+                    if reason is None:
                         receipt = entry.get("anchorReceipt", {})
                         expected_address = logical_address(record["jobId"], kind, record["bidderClaim"], record["bidHash"])
                         if receipt.get("logicalAddress") != expected_address or receipt.get("contentHash") != record_hash or receipt.get("nativeAddress") != ref.get("anchor", {}).get("locator"):
@@ -479,6 +485,7 @@ class SealedAuctionCompletenessVectorTests(unittest.TestCase):
             "late-better-reveal-excluded",
             "invalid-signature-rejects-selection",
             "valid-signed-bidhash-mismatch-excluded",
+            "short-salt-reveal-rejects-selection",
             "equal-price-equal-time-bidhash",
         }
         self.assertTrue(required.issubset(names))

@@ -18,8 +18,8 @@
     "orchestrator": "uyHCd1SUqOBAkIynXcKGtXtEI1Y2zvnX_SJ2l4fte5c",
     "binding": "anSqEGUEIPK-eqbL4cGMoETFMkrkBH7OOesvDU6ZVgs"
   },
-  "count": 26,
-  "hash": "7bb4e29f74b00613bd30cb29b7a6c7d8fd077678119a2317a0c49bc86c1ca05f",
+  "count": 27,
+  "hash": "fce391f540da88053d308a29604f4dce7c935451d02b60c72287481006387310",
   "vectors": [
     {
       "name": "complete-lowest-price",
@@ -14894,6 +14894,717 @@
           "evidence": {
             "kind": "test-finality",
             "value": "proof-selection-6f0f02ee5529207b"
+          }
+        }
+      }
+    },
+    {
+      "name": "short-salt-reveal-rejects-selection",
+      "expected": "fail",
+      "reason": "a fully signed proof-consistent reveal with a decoded salt shorter than 32 bytes rejects the selection instead of improving another bidder's rank",
+      "listing": {
+        "listingRef": {
+          "listingId": "complete-sealed-demo",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "publisherClaim": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+        "phaseIndex": 1,
+        "phaseKind": "negotiate-sealed-envelope-procurement-complete",
+        "parameters": {
+          "commitDeadline": 2000000000000,
+          "revealWindow": 120,
+          "selectionRule": "lowest-price",
+          "candidateSetBinding": {
+            "bindingId": "test-complete-log",
+            "bindingVersion": "1",
+            "definitionRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-test-binding"
+              },
+              "contentHash": "7777777777777777777777777777777777777777777777777777777777777777",
+              "signer": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b"
+            }
+          },
+          "auctionMode": "procurement"
+        }
+      },
+      "receipt": {
+        "sealedSelectionReceiptVersion": "1",
+        "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+        "listingRef": {
+          "listingId": "complete-sealed-demo",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "phaseIndex": 1,
+        "phaseKind": "negotiate-sealed-envelope-procurement-complete",
+        "candidateSetBinding": {
+          "bindingId": "test-complete-log",
+          "bindingVersion": "1",
+          "definitionRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-test-binding"
+            },
+            "contentHash": "7777777777777777777777777777777777777777777777777777777777777777",
+            "signer": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b"
+          }
+        },
+        "collectionPrefix": "dacs3:auction:01JZZZZZZZZZZZZZZZZZZZZZZZ",
+        "selectionRule": "lowest-price",
+        "entries": [
+          {
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-b123ff96dd4a1da5f4cb71ba"
+              },
+              "contentHash": "b123ff96dd4a1da5f4cb71ba32aeb5262d990459e29f82bc4f9a60f6c4fd17fa",
+              "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d"
+            },
+            "anchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "test-bft",
+              "finalityProfile": "test-bft-final",
+              "logicalAddress": "dacs3:auction:01JZZZZZZZZZZZZZZZZZZZZZZZ:commit:did%3Ademos%3Aagent%3Af9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d:5f4c7fbc12371ec82a661817e345c5cc43c3441e67baf8447ce856e7d0a17563",
+              "nativeAddress": "stor-commit-b123ff96dd4a1da5f4cb71ba",
+              "contentHash": "b123ff96dd4a1da5f4cb71ba32aeb5262d990459e29f82bc4f9a60f6c4fd17fa",
+              "transactionRef": {
+                "kind": "test-tx",
+                "value": "tx-b123ff96dd4a1da5f4cb"
+              },
+              "writer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+              "nonce": "2",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1999999972100,
+              "blockRef": {
+                "id": "block-1999999972000",
+                "height": "102",
+                "timestamp": 1999999972000
+              },
+              "evidence": {
+                "kind": "test-finality",
+                "value": "proof-b123ff96dd4a1da5f4cb"
+              }
+            },
+            "orderKey": "0001999999972000:0001:0"
+          },
+          {
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-4ce5f0419cedfb27af8499a8"
+              },
+              "contentHash": "4ce5f0419cedfb27af8499a8c44ff64e2040090a26186aca87ec45cc9be17961",
+              "signer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67"
+            },
+            "anchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "test-bft",
+              "finalityProfile": "test-bft-final",
+              "logicalAddress": "dacs3:auction:01JZZZZZZZZZZZZZZZZZZZZZZZ:commit:did%3Ademos%3Aagent%3Ab5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67:0883667f479cbd3d6e6d7be1751940dd24e4af3673a9acd06b366b89a45baa44",
+              "nativeAddress": "stor-commit-4ce5f0419cedfb27af8499a8",
+              "contentHash": "4ce5f0419cedfb27af8499a8c44ff64e2040090a26186aca87ec45cc9be17961",
+              "transactionRef": {
+                "kind": "test-tx",
+                "value": "tx-4ce5f0419cedfb27af84"
+              },
+              "writer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+              "nonce": "4",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1999999974100,
+              "blockRef": {
+                "id": "block-1999999974000",
+                "height": "104",
+                "timestamp": 1999999974000
+              },
+              "evidence": {
+                "kind": "test-finality",
+                "value": "proof-4ce5f0419cedfb27af84"
+              }
+            },
+            "orderKey": "0001999999974000:0002:0"
+          },
+          {
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-a6940d104639eaaa3a877832"
+              },
+              "contentHash": "a6940d104639eaaa3a877832b58f742baed13b3a8c1a261ade2cd12840bfee84",
+              "signer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8"
+            },
+            "anchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "test-bft",
+              "finalityProfile": "test-bft-final",
+              "logicalAddress": "dacs3:auction:01JZZZZZZZZZZZZZZZZZZZZZZZ:commit:did%3Ademos%3Aagent%3A97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8:4c5b188974627294ee2183ac9d1c88e2bbb02328c5fb220785f531f623a8fb40",
+              "nativeAddress": "stor-commit-a6940d104639eaaa3a877832",
+              "contentHash": "a6940d104639eaaa3a877832b58f742baed13b3a8c1a261ade2cd12840bfee84",
+              "transactionRef": {
+                "kind": "test-tx",
+                "value": "tx-a6940d104639eaaa3a87"
+              },
+              "writer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8",
+              "nonce": "6",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 1999999976100,
+              "blockRef": {
+                "id": "block-1999999976000",
+                "height": "106",
+                "timestamp": 1999999976000
+              },
+              "evidence": {
+                "kind": "test-finality",
+                "value": "proof-a6940d104639eaaa3a87"
+              }
+            },
+            "orderKey": "0001999999976000:0003:0"
+          },
+          {
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-reveal-b8cbda81940c582238f1339b"
+              },
+              "contentHash": "b8cbda81940c582238f1339b04e9184da7c1d236082d531f591ab64c3fccdfb0",
+              "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d"
+            },
+            "anchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "test-bft",
+              "finalityProfile": "test-bft-final",
+              "logicalAddress": "dacs3:auction:01JZZZZZZZZZZZZZZZZZZZZZZZ:reveal:did%3Ademos%3Aagent%3Af9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d:5f4c7fbc12371ec82a661817e345c5cc43c3441e67baf8447ce856e7d0a17563",
+              "nativeAddress": "stor-reveal-b8cbda81940c582238f1339b",
+              "contentHash": "b8cbda81940c582238f1339b04e9184da7c1d236082d531f591ab64c3fccdfb0",
+              "transactionRef": {
+                "kind": "test-tx",
+                "value": "tx-b8cbda81940c582238f1"
+              },
+              "writer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+              "nonce": "3",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 2000000022100,
+              "blockRef": {
+                "id": "block-2000000022000",
+                "height": "103",
+                "timestamp": 2000000022000
+              },
+              "evidence": {
+                "kind": "test-finality",
+                "value": "proof-b8cbda81940c582238f1"
+              }
+            },
+            "orderKey": "0002000000022000:0001:1"
+          },
+          {
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-reveal-5a730c58636a9d2fb9d39509"
+              },
+              "contentHash": "5a730c58636a9d2fb9d395097b8da60f8327082b3da6ffcd30f81225ba26eaae",
+              "signer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67"
+            },
+            "anchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "test-bft",
+              "finalityProfile": "test-bft-final",
+              "logicalAddress": "dacs3:auction:01JZZZZZZZZZZZZZZZZZZZZZZZ:reveal:did%3Ademos%3Aagent%3Ab5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67:0883667f479cbd3d6e6d7be1751940dd24e4af3673a9acd06b366b89a45baa44",
+              "nativeAddress": "stor-reveal-5a730c58636a9d2fb9d39509",
+              "contentHash": "5a730c58636a9d2fb9d395097b8da60f8327082b3da6ffcd30f81225ba26eaae",
+              "transactionRef": {
+                "kind": "test-tx",
+                "value": "tx-5a730c58636a9d2fb9d3"
+              },
+              "writer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+              "nonce": "5",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 2000000024100,
+              "blockRef": {
+                "id": "block-2000000024000",
+                "height": "105",
+                "timestamp": 2000000024000
+              },
+              "evidence": {
+                "kind": "test-finality",
+                "value": "proof-5a730c58636a9d2fb9d3"
+              }
+            },
+            "orderKey": "0002000000024000:0002:1"
+          },
+          {
+            "recordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-reveal-914382d3226f984e5316e47d"
+              },
+              "contentHash": "914382d3226f984e5316e47d1841554280390681332216f213c672f60228342d",
+              "signer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8"
+            },
+            "anchorReceipt": {
+              "receiptVersion": "1",
+              "substrate": "test-bft",
+              "finalityProfile": "test-bft-final",
+              "logicalAddress": "dacs3:auction:01JZZZZZZZZZZZZZZZZZZZZZZZ:reveal:did%3Ademos%3Aagent%3A97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8:4c5b188974627294ee2183ac9d1c88e2bbb02328c5fb220785f531f623a8fb40",
+              "nativeAddress": "stor-reveal-914382d3226f984e5316e47d",
+              "contentHash": "914382d3226f984e5316e47d1841554280390681332216f213c672f60228342d",
+              "transactionRef": {
+                "kind": "test-tx",
+                "value": "tx-914382d3226f984e5316"
+              },
+              "writer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8",
+              "nonce": "7",
+              "state": "finalized",
+              "observationDisposition": "established",
+              "observedAt": 2000000026100,
+              "blockRef": {
+                "id": "block-2000000026000",
+                "height": "107",
+                "timestamp": 2000000026000
+              },
+              "evidence": {
+                "kind": "test-finality",
+                "value": "proof-914382d3226f984e5316"
+              }
+            },
+            "orderKey": "0002000000026000:0003:1"
+          }
+        ],
+        "completenessEvidence": {
+          "substrate": "test-bft",
+          "finalizedState": {
+            "id": "state-200",
+            "height": "200",
+            "timestamp": 2000000125000
+          },
+          "recordSetHash": "123b28ecb45150bc7877fdf9acc0fbc82903c4017d9cd33be5b4075d037676ab",
+          "recordCount": "6",
+          "proof": {
+            "kind": "test-complete-prefix",
+            "value": "6tq3UEZ-pHT9s3_tbBLPQ1qdm39qg0IXmBw7wL39W0kAQOXuwVYNHrfrJMYc1bQ7-YgMpYiBykj8lKF4q9kFAA"
+          }
+        },
+        "recordDecisions": [
+          {
+            "recordContentHash": "b123ff96dd4a1da5f4cb71ba32aeb5262d990459e29f82bc4f9a60f6c4fd17fa",
+            "disposition": "admitted-commit"
+          },
+          {
+            "recordContentHash": "4ce5f0419cedfb27af8499a8c44ff64e2040090a26186aca87ec45cc9be17961",
+            "disposition": "admitted-commit"
+          },
+          {
+            "recordContentHash": "a6940d104639eaaa3a877832b58f742baed13b3a8c1a261ade2cd12840bfee84",
+            "disposition": "admitted-commit"
+          },
+          {
+            "recordContentHash": "b8cbda81940c582238f1339b04e9184da7c1d236082d531f591ab64c3fccdfb0",
+            "disposition": "admitted-reveal"
+          },
+          {
+            "recordContentHash": "5a730c58636a9d2fb9d395097b8da60f8327082b3da6ffcd30f81225ba26eaae",
+            "disposition": "excluded",
+            "reason": "malformed-record"
+          },
+          {
+            "recordContentHash": "914382d3226f984e5316e47d1841554280390681332216f213c672f60228342d",
+            "disposition": "admitted-reveal"
+          }
+        ],
+        "bidDecisions": [
+          {
+            "bidderClaim": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8",
+            "authoritativeCommitRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-a6940d104639eaaa3a877832"
+              },
+              "contentHash": "a6940d104639eaaa3a877832b58f742baed13b3a8c1a261ade2cd12840bfee84",
+              "signer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8"
+            },
+            "revealRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-reveal-914382d3226f984e5316e47d"
+              },
+              "contentHash": "914382d3226f984e5316e47d1841554280390681332216f213c672f60228342d",
+              "signer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8"
+            },
+            "bidContentHash": "8912c62b6f8e52c8685e33bd74c42b166939524504edf1b1d9557c89694a3569",
+            "price": {
+              "amount": "120",
+              "currency": "USD"
+            },
+            "disposition": "eligible"
+          },
+          {
+            "bidderClaim": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+            "authoritativeCommitRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-4ce5f0419cedfb27af8499a8"
+              },
+              "contentHash": "4ce5f0419cedfb27af8499a8c44ff64e2040090a26186aca87ec45cc9be17961",
+              "signer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67"
+            },
+            "disposition": "excluded",
+            "reason": "no-valid-reveal"
+          },
+          {
+            "bidderClaim": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+            "authoritativeCommitRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-b123ff96dd4a1da5f4cb71ba"
+              },
+              "contentHash": "b123ff96dd4a1da5f4cb71ba32aeb5262d990459e29f82bc4f9a60f6c4fd17fa",
+              "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d"
+            },
+            "revealRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-reveal-b8cbda81940c582238f1339b"
+              },
+              "contentHash": "b8cbda81940c582238f1339b04e9184da7c1d236082d531f591ab64c3fccdfb0",
+              "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d"
+            },
+            "bidContentHash": "5d712c4622f5cc22fc338cc1c6a88ebcefcf3fdca6701b50041300c72c544b3b",
+            "price": {
+              "amount": "100",
+              "currency": "USD"
+            },
+            "disposition": "eligible"
+          }
+        ],
+        "winner": {
+          "bidderClaim": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+          "authoritativeCommitRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-commit-b123ff96dd4a1da5f4cb71ba"
+            },
+            "contentHash": "b123ff96dd4a1da5f4cb71ba32aeb5262d990459e29f82bc4f9a60f6c4fd17fa",
+            "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d"
+          },
+          "revealRef": {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-reveal-b8cbda81940c582238f1339b"
+            },
+            "contentHash": "b8cbda81940c582238f1339b04e9184da7c1d236082d531f591ab64c3fccdfb0",
+            "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d"
+          },
+          "bidContentHash": "5d712c4622f5cc22fc338cc1c6a88ebcefcf3fdca6701b50041300c72c544b3b",
+          "price": {
+            "amount": "100",
+            "currency": "USD"
+          },
+          "commitAnchorTimestamp": 1999999972000,
+          "bidHash": "5f4c7fbc12371ec82a661817e345c5cc43c3441e67baf8447ce856e7d0a17563"
+        },
+        "createdAt": 2000000126000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695",
+          "value": "8h86NzutfVhbRnzdDZj7-29_ATJhQtEZBkwU3L6H9niWUes1DBbiVhBMVmkLpNell92NcPyau6MCqjbL5mifBw"
+        }
+      },
+      "agreement": {
+        "sealedSelectionAgreementVersion": "1",
+        "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+        "listingRef": {
+          "listingId": "complete-sealed-demo",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "4141414141414141414141414141414141414141414141414141414141414141",
+            "primaryClaim": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-vet-publisher"
+              },
+              "contentHash": "4242424242424242424242424242424242424242424242424242424242424242"
+            }
+          },
+          {
+            "role": "seller",
+            "bundleHash": "4343434343434343434343434343434343434343434343434343434343434343",
+            "primaryClaim": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+            "vetRecordRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-vet-winner"
+              },
+              "contentHash": "4444444444444444444444444444444444444444444444444444444444444444"
+            }
+          }
+        ],
+        "terms": {
+          "deliverable": {
+            "deliverableType": "digital",
+            "hash": "abababababababababababababababababababababababababababababababab"
+          },
+          "price": {
+            "amount": "100",
+            "currency": "USD"
+          },
+          "deadline": 2000003720000,
+          "payoutBindings": []
+        },
+        "derivedFromPattern": "sealed-envelope",
+        "selectionReceiptRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "stor-selection-87162618e7ce0ff0984a8d0a"
+          },
+          "contentHash": "87162618e7ce0ff0984a8d0a5e851d11901238b0a6df6d261862ba201a6c2490",
+          "signer": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695"
+        },
+        "generatedAt": 2000000127000,
+        "signatures": [
+          {
+            "algorithm": "ed25519",
+            "party": "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b",
+            "value": "SQkOiQgveO3tDjoKMYPyWVttOCv_QD9xY8Hm_XbksLCLmTo2_7tUujNKiNvWEpUoYG9ovJOvfXw6tkwJ-bqHCA"
+          },
+          {
+            "algorithm": "ed25519",
+            "party": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+            "value": "82cOSb-o7MIh3dXg7KpilrWOZddiPu4_WVV83OYYYxvPwzdbpBmJHP9i-zDguxvNogfdcMg4QaMsDzMUb53uBA"
+          }
+        ]
+      },
+      "context": {
+        "bindingDefinitionResolved": true,
+        "bindingPublicKey": "anSqEGUEIPK-eqbL4cGMoETFMkrkBH7OOesvDU6ZVgs",
+        "latestFinalizedState": {
+          "id": "state-200",
+          "height": "200",
+          "timestamp": 2000000125000
+        },
+        "knownConflictingStates": [],
+        "recordPublicKeys": {
+          "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d": "lnbPH2MnwROsOiXoS35PdAoF9fgK1YsNq45Mzilxoyo",
+          "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67": "cC7VAQR55cwc3CN85Y4t7IfeG-WowuUBgqd7p7m2lxs",
+          "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8": "f1OsoPAuFRW-Nej7ZDQP7M5Ail5Wxw5EuWcG1NHWENg"
+        },
+        "expectedOrchestratorClaim": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695",
+        "orchestratorPublicKey": "uyHCd1SUqOBAkIynXcKGtXtEI1Y2zvnX_SJ2l4fte5c",
+        "partyPublicKeys": {
+          "did:demos:agent:11dfc719b35c0dc323f85cef63547f508d0c506864277194d35e18e9917b7f8b": "RT77yf9eQFTBOfuC0rVC5IlGkETVbl_Q21T5j9egQF8",
+          "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d": "lnbPH2MnwROsOiXoS35PdAoF9fgK1YsNq45Mzilxoyo",
+          "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67": "cC7VAQR55cwc3CN85Y4t7IfeG-WowuUBgqd7p7m2lxs",
+          "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8": "f1OsoPAuFRW-Nej7ZDQP7M5Ail5Wxw5EuWcG1NHWENg"
+        },
+        "resolvedRecords": {
+          "b123ff96dd4a1da5f4cb71ba32aeb5262d990459e29f82bc4f9a60f6c4fd17fa": {
+            "sealedAuctionRecordVersion": "1",
+            "recordKind": "commit",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "phaseIndex": 1,
+            "bidderClaim": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+            "bidHash": "5f4c7fbc12371ec82a661817e345c5cc43c3441e67baf8447ce856e7d0a17563",
+            "createdAt": 1999999971950,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+              "value": "OXnBJb1d66BDQZ73UvtxT0tlyQCzZwBoGavKO-8qkIKxKZbPgJi95XDk5P-uERdNmmSVrRs-wIsk7jsGWfZmAg"
+            }
+          },
+          "b8cbda81940c582238f1339b04e9184da7c1d236082d531f591ab64c3fccdfb0": {
+            "sealedAuctionRecordVersion": "1",
+            "recordKind": "reveal",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "phaseIndex": 1,
+            "bidderClaim": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+            "bidHash": "5f4c7fbc12371ec82a661817e345c5cc43c3441e67baf8447ce856e7d0a17563",
+            "commitRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-b123ff96dd4a1da5f4cb71ba"
+              },
+              "contentHash": "b123ff96dd4a1da5f4cb71ba32aeb5262d990459e29f82bc4f9a60f6c4fd17fa",
+              "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d"
+            },
+            "bid": {
+              "price": {
+                "amount": "100",
+                "currency": "USD"
+              },
+              "deliverable": {
+                "deliverableType": "digital",
+                "hash": "abababababababababababababababababababababababababababababababab"
+              }
+            },
+            "salt": "h8l5dst1011g7rZrQiwqHXdqWl3m02baaull7ctYnWE",
+            "createdAt": 2000000021950,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:f9a71e00694200f0fc90ff9a423e800ddb681dd3b1e3c65c7f0c313417240f3d",
+              "value": "pATY3ri0Is8T6iRciJxJf60c54Re8Ai2Us-YZtMHt7zHNuj8zRdvCvRK-bcn9MnCkOc1EJO6iNPJ538HZ6JfDQ"
+            }
+          },
+          "4ce5f0419cedfb27af8499a8c44ff64e2040090a26186aca87ec45cc9be17961": {
+            "sealedAuctionRecordVersion": "1",
+            "recordKind": "commit",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "phaseIndex": 1,
+            "bidderClaim": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+            "bidHash": "0883667f479cbd3d6e6d7be1751940dd24e4af3673a9acd06b366b89a45baa44",
+            "createdAt": 1999999973950,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+              "value": "5y4JaR4ofxl2Z0rME83l4OAEAD4VGhLGirOBLV4m8tUAjrMWj5x00sYmDZGCOw5zulEfSz-ivKyIz_9fIsSMBA"
+            }
+          },
+          "a6940d104639eaaa3a877832b58f742baed13b3a8c1a261ade2cd12840bfee84": {
+            "sealedAuctionRecordVersion": "1",
+            "recordKind": "commit",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "phaseIndex": 1,
+            "bidderClaim": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8",
+            "bidHash": "4c5b188974627294ee2183ac9d1c88e2bbb02328c5fb220785f531f623a8fb40",
+            "createdAt": 1999999975950,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8",
+              "value": "LYP6sRTM4lXZG78qmWS0RlKedfCm0_Uq_NtwfPWMDsYtYqgffrhIj8Ti_MjtGgUMaA8cu174lM4ssQvR4bClAg"
+            }
+          },
+          "914382d3226f984e5316e47d1841554280390681332216f213c672f60228342d": {
+            "sealedAuctionRecordVersion": "1",
+            "recordKind": "reveal",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "phaseIndex": 1,
+            "bidderClaim": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8",
+            "bidHash": "4c5b188974627294ee2183ac9d1c88e2bbb02328c5fb220785f531f623a8fb40",
+            "commitRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-a6940d104639eaaa3a877832"
+              },
+              "contentHash": "a6940d104639eaaa3a877832b58f742baed13b3a8c1a261ade2cd12840bfee84",
+              "signer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8"
+            },
+            "bid": {
+              "price": {
+                "amount": "120",
+                "currency": "USD"
+              },
+              "deliverable": {
+                "deliverableType": "digital",
+                "hash": "abababababababababababababababababababababababababababababababab"
+              }
+            },
+            "salt": "_1NJMywYVXc6glj3xGxIVXrHk6vFL_2Ie_MaUcUNXsc",
+            "createdAt": 2000000025950,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:97b32168135b06cb3e4f6f4d9bb62f4fe428cac29f4ad24d038376e6bc701fb8",
+              "value": "QFTGi7rDD1ShGm8CFoAF13loIPHMrn_vspW9xNWAyDRMolzTjgfr1fyygkOvzJ6mtouznl62DhaPvkiBnc5xAA"
+            }
+          },
+          "5a730c58636a9d2fb9d395097b8da60f8327082b3da6ffcd30f81225ba26eaae": {
+            "sealedAuctionRecordVersion": "1",
+            "recordKind": "reveal",
+            "jobId": "01JZZZZZZZZZZZZZZZZZZZZZZZ",
+            "listingRef": {
+              "listingId": "complete-sealed-demo",
+              "version": 1,
+              "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+            },
+            "phaseIndex": 1,
+            "bidderClaim": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+            "bidHash": "0883667f479cbd3d6e6d7be1751940dd24e4af3673a9acd06b366b89a45baa44",
+            "commitRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-commit-4ce5f0419cedfb27af8499a8"
+              },
+              "contentHash": "4ce5f0419cedfb27af8499a8c44ff64e2040090a26186aca87ec45cc9be17961",
+              "signer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67"
+            },
+            "bid": {
+              "price": {
+                "amount": "80",
+                "currency": "USD"
+              },
+              "deliverable": {
+                "deliverableType": "digital",
+                "hash": "abababababababababababababababababababababababababababababababab"
+              }
+            },
+            "salt": "AA",
+            "createdAt": 2000000023950,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "did:demos:agent:b5c68512db77f384e51c37766a89485bfc819beb867fb801febbe3eb2b637a67",
+              "value": "Z4dz-ogTrfy2aS9309R6r5niXrL_TvbMVmV4XOnPt0qN2ab6ExXdUKXIDzhuzS0c0Q0xANubz0sd1LbOP8_YCQ"
+            }
+          }
+        },
+        "selectionReceiptAnchor": {
+          "receiptVersion": "1",
+          "substrate": "test-bft",
+          "finalityProfile": "test-bft-final",
+          "logicalAddress": "dacs3:selection:01JZZZZZZZZZZZZZZZZZZZZZZZ:1",
+          "nativeAddress": "stor-selection-87162618e7ce0ff0984a8d0a",
+          "contentHash": "87162618e7ce0ff0984a8d0a5e851d11901238b0a6df6d261862ba201a6c2490",
+          "transactionRef": {
+            "kind": "test-tx",
+            "value": "tx-selection-87162618e7ce0ff0"
+          },
+          "writer": "did:demos:agent:e491bdfb7c1fc3e3b4c2810a78992599124c81bfcbffa69f8d4c85598bc2d695",
+          "nonce": "99",
+          "state": "finalized",
+          "observationDisposition": "established",
+          "observedAt": 2000000126500,
+          "blockRef": {
+            "id": "block-selection",
+            "height": "201",
+            "timestamp": 2000000126000
+          },
+          "evidence": {
+            "kind": "test-finality",
+            "value": "proof-selection-87162618e7ce0ff0"
           }
         }
       }

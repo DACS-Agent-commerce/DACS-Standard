@@ -233,7 +233,12 @@ def completeness_evidence(entries: list[dict], collection_prefix: str, state: di
 
 
 def decode_salt(value: str) -> bytes:
-    return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    if not isinstance(value, str) or not value or "=" in value:
+        raise ValueError("non-canonical salt encoding")
+    decoded = base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    if b64url(decoded) != value or len(decoded) < 32:
+        raise ValueError("sealed reveal salt must be canonical Base64URL for at least 32 bytes")
+    return decoded
 
 
 def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: str | None = None) -> tuple[list[dict], list[dict], dict | None]:
@@ -261,12 +266,20 @@ def derive(entries: list[dict], records: dict, *, selection_rule: str, reserve: 
                 except Exception:
                     reason = "bad-signature"
             if reason is None:
-                want_address = logical_address(record.get("recordKind", ""), record["bidderClaim"], record["bidHash"])
-                if entry["anchorReceipt"].get("logicalAddress") != want_address:
+                kind = record.get("recordKind")
+                if kind == "reveal":
+                    try:
+                        decode_salt(record.get("salt"))
+                    except (TypeError, ValueError):
+                        reason = "malformed-record"
+                want_address = logical_address(
+                    kind or "", record["bidderClaim"], record["bidHash"]
+                )
+                if reason is None and entry["anchorReceipt"].get("logicalAddress") != want_address:
                     reason = "wrong-address"
-                elif entry["anchorReceipt"].get("state") != "finalized":
+                elif reason is None and entry["anchorReceipt"].get("state") != "finalized":
                     reason = "unfinalized"
-                else:
+                elif reason is None:
                     timestamp = entry["anchorReceipt"]["blockRef"]["timestamp"]
                     if record["recordKind"] == "commit" and timestamp > COMMIT_DEADLINE:
                         reason = "late-commit"
@@ -667,6 +680,37 @@ def build() -> dict:
     mismatch_entries.sort(key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"]))
     mismatch_receipt = signed_receipt(mismatch_entries, mismatch_records)
     vectors.append(make_vector("valid-signed-bidhash-mismatch-excluded", "pass", "valid signed reveal that does not open the authoritative commit is explicitly excluded", mismatch_entries, mismatch_records, mismatch_receipt, signed_agreement(mismatch_receipt)))
+
+    short_salt_entries = copy.deepcopy(entries)
+    short_salt_records = copy.deepcopy(records)
+    short_salt_reveal = unsigned(short_salt_records.pop(b_reveal_hash))
+    short_salt_reveal["salt"] = "AA"
+    short_salt_reveal = sign_artifact(short_salt_reveal, "bidder-b", RECORD_DOMAIN)
+    short_salt_hash = digest(unsigned(short_salt_reveal))
+    for entry in short_salt_entries:
+        if entry["recordRef"]["contentHash"] == b_reveal_hash:
+            locator = "stor-reveal-" + short_salt_hash[:24]
+            entry["recordRef"] = attestation_ref(
+                "storage-program", locator, short_salt_hash, CLAIMS["bidder-b"]
+            )
+            entry["anchorReceipt"]["nativeAddress"] = locator
+            entry["anchorReceipt"]["contentHash"] = short_salt_hash
+            entry["anchorReceipt"]["transactionRef"]["value"] = "tx-" + short_salt_hash[:20]
+            entry["anchorReceipt"]["evidence"]["value"] = "proof-" + short_salt_hash[:20]
+    short_salt_records[short_salt_hash] = short_salt_reveal
+    short_salt_entries.sort(
+        key=lambda item: (item["orderKey"], item["recordRef"]["contentHash"])
+    )
+    short_salt_receipt = signed_receipt(short_salt_entries, short_salt_records)
+    vectors.append(make_vector(
+        "short-salt-reveal-rejects-selection",
+        "fail",
+        "a fully signed proof-consistent reveal with a decoded salt shorter than 32 bytes rejects the selection instead of improving another bidder's rank",
+        short_salt_entries,
+        short_salt_records,
+        short_salt_receipt,
+        signed_agreement(short_salt_receipt),
+    ))
 
     tie_entries, tie_records = base_material(("80", "80", "120"))
     tie_receipt = signed_receipt(tie_entries, tie_records)

@@ -4,7 +4,9 @@
 
 ## Chapter 9 — DACS-4: Settle
 
-**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.8** (on the common DACS v0.1 baseline; v0.8 adds the minor-safe `FinalityBoundSettlementEvidence` type and FV-1..FV-10 consumer verifier, making `SettlementFinalityRecord` explicitly a producer report and binding current success evidence to an authenticated RailDefinition finality profile; v0.7 adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+**Stage:** Settle (4th of 5). **Status:** Draft — **DACS-4 v0.7** (on the common DACS v0.1 baseline; v0.7 adds APR-1..APR-8, a signed listing-only `pay-alternative` projection that selects one complete rail before Agreement signature, executes one concrete handler, and binds cross-job replacement safety through an authenticated `PriorPaymentDisposition`; v0.6 adds signed event-level `evm-event`, `solana-instruction`, and `x402-event` transaction-reference arms plus the deterministic SB-1 projection and legacy-replay rules, and hardens `pay-ap2` with the registered byte-exact AP2-6 idempotency key, AP2-7 session-phase replay binding, separate-chain checkout admission, explicit transaction-ID derivation, a DACS-profiled checkout-JWT signature policy, and the split-credential registration gate; v0.5 adds the minor-safe `PayloadAttestationRecord` and DPA-1..DPA-9 so `deliver-attested-payload` evidence binds the exact job, agreement, DeliverableSpec, payload bytes, and verification method, and makes PB-2 EVM chain applicability byte-exact through the DACS-1 EIP-155 `cci-xm` profile; v0.4 requires finalized DACS-3 commitment before irreversible effects and generalizes post-final-payment SR-2 evidence catch-up to every rail; v0.2 additions: SB-1..SB-3 session-bound settlement evidence §9.5.8, `pay-solana-spl` payer-funded ATA-rent §9.5.3, the native-DEM `pay-dem` rail §9.5.9, and liquidity-tank recovery-pending evidence via ST-8 §9.5.5; v0.3 additions: PB-1..PB-3 payee-destination binding through the minor-safe `PayeeBoundAgreementDocument` §9.5.1, AP2-1..AP2-6 attested provider-receipt verification / provider-metadata session binding / capture-not-irreversibility semantics for `pay-ap2` §9.5.6/§9.5.8, byte-exact SB-3 EIP-3009 nonce derivation for `pay-x402` §9.5.8, and the `metered` usage-based `PricingSpec` variant, validated per DACS-3 §8.5.2 MTR-1..5). **Depends on:** SR-2 (required), SR-3 for `consensus-backed-proxy` payload verification, and any substrate capability required by the selected DACS-2 verification method; SR-5 is required for cross-chain rails only. Composes with AP2, x402, ERC-20, SPL, HTLC contracts, DACS-2 verification methods, and substrate-native bridges (Liquidity Tanks on Demos). **Used by:** DACS-5 (settlement evidence in session bundle).
+
+**Unallocated compatibility proposal (#392).** The finality-bound evidence type, rail profile, and FV-1..FV-10 verifier below are candidate additive contracts. They do not allocate a DACS-4 minor or reinterpret any existing `SettlementEvidence` bytes.
 
 ### 9.1 Abstract
 
@@ -295,7 +297,7 @@ Maturity by rail:
 | `pay-x402` | Exercised by the reference implementation; §14 conformance vector present (`settlement-x402-pass`); **not** `operator_gated` (see note) |
 | `pay-ap2` | Specified, not yet reference-backed: no live settlement path, no §14 conformance vector; `operator_gated` (see note) |
 
-> **Note (non-normative).** *pay-x402* (§9.5.7) — x402 settles a gasless USDC transfer **on its settlement chain** (e.g. Base), so a current `pay-x402` `FinalityBoundSettlementEvidence` record is chain-verifiable against the settlement chain through the signed `x402-event` transaction hash, chain ID, and log index, exactly like the `evm-event` rail. The reference implementation runs x402 end-to-end as a primary rail: a buyer-side x402 client signing an EIP-3009/Permit2 authorisation and settling USDC on Base. It therefore meets the live-path + reference-implementation bar, and now has parity with the rails above, including a §14 conformance vector (`settlement-x402-pass`).
+> **Note (non-normative).** *pay-x402* (§9.5.7) — x402 settles a gasless USDC transfer **on its settlement chain** (e.g. Base), so a current `pay-x402` `SettlementEvidence` record is chain-verifiable against the settlement chain through the signed `x402-event` transaction hash, chain ID, and log index, exactly like the `evm-event` rail. The reference implementation runs x402 end-to-end as a primary rail: a buyer-side x402 client signing an EIP-3009/Permit2 authorisation and settling USDC on Base. It therefore meets the live-path + reference-implementation bar, and now has parity with the rails above, including a §14 conformance vector (`settlement-x402-pass`).
 >
 > *pay-ap2* (§9.5.6) — the handler procedure, registry entries, and evidence shape are defined, but there is no live path. `pay-ap2` settles **off-chain** (a provider receipt, not chain-verifiable) and requires AP2 provider onboarding (Visa Direct / Mastercard Send / Stripe PaymentIntents); AP2 itself was donated to the FIDO Alliance only in April 2026. Bringing it to reference-backed status — a live path plus conformance vectors — is roadmap work.
 
@@ -437,7 +439,7 @@ For the HTLC-9 asymmetric-open sub-case, the handler signals the open state and 
 
 Handlers MUST NOT settle a payment whose `amount.currency` does not resolve under this mapping.
 
-**(PC-6)** when outcome is `success`, populate `settlementFinality` (the finality model and parameters the producer reports applying) and, for current production, emit `FinalityBoundSettlementEvidence` bound to the authenticated rail revision whose `consumerFinalityProfile` the consumer executes. `settlementFinality` is REQUIRED on any `success`-outcome payment evidence record and absent on delivery evidence records. It is never proof by itself (FV-2).
+**(PC-6)** when outcome is `success`, populate `settlementFinality` (the finality model and parameters actually applied) in the produced SettlementEvidence — REQUIRED on any `success`-outcome payment evidence record, and absent on delivery evidence records.
 
 **(PC-7) Rail-final payment / evidence-anchor decoupling.** Payment finality and SR-2 evidence finality are separate gates on **every** rail. **Principle: once payment reaches the rail's declared finality, anchoring the applicable settlement-evidence record is bookkeeping that must catch up — never a reason to fail the payment, submit it again, or classify the finalized payment as unpaid.**
 
@@ -542,7 +544,7 @@ Single-chain ERC-20 token transfer.
 4. Construct an ERC-20 transfer transaction: `contract.transfer(payee.payeeAddress, amount)`.
 5. Submit via the payer’s wallet (or via SR-3 proxy attestation when the payer’s wallet runs server-side).
 6. Wait for chain finality per `rail.parameters.finalityBlocks` (default 1 for L2s, 12 for Ethereum mainnet).
-7. Identify the exact settling ERC-20 `Transfer` log and construct `FinalityBoundSettlementEvidence` with a `txRef` of kind `evm-event`, including its `logIndex`; anchor via SR-2; return success.
+7. Identify the exact settling ERC-20 `Transfer` log and construct `SettlementEvidence` with a `txRef` of kind `evm-event`, including its `logIndex`; anchor via SR-2; return success.
 
 **Failure modes.**
 
@@ -561,7 +563,7 @@ SPL token transfer on Solana.
 2. Construct an SPL Transfer instruction, or TransferChecked for decimal safety; the payee’s associated token account (ATA) is the destination. If the ATA does not exist, the handler MUST create it only when the rail parameter `createPayeeAtaIfMissing` is `true` (default `false`); the **rent-exempt reserve for ATA creation is funded by the payer** and MUST be included in the payer’s required-balance preflight.
 3. Submit via the payer’s wallet.
 4. Wait for confirmation per `rail.parameters.commitmentLevel` (default `"confirmed"`).
-5. Identify the exact settling SPL transfer instruction and construct `FinalityBoundSettlementEvidence` with a `txRef` of kind `solana-instruction`, including its `instructionIndex`; anchor via SR-2; return success.
+5. Identify the exact settling SPL transfer instruction and construct `SettlementEvidence` with a `txRef` of kind `solana-instruction`, including its `instructionIndex`; anchor via SR-2; return success.
 
 **Failure modes.**
 
@@ -598,7 +600,7 @@ Atomic cross-chain settlement using HTLC contracts on source and destination cha
 | `htlc-claim` | payee's source claim — the decisive success tx |
 
 - `outcome: "success"` is set ONLY once the payee's source claim reaches **source-chain finality**, not mere inclusion. Before that, the state is the HTLC-9 asymmetric `dest-revealed-source-unclaimed` failure.
-- Construct `FinalityBoundSettlementEvidence` and anchor via SR-2. If SR-2 is unavailable once the source claim is final, return `ok: true` with the foreign-chain txRefs plus a durable idempotent anchor-retry (PC-7; never `errorClass: "substrate"`).
+- Construct `SettlementEvidence` and anchor via SR-2. If SR-2 is unavailable once the source claim is final, return `ok: true` with the foreign-chain txRefs plus a durable idempotent anchor-retry (PC-7; never `errorClass: "substrate"`).
 
 > **Note (non-normative).** This is the canonical atomic-swap order: the secret-holding payer claims the shorter-timelock destination first, so the payee keeps a guaranteed window on the longer-timelock source (HTLC-7). The payer never *claims* the source — it is the payee's to claim, and the payer recovers its source position only via refund if the swap does not complete.
 
@@ -656,7 +658,7 @@ Substrate-coordinated atomic settlement using pre-funded liquidity primitives. O
 3. Call the substrate’s native bridge API — on Demos, construct a BridgeOperation conforming to `kynesyslabs/sdks/src/bridge/nativeBridgeTypes.ts` (originChainType, destinationChainType, originAddress, destinationAddress, originAmount, originAsset, destinationAsset); submit via `demos.bridge.submitBridgeOperation(…)`.
 4. The substrate’s validator shard executes lock-on-source and release-on-dest atomically, within the substrate’s consensus epoch. Record the `bridge_id` — the 16-char hash that is the canonical end-to-end tracking handle.
 5. Wait for `BridgeOperation.status` to transition `"empty"` → `"pending"` → `"completed"`.
-6. Construct `FinalityBoundSettlementEvidence` with `txRef` of kind `liquidity-tank` including bridgeId + both lock and release tx hashes; anchor via SR-2; return success. If the bridge has reached `completed` but SR-2 is unavailable, return `ok: true` with the bridge txRefs plus a durable idempotent anchor-retry, per PC-7 — never `errorClass: "substrate"`.
+6. Construct `SettlementEvidence` with `txRef` of kind `liquidity-tank` including bridgeId + both lock and release tx hashes; anchor via SR-2; return success. If the bridge has reached `completed` but SR-2 is unavailable, return `ok: true` with the bridge txRefs plus a durable idempotent anchor-retry, per PC-7 — never `errorClass: "substrate"`.
 
 **Trust model.** Recipes referencing this rail MUST be evaluated against the relevant substrate’s security profile. On Demos, Liquidity Tanks are operated by a rotating Demos validator shard under 2/3 BFT multisig with a 15-day deployer emergency-recovery path. This is "the operator is the substrate itself", not "no operator". Other substrates implementing SR-5 via different mechanisms inherit their own substrate trust model.
 
@@ -689,7 +691,7 @@ Payment via an AP2 mandate to a card network or banking provider.
 3. The payer’s AP2-compatible wallet authorises the mandate.
 4. Submit the mandate to `rail.network.providerEndpoint`; receive a payment receipt and provider-side reference (e.g. Visa Direct payment id, Stripe PaymentIntent id).
 5. Verify the receipt per AP2-2: an SR-3 attested fetch of the provider’s payment-status endpoint for `providerRef`, using an AP2-3-conformant credential.
-6. Construct `FinalityBoundSettlementEvidence` with `txRef` of kind `ap2` carrying mandateId, providerRef, the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27) — and the AP2-2 `receiptAttestation`. Anchor via SR-2; return success.
+6. Construct `SettlementEvidence` with `txRef` of kind `ap2` carrying mandateId, providerRef, the AP2 `protocolVersion` — the wire version that produced the mandate/receipt, so historical evidence is re-validatable against the rules of its era (#27) — and the AP2-2 `receiptAttestation`. Anchor via SR-2; return success.
 
 - (AP2-1) **Provider-metadata session binding.** The handler MUST bind the session into the provider-side payment object at creation: metadata key `dacs_job_id` set to the session `jobId`, and SHOULD additionally set `dacs_agreement_hash` to the agreement content hash (§8.5.2). The key names are pinned so two implementations produce and check the same binding. This is the §9.5.8 SB-3 binding for `pay-ap2`: it rides the provider’s own payment record, so the AP2-2 attested status response returns it and a single attestation binds payment → session (→ agreed terms when the agreement hash is present). A verifier resolves the binding per the SB-3 three branches (matches / mismatches-reject / absent-or-unverifiable-fallback). A provider whose payment object cannot carry the AP2-1 metadata, **or whose payment-status endpoint does not return it**, cannot satisfy AP2-1/AP2-2 and MUST NOT be registered as a `pay-ap2` rail — a registration-time gate, not a per-settlement silent degradation to the SB-3 absent branch.
 - (AP2-2) **SR-3-bounded provider-receipt verification.** A success-outcome `pay-ap2` record MUST verify the provider receipt through the selected SR-3 binding's authenticated fetch of the provider’s payment-status endpoint for `providerRef`. Universally, a verifier MAY claim only the response-authentication property that the selected SR-3 binding establishes and MUST NOT infer a stronger observation, signature, or quorum property. In the **current Demos DAHR binding** (DEMOS-MAPPING §A.3), the authenticated on-chain `web2Request` transaction and response hash establish a consensus-anchored hash commitment: the response body is checked against that commitment, but is not itself multi-validator-observed or consensus-set-signed. A Demos verifier therefore MUST NOT read `receiptAttestation` as quorum-observed unless a later binding explicitly supplies and authenticates validator body-signatures. A stronger conforming SR-3 binding MAY establish stronger response authentication, and its verifier MAY report only those authenticated properties. Under the selected binding, the fetch checks that: the provider-reported status is the provider’s settled/captured value; the amount and currency match the agreement; and the AP2-1 binding resolves (per its three-branch rule). The attestation MUST be recorded in `txRef.receiptAttestation` (an AttestationRef whose `contentHash` is the authenticated response hash). A bare provider reference with no attestation MUST NOT be presented as verified settlement evidence.
@@ -718,7 +720,7 @@ Payment via x402 HTTP 402 micropayment to an HTTP resource.
 1. Resolve rail; verify `network.kind == "x402-resource"`.
 2. Construct an x402 payment payload (signed authorisation per x402 spec); the authorisation MUST carry the session binding defined by SB-3 (§9.5.8) — the signed Permit2 witness or the byte-exact EIP-3009 nonce — so the verifier can bind the settlement to this session. Submit the GET request to the resource with x402 headers.
 3. Receive the paid resource response. Select, decode, and validate its x402 settlement-response header under X402-1..X402-4. Read the on-chain settlement transaction and network from that response.
-4. Identify the exact settling transfer event and construct `FinalityBoundSettlementEvidence` with an `x402-event` txRef carrying `httpResource`, the X402-2 `paymentReceiptHash`, `protocolVersion`, `settlementTxHash`, `chainId`, and `logIndex`. These values are one signed event-level reference. A successful `pay-x402` handler that cannot identify one settling event MUST NOT emit success evidence; it follows the reconciliation/failure rules below instead.
+4. Identify the exact settling transfer event and construct `SettlementEvidence` with an `x402-event` txRef carrying `httpResource`, the X402-2 `paymentReceiptHash`, `protocolVersion`, `settlementTxHash`, `chainId`, and `logIndex`. These values are one signed event-level reference. A successful `pay-x402` handler that cannot identify one settling event MUST NOT emit success evidence; it follows the reconciliation/failure rules below instead.
 5. Anchor via SR-2; return success.
 
 - **(X402-1) Versioned receipt selection.** For a success-outcome record, `protocolVersion` MUST be the negotiated x402 version as a minimal unsigned-decimal string. Version `"1"` selects `X-PAYMENT-RESPONSE`; version `"2"` selects `PAYMENT-RESPONSE`. The handler MUST base64-decode the selected header, parse its JSON as that version's `SettlementResponse`, require `success == true`, and retain every received member, including `extensions` and unrecognised members. A handler MUST refuse a protocol version whose settlement-response header or schema it does not implement.
@@ -805,7 +807,7 @@ Native-DEM transfer on the Demos substrate: settle the agreed price in DEM direc
 2. Verify `amount.currency == "DEM"`; convert to OS base units (`1 DEM = 10^9 OS`, integer arithmetic, no float).
 3. Construct a native transfer to `payee.payeeAddress` for the OS amount (the substrate's native `send`).
 4. Submit via the payer's wallet (or via SR-3 proxy attestation when the wallet runs server-side); wait for inclusion.
-5. On the transaction reaching the terminal **`included`** state, independently verify transaction inclusion plus the authenticated validator-set finality certificate under FV-1..FV-10, construct `FinalityBoundSettlementEvidence` with `txRef` of kind `demos` (`txHash` + `blockNumber`) and `settlementFinality.model == "bft-final"`; anchor via SR-2; return success.
+5. On the transaction reaching the terminal **`included`** state, construct SettlementEvidence with `txRef` of kind `demos` (`txHash` + `blockNumber`); anchor via SR-2; return success.
 
 **Finality.** Demos has **deterministic BFT finality** once inclusion is authenticated under the active validator set: there is no additional reorg or confirmation-depth wait. A node's bare `included` label is not proof. The FV `bft-final` verifier checks the exact network/genesis identity, transaction inclusion, block certificate, active validator-set checkpoint and pinned signed-weight quorum. The evidence cites `{ txHash, blockNumber }`; `block-depth` / `commitment-level` do not apply. The Demos bootstrap and proof-wire material required to execute these predicates is supplied by the Demos binding and tracked in #338 and the upstream SDK/node issues named by #382. A transaction reaching terminal `failed`, or inclusion without authentic BFT proof, did not establish settlement.
 
@@ -1061,11 +1063,12 @@ method's native evidence remains separately addressable through
 ### 9.7 Settlement evidence
 
 Settlement evidence is anchored on the substrate and referenced by DACS-5.
-The legacy `SettlementEvidence` shape remains the record for delivery/failure
-and historical payment evidence. Current success-outcome payment production
-uses the structurally distinct `FinalityBoundSettlementEvidence`, so an older
-reader rejects the unknown action-bearing type instead of accepting a producer
-confirmation count without FV verification.
+The existing `SettlementEvidence` shape and every existing producer/consumer
+meaning remain unchanged. A producer explicitly claiming the unallocated #392
+consumer-finality contract uses the structurally distinct
+`FinalityBoundSettlementEvidence`, so an older reader rejects the unknown
+action-bearing type instead of accepting a producer confirmation count without
+FV verification. Failure and delivery evidence remain `SettlementEvidence`.
 
 ```
 type SettlementEvidence = {
@@ -1117,19 +1120,32 @@ type RailDefinitionRef = AttestationRef & {
   railVersion: number
 }
 
-type FinalityBoundSettlementEvidence =
-  Omit<SettlementEvidence, "evidenceVersion" | "signature"> & {
-    finalityBoundEvidenceVersion: "1"          // exclusive discriminator; MUST NOT carry evidenceVersion
-    outcome: "success"                         // payment success only
-    phase: PaymentPhaseType
-    settlementFinality: SettlementFinalityRecord
-    railDefinitionRef: RailDefinitionRef       // exact signed rail/profile used by FV-1
-    signature: ComponentSignature              // phase orchestrator; dacs-finality-bound-evidence:v1:
-  }
+type FinalityBoundSettlementEvidence = {
+  finalityBoundEvidenceVersion: "1"            // exclusive discriminator; MUST NOT carry evidenceVersion or another *EvidenceVersion
+  jobId: string
+  phase: PaymentPhaseType
+  outcome: "success"                           // payment success only
+  paymentTxRefs: ChainTxRef[]                  // non-empty and exact for the selected model
+  paymentAmount: PriceTerm
+  paymentFee?: PriceTerm
+  settlementFinality: SettlementFinalityRecord
+  railDefinitionRef: RailDefinitionRef         // exact signed rail/profile used by FV-1
+  amendmentRefs?: AttestationRef[]
+  supersedesEvidenceRef?: AttestationRef
+  observedAt: number
+  signature: ComponentSignature                // authenticated phase orchestrator; dacs-finality-bound-evidence:v1:
+}
 
 type SettlementEvidenceRecord =
   | SettlementEvidence
   | FinalityBoundSettlementEvidence
+
+The finality-bound shape is closed. A #392 producer MUST first authenticate the
+selected Agreement/session/phase and the exact steward-signed rail revision,
+then execute FV against independently acquired proof authority. It emits the
+new type only on `pass`; `error`, `fail`, or `indeterminate` cannot produce a
+successful finality-bound record. This candidate producer path is additive to,
+and does not replace, the existing handler procedures above.
 
 // Producer report of the finality model/values applied when the phase handler declared
 // the payment confirmed. Never proves canonicality, depth, commitment, or irreversibility;
@@ -1217,18 +1233,48 @@ context; the context is not itself a DACS attestation and its parsed labels are
 never trusted without verifying the corresponding proof bytes:
 
 ```
+type RawMerkleProof = {
+  kind: string                              // proof codec selected by the trusted verifier policy
+  eventBytes?: string                      // exact encoded selected event; one of eventBytes/transactionBytes
+  transactionBytes?: string                // exact encoded transaction/receipt
+  leafHash: string
+  siblingHash: string
+  leafIndex: 0 | 1
+  root: string
+}
+
+type EncodedBlock = {
+  id: string
+  parentId: string
+  position: string
+  header: string                            // exact encoded header bytes; id is recomputed from these bytes
+}
+
 type AuthenticatedChainObservation = {
   networkId: string
   genesisHash: string
   transactionRef: ChainTxRef
-  transactionInclusionProof: { kind: string; value: string }
-  selectedEventProof?: { kind: string; value: string }  // REQUIRED for an event/instruction txRef
-  inclusionBlock: { id: string; parentId: string; position: string }
-  authenticatedHead: { id: string; position: string; observedAt: number }
+  transactionInclusionProof: RawMerkleProof
+  selectedEventProof: RawMerkleProof         // exact signed event/instruction index is checked
+  inclusionBlock: EncodedBlock
+  authenticatedHead: {
+    id: string
+    position: string
+    observedAt: number
+    header: string
+  }
   ancestryProof: { childId: string; parentId: string; position: string; header: string }[]
-  authorityEvidence: { kind: string; value: string; sourceRefs: string[] }
-  commitment?: "processed" | "confirmed" | "finalized"
-  finalityCertificate?: { kind: string; value: string }
+  authorityEvidence: {
+    kind: string
+    sourceRefs: string[]
+    attestations: { authorityRef: string; algorithm: string; value: string }[]
+  }
+  finalityCertificate?: {
+    kind: string
+    validatorSetHash: string
+    blockId: string
+    signatures: { validatorId: string; algorithm: string; value: string }[]
+  }
 }
 
 type FinalityVerificationContext =
@@ -1240,7 +1286,6 @@ type FinalityVerificationContext =
       providerRef: string
       responseBytes: string
       responseAttestation: AttestationRef
-      observedAt: number
     }
   | {
       kind: "htlc"
@@ -1248,14 +1293,6 @@ type FinalityVerificationContext =
       sourceClaim: AuthenticatedChainObservation
       destinationLock: AuthenticatedChainObservation
       destinationReveal: AuthenticatedChainObservation
-      relation: {
-        sourceContractMatches: boolean
-        destinationContractMatches: boolean
-        commonHashlockMatches: boolean
-        revealedPreimageMatches: boolean
-        amountsMatch: boolean
-        timelocksValid: boolean
-      }
     }
   | {
       kind: "liquidity-tank"
@@ -1277,6 +1314,15 @@ precision integers. Proof encodings are owned by the selected network/SR-3
 binding and the rail profile. A string such as `header`, `value`, or
 `responseBytes` carries the exact binding-defined encoding, not a caller's
 summary of what it allegedly proves.
+
+The FV entry point consumes exactly the signed finality-bound evidence, the
+resolved steward-signed rail, the authenticated signed Agreement, and one
+`FinalityVerificationContext`. Its separate verifier-local trust input supplies
+the current acquisition time, steward/party keys, pinned observation authorities,
+provider response attestations, validator-set checkpoints, and authenticated
+session/phase/role authority. Candidate fields cannot add or replace those trust
+anchors. Missing trusted authority is `indeterminate`; malformed trusted material
+is `error`.
 
 - **(FV-1) Exact rail authority.** A consumer MUST classify the record by
   `finalityBoundEvidenceVersion` before finality action, resolve
@@ -1332,7 +1378,9 @@ summary of what it allegedly proves.
   block, and require signed validator *weight* to meet the pinned quorum
   fraction. Counts, timestamps and producer-echoed values do not substitute.
 - **(FV-8) Freshness, forks, replacement and history.** The authenticated head
-  observation MUST be no older than `maxHeadAgeSec` at verification. A valid
+  observation MUST be no older than `maxHeadAgeSec` relative to a separate
+  verifier-local acquisition time. Candidate `finalityObservedAt`, a candidate
+  head age, or another producer timestamp MUST NOT refresh it. A valid
   inclusion proof on a block proven outside the authenticated canonical path,
   or a transaction/event proven different from the signed reference, is
   `fail`. Conflicting authenticated heads without a profile-resolved winner,
@@ -1346,8 +1394,11 @@ summary of what it allegedly proves.
   MUST occupy its own `AuthenticatedChainObservation` arm in the `htlc` context,
   with its own transaction/event inclusion proof, authenticated head/path, and
   authority evidence under the corresponding source or destination profile. A
-  shared observation or aggregate status label cannot represent or replace any
-  of the four proofs. `liquidity-tank` requires the
+  shared observation, producer relation boolean, or aggregate status label cannot
+  represent or replace any of the four proofs. From the authenticated event bytes,
+  recompute both contract bindings, each chain's configured hash algorithm over
+  the same revealed preimage, amounts, source/destination expiries, finality
+  allowance, and safety window. `liquidity-tank` requires the
   exact source lock, destination release and authenticated coordinator state
   `completed`, all under their pinned profiles. `provider-receipt` verifies the
   exact SR-3-attested response bytes, provider/session/amount/currency bindings,
@@ -1364,23 +1415,33 @@ summary of what it allegedly proves.
   payment as rail-final only after `pass`; a non-provider pass reports
   `finalityClass: "profile-final"`, which means the signed profile was satisfied
   and does not assert stronger mathematical irreversibility. DACS-5
-  RSV-1/RSV-2 MUST invoke this same verifier for
+  finality-bound bundle consumer MUST invoke this same verifier for
   `FinalityBoundSettlementEvidence` and MUST preserve its non-pass result; an
   outer bundle signature or `SettlementFinalityRecord` cannot upgrade it.
 
+**Reference-proof scope.** The repository's #392 executable reference has no
+production-native Merkle, header, provider, or Demos proof-wire codec. Its
+deterministic conformance corpus therefore uses genuine Ed25519 signatures,
+raw encoded proof bodies, Merkle relations, ancestry links, and independently
+pinned fixture authorities under the explicit
+`dacs-finality-synthetic-fixture-v1` policy. That policy is synthetic test
+metadata, not a registered live substrate policy, and candidate input cannot
+substitute its keys. Without an implemented and independently pinned native
+codec/policy, production verification returns `indeterminate`; passing these
+fixtures does not claim live-chain verification.
+
 **Historical evidence.** Legacy `SettlementEvidence` remains byte-verifiable
-under `dacs-evidence:v1:` and may be audited under its original profile. It does
-not make the new FV claim and MUST NOT be relabelled. A current consumer MAY
-apply the same verifier when it can independently bind a historical record to a
-signed rail profile, but absent that binding it MUST label the result
-historical/partial rather than current finality-verified settlement.
+under `dacs-evidence:v1:` and may be audited under its original rules. It does
+not make the new FV claim and MUST NOT be relabelled, projected, re-signed, or
+fed through the finality-bound verifier as though it carried the new type and
+domain. A separate historical audit cannot report a #392 FV pass.
 
 #### Final settlement data and propagation
 
 An implementation may prepare an in-memory evidence draft before a payment rail returns its final transaction or receipt data. That draft is not a `SettlementEvidence` record and is outside the protocol until finalised as follows:
 
 - (FP-1) A placeholder, predicted, or otherwise unconfirmed transaction or receipt value MUST NOT appear in a signed or SR-2-anchored success-outcome `SettlementEvidence`. A terminal `AttestationBundle` MUST NOT reference such a draft.
-- (FP-2) After the rail returns its authoritative final values, the producer MUST construct a fresh evidence record, recompute every rail-defined derived field and `evidence_hash`, sign it under the discriminator-selected domain, and anchor that exact signed record. Current payment success uses `FinalityBoundSettlementEvidence` / `dacs-finality-bound-evidence:v1:`; delivery, failure and historical evidence retain `SettlementEvidence` / `dacs-evidence:v1:`. An already anchored record is immutable; replacement is a new record or a spec-defined supersession, never an in-place mutation.
+- (FP-2) After the rail returns its authoritative final values, the producer MUST construct a fresh `SettlementEvidence`, recompute every rail-defined derived field, recompute `evidence_hash`, sign the new `dacs-evidence:v1:` payload, and anchor that exact signed record. An already anchored record is immutable; replacement is a new record or a spec-defined supersession, never an in-place mutation.
 - (FP-3) A bundle produced from the final evidence MUST carry its final `AttestationRef` in `settlementEvidence[]` and in the corresponding `phaseSummary[].attestationRef` when that optional pointer is present. Any duplicated `phaseSummary[].txRefs` MUST be regenerated from the final phase result and MUST NOT retain a placeholder. The producer MUST then recompute the attestation-bundle hash and every required `dacs-bundle:v1:` signature. This propagation does not authorize a change to any unrelated listing, agreement, party, vet, delivery, amendment, rating, or registry field.
 - (FP-4) A checker comparing an in-memory draft artifact set with the same-outcome final set MUST accept the transitive integrity closure. The closure contains authoritative settlement-source fields and fields derived from those sources by the rail. It also contains the evidence hash/signature/anchor, downstream evidence or transaction references, and bundle hash/signatures/anchor. The checker MUST still perform ordinary artifact, reference, and signature verification. It MUST reject a stale propagated value or a semantic change outside that closure. It MUST NOT require that only the bytes of `SettlementEvidence` differ. A changed phase outcome follows the ordinary lifecycle and evidence rules instead of this propagation-only comparison.
 
@@ -1700,8 +1761,8 @@ and reinterpret the record as a legacy arm. A current reader continues to
 verify historical `dacs-evidence:v1:` bytes unchanged and applies SB-1's
 exactly-one-authenticated-match rule without rewriting the signed artifact.
 
-**Finality-bound evidence across minor versions.** DACS-4 v0.8 does not add an
-action-bearing optional member to `SettlementEvidence`. It introduces the
+**Finality-bound evidence compatibility.** The unallocated #392 proposal does
+not add an action-bearing optional member to `SettlementEvidence`. It introduces the
 exclusive `finalityBoundEvidenceVersion` discriminator and distinct signature
 domain. An older reader rejects this type before settlement action. The new
 `consumerFinalityProfile` is required only when producing/consuming that new
@@ -1740,10 +1801,11 @@ identity or attributing counterparty fault.
 **Stale-fork and fake-confirmation finality.** *Threat:* a producer cites a real
 transaction or event from a non-canonical fork, supplies a plausible scalar
 confirmation count, or lets an attacker choose the head used for ancestry.
-*Mitigation:* current payment success uses `FinalityBoundSettlementEvidence`;
-FV-1..FV-10 derive network identity and required strength from the exact signed
-rail, verify inclusion and selected event, authenticate the head/checkpoint and
-every ancestry link, then compute depth/commitment/BFT quorum independently.
+*Mitigation:* when the unallocated #392 contract is explicitly selected, its
+payment-success path uses `FinalityBoundSettlementEvidence`; FV-1..FV-10 derive
+network identity and required strength from the exact signed rail, verify
+inclusion and selected event, authenticate the head/checkpoint and every
+ancestry link, then compute depth/commitment/BFT quorum independently.
 Conflicting heads, unresolved reorg/replacement, unavailable authority and
 pruned history remain `indeterminate`; a proved stale fork or insufficient
 strength fails. Provider capture is explicitly provisional, not irreversible.

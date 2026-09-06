@@ -32,6 +32,9 @@ import re
 import unicodedata
 from urllib.parse import quote, urlsplit
 
+from scripts.jcs import canonicalize as jcs_canonicalize
+from scripts.settlement_finality_reference import verify_finality
+
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     from cryptography.exceptions import InvalidSignature
@@ -42,11 +45,14 @@ except ImportError:  # pragma: no cover - environment-dependent
 BUNDLE_DOMAIN = "dacs-bundle:v1:"
 FAULT_BUNDLE_DOMAIN = "dacs-fault-bundle:v1:"
 EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
+FINALITY_BOUND_EVIDENCE_FAULT_BUNDLE_DOMAIN = "dacs-finality-bound-evidence-fault-bundle:v1:"
 LISTING_DOMAIN = "dacs-listing:v1:"
 SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
+FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN = "dacs-finality-bound-evidence:v1:"
 BINDING_DOMAIN = "dacs-bundle-binding:v1:"
 FAULT_POINTER_DOMAIN = "dacs-fault-bundle-pointer:v1:"
 EVIDENCE_BOUND_FAULT_POINTER_DOMAIN = "dacs-evidence-bound-fault-bundle-pointer:v1:"
+FINALITY_BOUND_EVIDENCE_FAULT_POINTER_DOMAIN = "dacs-finality-bound-evidence-fault-bundle-pointer:v1:"
 
 BB6_DEFAULT_BUDGET = 8
 
@@ -166,11 +172,21 @@ def canonical(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
+def _new_type_canonical(value):
+    """Shared RFC 8785 JCS for #392 artifacts; released hashes stay untouched."""
+    return jcs_canonicalize(value).encode("utf-8")
+
+
 def bundle_hash(bundle):
     """§10.4.1 attestation_bundle_hash: canonical form minus signatures + anchoredByRole,
     computed identically for AttestationBundle and FaultAttestationBundle."""
     unsigned = {k: v for k, v in bundle.items() if k not in ("signatures", "anchoredByRole")}
-    return hashlib.sha256(canonical(unsigned)).hexdigest()
+    encoded = (
+        _new_type_canonical(unsigned)
+        if isinstance(bundle, dict) and "finalityBoundEvidenceFaultBundleVersion" in bundle
+        else canonical(unsigned)
+    )
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def listing_hash(listing):
@@ -182,7 +198,12 @@ def listing_hash(listing):
 def settlement_evidence_hash(record):
     """DACS-4 §9.7 evidence hash: canonical form minus its signature envelope."""
     unsigned = {k: v for k, v in record.items() if k != "signature"}
-    return hashlib.sha256(canonical(unsigned)).hexdigest()
+    encoded = (
+        _new_type_canonical(unsigned)
+        if isinstance(record, dict) and "finalityBoundEvidenceVersion" in record
+        else canonical(unsigned)
+    )
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def binding_hash(binding):
@@ -193,7 +214,12 @@ def binding_hash(binding):
 def pointer_hash(pointer):
     """FaultBundleExtendedPointer signed-scope hash (E7): canonical form minus signature."""
     unsigned = {k: v for k, v in pointer.items() if k != "signature"}
-    return hashlib.sha256(canonical(unsigned)).hexdigest()
+    encoded = (
+        _new_type_canonical(unsigned)
+        if isinstance(pointer, dict) and "finalityBoundEvidenceFaultBundleVersion" in pointer
+        else canonical(unsigned)
+    )
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def logical_address(job_id, role):
@@ -219,10 +245,13 @@ def bundle_type(bundle):
         candidates.append("fault")
     if bundle.get("evidenceBoundFaultBundleVersion") == "1":
         candidates.append("evidence-bound")
+    if bundle.get("finalityBoundEvidenceFaultBundleVersion") == "1":
+        candidates.append("finality-bound")
     known_keys = {
         "bundleVersion",
         "faultBundleVersion",
         "evidenceBoundFaultBundleVersion",
+        "finalityBoundEvidenceFaultBundleVersion",
     }
     unknown_discriminators = {
         key for key in bundle
@@ -236,7 +265,7 @@ def bundle_type(bundle):
 
 
 def bundle_type_rank(bundle):
-    return {"legacy": 0, "fault": 1, "evidence-bound": 2}.get(bundle_type(bundle), -1)
+    return {"legacy": 0, "fault": 1, "evidence-bound": 2, "finality-bound": 3}.get(bundle_type(bundle), -1)
 
 
 def bundle_domain(bundle):
@@ -247,6 +276,8 @@ def bundle_domain(bundle):
         return FAULT_BUNDLE_DOMAIN
     if kind == "evidence-bound":
         return EVIDENCE_BOUND_FAULT_BUNDLE_DOMAIN
+    if kind == "finality-bound":
+        return FINALITY_BOUND_EVIDENCE_FAULT_BUNDLE_DOMAIN
     raise ValueError("unsupported, missing, or non-exclusive bundle discriminator")
 
 
@@ -337,8 +368,8 @@ def verify_binding(binding, pubkeys, *, expected_jobid, expected_role, expected_
 
 
 def is_fab(bundle):
-    """True for either absolute-fault type (FAB or EBFAB)."""
-    return bundle_type(bundle) in {"fault", "evidence-bound"}
+    """True for an absolute-fault bundle type."""
+    return bundle_type(bundle) in {"fault", "evidence-bound", "finality-bound"}
 
 
 def _outcome_class(outcome):
@@ -443,9 +474,12 @@ def divergence(copy_a, copy_b):
     if _outcome_class(copy_a["outcome"]) != _outcome_class(copy_b["outcome"]):
         return True
 
-    if bundle_type(copy_a) == bundle_type(copy_b) == "evidence-bound":
-        refs_a = {canonical(ref) for ref in copy_a.get("settlementEvidence", [])}
-        refs_b = {canonical(ref) for ref in copy_b.get("settlementEvidence", [])}
+    if bundle_type(copy_a) == bundle_type(copy_b) and bundle_type(copy_a) in {
+        "evidence-bound", "finality-bound",
+    }:
+        encode = _new_type_canonical if bundle_type(copy_a) == "finality-bound" else canonical
+        refs_a = {encode(ref) for ref in copy_a.get("settlementEvidence", [])}
+        refs_b = {encode(ref) for ref in copy_b.get("settlementEvidence", [])}
         if refs_a != refs_b:
             return True
 
@@ -809,6 +843,19 @@ def _settlement_finality_matches_phase(phase, finality, refs):
     return _string_member(finality.get("model"), allowed.get(phase, set()))
 
 
+def _finality_payment_tx_refs_match_phase(phase, refs):
+    """Exact strong-evidence transaction cardinality, including both HTLC locks."""
+    if phase != "pay-cross-chain-htlc":
+        return _payment_tx_refs_match_phase(phase, refs, success=True)
+    kinds = [ref["kind"] for ref in refs]
+    return (
+        len(kinds) == 4
+        and kinds.count("htlc-lock") == 2
+        and kinds.count("htlc-claim") == 1
+        and kinds.count("htlc-reveal") == 1
+    )
+
+
 def _settlement_finality_shape_valid(value):
     if not isinstance(value, dict):
         return False
@@ -948,6 +995,82 @@ def _settlement_evidence_shape_valid(record):
     return True
 
 
+def _finality_bound_settlement_evidence_shape_valid(record):
+    """Closed shape for the distinct #392 successful-payment evidence type.
+
+    This does not project the object into the legacy SettlementEvidence shape. The
+    finality verifier subsequently authenticates every signed field and proof binding.
+    """
+    if not isinstance(record, dict):
+        return False
+    required = {
+        "finalityBoundEvidenceVersion", "jobId", "phase", "outcome",
+        "paymentTxRefs", "paymentAmount", "settlementFinality",
+        "railDefinitionRef", "observedAt", "signature",
+    }
+    optional = {"paymentFee", "amendmentRefs", "supersedesEvidenceRef"}
+    unknown_discriminators = {
+        key for key in record
+        if isinstance(key, str)
+        and key.endswith("EvidenceVersion")
+        and key != "finalityBoundEvidenceVersion"
+    }
+    if (
+        set(record) - required - optional
+        or not required <= set(record)
+        or unknown_discriminators
+        or record.get("finalityBoundEvidenceVersion") != "1"
+        or not _nonempty_jcs_string(record.get("jobId"))
+        or not _string_member(record.get("phase"), PAYMENT_PHASES)
+        or record.get("outcome") != "success"
+        or not _non_boolean_number(record.get("observedAt"))
+        or not _price_term_shape_valid(record.get("paymentAmount"))
+        or not isinstance(record.get("paymentTxRefs"), list)
+        or not record["paymentTxRefs"]
+        or any(not _chain_tx_ref_shape_valid(ref) for ref in record["paymentTxRefs"])
+        or not _finality_payment_tx_refs_match_phase(record["phase"], record["paymentTxRefs"])
+        or not _settlement_finality_shape_valid(record.get("settlementFinality"))
+        or not _settlement_finality_matches_phase(
+            record["phase"], record["settlementFinality"], record["paymentTxRefs"]
+        )
+    ):
+        return False
+    signature = record.get("signature")
+    if (
+        not isinstance(signature, dict)
+        or set(signature) != {"algorithm", "signer", "value"}
+        or signature.get("algorithm") != "ed25519"
+        or not _claim_reference_shape_valid(signature.get("signer"))
+        or not _nonempty_jcs_string(signature.get("value"))
+    ):
+        return False
+    rail_ref = record.get("railDefinitionRef")
+    anchor = rail_ref.get("anchor") if isinstance(rail_ref, dict) else None
+    if (
+        not isinstance(rail_ref, dict)
+        or set(rail_ref) != {"anchor", "contentHash", "railId", "railVersion"}
+        or not isinstance(anchor, dict)
+        or set(anchor) != {"kind", "locator"}
+        or not _string_member(anchor.get("kind"), SUPPORTED_ATTESTATION_ANCHOR_KINDS)
+        or not _nonempty_jcs_string(anchor.get("locator"))
+        or not _sha256_hex(rail_ref.get("contentHash"))
+        or not _nonempty_jcs_string(rail_ref.get("railId"))
+        or not _safe_nonnegative_integer(rail_ref.get("railVersion"), positive=True)
+    ):
+        return False
+    if "paymentFee" in record and not _price_term_shape_valid(record["paymentFee"]):
+        return False
+    if "amendmentRefs" in record and (
+        not isinstance(record["amendmentRefs"], list)
+        or any(not _attestation_ref_shape_valid(ref) for ref in record["amendmentRefs"])
+    ):
+        return False
+    return (
+        "supersedesEvidenceRef" not in record
+        or _attestation_ref_shape_valid(record["supersedesEvidenceRef"])
+    )
+
+
 def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,
                                             session_execution_authority_by_phase_key,
                                             verified_receipt_by_canonical_ref):
@@ -1053,7 +1176,7 @@ def _known_authenticated_st8_successor(
     return False
 
 
-def validate_ebfab(
+def _validate_bound_fault_bundle(
     bundle,
     listing,
     pubkeys,
@@ -1061,6 +1184,8 @@ def validate_ebfab(
     bundle_lifecycle,
     session_execution_authority_by_phase_key,
     verified_receipt_by_canonical_ref,
+    *,
+    expected_kind,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
@@ -1069,10 +1194,20 @@ def validate_ebfab(
     settlementEvidence bijection, and the SR-2 lifecycle threshold. It intentionally
     remains test support rather than a general DACS validator.
     """
-    if bundle_type(bundle) != "evidence-bound":
-        return (False, "not an EvidenceBoundFaultAttestationBundle", None)
+    if bundle_type(bundle) != expected_kind:
+        reason = (
+            "not an EvidenceBoundFaultAttestationBundle"
+            if expected_kind == "evidence-bound"
+            else "not the expected evidence-bound bundle type"
+        )
+        return (False, reason, None)
     if not _absolute_fault_bundle_shape_valid(bundle):
-        return (False, "malformed EvidenceBoundFaultAttestationBundle", None)
+        reason = (
+            "malformed EvidenceBoundFaultAttestationBundle"
+            if expected_kind == "evidence-bound"
+            else "malformed evidence-bound bundle"
+        )
+        return (False, reason, None)
     if (
         not isinstance(listing, dict)
         or not isinstance(pubkeys, dict)
@@ -1251,9 +1386,27 @@ def validate_ebfab(
         if not isinstance(record, dict):
             return (False, "settlement evidence lacks authenticated record", None)
         signature = record.get("signature")
+        record_is_finality_bound = (
+            expected_kind == "finality-bound"
+            and record.get("phase") in PAYMENT_PHASES
+            and record.get("outcome") == "success"
+        )
+        shape_valid = (
+            _finality_bound_settlement_evidence_shape_valid(record)
+            if record_is_finality_bound
+            else _settlement_evidence_shape_valid(record)
+        )
+        evidence_domain = (
+            FINALITY_BOUND_SETTLEMENT_EVIDENCE_DOMAIN
+            if record_is_finality_bound
+            else SETTLEMENT_EVIDENCE_DOMAIN
+        )
+        if not shape_valid:
+            if record_is_finality_bound:
+                return (False, "malformed finality-bound settlement evidence record", None)
+            return (False, "settlement evidence record does not bind this job, phase, signer, or hash", None)
         if (
-            not _settlement_evidence_shape_valid(record)
-            or record.get("jobId") != bundle.get("jobId")
+            record.get("jobId") != bundle.get("jobId")
             or not isinstance(signature, dict)
             or signature.get("algorithm") != "ed25519"
             or not isinstance(signature.get("signer"), str)
@@ -1266,7 +1419,7 @@ def validate_ebfab(
             return (False, canonical_reason, None)
         if not verify_sig(
             pubkeys[signature["signer"]],
-            SETTLEMENT_EVIDENCE_DOMAIN,
+            evidence_domain,
             settlement_evidence_hash(record),
             signature["value"],
         ):
@@ -1453,11 +1606,234 @@ def validate_ebfab(
     return (True, "ok", expected_keys)
 
 
+def validate_ebfab(
+    bundle,
+    listing,
+    pubkeys,
+    reference_validation_by_canonical_ref,
+    bundle_lifecycle,
+    session_execution_authority_by_phase_key,
+    verified_receipt_by_canonical_ref,
+):
+    """Execute the released EvidenceBoundFaultAttestationBundle contract unchanged."""
+    return _validate_bound_fault_bundle(
+        bundle,
+        listing,
+        pubkeys,
+        reference_validation_by_canonical_ref,
+        bundle_lifecycle,
+        session_execution_authority_by_phase_key,
+        verified_receipt_by_canonical_ref,
+        expected_kind="evidence-bound",
+    )
+
+
+def validate_finality_bound_ebfab(
+    bundle,
+    listing,
+    pubkeys,
+    reference_validation_by_canonical_ref,
+    bundle_lifecycle,
+    session_execution_authority_by_phase_key,
+    verified_receipt_by_canonical_ref,
+    finality_verification_by_canonical_ref,
+    finality_trust,
+):
+    """Execute the distinct finality-bound bundle consumer and propagate FV decisions.
+
+    Returns ``(decision, reason, phase_keys)`` where decision is one of pass,
+    fail, indeterminate, or error. A strong signed object is never rewritten as
+    legacy evidence to enter the older validator.
+    """
+    if bundle_type(bundle) != "finality-bound":
+        return ("error", "not a FinalityBoundEvidenceFaultAttestationBundle", None)
+    if not isinstance(finality_verification_by_canonical_ref, dict):
+        return ("indeterminate", "finality verification authority is unavailable", None)
+    if not isinstance(finality_trust, dict):
+        return ("indeterminate", "trusted finality policy is unavailable", None)
+    ok, reason, phase_keys = _validate_bound_fault_bundle(
+        bundle,
+        listing,
+        pubkeys,
+        reference_validation_by_canonical_ref,
+        bundle_lifecycle,
+        session_execution_authority_by_phase_key,
+        verified_receipt_by_canonical_ref,
+        expected_kind="finality-bound",
+    )
+    if not ok:
+        malformed = reason.startswith(("not the expected", "malformed", "pipeline or"))
+        return ("error" if malformed else "fail", reason, None)
+
+    results = []
+    for ref in bundle.get("settlementEvidence", []):
+        ref_key = canonical(ref).decode("utf-8")
+        resolution = reference_validation_by_canonical_ref.get(ref_key)
+        record = resolution.get("record") if isinstance(resolution, dict) else None
+        if not (
+            isinstance(record, dict)
+            and record.get("phase") in PAYMENT_PHASES
+            and record.get("outcome") == "success"
+        ):
+            continue
+        candidate = finality_verification_by_canonical_ref.get(ref_key)
+        if not isinstance(candidate, dict):
+            results.append(("indeterminate", "successful payment lacks finality verification input"))
+            continue
+        if candidate.get("evidence") != record:
+            results.append(("fail", "finality input does not bind the exact authenticated evidence"))
+            continue
+        finality_result = verify_finality(candidate, finality_trust)
+        decision = finality_result["decision"]
+        finality_class = finality_result.get("finalityClass")
+        detail = finality_result["reason"]
+        if decision != "pass":
+            results.append((decision, "FV rejected successful payment: " + detail))
+        elif finality_class not in {"profile-final", "provisional-provider-capture"}:
+            results.append(("error", "FV returned an unsupported passing finality class"))
+
+    for precedence in ("error", "fail", "indeterminate"):
+        for decision, detail in results:
+            if decision == precedence:
+                return (decision, detail, None)
+    return ("pass", "authenticated SEB and finality verification passed", phase_keys)
+
+
+def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
+    """Reconcile authenticated new/new and new/older copies before type precedence.
+
+    A present entry carries ``bundle``, trusted ``expectedJobId``/``expectedRole``,
+    and the appropriate ``authority`` for evidence-bound types. A separately trusted
+    resolver can instead report ``disposition`` as ``absent`` or ``indeterminate``;
+    those are consumer inputs, never producer-authored verification booleans. The
+    helper is a bounded executable consumer interface for #392; it is not the pending
+    combined #391+#392 reputation derivation.
+    """
+    if not isinstance(entries, list) or not entries:
+        return {"decision": "error", "reason": "copy set must be a non-empty array", "bundle": None}
+    if not isinstance(pubkeys, dict) or not isinstance(finality_trust, dict):
+        return {"decision": "indeterminate", "reason": "copy authentication authority unavailable", "bundle": None}
+
+    requested_jobs = set()
+    authenticated = []
+    nonpasses = []
+    for entry in entries:
+        if not isinstance(entry, dict):
+            return {"decision": "error", "reason": "copy entry is not an object", "bundle": None}
+        expected_job = entry.get("expectedJobId")
+        expected_role = entry.get("expectedRole")
+        if (
+            not isinstance(expected_job, str)
+            or not expected_job
+            or expected_role not in {"buyer", "seller", "orchestrator"}
+        ):
+            nonpasses.append((None, "error", "copy request job or role authority is malformed"))
+            continue
+        requested_jobs.add(expected_job)
+        disposition = entry.get("disposition", "present")
+        if disposition == "absent":
+            continue
+        if disposition == "indeterminate":
+            nonpasses.append((None, "indeterminate", "copy presence is indeterminate"))
+            continue
+        if disposition != "present":
+            nonpasses.append((None, "error", "copy disposition is unsupported"))
+            continue
+        bundle = entry.get("bundle")
+        kind = bundle_type(bundle)
+        if (
+            kind is None
+            or not isinstance(bundle, dict)
+            or bundle.get("jobId") != expected_job
+            or bundle.get("anchoredByRole") != expected_role
+        ):
+            decision = "error" if kind is None else "fail"
+            nonpasses.append((kind, decision, "copy type, job, or authenticated role binding is invalid"))
+            continue
+        authority = entry.get("authority")
+        if kind == "finality-bound":
+            if not isinstance(authority, dict):
+                result = ("indeterminate", "strong copy authority unavailable", None)
+            else:
+                result = validate_finality_bound_ebfab(
+                    bundle,
+                    authority.get("listing"),
+                    pubkeys,
+                    authority.get("referenceValidationByCanonicalRef"),
+                    authority.get("bundleLifecycle"),
+                    authority.get("sessionExecutionAuthorityByPhaseKey"),
+                    authority.get("verifiedReceiptByCanonicalRef"),
+                    authority.get("finalityVerificationByCanonicalRef"),
+                    finality_trust,
+                )
+            if result[0] != "pass":
+                nonpasses.append((kind, result[0], result[1]))
+                continue
+        elif kind == "evidence-bound":
+            if not isinstance(authority, dict):
+                nonpasses.append((kind, "indeterminate", "EBFAB authority unavailable"))
+                continue
+            ok, reason, _ = validate_ebfab(
+                bundle,
+                authority.get("listing"),
+                pubkeys,
+                authority.get("referenceValidationByCanonicalRef"),
+                authority.get("bundleLifecycle"),
+                authority.get("sessionExecutionAuthorityByPhaseKey"),
+                authority.get("verifiedReceiptByCanonicalRef"),
+            )
+            if not ok:
+                nonpasses.append((kind, "fail", reason))
+                continue
+        else:
+            shape_ok = (
+                _absolute_fault_bundle_shape_valid(bundle)
+                if kind == "fault"
+                else _bundle_shape_ok(bundle)[0]
+            )
+            signatures_ok, reason = _bundle_signatures_valid(bundle, pubkeys)
+            if not shape_ok or not signatures_ok:
+                nonpasses.append((kind, "fail", reason if not signatures_ok else "malformed older bundle"))
+                continue
+        authenticated.append(bundle)
+
+    # A present strong copy that cannot establish its required proof is never
+    # replaced by an otherwise-valid weaker representation of the same job.
+    if len(requested_jobs) != 1:
+        return {"decision": "fail", "reason": "copy requests bind different jobs", "bundle": None}
+    for scoped in (
+        [item for item in nonpasses if item[0] == "finality-bound"],
+        nonpasses,
+    ):
+        for precedence in ("error", "fail", "indeterminate"):
+            for _kind, decision, reason in scoped:
+                if decision == precedence:
+                    return {"decision": decision, "reason": reason, "bundle": None}
+    if not authenticated:
+        return {"decision": "indeterminate", "reason": "no authenticated copies", "bundle": None}
+    jobs = {bundle["jobId"] for bundle in authenticated}
+    if len(jobs) != 1:
+        return {"decision": "fail", "reason": "authenticated copies bind different jobs", "bundle": None}
+    for index, left in enumerate(authenticated):
+        for right in authenticated[index + 1:]:
+            if divergence(left, right):
+                return {"decision": "fail", "reason": "authenticated copies diverge", "bundle": None}
+    winner = max(
+        authenticated,
+        key=lambda bundle: (bundle_type_rank(bundle), bundle_hash(bundle)),
+    )
+    return {"decision": "pass", "reason": "authenticated strongest compatible copy selected", "bundle": winner}
+
+
 def _tagged_copy_valid_for_derive(tagged):
     """Reject an EBFAB before divergence/ranking unless its authenticated SEB gate passes."""
     bundle = tagged.get("bundle")
     kind = bundle_type(bundle)
     if kind is None:
+        return False
+    # The combined #391+#392 current-use derivation has not been allocated or
+    # implemented. A finality-bound copy cannot enter either released derivation.
+    if kind == "finality-bound":
         return False
     if kind != "evidence-bound":
         return True
@@ -1754,8 +2130,121 @@ def _attestation_ref_shape_valid(ref):
     )
 
 
+def _finality_bound_fault_bundle_shape_valid(bundle):
+    """Closed recursive shape for the unallocated #392 bundle only."""
+    required = {
+        "finalityBoundEvidenceFaultBundleVersion", "jobId", "outcome", "faultedParty",
+        "anchoredByRole", "listingRef", "parties", "phaseSummary", "vetRecords",
+        "settlementEvidence", "recipeRegistryVersion", "railRegistryVersion",
+        "finalisedAt", "signatures",
+    }
+    optional = {"agreementRef", "cancellation", "amendments", "ratingRefs"}
+    if not isinstance(bundle, dict) or not required <= set(bundle) <= required | optional:
+        return False
+    listing_ref = bundle.get("listingRef")
+    if not (
+        bundle.get("finalityBoundEvidenceFaultBundleVersion") == "1"
+        and _nonempty_jcs_string(bundle.get("jobId"))
+        and _string_member(bundle.get("outcome"), {
+            "completed", "failed-perm", "failed-counterparty", "failed-substrate",
+            "aborted-by-self", "aborted-by-other",
+        })
+        and _string_member(bundle.get("faultedParty"), {"buyer", "seller", "orchestrator", "none"})
+        and _string_member(bundle.get("anchoredByRole"), {"buyer", "seller", "orchestrator"})
+        and isinstance(listing_ref, dict)
+        and set(listing_ref) == {"listingId", "version", "contentHash"}
+        and _nonempty_jcs_string(listing_ref.get("listingId"))
+        and _safe_nonnegative_integer(listing_ref.get("version"), positive=True)
+        and _sha256_hex(listing_ref.get("contentHash"))
+        and _safe_nonnegative_integer(bundle.get("recipeRegistryVersion"), positive=True)
+        and _safe_nonnegative_integer(bundle.get("railRegistryVersion"), positive=True)
+        and _non_boolean_number(bundle.get("finalisedAt"))
+        and bundle["finalisedAt"] >= 0
+    ):
+        return False
+
+    parties = bundle.get("parties")
+    if not isinstance(parties, list) or len(parties) < 2:
+        return False
+    roles = set()
+    claims = set()
+    for party in parties:
+        if not (
+            isinstance(party, dict)
+            and set(party) == {"role", "bundleHash", "primaryClaim"}
+            and _string_member(party.get("role"), {"buyer", "seller", "orchestrator"})
+            and _sha256_hex(party.get("bundleHash"))
+            and _claim_reference_shape_valid(party.get("primaryClaim"))
+            and party["role"] not in roles
+            and party["primaryClaim"] not in claims
+        ):
+            return False
+        roles.add(party["role"])
+        claims.add(party["primaryClaim"])
+    if not {"buyer", "seller"} <= roles:
+        return False
+
+    phase_summary = bundle.get("phaseSummary")
+    if not isinstance(phase_summary, list):
+        return False
+    for entry in phase_summary:
+        entry_required = {"index", "kind", "outcome"}
+        entry_optional = {"errorClass", "retryExhausted", "txRefs", "attestationRef"}
+        if not (
+            isinstance(entry, dict)
+            and entry_required <= set(entry) <= entry_required | entry_optional
+            and _safe_nonnegative_integer(entry.get("index"))
+            and _string_member(entry.get("kind"), SUPPORTED_PHASES)
+            and _string_member(entry.get("outcome"), {"ok", "fail"})
+            and (
+                "errorClass" not in entry
+                or _string_member(entry["errorClass"], {
+                    "permanent", "transient", "counterparty", "substrate", "settlement-atomicity",
+                })
+            )
+            and ("retryExhausted" not in entry or entry["retryExhausted"] is True)
+            and (
+                "txRefs" not in entry
+                or isinstance(entry["txRefs"], list)
+                and all(_chain_tx_ref_shape_valid(ref) for ref in entry["txRefs"])
+            )
+            and (
+                "attestationRef" not in entry
+                or _attestation_ref_shape_valid(entry["attestationRef"])
+            )
+        ):
+            return False
+
+    for field in ("vetRecords", "settlementEvidence", "amendments", "ratingRefs"):
+        if field in bundle and (
+            not isinstance(bundle[field], list)
+            or any(not _attestation_ref_shape_valid(ref) for ref in bundle[field])
+        ):
+            return False
+    if "agreementRef" in bundle and not _attestation_ref_shape_valid(bundle["agreementRef"]):
+        return False
+    if "cancellation" in bundle and not (
+        isinstance(bundle["cancellation"], dict)
+        and bundle["cancellation"] == {"claimedPolicy": "pre-commit"}
+    ):
+        return False
+
+    signatures = bundle.get("signatures")
+    return isinstance(signatures, list) and all(
+        isinstance(signature, dict)
+        and set(signature) == {"party", "algorithm", "value"}
+        and _claim_reference_shape_valid(signature.get("party"))
+        and signature.get("algorithm") == "ed25519"
+        and _nonempty_jcs_string(signature.get("value"))
+        for signature in signatures
+    )
+
+
 def _absolute_fault_bundle_shape_valid(bundle):
-    if bundle_type(bundle) not in {"fault", "evidence-bound"}:
+    kind = bundle_type(bundle)
+    if kind == "finality-bound":
+        return _finality_bound_fault_bundle_shape_valid(bundle)
+    if kind not in {"fault", "evidence-bound"}:
         return False
     listing_ref = bundle.get("listingRef")
     parties = bundle.get("parties")
@@ -1858,7 +2347,7 @@ def resolve_fab_pointer(pointer, dereferenced_bundle, binding=None):
 def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
     if not isinstance(full_bundle_url, str):
         return False
-    if pointer_kind != "evidence-bound":
+    if pointer_kind not in {"evidence-bound", "finality-bound"}:
         return True
     try:
         parsed_url = urlsplit(full_bundle_url)
@@ -1873,7 +2362,8 @@ def _extended_pointer_url_shape_valid(pointer_kind, full_bundle_url):
 
 
 def resolve_absolute_fault_pointer(
-    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None
+    pointer, dereferenced_bundle, binding=None, pubkeys=None, ebfab_authority=None,
+    finality_bound_authority=None,
 ):
     """Validate FAB/EBFAB pointer type, domain, signature, and triple identity.
 
@@ -1887,6 +2377,7 @@ def resolve_absolute_fault_pointer(
         "bundleVersion",
         "faultBundleVersion",
         "evidenceBoundFaultBundleVersion",
+        "finalityBoundEvidenceFaultBundleVersion",
     }
     if any(
         isinstance(key, str)
@@ -1908,9 +2399,26 @@ def resolve_absolute_fault_pointer(
         pointer_candidates.append(("fault", FAULT_POINTER_DOMAIN))
     if pointer.get("evidenceBoundFaultBundleVersion") == "1":
         pointer_candidates.append(("evidence-bound", EVIDENCE_BOUND_FAULT_POINTER_DOMAIN))
+    if pointer.get("finalityBoundEvidenceFaultBundleVersion") == "1":
+        pointer_candidates.append(("finality-bound", FINALITY_BOUND_EVIDENCE_FAULT_POINTER_DOMAIN))
     if len(pointer_candidates) != 1:
         return {"ok": False, "reason": "unsupported or non-exclusive pointer discriminator"}
     pointer_kind, domain = pointer_candidates[0]
+    if pointer_kind == "finality-bound":
+        required = {
+            "finalityBoundEvidenceFaultBundleVersion", "pointerKind", "fullBundleUrl",
+            "fullBundleContentHash", "signature",
+        }
+        signature = pointer.get("signature")
+        if not (
+            required <= set(pointer) <= required | {"segmentRefs"}
+            and isinstance(signature, dict)
+            and set(signature) == {"signer", "algorithm", "value"}
+            and _claim_reference_shape_valid(signature.get("signer"))
+            and signature.get("algorithm") == "ed25519"
+            and _nonempty_jcs_string(signature.get("value"))
+        ):
+            return {"ok": False, "reason": "malformed finality-bound pointer shape"}
     if bundle_type(dereferenced_bundle) != pointer_kind:
         return {"ok": False, "reason": "pointer and dereferenced bundle types differ"}
     if pointer.get("pointerKind") != "extended":
@@ -1956,6 +2464,30 @@ def resolve_absolute_fault_pointer(
         )
         if not seb_ok:
             return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}
+    elif pointer_kind == "finality-bound":
+        if not isinstance(finality_bound_authority, dict):
+            return {
+                "ok": False,
+                "decision": "indeterminate",
+                "reason": "finality-bound pointer lacks verification authority",
+            }
+        decision, strong_reason, _ = validate_finality_bound_ebfab(
+            dereferenced_bundle,
+            finality_bound_authority.get("listing"),
+            pubkeys,
+            finality_bound_authority.get("referenceValidationByCanonicalRef"),
+            finality_bound_authority.get("bundleLifecycle"),
+            finality_bound_authority.get("sessionExecutionAuthorityByPhaseKey"),
+            finality_bound_authority.get("verifiedReceiptByCanonicalRef"),
+            finality_bound_authority.get("finalityVerificationByCanonicalRef"),
+            finality_bound_authority.get("finalityTrust"),
+        )
+        if decision != "pass":
+            return {
+                "ok": False,
+                "decision": decision,
+                "reason": "dereferenced finality-bound bundle fails: " + strong_reason,
+            }
 
     signature = pointer.get("signature")
     if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
@@ -2058,7 +2590,7 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
 
             # The requested jobId belongs to authenticated address/binding resolution
             # context. Never recover it from returned bundle content.
-            if kind == "evidence-bound" and not selected:
+            if kind in {"evidence-bound", "finality-bound"} and not selected:
                 continue
             resolved_job = tagged.get("resolvedJobId")
             if not isinstance(resolved_job, str) or not resolved_job:
@@ -2073,7 +2605,7 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
             if bundle.get("jobId") != resolved_job:
                 rejected_selected_jobs.add(resolved_job)
                 continue
-            if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
+            if kind in {"evidence-bound", "finality-bound"} and not _tagged_copy_valid_for_derive(tagged):
                 rejected_selected_jobs.add(resolved_job)
                 continue
             if party not in _primary_claims(bundle):
@@ -2877,6 +3409,10 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
     tagged = []
     for entry in derivation["resolutionContext"]:
         b = _deref_role_copy(anchor_deref, entry["roleEvidence"])
+        if bundle_type(b) == "finality-bound":
+            # No existing receipt discriminator claims the coordinated #391+#392
+            # contract. Refuse instead of silently dropping the stronger copy.
+            return (False, None)
         tag = {"bundle": b, "resolvedRole": entry["resolvedRole"],
                "counterpartyDisposition": entry.get("counterpartyDisposition"),
                "counterpartyRef": entry.get("counterpartyRef"),
@@ -2904,6 +3440,8 @@ def replay_receipt(derivation, deref, party, window_start, window_end, evidence_
             counterparty = _deref_role_copy(
                 anchor_deref, entry.get("counterpartyRoleEvidence")
             )
+            if bundle_type(counterparty) == "finality-bound":
+                return (False, None)
             if bundle_type(counterparty) == "evidence-bound":
                 counterparty_entry = {
                     "contentHash": (entry.get("counterpartyRef") or {}).get("contentHash"),

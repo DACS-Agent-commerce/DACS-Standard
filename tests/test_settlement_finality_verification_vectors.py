@@ -1,6 +1,7 @@
+import base64
+import copy
 import hashlib
 import json
-import re
 import subprocess
 import sys
 import unittest
@@ -8,267 +9,54 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VECTORS = (
-    ROOT / "conformance" / "vectors" / "security"
-    / "settlement-finality-verification-v0.8.json"
+TESTS = ROOT / "tests"
+for path in (str(ROOT), str(TESTS)):
+    if path not in sys.path:
+        sys.path.insert(0, path)
+
+from dacs5_reference import (  # noqa: E402
+    BUNDLE_DOMAIN,
+    bundle_hash,
+    bundle_type,
+    derive,
+    derive_job_bound,
+    reconcile_authenticated_finality_copies,
+    resolve_absolute_fault_pointer,
+    validate_ebfab,
+    validate_finality_bound_ebfab,
 )
-SPEC4 = ROOT / "spec" / "DACS-4-SETTLE.md"
-SPEC5 = ROOT / "spec" / "DACS-5-VERIFY.md"
-CORE = ROOT / "spec" / "CORE.md"
-PLAN = ROOT / "spec" / "CONFORMANCE-PLAN.md"
-README = ROOT / "conformance" / "vectors" / "security" / "README.md"
-WORKFLOW = ROOT / ".github" / "workflows" / "validate.yml"
-POSITION_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
-COMMITMENT_RANK = {"processed": 0, "confirmed": 1, "finalized": 2}
-KNOWN_MODELS = {
+from frozen_dacs5_v05_reader import (  # noqa: E402
+    bundle_type as frozen_bundle_type,
+    pointer_type as frozen_pointer_type,
+)
+from scripts.jcs import canonicalize  # noqa: E402
+from scripts.settlement_finality_reference import verify_finality  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
+
+
+VECTORS = ROOT / "conformance" / "vectors" / "security" / "settlement-finality-verification.json"
+GENERATOR = ROOT / "scripts" / "generate_settlement_finality_verification_vectors.py"
+MODELS = {
     "block-depth", "commitment-level", "bft-final", "provider-receipt",
     "htlc-reveal", "liquidity-tank",
 }
-HTLC_OBSERVATIONS = {
-    "sourceLock", "sourceClaim", "destinationLock", "destinationReveal"
-}
-HTLC_RELATIONS = {
-    "sourceContractMatches",
-    "destinationContractMatches",
-    "commonHashlockMatches",
-    "revealedPreimageMatches",
-    "amountsMatch",
-    "timelocksValid",
-}
 
 
-def canonical_json(value):
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
-
-
-def validate_htlc_observation(observation, profile):
-    required = {
-        "networkId",
-        "genesisHash",
-        "transactionRef",
-        "transactionInclusionProof",
-        "selectedEventProof",
-        "inclusionBlock",
-        "authenticatedHead",
-        "ancestryProof",
-        "authorityEvidence",
+def decode_public_keys(trust):
+    return {
+        signer: base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+        for signer, value in trust["partyKeys"].items()
     }
-    if not isinstance(observation, dict) or not required.issubset(observation):
-        return "error"
-    authority = observation.get("authorityEvidence")
-    if not isinstance(authority, dict) or not authority.get("sourceRefs"):
-        return "error"
-    if authority.get("kind") == "unavailable":
-        return "indeterminate"
-    if authority.get("kind") != "rpc-quorum" or not authority.get("value"):
-        return "error"
-    if observation.get("networkId") != profile.get("networkId"):
-        return "fail"
-    if observation.get("genesisHash") != profile.get("genesisHash"):
-        return "fail"
-    transaction = observation.get("transactionRef")
-    inclusion = observation.get("transactionInclusionProof")
-    selected_event = observation.get("selectedEventProof")
-    if (
-        not isinstance(transaction, dict)
-        or transaction.get("kind") != "evm-event"
-        or not isinstance(inclusion, dict)
-        or inclusion.get("kind") != "receipt-merkle-proof"
-        or not inclusion.get("value")
-        or not isinstance(selected_event, dict)
-        or selected_event.get("kind") != "evm-log-proof"
-        or not selected_event.get("value")
-    ):
-        return "error"
-    inclusion_block = observation.get("inclusionBlock")
-    head = observation.get("authenticatedHead")
-    if not isinstance(inclusion_block, dict) or not isinstance(head, dict):
-        return "error"
-    if not POSITION_RE.fullmatch(str(inclusion_block.get("position", ""))):
-        return "error"
-    if not POSITION_RE.fullmatch(str(head.get("position", ""))):
-        return "error"
-    ancestry = observation.get("ancestryProof")
-    if not isinstance(ancestry, list) or not ancestry:
-        return "error"
-    first_link = ancestry[0]
-    if (
-        not isinstance(first_link, dict)
-        or first_link.get("childId") != head.get("id")
-        or first_link.get("parentId") != inclusion_block.get("id")
-    ):
-        return "fail"
-    required_depth = profile.get("requiredDepth")
-    if type(required_depth) is not int or required_depth <= 0:
-        return "error"
-    depth = int(head["position"]) - int(inclusion_block["position"]) + 1
-    if depth < required_depth:
-        return "fail"
-    return "pass"
 
 
-def evaluate(value):
-    """Independent executable model of DACS-4 FV-1..FV-10 precedence."""
-    evidence = value["evidence"]
-    discriminator = evidence.get("discriminator")
-    if discriminator == "multiple" or discriminator not in {"legacy", "finality-bound"}:
-        return "error", None
-    if discriminator == "legacy" or evidence.get("signatureDomainMatches") is not True:
-        return "fail", None
-
-    rail = value["rail"]
-    if rail.get("profileShape") != "valid":
-        return "error", None
-    if any(rail.get(field) is False for field in (
-        "referenceMatches", "agreementMatches", "phaseMatches"
-    )):
-        return "fail", None
-    if rail.get("resolution") in {"unavailable", "conflicting"}:
-        return "indeterminate", None
-    if rail.get("resolution") != "verified":
-        return "error", None
-
-    profile = rail.get("profile")
-    report = evidence.get("settlementFinality")
-    if not isinstance(profile, dict) or profile.get("finalityProfileVersion") != "1":
-        return "error", None
-    model = profile.get("model")
-    if model not in KNOWN_MODELS or not isinstance(report, dict):
-        return "error", None
-    if report.get("model") != model:
-        return "fail", None
-
-    context = value["context"]
-    if context.get("shape") != "valid" or context.get("proofKindSupported") is not True:
-        return "error", None
-
-    # Structural arithmetic errors precede any trust-source lookup.
-    if model == "block-depth":
-        if not all(POSITION_RE.fullmatch(str(context.get(field, ""))) for field in (
-            "inclusionPosition", "headPosition"
-        )):
-            return "error", None
-
-    if model in {"block-depth", "commitment-level", "bft-final"}:
-        settlement = profile.get("settlement")
-        if not isinstance(settlement, dict) or settlement.get("kind") != model:
-            return "error", None
-        observation = settlement.get("observation")
-        if not isinstance(observation, dict) or not observation.get("authorityRefs"):
-            return "error", None
-        if context.get("networkId") != settlement.get("networkId"):
-            return "fail", None
-        if context.get("genesisHash") != settlement.get("genesisHash"):
-            return "fail", None
-        if context.get("transactionIncluded") is not True:
-            return "fail", None
-        if context.get("selectedEventMatches") is not True:
-            return "fail", None
-        if context.get("canonicalPath") == "stale-fork":
-            return "fail", None
-
-        if model == "block-depth":
-            required = settlement.get("requiredDepth")
-            if type(required) is not int or required <= 0:
-                return "error", None
-            if report.get("finalityBlocks") != required:
-                return "fail", None
-            depth = int(context["headPosition"]) - int(context["inclusionPosition"]) + 1
-            if depth < required:
-                return "fail", None
-        elif model == "commitment-level":
-            required = settlement.get("requiredCommitment")
-            observed = context.get("commitment")
-            if required not in COMMITMENT_RANK or observed not in COMMITMENT_RANK:
-                return "error", None
-            if report.get("finalityCommitmentLevel") != required:
-                return "fail", None
-            if COMMITMENT_RANK[observed] < COMMITMENT_RANK[required]:
-                return "fail", None
+def merge(base, override):
+    value = copy.deepcopy(base)
+    for key, item in (override or {}).items():
+        if isinstance(item, dict) and isinstance(value.get(key), dict):
+            value[key] = merge(value[key], item)
         else:
-            numerator = settlement.get("quorumNumerator")
-            denominator = settlement.get("quorumDenominator")
-            if (
-                type(numerator) is not int or type(denominator) is not int
-                or numerator <= 0 or denominator <= 0 or numerator > denominator
-            ):
-                return "error", None
-            if context.get("bftCertificateValid") is not True:
-                return "fail", None
-            signed = context.get("bftSignedWeight")
-            total = context.get("bftTotalWeight")
-            if type(signed) is not int or type(total) is not int or total <= 0:
-                return "error", None
-            if signed * denominator < total * numerator:
-                return "fail", None
-        freshness_limit = observation.get("maxHeadAgeSec")
-    elif model == "provider-receipt":
-        required = {
-            "providerId", "statusEndpointOrigin", "captureStatuses", "sr3Binding",
-            "maxObservationAgeSec", "reversibility",
-        }
-        if not required.issubset(profile) or not profile.get("captureStatuses"):
-            return "error", None
-        if profile.get("reversibility") != "provisional-provider-capture":
-            return "error", None
-        if context.get("providerId") != profile.get("providerId"):
-            return "fail", None
-        if context.get("endpointOrigin") != profile.get("statusEndpointOrigin"):
-            return "fail", None
-        if context.get("providerCaptured") is not True:
-            return "fail", None
-        if context.get("providerBindingMatches") is not True:
-            return "fail", None
-        freshness_limit = profile.get("maxObservationAgeSec")
-    else:
-        required_fields = {"source", "destination"}
-        if model == "liquidity-tank":
-            required_fields |= {"bridgeId", "coordinator"}
-        if not required_fields.issubset(profile):
-            return "error", None
-        if model == "htlc-reveal":
-            relation = context.get("relation")
-            if not isinstance(relation, dict) or set(relation) != HTLC_RELATIONS:
-                return "error", None
-            if any(type(relation[field]) is not bool for field in HTLC_RELATIONS):
-                return "error", None
-            observation_results = [
-                validate_htlc_observation(
-                    context.get(field),
-                    profile["source"] if field.startswith("source") else profile["destination"],
-                )
-                for field in sorted(HTLC_OBSERVATIONS)
-            ]
-            if "error" in observation_results:
-                return "error", None
-            if not all(relation.values()) or "fail" in observation_results:
-                return "fail", None
-            if "indeterminate" in observation_results:
-                return "indeterminate", None
-        else:
-            if context.get("compositeStatus") == "mismatch":
-                return "fail", None
-            if context.get("compositeStatus") == "unavailable":
-                return "indeterminate", None
-            if context.get("compositeStatus") != "verified":
-                return "error", None
-        freshness_limit = None
-
-    # A deterministic contradiction above cannot be hidden by an outage below.
-    if context.get("authority") in {"unavailable", "conflicting"}:
-        return "indeterminate", None
-    if context.get("canonicalPath") in {"reorg", "replaced", "pruned"}:
-        return "indeterminate", None
-    if freshness_limit is not None and context.get("headAgeSec", 0) > freshness_limit:
-        return "indeterminate", None
-    finality_class = (
-        "provisional-provider-capture"
-        if model == "provider-receipt"
-        else "profile-final"
-    )
-    return "pass", finality_class
+            value[key] = copy.deepcopy(item)
+    return value
 
 
 class SettlementFinalityVerificationVectorTests(unittest.TestCase):
@@ -276,95 +64,373 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
     def setUpClass(cls):
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
+        cls.trust = cls.data["trustedFixturePolicy"]
+        cls.pubkeys = decode_public_keys(cls.trust)
+        cls.strong = {
+            case["model"]: case for case in cls.data["dacs5"]["strongBundleCases"]
+        }
 
-    def test_vector_hash_count_and_names_are_exact(self):
-        vectors = self.data["vectors"]
-        self.assertEqual(self.data["count"], 47)
-        self.assertEqual(self.data["count"], len(vectors))
-        self.assertEqual(len({case["name"] for case in vectors}), len(vectors))
-        self.assertEqual(
-            self.data["hash"], hashlib.sha256(canonical_json(vectors)).hexdigest()
+    def evaluate_case(self, case):
+        trust = merge(self.trust, case.get("trustedOverrides"))
+        return verify_finality(case["input"], trust)
+
+    def strong_result(self, case, *, authority=None, trust=None):
+        authority = authority or case["authority"]
+        return validate_finality_bound_ebfab(
+            case["bundle"],
+            authority["listing"],
+            self.pubkeys,
+            authority["referenceValidationByCanonicalRef"],
+            authority["bundleLifecycle"],
+            authority["sessionExecutionAuthorityByPhaseKey"],
+            authority["verifiedReceiptByCanonicalRef"],
+            authority.get("finalityVerificationByCanonicalRef"),
+            trust or self.trust,
         )
 
-    def test_every_vector_executes_to_its_declared_four_value_result(self):
+    def entry(self, bundle, authority=None):
+        return {
+            "bundle": bundle,
+            "expectedJobId": bundle["jobId"],
+            "expectedRole": bundle["anchoredByRole"],
+            "authority": authority,
+        }
+
+    def resign_bundle(self, bundle):
+        digest = bundle_hash(bundle)
+        seed_names = {
+            "did:demos:buyer": "buyer",
+            "did:demos:seller": "seller",
+            "did:demos:orchestrator": "orchestrator",
+        }
+        for signature in bundle["signatures"]:
+            seed = bytes.fromhex(
+                self.data["fixturePolicyMetadata"]["seeds"][seed_names[signature["party"]]]
+            )
+            value = Ed25519PrivateKey.from_private_bytes(seed).sign(
+                (BUNDLE_DOMAIN + digest).encode("ascii")
+            )
+            signature["value"] = base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+    def test_generator_is_deterministic_and_corpus_hash_is_jcs_bound(self):
+        subprocess.run(
+            [sys.executable, str(GENERATOR), "--check"],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        self.assertEqual(67, self.data["count"])
+        encoded = canonicalize(self.data["vectors"]).encode("utf-8")
+        self.assertEqual(hashlib.sha256(encoded).hexdigest(), self.data["hash"])
+        self.assertEqual(self.data["count"], len(self.cases))
+        self.assertEqual(self.data["count"], len(self.data["vectors"]))
+
+    def test_all_fixture_vectors_execute_their_four_value_expectation(self):
+        observed = {}
         for case in self.data["vectors"]:
             with self.subTest(case=case["name"]):
-                verdict, finality_class = evaluate(case["input"])
-                self.assertEqual(verdict, case["expected"])
-                self.assertEqual(case["want"]["acceptedAsFinal"], verdict == "pass")
-                self.assertEqual(case["want"]["finalityClass"], finality_class)
-                self.assertFalse(case["want"]["producerReportTrustedAsProof"])
+                result = self.evaluate_case(case)
+                observed[case["name"]] = result["decision"]
+                self.assertEqual(case["expected"], result["decision"], result["reason"])
                 self.assertEqual(
-                    case["want"]["dacs5RsvDecision"],
-                    {"pass": "verified", "fail": "rejected"}.get(verdict, verdict),
+                    case["want"]["finalityClass"], result.get("finalityClass")
                 )
+        self.assertEqual({"pass", "fail", "indeterminate", "error"}, set(observed.values()))
 
-    def test_required_models_and_adversarial_classes_are_covered(self):
-        models = {case["input"]["rail"]["profile"]["model"] for case in self.data["vectors"]}
-        self.assertEqual(models, KNOWN_MODELS)
-        required_names = {
-            "fv-wrong-network", "fv-wrong-genesis", "fv-wrong-transaction-inclusion",
-            "fv-wrong-log-index", "fv-insufficient-depth", "fv-stale-fork",
-            "fv-active-reorganization", "fv-head-unavailable",
-            "fv-fake-confirmation-count", "fv-demos-bft-final-success",
-            "fv-dacs5-rsv-reuses-same-verdict",
-            "fv-htlc-source-lock-missing",
-            "fv-htlc-source-claim-missing",
-            "fv-htlc-destination-lock-missing",
-            "fv-htlc-destination-reveal-missing",
-            "fv-htlc-observation-shape-missing",
-            "fv-htlc-destination-reveal-wrong-network",
+    def test_every_finality_model_has_a_legitimate_control(self):
+        controls = {
+            case["input"]["rail"]["consumerFinalityProfile"]["model"]
+            for case in self.data["vectors"]
+            if case["name"].endswith("canonical-success")
+            and self.evaluate_case(case)["decision"] == "pass"
         }
-        self.assertTrue(required_names.issubset(self.cases))
-        self.assertEqual(
-            evaluate(self.cases["fv-deterministic-mismatch-precedes-outage"]["input"])[0],
-            "fail",
-        )
+        self.assertEqual(MODELS, controls)
 
-    def test_htlc_context_carries_four_independent_observations(self):
-        context = self.cases["fv-htlc-both-legs-success"]["input"]["context"]
-        self.assertNotIn("compositeStatus", context)
-        self.assertTrue(HTLC_OBSERVATIONS.issubset(context))
-        transaction_hashes = {
-            context[field]["transactionRef"]["txHash"]
-            for field in HTLC_OBSERVATIONS
+    def test_every_finality_model_uses_only_the_verifier_local_clock(self):
+        controls = {
+            case["input"]["rail"]["consumerFinalityProfile"]["model"]: case["input"]
+            for case in self.data["vectors"]
+            if case["name"].endswith("canonical-success")
         }
-        self.assertEqual(len(transaction_hashes), 4)
-        for field in HTLC_OBSERVATIONS:
-            observation = context[field]
-            self.assertIn("transactionInclusionProof", observation)
-            self.assertIn("selectedEventProof", observation)
-            self.assertIn("authenticatedHead", observation)
-            self.assertIn("ancestryProof", observation)
-            self.assertIn("authorityEvidence", observation)
+        for model, control in controls.items():
+            missing = copy.deepcopy(self.trust)
+            missing["verificationTimeMs"] = None
+            stale = copy.deepcopy(self.trust)
+            stale["verificationTimeMs"] += 61_000
+            future = copy.deepcopy(self.trust)
+            future["verificationTimeMs"] = 0
+            with self.subTest(model=model, clock="missing"):
+                self.assertEqual("error", verify_finality(control, missing)["decision"])
+            with self.subTest(model=model, clock="stale"):
+                self.assertEqual("indeterminate", verify_finality(control, stale)["decision"])
+            with self.subTest(model=model, clock="future"):
+                self.assertEqual("fail", verify_finality(control, future)["decision"])
 
-    def test_generator_check_is_enforced(self):
-        result = subprocess.run(
-            [sys.executable, "scripts/generate_settlement_finality_verification_vectors.py", "--check"],
-            cwd=ROOT, capture_output=True, text=True,
-        )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    def test_every_block_depth_ancestry_link_is_verified(self):
+        control = copy.deepcopy(self.cases["fv-block-depth-canonical-success"]["input"])
+        ancestry = control["context"]["observation"]["ancestryProof"]
+        self.assertGreater(len(ancestry), 2)
+        for index in range(len(ancestry)):
+            value = copy.deepcopy(control)
+            value["context"]["observation"]["ancestryProof"][index]["childId"] = "00" * 32
+            with self.subTest(link=index):
+                self.assertEqual("fail", verify_finality(value, self.trust)["decision"])
 
-    def test_normative_surfaces_registry_plan_readme_and_ci_are_linked(self):
-        spec4 = SPEC4.read_text(encoding="utf-8")
-        spec5 = SPEC5.read_text(encoding="utf-8")
-        core = CORE.read_text(encoding="utf-8")
-        plan = PLAN.read_text(encoding="utf-8")
-        readme = README.read_text(encoding="utf-8")
-        workflow = WORKFLOW.read_text(encoding="utf-8")
-        for rule in range(1, 11):
-            self.assertIn(f"(FV-{rule})", spec4)
-        self.assertIn("FinalityBoundSettlementEvidence", spec4)
-        self.assertIn("producer report", spec4.lower())
-        self.assertIn("provisional-provider-capture", spec4)
-        self.assertIn("FV-1..FV-10", spec5)
-        self.assertIn('"dacs-finality-bound-evidence:v1:"', spec4)
-        self.assertIn('"dacs-finality-bound-evidence:v1:"', core)
-        self.assertIn(VECTORS.name, plan)
-        self.assertIn(VECTORS.name, readme)
-        self.assertIn(
-            "generate_settlement_finality_verification_vectors.py --check", workflow
+    def test_missing_htlc_and_tank_arms_never_pass(self):
+        models = {
+            "htlc-reveal": ("sourceLock", "sourceClaim", "destinationLock", "destinationReveal"),
+            "liquidity-tank": ("coordinator", "source", "destination"),
+        }
+        for model, arms in models.items():
+            control = self.cases[f"fv-{model}-canonical-success"]["input"]
+            for arm in arms:
+                value = copy.deepcopy(control)
+                value["context"][arm] = None
+                with self.subTest(model=model, arm=arm):
+                    self.assertEqual("indeterminate", verify_finality(value, self.trust)["decision"])
+
+    def test_every_provider_context_and_attestation_member_is_required(self):
+        control = self.cases["fv-provider-receipt-canonical-success"]["input"]
+        for field in tuple(control["context"]):
+            value = copy.deepcopy(control)
+            del value["context"][field]
+            with self.subTest(scope="context", field=field):
+                self.assertNotEqual("pass", verify_finality(value, self.trust)["decision"])
+        response_hash = control["context"]["responseAttestation"]["contentHash"]
+        attestation = self.trust["providerAttestations"][response_hash]
+        for field in tuple(attestation):
+            trust = copy.deepcopy(self.trust)
+            del trust["providerAttestations"][response_hash][field]
+            with self.subTest(scope="attestation", field=field):
+                self.assertNotEqual("pass", verify_finality(control, trust)["decision"])
+
+    def test_malformed_nested_inputs_refuse_without_exceptions(self):
+        control = self.cases["fv-block-depth-canonical-success"]["input"]
+        mutations = []
+        for field, value in (
+            ("ancestryProof", {}),
+            ("selectedEventProof", []),
+            ("transactionInclusionProof", "proof"),
+            ("authenticatedHead", {"position": True}),
+            ("authorityEvidence", {"attestations": [None]}),
+        ):
+            candidate = copy.deepcopy(control)
+            candidate["context"]["observation"][field] = value
+            mutations.append((field, candidate))
+        for field, value in mutations:
+            with self.subTest(field=field):
+                self.assertIn(
+                    verify_finality(value, self.trust)["decision"],
+                    {"error", "fail", "indeterminate"},
+                )
+        malformed_fee = copy.deepcopy(control)
+        malformed_fee["evidence"]["paymentFee"] = {"amount": True, "currency": "USDC"}
+        self.assertEqual("error", verify_finality(malformed_fee, self.trust)["decision"])
+
+    def test_actual_dacs5_strong_bundle_consumer_passes_all_six_models(self):
+        self.assertEqual(MODELS, set(self.strong))
+        for model, case in self.strong.items():
+            with self.subTest(model=model):
+                decision, reason, keys = self.strong_result(case)
+                self.assertEqual("pass", decision, reason)
+                self.assertEqual([f"0:{case['bundle']['phaseSummary'][0]['kind']}"], keys)
+
+    def test_dacs5_propagates_finality_fail_indeterminate_and_error(self):
+        case = self.strong["block-depth"]
+        source = next(iter(case["authority"]["finalityVerificationByCanonicalRef"].values()))
+        mutations = {
+            "fail": lambda value: value["context"]["observation"]["transactionRef"].__setitem__("txHash", "ff" * 32),
+            "indeterminate": lambda value: value["context"]["observation"].__setitem__("authorityEvidence", None),
+            "error": lambda value: value["context"]["observation"]["authenticatedHead"].__setitem__("position", True),
+        }
+        for expected, mutate in mutations.items():
+            authority = copy.deepcopy(case["authority"])
+            candidate = copy.deepcopy(source)
+            mutate(candidate)
+            key = next(iter(authority["finalityVerificationByCanonicalRef"]))
+            authority["finalityVerificationByCanonicalRef"][key] = candidate
+            with self.subTest(expected=expected):
+                decision, _, _ = self.strong_result(case, authority=authority)
+                self.assertEqual(expected, decision)
+
+    def test_strong_pointer_executes_exact_type_domain_hash_and_consumer(self):
+        case = self.strong["block-depth"]
+        pointer = self.data["dacs5"]["pointer"]
+        authority = {**case["authority"], "finalityTrust": self.trust}
+        result = resolve_absolute_fault_pointer(
+            pointer, case["bundle"], pubkeys=self.pubkeys,
+            finality_bound_authority=authority,
         )
+        self.assertTrue(result["ok"], result["reason"])
+        wrong_hash = copy.deepcopy(pointer)
+        wrong_hash["fullBundleContentHash"] = "00" * 32
+        self.assertFalse(resolve_absolute_fault_pointer(
+            wrong_hash, case["bundle"], pubkeys=self.pubkeys,
+            finality_bound_authority=authority,
+        )["ok"])
+        wrong_domain = copy.deepcopy(pointer)
+        wrong_domain["signature"]["value"] = "A" * 86
+        self.assertFalse(resolve_absolute_fault_pointer(
+            wrong_domain, case["bundle"], pubkeys=self.pubkeys,
+            finality_bound_authority=authority,
+        )["ok"])
+
+    def test_new_new_and_all_new_older_reconciliation_paths_execute(self):
+        case = self.strong["block-depth"]
+        compatibility = self.data["dacs5"]["compatibility"]
+        copies = compatibility["copies"]
+        old_authority = compatibility["evidenceBoundAuthority"]
+        second_strong = copy.deepcopy(case["bundle"])
+        second_strong["anchoredByRole"] = "seller"
+        pairs = [
+            (second_strong, case["authority"]),
+            (copies["evidence-bound"], old_authority),
+            (copies["fault"], None),
+            (copies["legacy"], None),
+        ]
+        for older, authority in pairs:
+            result = reconcile_authenticated_finality_copies(
+                [self.entry(case["bundle"], case["authority"]), self.entry(older, authority)],
+                self.pubkeys,
+                self.trust,
+            )
+            with self.subTest(kind=bundle_type(older)):
+                self.assertEqual("pass", result["decision"], result["reason"])
+                self.assertEqual("finality-bound", bundle_type(result["bundle"]))
+
+    def test_invalid_strong_copy_cannot_fall_back_to_valid_legacy_copy(self):
+        case = self.strong["block-depth"]
+        authority = copy.deepcopy(case["authority"])
+        key = next(iter(authority["finalityVerificationByCanonicalRef"]))
+        authority["finalityVerificationByCanonicalRef"][key]["context"]["observation"]["transactionRef"]["txHash"] = "ff" * 32
+        legacy = self.data["dacs5"]["compatibility"]["copies"]["legacy"]
+        result = reconcile_authenticated_finality_copies(
+            [self.entry(case["bundle"], authority), self.entry(legacy)],
+            self.pubkeys,
+            self.trust,
+        )
+        self.assertEqual("fail", result["decision"])
+        self.assertIsNone(result["bundle"])
+
+    def test_reconciliation_executes_conflict_absence_and_indeterminate_paths(self):
+        case = self.strong["block-depth"]
+        legacy = copy.deepcopy(self.data["dacs5"]["compatibility"]["copies"]["legacy"])
+        legacy["phaseSummary"][0]["outcome"] = "fail"
+        self.resign_bundle(legacy)
+        conflict = reconcile_authenticated_finality_copies(
+            [self.entry(case["bundle"], case["authority"]), self.entry(legacy)],
+            self.pubkeys,
+            self.trust,
+        )
+        self.assertEqual("fail", conflict["decision"])
+        self.assertIn("diverge", conflict["reason"])
+
+        absent = reconcile_authenticated_finality_copies(
+            [
+                self.entry(case["bundle"], case["authority"]),
+                {
+                    "disposition": "absent",
+                    "expectedJobId": case["bundle"]["jobId"],
+                    "expectedRole": "seller",
+                },
+            ],
+            self.pubkeys,
+            self.trust,
+        )
+        self.assertEqual("pass", absent["decision"], absent["reason"])
+        self.assertEqual("finality-bound", bundle_type(absent["bundle"]))
+
+        unavailable = reconcile_authenticated_finality_copies(
+            [
+                self.entry(case["bundle"], case["authority"]),
+                {
+                    "disposition": "indeterminate",
+                    "expectedJobId": case["bundle"]["jobId"],
+                    "expectedRole": "seller",
+                },
+            ],
+            self.pubkeys,
+            self.trust,
+        )
+        self.assertEqual("indeterminate", unavailable["decision"])
+        self.assertIsNone(unavailable["bundle"])
+
+    def test_new_bundle_and_pointer_shapes_are_closed(self):
+        case = self.strong["block-depth"]
+        bundle = copy.deepcopy(case["bundle"])
+        bundle["producerVerified"] = True
+        self.assertEqual("error", self.strong_result({**case, "bundle": bundle})[0])
+
+        pointer = copy.deepcopy(self.data["dacs5"]["pointer"])
+        pointer["producerVerified"] = True
+        result = resolve_absolute_fault_pointer(
+            pointer,
+            case["bundle"],
+            pubkeys=self.pubkeys,
+            finality_bound_authority={**case["authority"], "finalityTrust": self.trust},
+        )
+        self.assertFalse(result["ok"])
+
+    def test_released_ebfab_still_runs_its_old_evidence_contract(self):
+        compatibility = self.data["dacs5"]["compatibility"]
+        bundle = compatibility["copies"]["evidence-bound"]
+        authority = compatibility["evidenceBoundAuthority"]
+        ok, reason, keys = validate_ebfab(
+            bundle,
+            authority["listing"],
+            self.pubkeys,
+            authority["referenceValidationByCanonicalRef"],
+            authority["bundleLifecycle"],
+            authority["sessionExecutionAuthorityByPhaseKey"],
+            authority["verifiedReceiptByCanonicalRef"],
+        )
+        self.assertTrue(ok, reason)
+        self.assertEqual(["0:pay-evm-erc20"], keys)
+
+    def test_frozen_old_reader_refuses_new_bundle_and_pointer(self):
+        case = self.strong["block-depth"]
+        self.assertIsNone(frozen_bundle_type(case["bundle"]))
+        self.assertIsNone(frozen_pointer_type(self.data["dacs5"]["pointer"]))
+        self.assertEqual("evidence-bound", frozen_bundle_type(
+            self.data["dacs5"]["compatibility"]["copies"]["evidence-bound"]
+        ))
+
+    def test_combined_current_use_reputation_derivation_remains_gated(self):
+        case = self.strong["block-depth"]
+        tagged = {
+            "bundle": case["bundle"],
+            "resolvedRole": "buyer",
+            "resolvedJobId": case["bundle"]["jobId"],
+            "selectedByRoleResolution": True,
+        }
+        party = case["bundle"]["parties"][0]["primaryClaim"]
+        self.assertEqual(0, derive(party, [tagged], 0, 9_999_999_999)["bundleCount"])
+        self.assertEqual(0, derive_job_bound(party, [tagged], 0, 9_999_999_999)["bundleCount"])
+
+    def test_unknown_missing_dual_and_renamed_discriminators_refuse(self):
+        case = self.strong["block-depth"]
+        for name, mutate in (
+            ("missing", lambda bundle: bundle.pop("finalityBoundEvidenceFaultBundleVersion")),
+            ("dual", lambda bundle: bundle.__setitem__("evidenceBoundFaultBundleVersion", "1")),
+            ("renamed", lambda bundle: bundle.__setitem__("futureBundleVersion", bundle.pop("finalityBoundEvidenceFaultBundleVersion"))),
+        ):
+            bundle = copy.deepcopy(case["bundle"])
+            mutate(bundle)
+            with self.subTest(name=name):
+                self.assertIsNone(bundle_type(bundle))
+                self.assertEqual("error", validate_finality_bound_ebfab(
+                    bundle,
+                    case["authority"]["listing"],
+                    self.pubkeys,
+                    case["authority"]["referenceValidationByCanonicalRef"],
+                    case["authority"]["bundleLifecycle"],
+                    case["authority"]["sessionExecutionAuthorityByPhaseKey"],
+                    case["authority"]["verifiedReceiptByCanonicalRef"],
+                    case["authority"]["finalityVerificationByCanonicalRef"],
+                    self.trust,
+                )[0])
 
 
 if __name__ == "__main__":

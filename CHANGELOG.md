@@ -13,13 +13,14 @@ The format used per release:
 
 ## [Unreleased]
 
-### Added — DACS-4 v0.8 consumer-verifiable settlement finality
+### Added — unallocated #392 consumer-verifiable settlement finality candidate
 
-- **Minor-safe finality-bound evidence** (#382) — adds the structurally distinct
+- **Finality-bound evidence** (#392) — adds the structurally distinct
   `FinalityBoundSettlementEvidence` type and
-  `dacs-finality-bound-evidence:v1:` signature domain. Current payment success
-  binds the exact signed RailDefinition revision; older readers reject the new
-  type instead of accepting an unverified scalar confirmation count.
+  `dacs-finality-bound-evidence:v1:` signature domain. An explicitly selected
+  finality-bound payment-success contract binds the exact signed RailDefinition
+  revision; older readers reject the new type instead of accepting an unverified
+  scalar confirmation count. No DACS-4 minor is allocated by this proposal.
 - **FV-1..FV-10 canonicality verifier** — derives the model and required
   strength from the authenticated rail profile, verifies network/genesis or
   provider identity, transaction/event inclusion, authenticated head and
@@ -27,8 +28,13 @@ The format used per release:
   reorg/replacement state. HTLC uses four independent authenticated observations
   for source lock/claim and destination lock/reveal, each with its own inclusion
   and finality proof; an aggregate status cannot replace them. Tank models verify
-  every leg; provider capture remains explicitly provisional. DACS-5 SEB/RSV
-  invokes the same verifier.
+  every leg; provider capture remains explicitly provisional.
+- **Typed DACS-5 consumer boundary** — adds the distinct
+  `FinalityBoundEvidenceFaultAttestationBundle` and matching extended pointer
+  domains. Its successful payment members run FV and propagate every non-pass;
+  old EBFAB and every existing derivation retain their prior meanings. The
+  coordinated `CurrentUseReplayableReputationDerivation` is reserved but cannot
+  pass until #391 supplies authenticated historical-era/role admission.
 - **Producer report clarified** — `SettlementFinalityRecord` remains signed and
   auditable but is not finality proof. Wrong or insufficient proof fails;
   missing, conflicting, pruned or unstable authority is `indeterminate`;

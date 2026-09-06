@@ -19,6 +19,7 @@ A single alphabetical glossary across all five per-stage standards, the front ma
 - **Auto-accept commitment.** A pre-issued seller-side commitment authorising auto-acceptance of buyer signatures under negotiate-fixed-price. Defined in §8.4.1.
 - **Bundle (identity bundle).** An ordered set of claims a party presents about itself, each independently verifiable, plus a presentation signature. Defined in §6.3.2.
 - **BundleParty.** A party reference within a DACS-5 AttestationBundle. Defined in §10.4.
+- **Business-outcome occurrence time.** The time an applicable verifier-selected binding or rail policy independently proves for the exact reconciled session outcome. It is distinct from bundle publication, audit finalization, observer time, and producer clocks. Defined by DACS-5 AWT-2..AWT-7.
 - **Canonical form.** RFC 8785 JCS serialisation of a document with signature field(s) omitted.
 - **Catalog.** An off-chain index aggregating DACS-1 listings across many sellers for discovery. Defined in §6.3.6.
 - **CCI (Cross-Context Identities).** The Demos implementation of SR-1 — cross-substrate identity aggregation. Demos product feature; not a DACS specification term.

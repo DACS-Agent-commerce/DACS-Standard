@@ -138,7 +138,7 @@ Every per-chapter security threat, indexed by adversary class and mitigation sta
 | Reputation collusion | two colluding counterparties | §10.11 (volume disclosure + external signals) | partial — protocol cannot prevent |
 | Orchestrator error-class misclassification | malicious orchestrator | §10.11 (party-disagreement → aborted-by-other) | mitigated |
 | Bundle anchor unavailability | storage operator | §10.11 (on-substrate anchoring) | mitigated (substrate-dependent) |
-| Stale reputation windows | time | §10.11 (explicit window bounds) | consumer-driven |
+| Stale reputation windows or delayed audit publication presented as recent business outcomes | time / malicious producer | §10.5 AWT-1..AWT-8 + §10.11 (post-reconciliation/RSV verifier-policy occurrence gate; inclusive bounds; unavailable/conflicting proof non-countable; no producer/audit/publication-clock fallback) | mitigated where an applicable trusted outcome-binding policy exists; otherwise indeterminate |
 | ERC-8004 write spamming | spam adversary | §10.11 (gas cost + per-session rate limit) | mitigated |
 | RFQ session-initiation flooding | malicious counterparty | §8.12 (per-counterparty session-rate limit + optional DACS-2 admission floor) | partial — maxTurns/timeoutSec bound a session, not the initiation rate |
 | Sealed-envelope commit-spam | malicious counterparty | §8.12 (optional bidder stake + commit-anchor rate limit) | partial — v0.1 does not standardise stake or bidder eligibility |

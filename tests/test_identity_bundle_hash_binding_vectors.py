@@ -952,6 +952,16 @@ def validate_strong_proof(
     context: dict, artifact: str, stage: str, unavailable: set[str]
 ) -> tuple[str, str, dict[str, str]]:
     agreement = context.get("agreement")
+    carrier = context.get({
+        "commit": "commitInput",
+        "payment": "paymentInput",
+        "terminal": "terminalInput",
+    }[stage])
+    if (
+        isinstance(carrier, dict)
+        and "identityBindingCompanions" not in carrier
+    ):
+        return "indeterminate", "required-companion-missing", {}
     companions = companions_for_stage(context, stage)
     if not isinstance(agreement, dict) or not isinstance(companions, list):
         return "error", "malformed-input", {}
@@ -1490,6 +1500,7 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
         return "indeterminate", "prior-disposition-unavailable"
     resolved = context.get("priorPaymentDisposition")
     prior = context.get("priorAgreement")
+    prior_payment = context.get("priorPaymentInput")
     if not isinstance(resolved, dict) or not isinstance(prior, dict):
         return "indeterminate", "prior-disposition-unavailable"
     disposition = resolved.get("artifact")
@@ -1625,6 +1636,7 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
             lifecycle = material.get("lifecycle")
             material_receipt = material.get("receipt")
             material_nonce = material.get("nonce")
+            observation = material.get("settlementObservation")
             if (
                 not reputation_reference._settlement_evidence_shape_valid(record)
                 or record.get("jobId") != prior.get("jobId")
@@ -1640,6 +1652,50 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
                     "state": "finalized", "independentlyResolvable": True
                 }
                 or not isinstance(material_nonce, str)
+            ):
+                return "fail", "prior-disposition-proof-invalid"
+            payer = prior_payment.get("payer") if isinstance(prior_payment, dict) else None
+            payee = prior_payment.get("payee") if isinstance(prior_payment, dict) else None
+            authorization = {
+                "jobId": prior.get("jobId"),
+                "phaseIndex": phase_index,
+                "phaseKind": expected_phase,
+                "railId": prior_selection.get("railId"),
+                "resource": prior_selection.get("parameters", {}).get("resource"),
+                "payer": payer.get("payingKey") if isinstance(payer, dict) else None,
+                "payee": payee.get("payeeAddress") if isinstance(payee, dict) else None,
+                "paymentAmount": (
+                    prior_payment.get("amount")
+                    if isinstance(prior_payment, dict) else None
+                ),
+            }
+            expected_event = {
+                **authorization,
+                "outcome": "cannot-settle",
+                "authorizationRef": generator.hash_hex({
+                    "priorPaymentAuthorization": authorization
+                }),
+            }
+            if not isinstance(observation, dict) or set(observation) != {
+                "fixtureSettlementObservationVersion", "scope", "observer",
+                "event", "signature",
+            }:
+                return "fail", "prior-disposition-proof-invalid"
+            try:
+                observation_signature_valid = generator.verify_ed25519(
+                    key_bytes(receipt_authority),
+                    b64url_decode(observation.get("signature", "")),
+                    generator.FIXTURE_SETTLEMENT_OBSERVATION_PREFIX
+                    + generator.hash_hex(observation.get("event")).encode("ascii"),
+                )
+            except (TypeError, ValueError):
+                observation_signature_valid = False
+            if (
+                observation.get("fixtureSettlementObservationVersion") != "1"
+                or observation.get("scope") != "offline-conformance-fixture-only"
+                or observation.get("observer") != receipt_authority
+                or observation.get("event") != expected_event
+                or not observation_signature_valid
             ):
                 return "fail", "prior-disposition-proof-invalid"
             logical_address = (

@@ -10612,6 +10612,271 @@
           }
         ]
       },
+      "priorPaymentInput": {
+        "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+        "agreement": {
+          "identityBoundPayeeAgreementVersion": "1",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+          "listingRef": {
+            "listingId": "dacs-390-pay-alternative-replacement",
+            "version": 1,
+            "contentHash": "8882800627f85505f8d967370a54cc26e3af248508b496d7bf5b94c36868e8c2"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+              "primaryClaim": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-buyer-cvr"
+                },
+                "contentHash": "a93b54b37ec378cc729c8ebc91e20c02b2b02adaf27114fe04cea2bf33626888"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+              "primaryClaim": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-seller-cvr"
+                },
+                "contentHash": "6e2c8d1aee7e29a4a5ad307b087ac5de7b8ce297421781de66da29f6fedb8941"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "storage-program",
+              "hash": "9f54ceabd66d3260781097bbf1ba845e5efa49736a96c318af77153be859745c"
+            },
+            "price": {
+              "amount": "1",
+              "currency": "USDC"
+            },
+            "rail": {
+              "railId": "x402:default",
+              "railVersion": 1,
+              "parameters": {
+                "resource": "https://seller.example/pay/390"
+              }
+            },
+            "deadline": 1900000050000,
+            "payoutBindings": [
+              {
+                "railId": "x402:default",
+                "phaseIndex": 3,
+                "payeeAddress": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966"
+              }
+            ]
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899999995000,
+          "signatures": [
+            {
+              "party": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "algorithm": "ed25519",
+              "value": "qdXCBqGc3uO-xazmFG-ULNTdo_eAr6S3eJzkaALkWJuF7egncBR7TORKqR3ytBJ43qhgz3Be51qQkJs529PQCw"
+            },
+            {
+              "party": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "algorithm": "ed25519",
+              "value": "lWm18dL7y2vCOJ-hNTJ8v2Tquy2-28T56JjtGRVeb6nJ5LKYD15AQArpKDCQm2e-lfa3mcSytK5GoS1HDQIKAw"
+            }
+          ]
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "x402:default",
+          "railType": "x402",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3939393939393939393939393939393939393939",
+            "symbol": "USDC",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/pay/390"
+          },
+          "phaseHandler": "pay-x402",
+          "parameters": {
+            "authorization": "eip-3009"
+          },
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+            "acceptedAt": 1899999900000,
+            "anchoring": "in-code"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+            "value": "whDd3Y25XY2ZlIfj5mg1ZnlbW1ArTcjCezQNuzIxU_1ipzOKWZ8xfV7JbMSOyuj-_NV9ZJIOXCA_jKmwTDqtAA"
+          }
+        },
+        "amount": {
+          "amount": "1",
+          "currency": "USDC"
+        },
+        "payer": {
+          "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+          "primaryClaim": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+          "payingKey": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d"
+        },
+        "payee": {
+          "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+          "primaryClaim": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+          "payeeAddress": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966"
+        },
+        "sessionContext": {
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+          "listingRef": {
+            "listingId": "dacs-390-pay-alternative-replacement",
+            "version": 1,
+            "contentHash": "8882800627f85505f8d967370a54cc26e3af248508b496d7bf5b94c36868e8c2"
+          },
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+              "primaryClaim": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+              "primaryClaim": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966"
+            },
+            {
+              "role": "orchestrator",
+              "bundleHash": "b60efdc8cc51a5ceac99e96c820cbed7c50a5e6193b9b2de32fc92b927202b4c",
+              "primaryClaim": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9"
+            }
+          ],
+          "priorPhaseOutputs": {},
+          "signer": {
+            "kind": "deterministic-test-capability",
+            "claim": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9"
+          },
+          "startedAt": 1899999980000
+        },
+        "identityBindingCompanions": [
+          {
+            "identityBundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "presentedAt": 1899999990000,
+              "sessionNonce": "c505faf9669ae708a7dc82eb954cf9a25054d50cd9d594b561da886edfac0009",
+              "claims": [
+                {
+                  "ref": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                  "metadata": {
+                    "fixture": "dacs-390"
+                  }
+                },
+                {
+                  "ref": "key:5a0d6a0e4ac834165faebb9b0cf40739b8b79f2bcafce14ba8f8c8f7574d31f6",
+                  "metadata": {
+                    "fixture": "dacs-390-secondary-payment-key"
+                  }
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "signature": "yKveN1sck36Ji-1Jd0ZWhnr1wSirC75VOBqnNMPHHM6r_qROBipf_2xYmJq6ln8xo1ICl5U3J5EaUICbMC7KAg"
+                  }
+                ]
+              }
+            },
+            "compositeRecord": {
+              "recordVersion": "1",
+              "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+              "evaluatedParty": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+              "requirementHash": "0d618ffb0eb08675b09ddeca833dea19809cfcfbc8c8dd1e01ba4cb407d9645b",
+              "freshness": [
+                {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-buyer-verify-result"
+                  },
+                  "contentHash": "be8daf664bba04d807a6feeabf7b93a805cfc313bde16fc367e31a4824170f94",
+                  "recipeVersion": 1
+                }
+              ],
+              "supplementary": [],
+              "dealSpecific": [],
+              "overallDecision": "pass",
+              "generatedAt": 1899999992000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+                "value": "7TJHGEG1nUO1xBI9ESmTLj4NCmxtCWDuojQQ-nWVkcCmFDikjRXotcBLeEwo4-QeCIBtnE1_3HtLy5uKNJvnDw"
+              }
+            }
+          },
+          {
+            "identityBundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "presentedAt": 1899999990000,
+              "sessionNonce": "ce78060b28e6e7aa1164993a09be4155637b1e4832b264286743ed017aff063c",
+              "claims": [
+                {
+                  "ref": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                  "metadata": {
+                    "fixture": "dacs-390"
+                  }
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "signature": "UWuhzzikrKxR_5BFuO8cwmFNq6lr9YaCgBYasgdk39ceNooO_75Ul4WMromgeUngLpclt98VthkypjE-aMgnDA"
+                  }
+                ]
+              }
+            },
+            "compositeRecord": {
+              "recordVersion": "1",
+              "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+              "evaluatedParty": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+              "requirementHash": "0d618ffb0eb08675b09ddeca833dea19809cfcfbc8c8dd1e01ba4cb407d9645b",
+              "freshness": [
+                {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-seller-verify-result"
+                  },
+                  "contentHash": "7195bfc48781d42ebe2c3f12851f4ff80d5f8f73320101517dce24a69556bf24",
+                  "recipeVersion": 1
+                }
+              ],
+              "supplementary": [],
+              "dealSpecific": [],
+              "overallDecision": "pass",
+              "generatedAt": 1899999992000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+                "value": "wsIt6kdCwx7nE6qjqyUcPx9NrwXkkliPpvn7O15pJLfFZVqV8-PaCnojDO3pCRU7C7skmP9T9eQEaAHqmLsjCg"
+              }
+            }
+          }
+        ]
+      },
       "priorPaymentDisposition": {
         "artifact": {
           "priorPaymentDispositionVersion": "1",
@@ -12990,6 +13255,271 @@
           }
         ]
       },
+      "priorPaymentInput": {
+        "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+        "agreement": {
+          "identityBoundPayeeAgreementVersion": "1",
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+          "listingRef": {
+            "listingId": "dacs-390-pay-alternative-replacement",
+            "version": 1,
+            "contentHash": "8882800627f85505f8d967370a54cc26e3af248508b496d7bf5b94c36868e8c2"
+          },
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+              "primaryClaim": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-buyer-cvr"
+                },
+                "contentHash": "a93b54b37ec378cc729c8ebc91e20c02b2b02adaf27114fe04cea2bf33626888"
+              }
+            },
+            {
+              "role": "seller",
+              "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+              "primaryClaim": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "vetRecordRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-seller-cvr"
+                },
+                "contentHash": "6e2c8d1aee7e29a4a5ad307b087ac5de7b8ce297421781de66da29f6fedb8941"
+              }
+            }
+          ],
+          "terms": {
+            "deliverable": {
+              "deliverableType": "storage-program",
+              "hash": "9f54ceabd66d3260781097bbf1ba845e5efa49736a96c318af77153be859745c"
+            },
+            "price": {
+              "amount": "1",
+              "currency": "USDC"
+            },
+            "rail": {
+              "railId": "x402:default",
+              "railVersion": 1,
+              "parameters": {
+                "resource": "https://seller.example/pay/390"
+              }
+            },
+            "deadline": 1900000050000,
+            "payoutBindings": [
+              {
+                "railId": "x402:default",
+                "phaseIndex": 3,
+                "payeeAddress": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966"
+              }
+            ]
+          },
+          "derivedFromPattern": "fixed-price",
+          "generatedAt": 1899999995000,
+          "signatures": [
+            {
+              "party": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "algorithm": "ed25519",
+              "value": "qdXCBqGc3uO-xazmFG-ULNTdo_eAr6S3eJzkaALkWJuF7egncBR7TORKqR3ytBJ43qhgz3Be51qQkJs529PQCw"
+            },
+            {
+              "party": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "algorithm": "ed25519",
+              "value": "lWm18dL7y2vCOJ-hNTJ8v2Tquy2-28T56JjtGRVeb6nJ5LKYD15AQArpKDCQm2e-lfa3mcSytK5GoS1HDQIKAw"
+            }
+          ]
+        },
+        "rail": {
+          "railVersion": 1,
+          "railId": "x402:default",
+          "railType": "x402",
+          "asset": {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x3939393939393939393939393939393939393939",
+            "symbol": "USDC",
+            "decimals": 6
+          },
+          "network": {
+            "kind": "x402-resource",
+            "resourceBaseUrl": "https://seller.example/pay/390"
+          },
+          "phaseHandler": "pay-x402",
+          "parameters": {
+            "authorization": "eip-3009"
+          },
+          "availability": "live",
+          "governance": {
+            "proposedBy": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+            "acceptedAt": 1899999900000,
+            "anchoring": "in-code"
+          },
+          "signature": {
+            "algorithm": "ed25519",
+            "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+            "value": "whDd3Y25XY2ZlIfj5mg1ZnlbW1ArTcjCezQNuzIxU_1ipzOKWZ8xfV7JbMSOyuj-_NV9ZJIOXCA_jKmwTDqtAA"
+          }
+        },
+        "amount": {
+          "amount": "1",
+          "currency": "USDC"
+        },
+        "payer": {
+          "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+          "primaryClaim": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+          "payingKey": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d"
+        },
+        "payee": {
+          "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+          "primaryClaim": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+          "payeeAddress": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966"
+        },
+        "sessionContext": {
+          "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+          "listingRef": {
+            "listingId": "dacs-390-pay-alternative-replacement",
+            "version": 1,
+            "contentHash": "8882800627f85505f8d967370a54cc26e3af248508b496d7bf5b94c36868e8c2"
+          },
+          "recipeRegistryVersion": 1,
+          "railRegistryVersion": 1,
+          "parties": [
+            {
+              "role": "buyer",
+              "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+              "primaryClaim": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d"
+            },
+            {
+              "role": "seller",
+              "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+              "primaryClaim": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966"
+            },
+            {
+              "role": "orchestrator",
+              "bundleHash": "b60efdc8cc51a5ceac99e96c820cbed7c50a5e6193b9b2de32fc92b927202b4c",
+              "primaryClaim": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9"
+            }
+          ],
+          "priorPhaseOutputs": {},
+          "signer": {
+            "kind": "deterministic-test-capability",
+            "claim": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9"
+          },
+          "startedAt": 1899999980000
+        },
+        "identityBindingCompanions": [
+          {
+            "identityBundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "presentedAt": 1899999990000,
+              "sessionNonce": "c505faf9669ae708a7dc82eb954cf9a25054d50cd9d594b561da886edfac0009",
+              "claims": [
+                {
+                  "ref": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                  "metadata": {
+                    "fixture": "dacs-390"
+                  }
+                },
+                {
+                  "ref": "key:5a0d6a0e4ac834165faebb9b0cf40739b8b79f2bcafce14ba8f8c8f7574d31f6",
+                  "metadata": {
+                    "fixture": "dacs-390-secondary-payment-key"
+                  }
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "signature": "yKveN1sck36Ji-1Jd0ZWhnr1wSirC75VOBqnNMPHHM6r_qROBipf_2xYmJq6ln8xo1ICl5U3J5EaUICbMC7KAg"
+                  }
+                ]
+              }
+            },
+            "compositeRecord": {
+              "recordVersion": "1",
+              "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+              "evaluatedParty": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+              "bundleHash": "d4a68fe715dc8e9ed54e61614760cd1c631f3de6d910e42774b79ff9706cfd58",
+              "requirementHash": "0d618ffb0eb08675b09ddeca833dea19809cfcfbc8c8dd1e01ba4cb407d9645b",
+              "freshness": [
+                {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-buyer-verify-result"
+                  },
+                  "contentHash": "be8daf664bba04d807a6feeabf7b93a805cfc313bde16fc367e31a4824170f94",
+                  "recipeVersion": 1
+                }
+              ],
+              "supplementary": [],
+              "dealSpecific": [],
+              "overallDecision": "pass",
+              "generatedAt": 1899999992000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+                "value": "7TJHGEG1nUO1xBI9ESmTLj4NCmxtCWDuojQQ-nWVkcCmFDikjRXotcBLeEwo4-QeCIBtnE1_3HtLy5uKNJvnDw"
+              }
+            }
+          },
+          {
+            "identityBundle": {
+              "bundleVersion": "1",
+              "presentedBy": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "presentedAt": 1899999990000,
+              "sessionNonce": "ce78060b28e6e7aa1164993a09be4155637b1e4832b264286743ed017aff063c",
+              "claims": [
+                {
+                  "ref": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                  "metadata": {
+                    "fixture": "dacs-390"
+                  }
+                }
+              ],
+              "presentation": {
+                "kind": "per-claim",
+                "signatures": [
+                  {
+                    "ref": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "signature": "UWuhzzikrKxR_5BFuO8cwmFNq6lr9YaCgBYasgdk39ceNooO_75Ul4WMromgeUngLpclt98VthkypjE-aMgnDA"
+                  }
+                ]
+              }
+            },
+            "compositeRecord": {
+              "recordVersion": "1",
+              "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+              "evaluatedParty": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+              "bundleHash": "545a90aa6bce19d4333ae3530cd8353e1b51f56280ff671e4711c03f1826b7a6",
+              "requirementHash": "0d618ffb0eb08675b09ddeca833dea19809cfcfbc8c8dd1e01ba4cb407d9645b",
+              "freshness": [
+                {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "demos:dacs-390:01KTY8ZJ00CW7KSECW3FS6PQ0E-seller-verify-result"
+                  },
+                  "contentHash": "7195bfc48781d42ebe2c3f12851f4ff80d5f8f73320101517dce24a69556bf24",
+                  "recipeVersion": 1
+                }
+              ],
+              "supplementary": [],
+              "dealSpecific": [],
+              "overallDecision": "pass",
+              "generatedAt": 1899999992000,
+              "signature": {
+                "algorithm": "ed25519",
+                "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
+                "value": "wsIt6kdCwx7nE6qjqyUcPx9NrwXkkliPpvn7O15pJLfFZVqV8-PaCnojDO3pCRU7C7skmP9T9eQEaAHqmLsjCg"
+              }
+            }
+          }
+        ]
+      },
       "priorPaymentDisposition": {
         "artifact": {
           "priorPaymentDispositionVersion": "1",
@@ -13081,6 +13611,27 @@
                 "signer": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "value": "4CqlfBF7bKQQJMFavrwRp6NYMudUTrFj7o2p8Z4tuFRdhm1A38HJJwMcg3Nt-IiygZAkpvsZH5u1S_J0FRirCQ"
               }
+            },
+            "settlementObservation": {
+              "fixtureSettlementObservationVersion": "1",
+              "scope": "offline-conformance-fixture-only",
+              "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+              "event": {
+                "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0E",
+                "phaseIndex": 3,
+                "phaseKind": "pay-x402",
+                "railId": "x402:default",
+                "resource": "https://seller.example/pay/390",
+                "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                "paymentAmount": {
+                  "amount": "1",
+                  "currency": "USDC"
+                },
+                "outcome": "cannot-settle",
+                "authorizationRef": "fe22f883c59f89135679b015512f3ca2ef6fdaa1a6e8e12e412f6f7579367567"
+              },
+              "signature": "2t6KNXcSRRogQsLSeDptn1cgOcPa3w4ieUwWkEh-qtD8yKAwSGMoLaxIIX2RVZ8SQnVY99J6NvP6dJwX0yLwBw"
             },
             "receipt": {
               "receiptVersion": "1",
@@ -18053,8 +18604,8 @@
       }
     }
   },
-  "count": 357,
-  "hash": "1e869048b4932c339f14ef29f373a33b96cfaae5216981836ddac70232aa0f39",
+  "count": 362,
+  "hash": "3a465ee32db10b2442d48abea2c04ec73c6556a72b343a4a35457cade3e246bd",
   "vectors": [
     {
       "name": "dispatch-agreement-under-commit-agreement",
@@ -21668,6 +22219,37 @@
       }
     },
     {
+      "name": "closed-cannot-settle-observation-endpoint-contradiction",
+      "operation": "validate-identity-bound-agreement-path",
+      "scenario": "identityBoundPayeeCannotSettle",
+      "stage": "commit",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "priorPaymentDisposition",
+            "reconciliationEvidence",
+            0,
+            "settlementObservation",
+            "event",
+            "payee"
+          ],
+          "value": "key:3434343434343434343434343434343434343434343434343434343434343434"
+        }
+      ],
+      "resign": [
+        "prior-settlement-observation"
+      ],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "prior-disposition-proof-invalid"
+      }
+    },
+    {
       "name": "completed-terminal-empty-settlement-evidence-rejected",
       "operation": "validate-identity-bound-agreement-path",
       "scenario": "identityBoundAgreement",
@@ -21729,6 +22311,173 @@
         "verdict": "fail",
         "authorizedAction": false,
         "reason": "terminal-settlement-receipt-invalid"
+      }
+    },
+    {
+      "name": "terminal-alternate-payer-and-payee-endpoints-verified",
+      "operation": "validate-identity-bound-agreement-path",
+      "scenario": "identityBoundAgreement",
+      "stage": "terminal",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "paymentInput",
+            "payer",
+            "payingKey"
+          ],
+          "value": "key:5a0d6a0e4ac834165faebb9b0cf40739b8b79f2bcafce14ba8f8c8f7574d31f6"
+        },
+        {
+          "op": "set",
+          "path": [
+            "paymentInput",
+            "payee",
+            "payeeAddress"
+          ],
+          "value": "demos:runtime-payee-destination"
+        },
+        {
+          "op": "set",
+          "path": [
+            "verifierContext",
+            "terminalAuthority",
+            "settlements",
+            0,
+            "executionAuthority",
+            "settlementObservation",
+            "event",
+            "payer"
+          ],
+          "value": "key:5a0d6a0e4ac834165faebb9b0cf40739b8b79f2bcafce14ba8f8c8f7574d31f6"
+        },
+        {
+          "op": "set",
+          "path": [
+            "verifierContext",
+            "terminalAuthority",
+            "settlements",
+            0,
+            "executionAuthority",
+            "settlementObservation",
+            "event",
+            "payee"
+          ],
+          "value": "demos:runtime-payee-destination"
+        }
+      ],
+      "resign": [
+        "terminal-settlement-observation:0"
+      ],
+      "unavailable": [],
+      "expected": "pass",
+      "want": {
+        "verdict": "pass",
+        "authorizedAction": true,
+        "reason": "verified"
+      }
+    },
+    {
+      "name": "terminal-signed-settlement-payer-contradiction-rejected",
+      "operation": "validate-identity-bound-agreement-path",
+      "scenario": "identityBoundAgreement",
+      "stage": "terminal",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "verifierContext",
+            "terminalAuthority",
+            "settlements",
+            0,
+            "executionAuthority",
+            "settlementObservation",
+            "event",
+            "payer"
+          ],
+          "value": "key:1212121212121212121212121212121212121212121212121212121212121212"
+        }
+      ],
+      "resign": [
+        "terminal-settlement-observation:0"
+      ],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-settlement-observation-invalid"
+      }
+    },
+    {
+      "name": "terminal-signed-settlement-payee-contradiction-rejected",
+      "operation": "validate-identity-bound-agreement-path",
+      "scenario": "identityBoundAgreement",
+      "stage": "terminal",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "verifierContext",
+            "terminalAuthority",
+            "settlements",
+            0,
+            "executionAuthority",
+            "settlementObservation",
+            "event",
+            "payee"
+          ],
+          "value": "key:3434343434343434343434343434343434343434343434343434343434343434"
+        }
+      ],
+      "resign": [
+        "terminal-settlement-observation:0"
+      ],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-settlement-observation-invalid"
+      }
+    },
+    {
+      "name": "terminal-signed-settlement-amount-contradiction-rejected",
+      "operation": "validate-identity-bound-agreement-path",
+      "scenario": "identityBoundAgreement",
+      "stage": "terminal",
+      "commitment": "finality",
+      "mutations": [
+        {
+          "op": "set",
+          "path": [
+            "verifierContext",
+            "terminalAuthority",
+            "settlements",
+            0,
+            "executionAuthority",
+            "settlementObservation",
+            "event",
+            "paymentAmount"
+          ],
+          "value": {
+            "amount": "2",
+            "currency": "DEM"
+          }
+        }
+      ],
+      "resign": [
+        "terminal-settlement-observation:0"
+      ],
+      "unavailable": [],
+      "expected": "fail",
+      "want": {
+        "verdict": "fail",
+        "authorizedAction": false,
+        "reason": "terminal-settlement-observation-invalid"
       }
     },
     {
@@ -23364,11 +24113,11 @@
       ],
       "resign": [],
       "unavailable": [],
-      "expected": "error",
+      "expected": "indeterminate",
       "want": {
-        "verdict": "error",
+        "verdict": "indeterminate",
         "authorizedAction": false,
-        "reason": "malformed-input"
+        "reason": "required-companion-missing"
       }
     },
     {
@@ -25761,11 +26510,11 @@
       ],
       "resign": [],
       "unavailable": [],
-      "expected": "error",
+      "expected": "indeterminate",
       "want": {
-        "verdict": "error",
+        "verdict": "indeterminate",
         "authorizedAction": false,
-        "reason": "malformed-input"
+        "reason": "required-companion-missing"
       }
     },
     {
@@ -27195,11 +27944,11 @@
       ],
       "resign": [],
       "unavailable": [],
-      "expected": "error",
+      "expected": "indeterminate",
       "want": {
-        "verdict": "error",
+        "verdict": "indeterminate",
         "authorizedAction": false,
-        "reason": "malformed-input"
+        "reason": "required-companion-missing"
       }
     }
   ]

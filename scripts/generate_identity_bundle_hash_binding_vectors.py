@@ -1084,7 +1084,9 @@ def disposition_reference(value: dict[str, Any]) -> dict[str, Any]:
 
 
 def cannot_settle_evidence(
-    prior_agreement: dict[str, Any], disposition: dict[str, Any]
+    prior_agreement: dict[str, Any],
+    prior_payment_input: dict[str, Any],
+    disposition: dict[str, Any],
 ) -> dict[str, Any]:
     selection = prior_agreement["terms"]["rail"]
     phase_index = disposition["priorPhaseIndex"]
@@ -1103,6 +1105,23 @@ def cannot_settle_evidence(
     record["signature"] = component_signature(
         record, SETTLEMENT_EVIDENCE_DOMAIN, "orchestrator"
     )
+    payer = prior_payment_input["payer"]["payingKey"]
+    payee = prior_payment_input["payee"]["payeeAddress"]
+    authorization = {
+        "jobId": prior_agreement["jobId"],
+        "phaseIndex": phase_index,
+        "phaseKind": handler,
+        "railId": selection["railId"],
+        "resource": selection.get("parameters", {}).get("resource"),
+        "payer": payer,
+        "payee": payee,
+        "paymentAmount": copy.deepcopy(prior_payment_input["amount"]),
+    }
+    cannot_settle_event = {
+        **authorization,
+        "outcome": "cannot-settle",
+        "authorizationRef": hash_hex({"priorPaymentAuthorization": authorization}),
+    }
     logical_address = (
         f"dacs4:payment:{prior_agreement['jobId']}:"
         f"{quote(selection['railId'], safe='-._~')}:{phase_index}"
@@ -1116,6 +1135,9 @@ def cannot_settle_evidence(
     return {
         "ref": reference,
         "record": record,
+        "settlementObservation": fixture_settlement_observation(
+            cannot_settle_event
+        ),
         "receipt": finalized_dependency_receipt(
             logical_address=logical_address,
             native_address=native_address,
@@ -1161,6 +1183,7 @@ def scenario(
     job_id: str,
     *,
     prior_agreement: dict[str, Any] | None = None,
+    prior_payment_input: dict[str, Any] | None = None,
     disposition: dict[str, Any] | None = None,
     sealed: bool = False,
     alternative: bool = False,
@@ -1171,9 +1194,12 @@ def scenario(
         disposition = copy.deepcopy(disposition)
         if (
             prior_agreement is not None
+            and prior_payment_input is not None
             and disposition.get("disposition") == "closed-cannot-settle"
         ):
-            proof = cannot_settle_evidence(prior_agreement, disposition)
+            proof = cannot_settle_evidence(
+                prior_agreement, prior_payment_input, disposition
+            )
             disposition["reconciliationEvidenceRefs"] = [
                 copy.deepcopy(proof["ref"])
             ]
@@ -1375,8 +1401,13 @@ def scenario(
         }
         for role in agreement_roles
     }
-    if prior_agreement is not None and disposition is not None:
+    if (
+        prior_agreement is not None
+        and prior_payment_input is not None
+        and disposition is not None
+    ):
         result["priorAgreement"] = copy.deepcopy(prior_agreement)
+        result["priorPaymentInput"] = copy.deepcopy(prior_payment_input)
         prior_reference = disposition_reference(disposition)
         result["priorPaymentDisposition"] = {
             "artifact": copy.deepcopy(disposition),
@@ -1399,7 +1430,9 @@ def scenario(
                 disposition["disposition"] == "closed-cannot-settle"
             ),
             "reconciliationEvidence": (
-                [cannot_settle_evidence(prior_agreement, disposition)]
+                [cannot_settle_evidence(
+                    prior_agreement, prior_payment_input, disposition
+                )]
                 if disposition["disposition"] == "closed-cannot-settle"
                 else []
             ),
@@ -1634,6 +1667,21 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         authority = context["verifierContext"]["terminalAuthority"]
         mutate_fixture_evidence(
             authority["settlements"][int(index_text)]["receipt"], variant
+        )
+    elif action.startswith("terminal-settlement-observation:"):
+        index = int(action.split(":", 1)[1])
+        execution = context["verifierContext"]["terminalAuthority"][
+            "settlements"
+        ][index]["executionAuthority"]
+        execution["settlementObservation"] = fixture_settlement_observation(
+            execution["settlementObservation"]["event"]
+        )
+    elif action == "prior-settlement-observation":
+        material = context["priorPaymentDisposition"][
+            "reconciliationEvidence"
+        ][0]
+        material["settlementObservation"] = fixture_settlement_observation(
+            material["settlementObservation"]["event"]
         )
     elif action.startswith("terminal-bundle-receipt-evidence:"):
         variant = action.split(":", 1)[1]
@@ -2454,6 +2502,16 @@ def build_vectors() -> list[dict[str, Any]]:
             reason="prior-disposition-proof-invalid",
         ),
         vector(
+            "closed-cannot-settle-observation-endpoint-contradiction", "fail",
+            scenario_name="identityBoundPayeeCannotSettle", stage="commit",
+            mutations=[set_mutation([
+                "priorPaymentDisposition", "reconciliationEvidence", 0,
+                "settlementObservation", "event", "payee",
+            ], "key:" + "34" * 32)],
+            resign=["prior-settlement-observation"],
+            reason="prior-disposition-proof-invalid",
+        ),
+        vector(
             "completed-terminal-empty-settlement-evidence-rejected", "fail",
             scenario_name="identityBoundAgreement", stage="terminal",
             mutations=[set_mutation(
@@ -2473,6 +2531,61 @@ def build_vectors() -> list[dict[str, Any]]:
             scenario_name="identityBoundAgreement", stage="terminal",
             resign=["terminal-settlement-receipt-evidence:0:finality"],
             reason="terminal-settlement-receipt-invalid",
+        ),
+        vector(
+            "terminal-alternate-payer-and-payee-endpoints-verified", "pass",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            mutations=[
+                set_mutation(
+                    ["paymentInput", "payer", "payingKey"],
+                    SECONDARY_PAYER_CLAIM,
+                ),
+                set_mutation(
+                    ["paymentInput", "payee", "payeeAddress"],
+                    "demos:runtime-payee-destination",
+                ),
+                set_mutation([
+                    "verifierContext", "terminalAuthority", "settlements", 0,
+                    "executionAuthority", "settlementObservation", "event", "payer",
+                ], SECONDARY_PAYER_CLAIM),
+                set_mutation([
+                    "verifierContext", "terminalAuthority", "settlements", 0,
+                    "executionAuthority", "settlementObservation", "event", "payee",
+                ], "demos:runtime-payee-destination"),
+            ],
+            resign=["terminal-settlement-observation:0"],
+            reason="verified",
+        ),
+        vector(
+            "terminal-signed-settlement-payer-contradiction-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            mutations=[set_mutation([
+                "verifierContext", "terminalAuthority", "settlements", 0,
+                "executionAuthority", "settlementObservation", "event", "payer",
+            ], "key:" + "12" * 32)],
+            resign=["terminal-settlement-observation:0"],
+            reason="terminal-settlement-observation-invalid",
+        ),
+        vector(
+            "terminal-signed-settlement-payee-contradiction-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            mutations=[set_mutation([
+                "verifierContext", "terminalAuthority", "settlements", 0,
+                "executionAuthority", "settlementObservation", "event", "payee",
+            ], "key:" + "34" * 32)],
+            resign=["terminal-settlement-observation:0"],
+            reason="terminal-settlement-observation-invalid",
+        ),
+        vector(
+            "terminal-signed-settlement-amount-contradiction-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            mutations=[set_mutation([
+                "verifierContext", "terminalAuthority", "settlements", 0,
+                "executionAuthority", "settlementObservation", "event",
+                "paymentAmount",
+            ], {"amount": "2", "currency": "DEM"})],
+            resign=["terminal-settlement-observation:0"],
+            reason="terminal-settlement-observation-invalid",
         ),
         vector(
             "terminal-bundle-receipt-finality-tamper-rejected", "fail",
@@ -2588,7 +2701,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 scenario_name="identityBoundAgreement",
                 mutations=[set_mutation(path, value)], reason="malformed-input",
             ))
-        missing_is_authority = path_index in {10, 11, 17}
+        missing_is_authority = path_index in {9, 10, 11, 17}
         vectors.append(vector(
             f"malformed-commit-{path_index:02d}-missing",
             "indeterminate" if missing_is_authority else "error",
@@ -2625,10 +2738,19 @@ def build_vectors() -> list[dict[str, Any]]:
                     scenario_name="identityBoundAgreement", stage=stage,
                     mutations=[set_mutation(path, value)], reason="malformed-input",
                 ))
+            missing_is_authority = (
+                (stage == "payment" and path_index == 7)
+                or (stage == "terminal" and path_index == 10)
+            )
             vectors.append(vector(
-                f"malformed-{stage}-{path_index:02d}-missing", "error",
+                f"malformed-{stage}-{path_index:02d}-missing",
+                "indeterminate" if missing_is_authority else "error",
                 scenario_name="identityBoundAgreement", stage=stage,
-                mutations=[delete_mutation(path)], reason="malformed-input",
+                mutations=[delete_mutation(path)],
+                reason=(
+                    "required-companion-missing"
+                    if missing_is_authority else "malformed-input"
+                ),
             ))
     return vectors
 
@@ -2650,7 +2772,8 @@ def build() -> dict[str, Any]:
     )
     scenarios["identityBoundPayeeReplacement"] = scenario(
         "identityBoundPayeeAgreement", JOB_IDS["replacement"],
-        prior_agreement=prior["agreement"], disposition=disposition,
+        prior_agreement=prior["agreement"],
+        prior_payment_input=prior["paymentInput"], disposition=disposition,
         alternative=True,
         selection="dem",
         listing_id=replacement_listing_id,
@@ -2665,6 +2788,7 @@ def build() -> dict[str, Any]:
         "identityBoundPayeeAgreement",
         JOB_IDS["replacement"],
         prior_agreement=prior["agreement"],
+        prior_payment_input=prior["paymentInput"],
         disposition=cannot_settle,
         alternative=True,
         selection="dem",

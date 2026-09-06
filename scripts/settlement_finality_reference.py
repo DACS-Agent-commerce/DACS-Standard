@@ -434,6 +434,21 @@ def _verify_rail(rail: Any, evidence: dict, agreement_terms: dict, trusted: dict
     model = profile["model"]
     if evidence.get("phase") not in PAYMENT_PHASE_BY_MODEL.get(model, set()):
         return "fail", "rail phaseHandler cannot select this finality model", None
+    asset = rail["asset"]
+    if "symbol" in asset:
+        rail_currency = asset.get("symbol")
+    elif "isoCurrency" in asset:
+        rail_currency = asset.get("isoCurrency")
+    else:
+        rail_currency = asset.get("canonicalSymbol")
+    signed_currency = agreement_terms.get("price", {}).get("currency")
+    parameter_asset = rail["parameters"].get("assetId")
+    if not _nonempty_string(rail_currency):
+        return "error", "rail asset does not declare a canonical currency", None
+    if rail_currency != signed_currency or (
+        parameter_asset is not None and parameter_asset != signed_currency
+    ):
+        return "fail", "rail asset differs from the signed settlement currency", None
     return "pass", "rail authenticated", profile
 
 

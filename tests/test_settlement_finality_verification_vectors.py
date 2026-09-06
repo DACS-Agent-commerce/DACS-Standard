@@ -148,6 +148,17 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         }
         self.assertEqual(MODELS, controls)
 
+    def test_signed_rail_asset_must_match_the_settlement_currency(self):
+        for model in MODELS:
+            value = copy.deepcopy(self.cases[f"fv-{model}-canonical-success"]["input"])
+            asset = value["rail"]["asset"]
+            field = next(name for name in ("symbol", "isoCurrency", "canonicalSymbol") if name in asset)
+            asset[field] = "WRONG"
+            factory = __import__("scripts.generate_settlement_finality_verification_vectors", fromlist=["FixtureFactory"]).FixtureFactory()
+            factory.rebind_rail(value)
+            with self.subTest(model=model):
+                self.assertEqual("fail", verify_finality(value, self.trust)["decision"])
+
     def test_every_finality_model_uses_only_the_verifier_local_clock(self):
         controls = {
             case["input"]["rail"]["consumerFinalityProfile"]["model"]: case["input"]
@@ -327,7 +338,26 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual("fail", conflict["decision"])
         self.assertIn("diverge", conflict["reason"])
 
+        absent_trust = copy.deepcopy(self.trust)
+        absent_trust["copyDispositionByJobRole"] = {
+            case["bundle"]["jobId"] + ":seller": "absent"
+        }
         absent = reconcile_authenticated_finality_copies(
+            [
+                self.entry(case["bundle"], case["authority"]),
+                {
+                    "disposition": "absent",
+                    "expectedJobId": case["bundle"]["jobId"],
+                    "expectedRole": "seller",
+                },
+            ],
+            self.pubkeys,
+            absent_trust,
+        )
+        self.assertEqual("pass", absent["decision"], absent["reason"])
+        self.assertEqual("finality-bound", bundle_type(absent["bundle"]))
+
+        unauthenticated_absent = reconcile_authenticated_finality_copies(
             [
                 self.entry(case["bundle"], case["authority"]),
                 {
@@ -339,8 +369,7 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
             self.pubkeys,
             self.trust,
         )
-        self.assertEqual("pass", absent["decision"], absent["reason"])
-        self.assertEqual("finality-bound", bundle_type(absent["bundle"]))
+        self.assertEqual("indeterminate", unauthenticated_absent["decision"])
 
         unavailable = reconcile_authenticated_finality_copies(
             [
@@ -386,6 +415,13 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertEqual("indeterminate", decision)
                 self.assertIn("unavailable", reason)
                 self.assertIsNone(phase_keys)
+
+        authority = copy.deepcopy(case["authority"])
+        authority["referenceValidationByCanonicalRef"] = {}
+        decision, reason, phase_keys = self.strong_result(case, authority=authority)
+        self.assertEqual("indeterminate", decision)
+        self.assertIn("unavailable", reason)
+        self.assertIsNone(phase_keys)
 
     def test_new_bundle_and_pointer_shapes_are_closed(self):
         case = self.strong["block-depth"]

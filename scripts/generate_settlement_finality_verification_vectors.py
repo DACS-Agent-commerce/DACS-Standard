@@ -370,13 +370,13 @@ class FixtureFactory:
             "eventIndex": event_index,
             "asset": session["asset"],
             "amount": "5",
-            "currency": "USDC",
+            "currency": session["asset"],
             "payer": session["payer"],
             "payee": session["payee"],
             "status": "success",
         }
 
-    def agreement(self, job_id: str, rail_id: str, rail_version: int) -> dict:
+    def agreement(self, job_id: str, rail_id: str, rail_version: int, currency: str) -> dict:
         agreement = {
             "agreementVersion": "1",
             "jobId": job_id,
@@ -399,7 +399,7 @@ class FixtureFactory:
                     "deliverableType": "entitlement",
                     "hash": hashlib.sha256(b"fixture-deliverable").hexdigest(),
                 },
-                "price": {"amount": "5", "currency": "USDC"},
+                "price": {"amount": "5", "currency": currency},
                 "rail": {"railId": rail_id, "railVersion": rail_version},
                 "deadline": 1_900_100_000_000,
             },
@@ -445,7 +445,7 @@ class FixtureFactory:
             rail_type = "demos-native"
             asset = {"kind": "native-dem", "symbol": "DEM", "decimals": 9}
             network = {"kind": "demos"}
-            parameters = {"assetId": "USDC"}
+            parameters = {"assetId": "DEM"}
         elif model == "provider-receipt":
             profile = {
                 "finalityProfileVersion": "1", "model": model,
@@ -459,7 +459,7 @@ class FixtureFactory:
             rail_type = "ap2"
             asset = {"kind": "fiat-via-ap2", "isoCurrency": "USD", "provider": CLAIMS["provider"]}
             network = {"kind": "ap2-provider", "providerEndpoint": "https://payments.example"}
-            parameters = {"assetId": "USDC"}
+            parameters = {"assetId": "USD"}
         elif model == "htlc-reveal":
             source = self.chain_profile(network="eip155:1")
             destination = self.chain_profile(network="eip155:8453")
@@ -548,7 +548,7 @@ class FixtureFactory:
             "partyClaims": {"buyer": CLAIMS["buyer"], "seller": CLAIMS["seller"]},
             "payer": CLAIMS["buyer"],
             "payee": CLAIMS["seller"],
-            "asset": "USDC",
+            "asset": agreement["terms"]["price"]["currency"],
         }
 
     def provider_context(self, session: dict, reference: dict, *, status="captured", observed_at=OBSERVED_AT) -> tuple[dict, dict]:
@@ -559,7 +559,7 @@ class FixtureFactory:
             "phaseIndex": session["phaseIndex"],
             "status": status,
             "amount": "5",
-            "currency": "USDC",
+            "currency": session["asset"],
             "payer": session["payer"],
             "payee": session["payee"],
         }
@@ -600,7 +600,8 @@ class FixtureFactory:
         job_id = "FV-392-" + model
         rail_id = "fixture:" + model
         rail_version = 1
-        agreement = self.agreement(job_id, rail_id, rail_version)
+        currency = {"bft-final": "DEM", "provider-receipt": "USD"}.get(model, "USDC")
+        agreement = self.agreement(job_id, rail_id, rail_version, currency)
         session = self.session(model, agreement, phase, rail_id, rail_version)
         self.trusted["sessionAuthorityByJob"][job_id] = copy.deepcopy(session)
         rail = self.rail(model, phase, rail_id, rail_version)
@@ -725,7 +726,7 @@ class FixtureFactory:
             "phase": phase,
             "outcome": "success",
             "paymentTxRefs": payment_refs,
-            "paymentAmount": {"amount": "5", "currency": "USDC"},
+            "paymentAmount": {"amount": "5", "currency": session["asset"]},
             "settlementFinality": report,
             "railDefinitionRef": {
                 **self.reference("rail:" + rail_id, rail_digest),

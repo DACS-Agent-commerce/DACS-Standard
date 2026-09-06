@@ -1651,6 +1651,15 @@ def validate_finality_bound_ebfab(
         return ("indeterminate", "finality verification authority is unavailable", None)
     if not isinstance(finality_trust, dict):
         return ("indeterminate", "trusted finality policy is unavailable", None)
+    references = bundle.get("settlementEvidence")
+    if (
+        isinstance(reference_validation_by_canonical_ref, dict)
+        and isinstance(references, list)
+        and all(isinstance(ref, dict) for ref in references)
+    ):
+        reference_keys = [canonical(ref).decode("utf-8") for ref in references]
+        if any(key not in reference_validation_by_canonical_ref for key in reference_keys):
+            return ("indeterminate", "referenced shared SEB authority is unavailable", None)
     ok, reason, phase_keys = _validate_bound_fault_bundle(
         bundle,
         listing,
@@ -1736,6 +1745,13 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
         requested_roles_by_job.setdefault(expected_job, set()).add(expected_role)
         disposition = entry.get("disposition", "present")
         if disposition == "absent":
+            trusted_dispositions = finality_trust.get("copyDispositionByJobRole")
+            key = expected_job + ":" + expected_role
+            if not (
+                isinstance(trusted_dispositions, dict)
+                and trusted_dispositions.get(key) == "absent"
+            ):
+                nonpasses.append((None, "indeterminate", "copy absence is not authenticated"))
             continue
         if disposition == "indeterminate":
             nonpasses.append((None, "indeterminate", "copy presence is indeterminate"))

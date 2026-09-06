@@ -402,7 +402,8 @@ type IdentityBoundPaymentPhaseInput = PaymentPhaseInput & {
 contract. When the authenticated Listing phase selects either identity-bound
 agreement, the handler MUST instead require the additional companion member of
 `IdentityBoundPaymentPhaseInput`. It reruns CORE IBH-1..IBH-5 and requires the
-recomputed digest and CVR to match every identity-bound agreement party,
+recomputed digest and CVR to match the exact authenticated Identify/Vet
+admission retained for every identity-bound agreement party,
 including each `bidder-non-winning` party retained by a sealed-envelope
 agreement. For the unique buyer and seller it additionally matches the
 corresponding payment party and authenticated `SessionParty` values; the frozen
@@ -419,7 +420,21 @@ job/role/claim/hash contradiction is `rejected` before payment. When mapped to
 `PhaseHandlerResult`, `verified` is the only `ok: true` result;
 `indeterminate` is `ok: false` with `errorClass: "substrate"`; and `rejected`
 is `ok: false` with its deterministic failure reason. A producer-supplied
-boolean or digest cannot satisfy this gate.
+boolean, digest, admission map, or fresh use of the consumed nonce cannot
+satisfy this gate.
+
+Before any authorization or irreversible payment effect, every handler MUST
+also enforce the ordinary common gate independently of IBH: the input
+`jobId`, agreement `jobId`, and authenticated `SessionContext.jobId` MUST be
+equal; the complete signed Listing, agreement, commitment, and Listing reference
+MUST join exactly; the authenticated session roster MUST identify the agreement
+buyer as payer and seller as payee with exact primary claims and bundle hashes;
+and `payer.payingKey` MUST equal a real authorized credential/key claim in the
+retained authenticated payer IdentityBundle, not merely match a string shape.
+The handler MUST validate the effective payment pipeline and selected rail,
+amount, phase index, rail-specific payee destination, payee payout coverage, and
+any APR replacement disposition before a rail call. A successful identity proof
+does not waive any of these checks.
 
 An irreversible delivery or value-release handler under an identity-bound
 Listing consumes the same verified companions from the distinct commitment
@@ -1326,7 +1341,10 @@ not a caller-supplied identity.
   A fresh-job Agreement is an APR replacement only when its signed
   `terms.priorPaymentDispositionRef` is present. Before accepting its
   commitment or making any authorization call, the orchestrator MUST resolve
-  that reference and the exact prior Agreement; verify both content hashes,
+  that reference and the exact prior Agreement; verify that both the prior and
+  replacement Agreements select distinct complete references from the same
+  exact signed `pay-alternative` Listing and preserve its original slot; verify
+  both content hashes,
   the prior Agreement signatures, the disposition signature, its finalized
   SR-2 receipt, and the authenticated prior phase-orchestrator writer; and
   require exact equality for `priorJobId`, `replacementJobId` against the new
@@ -1348,7 +1366,11 @@ not a caller-supplied identity.
   `reconciliationEvidenceRefs`, each independently resolved and verified under
   the selected prior handler's authoritative terminal-reconciliation rules,
   and those proofs MUST conclusively establish that no prior authorization can
-  settle. `authorization-pending`, `settlement-indeterminate`, a missing proof,
+  settle. Each disposition and reconciliation-evidence receipt MUST bind its
+  exact logical and native address, canonical content hash, transaction,
+  authenticated writer, applicable nonce, independently authenticated
+  inclusion/ordering, and finality; a bare unsigned state/content/writer summary
+  is not evidence. `authorization-pending`, `settlement-indeterminate`, a missing proof,
   non-observation, rejection, or an unfinalized disposition permits zero calls
   on the replacement rail. An Agreement without
   `priorPaymentDispositionRef` is an independent purchase, not a claimed

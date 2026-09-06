@@ -2574,12 +2574,14 @@
       "id": "identity-bound-agreement-authenticated-joins",
       "area": "negotiate",
       "spec": "§8.6",
-      "summary": "identity-bound commitment verifies session-nonce presentations and exact role/claim/job/digest/CVR-reference joins without asserted proof booleans",
+      "summary": "identity-bound commitment reverifies exact authenticated retained admissions after distinct one-use nonce consumption and enforces phase/session/role/claim/job/digest/CVR joins without asserted proof booleans",
       "status": "candidate",
       "reason": "repository-native executable cryptographic corpus; pending independent reference-run convergence",
       "fixture": "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json",
       "want": {
         "verifiedProof": "pass",
+        "consumedNonceReuse": "fail",
+        "missingRetainedAdmission": "indeterminate",
         "contradiction": "fail",
         "unavailableAuthority": "indeterminate"
       }
@@ -2588,7 +2590,7 @@
       "id": "identity-bound-agreement-historical-compatibility",
       "area": "negotiate",
       "spec": "§8.11",
-      "summary": "signed prefixed AgreementDocument and PayeeBoundAgreementDocument bytes remain valid under both commitment-record forms while the modeled base agreement dispatcher and executable base terminal reference refuse the new types/phases",
+      "summary": "signed prefixed AgreementDocument and PayeeBoundAgreementDocument bytes remain valid under both commitment-record forms; supported historical controls execute and unmodeled historical payment/terminal stages refuse non-authoritatively",
       "status": "candidate",
       "reason": "repository-native executable corpus with a modeled base agreement dispatcher plus executable base terminal reference; not deployed-reader proof and pending independent convergence",
       "fixture": "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json",
@@ -2598,6 +2600,7 @@
           "CommitmentRecord",
           "FinalityCommitmentRecord"
         ],
+        "unmodeledHistoricalStage": "indeterminate",
         "modeledOldReaderNewTypes": "fail"
       }
     },
@@ -2605,12 +2608,14 @@
       "id": "identity-bound-agreement-settle-terminal-enforcement",
       "area": "verify",
       "spec": "§10.4.3",
-      "summary": "payment, terminal closure, and reputation admission require verified identity-bound proof and preserve payee payout/replacement gates",
+      "summary": "payment, terminal closure, and reputation admission require the common pre-action gate, genuine APR projection/disposition, and complete finalized EBFAB dependency joins",
       "status": "candidate",
       "reason": "repository-native executable cryptographic corpus; pending independent reference-run convergence",
       "fixture": "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json",
       "want": {
         "verified": "action",
+        "emptyCompletedSettlementEvidence": "no-action",
+        "unsignedReplacementSummary": "no-action",
         "rejected": "no-action",
         "indeterminate": "no-action"
       }

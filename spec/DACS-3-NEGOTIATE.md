@@ -541,6 +541,14 @@ commitment handler and downstream consumers repeat that verification. The
 non-payee identity-bound type preserves the legacy non-payee destination
 meaning; it does not acquire PB-1..PB-3 by implication.
 
+An accepted identity proof does not complete agreement admission. Before any
+signature or commitment, the producer and consumer still validate the complete
+signed Listing, mandatory negotiation-to-commit ordering, exact four-way
+artifact/domain/phase dispatch, agreement/listing/job joins, authenticated
+session roster, effective payment pipeline, and every payee/APR obligation
+applicable below. These checks form one pre-action gate; none can be bypassed by
+an IBH `verified` result.
+
 `AgreementDocument` MUST NOT carry `terms.payoutBindings` or
 `terms.priorPaymentDispositionRef`. Both payee types require
 `terms.payoutBindings` and apply the same exact effective-pipeline coverage.
@@ -593,6 +601,18 @@ under all three other domains.
 #### 8.5.2 Listing conformance validation
 
 A verifier MUST validate the agreement against its referenced listing — checked in order:
+
+Before check 1, the verifier MUST validate the complete signed Listing under
+§6.3.4 and PS-1..PS-3: exactly one recognized negotiation phase and exactly one
+of the four agreement commitment phases MUST occur, with the commitment
+immediately following negotiation. Omission, duplication, reversed order, an
+unknown phase, or a negotiation kind inconsistent with `derivedFromPattern`
+rejects before agreement signatures or commitment. The input `jobId`,
+agreement `jobId`, authenticated `SessionContext.jobId`, Listing reference, and
+commitment reference MUST all join exactly. The authenticated session roster
+MUST match the agreement buyer/seller roles and primary claims; sealed-envelope
+agreement companions additionally retain every allowed `bidder-non-winning`
+party without inventing a `SessionParty` role.
 
 1. **Currency** — `terms.price.currency` MUST equal the listing pricing currency (negotiable pricing → `bandCenter.currency`; fixed pricing → the listed price currency; metered pricing → `unitPrice.currency`). A band or equality comparison across differing currencies MUST be rejected **before any amount comparison**.
 2. **Price within band** — first, if the pinned listing's `PricingSpec.kind` is not one this reader recognizes, the selected agreement commitment phase MUST reject with a recorded `unrecognized-pricing-kind` reason (rule MTR-5) and MUST NOT accept an agreement whose price it validated against no recognized pricing model — the fail-closed instance for the pricing union, the same discipline as check 8's `unresolvable-auctionMode`. Otherwise `terms.price` MUST satisfy the recognized kind:
@@ -768,23 +788,32 @@ type CommitIdentityBoundPayeeAgreementOutput = PhaseHandlerResult & {
 
 **Procedure.** The applicable commitment handler MUST:
 
-1. resolve and verify the exact signed Listing, require the four-way
-   phase/artifact matrix in §8.5.2, and reject every unknown, missing, dual, or
-   relabelled discriminator before signature or terms interpretation;
+1. resolve and verify the complete exact signed Listing; require PS-1..PS-3's
+   sole recognized negotiation immediately followed by the sole agreement
+   commitment; require the four-way phase/artifact matrix in §8.5.2; and reject
+   every unknown phase or missing, dual, or relabelled discriminator before
+   signature or terms interpretation;
 2. select the matching agreement domain, compute `agreementHash =
    sha256(canonical_JCS(agreement))` with signatures omitted, and verify every
    required agreement signature;
 3. for either identity-bound phase, require one companion for every agreement
-   party and no extras, then run CORE IBH-1..IBH-5. Expected nonces come from
-   the verifier-issued challenge state authenticated for this `jobId`, not from
-   a candidate field. Roles come from the verified agreement and signed
-   Listing. The handler ignores caller role labels and requires a unique
-   companion/CVR join. `rejected` returns `ok: false` with no anchor;
+   party and no extras, then run CORE IBH-1..IBH-5. Each expected nonce and the
+   exact accepted bundle bytes/result come from the verifier's authenticated
+   retained admission for this `jobId` and presenter, not from a candidate
+   field; this is reverification of an already consumed challenge, not a new
+   nonce acceptance. Roles come from the verified agreement and signed Listing.
+   The handler ignores caller role labels and requires a unique companion/CVR
+   join. `rejected` returns `ok: false` with no anchor;
    `indeterminate` returns `ok: false`, `errorClass: "substrate"`, and an
    identity-binding reason without changing it to invalid. Neither result may
    solicit a signature, commit, pay, or release value. Existing phases skip
    this new step and retain their prior validity rules;
-4. validate the agreement against the listing per §8.5.2. The **value checks**
+4. require the input, agreement, authenticated session, Listing, and later
+   commitment to join on exact `jobId` and references; verify the retained
+   session buyer/seller role, primary-claim, and bundle-digest roster; then
+   validate the agreement against the listing per §8.5.2, including the
+   authenticated effective payment pipeline, exact payout coverage on either
+   payee type, and any signed APR disposition. The **value checks**
    (currency / band / rail / deliverable / pattern) gate **here**; the two
    **`committedAt`-relative checks** (deadline, `notAfter`) are re-evaluated
    against the finalized receipt timestamp after step 7. Any validation failure

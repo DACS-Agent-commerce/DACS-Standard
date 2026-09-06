@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import jcs
 from cryptography.exceptions import InvalidSignature
@@ -33,6 +34,8 @@ COMMITMENT_DOMAIN = "dacs-commitment:v1:"
 FINALITY_COMMITMENT_DOMAIN = "dacs-finality-commitment:v1:"
 RAIL_DOMAIN = "dacs-rail:v1:"
 TERMINAL_DOMAIN = "dacs-bundle:v1:"
+EVIDENCE_BOUND_TERMINAL_DOMAIN = "dacs-evidence-bound-fault-bundle:v1:"
+SETTLEMENT_EVIDENCE_DOMAIN = "dacs-evidence:v1:"
 DISPOSITION_DOMAIN = "dacs-prior-payment-disposition:v1:"
 VERIFY_RESULT_DOMAIN = "dacs-verifyresult:v1:"
 
@@ -93,6 +96,30 @@ AGREEMENT_DOMAINS = {
 STRONG_ARTIFACTS = {"identityBoundAgreement", "identityBoundPayeeAgreement"}
 PAYEE_ARTIFACTS = {"payeeBoundAgreement", "identityBoundPayeeAgreement"}
 RAIL_REF = {"railId": "demos-native:DEM", "railVersion": 1}
+X402_RAIL_REF = {
+    "railId": "x402:default",
+    "railVersion": 1,
+    "parameters": {"resource": "https://seller.example/pay/390"},
+}
+RAIL_SELECTIONS = {
+    "dem": (RAIL_REF, "pay-dem", "DEM"),
+    "x402": (X402_RAIL_REF, "pay-x402", "USDC"),
+}
+CONCRETE_PAYMENT_PHASES = frozenset({
+    "pay-evm-erc20",
+    "pay-solana-spl",
+    "pay-cross-chain-htlc",
+    "pay-cross-chain-liquidity-tank",
+    "pay-ap2",
+    "pay-x402",
+    "pay-dem",
+})
+NEGOTIATION_PHASES = frozenset({
+    "negotiate-fixed-price",
+    "negotiate-rfq",
+    "negotiate-sealed-envelope",
+    "negotiate-sealed-envelope-procurement",
+})
 JOB_IDS = {
     "agreement": "01KTY8ZJ00CW7KSECW3FS6PQ0A",
     "payeeBoundAgreement": "01KTY8ZJ00CW7KSECW3FS6PQ0B",
@@ -310,6 +337,8 @@ def listing(
     job_id: str,
     *,
     sealed: bool = False,
+    alternative: bool = False,
+    listing_id: str | None = None,
 ) -> dict[str, Any]:
     deliverable = {"kind": "storage-program", "accessModel": "public"}
     pipeline: list[dict[str, Any]] = [{"kind": "vet-credentials"}]
@@ -322,15 +351,28 @@ def listing(
                 "selectionRule": "highest-price",
             },
         })
-    pipeline.extend([
-        {"kind": phase},
-        {"kind": "pay-dem", "parameters": {"rail": RAIL_REF["railId"]}},
-        {"kind": "deliver-storage-program"},
-    ])
+    else:
+        pipeline.append({"kind": "negotiate-fixed-price"})
+    pipeline.append({"kind": phase})
+    if alternative:
+        pipeline.append({
+            "kind": "pay-alternative",
+            "parameters": {
+                "alternatives": [
+                    copy.deepcopy(RAIL_REF),
+                    copy.deepcopy(X402_RAIL_REF),
+                ],
+            },
+        })
+    else:
+        pipeline.append({
+            "kind": "pay-dem", "parameters": {"rail": RAIL_REF["railId"]}
+        })
+    pipeline.append({"kind": "deliver-storage-program"})
     value: dict[str, Any] = {
         "dacsVersion": "1",
         "listingVersion": 1,
-        "listingId": f"dacs-390-{job_id}",
+        "listingId": listing_id or f"dacs-390-{job_id}",
         "seller": {
             "identity": copy.deepcopy(seller_bundle),
             "displayName": "DACS #390 seller",
@@ -355,7 +397,10 @@ def listing(
                 "price": {"amount": "1", "currency": "DEM"},
             }
         ),
-        "acceptedRails": [copy.deepcopy(RAIL_REF)],
+        "acceptedRails": (
+            [copy.deepcopy(RAIL_REF), copy.deepcopy(X402_RAIL_REF)]
+            if alternative else [copy.deepcopy(RAIL_REF)]
+        ),
         "terms": {"deadlineSecAfterCommit": 3600},
         "validity": {"notBefore": NOW - 100_000, "notAfter": NOW + 100_000},
     }
@@ -382,6 +427,8 @@ def agreement(
     bidder_roles: tuple[str, ...] = (),
     derived_from_pattern: str = "fixed-price",
     payment_phase_index: int = 2,
+    selected_rail: dict[str, Any] = RAIL_REF,
+    payment_currency: str = "DEM",
 ) -> dict[str, Any]:
     strong = artifact in STRONG_ARTIFACTS
     parties = []
@@ -400,13 +447,13 @@ def agreement(
             "deliverableType": "storage-program",
             "hash": hash_hex(signed_listing["offering"]["deliverable"]),
         },
-        "price": {"amount": "1", "currency": "DEM"},
-        "rail": copy.deepcopy(RAIL_REF),
+        "price": {"amount": "1", "currency": payment_currency},
+        "rail": copy.deepcopy(selected_rail),
         "deadline": NOW + 50_000,
     }
     if artifact in PAYEE_ARTIFACTS:
         terms["payoutBindings"] = [{
-            "railId": RAIL_REF["railId"],
+            "railId": selected_rail["railId"],
             "phaseIndex": payment_phase_index,
             "payeeAddress": CLAIMS["seller"],
         }]
@@ -546,23 +593,33 @@ def mutate_fixture_evidence(receipt: dict[str, Any], variant: str) -> None:
     )
 
 
-def finalized_receipt(record: dict[str, Any], job_id: str) -> dict[str, Any]:
-    content_hash = commitment_record_hash(record)
-    logical_address = f"dacs3:commit:{job_id}"
-    native_address = f"fixture:{hashlib.sha256(logical_address.encode()).hexdigest()}"
-    nonce = hashlib.sha256(f"nonce:{job_id}".encode()).hexdigest()
+def finalized_dependency_receipt(
+    *,
+    logical_address: str,
+    native_address: str,
+    content_hash: str,
+    writer: str,
+    nonce: str,
+    timestamp: int = NOW,
+) -> dict[str, Any]:
+    """Create one independently attested fixture-only SR-2 receipt.
+
+    The native receipt is deliberately generic over the referenced dependency.
+    Consumers still provide every expected binding independently; no receipt
+    field or fixture label selects the artifact that is being authorized.
+    """
     transaction_binding = {
         "logicalAddress": logical_address,
         "nativeAddress": native_address,
         "contentHash": content_hash,
-        "writer": CLAIMS["orchestrator"],
+        "writer": writer,
         "nonce": nonce,
     }
     transaction_ref = {"kind": "fixture", "value": hash_hex(transaction_binding)}
     ordered_transactions = [copy.deepcopy(transaction_ref)]
     block_material = {
         "height": "390",
-        "timestamp": NOW,
+        "timestamp": timestamp,
         "orderedTransactions": ordered_transactions,
     }
     block_ref = {
@@ -593,16 +650,27 @@ def finalized_receipt(record: dict[str, Any], job_id: str) -> dict[str, Any]:
         "nativeAddress": native_address,
         "contentHash": content_hash,
         "transactionRef": transaction_ref,
-        "writer": CLAIMS["orchestrator"],
+        "writer": writer,
         "nonce": nonce,
         "state": "finalized",
         "observationDisposition": "established",
-        "observedAt": NOW + 1_000,
+        "observedAt": timestamp + 1_000,
         "blockRef": block_ref,
         "evidence": {},
     }
     set_fixture_evidence(receipt, native_receipt)
     return receipt
+
+
+def finalized_receipt(record: dict[str, Any], job_id: str) -> dict[str, Any]:
+    logical_address = f"dacs3:commit:{job_id}"
+    return finalized_dependency_receipt(
+        logical_address=logical_address,
+        native_address=f"fixture:{hashlib.sha256(logical_address.encode()).hexdigest()}",
+        content_hash=commitment_record_hash(record),
+        writer=CLAIMS["orchestrator"],
+        nonce=hashlib.sha256(f"commitment-nonce:{job_id}".encode()).hexdigest(),
+    )
 
 
 def party_carrier(role: str, bundle: dict[str, Any]) -> dict[str, Any]:
@@ -613,15 +681,38 @@ def party_carrier(role: str, bundle: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def rail_definition() -> dict[str, Any]:
+def rail_definition(
+    reference: dict[str, Any] = RAIL_REF, handler: str = "pay-dem"
+) -> dict[str, Any]:
+    if handler == "pay-dem":
+        rail_type = "demos-native"
+        asset = {"kind": "native-dem", "symbol": "DEM", "decimals": 9}
+        network = {"kind": "demos"}
+        parameters = {"transfer": "native"}
+    elif handler == "pay-x402":
+        rail_type = "x402"
+        asset = {
+            "kind": "erc20",
+            "chainId": 8453,
+            "contract": "0x" + "39" * 20,
+            "symbol": "USDC",
+            "decimals": 6,
+        }
+        network = {
+            "kind": "x402-resource",
+            "resourceBaseUrl": reference.get("parameters", {}).get("resource"),
+        }
+        parameters = {"authorization": "eip-3009"}
+    else:
+        raise ValueError(f"unsupported fixture rail handler: {handler}")
     value: dict[str, Any] = {
-        "railVersion": 1,
-        "railId": RAIL_REF["railId"],
-        "railType": "demos-native",
-        "asset": {"kind": "native-dem", "symbol": "DEM", "decimals": 9},
-        "network": {"kind": "demos"},
-        "phaseHandler": "pay-dem",
-        "parameters": {},
+        "railVersion": reference["railVersion"],
+        "railId": reference["railId"],
+        "railType": rail_type,
+        "asset": asset,
+        "network": network,
+        "phaseHandler": handler,
+        "parameters": parameters,
         "availability": "live",
         "governance": {
             "proposedBy": CLAIMS["orchestrator"],
@@ -633,17 +724,167 @@ def rail_definition() -> dict[str, Any]:
     return value
 
 
+def effective_pipeline(
+    signed_listing: dict[str, Any], selected_ref: dict[str, Any], handler: str
+) -> list[dict[str, Any]]:
+    result = []
+    for step in signed_listing["pipeline"]:
+        if step.get("kind") == "pay-alternative":
+            result.append({
+                "kind": handler,
+                "parameters": {"rail": selected_ref["railId"]},
+            })
+        else:
+            result.append(copy.deepcopy(step))
+    return result
+
+
+def settlement_evidence(
+    job_id: str,
+    phase: str,
+    phase_index: int,
+    *,
+    rail_ref: dict[str, Any],
+    currency: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    record: dict[str, Any] = {
+        "evidenceVersion": "1",
+        "jobId": job_id,
+        "phase": phase,
+        "outcome": "success",
+        "observedAt": NOW + 5_000 + phase_index,
+    }
+    if phase == "pay-dem":
+        record.update({
+            "paymentTxRefs": [{
+                "kind": "demos",
+                "txHash": hash_hex({"jobId": job_id, "phaseIndex": phase_index}),
+                "blockNumber": 390,
+            }],
+            "paymentAmount": {"amount": "1", "currency": currency},
+            "settlementFinality": {
+                "model": "bft-final",
+                "finalityObservedAt": NOW + 5_000 + phase_index,
+            },
+        })
+    elif phase == "pay-x402":
+        record.update({
+            "paymentTxRefs": [{
+                "kind": "x402-event",
+                "httpResource": rail_ref["parameters"]["resource"],
+                "paymentReceiptHash": hash_hex({"receipt": job_id}),
+                "settlementTxHash": "0x" + hash_hex({"settlement": job_id}),
+                "chainId": 8453,
+                "logIndex": 0,
+                "protocolVersion": "1",
+            }],
+            "paymentAmount": {"amount": "1", "currency": currency},
+            "settlementFinality": {
+                "model": "block-depth",
+                "finalityBlocks": 1,
+                "finalityObservedAt": NOW + 5_000 + phase_index,
+            },
+        })
+    elif phase == "deliver-storage-program":
+        record.update({
+            "deliverableContentHash": hash_hex({"deliverable": job_id}),
+            "deliverableAnchor": {
+                "kind": "storage-program",
+                "locator": f"fixture:delivery:{job_id}",
+            },
+        })
+    else:
+        raise ValueError(f"unsupported fixture evidence phase: {phase}")
+    record["signature"] = component_signature(
+        record, SETTLEMENT_EVIDENCE_DOMAIN, "orchestrator"
+    )
+    content_hash = artifact_hash(record, "signature")
+    if phase.startswith("pay-"):
+        logical_address = (
+            f"dacs4:payment:{job_id}:{quote(rail_ref['railId'], safe='-._~')}:{phase_index}"
+        )
+    else:
+        logical_address = f"dacs4:evidence:{job_id}:{phase_index}"
+    native_address = f"fixture:{hashlib.sha256(logical_address.encode()).hexdigest()}"
+    reference = {
+        "anchor": {"kind": "storage-program", "locator": native_address},
+        "contentHash": content_hash,
+    }
+    nonce = hashlib.sha256(
+        f"evidence-nonce:{job_id}:{phase_index}:{phase}".encode()
+    ).hexdigest()
+    receipt = finalized_dependency_receipt(
+        logical_address=logical_address,
+        native_address=native_address,
+        content_hash=content_hash,
+        writer=CLAIMS["orchestrator"],
+        nonce=nonce,
+        timestamp=NOW + 5_000 + phase_index,
+    )
+    execution = {
+        "jobId": job_id,
+        "phaseIndex": phase_index,
+        "phaseKind": phase,
+        "phaseOrchestrator": CLAIMS["orchestrator"],
+        "anchorNonce": nonce,
+    }
+    if phase.startswith("pay-"):
+        execution["railId"] = rail_ref["railId"]
+    else:
+        execution["evidenceLogicalAddress"] = logical_address
+    return record, reference, receipt, execution
+
+
+def bundle_content_hash(value: dict[str, Any]) -> str:
+    return hash_hex({
+        key: copy.deepcopy(item)
+        for key, item in value.items()
+        if key not in {"signatures", "anchoredByRole"}
+    })
+
+
 def terminal_bundle(
     job_id: str,
     signed_listing: dict[str, Any],
     signed_agreement: dict[str, Any],
-    phase: str,
     bundles: dict[str, dict[str, Any]],
-) -> dict[str, Any]:
+    records: dict[str, dict[str, Any]],
+    selected_ref: dict[str, Any],
+    handler: str,
+    currency: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    projected = effective_pipeline(signed_listing, selected_ref, handler)
+    evidence_entries = []
+    evidence_refs = []
+    summary = []
+    for index, step in enumerate(projected):
+        entry = {"index": index, "kind": step["kind"], "outcome": "ok"}
+        if step["kind"] in {handler, "deliver-storage-program"}:
+            record, reference, receipt, execution = settlement_evidence(
+                job_id,
+                step["kind"],
+                index,
+                rail_ref=selected_ref,
+                currency=currency,
+            )
+            entry["attestationRef"] = copy.deepcopy(reference)
+            evidence_refs.append(copy.deepcopy(reference))
+            evidence_entries.append({
+                "ref": reference,
+                "record": record,
+                "receipt": receipt,
+                "executionAuthority": execution,
+                "lifecycle": {
+                    "state": "finalized",
+                    "independentlyResolvable": True,
+                },
+            })
+        summary.append(entry)
     value: dict[str, Any] = {
-        "bundleVersion": "1",
+        "evidenceBoundFaultBundleVersion": "1",
         "jobId": job_id,
         "outcome": "completed",
+        "faultedParty": "none",
         "anchoredByRole": "buyer",
         "listingRef": listing_ref(signed_listing),
         "agreementRef": artifact_ref(
@@ -652,36 +893,92 @@ def terminal_bundle(
         "parties": [party_carrier(role, bundles[role]) for role in (
             "buyer", "seller", "orchestrator"
         )],
-        "phaseSummary": [
-            {"index": index, "kind": step["kind"], "outcome": "ok"}
-            for index, step in enumerate(signed_listing["pipeline"])
-        ],
+        "phaseSummary": summary,
         "vetRecords": [
             copy.deepcopy(party["vetRecordRef"])
             for party in signed_agreement["parties"]
         ],
-        "settlementEvidence": [],
+        "settlementEvidence": evidence_refs,
         "recipeRegistryVersion": 1,
         "railRegistryVersion": 1,
         "finalisedAt": NOW + 10_000,
         "signatures": [],
     }
     resign_terminal(value)
-    return value
+    agreement_ref = value["agreementRef"]
+    agreement_logical = f"dacs3:agreement:{job_id}"
+    agreement_receipt = finalized_dependency_receipt(
+        logical_address=agreement_logical,
+        native_address=agreement_ref["anchor"]["locator"],
+        content_hash=agreement_ref["contentHash"],
+        writer=CLAIMS["orchestrator"],
+        nonce=hash_hex({"agreement": job_id}),
+        timestamp=NOW + 7_000,
+    )
+    cvr_entries = []
+    for role, record in records.items():
+        reference = artifact_ref(record, f"{job_id}-{role}-cvr", "signature")
+        logical_address = (
+            f"dacs2:composite:{job_id}:"
+            f"{quote(CLAIMS[role], safe='-._~')}"
+        )
+        cvr_entries.append({
+            "ref": reference,
+            "receipt": finalized_dependency_receipt(
+                logical_address=logical_address,
+                native_address=reference["anchor"]["locator"],
+                content_hash=reference["contentHash"],
+                writer=CLAIMS["orchestrator"],
+                nonce=hash_hex({"cvr": job_id, "role": role}),
+                timestamp=NOW + 6_000,
+            ),
+            "lifecycle": {
+                "state": "finalized",
+                "independentlyResolvable": True,
+            },
+        })
+    bundle_address = "stor-" + hashlib.sha256(
+        f"{job_id}-bundle-{value['anchoredByRole']}".encode()
+    ).hexdigest()
+    authority = {
+        "settlements": evidence_entries,
+        "agreement": {
+            "receipt": agreement_receipt,
+            "lifecycle": {
+                "state": "finalized",
+                "independentlyResolvable": True,
+            },
+        },
+        "compositeRecords": cvr_entries,
+        "bundle": {
+            "receipt": finalized_dependency_receipt(
+                logical_address=bundle_address,
+                native_address=bundle_address,
+                content_hash=bundle_content_hash(value),
+                writer=CLAIMS["orchestrator"],
+                nonce=hash_hex({"bundle": job_id}),
+                timestamp=NOW + 10_000,
+            ),
+            "lifecycle": {
+                "state": "finalized",
+                "independentlyResolvable": True,
+            },
+        },
+    }
+    return value, authority
 
 
 def resign_terminal(value: dict[str, Any]) -> None:
-    digest = hash_hex({
-        key: copy.deepcopy(item)
-        for key, item in value.items()
-        if key not in {"signatures", "anchoredByRole"}
-    })
+    digest = bundle_content_hash(value)
     value["signatures"] = [
         {
             "party": CLAIMS[role],
             "algorithm": "ed25519",
             "value": b64url(
-                sign_ed25519(KEYS[role], (TERMINAL_DOMAIN + digest).encode("ascii"))
+                sign_ed25519(
+                    KEYS[role],
+                    (EVIDENCE_BOUND_TERMINAL_DOMAIN + digest).encode("ascii"),
+                )
             ),
         }
         for role in ("buyer", "seller", "orchestrator")
@@ -689,8 +986,13 @@ def resign_terminal(value: dict[str, Any]) -> None:
 
 
 def prior_disposition(
-    prior_job: str, replacement_job: str, prior_agreement: dict[str, Any]
+    prior_job: str,
+    replacement_job: str,
+    prior_agreement: dict[str, Any],
+    *,
+    disposition: str = "closed-before-authorization",
 ) -> dict[str, Any]:
+    phase_index = prior_agreement["terms"]["payoutBindings"][0]["phaseIndex"]
     value: dict[str, Any] = {
         "priorPaymentDispositionVersion": "1",
         "dispositionId": hashlib.sha256(b"dacs-390-disposition").hexdigest(),
@@ -699,13 +1001,113 @@ def prior_disposition(
         "priorAgreementRef": artifact_ref(
             prior_agreement, "prior-agreement", "signatures"
         ),
-        "priorSelection": copy.deepcopy(RAIL_REF),
-        "priorPhaseIndex": 2,
-        "disposition": "closed-before-authorization",
+        "priorSelection": copy.deepcopy(prior_agreement["terms"]["rail"]),
+        "priorPhaseIndex": phase_index,
+        "disposition": disposition,
+        "reconciliationEvidenceRefs": (
+            []
+            if disposition == "closed-before-authorization"
+            else [{
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": f"fixture:reconciliation:{prior_job}:{phase_index}",
+                },
+                "contentHash": hash_hex({"reconciliation": prior_job}),
+                "signer": RECEIPT_AUTHORITY_CLAIM,
+            }]
+        ),
         "observedAt": NOW - 2_000,
     }
     value["signature"] = component_signature(value, DISPOSITION_DOMAIN, "orchestrator")
     return value
+
+
+def disposition_reference(value: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": (
+                "dacs4:payment-disposition:"
+                f"{value['priorJobId']}:{value['priorPhaseIndex']}:"
+                f"{value['dispositionId']}"
+            ),
+        },
+        "contentHash": artifact_hash(value, "signature"),
+        "signer": CLAIMS["orchestrator"],
+    }
+
+
+def cannot_settle_evidence(
+    prior_agreement: dict[str, Any], disposition: dict[str, Any]
+) -> dict[str, Any]:
+    selection = prior_agreement["terms"]["rail"]
+    phase_index = disposition["priorPhaseIndex"]
+    handler = next(
+        handler for reference, handler, _ in RAIL_SELECTIONS.values()
+        if reference == selection
+    )
+    record: dict[str, Any] = {
+        "evidenceVersion": "1",
+        "jobId": prior_agreement["jobId"],
+        "phase": handler,
+        "outcome": "failure",
+        "reason": "closed-cannot-settle",
+        "observedAt": NOW - 2_500,
+    }
+    record["signature"] = component_signature(
+        record, SETTLEMENT_EVIDENCE_DOMAIN, "orchestrator"
+    )
+    logical_address = (
+        f"dacs4:payment:{prior_agreement['jobId']}:"
+        f"{quote(selection['railId'], safe='-._~')}:{phase_index}"
+    )
+    native_address = f"fixture:{hashlib.sha256(logical_address.encode()).hexdigest()}"
+    reference = {
+        "anchor": {"kind": "storage-program", "locator": native_address},
+        "contentHash": artifact_hash(record, "signature"),
+    }
+    nonce = hash_hex({"cannotSettle": prior_agreement["jobId"]})
+    return {
+        "ref": reference,
+        "record": record,
+        "receipt": finalized_dependency_receipt(
+            logical_address=logical_address,
+            native_address=native_address,
+            content_hash=reference["contentHash"],
+            writer=CLAIMS["orchestrator"],
+            nonce=nonce,
+            timestamp=NOW - 2_500,
+        ),
+        "nonce": nonce,
+        "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": True,
+        },
+    }
+
+
+def retained_admission(
+    role: str, bundle: dict[str, Any], job_id: str
+) -> dict[str, Any]:
+    digest = hash_hex(unsigned(bundle, "presentation"))
+    return {
+        "jobId": job_id,
+        "presenter": CLAIMS[role],
+        "nonce": bundle["sessionNonce"],
+        "issuedAt": NOW - 15_000,
+        "expiresAt": NOW + 45_000,
+        "attemptedAt": NOW - 10_000,
+        "consumed": True,
+        "bundle": copy.deepcopy(bundle),
+        "bundleBytes": canonical_bytes(bundle).decode("utf-8"),
+        "bundleHash": digest,
+        "acceptedResult": {
+            "verdict": "pass",
+            "reason": "verified",
+            "bundleHash": digest,
+            "acceptedAt": NOW - 9_999,
+        },
+    }
 
 
 def scenario(
@@ -715,16 +1117,41 @@ def scenario(
     prior_agreement: dict[str, Any] | None = None,
     disposition: dict[str, Any] | None = None,
     sealed: bool = False,
+    alternative: bool = False,
+    selection: str = "dem",
+    listing_id: str | None = None,
 ) -> dict[str, Any]:
-    nonce = hashlib.sha256(f"nonce:{job_id}".encode()).hexdigest()
+    if disposition is not None:
+        disposition = copy.deepcopy(disposition)
+        if (
+            prior_agreement is not None
+            and disposition.get("disposition") == "closed-cannot-settle"
+        ):
+            proof = cannot_settle_evidence(prior_agreement, disposition)
+            disposition["reconciliationEvidenceRefs"] = [
+                copy.deepcopy(proof["ref"])
+            ]
+            disposition["signature"] = component_signature(
+                disposition, DISPOSITION_DOMAIN, "orchestrator"
+            )
     agreement_roles = ("buyer", "seller", "bidder") if sealed else ("buyer", "seller")
     bundles = {
-        role: identity_bundle(role, nonce)
+        role: identity_bundle(
+            role,
+            hashlib.sha256(f"challenge:{job_id}:{role}".encode()).hexdigest(),
+        )
         for role in ("buyer", "seller", "orchestrator", *agreement_roles[2:])
     }
-    signed_listing = listing(
-        PHASES[artifact], bundles["seller"], job_id, sealed=sealed
+    publication_bundle = identity_bundle(
+        "seller", hashlib.sha256(b"listing-publication-only").hexdigest()
     )
+    publication_bundle.pop("sessionNonce")
+    resign_bundle(publication_bundle, "seller")
+    signed_listing = listing(
+        PHASES[artifact], publication_bundle, job_id,
+        sealed=sealed, alternative=alternative, listing_id=listing_id,
+    )
+    selected_ref, handler, currency = RAIL_SELECTIONS[selection]
     results = {role: verify_result(role, job_id) for role in agreement_roles}
     result_refs = {
         role: verify_result_ref(results[role], role, job_id)
@@ -742,11 +1169,13 @@ def scenario(
     }
     payment_phase_index = next(
         index
-        for index, step in enumerate(signed_listing["pipeline"])
-        if step["kind"] == "pay-dem"
+        for index, step in enumerate(
+            effective_pipeline(signed_listing, selected_ref, handler)
+        )
+        if step["kind"] == handler
     )
     disposition_ref = (
-        artifact_ref(disposition, f"{job_id}-prior-disposition", "signature")
+        disposition_reference(disposition)
         if disposition is not None else None
     )
     signed_agreement = agreement(
@@ -755,6 +1184,8 @@ def scenario(
         bidder_roles=agreement_roles[2:],
         derived_from_pattern="sealed-envelope" if sealed else "fixed-price",
         payment_phase_index=payment_phase_index,
+        selected_rail=selected_ref,
+        payment_currency=currency,
     )
     companions = [
         {
@@ -787,8 +1218,8 @@ def scenario(
     payment_input = {
         "jobId": job_id,
         "agreement": copy.deepcopy(signed_agreement),
-        "rail": rail_definition(),
-        "amount": {"amount": "1", "currency": "DEM"},
+        "rail": rail_definition(selected_ref, handler),
+        "amount": {"amount": "1", "currency": currency},
         "payer": {
             "bundleHash": hash_hex(unsigned(bundles["buyer"], "presentation")),
             "primaryClaim": CLAIMS["buyer"],
@@ -802,8 +1233,15 @@ def scenario(
         "sessionContext": copy.deepcopy(session_context),
         "identityBindingCompanions": copy.deepcopy(companions),
     }
-    terminal = terminal_bundle(
-        job_id, signed_listing, signed_agreement, PHASES[artifact], bundles
+    terminal, terminal_authority = terminal_bundle(
+        job_id,
+        signed_listing,
+        signed_agreement,
+        bundles,
+        records,
+        selected_ref,
+        handler,
+        currency,
     )
     commitment_set = commitments(signed_agreement, job_id)
     commit_input = {
@@ -817,11 +1255,36 @@ def scenario(
     result = {
         "artifact": artifact,
         "verifierContext": {
-            "sessionNonce": nonce,
             "authenticatedOrchestrator": CLAIMS["orchestrator"],
             "authenticatedRailSteward": CLAIMS["orchestrator"],
             "authenticatedReceiptAuthority": RECEIPT_AUTHORITY_CLAIM,
             "paymentPhaseIndex": payment_phase_index,
+            "identityAdmissionAuthority": {
+                "authorityAuthenticated": True,
+                "records": [
+                    retained_admission(role, bundles[role], job_id)
+                    for role in (
+                        "buyer", "seller", "orchestrator", *agreement_roles[2:]
+                    )
+                ],
+            },
+            "railRegistry": {
+                "authorityAuthenticated": True,
+                "snapshotId": f"dacs-390-rails-{job_id}",
+                "resolutions": [
+                    {
+                        "snapshotId": f"dacs-390-rails-{job_id}",
+                        "ref": copy.deepcopy(reference),
+                        "status": "verified",
+                        "definition": rail_definition(reference, rail_handler),
+                    }
+                    for reference, rail_handler, _ in (
+                        RAIL_SELECTIONS.values()
+                        if alternative else (RAIL_SELECTIONS["dem"],)
+                    )
+                ],
+            },
+            "terminalAuthority": terminal_authority,
         },
         "listing": signed_listing,
         "agreement": signed_agreement,
@@ -837,6 +1300,9 @@ def scenario(
             "sessionContext": copy.deepcopy(session_context),
         },
     }
+    result["verifierContext"]["authenticatedSessionContext"] = copy.deepcopy(
+        session_context
+    )
     result["verifierContext"]["qualificationPublicKeys"] = {
         claim: b64url(public_key(KEYS[role]))
         for role, claim in CLAIMS.items()
@@ -865,15 +1331,98 @@ def scenario(
     }
     if prior_agreement is not None and disposition is not None:
         result["priorAgreement"] = copy.deepcopy(prior_agreement)
+        prior_reference = disposition_reference(disposition)
         result["priorPaymentDisposition"] = {
             "artifact": copy.deepcopy(disposition),
-            "receipt": {
-                "state": "finalized",
-                "contentHash": artifact_hash(disposition, "signature"),
-                "writer": CLAIMS["orchestrator"],
+            "executionAuthority": {
+                "status": "verified",
+                "phaseOrchestratorClaim": CLAIMS["orchestrator"],
             },
+            "receipt": finalized_dependency_receipt(
+                logical_address=prior_reference["anchor"]["locator"],
+                native_address=prior_reference["anchor"]["locator"],
+                content_hash=prior_reference["contentHash"],
+                writer=CLAIMS["orchestrator"],
+                nonce=hash_hex({"disposition": disposition["dispositionId"]}),
+                timestamp=NOW - 2_000,
+            ),
+            "authorizationJournalClosed": (
+                disposition["disposition"] == "closed-before-authorization"
+            ),
+            "reconciliationEvidenceVerified": (
+                disposition["disposition"] == "closed-cannot-settle"
+            ),
+            "reconciliationEvidence": (
+                [cannot_settle_evidence(prior_agreement, disposition)]
+                if disposition["disposition"] == "closed-cannot-settle"
+                else []
+            ),
         }
     return result
+
+
+def refresh_terminal_bundle_receipt(context: dict[str, Any]) -> None:
+    terminal_input = context.get("terminalInput")
+    if not isinstance(terminal_input, dict):
+        return
+    bundle = terminal_input.get("bundle")
+    authority = context.get("verifierContext", {}).get("terminalAuthority")
+    bundle_authority = authority.get("bundle") if isinstance(authority, dict) else None
+    if not isinstance(bundle, dict) or not isinstance(bundle_authority, dict):
+        return
+    anchored_role = bundle.get("anchoredByRole", "bad")
+    address = "stor-" + hashlib.sha256(
+        f"{bundle.get('jobId', 'bad')}-bundle-{anchored_role}".encode()
+    ).hexdigest()
+    bundle_authority["receipt"] = finalized_dependency_receipt(
+        logical_address=address,
+        native_address=address,
+        content_hash=bundle_content_hash(bundle),
+        writer=CLAIMS["orchestrator"],
+        nonce=hash_hex({"bundle": bundle.get("jobId", "bad")}),
+        timestamp=NOW + 10_000,
+    )
+
+
+def refresh_terminal_agreement_receipt(context: dict[str, Any]) -> None:
+    terminal_input = context.get("terminalInput")
+    if not isinstance(terminal_input, dict):
+        return
+    bundle = terminal_input.get("bundle")
+    authority = context.get("verifierContext", {}).get("terminalAuthority")
+    agreement_authority = (
+        authority.get("agreement") if isinstance(authority, dict) else None
+    )
+    reference = bundle.get("agreementRef") if isinstance(bundle, dict) else None
+    if not isinstance(agreement_authority, dict) or not isinstance(reference, dict):
+        return
+    job_id = str(bundle.get("jobId", "bad"))
+    agreement_authority["receipt"] = finalized_dependency_receipt(
+        logical_address=f"dacs3:agreement:{job_id}",
+        native_address=reference["anchor"]["locator"],
+        content_hash=reference["contentHash"],
+        writer=CLAIMS["orchestrator"],
+        nonce=hash_hex({"agreement": job_id}),
+        timestamp=NOW + 7_000,
+    )
+
+
+def refresh_disposition_receipt(context: dict[str, Any]) -> None:
+    resolved = context.get("priorPaymentDisposition")
+    if not isinstance(resolved, dict):
+        return
+    disposition = resolved.get("artifact")
+    if not isinstance(disposition, dict):
+        return
+    reference = disposition_reference(disposition)
+    resolved["receipt"] = finalized_dependency_receipt(
+        logical_address=reference["anchor"]["locator"],
+        native_address=reference["anchor"]["locator"],
+        content_hash=reference["contentHash"],
+        writer=CLAIMS["orchestrator"],
+        nonce=hash_hex({"disposition": disposition.get("dispositionId")}),
+        timestamp=NOW - 2_000,
+    )
 
 
 def refresh_commitments(context: dict[str, Any]) -> None:
@@ -909,6 +1458,8 @@ def refresh_agreement_chain(
     )
     context["terminalInput"]["bundle"]["agreementRef"] = copy.deepcopy(reference)
     resign_terminal(context["terminalInput"]["bundle"])
+    refresh_terminal_agreement_receipt(context)
+    refresh_terminal_bundle_receipt(context)
     synchronize_phase_inputs(context)
 
 
@@ -927,6 +1478,11 @@ def synchronize_phase_inputs(context: dict[str, Any]) -> None:
         session = carrier.get("sessionContext")
         if isinstance(session, dict):
             session["listingRef"] = copy.deepcopy(listing_reference)
+    retained_session = context.get("verifierContext", {}).get(
+        "authenticatedSessionContext"
+    )
+    if isinstance(retained_session, dict):
+        retained_session["listingRef"] = copy.deepcopy(listing_reference)
 
 
 def resign_context(context: dict[str, Any], action: str) -> None:
@@ -944,10 +1500,25 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         context["terminalInput"]["bundle"]["listingRef"] = copy.deepcopy(ref)
         pipeline = context["listing"].get("pipeline")
         if isinstance(pipeline, list) and all(isinstance(step, dict) for step in pipeline):
-            context["terminalInput"]["bundle"]["phaseSummary"] = [
-                {"index": index, "kind": step.get("kind"), "outcome": "ok"}
-                for index, step in enumerate(pipeline)
-            ]
+            selected = context["agreement"].get("terms", {}).get("rail")
+            handler = context["paymentInput"].get("rail", {}).get("phaseHandler")
+            projected = (
+                effective_pipeline(context["listing"], selected, handler)
+                if isinstance(selected, dict) and isinstance(handler, str)
+                else pipeline
+            )
+            old_summary = context["terminalInput"]["bundle"].get(
+                "phaseSummary", []
+            )
+            context["terminalInput"]["bundle"]["phaseSummary"] = []
+            for index, step in enumerate(projected):
+                entry = {"index": index, "kind": step.get("kind"), "outcome": "ok"}
+                if index < len(old_summary) and isinstance(old_summary[index], dict):
+                    if "attestationRef" in old_summary[index]:
+                        entry["attestationRef"] = copy.deepcopy(
+                            old_summary[index]["attestationRef"]
+                        )
+                context["terminalInput"]["bundle"]["phaseSummary"].append(entry)
         refresh_agreement_chain(context)
     elif action.startswith("bundle:"):
         index = int(action.split(":", 1)[1])
@@ -972,13 +1543,67 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         context["terminalInput"]["bundle"]["vetRecords"][index] = copy.deepcopy(
             context["agreement"]["parties"][index]["vetRecordRef"]
         )
+        terminal_authority = context.get("verifierContext", {}).get(
+            "terminalAuthority", {}
+        )
+        cvr_authorities = terminal_authority.get("compositeRecords", [])
+        if index < len(cvr_authorities):
+            reference = copy.deepcopy(
+                context["agreement"]["parties"][index]["vetRecordRef"]
+            )
+            logical_address = (
+                f"dacs2:composite:{context['agreement'].get('jobId', 'bad')}:"
+                f"{quote(claim, safe='-._~')}"
+            )
+            cvr_authorities[index] = {
+                "ref": reference,
+                "receipt": finalized_dependency_receipt(
+                    logical_address=logical_address,
+                    native_address=reference["anchor"]["locator"],
+                    content_hash=reference["contentHash"],
+                    writer=CLAIMS["orchestrator"],
+                    nonce=hash_hex({
+                        "cvr": context["agreement"].get("jobId", "bad"),
+                        "role": role,
+                    }),
+                    timestamp=NOW + 6_000,
+                ),
+                "lifecycle": {
+                    "state": "finalized",
+                    "independentlyResolvable": True,
+                },
+            }
         refresh_agreement_chain(context)
     elif action.startswith("commitment-receipt-evidence:"):
         variant = action.split(":", 1)[1]
         for wrapped in context["commitments"].values():
             mutate_fixture_evidence(wrapped["anchorReceipt"], variant)
+    elif action.startswith("disposition-receipt-evidence:"):
+        variant = action.split(":", 1)[1]
+        mutate_fixture_evidence(
+            context["priorPaymentDisposition"]["receipt"], variant
+        )
+    elif action.startswith("terminal-settlement-receipt-evidence:"):
+        _, index_text, variant = action.split(":", 2)
+        authority = context["verifierContext"]["terminalAuthority"]
+        mutate_fixture_evidence(
+            authority["settlements"][int(index_text)]["receipt"], variant
+        )
+    elif action.startswith("terminal-bundle-receipt-evidence:"):
+        variant = action.split(":", 1)[1]
+        mutate_fixture_evidence(
+            context["verifierContext"]["terminalAuthority"]["bundle"]["receipt"],
+            variant,
+        )
+    elif action.startswith("terminal-agreement-receipt-evidence:"):
+        variant = action.split(":", 1)[1]
+        mutate_fixture_evidence(
+            context["verifierContext"]["terminalAuthority"]["agreement"]["receipt"],
+            variant,
+        )
     elif action == "terminal":
         resign_terminal(context["terminalInput"]["bundle"])
+        refresh_terminal_bundle_receipt(context)
     elif action == "payment-rail":
         rail = context["paymentInput"]["rail"]
         rail["signature"] = component_signature(
@@ -987,24 +1612,16 @@ def resign_context(context: dict[str, Any], action: str) -> None:
     elif action == "disposition":
         value = context["priorPaymentDisposition"]["artifact"]
         value["signature"] = component_signature(value, DISPOSITION_DOMAIN, "orchestrator")
-        context["priorPaymentDisposition"]["receipt"]["contentHash"] = artifact_hash(
-            value, "signature"
-        )
-        context["agreement"]["terms"]["priorPaymentDispositionRef"] = artifact_ref(
-            value,
-            f"{context['agreement'].get('jobId', 'bad')}-prior-disposition",
-            "signature",
+        refresh_disposition_receipt(context)
+        context["agreement"]["terms"]["priorPaymentDispositionRef"] = (
+            disposition_reference(value)
         )
         refresh_agreement_chain(context)
     elif action == "disposition-reference-chain":
         value = context["priorPaymentDisposition"]["artifact"]
-        context["priorPaymentDisposition"]["receipt"]["contentHash"] = artifact_hash(
-            value, "signature"
-        )
-        context["agreement"]["terms"]["priorPaymentDispositionRef"] = artifact_ref(
-            value,
-            f"{context['agreement'].get('jobId', 'bad')}-prior-disposition",
-            "signature",
+        refresh_disposition_receipt(context)
+        context["agreement"]["terms"]["priorPaymentDispositionRef"] = (
+            disposition_reference(value)
         )
         refresh_agreement_chain(context)
     elif action == "prior-agreement-reference-chain":
@@ -1015,13 +1632,28 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         value["signature"] = component_signature(
             value, DISPOSITION_DOMAIN, "orchestrator"
         )
-        context["priorPaymentDisposition"]["receipt"]["contentHash"] = artifact_hash(
-            value, "signature"
+        refresh_disposition_receipt(context)
+        context["agreement"]["terms"]["priorPaymentDispositionRef"] = (
+            disposition_reference(value)
         )
-        context["agreement"]["terms"]["priorPaymentDispositionRef"] = artifact_ref(
-            value,
-            f"{context['agreement'].get('jobId', 'bad')}-prior-disposition",
-            "signature",
+        refresh_agreement_chain(context)
+    elif action == "prior-agreement-chain":
+        prior = context["priorAgreement"]
+        prior_artifact = next(
+            artifact for artifact, discriminator in DISCRIMINATORS.items()
+            if discriminator in prior
+        )
+        resign_agreement(prior, prior_artifact)
+        value = context["priorPaymentDisposition"]["artifact"]
+        value["priorAgreementRef"] = artifact_ref(
+            prior, "prior-agreement", "signatures"
+        )
+        value["signature"] = component_signature(
+            value, DISPOSITION_DOMAIN, "orchestrator"
+        )
+        refresh_disposition_receipt(context)
+        context["agreement"]["terms"]["priorPaymentDispositionRef"] = (
+            disposition_reference(value)
         )
         refresh_agreement_chain(context)
     else:
@@ -1079,7 +1711,7 @@ def build_vectors() -> list[dict[str, Any]]:
             vectors.append(vector(
                 f"dispatch-{artifact}-under-{phase}", "pass" if ok else "fail",
                 scenario_name=artifact,
-                mutations=[set_mutation(["listing", "pipeline", 1, "kind"], phase)],
+                mutations=[set_mutation(["listing", "pipeline", 2, "kind"], phase)],
                 resign=["listing-chain"],
                 reason="verified" if ok else "phase-artifact-mismatch",
             ))
@@ -1148,7 +1780,7 @@ def build_vectors() -> list[dict[str, Any]]:
         vector(
             "strong-policy-old-artifact-downgrade-rejected", "fail",
             scenario_name="agreement",
-            mutations=[set_mutation(["listing", "pipeline", 1, "kind"], PHASES["identityBoundAgreement"])],
+            mutations=[set_mutation(["listing", "pipeline", 2, "kind"], PHASES["identityBoundAgreement"])],
             resign=["listing-chain"], reason="phase-artifact-mismatch",
         ),
         vector(
@@ -1363,7 +1995,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 mutations=[set_mutation([
                     "paymentInput", "sessionContext", "parties", index,
                     "primaryClaim"
-                ], CLAIMS["orchestrator"])], reason="session-party-mismatch",
+                ], CLAIMS["orchestrator"])], reason="session-authority-mismatch",
             ),
             vector(
                 f"session-{role}-hash-position-rejected", "fail",
@@ -1371,7 +2003,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 mutations=[set_mutation([
                     "terminalInput", "sessionContext", "parties", index,
                     "bundleHash"
-                ], WRONG_HASH)], reason="session-party-mismatch",
+                ], WRONG_HASH)], reason="session-authority-mismatch",
             ),
             vector(
                 f"session-{role}-primary-claim-rejected", "fail",
@@ -1379,7 +2011,7 @@ def build_vectors() -> list[dict[str, Any]]:
                 mutations=[set_mutation([
                     "terminalInput", "sessionContext", "parties", index,
                     "primaryClaim"
-                ], CLAIMS["orchestrator"])], reason="session-party-mismatch",
+                ], CLAIMS["orchestrator"])], reason="session-authority-mismatch",
             ),
             vector(
                 f"terminal-{role}-hash-position-rejected", "fail",
@@ -1408,7 +2040,10 @@ def build_vectors() -> list[dict[str, Any]]:
             scenario_name="identityBoundAgreement", stage="terminal",
             mutations=[set_mutation(path, WRONG_HASH)],
             resign=["terminal"] if carrier == "terminal" else [],
-            reason=f"{carrier}-party-mismatch",
+            reason=(
+                "session-authority-mismatch"
+                if carrier == "session" else "terminal-party-mismatch"
+            ),
         ))
     for carrier, path in (
         ("session", [
@@ -1421,7 +2056,10 @@ def build_vectors() -> list[dict[str, Any]]:
             scenario_name="identityBoundAgreement", stage="terminal",
             mutations=[set_mutation(path, CLAIMS["buyer"])],
             resign=["terminal"] if carrier == "terminal" else [],
-            reason=f"{carrier}-party-mismatch",
+            reason=(
+                "session-authority-mismatch"
+                if carrier == "session" else "terminal-party-mismatch"
+            ),
         ))
     vectors.extend([
         vector(
@@ -1434,7 +2072,7 @@ def build_vectors() -> list[dict[str, Any]]:
             "terminal-phase-relabelled-rejected-before-count", "fail",
             scenario_name="identityBoundAgreement", stage="terminal",
             mutations=[set_mutation([
-                "terminalInput", "bundle", "phaseSummary", 1, "kind"
+                "terminalInput", "bundle", "phaseSummary", 2, "kind"
             ], "commit-agreement")], resign=["terminal"], reason="terminal-phase-mismatch",
         ),
         vector(
@@ -1461,7 +2099,7 @@ def build_vectors() -> list[dict[str, Any]]:
             scenario_name="identityBoundPayeeAgreement", stage="payment",
             mutations=[set_mutation([
                 "agreement", "terms", "payoutBindings", 0, "payeeAddress"
-            ], CLAIMS["buyer"])], resign=["agreement-chain"], reason="payout-destination-mismatch",
+            ], CLAIMS["buyer"])], resign=["agreement-chain"], reason="payout-binding-invalid",
         ),
         vector(
             "identity-bound-payee-payout-rail-mismatch", "fail",
@@ -1476,7 +2114,7 @@ def build_vectors() -> list[dict[str, Any]]:
             scenario_name="identityBoundPayeeAgreement", stage="payment",
             mutations=[set_mutation([
                 "agreement", "terms", "payoutBindings", 0, "phaseIndex"
-            ], 3)], resign=["agreement-chain"], reason="payout-binding-invalid",
+            ], 4)], resign=["agreement-chain"], reason="payout-binding-invalid",
         ),
         vector(
             "identity-bound-payee-signed-rail-handler-mismatch", "fail",
@@ -1484,14 +2122,14 @@ def build_vectors() -> list[dict[str, Any]]:
             mutations=[set_mutation([
                 "paymentInput", "rail", "phaseHandler"
             ], "pay-evm-erc20")], resign=["payment-rail"],
-            reason="rail-definition-invalid",
+            reason="rail-binding-mismatch",
         ),
         vector(
             "identity-bound-payee-agreement-rail-mismatch", "fail",
             scenario_name="identityBoundPayeeAgreement", stage="payment",
             mutations=[set_mutation([
                 "agreement", "terms", "rail", "railVersion"
-            ], 2)], resign=["agreement-chain"], reason="rail-binding-mismatch",
+            ], 2)], resign=["agreement-chain"], reason="rail-selection-invalid",
         ),
         vector(
             "identity-bound-payee-replacement-verified", "pass",
@@ -1561,7 +2199,7 @@ def build_vectors() -> list[dict[str, Any]]:
             scenario_name="identityBoundPayeeReplacement", stage="payment",
             mutations=[set_mutation([
                 "priorPaymentDisposition", "artifact", "priorPhaseIndex"
-            ], 3)], resign=["disposition"], reason="prior-selection-mismatch",
+            ], 4)], resign=["disposition"], reason="prior-selection-mismatch",
         ),
         vector(
             "identity-bound-payee-replacement-prior-agreement-invalid", "fail",
@@ -1570,6 +2208,281 @@ def build_vectors() -> list[dict[str, Any]]:
                 "priorAgreement", "signatures", 0, "value"
             ], "AAAA")], resign=["prior-agreement-reference-chain"],
             reason="prior-agreement-invalid",
+        ),
+        vector(
+            "negotiate-phase-missing-before-commit", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[delete_mutation(["listing", "pipeline", 1])],
+            resign=["listing-chain"],
+            reason="negotiate-phase-cardinality-invalid",
+        ),
+        vector(
+            "negotiate-phase-duplicate-rejected", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[append_mutation(
+                ["listing", "pipeline"], {"kind": "negotiate-fixed-price"}
+            )],
+            resign=["listing-chain"],
+            reason="negotiate-phase-cardinality-invalid",
+        ),
+        vector(
+            "negotiate-phase-not-immediately-before-commit", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[
+                set_mutation(["listing", "pipeline", 0, "kind"], "negotiate-fixed-price"),
+                set_mutation(["listing", "pipeline", 1, "kind"], "vet-credentials"),
+            ],
+            resign=["listing-chain"],
+            reason="negotiate-commit-order-invalid",
+        ),
+        vector(
+            "negotiate-pattern-mismatch-rejected", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[set_mutation(
+                ["listing", "pipeline", 1, "kind"], "negotiate-rfq"
+            )],
+            resign=["listing-chain"],
+            reason="negotiate-pattern-mismatch",
+        ),
+        vector(
+            "payment-job-must-match-agreement-and-session", "fail",
+            scenario_name="identityBoundAgreement", stage="payment",
+            mutations=[set_mutation(
+                ["paymentInput", "jobId"], "01KTY8ZJ00CW7KSECW3FS6PQ0Z"
+            )],
+            reason="payment-input-authority-mismatch",
+        ),
+        vector(
+            "payment-paying-key-must-be-in-admitted-bundle", "fail",
+            scenario_name="identityBoundAgreement", stage="payment",
+            mutations=[set_mutation(
+                ["paymentInput", "payer", "payingKey"], "key:" + "ab" * 32
+            )],
+            reason="paying-key-not-authorized",
+        ),
+        vector(
+            "commit-session-party-substitution-rejected", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[
+                set_mutation(
+                    ["commitInput", "sessionContext", "parties", 0, "primaryClaim"],
+                    "key:" + "ab" * 32,
+                ),
+                set_mutation(
+                    ["commitInput", "sessionContext", "parties", 0, "bundleHash"],
+                    "cd" * 32,
+                ),
+            ],
+            reason="session-authority-mismatch",
+        ),
+        vector(
+            "retained-admission-authority-unavailable", "indeterminate",
+            scenario_name="identityBoundAgreement",
+            mutations=[set_mutation(
+                ["verifierContext", "identityAdmissionAuthority"], None
+            )],
+            reason="identity-admission-authority-unavailable",
+        ),
+        vector(
+            "retained-buyer-admission-missing", "indeterminate",
+            scenario_name="identityBoundAgreement",
+            mutations=[delete_mutation([
+                "verifierContext", "identityAdmissionAuthority", "records", 0
+            ])],
+            reason="identity-admission-state-unavailable",
+        ),
+        vector(
+            "retained-admission-nonces-must-be-distinct", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[set_mutation(
+                ["verifierContext", "identityAdmissionAuthority", "records", 1, "nonce"],
+                hashlib.sha256(
+                    f"challenge:{JOB_IDS['identityBoundAgreement']}:buyer".encode()
+                ).hexdigest(),
+            )],
+            reason="identity-admission-state-invalid",
+        ),
+        vector(
+            "changed-resigned-presentation-cannot-reuse-admitted-nonce", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[set_mutation([
+                "commitInput", "identityBindingCompanions", 0,
+                "identityBundle", "presentedAt",
+            ], NOW - 9_999)],
+            resign=["bundle:0"],
+            reason="admitted-presentation-mismatch",
+        ),
+        vector(
+            "expired-retained-admission-rejected", "fail",
+            scenario_name="identityBoundAgreement",
+            mutations=[set_mutation([
+                "verifierContext", "identityAdmissionAuthority", "records", 0,
+                "expiresAt",
+            ], NOW - 11_000)],
+            reason="identity-admission-state-invalid",
+        ),
+        vector(
+            "payee-payout-coverage-required-before-commit", "fail",
+            scenario_name="identityBoundPayeeAgreement", stage="commit",
+            mutations=[set_mutation(["agreement", "terms", "payoutBindings"], [])],
+            resign=["agreement-chain"],
+            reason="payout-binding-invalid",
+        ),
+        vector(
+            "replacement-disposition-verified-before-commit", "pass",
+            scenario_name="identityBoundPayeeReplacement", stage="commit",
+            reason="verified",
+        ),
+        vector(
+            "replacement-disposition-signature-invalid-before-commit", "fail",
+            scenario_name="identityBoundPayeeReplacement", stage="commit",
+            mutations=[set_mutation([
+                "priorPaymentDisposition", "artifact", "signature", "value"
+            ], "AAAA")],
+            resign=["disposition-reference-chain"],
+            reason="prior-disposition-signature-invalid",
+        ),
+        vector(
+            "replacement-disposition-native-address-invalid-before-commit", "fail",
+            scenario_name="identityBoundPayeeReplacement", stage="commit",
+            resign=["disposition-receipt-evidence:location"],
+            reason="prior-disposition-receipt-invalid",
+        ),
+        vector(
+            "replacement-disposition-finality-invalid-before-commit", "fail",
+            scenario_name="identityBoundPayeeReplacement", stage="commit",
+            resign=["disposition-receipt-evidence:finality"],
+            reason="prior-disposition-receipt-invalid",
+        ),
+        vector(
+            "replacement-ordinary-payment-phase-rejected", "fail",
+            scenario_name="identityBoundPayeeReplacement", stage="commit",
+            mutations=[
+                set_mutation(
+                    ["listing", "pipeline", 3],
+                    {"kind": "pay-dem", "parameters": {"rail": RAIL_REF["railId"]}},
+                ),
+                set_mutation(["listing", "acceptedRails"], [copy.deepcopy(RAIL_REF)]),
+            ],
+            resign=["listing-chain"],
+            reason="replacement-requires-pay-alternative",
+        ),
+        vector(
+            "replacement-projection-preserves-signed-slot", "pass",
+            scenario_name="identityBoundPayeeReplacement", stage="terminal",
+            reason="verified",
+        ),
+        vector(
+            "replacement-prior-selection-cannot-use-synthetic-slot", "fail",
+            scenario_name="identityBoundPayeeReplacement", stage="commit",
+            mutations=[
+                set_mutation([
+                    "priorPaymentDisposition", "artifact", "priorPhaseIndex"
+                ], 4),
+                set_mutation([
+                    "priorAgreement", "terms", "payoutBindings", 0,
+                    "phaseIndex",
+                ], 4),
+            ],
+            resign=["prior-agreement-chain"],
+            reason="prior-selection-mismatch",
+        ),
+        vector(
+            "closed-cannot-settle-proof-verified-before-commit", "pass",
+            scenario_name="identityBoundPayeeCannotSettle", stage="commit",
+            reason="verified",
+        ),
+        vector(
+            "closed-cannot-settle-proof-missing-before-commit", "fail",
+            scenario_name="identityBoundPayeeCannotSettle", stage="commit",
+            mutations=[
+                set_mutation(
+                    ["priorPaymentDisposition", "artifact", "reconciliationEvidenceRefs"],
+                    [],
+                ),
+                set_mutation(
+                    ["priorPaymentDisposition", "reconciliationEvidence"], []
+                ),
+            ],
+            resign=["disposition"],
+            reason="prior-disposition-proof-invalid",
+        ),
+        vector(
+            "completed-terminal-empty-settlement-evidence-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            mutations=[set_mutation(
+                ["terminalInput", "bundle", "settlementEvidence"], []
+            )],
+            resign=["terminal"],
+            reason="terminal-settlement-authority-invalid",
+        ),
+        vector(
+            "terminal-settlement-receipt-address-tamper-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            resign=["terminal-settlement-receipt-evidence:0:location"],
+            reason="terminal-settlement-receipt-invalid",
+        ),
+        vector(
+            "terminal-settlement-receipt-finality-tamper-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            resign=["terminal-settlement-receipt-evidence:0:finality"],
+            reason="terminal-settlement-receipt-invalid",
+        ),
+        vector(
+            "terminal-bundle-receipt-finality-tamper-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            resign=["terminal-bundle-receipt-evidence:finality"],
+            reason="terminal-bundle-receipt-invalid",
+        ),
+        vector(
+            "terminal-agreement-receipt-content-tamper-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            resign=["terminal-agreement-receipt-evidence:content"],
+            reason="terminal-agreement-receipt-invalid",
+        ),
+        vector(
+            "terminal-bundle-lifecycle-not-finalized-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            mutations=[set_mutation([
+                "verifierContext", "terminalAuthority", "bundle", "lifecycle"
+            ], {"state": "included", "independentlyResolvable": False})],
+            reason="terminal-bundle-lifecycle-invalid",
+        ),
+        vector(
+            "terminal-outer-signature-cannot-upgrade-missing-proof", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            mutations=[set_mutation([
+                "verifierContext", "terminalAuthority", "settlements", 0,
+                "record", "signature", "value",
+            ], "AAAA")],
+            reason="terminal-seb-invalid:settlement evidence signature does not verify",
+        ),
+        vector(
+            "historical-payment-explicitly-not-modeled", "indeterminate",
+            scenario_name="agreement", stage="payment",
+            reason="historical-payment-stage-not-modeled",
+        ),
+        vector(
+            "historical-terminal-explicitly-not-modeled", "indeterminate",
+            scenario_name="agreement", stage="terminal",
+            reason="historical-terminal-stage-not-modeled",
+        ),
+        vector(
+            "historical-unsigned-terminal-refused", "error",
+            scenario_name="agreement", stage="terminal",
+            mutations=[set_mutation(
+                ["terminalInput", "bundle", "signatures"], []
+            )],
+            reason="malformed-input",
+        ),
+        vector(
+            "historical-payment-destination-substitution-non-authorizing",
+            "indeterminate",
+            scenario_name="agreement", stage="payment",
+            mutations=[set_mutation(
+                ["paymentInput", "payee", "payeeAddress"], "key:" + "ab" * 32
+            )],
+            reason="historical-payment-stage-not-modeled",
         ),
     ])
     for commitment in ("legacy", "finality"):
@@ -1603,8 +2516,8 @@ def build_vectors() -> list[dict[str, Any]]:
             reason="verified" if artifact in {"agreement", "payeeBoundAgreement"} else "unsupported-new-type",
         ))
     malformed_paths = [
-        ["listing", "pipeline"], ["listing", "pipeline", 1],
-        ["listing", "pipeline", 1, "kind"], ["agreement", "parties"],
+        ["listing", "pipeline"], ["listing", "pipeline", 2],
+        ["listing", "pipeline", 2, "kind"], ["agreement", "parties"],
         ["agreement", "parties", 0], ["agreement", "parties", 0, "role"],
         ["agreement", "parties", 0, "primaryClaim"],
         ["agreement", "parties", 0, "bundleHash"],
@@ -1651,8 +2564,8 @@ def build_vectors() -> list[dict[str, Any]]:
             ["terminalInput", "bundle", "parties", 0],
             ["terminalInput", "bundle", "parties", 0, "bundleHash"],
             ["terminalInput", "bundle", "phaseSummary"],
-            ["terminalInput", "bundle", "phaseSummary", 1],
-            ["terminalInput", "bundle", "phaseSummary", 1, "kind"],
+            ["terminalInput", "bundle", "phaseSummary", 2],
+            ["terminalInput", "bundle", "phaseSummary", 2, "kind"],
             ["terminalInput", "bundle", "signatures"],
             ["terminalInput", "sessionContext"],
             ["terminalInput", "sessionContext", "parties"],
@@ -1678,13 +2591,38 @@ def build() -> dict[str, Any]:
     scenarios = {
         artifact: scenario(artifact, JOB_IDS[artifact]) for artifact in ARTIFACTS
     }
-    prior = scenario("identityBoundPayeeAgreement", JOB_IDS["prior"])
+    replacement_listing_id = "dacs-390-pay-alternative-replacement"
+    prior = scenario(
+        "identityBoundPayeeAgreement",
+        JOB_IDS["prior"],
+        alternative=True,
+        selection="x402",
+        listing_id=replacement_listing_id,
+    )
     disposition = prior_disposition(
         JOB_IDS["prior"], JOB_IDS["replacement"], prior["agreement"]
     )
     scenarios["identityBoundPayeeReplacement"] = scenario(
         "identityBoundPayeeAgreement", JOB_IDS["replacement"],
         prior_agreement=prior["agreement"], disposition=disposition,
+        alternative=True,
+        selection="dem",
+        listing_id=replacement_listing_id,
+    )
+    cannot_settle = prior_disposition(
+        JOB_IDS["prior"],
+        JOB_IDS["replacement"],
+        prior["agreement"],
+        disposition="closed-cannot-settle",
+    )
+    scenarios["identityBoundPayeeCannotSettle"] = scenario(
+        "identityBoundPayeeAgreement",
+        JOB_IDS["replacement"],
+        prior_agreement=prior["agreement"],
+        disposition=cannot_settle,
+        alternative=True,
+        selection="dem",
+        listing_id=replacement_listing_id,
     )
     scenarios["historicalSealed"] = scenario(
         "agreement", JOB_IDS["historicalSealed"], sealed=True
@@ -1713,6 +2651,15 @@ def build() -> dict[str, Any]:
                     "path": "tests/dacs5_reference.py",
                     "test": "tests.test_bundle_settlement_evidence_bijection_vectors.BundleSettlementEvidenceBijectionVectorTests.test_signed_listing_rejects_unknown_phase_before_deriving_empty_evidence"
                 },
+                "historicalStageAdapter": {
+                    "commit": "modeled-supported-controls",
+                    "payment": "not-completely-modeled-non-authorizing-indeterminate",
+                    "terminal": "signed-shape-and-seb-controls-then-non-authorizing-indeterminate",
+                    "note": (
+                        "An evaluator limitation is not protocol invalidity and "
+                        "never authorizes a historical stage unconditionally."
+                    ),
+                },
                 "deployedReaderProof": False,
                 "note": "The terminal refusal is executable modeled reference evidence; neither arm is deployed-reader proof."
             },
@@ -1721,11 +2668,21 @@ def build() -> dict[str, Any]:
                 "scope": "deterministic offline conformance fixture only",
                 "observer": RECEIPT_AUTHORITY_CLAIM,
                 "commitmentProducer": CLAIMS["orchestrator"],
+                "coveredDependencies": [
+                    "commitment",
+                    "agreement",
+                    "composite-verification-record",
+                    "prior-payment-disposition",
+                    "settlement-evidence",
+                    "evidence-bound-fault-bundle",
+                ],
                 "liveSubstrateProof": False,
                 "note": (
-                    "The signed native observation exercises SR2-4/SR2-5 "
-                    "binding and ordering checks but does not claim Demos or any "
-                    "other live substrate consensus verification."
+                    "The generic signed native observation exercises exact "
+                    "logical/native address, content, transaction, writer, "
+                    "nonce, inclusion/ordering, and finality joins. Its fixture "
+                    "cryptography is not a production-native codec and does not "
+                    "claim Demos or any other live consensus verification."
                 ),
             },
         },

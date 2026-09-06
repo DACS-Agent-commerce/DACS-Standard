@@ -11,6 +11,7 @@ import re
 import sys
 import unittest
 from unittest import mock
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -94,6 +95,20 @@ def valid_ref(reference: object) -> bool:
     )
 
 
+def valid_signed_ref(reference: object) -> bool:
+    if not isinstance(reference, dict) or set(reference) != {
+        "anchor", "contentHash", "signer"
+    }:
+        return False
+    return (
+        valid_ref({
+            "anchor": reference.get("anchor"),
+            "contentHash": reference.get("contentHash"),
+        })
+        and isinstance(reference.get("signer"), str)
+    )
+
+
 def valid_verify_result_ref(reference: object) -> bool:
     if not isinstance(reference, dict) or set(reference) != {
         "anchor", "contentHash", "recipeVersion"
@@ -162,6 +177,167 @@ def validate_identity_bundle(
     return "pass", "verified", digest
 
 
+class NonceAdmissionStore:
+    """Stateful fixture model for CORE SN-1..SN-4 admission semantics."""
+
+    def __init__(self) -> None:
+        self._issued: dict[str, dict] = {}
+
+    def issue(
+        self,
+        job_id: str,
+        presenter: str,
+        nonce: str,
+        *,
+        issued_at: int,
+        expires_at: int,
+    ) -> bool:
+        if (
+            not isinstance(job_id, str)
+            or not isinstance(presenter, str)
+            or not isinstance(nonce, str)
+            or nonce in self._issued
+            or not isinstance(issued_at, int)
+            or isinstance(issued_at, bool)
+            or not isinstance(expires_at, int)
+            or isinstance(expires_at, bool)
+            or expires_at <= issued_at
+        ):
+            return False
+        self._issued[nonce] = {
+            "jobId": job_id,
+            "presenter": presenter,
+            "issuedAt": issued_at,
+            "expiresAt": expires_at,
+            "consumed": False,
+            "accepted": None,
+        }
+        return True
+
+    def admit(
+        self, job_id: str, presenter: str, bundle: object, *, attempted_at: int
+    ) -> tuple[str, str]:
+        nonce = bundle.get("sessionNonce") if isinstance(bundle, dict) else None
+        issued = self._issued.get(nonce) if isinstance(nonce, str) else None
+        if not isinstance(issued, dict):
+            return "fail", "nonce-not-issued"
+        if issued["consumed"]:
+            return "fail", "nonce-consumed"
+        # SN-4 consumes before every later shape, expiry, or signature decision.
+        issued["consumed"] = True
+        if (
+            issued["jobId"] != job_id
+            or issued["presenter"] != presenter
+            or not isinstance(bundle, dict)
+            or bundle.get("presentedBy") != presenter
+        ):
+            return "fail", "nonce-binding-mismatch"
+        if (
+            not isinstance(attempted_at, int)
+            or isinstance(attempted_at, bool)
+            or attempted_at < issued["issuedAt"]
+            or attempted_at > issued["expiresAt"]
+        ):
+            return "fail", "nonce-expired"
+        verdict, reason, digest = validate_identity_bundle(bundle, nonce)
+        if verdict == "pass":
+            issued["accepted"] = {
+                "jobId": job_id,
+                "presenter": presenter,
+                "bundleBytes": generator.canonical_bytes(bundle),
+                "bundleHash": digest,
+                "verdict": verdict,
+                "reason": reason,
+            }
+        return verdict, reason
+
+
+def validate_retained_admission(
+    context: dict,
+    bundle: object,
+    expected_claim: str,
+    job_id: str,
+) -> tuple[str, str, str | None]:
+    verifier_context = context.get("verifierContext")
+    authority = (
+        verifier_context.get("identityAdmissionAuthority")
+        if isinstance(verifier_context, dict)
+        else None
+    )
+    if not isinstance(authority, dict) or authority.get("authorityAuthenticated") is not True:
+        return "indeterminate", "identity-admission-authority-unavailable", None
+    records = authority.get("records")
+    if not isinstance(records, list):
+        return "indeterminate", "identity-admission-authority-unavailable", None
+    nonces = [record.get("nonce") for record in records if isinstance(record, dict)]
+    if (
+        len(nonces) != len(records)
+        or any(not isinstance(nonce, str) for nonce in nonces)
+        or len(nonces) != len(set(nonces))
+    ):
+        return "fail", "identity-admission-state-invalid", None
+    matches = [
+        record for record in records
+        if isinstance(record, dict)
+        and record.get("jobId") == job_id
+        and record.get("presenter") == expected_claim
+    ]
+    if len(matches) == 0:
+        return "indeterminate", "identity-admission-state-unavailable", None
+    if len(matches) != 1:
+        return "fail", "identity-admission-state-invalid", None
+    record = matches[0]
+    retained_bundle = record.get("bundle")
+    accepted = record.get("acceptedResult")
+    issued_at = record.get("issuedAt")
+    expires_at = record.get("expiresAt")
+    attempted_at = record.get("attemptedAt")
+    if (
+        not isinstance(retained_bundle, dict)
+        or not isinstance(accepted, dict)
+        or any(
+            not isinstance(value, int) or isinstance(value, bool)
+            for value in (issued_at, expires_at, attempted_at)
+        )
+        or not issued_at <= attempted_at <= expires_at
+        or record.get("consumed") is not True
+        or accepted.get("verdict") != "pass"
+        or accepted.get("reason") != "verified"
+        or not isinstance(accepted.get("acceptedAt"), int)
+        or isinstance(accepted.get("acceptedAt"), bool)
+        or accepted["acceptedAt"] < attempted_at
+    ):
+        return "fail", "identity-admission-state-invalid", None
+    presented_verdict, presented_reason, _ = validate_identity_bundle(
+        bundle, record.get("nonce")
+    )
+    if presented_verdict != "pass":
+        return presented_verdict, presented_reason, None
+    try:
+        retained_bytes = generator.canonical_bytes(retained_bundle).decode("utf-8")
+        presented_bytes = generator.canonical_bytes(bundle).decode("utf-8")
+    except (TypeError, ValueError):
+        return "error", "malformed-input", None
+    if (
+        record.get("bundleBytes") != retained_bytes
+        or presented_bytes != retained_bytes
+        or retained_bundle.get("presentedBy") != expected_claim
+        or retained_bundle.get("sessionNonce") != record.get("nonce")
+    ):
+        return "fail", "admitted-presentation-mismatch", None
+    verdict, reason, digest = validate_identity_bundle(
+        retained_bundle, record.get("nonce")
+    )
+    if verdict != "pass" or digest is None:
+        return verdict, reason, None
+    if (
+        record.get("bundleHash") != digest
+        or accepted.get("bundleHash") != digest
+    ):
+        return "fail", "identity-admission-state-invalid", None
+    return "pass", "verified", digest
+
+
 def listing_phase(
     context: dict,
     supported_phases: frozenset[str] = generator.CURRENT_SUPPORTED_PHASES,
@@ -185,11 +361,37 @@ def listing_phase(
         return "error", "malformed-input", None
     if any(step["kind"] not in supported_phases for step in pipeline):
         return "fail", "unsupported-phase", None
-    phases = [step["kind"] for step in pipeline if step["kind"] in generator.PHASES.values()]
-    if not phases:
+    phase_indexes = [
+        index for index, step in enumerate(pipeline)
+        if step["kind"] in generator.PHASES.values()
+    ]
+    if not phase_indexes:
         return "error", "malformed-input", None
-    if len(phases) > 1:
+    if len(phase_indexes) > 1:
         return "fail", "commitment-phase-cardinality-invalid", None
+    negotiation_indexes = [
+        index for index, step in enumerate(pipeline)
+        if step["kind"] in generator.NEGOTIATION_PHASES
+    ]
+    if len(negotiation_indexes) != 1:
+        return "fail", "negotiate-phase-cardinality-invalid", None
+    if negotiation_indexes[0] + 1 != phase_indexes[0]:
+        return "fail", "negotiate-commit-order-invalid", None
+    agreement = context.get("agreement")
+    pattern = agreement.get("derivedFromPattern") if isinstance(agreement, dict) else None
+    expected_negotiations = {
+        "fixed-price": {"negotiate-fixed-price"},
+        "rfq": {"negotiate-rfq"},
+        "sealed-envelope": {
+            "negotiate-sealed-envelope",
+            "negotiate-sealed-envelope-procurement",
+        },
+    }.get(pattern)
+    if (
+        not isinstance(expected_negotiations, set)
+        or pipeline[negotiation_indexes[0]]["kind"] not in expected_negotiations
+    ):
+        return "fail", "negotiate-pattern-mismatch", None
     signer = seller["identity"].get("presentedBy")
     if not verify_component(listing, generator.LISTING_DOMAIN, signer):
         return "fail", "listing-signature-invalid", None
@@ -198,7 +400,7 @@ def listing_phase(
     )
     if bundle_result != "pass":
         return bundle_result, bundle_reason, None
-    return "pass", "verified", phases[0]
+    return "pass", "verified", pipeline[phase_indexes[0]]["kind"]
 
 
 def artifact_type(agreement: object) -> tuple[str, str | None]:
@@ -302,10 +504,23 @@ def agreement_role_claims(agreement: object) -> tuple[str, dict[str, str]]:
     return "pass", claims
 
 
-def verify_anchor_receipt(
-    wrapped: dict, record: dict, orchestrator: str, receipt_authority: str
+def verify_dependency_receipt(
+    receipt: object,
+    *,
+    logical_address: str,
+    native_address: str,
+    content_hash: str,
+    writer: str,
+    nonce: str,
+    receipt_authority: str,
+    invalid_reason: str,
 ) -> tuple[str, str, int | None]:
-    receipt = wrapped.get("anchorReceipt")
+    """Verify the fixture's signed native inclusion/finality observation.
+
+    Expected artifact identity is always supplied by the caller's retained
+    authority. Receipt fields and the encoded native envelope never dispatch
+    or select the dependency they purport to prove.
+    """
     if not isinstance(receipt, dict):
         return "error", "malformed-input", None
     transaction_ref = receipt.get("transactionRef")
@@ -321,7 +536,7 @@ def verify_anchor_receipt(
         or not isinstance(transaction_ref, dict)
         or not isinstance(transaction_ref.get("kind"), str)
         or not isinstance(transaction_ref.get("value"), str)
-        or receipt.get("writer") != orchestrator
+        or not isinstance(receipt.get("writer"), str)
         or not isinstance(receipt.get("nonce"), str)
         or receipt.get("state") != "finalized"
         or receipt.get("observationDisposition") != "established"
@@ -339,8 +554,8 @@ def verify_anchor_receipt(
         or not isinstance(receipt_authority, str)
     ):
         return "error", "malformed-input", None
-    if receipt_authority == orchestrator:
-        return "fail", "commitment-receipt-invalid", None
+    if receipt_authority == writer:
+        return "fail", invalid_reason, None
     try:
         envelope = json.loads(evidence["value"])
         native = envelope["nativeReceipt"]
@@ -356,7 +571,7 @@ def verify_anchor_receipt(
             or not isinstance(native, dict)
             or not isinstance(signature, str)
         ):
-            return "fail", "commitment-receipt-invalid", None
+            return "fail", invalid_reason, None
         valid = generator.verify_ed25519(
             key_bytes(receipt_authority),
             b64url_decode(signature),
@@ -366,10 +581,7 @@ def verify_anchor_receipt(
     except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         valid = False
     if not valid:
-        return "fail", "commitment-receipt-invalid", None
-    content_hash = generator.commitment_record_hash(record)
-    logical_address = f"dacs3:commit:{record.get('jobId')}"
-    native_address = f"fixture:{hashlib.sha256(logical_address.encode()).hexdigest()}"
+        return "fail", invalid_reason, None
     binding = native.get("binding")
     inclusion = native.get("inclusion")
     consensus = native.get("consensus")
@@ -378,13 +590,13 @@ def verify_anchor_receipt(
         or not isinstance(inclusion, dict)
         or not isinstance(consensus, dict)
     ):
-        return "fail", "commitment-receipt-invalid", None
+        return "fail", invalid_reason, None
     expected_binding = {
         "logicalAddress": logical_address,
         "nativeAddress": native_address,
         "contentHash": content_hash,
-        "writer": orchestrator,
-        "nonce": receipt["nonce"],
+        "writer": writer,
+        "nonce": nonce,
     }
     expected_transaction = {
         "kind": "fixture",
@@ -403,6 +615,8 @@ def verify_anchor_receipt(
         or receipt["nativeAddress"] != native_address
         or receipt["contentHash"] != content_hash
         or receipt["transactionRef"] != expected_transaction
+        or receipt["writer"] != writer
+        or receipt["nonce"] != nonce
         or not isinstance(ordered_transactions, list)
         or isinstance(transaction_index, bool)
         or not isinstance(transaction_index, int)
@@ -413,7 +627,7 @@ def verify_anchor_receipt(
         or native_block != block_ref
         or consensus != {"state": "finalized", "inclusionIsFinal": True}
     ):
-        return "fail", "commitment-receipt-invalid", None
+        return "fail", invalid_reason, None
     block_material = {
         "height": block_ref["height"],
         "timestamp": block_ref["timestamp"],
@@ -423,8 +637,31 @@ def verify_anchor_receipt(
         block_ref["id"] != generator.hash_hex(block_material)
         or receipt["observedAt"] < block_ref["timestamp"]
     ):
-        return "fail", "commitment-receipt-invalid", None
+        return "fail", invalid_reason, None
     return "pass", "verified", block_ref["timestamp"]
+
+
+def verify_anchor_receipt(
+    wrapped: dict, record: dict, orchestrator: str, receipt_authority: str
+) -> tuple[str, str, int | None]:
+    receipt = wrapped.get("anchorReceipt")
+    job_id = record.get("jobId")
+    logical_address = f"dacs3:commit:{job_id}"
+    nonce = receipt.get("nonce") if isinstance(receipt, dict) else None
+    if not isinstance(nonce, str):
+        return "error", "malformed-input", None
+    return verify_dependency_receipt(
+        receipt,
+        logical_address=logical_address,
+        native_address=(
+            f"fixture:{hashlib.sha256(logical_address.encode()).hexdigest()}"
+        ),
+        content_hash=generator.commitment_record_hash(record),
+        writer=orchestrator,
+        nonce=nonce,
+        receipt_authority=receipt_authority,
+        invalid_reason="commitment-receipt-invalid",
+    )
 
 
 def verify_commitment(context: dict) -> tuple[str, str, str | None]:
@@ -676,53 +913,31 @@ def validate_cvr(
         "replayBundles": {},
         "replayRecords": {},
     }
-    if stage == "terminal":
-        terminal_input = context.get("terminalInput")
-        terminal_bundle = (
-            terminal_input.get("bundle")
-            if isinstance(terminal_input, dict)
-            else None
-        )
-        if not isinstance(terminal_bundle, dict):
-            return "indeterminate", "cvr-qualification-unavailable"
-        vector_set["replayBundles"]["terminal"] = copy.deepcopy(terminal_bundle)
-        vector_set["replayRecords"]["record"] = {
-            "recordRef": copy.deepcopy(reference),
-            "record": copy.deepcopy(record),
-            "results": copy.deepcopy(materials),
-        }
-        input_data["aggregationAuthority"] = {
-            "kind": "replay",
-            "bundle": "terminal",
-            "record": "record",
-            "recordRef": copy.deepcopy(reference),
-        }
-    else:
-        vet_input = authority.get("vetInput")
-        session_start_id = authority.get("sessionStartId")
-        authenticated_start = authority.get("authenticatedSessionStart")
-        if (
-            not isinstance(vet_input, dict)
-            or not isinstance(session_start_id, str)
-            or not isinstance(authenticated_start, dict)
-        ):
-            return "indeterminate", "cvr-qualification-unavailable"
-        if (
-            vet_input.get("actor") != party.get("primaryClaim")
-            or qualification.canonical_json(vet_input.get("bundleToVet"))
-            != qualification.canonical_json(bundle)
-            or qualification.canonical_json(vet_input.get("requirement"))
-            != qualification.canonical_json(requirement)
-        ):
-            return "fail", "cvr-qualification-authority-mismatch"
-        vector_set["authenticatedSessionStarts"][session_start_id] = copy.deepcopy(
-            authenticated_start
-        )
-        input_data["aggregationAuthority"] = {
-            "kind": "production",
-            "sessionStart": session_start_id,
-            "vetInput": copy.deepcopy(vet_input),
-        }
+    vet_input = authority.get("vetInput")
+    session_start_id = authority.get("sessionStartId")
+    authenticated_start = authority.get("authenticatedSessionStart")
+    if (
+        not isinstance(vet_input, dict)
+        or not isinstance(session_start_id, str)
+        or not isinstance(authenticated_start, dict)
+    ):
+        return "indeterminate", "cvr-qualification-unavailable"
+    if (
+        vet_input.get("actor") != party.get("primaryClaim")
+        or qualification.canonical_json(vet_input.get("bundleToVet"))
+        != qualification.canonical_json(bundle)
+        or qualification.canonical_json(vet_input.get("requirement"))
+        != qualification.canonical_json(requirement)
+    ):
+        return "fail", "cvr-qualification-authority-mismatch"
+    vector_set["authenticatedSessionStarts"][session_start_id] = copy.deepcopy(
+        authenticated_start
+    )
+    input_data["aggregationAuthority"] = {
+        "kind": "production",
+        "sessionStart": session_start_id,
+        "vetInput": copy.deepcopy(vet_input),
+    }
     replayed = qualification.evaluate(input_data, vector_set)
     if replayed == "error":
         return "fail", "cvr-qualification-invalid"
@@ -744,11 +959,11 @@ def validate_strong_proof(
         commit_input = context.get("commitInput")
         if not isinstance(commit_input, dict):
             return "error", "malformed-input", {}
-        session_status, _ = validated_session_parties(
+        session_status, session_reason, _ = validated_session_parties(
             commit_input.get("sessionContext"), context
         )
         if session_status != "pass":
-            return "error", "malformed-input", {}
+            return session_status, session_reason, {}
         if (
             commit_input.get("jobId") != agreement.get("jobId")
             or commit_input.get("agreement") != agreement
@@ -759,9 +974,8 @@ def validate_strong_proof(
     verifier_context = context.get("verifierContext")
     if not isinstance(parties, list) or not isinstance(verifier_context, dict):
         return "error", "malformed-input", {}
-    nonce = verifier_context.get("sessionNonce")
     orchestrator = verifier_context.get("authenticatedOrchestrator")
-    if not isinstance(nonce, str) or not isinstance(orchestrator, str):
+    if not isinstance(orchestrator, str):
         return "error", "malformed-input", {}
     agreement_claims = {
         party.get("primaryClaim")
@@ -825,7 +1039,9 @@ def validate_strong_proof(
         bundle = companion.get("identityBundle")
         if bundle is None:
             return "error", "malformed-input", {}
-        status, reason, digest = validate_identity_bundle(bundle, nonce)
+        status, reason, digest = validate_retained_admission(
+            context, bundle, claim, agreement.get("jobId")
+        )
         if status != "pass" or digest is None:
             return status, reason, {}
         if bundle_hash != digest:
@@ -864,8 +1080,11 @@ def validate_strong_proof(
             return "fail", "companion-join-contradiction", {}
         if f"identity:{orchestrator}" in unavailable:
             return "indeterminate", "identity-bundle-unavailable", {}
-        status, reason, digest = validate_identity_bundle(
-            matches[0]["identityBundle"], nonce
+        status, reason, digest = validate_retained_admission(
+            context,
+            matches[0]["identityBundle"],
+            orchestrator,
+            agreement.get("jobId"),
         )
         if status != "pass" or digest is None:
             return status, reason, {}
@@ -892,11 +1111,19 @@ def carrier_map(value: object) -> tuple[str, dict[str, dict]]:
 
 def validated_session_parties(
     value: object, context: dict
-) -> tuple[str, dict[str, dict]]:
+) -> tuple[str, str, dict[str, dict]]:
     if not isinstance(value, dict):
-        return "error", {}
+        return "error", "malformed-input", {}
     signer = value.get("signer")
     agreement = context.get("agreement")
+    verifier_context = context.get("verifierContext")
+    retained = (
+        verifier_context.get("authenticatedSessionContext")
+        if isinstance(verifier_context, dict)
+        else None
+    )
+    if not isinstance(retained, dict):
+        return "indeterminate", "session-authority-unavailable", {}
     if (
         not isinstance(agreement, dict)
         or value.get("jobId") != agreement.get("jobId")
@@ -913,57 +1140,263 @@ def validated_session_parties(
         or signer.get("claim")
         != context.get("verifierContext", {}).get("authenticatedOrchestrator")
     ):
-        return "error", {}
-    return carrier_map(value.get("parties"))
+        return "error", "malformed-input", {}
+    status, parties = carrier_map(value.get("parties"))
+    if status != "pass":
+        return status, "malformed-input", parties
+    try:
+        if generator.canonical_bytes(value) != generator.canonical_bytes(retained):
+            return "fail", "session-authority-mismatch", {}
+    except (TypeError, ValueError):
+        return "error", "malformed-input", {}
+    return "pass", "verified", parties
+
+
+def rail_ref_shape(value: object) -> bool:
+    return (
+        isinstance(value, dict)
+        and isinstance(value.get("railId"), str)
+        and bool(value["railId"])
+        and (
+            "railVersion" not in value
+            or (
+                isinstance(value["railVersion"], int)
+                and not isinstance(value["railVersion"], bool)
+                and value["railVersion"] > 0
+            )
+        )
+        and ("parameters" not in value or isinstance(value["parameters"], dict))
+    )
+
+
+def canonical_key(value: object) -> str:
+    return generator.canonical_bytes(value).decode("utf-8")
+
+
+def validate_effective_pipeline(
+    context: dict, artifact: str
+) -> tuple[str, str, list[dict], dict | None]:
+    listing = context.get("listing")
+    agreement = context.get("agreement")
+    verifier_context = context.get("verifierContext")
+    if (
+        not isinstance(listing, dict)
+        or not isinstance(agreement, dict)
+        or not isinstance(verifier_context, dict)
+    ):
+        return "error", "malformed-input", [], None
+    pipeline = listing.get("pipeline")
+    accepted = listing.get("acceptedRails")
+    if (
+        not isinstance(pipeline, list)
+        or not isinstance(accepted, list)
+        or not accepted
+        or any(not rail_ref_shape(reference) for reference in accepted)
+    ):
+        return "fail", "payment-pipeline-invalid", [], None
+    try:
+        accepted_keys = [canonical_key(reference) for reference in accepted]
+    except (TypeError, ValueError):
+        return "error", "malformed-input", [], None
+    if len(accepted_keys) != len(set(accepted_keys)):
+        return "fail", "payment-pipeline-invalid", [], None
+    alternative_indexes = [
+        index for index, step in enumerate(pipeline)
+        if isinstance(step, dict) and step.get("kind") == "pay-alternative"
+    ]
+    concrete_indexes = [
+        index for index, step in enumerate(pipeline)
+        if isinstance(step, dict)
+        and step.get("kind") in generator.CONCRETE_PAYMENT_PHASES
+    ]
+    alternatives = None
+    alternative_index = None
+    if alternative_indexes:
+        if len(alternative_indexes) != 1 or concrete_indexes:
+            return "fail", "alternative-payment-shape-invalid", [], None
+        alternative_index = alternative_indexes[0]
+        parameters = pipeline[alternative_index].get("parameters")
+        if not isinstance(parameters, dict) or set(parameters) != {"alternatives"}:
+            return "fail", "alternative-payment-shape-invalid", [], None
+        alternatives = parameters.get("alternatives")
+        if (
+            not isinstance(alternatives, list)
+            or len(alternatives) < 2
+            or any(not rail_ref_shape(reference) for reference in alternatives)
+        ):
+            return "fail", "alternative-payment-shape-invalid", [], None
+        alternative_keys = [canonical_key(reference) for reference in alternatives]
+        if (
+            len(alternative_keys) != len(set(alternative_keys))
+            or any(key not in accepted_keys for key in alternative_keys)
+        ):
+            return "fail", "alternative-payment-shape-invalid", [], None
+    else:
+        for index in concrete_indexes:
+            parameters = pipeline[index].get("parameters")
+            if (
+                not isinstance(parameters, dict)
+                or set(parameters) != {"rail"}
+                or not isinstance(parameters.get("rail"), str)
+                or parameters["rail"] not in {
+                    reference["railId"] for reference in accepted
+                }
+            ):
+                return "fail", "payment-pipeline-invalid", [], None
+    registry = verifier_context.get("railRegistry")
+    if not isinstance(registry, dict) or registry.get("authorityAuthenticated") is not True:
+        return "indeterminate", "rail-registry-unavailable", [], None
+    snapshot = registry.get("snapshotId")
+    resolutions = registry.get("resolutions")
+    if not isinstance(snapshot, str) or not isinstance(resolutions, list):
+        return "indeterminate", "rail-registry-unavailable", [], None
+    steward = verifier_context.get("authenticatedRailSteward")
+    if not isinstance(steward, str):
+        return "indeterminate", "rail-registry-unavailable", [], None
+    resolved: dict[str, dict] = {}
+    handlers_by_id: dict[str, str] = {}
+    for reference, reference_key in zip(accepted, accepted_keys):
+        matches = [
+            resolution for resolution in resolutions
+            if isinstance(resolution, dict)
+            and canonical_key(resolution.get("ref")) == reference_key
+        ]
+        if len(matches) != 1:
+            return "fail", "rail-definition-resolution-invalid", [], None
+        resolution = matches[0]
+        if resolution.get("snapshotId") != snapshot:
+            return "fail", "rail-definition-resolution-invalid", [], None
+        if resolution.get("status") == "unavailable":
+            return "indeterminate", "rail-definition-unavailable", [], None
+        definition = resolution.get("definition")
+        if (
+            resolution.get("status") != "verified"
+            or not isinstance(definition, dict)
+            or definition.get("railId") != reference["railId"]
+            or (
+                "railVersion" in reference
+                and definition.get("railVersion") != reference["railVersion"]
+            )
+            or definition.get("phaseHandler")
+            not in generator.CONCRETE_PAYMENT_PHASES
+            or not verify_component(definition, generator.RAIL_DOMAIN, steward)
+        ):
+            return "fail", "rail-definition-invalid", [], None
+        previous = handlers_by_id.setdefault(
+            reference["railId"], definition["phaseHandler"]
+        )
+        if previous != definition["phaseHandler"]:
+            return "fail", "rail-definition-invalid", [], None
+        resolved[reference_key] = definition
+    selected = agreement.get("terms", {}).get("rail")
+    if not rail_ref_shape(selected):
+        return "fail", "rail-selection-invalid", [], None
+    selected_key = canonical_key(selected)
+    candidate_keys = (
+        {canonical_key(reference) for reference in alternatives}
+        if alternatives is not None else set(accepted_keys)
+    )
+    if selected_key not in candidate_keys or selected_key not in resolved:
+        return "fail", "rail-selection-invalid", [], None
+    definition = resolved[selected_key]
+    if definition.get("availability") != "live":
+        return "fail", "rail-selection-unavailable", [], None
+    effective = copy.deepcopy(pipeline)
+    if alternative_index is not None:
+        effective[alternative_index] = {
+            "kind": definition["phaseHandler"],
+            "parameters": {"rail": selected["railId"]},
+        }
+    payment_indexes = [
+        index for index, step in enumerate(effective)
+        if step.get("kind") in generator.CONCRETE_PAYMENT_PHASES
+    ]
+    if payment_indexes != [verifier_context.get("paymentPhaseIndex")]:
+        return "fail", "payment-phase-index-mismatch", [], None
+    claims_status, role_claims = agreement_role_claims(agreement)
+    if claims_status != "pass":
+        return "error", "malformed-input", [], None
+    bindings = agreement.get("terms", {}).get("payoutBindings")
+    if artifact in generator.PAYEE_ARTIFACTS:
+        expected = [
+            (selected["railId"], index, role_claims["seller"])
+            for index in payment_indexes
+        ]
+        if not isinstance(bindings, list) or any(
+            not isinstance(binding, dict) for binding in bindings
+        ):
+            return "fail", "payout-binding-invalid", [], None
+        actual = [
+            (
+                binding.get("railId"),
+                binding.get("phaseIndex"),
+                binding.get("payeeAddress"),
+            )
+            for binding in bindings
+        ]
+        if sorted(actual) != sorted(expected) or len(actual) != len(set(actual)):
+            return "fail", "payout-binding-invalid", [], None
+    elif bindings is not None:
+        return "fail", "non-payee-terms-invalid", [], None
+    return "pass", "verified", effective, definition
+
+
+def validate_session_roster(
+    context: dict,
+    stage_input: object,
+    digests: dict[str, str],
+) -> tuple[str, str]:
+    if not isinstance(stage_input, dict):
+        return "error", "malformed-input"
+    status, reason, sessions = validated_session_parties(
+        stage_input.get("sessionContext"), context
+    )
+    if status != "pass":
+        return status, reason
+    claims_status, role_claims = agreement_role_claims(context.get("agreement"))
+    orchestrator = context.get("verifierContext", {}).get("authenticatedOrchestrator")
+    if claims_status != "pass" or not isinstance(orchestrator, str):
+        return "error", "malformed-input"
+    expected_claims = {**role_claims, "orchestrator": orchestrator}
+    if set(sessions) != set(expected_claims):
+        return "fail", "session-roster-mismatch"
+    for role, claim in expected_claims.items():
+        party = sessions.get(role)
+        if (
+            not isinstance(party, dict)
+            or party.get("primaryClaim") != claim
+            or (claim in digests and party.get("bundleHash") != digests[claim])
+        ):
+            return "fail", "session-party-mismatch"
+    return "pass", "verified"
 
 
 def validate_payment_rail(context: dict, payment: dict) -> tuple[str, str]:
+    status, artifact = artifact_type(context.get("agreement"))
+    if status != "pass" or artifact is None:
+        return "fail", "agreement-discriminator-invalid"
+    status, reason, effective, definition = validate_effective_pipeline(
+        context, artifact
+    )
+    if status != "pass":
+        return status, reason
     rail = payment.get("rail")
     verifier_context = context.get("verifierContext")
     if not isinstance(rail, dict) or not isinstance(verifier_context, dict):
         return "error", "malformed-input"
-    steward = verifier_context.get("authenticatedRailSteward")
     phase_index = verifier_context.get("paymentPhaseIndex")
-    accepted_rails = context.get("listing", {}).get("acceptedRails")
-    pipeline = context.get("listing", {}).get("pipeline")
-    amount = payment.get("amount")
     if (
-        not isinstance(steward, str)
+        definition is None
+        or rail != definition
+        or payment.get("amount")
+        != context.get("agreement", {}).get("terms", {}).get("price")
         or not isinstance(phase_index, int)
         or isinstance(phase_index, bool)
         or phase_index < 0
-        or not isinstance(accepted_rails, list)
-        or not isinstance(pipeline, list)
-        or not isinstance(amount, dict)
-    ):
-        return "error", "malformed-input"
-    if (
-        rail.get("railVersion") != 1
-        or rail.get("railId") != generator.RAIL_REF["railId"]
-        or rail.get("railType") != "demos-native"
-        or rail.get("asset")
-        != {"kind": "native-dem", "symbol": "DEM", "decimals": 9}
-        or rail.get("network") != {"kind": "demos"}
-        or rail.get("phaseHandler") != "pay-dem"
-        or not isinstance(rail.get("parameters"), dict)
-        or rail.get("availability") != "live"
-        or not isinstance(rail.get("governance"), dict)
-    ):
-        return "fail", "rail-definition-invalid"
-    if not verify_component(rail, generator.RAIL_DOMAIN, steward):
-        return "fail", "rail-definition-invalid"
-    agreement = context["agreement"]
-    listing = context["listing"]
-    phase = pipeline[phase_index] if phase_index < len(pipeline) else None
-    if (
-        agreement.get("terms", {}).get("rail") != generator.RAIL_REF
-        or payment.get("amount") != agreement.get("terms", {}).get("price")
-        or not any(item == generator.RAIL_REF for item in accepted_rails)
-        or not isinstance(phase, dict)
-        or phase.get("kind") != rail.get("phaseHandler")
-        or not isinstance(phase.get("parameters"), dict)
-        or phase["parameters"].get("rail")
-        != rail.get("railId")
+        or phase_index >= len(effective)
+        or effective[phase_index].get("kind") != rail.get("phaseHandler")
+        or effective[phase_index].get("parameters")
+        != {"rail": rail.get("railId")}
     ):
         return "fail", "rail-binding-mismatch"
     return "pass", "verified"
@@ -984,24 +1417,58 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
         return "indeterminate", "prior-disposition-unavailable"
     disposition = resolved.get("artifact")
     receipt = resolved.get("receipt")
+    execution_authority = resolved.get("executionAuthority")
     if (
         not isinstance(disposition, dict)
         or not isinstance(receipt, dict)
-        or not valid_ref(reference)
+        or not valid_signed_ref(reference)
     ):
         return "error", "malformed-input"
     disposition_hash = generator.artifact_hash(disposition, "signature")
-    if disposition_hash != reference["contentHash"]:
+    try:
+        expected_reference = generator.disposition_reference(disposition)
+    except (KeyError, TypeError, ValueError):
+        return "error", "malformed-input"
+    if reference != expected_reference or disposition_hash != reference["contentHash"]:
         return "fail", "prior-disposition-reference-mismatch"
     orchestrator = context.get("verifierContext", {}).get("authenticatedOrchestrator")
+    receipt_authority = context.get("verifierContext", {}).get(
+        "authenticatedReceiptAuthority"
+    )
+    if (
+        not isinstance(orchestrator, str)
+        or not isinstance(receipt_authority, str)
+        or not isinstance(execution_authority, dict)
+    ):
+        return "indeterminate", "prior-disposition-unavailable"
+    if (
+        execution_authority.get("status") != "verified"
+        or execution_authority.get("phaseOrchestratorClaim") != orchestrator
+        or reference.get("signer") != orchestrator
+    ):
+        return "fail", "prior-disposition-authority-invalid"
     if not verify_component(disposition, generator.DISPOSITION_DOMAIN, orchestrator):
         return "fail", "prior-disposition-signature-invalid"
-    if (
-        receipt.get("state") != "finalized"
-        or receipt.get("contentHash") != disposition_hash
-        or receipt.get("writer") != orchestrator
+    expected_nonce = generator.hash_hex({
+        "disposition": disposition.get("dispositionId")
+    })
+    receipt_status, receipt_reason, _ = verify_dependency_receipt(
+        receipt,
+        logical_address=reference["anchor"]["locator"],
+        native_address=reference["anchor"]["locator"],
+        content_hash=disposition_hash,
+        writer=orchestrator,
+        nonce=expected_nonce,
+        receipt_authority=receipt_authority,
+        invalid_reason="prior-disposition-receipt-invalid",
+    )
+    if receipt_status != "pass":
+        return receipt_status, receipt_reason
+    if not any(
+        isinstance(step, dict) and step.get("kind") == "pay-alternative"
+        for step in context.get("listing", {}).get("pipeline", [])
     ):
-        return "fail", "prior-disposition-receipt-invalid"
+        return "fail", "replacement-requires-pay-alternative"
     if disposition.get("replacementJobId") != agreement.get("jobId"):
         return "fail", "replacement-job-mismatch"
     if disposition.get("priorJobId") != prior.get("jobId"):
@@ -1014,25 +1481,158 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
     if (
         prior_status != "pass"
         or prior_artifact is None
+        or prior_artifact not in generator.PAYEE_ARTIFACTS
         or verify_agreement(prior, prior_artifact)[0] != "pass"
     ):
         return "fail", "prior-agreement-invalid"
+    if prior.get("listingRef") != agreement.get("listingRef"):
+        return "fail", "prior-agreement-reference-mismatch"
+    prior_selection = prior.get("terms", {}).get("rail")
+    current_selection = agreement.get("terms", {}).get("rail")
+    phase_index = disposition.get("priorPhaseIndex")
     if (
-        disposition.get("priorSelection") != prior.get("terms", {}).get("rail")
-        or disposition.get("priorPhaseIndex") != 2
+        not rail_ref_shape(prior_selection)
+        or not rail_ref_shape(current_selection)
+        or disposition.get("priorSelection") != prior_selection
+        or prior_selection == current_selection
+        or not isinstance(phase_index, int)
+        or isinstance(phase_index, bool)
     ):
         return "fail", "prior-selection-mismatch"
-    if disposition.get("disposition") not in {
-        "closed-before-authorization", "closed-cannot-settle"
-    }:
+    prior_context = {
+        "listing": context.get("listing"),
+        "agreement": prior,
+        "verifierContext": copy.deepcopy(context.get("verifierContext")),
+    }
+    prior_context["verifierContext"]["paymentPhaseIndex"] = phase_index
+    prior_pipeline_status, _, prior_effective, prior_definition = (
+        validate_effective_pipeline(prior_context, prior_artifact)
+    )
+    if prior_pipeline_status == "indeterminate":
+        return "indeterminate", "prior-disposition-proof-unavailable"
+    if (
+        prior_pipeline_status != "pass"
+        or not isinstance(prior_definition, dict)
+        or phase_index < 0
+        or phase_index >= len(prior_effective)
+        or prior_effective[phase_index].get("kind")
+        != prior_definition.get("phaseHandler")
+    ):
+        return "fail", "prior-selection-mismatch"
+    state = disposition.get("disposition")
+    evidence_refs = disposition.get("reconciliationEvidenceRefs")
+    if state == "closed-before-authorization":
+        if evidence_refs != [] or resolved.get("authorizationJournalClosed") is not True:
+            return "fail", "prior-disposition-proof-invalid"
+    elif state == "closed-cannot-settle":
+        materials = resolved.get("reconciliationEvidence")
+        if (
+            not isinstance(evidence_refs, list)
+            or not evidence_refs
+            or any(not valid_ref(item) for item in evidence_refs)
+            or resolved.get("reconciliationEvidenceVerified") is not True
+            or not isinstance(materials, list)
+            or len(materials) != len(evidence_refs)
+        ):
+            return "fail", "prior-disposition-proof-invalid"
+        expected_phase = prior_definition.get("phaseHandler")
+        for reference_item in evidence_refs:
+            matching_material = [
+                material for material in materials
+                if isinstance(material, dict) and material.get("ref") == reference_item
+            ]
+            if len(matching_material) != 1:
+                return "fail", "prior-disposition-proof-invalid"
+            material = matching_material[0]
+            record = material.get("record")
+            lifecycle = material.get("lifecycle")
+            material_receipt = material.get("receipt")
+            material_nonce = material.get("nonce")
+            if (
+                not reputation_reference._settlement_evidence_shape_valid(record)
+                or record.get("jobId") != prior.get("jobId")
+                or record.get("phase") != expected_phase
+                or record.get("outcome") != "failure"
+                or record.get("reason") != "closed-cannot-settle"
+                or reference_item.get("contentHash")
+                != reputation_reference.settlement_evidence_hash(record)
+                or not verify_component(
+                    record, generator.SETTLEMENT_EVIDENCE_DOMAIN, orchestrator
+                )
+                or lifecycle != {
+                    "state": "finalized", "independentlyResolvable": True
+                }
+                or not isinstance(material_nonce, str)
+            ):
+                return "fail", "prior-disposition-proof-invalid"
+            logical_address = (
+                f"dacs4:payment:{prior.get('jobId')}:"
+                f"{quote(prior_selection.get('railId'), safe='-._~')}:{phase_index}"
+            )
+            status, reason, _ = verify_dependency_receipt(
+                material_receipt,
+                logical_address=logical_address,
+                native_address=reference_item["anchor"]["locator"],
+                content_hash=reference_item["contentHash"],
+                writer=orchestrator,
+                nonce=material_nonce,
+                receipt_authority=receipt_authority,
+                invalid_reason="prior-disposition-proof-invalid",
+            )
+            if status != "pass":
+                return status, reason
+    else:
         return "fail", "replacement-not-safe"
     return "pass", "verified"
+
+
+def pre_action_gate(
+    context: dict, artifact: str, stage: str, unavailable: set[str]
+) -> tuple[str, str, dict[str, str], list[dict]]:
+    stage_input = {
+        "commit": context.get("commitInput"),
+        "payment": context.get("paymentInput"),
+        "terminal": context.get("terminalInput"),
+    }.get(stage)
+    agreement = context.get("agreement")
+    if not isinstance(stage_input, dict) or not isinstance(agreement, dict):
+        return "error", "malformed-input", {}, []
+    if stage in {"commit", "payment"} and (
+        stage_input.get("jobId") != agreement.get("jobId")
+        or stage_input.get("agreement") != agreement
+    ):
+        return "fail", f"{stage}-input-authority-mismatch", {}, []
+    if stage == "commit" and stage_input.get("listingRef") != agreement.get("listingRef"):
+        return "fail", "commit-input-authority-mismatch", {}, []
+    if stage == "terminal" and (
+        stage_input.get("listing") != context.get("listing")
+        or stage_input.get("agreement") != agreement
+        or stage_input.get("commitment") != context.get("commitment")
+    ):
+        return "fail", "terminal-authority-mismatch", {}, []
+    digests: dict[str, str] = {}
+    if artifact in generator.STRONG_ARTIFACTS:
+        status, reason, digests = validate_strong_proof(
+            context, artifact, stage, unavailable
+        )
+        if status != "pass":
+            return status, reason, {}, []
+    status, reason = validate_session_roster(context, stage_input, digests)
+    if status != "pass":
+        return status, reason, {}, []
+    status, reason, effective, _ = validate_effective_pipeline(context, artifact)
+    if status != "pass":
+        return status, reason, {}, []
+    status, reason = validate_replacement(context, unavailable)
+    if status != "pass":
+        return status, reason, {}, []
+    return "pass", "verified", digests, effective
 
 
 def validate_payment(
     context: dict, artifact: str, unavailable: set[str]
 ) -> tuple[str, str]:
-    status, reason, digests = validate_strong_proof(
+    status, reason, digests, _ = pre_action_gate(
         context, artifact, "payment", unavailable
     )
     if status != "pass":
@@ -1060,23 +1660,9 @@ def validate_payment(
             or carrier.get("bundleHash") != digests[role_claims[role]]
         ):
             return "fail", "payment-party-mismatch"
-    if payment.get("agreement") != context.get("agreement"):
-        return "fail", "payment-agreement-mismatch"
     rail_status, rail_reason = validate_payment_rail(context, payment)
     if rail_status != "pass":
         return rail_status, rail_reason
-    status, sessions = validated_session_parties(
-        payment.get("sessionContext"), context
-    )
-    if status != "pass":
-        return "error", "malformed-input"
-    for role in ("buyer", "seller"):
-        if (
-            role not in sessions
-            or sessions[role].get("primaryClaim") != role_claims[role]
-            or sessions[role].get("bundleHash") != digests[role_claims[role]]
-        ):
-            return "fail", "session-party-mismatch"
     agreement = context["agreement"]
     if artifact in generator.PAYEE_ARTIFACTS:
         bindings = agreement.get("terms", {}).get("payoutBindings")
@@ -1087,15 +1673,44 @@ def validate_payment(
         ):
             return "fail", "payout-binding-invalid"
         binding = bindings[0]
+        selected_rail = agreement.get("terms", {}).get("rail")
         if (
-            binding.get("railId") != generator.RAIL_REF["railId"]
+            not isinstance(selected_rail, dict)
+            or binding.get("railId") != selected_rail.get("railId")
             or binding.get("phaseIndex")
             != context["verifierContext"]["paymentPhaseIndex"]
         ):
             return "fail", "payout-binding-invalid"
         if binding.get("payeeAddress") != payee.get("payeeAddress"):
             return "fail", "payout-destination-mismatch"
-    return validate_replacement(context, unavailable)
+    paying_key = payer.get("payingKey")
+    buyer_companion = next(
+        (
+            companion for companion in payment.get("identityBindingCompanions", [])
+            if isinstance(companion, dict)
+            and isinstance(companion.get("identityBundle"), dict)
+            and companion["identityBundle"].get("presentedBy")
+            == role_claims["buyer"]
+        ),
+        None,
+    )
+    buyer_claims = (
+        buyer_companion.get("identityBundle", {}).get("claims")
+        if isinstance(buyer_companion, dict)
+        else None
+    )
+    if (
+        not isinstance(paying_key, str)
+        or not isinstance(buyer_claims, list)
+        or not any(
+            isinstance(claim, dict)
+            and claim.get("ref") == paying_key
+            and paying_key.startswith("key:")
+            for claim in buyer_claims
+        )
+    ):
+        return "fail", "paying-key-not-authorized"
+    return "pass", "verified"
 
 
 def verify_terminal_signatures(
@@ -1128,12 +1743,246 @@ def verify_terminal_signatures(
         try:
             valid = generator.verify_ed25519(
                 key_bytes(signature["party"]), b64url_decode(signature.get("value")),
-                (generator.TERMINAL_DOMAIN + digest).encode("ascii")
+                (generator.EVIDENCE_BOUND_TERMINAL_DOMAIN + digest).encode("ascii")
             )
         except (TypeError, ValueError):
             valid = False
         if not valid:
             return "fail", "terminal-signature-invalid"
+    return "pass", "verified"
+
+
+def validate_terminal_authority(
+    context: dict,
+    bundle: dict,
+    phase: str,
+    effective: list[dict] | None = None,
+) -> tuple[str, str]:
+    verifier_context = context.get("verifierContext")
+    authority = (
+        verifier_context.get("terminalAuthority")
+        if isinstance(verifier_context, dict)
+        else None
+    )
+    if not isinstance(authority, dict):
+        return "indeterminate", "terminal-authority-unavailable"
+    receipt_authority = verifier_context.get("authenticatedReceiptAuthority")
+    orchestrator = verifier_context.get("authenticatedOrchestrator")
+    if not isinstance(receipt_authority, str) or not isinstance(orchestrator, str):
+        return "indeterminate", "terminal-authority-unavailable"
+    agreement_authority = authority.get("agreement")
+    agreement_ref = bundle.get("agreementRef")
+    if not isinstance(agreement_authority, dict) or not valid_ref(agreement_ref):
+        return "indeterminate", "terminal-agreement-authority-unavailable"
+    agreement_lifecycle = agreement_authority.get("lifecycle")
+    if agreement_lifecycle != {
+        "state": "finalized", "independentlyResolvable": True
+    }:
+        return "fail", "terminal-agreement-lifecycle-invalid"
+    job_id = bundle.get("jobId")
+    status, reason, _ = verify_dependency_receipt(
+        agreement_authority.get("receipt"),
+        logical_address=f"dacs3:agreement:{job_id}",
+        native_address=agreement_ref["anchor"]["locator"],
+        content_hash=agreement_ref["contentHash"],
+        writer=orchestrator,
+        nonce=generator.hash_hex({"agreement": job_id}),
+        receipt_authority=receipt_authority,
+        invalid_reason="terminal-agreement-receipt-invalid",
+    )
+    if status != "pass":
+        return status, reason
+
+    cvr_authorities = authority.get("compositeRecords")
+    vet_records = bundle.get("vetRecords")
+    agreement = context.get("agreement")
+    parties = agreement.get("parties") if isinstance(agreement, dict) else None
+    if (
+        not isinstance(cvr_authorities, list)
+        or not isinstance(vet_records, list)
+        or not isinstance(parties, list)
+        or len(cvr_authorities) != len(vet_records)
+        or len(vet_records) != len(parties)
+    ):
+        return "indeterminate", "terminal-cvr-authority-unavailable"
+    seen_cvr_refs = set()
+    for party, expected_ref in zip(parties, vet_records):
+        if not isinstance(party, dict) or not valid_ref(expected_ref):
+            return "error", "malformed-input"
+        matches = [
+            entry for entry in cvr_authorities
+            if isinstance(entry, dict) and entry.get("ref") == expected_ref
+        ]
+        if len(matches) != 1 or canonical_key(expected_ref) in seen_cvr_refs:
+            return "fail", "terminal-cvr-authority-invalid"
+        seen_cvr_refs.add(canonical_key(expected_ref))
+        entry = matches[0]
+        if entry.get("lifecycle") != {
+            "state": "finalized", "independentlyResolvable": True
+        }:
+            return "fail", "terminal-cvr-lifecycle-invalid"
+        claim = party.get("primaryClaim")
+        role = next(
+            (role for role, value in generator.CLAIMS.items() if value == claim),
+            None,
+        )
+        if role is None:
+            return "fail", "terminal-cvr-authority-invalid"
+        logical_address = (
+            f"dacs2:composite:{job_id}:{quote(claim, safe='-._~')}"
+        )
+        status, reason, _ = verify_dependency_receipt(
+            entry.get("receipt"),
+            logical_address=logical_address,
+            native_address=expected_ref["anchor"]["locator"],
+            content_hash=expected_ref["contentHash"],
+            writer=orchestrator,
+            nonce=generator.hash_hex({"cvr": job_id, "role": role}),
+            receipt_authority=receipt_authority,
+            invalid_reason="terminal-cvr-receipt-invalid",
+        )
+        if status != "pass":
+            return status, reason
+
+    settlement_authorities = authority.get("settlements")
+    settlement_refs = bundle.get("settlementEvidence")
+    if not isinstance(settlement_authorities, list) or not isinstance(
+        settlement_refs, list
+    ):
+        return "indeterminate", "terminal-settlement-authority-unavailable"
+    if len(settlement_authorities) != len(settlement_refs):
+        return "fail", "terminal-settlement-authority-invalid"
+    reference_validation: dict[str, dict] = {}
+    execution_by_phase: dict[str, dict] = {}
+    verified_receipts: dict[str, dict] = {}
+    for reference in settlement_refs:
+        if not valid_ref(reference):
+            return "error", "malformed-input"
+        matches = [
+            entry for entry in settlement_authorities
+            if isinstance(entry, dict) and entry.get("ref") == reference
+        ]
+        if len(matches) != 1:
+            return "indeterminate", "terminal-settlement-authority-unavailable"
+        entry = matches[0]
+        record = entry.get("record")
+        execution = entry.get("executionAuthority")
+        lifecycle = entry.get("lifecycle")
+        if (
+            not isinstance(record, dict)
+            or not isinstance(execution, dict)
+            or lifecycle != {
+                "state": "finalized", "independentlyResolvable": True
+            }
+        ):
+            return "fail", "terminal-settlement-authority-invalid"
+        phase_index = execution.get("phaseIndex")
+        phase_kind = execution.get("phaseKind")
+        writer = execution.get("phaseOrchestrator")
+        nonce = execution.get("anchorNonce")
+        if (
+            isinstance(phase_index, bool)
+            or not isinstance(phase_index, int)
+            or phase_index < 0
+            or not isinstance(phase_kind, str)
+            or not isinstance(writer, str)
+            or not isinstance(nonce, str)
+            or execution.get("jobId") != job_id
+        ):
+            return "fail", "terminal-settlement-authority-invalid"
+        if phase_kind.startswith("pay-"):
+            rail_id = execution.get("railId")
+            if not isinstance(rail_id, str):
+                return "fail", "terminal-settlement-authority-invalid"
+            logical_address = (
+                f"dacs4:payment:{job_id}:{quote(rail_id, safe='-._~')}:{phase_index}"
+            )
+        else:
+            logical_address = execution.get("evidenceLogicalAddress")
+            if not isinstance(logical_address, str):
+                return "fail", "terminal-settlement-authority-invalid"
+        receipt = entry.get("receipt")
+        status, reason, _ = verify_dependency_receipt(
+            receipt,
+            logical_address=logical_address,
+            native_address=reference["anchor"]["locator"],
+            content_hash=reference["contentHash"],
+            writer=writer,
+            nonce=nonce,
+            receipt_authority=receipt_authority,
+            invalid_reason="terminal-settlement-receipt-invalid",
+        )
+        if status != "pass":
+            return status, reason
+        reference_key = canonical_key(reference)
+        phase_key = f"{phase_index}:{phase_kind}"
+        if reference_key in reference_validation or phase_key in execution_by_phase:
+            return "fail", "terminal-settlement-authority-invalid"
+        reference_validation[reference_key] = {
+            "record": record,
+            "lifecycle": lifecycle,
+        }
+        execution_by_phase[phase_key] = execution
+        verified_receipts[reference_key] = {
+            "logicalAddress": receipt["logicalAddress"],
+            "nativeAddress": receipt["nativeAddress"],
+            "contentHash": receipt["contentHash"],
+            "transaction": receipt["transactionRef"]["value"],
+            "writer": receipt["writer"],
+            "nonce": receipt["nonce"],
+        }
+
+    bundle_authority = authority.get("bundle")
+    if not isinstance(bundle_authority, dict):
+        return "indeterminate", "terminal-bundle-authority-unavailable"
+    bundle_lifecycle = bundle_authority.get("lifecycle")
+    if bundle_lifecycle != {
+        "state": "finalized", "independentlyResolvable": True
+    }:
+        return "fail", "terminal-bundle-lifecycle-invalid"
+    bundle_address = reputation_reference.logical_address(
+        job_id, bundle.get("anchoredByRole")
+    )
+    status, reason, _ = verify_dependency_receipt(
+        bundle_authority.get("receipt"),
+        logical_address=bundle_address,
+        native_address=bundle_address,
+        content_hash=reputation_reference.bundle_hash(bundle),
+        writer=orchestrator,
+        nonce=generator.hash_hex({"bundle": job_id}),
+        receipt_authority=receipt_authority,
+        invalid_reason="terminal-bundle-receipt-invalid",
+    )
+    if status != "pass":
+        return status, reason
+    public_keys = {}
+    try:
+        for party in bundle.get("parties", []):
+            public_keys[party["primaryClaim"]] = key_bytes(party["primaryClaim"])
+    except (KeyError, TypeError, ValueError):
+        return "error", "malformed-input"
+    ok, seb_reason, _ = reputation_reference.validate_ebfab(
+        bundle,
+        context.get("listing"),
+        public_keys,
+        reference_validation,
+        bundle_lifecycle,
+        execution_by_phase,
+        verified_receipts,
+        effective_pipeline=(
+            effective
+            if any(
+                isinstance(step, dict) and step.get("kind") == "pay-alternative"
+                for step in context.get("listing", {}).get("pipeline", [])
+            )
+            else None
+        ),
+        additional_commit_phase=(
+            phase if phase != generator.PHASES["agreement"] else None
+        ),
+    )
+    if not ok:
+        return "fail", f"terminal-seb-invalid:{seb_reason}"
     return "pass", "verified"
 
 
@@ -1146,32 +1995,29 @@ def validate_terminal(
     bundle = terminal_input.get("bundle")
     if not isinstance(bundle, dict):
         return "error", "malformed-input"
-    if (
-        terminal_input.get("listing") != context.get("listing")
-        or terminal_input.get("agreement") != context.get("agreement")
-        or terminal_input.get("commitment") != context.get("commitment")
-    ):
-        return "fail", "terminal-authority-mismatch"
+    status, reason, digests, effective = pre_action_gate(
+        context, artifact, "terminal", unavailable
+    )
+    if status != "pass":
+        return status, reason
     phase_summary = bundle.get("phaseSummary")
-    pipeline = context.get("listing", {}).get("pipeline")
     if (
         not isinstance(phase_summary, list)
-        or not isinstance(pipeline, list)
-        or len(phase_summary) != len(pipeline)
+        or len(phase_summary) != len(effective)
         or any(not isinstance(entry, dict) for entry in phase_summary)
         or any(
             not isinstance(entry.get("index"), int)
             or isinstance(entry.get("index"), bool)
             or entry.get("index") != index
             or not isinstance(entry.get("kind"), str)
-            or not isinstance(pipeline[index], dict)
+            or not isinstance(effective[index], dict)
             for index, entry in enumerate(phase_summary)
         )
     ):
         return "error", "malformed-input"
     if (
         any(
-            entry.get("kind") != pipeline[index].get("kind")
+            entry.get("kind") != effective[index].get("kind")
             for index, entry in enumerate(phase_summary)
         )
         or sum(entry.get("kind") == phase for entry in phase_summary) != 1
@@ -1198,23 +2044,6 @@ def validate_terminal(
     status, reason = verify_terminal_signatures(bundle, set(expected_claims.values()))
     if status != "pass":
         return status, reason
-    status, reason, digests = validate_strong_proof(
-        context, artifact, "terminal", unavailable
-    )
-    if status != "pass":
-        return status, reason
-    status, sessions = validated_session_parties(
-        terminal_input.get("sessionContext"), context
-    )
-    if status != "pass":
-        return "error", "malformed-input"
-    for role in ("buyer", "seller", "orchestrator"):
-        if (
-            role not in sessions
-            or sessions[role].get("primaryClaim") != expected_claims[role]
-            or sessions[role].get("bundleHash") != digests[expected_claims[role]]
-        ):
-            return "fail", "session-party-mismatch"
     status, parties = carrier_map(bundle.get("parties"))
     if status != "pass":
         return "error", "malformed-input"
@@ -1225,7 +2054,7 @@ def validate_terminal(
             or parties[role].get("bundleHash") != digests[expected_claims[role]]
         ):
             return "fail", "terminal-party-mismatch"
-    return "pass", "verified"
+    return validate_terminal_authority(context, bundle, phase, effective)
 
 
 def modeled_old_reader(context: dict) -> tuple[str, str]:
@@ -1245,6 +2074,43 @@ def modeled_old_reader(context: dict) -> tuple[str, str]:
     if generator.PHASES[artifact] != phase:
         return "fail", "phase-artifact-mismatch"
     return verify_agreement(context["agreement"], artifact)
+
+
+def validate_historical_stage(
+    context: dict, artifact: str, stage: str, unavailable: set[str]
+) -> tuple[str, str]:
+    status, reason, _, _ = pre_action_gate(
+        context, artifact, stage, unavailable
+    )
+    if status != "pass":
+        return status, reason
+    if stage == "commit":
+        # dispatch() plus the common gate above execute the signed Listing,
+        # agreement, commitment, session, pipeline, payout, and APR controls
+        # actually modeled in this repository.
+        return "pass", "verified"
+    if stage == "payment":
+        return "indeterminate", "historical-payment-stage-not-modeled"
+    if stage == "terminal":
+        bundle = context.get("terminalInput", {}).get("bundle")
+        claims_status, role_claims = agreement_role_claims(context.get("agreement"))
+        orchestrator = context.get("verifierContext", {}).get(
+            "authenticatedOrchestrator"
+        )
+        if claims_status != "pass" or not isinstance(orchestrator, str):
+            return "error", "malformed-input"
+        status, reason = verify_terminal_signatures(
+            bundle, {role_claims["buyer"], role_claims["seller"], orchestrator}
+        )
+        if status != "pass":
+            return status, reason
+        status, reason = validate_terminal_authority(
+            context, bundle, generator.PHASES[artifact]
+        )
+        if status != "pass":
+            return status, reason
+        return "indeterminate", "historical-terminal-stage-not-modeled"
+    return "error", "malformed-input"
 
 
 def apply_mutation(context: dict, mutation: dict) -> None:
@@ -1299,12 +2165,15 @@ def evaluate(data: dict, vector: dict) -> tuple[str, dict]:
         verdict, reason, artifact, phase = dispatch(context)
         if verdict != "pass" or artifact is None or phase is None:
             return outcome(verdict, reason)
-        if artifact not in generator.STRONG_ARTIFACTS:
-            return outcome("pass", "verified")
         unavailable = set(vector.get("unavailable", []))
         stage = vector.get("stage")
+        if artifact not in generator.STRONG_ARTIFACTS:
+            verdict, reason = validate_historical_stage(
+                context, artifact, stage, unavailable
+            )
+            return outcome(verdict, reason)
         if stage == "commit":
-            verdict, reason, _ = validate_strong_proof(
+            verdict, reason, _, _ = pre_action_gate(
                 context, artifact, "commit", unavailable
             )
         elif stage == "payment":
@@ -1324,6 +2193,55 @@ def phase_result(verdict: str) -> dict:
     if verdict == "indeterminate":
         return {"ok": False, "errorClass": "substrate", "contextDelta": {}}
     return {"ok": False, "errorClass": "permanent", "contextDelta": {}}
+
+
+def terminal_reputation_authority(context: dict, artifact: str) -> dict:
+    bundle = context["terminalInput"]["bundle"]
+    authority = context["verifierContext"]["terminalAuthority"]
+    reference_validation = {}
+    execution_by_phase = {}
+    verified_receipts = {}
+    for entry in authority["settlements"]:
+        reference = entry["ref"]
+        key = canonical_key(reference)
+        receipt = entry["receipt"]
+        execution = entry["executionAuthority"]
+        phase_key = f"{execution['phaseIndex']}:{execution['phaseKind']}"
+        reference_validation[key] = {
+            "record": copy.deepcopy(entry["record"]),
+            "lifecycle": copy.deepcopy(entry["lifecycle"]),
+        }
+        execution_by_phase[phase_key] = copy.deepcopy(execution)
+        verified_receipts[key] = {
+            "logicalAddress": receipt["logicalAddress"],
+            "nativeAddress": receipt["nativeAddress"],
+            "contentHash": receipt["contentHash"],
+            "transaction": receipt["transactionRef"]["value"],
+            "writer": receipt["writer"],
+            "nonce": receipt["nonce"],
+        }
+    public_keys = {
+        party["primaryClaim"]: key_bytes(party["primaryClaim"])
+        for party in bundle["parties"]
+    }
+    status, _, effective, _ = validate_effective_pipeline(context, artifact)
+    if status != "pass":
+        raise ValueError("effective pipeline was not verified")
+    result = {
+        "listing": copy.deepcopy(context["listing"]),
+        "publicKeys": public_keys,
+        "referenceValidationByCanonicalRef": reference_validation,
+        "bundleLifecycle": copy.deepcopy(authority["bundle"]["lifecycle"]),
+        "sessionExecutionAuthorityByPhaseKey": execution_by_phase,
+        "verifiedReceiptByCanonicalRef": verified_receipts,
+        "additionalCommitPhase": generator.PHASES[artifact],
+    }
+    if any(
+        step.get("kind") == "pay-alternative"
+        for step in context["listing"]["pipeline"]
+    ):
+        result["effectivePipeline"] = effective
+    return result
 
 
 def derive_identity_bound_reputation(
@@ -1355,8 +2273,14 @@ def derive_identity_bound_reputation(
             return "error", "role-resolution-bundle-mismatch", None
         # Snapshot exactly the verified inputs; do not replace or strip the
         # new phase kinds before the existing metric algorithm consumes them.
-        derivation = reputation_reference.derive(
-            party, [copy.deepcopy(role_tag)], window_start, window_end
+        authenticated_tag = copy.deepcopy(role_tag)
+        authenticated_tag["ebfabAuthority"] = terminal_reputation_authority(
+            context, artifact
+        )
+        authenticated_tag["selectedByRoleResolution"] = True
+        authenticated_tag["resolvedJobId"] = bundle["jobId"]
+        derivation = reputation_reference.derive_job_bound(
+            party, [authenticated_tag], window_start, window_end
         )
         return "pass", "verified", derivation
     except (AttributeError, IndexError, KeyError, TypeError, ValueError):
@@ -1382,10 +2306,220 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     vector = {
                         "scenario": artifact, "commitment": "finality", "stage": stage,
                     }
-                    self.assertEqual(evaluate(data, vector)[0], "pass")
+                    expected = (
+                        "pass"
+                        if artifact in generator.STRONG_ARTIFACTS or stage == "commit"
+                        else "indeterminate"
+                    )
+                    self.assertEqual(evaluate(data, vector)[0], expected)
             if artifact in generator.STRONG_ARTIFACTS:
                 fresh = context["commitInput"]["identityBindingCompanions"][0]["identityBundle"]
                 self.assertEqual(validate_identity_bundle(fresh, "wrong-nonce")[0], "fail")
+
+    def test_nonce_admission_consumes_first_attempt_and_has_bounded_lifetime(self):
+        job_id = generator.JOB_IDS["identityBoundAgreement"]
+        nonce = "ab" * 32
+        store = NonceAdmissionStore()
+        self.assertTrue(store.issue(
+            job_id, generator.CLAIMS["buyer"], nonce,
+            issued_at=generator.NOW, expires_at=generator.NOW + 100,
+        ))
+        self.assertFalse(store.issue(
+            job_id, generator.CLAIMS["seller"], nonce,
+            issued_at=generator.NOW, expires_at=generator.NOW + 100,
+        ))
+        invalid = generator.identity_bundle("buyer", nonce)
+        invalid["presentation"]["signatures"][0]["signature"] = "AAAA"
+        self.assertEqual(
+            store.admit(
+                job_id, generator.CLAIMS["buyer"], invalid,
+                attempted_at=generator.NOW + 1,
+            )[0],
+            "fail",
+        )
+        valid = generator.identity_bundle("buyer", nonce)
+        self.assertEqual(
+            store.admit(
+                job_id, generator.CLAIMS["buyer"], valid,
+                attempted_at=generator.NOW + 2,
+            ),
+            ("fail", "nonce-consumed"),
+        )
+
+        expired_nonce = "cd" * 32
+        self.assertTrue(store.issue(
+            job_id, generator.CLAIMS["seller"], expired_nonce,
+            issued_at=generator.NOW, expires_at=generator.NOW + 10,
+        ))
+        expired = generator.identity_bundle("seller", expired_nonce)
+        self.assertEqual(
+            store.admit(
+                job_id, generator.CLAIMS["seller"], expired,
+                attempted_at=generator.NOW + 11,
+            ),
+            ("fail", "nonce-expired"),
+        )
+
+    def test_nonce_admission_binds_the_signed_presenter_before_acceptance(self):
+        job_id = generator.JOB_IDS["identityBoundAgreement"]
+        buyer = generator.CLAIMS["buyer"]
+        store = NonceAdmissionStore()
+        nonce = "ef" * 32
+        self.assertTrue(store.issue(
+            job_id, buyer, nonce,
+            issued_at=generator.NOW, expires_at=generator.NOW + 100,
+        ))
+        self.assertEqual(store.admit(
+            job_id, buyer, generator.identity_bundle("seller", nonce),
+            attempted_at=generator.NOW + 1,
+        ), ("fail", "nonce-binding-mismatch"))
+        # A wrong-presenter attempt consumes the challenge too.
+        self.assertEqual(store.admit(
+            job_id, buyer, generator.identity_bundle("buyer", nonce),
+            attempted_at=generator.NOW + 2,
+        ), ("fail", "nonce-consumed"))
+        fresh_nonce = "ab" * 32
+        self.assertTrue(store.issue(
+            job_id, buyer, fresh_nonce,
+            issued_at=generator.NOW, expires_at=generator.NOW + 100,
+        ))
+        self.assertEqual(store.admit(
+            job_id, buyer, generator.identity_bundle("buyer", fresh_nonce),
+            attempted_at=generator.NOW + 1,
+        ), ("pass", "verified"))
+
+    def test_retained_admission_is_exact_and_reused_without_readmission(self):
+        scenario = self.data["scenarios"]["identityBoundAgreement"]
+        records = scenario["verifierContext"]["identityAdmissionAuthority"]["records"]
+        self.assertEqual(len(records), len({record["nonce"] for record in records}))
+        self.assertTrue(all(record["consumed"] is True for record in records))
+        for stage in ("commit", "payment", "terminal"):
+            with self.subTest(stage=stage):
+                case = self.cases[f"identityBoundAgreement-{stage}-verified"]
+                self.assertEqual(evaluate(self.data, case)[0], "pass")
+        self.assertEqual(
+            evaluate(
+                self.data, self.cases["retained-admission-authority-unavailable"]
+            )[0],
+            "indeterminate",
+        )
+        self.assertEqual(
+            evaluate(
+                self.data,
+                self.cases[
+                    "changed-resigned-presentation-cannot-reuse-admitted-nonce"
+                ],
+            )[0],
+            "fail",
+        )
+
+    def test_original_cross_stage_counterexamples_are_non_authorizing(self):
+        for name in (
+            "payment-job-must-match-agreement-and-session",
+            "payment-paying-key-must-be-in-admitted-bundle",
+            "commit-session-party-substitution-rejected",
+            "payee-payout-coverage-required-before-commit",
+            "replacement-disposition-signature-invalid-before-commit",
+            "replacement-disposition-native-address-invalid-before-commit",
+            "replacement-ordinary-payment-phase-rejected",
+            "completed-terminal-empty-settlement-evidence-rejected",
+            "historical-payment-destination-substitution-non-authorizing",
+        ):
+            with self.subTest(name=name):
+                verdict, result = evaluate(self.data, self.cases[name])
+                self.assertNotEqual(verdict, "pass")
+                self.assertIs(result["authorizedAction"], False)
+
+    def test_replacement_uses_apr_projection_and_exact_original_slot(self):
+        scenario = self.data["scenarios"]["identityBoundPayeeReplacement"]
+        raw = scenario["listing"]["pipeline"]
+        self.assertEqual(raw[3]["kind"], "pay-alternative")
+        status, reason, effective, definition = validate_effective_pipeline(
+            scenario, "identityBoundPayeeAgreement"
+        )
+        self.assertEqual((status, reason), ("pass", "verified"))
+        self.assertEqual(effective[3], {
+            "kind": definition["phaseHandler"],
+            "parameters": {"rail": scenario["agreement"]["terms"]["rail"]["railId"]},
+        })
+        self.assertEqual(
+            scenario["agreement"]["terms"]["payoutBindings"][0]["phaseIndex"],
+            3,
+        )
+        for stage in ("commit", "payment", "terminal"):
+            with self.subTest(stage=stage):
+                verdict, _ = evaluate(self.data, {
+                    "scenario": "identityBoundPayeeReplacement",
+                    "commitment": "finality",
+                    "stage": stage,
+                })
+                self.assertEqual(verdict, "pass")
+        self.assertEqual(
+            evaluate(
+                self.data,
+                self.cases[
+                    "replacement-prior-selection-cannot-use-synthetic-slot"
+                ],
+            )[0],
+            "fail",
+        )
+
+    def test_terminal_uses_complete_seb_and_finalized_dependency_joins(self):
+        scenario = self.data["scenarios"]["identityBoundAgreement"]
+        bundle = scenario["terminalInput"]["bundle"]
+        self.assertEqual(bundle["evidenceBoundFaultBundleVersion"], "1")
+        self.assertEqual(
+            [
+                entry["kind"] for entry in bundle["phaseSummary"]
+                if entry["kind"].startswith(("pay-", "deliver-"))
+            ],
+            ["pay-dem", "deliver-storage-program"],
+        )
+        self.assertEqual(len(bundle["settlementEvidence"]), 2)
+        authority = scenario["verifierContext"]["terminalAuthority"]
+        self.assertEqual(len(authority["settlements"]), 2)
+        self.assertEqual(len(authority["compositeRecords"]), 2)
+        for name in (
+            "terminal-settlement-receipt-address-tamper-rejected",
+            "terminal-settlement-receipt-finality-tamper-rejected",
+            "terminal-bundle-receipt-finality-tamper-rejected",
+            "terminal-agreement-receipt-content-tamper-rejected",
+            "terminal-bundle-lifecycle-not-finalized-rejected",
+            "terminal-outer-signature-cannot-upgrade-missing-proof",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(evaluate(self.data, self.cases[name])[0], "fail")
+
+    def test_new_authority_helpers_are_total_on_malformed_shapes(self):
+        probes = [
+            ("commit", ["verifierContext", "identityAdmissionAuthority", "records"]),
+            ("commit", ["verifierContext", "railRegistry", "resolutions"]),
+            ("terminal", ["verifierContext", "terminalAuthority", "settlements"]),
+            ("terminal", ["verifierContext", "terminalAuthority", "agreement", "receipt"]),
+            ("terminal", ["verifierContext", "terminalAuthority", "bundle", "receipt"]),
+        ]
+        for stage, path in probes:
+            for malformed in (None, 7, [], {}):
+                with self.subTest(stage=stage, path=path, malformed=malformed):
+                    context = materialize(self.data, {
+                        "scenario": "identityBoundAgreement",
+                        "commitment": "finality",
+                        "stage": stage,
+                    })
+                    apply_mutation(context, {
+                        "op": "set", "path": path, "value": malformed,
+                    })
+                    verdict, reason, artifact, phase = dispatch(context)
+                    self.assertEqual(verdict, "pass")
+                    if stage == "commit":
+                        verdict, _, _, _ = pre_action_gate(
+                            context, artifact, stage, set()
+                        )
+                    else:
+                        verdict, _ = validate_terminal(
+                            context, artifact, phase, set()
+                        )
+                    self.assertNotEqual(verdict, "pass")
 
     def test_reputation_counting_executes_only_after_identity_admission(self):
         for artifact in generator.STRONG_ARTIFACTS:
@@ -1401,7 +2535,9 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 generator.NOW - 100_000, generator.NOW + 100_000,
             )
             with mock.patch.object(
-                reputation_reference, "derive", wraps=reputation_reference.derive
+                reputation_reference,
+                "derive_job_bound",
+                wraps=reputation_reference.derive_job_bound,
             ) as derive:
                 verdict, _, receipt = derive_identity_bound_reputation(
                     context, set(), *arguments
@@ -1410,7 +2546,9 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 self.assertEqual(receipt["bundleCount"], 1)
                 derive.assert_called_once()
             missing = {f"identity:{generator.CLAIMS['buyer']}"}
-            with mock.patch.object(reputation_reference, "derive") as derive:
+            with mock.patch.object(
+                reputation_reference, "derive_job_bound"
+            ) as derive:
                 verdict, _, receipt = derive_identity_bound_reputation(
                     context, missing, *arguments
                 )
@@ -1419,7 +2557,9 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 derive.assert_not_called()
             invalid = copy.deepcopy(context)
             invalid["terminalInput"]["identityBindingCompanions"][0]["identityBundle"]["presentedAt"] += 1
-            with mock.patch.object(reputation_reference, "derive") as derive:
+            with mock.patch.object(
+                reputation_reference, "derive_job_bound"
+            ) as derive:
                 verdict, _, receipt = derive_identity_bound_reputation(
                     invalid, set(), *arguments
                 )
@@ -1546,6 +2686,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         self.assertEqual(evidence["scope"], "deterministic offline conformance fixture only")
         self.assertIs(evidence["liveSubstrateProof"], False)
         self.assertNotEqual(evidence["observer"], evidence["commitmentProducer"])
+        self.assertIn("prior-payment-disposition", evidence["coveredDependencies"])
+        self.assertIn("evidence-bound-fault-bundle", evidence["coveredDependencies"])
         names = {
             "commitment-receipt-producer-cannot-self-attest-finality",
             "commitment-receipt-native-content-tamper",
@@ -1638,6 +2780,10 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
             evidence["terminalReader"]["path"], "tests/dacs5_reference.py"
         )
         self.assertEqual(
+            evidence["historicalStageAdapter"]["payment"],
+            "not-completely-modeled-non-authorizing-indeterminate",
+        )
+        self.assertEqual(
             evaluate(self.data, self.cases["modeled-old-reader-agreement"])[0],
             "pass",
         )
@@ -1663,6 +2809,10 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         self.assertIn("bundleHash: string", verify)
         self.assertIn("Commitment kind is not artifact era", negotiate)
         self.assertIn("Agreement dispatch and identity-bound admission", verify)
+        self.assertIn("distinct verifier-issued", core)
+        self.assertIn("Retained-authority limitation", core)
+        self.assertIn("ordinary common gate independently of IBH", settle)
+        self.assertIn("Historical agreement and terminal controls", verify)
 
 
 if __name__ == "__main__":

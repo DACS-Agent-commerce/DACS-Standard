@@ -342,14 +342,17 @@ type IdentityBoundTerminalVerificationInput = {
 }
 ```
 
-The terminal consumer MUST verify the Listing signature and find exactly one
+The terminal consumer MUST verify the complete Listing signature and require
+exactly one recognized negotiation phase immediately followed by exactly one
 agreement commitment phase. It MUST require the matching signed
 `phaseSummary` entry, resolve `agreementRef`, and enforce DACS-3's four-way
 phase/artifact/domain matrix before admitting the bundle. A terminal bundle
 signature or caller type label cannot upgrade the fetched agreement.
 
 For an identity-bound phase, every agreement role comes from the verified
-agreement. The consumer MUST run CORE IBH-1..IBH-5, match exactly one companion
+agreement. The consumer MUST run CORE IBH-1..IBH-5 against each exact
+authenticated retained Identify/Vet admission, without newly accepting the
+already consumed nonce, and match exactly one companion
 to every agreement party, including every `bidder-non-winning`, and resolve each
 CVR only through that party's `vetRecordRef`. For the unique agreement buyer and
 seller it additionally matches exactly one terminal `BundleParty` and the
@@ -374,6 +377,13 @@ job/phase/role/claim/hash contradiction is `rejected`. Missing or unavailable
 otherwise-consistent authority is `indeterminate`. Neither result may enter
 terminal closure or any reputation count. Only `verified` admits the bundle;
 no producer boolean or previously emitted `identityBindingDecision` is proof.
+
+This identity result is only one member of the terminal pre-action gate. The
+consumer MUST also require exact bundle/listing/agreement/commitment/job joins,
+the authenticated session roster, the independently recomputed effective
+pipeline, payee payout coverage and APR disposition where applicable, and all
+ordinary phase, evidence, signature, address, receipt, and lifecycle checks.
+An outer bundle signature cannot upgrade missing or unauthenticated inner proof.
 
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
@@ -572,6 +582,10 @@ unavailable otherwise-consistent proof is `indeterminate` and leaves the
 session open or the bundle uncounted. Existing agreement phases retain their
 historical validation and require no new companion fields.
 
+The terminal gate above is conjunctive: a successful identity-bound admission
+never bypasses the Listing ordering, session, payment, payout, APR, or SEB
+obligations applicable to the same bundle.
+
 A failed or aborted bundle MUST be produced when the session reaches its terminal state. A completed bundle MUST instead be constructed, signed, anchored, finalized, and made independently resolvable during `audit-pending`; its finalized receipt is the prerequisite for the `finalised` terminal transition (ST-11). The bundle MUST include references to:
 
 - all DACS-2 composite verification records;
@@ -581,6 +595,16 @@ A failed or aborted bundle MUST be produced when the session reaches its termina
 - DACS-5 ratings (if the rate phase ran).
 
 The bundle MUST NOT include references to any record outside the session’s scope.
+
+For a completed EBFAB, an empty `settlementEvidence` array cannot satisfy the
+required set when any payment or delivery handler ran. In addition to each
+complete payment/delivery evidence chain, the consumer MUST independently
+resolve finalized receipts for the exact agreement, commitment, every CVR, and
+the EBFAB copy itself. Each receipt MUST join the expected logical and native
+address, canonical content hash, transaction, authenticated writer, applicable
+nonce, independently authenticated inclusion/ordering, finality, and lifecycle.
+A bare unsigned `{state, contentHash, writer}` summary, an index hit, or an outer
+signature is not evidence and cannot repair a missing dependency.
 
 **EvidenceBoundFaultAttestationBundle exact-set validation (SEB-1..SEB-6).** These rules define validity only for `EvidenceBoundFaultAttestationBundle`. Its producer and consumer validate the authoritative top-level `settlementEvidence[]` against the authenticated executed phase set as follows. The two perspective copies MUST contain the same applicable terminal members. An ST-8-resolved phase lists only its `:resolved` success record; an expired phase lists its standing interim failure record.
 
@@ -1211,6 +1235,20 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 **Extended-pointer pattern for oversized bundles.** Some sessions exceed the storage-program cap (multi-party auctions, long attestation chains); the pattern keeps the canonical artifact at the on-chain address and ferries the rest off-chain with content-hash binding rather than hard-failing.
 
 ### 10.10 Backwards compatibility
+
+**Historical agreement and terminal controls.** Existing
+`AgreementDocument`, `PayeeBoundAgreementDocument`, `AttestationBundle`, and
+`FaultAttestationBundle` bytes, signature domains, hash spellings, and both
+commitment-record forms remain unchanged. Current consumers skip only the new
+IBH-specific admission for those historical agreement paths; they still apply
+every supported historical Listing, agreement signature, commitment, payment,
+terminal signature, destination, evidence, and lifecycle control. This Standard
+does not define a generic shortcut for a reference evaluator that lacks a
+complete historical stage adapter. Such an evaluator MUST return an explicit
+non-authorizing `indeterminate` with a not-modeled reason for that stage; it MUST
+NOT report the historical artifact protocol-invalid and MUST NOT grant an
+unconditional authorized pass. This evaluator limitation does not change the
+artifact's protocol validity.
 
 **ERC-8004 registries.** §10.7 specifies the publication surface; DACS-5 *reads* the ERC-8004 registry format for EVM consumers and leaves ERC-8004 unchanged. **Reputation integrity is DACS's own responsibility, not inherited from ERC-8004** — the ERC-8004 Draft explicitly out-of-scopes Sybil resistance, so anti-Sybil rests on DACS-5's per-primary-claim keying (§10.5) and the collusion/farming mitigations in §10.11, not on the registry pointer.
 

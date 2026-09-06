@@ -42,7 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 324 | `error` / `fail` / `indeterminate` / `pass` |
+| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 357 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -1117,13 +1117,15 @@ python3 -m unittest tests.test_presence_only_claim_vectors -v
 These candidate vectors execute the distinct identity-bound agreement paths
 without changing any released carrier. Deterministic Ed25519 fixtures include
 complete signed Listings, all four signed agreement artifact types, both
-commitment-record forms, session-bound IdentityBundle presentations, signed
-CVRs with signed VerifyResult material, fixture-only finalized commitment
-receipts observed by an independently pinned key, payment inputs, terminal
-bundles, and a signed prior-payment disposition. The receipt adapter verifies
-native transaction, logical/native location, content, block ordering, and
-fixture-finality bindings. It is deterministic offline evidence only: it does
-not claim Demos or any other live-substrate consensus verification.
+commitment-record forms, distinct one-use session-bound IdentityBundle
+presentations, signed CVRs with signed VerifyResult material, payment inputs,
+terminal EBFABs, and signed prior-payment dispositions. A generalized
+fixture-only receipt adapter independently observes commitment, agreement, CVR,
+disposition, settlement-evidence, and terminal-bundle dependencies and verifies
+native transaction, exact logical/native location, content, writer, nonce,
+block ordering, and fixture-finality bindings. Its deterministic cryptography
+is not a production-native codec and does not claim Demos or any other
+live-substrate consensus verification.
 The evaluator verifies cryptography, authenticated production/replay context,
 and DACS-2 §7.7.1 aggregation directly; no producer success boolean, asserted
 digest, signed `overallDecision` label, or caller role label is proof.
@@ -1131,17 +1133,24 @@ digest, signed `overallDecision` label, or caller role label is proof.
 Coverage includes the 4×4 signed phase/artifact matrix, 4×4 cross-domain replay
 matrix, closed-PhaseType refusal at all three stage entrypoints, exclusive
 discriminator failures, explicit stronger-path downgrade,
-presentation signer and verifier-nonce checks, exact CVR reference/job/claim/
-digest/requirement/result joins and replayed aggregation, every cross-stage
-hash position, missing authority trichotomy,
-payment and terminal refusal, separate-orchestrator binding, payee payout and
-APR replacement inheritance, old and identity-bound sealed-envelope losing-
-bidder controls, independently authorized fixture-receipt tamper cases, and
-malformed nested values that must never escape as language exceptions.
+presentation signer and distinct verifier-challenge checks (including
+consumed-on-failure, bounded lifetime, changed/re-signed reuse, exact retained
+admission, and missing-authority refusal), exact CVR reference/job/claim/digest/
+requirement/result joins and replayed aggregation, every cross-stage hash
+position, payment job/role/key joins, separate-orchestrator binding, mandatory
+negotiate→commit ordering, precommit payout coverage, genuine APR projection at
+the exact slot, signed/finalized replacement disposition including
+closed-cannot-settle evidence, complete EBFAB payment/delivery evidence, and
+finalized agreement/CVR/commitment/bundle dependency joins. It also preserves
+old and identity-bound sealed-envelope losing-bidder controls, independently
+authorized fixture-receipt tamper cases, and malformed nested values that must
+never escape as language exceptions.
 
 Additional executable regressions preserve non-session Listing publication
 without a session nonce across all four agreement types; action-bearing
-IdentityBundle companions still require the verifier-issued session nonce.
+IdentityBundle companions still require the verifier-issued challenge and exact
+authenticated retained admission. Signed wire artifacts alone do not establish
+off-chain issuance or one-use retention when that authority is unavailable.
 The identity-bound reputation adapter runs these admission checks before
 calling the existing DACS-5 metric derivation: a valid control counts one
 bundle, while missing or invalid identity proof never invokes the metric
@@ -1156,9 +1165,13 @@ The old agreement-reader cases execute a frozen dispatcher modeled from base
 `3426faaebc09948d57a3a6d30fd6795df579b68f` because this repository has no
 pinned agreement-reader executable. The base DACS-5 reference path is also
 executed to prove that unsupported new signed phases are refused before phase
-derivation or counting. Both are labeled modeled/reference compatibility
-evidence, never proof about a deployed reader. The existing payee-destination
-corpus remains independently valid and is not superseded.
+derivation or counting. The focused evaluator executes supported historical
+commitment/signature controls; where it lacks a complete historical payment or
+terminal stage adapter it returns an explicit non-authorizing `indeterminate`
+rather than an unconditional pass or a protocol-invalid judgment. These are
+labeled modeled/reference compatibility results, never proof about a deployed
+reader. The existing payee-destination corpus remains independently valid and
+is not superseded.
 
 Regenerate and execute with:
 

@@ -298,11 +298,19 @@ complete lexical and derivation constraints wherever that alias is used.
   NOT be applied retroactively to an `AgreementDocument` or
   `PayeeBoundAgreementDocument`, regardless of whether a `CommitmentRecord` or
   `FinalityCommitmentRecord` authenticates that historical agreement.
-- **(IBH-4) Authenticated bundle proof.** At identity-bound commitment,
-  payment, and terminal verification, a consumer MUST validate each complete
-  IdentityBundle presentation and its verifier-issued session nonce. It MUST
-  recompute IBH-1 from the received bundle with only `presentation` omitted.
-  A producer boolean, asserted digest, caller role, or mutable session label is
+- **(IBH-4) Authenticated bundle proof.** Identify/Vet admission MUST validate
+  each complete IdentityBundle presentation against a distinct verifier-issued
+  challenge and consume that challenge on its first presentation attempt under
+  SN-4, including a failed attempt. On acceptance, the verifier MUST retain in
+  authenticated state the exact `jobId`, presenter, nonce, complete bundle
+  bytes, recomputed IBH-1 digest, and original accepted result. At
+  identity-bound commitment, payment, and terminal verification, a consumer
+  MUST reverify the exact already-admitted evidence and CVR against that
+  retained record; it MUST NOT issue or newly accept the consumed challenge.
+  A changed or re-signed presentation carrying that nonce is a new attempt and
+  MUST be rejected. Missing or unavailable retained authenticated authority is
+  `indeterminate` and non-authorizing. A producer boolean, asserted digest,
+  caller role, mutable session label, or untrusted copy of the retained map is
   not proof.
 - **(IBH-5) Exact CVR and party join.** The consumer MUST resolve the
   `CompositeVerificationRecord` through each identity-bound party's exact
@@ -317,7 +325,17 @@ complete lexical and derivation constraints wherever that alias is used.
   agreement discriminator/domain select the path. A stronger request MUST NOT
   accept an older artifact. `verified` permits action, `rejected` forbids it,
   and `indeterminate` permits no action while preserving that third result when
-  mapped to a boolean `PhaseHandlerResult`.
+  mapped to a boolean `PhaseHandlerResult`. Identity verification is one member
+  of the applicable stage gate: success MUST NOT skip Listing, phase ordering,
+  agreement/commitment, authenticated session, payment/payout, APR, evidence,
+  or lifecycle obligations imposed by that stage.
+
+> **Retained-authority limitation (normative).** The signed wire artifacts prove
+> their own bytes, but do not by themselves prove that an off-chain verifier
+> issued a nonce only once or retained the admission state above. When that
+> required authenticated authority is unavailable, an identity-bound action is
+> `indeterminate`; implementations MUST NOT invent nonce reuse or treat a
+> portable producer-issued receipt as equivalent authority.
 
 - **Per-artifact canonical-form template.** Every signed DACS artifact follows the same discipline: canonical form = the JCS serialisation with the artifact's hash-excluded field(s) omitted (normally the signature field); artifact hash = the content hash of that form; signature = over the domain-separated payload per §B.7 — `signed_bytes := <separator> || <artifact hash>` for single-hash separators, composite-payload separators per the §B.7 note — with verifiers reconstructing everything independently (SIG-2). Each artifact's defining section states only the artifact-specific facts: the omitted field(s), the exact domain separator, and any exceptions to this template.
 - **Numeric safe-magnitude constraint.** Every JSON number in a signed or content-hashed DACS document MUST be finite, representable as an IEEE-754 binary64 value, and have magnitude no greater than 2^53−1 (9,007,199,254,740,991). Both integral and fractional numbers are permitted within that bound and MUST be serialised exactly as RFC 8785 §3.2.2.3 specifies; in particular, negative zero serialises as `0`, fixed notation is used for magnitudes from 10^−6 (inclusive) to 10^21 (exclusive), and scientific notation is used outside that interval. NaN and positive or negative Infinity are not JSON numbers and MUST be rejected. Any quantity that may exceed the DACS bound (token IDs, uint256 values, large on-chain counters or block numbers) MUST be carried as a decimal string — or, where ABI conventions apply, a `0x`-prefixed hex string — rather than a bare JSON number. Producers MUST NOT emit, and readers SHOULD reject, a signed or content-hashed document containing a JSON number outside this profile.
@@ -526,9 +544,9 @@ A session nonce is **a challenge the verifier issues**, not a value the presente
 **Conformance — session nonce (SN-1..SN-4).**
 
 - (SN-1) **Generator.** The verifier MUST generate the session nonce; a presenter-supplied nonce MUST NOT be trusted as the session binding. (A bundle MAY carry a `sessionNonce` the presenter copied from the verifier's challenge — what SN-1 forbids is the verifier accepting a nonce it did not itself issue for this session.)
-- (SN-2) **Entropy and form (issuance-side).** The nonce MUST carry at least 128 bits of entropy from a cryptographically secure RNG and MUST be fresh per session. The native `sessionNonce` field (§6.3.2) MUST be a lowercase-hex string of at least 32 hex characters; for the `siwd` kind the EIP-4361 `Nonce` carries the verifier-issued session nonce (validated by the §6.3.2 match check). These are obligations on the **issuer** — the verifier, per SN-1 — *at generation time*. A verifier validating a *presented* nonce relies on the §6.3.2 match against the nonce it issued, which already guarantees a conformant presented value (the issued nonce is well-formed by construction); it is **not** required to re-check entropy or hex-length on the presented value. A unilateral format re-check on the presented nonce is redundant and MUST NOT be treated as a conformance divergence.
+- (SN-2) **Entropy and form (issuance-side).** The nonce MUST carry at least 128 bits of entropy from a cryptographically secure RNG and MUST be fresh and globally distinct for each new presentation challenge, including presentations by different parties or at different admission points in one session. The native `sessionNonce` field (§6.3.2) MUST be a lowercase-hex string of at least 32 hex characters; for the `siwd` kind the EIP-4361 `Nonce` carries the verifier-issued session nonce (validated by the §6.3.2 match check). These are obligations on the **issuer** — the verifier, per SN-1 — *at generation time*. A verifier validating a *presented* nonce relies on the §6.3.2 match against the nonce it issued, which already guarantees a conformant presented value (the issued nonce is well-formed by construction); it is **not** required to re-check entropy or hex-length on the presented value. A unilateral format re-check on the presented nonce is redundant and MUST NOT be treated as a conformance divergence.
 - (SN-3) **Issuance and binding.** The verifier MUST issue the nonce to the presenter before the presentation is produced, bound to the session's `jobId`. The transport of the challenge is substrate- and protocol-specific and is out of scope; the value the verifier matches against MUST be the one it generated for this session. The verifier MUST compare the presented nonce against the nonce it issued for this `jobId` and reject any mismatch.
-- (SN-4) **Single-use and retention.** A verifier MUST accept a session nonce at most once for the `jobId` it was issued for. On any presentation *attempt* carrying the issued nonce, the verifier MUST mark it consumed and reject any later presentation carrying it for that `jobId` — consumed on attempt, not only on success, so a challenge cannot be probed repeatedly. The verifier MUST retain the issued/consumed record at least until the bound session reaches a §10.3.1 terminal state. It MUST also enforce a **bounded challenge lifetime**: a nonce issued for a session still in a `*-pending` state when that lifetime elapses MUST cause any later presentation carrying it to be rejected. The lifetime is verifier-set, not a fixed CORE value — a short micropayment and a multi-hour RFQ differ legitimately. A nonce issued for one `jobId` MUST NOT validate a presentation for any other `jobId`.
+- (SN-4) **Single-use and retention.** A verifier MUST accept a nonce for at most one presentation. On any presentation *attempt* carrying the issued nonce, the verifier MUST mark it consumed before validating the attempt and reject every later presentation carrying it, including a fresh, changed, or re-signed presentation for the same `jobId` — consumed on attempt, not only on success, so a challenge cannot be probed repeatedly. The verifier MUST retain the issued/attempted/consumed record and, for an accepted attempt, the authenticated admission record required by IBH-4 at least until the bound session reaches a §10.3.1 terminal state. It MUST also enforce a **bounded challenge lifetime**: a nonce issued for a session still in a `*-pending` state when that lifetime elapses MUST cause any later presentation carrying it to be rejected. The lifetime is verifier-set, not a fixed CORE value — a short micropayment and a multi-hour RFQ differ legitimately. A nonce issued for one `jobId` MUST NOT validate a presentation for any other `jobId`, and one nonce MUST NOT be issued to more than one presenter or presentation.
 
 > **Note (non-normative).** This is the standard SIWD/EIP-4361 challenge-response shape, lifted to a shared primitive because both DACS-1 (presentation) and DACS-2 (holder-/attestation-binding) depend on the same nonce having these properties. Constraining provenance — not just the match check — is what stops two conforming implementations from disagreeing on the very value the replay defence rests on.
 

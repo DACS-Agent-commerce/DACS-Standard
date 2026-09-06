@@ -728,11 +728,18 @@ The wire shape of `CompositeVerificationRecord` is unchanged. Its existing `bund
 phases reuse the authenticated companion-input convention above; they do not
 change this record's wire shape or general validity. For those phases only, the
 consumer receives the exact signed IdentityBundle and resolved record as
-companions, verifies them under §§7.7/7.7.1, and applies CORE IBH-4/IBH-5. The
-record's `bundleHash` is compared with the independently recomputed digest at
-that selected boundary. No field, claimed role, digest, or success boolean in a
-companion can replace presentation, nonce, reference, hash, signature, or
-aggregation verification.
+companions, verifies them under §§7.7/7.7.1, and applies CORE IBH-4/IBH-5 against
+the authenticated admission retained by the Identify/Vet verifier. Admission
+consumes that presentation's distinct challenge once; commitment, payment, and
+terminal consumers reverify the exact retained accepted bytes and result rather
+than newly accepting the consumed nonce. The record's `bundleHash` is compared
+with the independently recomputed digest at that selected boundary. No field,
+claimed role, digest, success boolean, or producer-carried copy of retained
+state in a companion can replace presentation, nonce issuance/retention,
+reference, hash, signature, or aggregation verification. If the retained
+authenticated admission is unavailable, reliance is `indeterminate` and
+non-authorizing even though the signed wire artifacts remain independently
+verifiable.
 
 **Verification warnings (rules WN-1..WN-6).** The optional `warnings` array surfaces transient/retryable verification conditions encountered while producing the record — without changing the verification decision. Warnings are strictly advisory and orthogonal to the §7.7.1 aggregation:
 

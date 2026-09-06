@@ -1459,6 +1459,13 @@ def validate_settlement_observation(
         "payer": payer.get("payingKey") if isinstance(payer, dict) else None,
         "payee": payee.get("payeeAddress") if isinstance(payee, dict) else None,
         "paymentAmount": payment.get("amount"),
+        "authorizationRef": (
+            generator.artifact_hash(
+                payment.get("paymentAuthorization"), "signature"
+            )
+            if isinstance(payment.get("paymentAuthorization"), dict)
+            else None
+        ),
     }
     if not signature_valid or event != expected:
         return "fail", "terminal-settlement-observation-invalid"
@@ -1727,6 +1734,52 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
     return "pass", "verified"
 
 
+def validate_fixture_finality_consistency(context: dict) -> tuple[str, str]:
+    """Reject independently signed finalized blocks that fork one fixture height."""
+
+    receipt_authority = context.get("verifierContext", {}).get(
+        "authenticatedReceiptAuthority"
+    )
+    if not isinstance(receipt_authority, str):
+        return "indeterminate", "receipt-authority-unavailable"
+    stack: list[object] = [context]
+    visited: set[int] = set()
+    finalized_by_height: dict[tuple[str, str], str] = {}
+    while stack:
+        value = stack.pop()
+        if isinstance(value, dict):
+            identity = id(value)
+            if identity in visited:
+                continue
+            visited.add(identity)
+            if value.get("receiptVersion") == "1":
+                evidence = value.get("evidence")
+                try:
+                    envelope = json.loads(evidence["value"])
+                    native = envelope["nativeReceipt"]
+                    signature_valid = generator.verify_ed25519(
+                        key_bytes(receipt_authority),
+                        b64url_decode(envelope["signature"]),
+                        generator.FIXTURE_OBSERVATION_PREFIX
+                        + generator.hash_hex(native).encode("ascii"),
+                    )
+                    block = native["inclusion"]["blockRef"]
+                    substrate = native["substrate"]
+                    height = block["height"]
+                    block_id = block["id"]
+                except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+                    signature_valid = False
+                if signature_valid:
+                    key = (substrate, height)
+                    previous = finalized_by_height.setdefault(key, block_id)
+                    if previous != block_id:
+                        return "fail", "fixture-finality-conflict"
+            stack.extend(value.values())
+        elif isinstance(value, list):
+            stack.extend(value)
+    return "pass", "verified"
+
+
 def pre_action_gate(
     context: dict, artifact: str, stage: str, unavailable: set[str]
 ) -> tuple[str, str, dict[str, str], list[dict]]:
@@ -1738,6 +1791,11 @@ def pre_action_gate(
     agreement = context.get("agreement")
     if not isinstance(stage_input, dict) or not isinstance(agreement, dict):
         return "error", "malformed-input", {}, []
+    finality_status, finality_reason = validate_fixture_finality_consistency(
+        context
+    )
+    if finality_status != "pass":
+        return finality_status, finality_reason, {}, []
     if stage in {"commit", "payment"} and (
         stage_input.get("jobId") != agreement.get("jobId")
         or stage_input.get("agreement") != agreement
@@ -2827,6 +2885,12 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 payee=runtime_destination,
                 payment_amount=changed["paymentInput"]["amount"],
             )
+        )
+        event["authorizationRef"] = generator.artifact_hash(
+            changed["paymentInput"]["paymentAuthorization"], "signature"
+        )
+        execution["settlementObservation"] = (
+            generator.fixture_settlement_observation(event)
         )
         self.assertEqual(
             validate_terminal(

@@ -691,7 +691,9 @@ def finalized_dependency_receipt(
     transaction_ref = {"kind": "fixture", "value": hash_hex(transaction_binding)}
     ordered_transactions = [copy.deepcopy(transaction_ref)]
     block_material = {
-        "height": "390",
+        "height": str(
+            timestamp * (2 ** 32) + int(transaction_ref["value"][:8], 16)
+        ),
         "timestamp": timestamp,
         "orderedTransactions": ordered_transactions,
     }
@@ -821,6 +823,7 @@ def settlement_evidence(
     payment_amount: dict[str, Any],
     payer: str,
     payee: str,
+    payment_authorization_ref: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     record: dict[str, Any] = {
         "evidenceVersion": "1",
@@ -914,6 +917,7 @@ def settlement_evidence(
             "payer": payer,
             "payee": payee,
             "paymentAmount": copy.deepcopy(record["paymentAmount"]),
+            "authorizationRef": payment_authorization_ref,
         })
     else:
         execution["evidenceLogicalAddress"] = logical_address
@@ -957,6 +961,12 @@ def terminal_bundle(
                 payment_amount=payment_input["amount"],
                 payer=payer["payingKey"],
                 payee=payee["payeeAddress"],
+                payment_authorization_ref=(
+                    artifact_hash(
+                        payment_input["paymentAuthorization"], "signature"
+                    )
+                    if step["kind"].startswith("pay-") else None
+                ),
             )
             entry["attestationRef"] = copy.deepcopy(reference)
             evidence_refs.append(copy.deepcopy(reference))
@@ -1724,6 +1734,17 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         execution["settlementObservation"] = fixture_settlement_observation(
             execution["settlementObservation"]["event"]
         )
+    elif action == "terminal-settlement-block-conflict":
+        authority = context["verifierContext"]["terminalAuthority"]
+        settlement_receipt = authority["settlements"][0]["receipt"]
+        bundle_receipt = authority["bundle"]["receipt"]
+        envelope = json.loads(settlement_receipt["evidence"]["value"])
+        target_height = bundle_receipt["blockRef"]["height"]
+        settlement_receipt["blockRef"]["height"] = target_height
+        envelope["nativeReceipt"]["inclusion"]["blockRef"][
+            "height"
+        ] = target_height
+        set_fixture_evidence(settlement_receipt, envelope["nativeReceipt"])
     elif action == "prior-settlement-observation":
         material = context["priorPaymentDisposition"][
             "reconciliationEvidence"
@@ -1774,6 +1795,17 @@ def resign_context(context: dict[str, Any], action: str) -> None:
             payee=payment["payee"]["payeeAddress"],
             payment_amount=payment["amount"],
         )
+        authorization_ref = artifact_hash(
+            payment["paymentAuthorization"], "signature"
+        )
+        for settlement in context["verifierContext"]["terminalAuthority"][
+            "settlements"
+        ]:
+            execution = settlement.get("executionAuthority", {})
+            if str(execution.get("phaseKind", "")).startswith("pay-"):
+                execution["settlementObservation"]["event"][
+                    "authorizationRef"
+                ] = authorization_ref
     elif action == "disposition":
         value = context["priorPaymentDisposition"]["artifact"]
         value["signature"] = component_signature(value, DISPOSITION_DOMAIN, "orchestrator")
@@ -2707,6 +2739,12 @@ def build_vectors() -> list[dict[str, Any]]:
             ], {"amount": "2", "currency": "DEM"})],
             resign=["terminal-settlement-observation:0"],
             reason="terminal-settlement-observation-invalid",
+        ),
+        vector(
+            "terminal-conflicting-finalized-block-at-same-height-rejected", "fail",
+            scenario_name="identityBoundAgreement", stage="terminal",
+            resign=["terminal-settlement-block-conflict"],
+            reason="fixture-finality-conflict",
         ),
         vector(
             "terminal-bundle-receipt-finality-tamper-rejected", "fail",

@@ -402,10 +402,14 @@ type IdentityBoundPaymentPhaseInput = PaymentPhaseInput & {
 contract. When the authenticated Listing phase selects either identity-bound
 agreement, the handler MUST instead require the additional companion member of
 `IdentityBoundPaymentPhaseInput`. It reruns CORE IBH-1..IBH-5 and requires the
-recomputed digest to match the corresponding identity-bound agreement party,
-payment party, and authenticated `SessionParty` values. This conditional check
-does not reinterpret an old agreement or make the companion member required on
-an old payment path.
+recomputed digest and CVR to match every identity-bound agreement party,
+including each `bidder-non-winning` party retained by a sealed-envelope
+agreement. For the unique buyer and seller it additionally matches the
+corresponding payment party and authenticated `SessionParty` values; the frozen
+payment/session carrier roles do not acquire losing-bidder entries. This
+conditional check does not reinterpret an old agreement or make the companion
+member required on an old payment path. Losing bidders remain non-signers under
+§8.5.1 and are never treated as payer or payee.
 
 The payer and payee roles come from the verified agreement and signed Listing,
 not caller labels. Missing or unavailable otherwise-consistent bundle/CVR/nonce

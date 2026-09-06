@@ -348,11 +348,15 @@ agreement commitment phase. It MUST require the matching signed
 phase/artifact/domain matrix before admitting the bundle. A terminal bundle
 signature or caller type label cannot upgrade the fetched agreement.
 
-For an identity-bound phase, each buyer/seller role comes from the verified
-agreement. The consumer MUST run CORE IBH-1..IBH-5, match exactly one terminal
-party and one companion to each agreement party, and resolve the CVR only
-through that party's `vetRecordRef`. It also matches the authenticated
-`SessionParty` value retained by the active producer when performing ST-11.
+For an identity-bound phase, every agreement role comes from the verified
+agreement. The consumer MUST run CORE IBH-1..IBH-5, match exactly one companion
+to every agreement party, including every `bidder-non-winning`, and resolve each
+CVR only through that party's `vetRecordRef`. For the unique agreement buyer and
+seller it additionally matches exactly one terminal `BundleParty` and the
+authenticated `SessionParty` value retained by the active producer when
+performing ST-11. The frozen `BundleParty` and `SessionParty` role sets remain
+buyer/seller/orchestrator: losing bidders are agreement-companion audit inputs,
+not newly invented terminal parties or required terminal signers.
 Caller-supplied role or digest labels are ignored.
 
 A distinct orchestrator is identified by the authenticated commitment

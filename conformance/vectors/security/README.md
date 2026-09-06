@@ -42,7 +42,7 @@ promotion path — is specified in [CROSS-RUN.md](CROSS-RUN.md).
 | [`fab-bundle-extended-pointer-v0.3.json`](fab-bundle-extended-pointer-v0.3.json) | DACS-5 §10.4.2 extended-pointer FaultAttestationBundle path + §10.4.1 triple-identity (E7) | 4 | `fail` / `pass` |
 | [`fault-bundle-perspective-pair-v0.3.json`](fault-bundle-perspective-pair-v0.3.json) | DACS-5 §10.4.3 FaultAttestationBundle-pair rule + §10.4.1 permissible set | 3 | `fail` / `pass` |
 | [`feeschedule-reconciliation-v0.1.json`](feeschedule-reconciliation-v0.1.json) | DACS-3 §8.5.3 (FS-1..FS-5); DACS-4 §9.7.2 (FR-1..FR-4) | 17 | `diverged` / `fail` / `indeterminate` / `pass` / `reconciles` |
-| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 305 | `error` / `fail` / `indeterminate` / `pass` |
+| [`identity-bundle-hash-binding-v0.1.json`](identity-bundle-hash-binding-v0.1.json) | CORE §B.2 IBH-1..IBH-6; DACS-1 §6.3.4; DACS-2 §7.7; DACS-3 §8.5/§8.6; DACS-4 §9.5/§9.9.1; DACS-5 §10.4/§10.5.1 | 324 | `error` / `fail` / `indeterminate` / `pass` |
 | [`legacy-orchestrator-reputation-parity-v0.3.json`](legacy-orchestrator-reputation-parity-v0.3.json) | DACS-5 §10.5.1 orchestrator-fault neutral exclusion | 6 | `pass` |
 | [`legacy-three-party-fault-reconciliation-v0.3.json`](legacy-three-party-fault-reconciliation-v0.3.json) | DACS-5 §10.4.3 legacy implied-fault-set reconciliation | 5 | `fail` / `pass` |
 | [`listing-preserve-unknown-v0.1.json`](listing-preserve-unknown-v0.1.json) | CORE §B.7 SIG-3/SIG-5; §11.1.2 additivity and new-type refusal; DACS-1 §6.3.4; DACS-4 §9.6.3 DPA-1 | 4 | `fail` / `pass` |
@@ -1118,18 +1118,36 @@ These candidate vectors execute the distinct identity-bound agreement paths
 without changing any released carrier. Deterministic Ed25519 fixtures include
 complete signed Listings, all four signed agreement artifact types, both
 commitment-record forms, session-bound IdentityBundle presentations, signed
-CVRs, cryptographically evidenced finalized commitment receipts, payment
-inputs, terminal bundles, and a signed prior-payment disposition.
-The evaluator verifies cryptography and authenticated context directly; no
-producer success boolean, asserted digest, or caller role label is proof.
+CVRs with signed VerifyResult material, fixture-only finalized commitment
+receipts observed by an independently pinned key, payment inputs, terminal
+bundles, and a signed prior-payment disposition. The receipt adapter verifies
+native transaction, logical/native location, content, block ordering, and
+fixture-finality bindings. It is deterministic offline evidence only: it does
+not claim Demos or any other live-substrate consensus verification.
+The evaluator verifies cryptography, authenticated production/replay context,
+and DACS-2 §7.7.1 aggregation directly; no producer success boolean, asserted
+digest, signed `overallDecision` label, or caller role label is proof.
 
 Coverage includes the 4×4 signed phase/artifact matrix, 4×4 cross-domain replay
-matrix, exclusive discriminator failures, explicit stronger-path downgrade,
+matrix, closed-PhaseType refusal at all three stage entrypoints, exclusive
+discriminator failures, explicit stronger-path downgrade,
 presentation signer and verifier-nonce checks, exact CVR reference/job/claim/
-digest joins, every cross-stage hash position, missing authority trichotomy,
+digest/requirement/result joins and replayed aggregation, every cross-stage
+hash position, missing authority trichotomy,
 payment and terminal refusal, separate-orchestrator binding, payee payout and
-APR replacement inheritance, and malformed nested values that must never
-escape as language exceptions.
+APR replacement inheritance, old and identity-bound sealed-envelope losing-
+bidder controls, independently authorized fixture-receipt tamper cases, and
+malformed nested values that must never escape as language exceptions.
+
+Additional executable regressions preserve non-session Listing publication
+without a session nonce across all four agreement types; action-bearing
+IdentityBundle companions still require the verifier-issued session nonce.
+The identity-bound reputation adapter runs these admission checks before
+calling the existing DACS-5 metric derivation: a valid control counts one
+bundle, while missing or invalid identity proof never invokes the metric
+consumer. This is IBH propagation evidence over already verified role-resolution
+tags, not a replacement for SR-2/BB-6 resolution or proof of a complete deployed
+reputation reader. Historical metric algorithms and derivation types are unchanged.
 
 Historical signed `AgreementDocument` and `PayeeBoundAgreementDocument`
 fixtures deliberately retain `sha256:`-prefixed party hashes and verify with

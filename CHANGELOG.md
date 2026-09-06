@@ -35,6 +35,13 @@ The format used per release:
   hashes remain valid, and the existing payee corpus is not superseded. The
   two new contracts are proposed without allocating competing per-stage minor
   release numbers.
+- **Candidate conformance repairs** — closes PhaseType admission before every
+  stage action, uses signature-omitted artifact-reference hashes, replays the
+  exact signed-Listing requirement and CVR aggregate against authenticated
+  DACS-2 inputs, preserves sealed-envelope losing-bidder parties without adding
+  signer requirements, and replaces producer-authored finality assertions with
+  an independently pinned fixture-only native-observation adapter. The adapter
+  exercises receipt binding and ordering but is not live-substrate proof.
 
 ### Fixed — DACS-X conformance provenance
 

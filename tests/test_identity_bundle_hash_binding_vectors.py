@@ -4,16 +4,21 @@ from __future__ import annotations
 
 import base64
 import copy
+import hashlib
 import json
 from pathlib import Path
 import re
 import sys
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT / "tests"))
 
 import generate_identity_bundle_hash_binding_vectors as generator  # noqa: E402
+import test_claim_requirement_qualification_vectors as qualification  # noqa: E402
+import dacs5_reference as reputation_reference  # noqa: E402
 
 
 VECTORS = ROOT / "conformance/vectors/security/identity-bundle-hash-binding-v0.1.json"
@@ -89,7 +94,24 @@ def valid_ref(reference: object) -> bool:
     )
 
 
-def validate_identity_bundle(bundle: object, nonce: object) -> tuple[str, str, str | None]:
+def valid_verify_result_ref(reference: object) -> bool:
+    if not isinstance(reference, dict) or set(reference) != {
+        "anchor", "contentHash", "recipeVersion"
+    }:
+        return False
+    if not isinstance(reference.get("recipeVersion"), int) or isinstance(
+        reference.get("recipeVersion"), bool
+    ):
+        return False
+    return valid_ref({
+        "anchor": reference.get("anchor"),
+        "contentHash": reference.get("contentHash"),
+    })
+
+
+def validate_identity_bundle(
+    bundle: object, nonce: object, *, session_bound: bool = True
+) -> tuple[str, str, str | None]:
     if not isinstance(bundle, dict):
         return "error", "malformed-input", None
     if (
@@ -97,12 +119,15 @@ def validate_identity_bundle(bundle: object, nonce: object) -> tuple[str, str, s
         or not isinstance(bundle.get("presentedBy"), str)
         or not isinstance(bundle.get("presentedAt"), int)
         or isinstance(bundle.get("presentedAt"), bool)
-        or not isinstance(bundle.get("sessionNonce"), str)
+        or (session_bound and "sessionNonce" not in bundle)
+        or ("sessionNonce" in bundle and not isinstance(bundle["sessionNonce"], str))
         or not isinstance(bundle.get("claims"), list)
         or not bundle["claims"]
     ):
         return "error", "malformed-input", None
-    if not isinstance(nonce, str) or bundle["sessionNonce"] != nonce:
+    if session_bound and (
+        not isinstance(nonce, str) or bundle.get("sessionNonce") != nonce
+    ):
         return "fail", "session-nonce-mismatch", None
     claims = bundle["claims"]
     if any(
@@ -137,7 +162,10 @@ def validate_identity_bundle(bundle: object, nonce: object) -> tuple[str, str, s
     return "pass", "verified", digest
 
 
-def listing_phase(context: dict) -> tuple[str, str, str | None]:
+def listing_phase(
+    context: dict,
+    supported_phases: frozenset[str] = generator.CURRENT_SUPPORTED_PHASES,
+) -> tuple[str, str, str | None]:
     listing = context.get("listing")
     if not isinstance(listing, dict):
         return "error", "malformed-input", None
@@ -155,17 +183,18 @@ def listing_phase(context: dict) -> tuple[str, str, str | None]:
         or not isinstance(seller.get("identity"), dict)
     ):
         return "error", "malformed-input", None
-    phases = [
-        step["kind"] for step in pipeline
-        if step["kind"] in generator.PHASES.values()
-    ]
-    if len(phases) != 1:
+    if any(step["kind"] not in supported_phases for step in pipeline):
+        return "fail", "unsupported-phase", None
+    phases = [step["kind"] for step in pipeline if step["kind"] in generator.PHASES.values()]
+    if not phases:
         return "error", "malformed-input", None
+    if len(phases) > 1:
+        return "fail", "commitment-phase-cardinality-invalid", None
     signer = seller["identity"].get("presentedBy")
     if not verify_component(listing, generator.LISTING_DOMAIN, signer):
         return "fail", "listing-signature-invalid", None
     bundle_result, bundle_reason, _ = validate_identity_bundle(
-        seller["identity"], context.get("verifierContext", {}).get("sessionNonce")
+        seller["identity"], None, session_bound=False
     )
     if bundle_result != "pass":
         return bundle_result, bundle_reason, None
@@ -196,7 +225,7 @@ def verify_agreement(agreement: object, artifact: str) -> tuple[str, str]:
         or not isinstance(agreement.get("listingRef"), dict)
         or not isinstance(agreement.get("terms"), dict)
         or not isinstance(parties, list)
-        or len(parties) != 2
+        or len(parties) < 2
     ):
         return "error", "malformed-input"
     for party in parties:
@@ -208,11 +237,22 @@ def verify_agreement(agreement: object, artifact: str) -> tuple[str, str]:
             or not valid_ref(party.get("vetRecordRef"))
         ):
             return "error", "malformed-input"
-    if sorted(party["role"] for party in parties) != ["buyer", "seller"]:
+    roles = [party["role"] for party in parties]
+    claims = [party["primaryClaim"] for party in parties]
+    if (
+        roles.count("buyer") != 1
+        or roles.count("seller") != 1
+        or any(role not in {"buyer", "seller", "bidder-non-winning"} for role in roles)
+        or len(claims) != len(set(claims))
+    ):
         return "fail", "agreement-role-invalid"
-    expected_signers = {party["primaryClaim"] for party in parties}
+    expected_signers = {
+        party["primaryClaim"]
+        for party in parties
+        if party["role"] in {"buyer", "seller"}
+    }
     signatures = agreement.get("signatures")
-    if not isinstance(signatures, list) or len(signatures) != 2:
+    if not isinstance(signatures, list) or len(signatures) != len(expected_signers):
         return "error", "malformed-input"
     if any(
         not isinstance(signature, dict)
@@ -249,19 +289,21 @@ def agreement_role_claims(agreement: object) -> tuple[str, dict[str, str]]:
     for party in agreement["parties"]:
         if (
             not isinstance(party, dict)
-            or party.get("role") not in {"buyer", "seller"}
+            or party.get("role") not in {"buyer", "seller", "bidder-non-winning"}
             or not isinstance(party.get("primaryClaim"), str)
-            or party["role"] in claims
         ):
             return "error", {}
-        claims[party["role"]] = party["primaryClaim"]
+        if party["role"] in {"buyer", "seller"}:
+            if party["role"] in claims:
+                return "error", {}
+            claims[party["role"]] = party["primaryClaim"]
     if set(claims) != {"buyer", "seller"}:
         return "error", {}
     return "pass", claims
 
 
 def verify_anchor_receipt(
-    wrapped: dict, record: dict, orchestrator: str
+    wrapped: dict, record: dict, orchestrator: str, receipt_authority: str
 ) -> tuple[str, str, int | None]:
     receipt = wrapped.get("anchorReceipt")
     if not isinstance(receipt, dict):
@@ -280,6 +322,7 @@ def verify_anchor_receipt(
         or not isinstance(transaction_ref.get("kind"), str)
         or not isinstance(transaction_ref.get("value"), str)
         or receipt.get("writer") != orchestrator
+        or not isinstance(receipt.get("nonce"), str)
         or receipt.get("state") != "finalized"
         or receipt.get("observationDisposition") != "established"
         or not isinstance(receipt.get("observedAt"), int)
@@ -290,26 +333,95 @@ def verify_anchor_receipt(
         or not isinstance(block_ref.get("timestamp"), int)
         or isinstance(block_ref.get("timestamp"), bool)
         or not isinstance(evidence, dict)
-        or evidence.get("kind") != "ed25519"
+        or set(evidence) != {"kind", "value"}
+        or evidence.get("kind") != "fixture-native-finality-observation"
         or not isinstance(evidence.get("value"), str)
+        or not isinstance(receipt_authority, str)
     ):
         return "error", "malformed-input", None
+    if receipt_authority == orchestrator:
+        return "fail", "commitment-receipt-invalid", None
     try:
-        content_hash = generator.hash_hex(record)
-        evidence_digest = generator.hash_hex(
-            generator.unsigned(receipt, "evidence")
-        )
+        envelope = json.loads(evidence["value"])
+        native = envelope["nativeReceipt"]
+        signature = envelope["signature"]
+        if (
+            set(envelope) != {
+                "fixtureEvidenceVersion", "scope", "observer",
+                "nativeReceipt", "signature",
+            }
+            or envelope["fixtureEvidenceVersion"] != "1"
+            or envelope["scope"] != "offline-conformance-fixture-only"
+            or envelope["observer"] != receipt_authority
+            or not isinstance(native, dict)
+            or not isinstance(signature, str)
+        ):
+            return "fail", "commitment-receipt-invalid", None
         valid = generator.verify_ed25519(
-            key_bytes(orchestrator), b64url_decode(evidence["value"]),
-            (generator.RECEIPT_EVIDENCE_DOMAIN + evidence_digest).encode("ascii")
+            key_bytes(receipt_authority),
+            b64url_decode(signature),
+            generator.FIXTURE_OBSERVATION_PREFIX
+            + generator.hash_hex(native).encode("ascii"),
         )
-    except (TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
         valid = False
     if not valid:
         return "fail", "commitment-receipt-invalid", None
+    content_hash = generator.commitment_record_hash(record)
+    logical_address = f"dacs3:commit:{record.get('jobId')}"
+    native_address = f"fixture:{hashlib.sha256(logical_address.encode()).hexdigest()}"
+    binding = native.get("binding")
+    inclusion = native.get("inclusion")
+    consensus = native.get("consensus")
     if (
-        receipt["contentHash"] != content_hash
-        or receipt["logicalAddress"] != f"dacs3:commit:{record.get('jobId')}"
+        not isinstance(binding, dict)
+        or not isinstance(inclusion, dict)
+        or not isinstance(consensus, dict)
+    ):
+        return "fail", "commitment-receipt-invalid", None
+    expected_binding = {
+        "logicalAddress": logical_address,
+        "nativeAddress": native_address,
+        "contentHash": content_hash,
+        "writer": orchestrator,
+        "nonce": receipt["nonce"],
+    }
+    expected_transaction = {
+        "kind": "fixture",
+        "value": generator.hash_hex(expected_binding),
+    }
+    expected_binding["transactionRef"] = expected_transaction
+    ordered_transactions = inclusion.get("orderedTransactions")
+    transaction_index = inclusion.get("transactionIndex")
+    native_block = inclusion.get("blockRef")
+    if (
+        native.get("fixtureNativeReceiptVersion") != "1"
+        or native.get("substrate") != receipt["substrate"]
+        or native.get("finalityProfile") != receipt["finalityProfile"]
+        or binding != expected_binding
+        or receipt["logicalAddress"] != logical_address
+        or receipt["nativeAddress"] != native_address
+        or receipt["contentHash"] != content_hash
+        or receipt["transactionRef"] != expected_transaction
+        or not isinstance(ordered_transactions, list)
+        or isinstance(transaction_index, bool)
+        or not isinstance(transaction_index, int)
+        or transaction_index < 0
+        or transaction_index >= len(ordered_transactions)
+        or ordered_transactions[transaction_index] != expected_transaction
+        or not isinstance(native_block, dict)
+        or native_block != block_ref
+        or consensus != {"state": "finalized", "inclusionIsFinal": True}
+    ):
+        return "fail", "commitment-receipt-invalid", None
+    block_material = {
+        "height": block_ref["height"],
+        "timestamp": block_ref["timestamp"],
+        "orderedTransactions": ordered_transactions,
+    }
+    if (
+        block_ref["id"] != generator.hash_hex(block_material)
+        or receipt["observedAt"] < block_ref["timestamp"]
     ):
         return "fail", "commitment-receipt-invalid", None
     return "pass", "verified", block_ref["timestamp"]
@@ -327,10 +439,11 @@ def verify_commitment(context: dict) -> tuple[str, str, str | None]:
     if not isinstance(verifier_context, dict):
         return "error", "malformed-input", None
     orchestrator = verifier_context.get("authenticatedOrchestrator")
-    if not isinstance(orchestrator, str):
+    receipt_authority = verifier_context.get("authenticatedReceiptAuthority")
+    if not isinstance(orchestrator, str) or not isinstance(receipt_authority, str):
         return "error", "malformed-input", None
     receipt_status, receipt_reason, anchor_timestamp = verify_anchor_receipt(
-        wrapped, record, orchestrator
+        wrapped, record, orchestrator, receipt_authority
     )
     if receipt_status != "pass":
         return receipt_status, receipt_reason, None
@@ -374,6 +487,7 @@ def verify_commitment(context: dict) -> tuple[str, str, str | None]:
         record.get("agreementHash") != agreement_hash
         or record.get("jobId") != agreement.get("jobId")
         or record.get("listingRef") != agreement.get("listingRef")
+        or record.get("pattern") != agreement.get("derivedFromPattern")
     ):
         return "fail", "commitment-binding-mismatch", None
     claims_status, role_claims = agreement_role_claims(agreement)
@@ -436,14 +550,18 @@ def validate_cvr(
     record: object,
     reference: object,
     party: dict,
+    bundle: dict,
     digest: str,
     job_id: str,
     orchestrator: str,
+    context: dict,
+    stage: str,
 ) -> tuple[str, str]:
     if not isinstance(record, dict):
         return "error", "malformed-input"
     for field in (
-        "recordVersion", "jobId", "evaluatedParty", "bundleHash", "overallDecision"
+        "recordVersion", "jobId", "evaluatedParty", "bundleHash",
+        "requirementHash", "overallDecision"
     ):
         if not isinstance(record.get(field), str):
             return "error", "malformed-input"
@@ -456,7 +574,7 @@ def validate_cvr(
     ):
         return "error", "malformed-input"
     try:
-        if generator.hash_hex(record) != reference["contentHash"]:
+        if generator.artifact_hash(record, "signature") != reference["contentHash"]:
             return "fail", "cvr-reference-mismatch"
     except (TypeError, ValueError):
         return "error", "malformed-input"
@@ -468,7 +586,149 @@ def validate_cvr(
         return "fail", "companion-join-contradiction"
     if record.get("bundleHash") != digest:
         return "fail", "cvr-bundle-hash-mismatch"
-    if record.get("overallDecision") != "pass":
+    listing = context.get("listing")
+    verifier_context = context.get("verifierContext")
+    if not isinstance(listing, dict) or not isinstance(verifier_context, dict):
+        return "error", "malformed-input"
+    requirement = listing.get("buyerRequirement")
+    if not isinstance(requirement, dict):
+        return "error", "malformed-input"
+    if record.get("requirementHash") != generator.hash_hex(requirement):
+        return "fail", "cvr-requirement-mismatch"
+    authorities = verifier_context.get("authenticatedQualification")
+    registries = verifier_context.get("recipeRegistries")
+    public_keys = verifier_context.get("qualificationPublicKeys")
+    authority = (
+        authorities.get(party.get("primaryClaim"))
+        if isinstance(authorities, dict)
+        else None
+    )
+    if (
+        not isinstance(authority, dict)
+        or not isinstance(registries, list)
+        or not isinstance(public_keys, dict)
+    ):
+        return "indeterminate", "cvr-qualification-unavailable"
+    materials = authority.get("results")
+    freshness = record.get("freshness")
+    deal_specific = record.get("dealSpecific")
+    if (
+        not isinstance(materials, list)
+        or not isinstance(freshness, list)
+        or not isinstance(deal_specific, list)
+    ):
+        return "error", "malformed-input"
+    committed_refs = freshness + deal_specific
+    material_refs = [
+        material.get("ref") if isinstance(material, dict) else None
+        for material in materials
+    ]
+    if (
+        len(materials) != len(committed_refs)
+        or any(not valid_verify_result_ref(item) for item in committed_refs)
+        or qualification.canonical_json(material_refs)
+        != qualification.canonical_json(committed_refs)
+    ):
+        return "fail", "cvr-result-set-mismatch"
+    resolved_results = []
+    for material in materials:
+        if not isinstance(material, dict):
+            return "error", "malformed-input"
+        result_ref = material.get("ref")
+        result = material.get("result")
+        if (
+            not isinstance(result, dict)
+            or result.get("resultVersion") != "1"
+            or any(
+                not isinstance(result.get(field), str)
+                for field in ("scheme", "identifier", "method", "decision", "reason")
+            )
+            or any(
+                not isinstance(result.get(field), int)
+                or isinstance(result.get(field), bool)
+                for field in ("recipeVersion", "fetchedAt", "verifiedAt")
+            )
+            or not valid_ref(result.get("attestation"))
+            or f"{result.get('scheme')}:{result.get('identifier')}"
+            != party.get("primaryClaim")
+            or not valid_verify_result_ref(result_ref)
+            or result_ref.get("recipeVersion") != result.get("recipeVersion")
+        ):
+            return "fail", "cvr-result-invalid"
+        if not qualification.verify_signed_artifact(
+            result,
+            result_ref,
+            generator.VERIFY_RESULT_DOMAIN,
+            public_keys,
+        ):
+            return "fail", "cvr-result-invalid"
+        resolved_results.append(copy.deepcopy(result))
+    input_data = {
+        "recordJobId": job_id,
+        "generatedAt": record.get("generatedAt"),
+        "requirement": copy.deepcopy(requirement),
+        "resolvedResults": resolved_results,
+    }
+    vector_set = {
+        "recipeRegistries": copy.deepcopy(registries),
+        "publicKeys": copy.deepcopy(public_keys),
+        "authenticatedSessionStarts": {},
+        "replayBundles": {},
+        "replayRecords": {},
+    }
+    if stage == "terminal":
+        terminal_input = context.get("terminalInput")
+        terminal_bundle = (
+            terminal_input.get("bundle")
+            if isinstance(terminal_input, dict)
+            else None
+        )
+        if not isinstance(terminal_bundle, dict):
+            return "indeterminate", "cvr-qualification-unavailable"
+        vector_set["replayBundles"]["terminal"] = copy.deepcopy(terminal_bundle)
+        vector_set["replayRecords"]["record"] = {
+            "recordRef": copy.deepcopy(reference),
+            "record": copy.deepcopy(record),
+            "results": copy.deepcopy(materials),
+        }
+        input_data["aggregationAuthority"] = {
+            "kind": "replay",
+            "bundle": "terminal",
+            "record": "record",
+            "recordRef": copy.deepcopy(reference),
+        }
+    else:
+        vet_input = authority.get("vetInput")
+        session_start_id = authority.get("sessionStartId")
+        authenticated_start = authority.get("authenticatedSessionStart")
+        if (
+            not isinstance(vet_input, dict)
+            or not isinstance(session_start_id, str)
+            or not isinstance(authenticated_start, dict)
+        ):
+            return "indeterminate", "cvr-qualification-unavailable"
+        if (
+            vet_input.get("actor") != party.get("primaryClaim")
+            or qualification.canonical_json(vet_input.get("bundleToVet"))
+            != qualification.canonical_json(bundle)
+            or qualification.canonical_json(vet_input.get("requirement"))
+            != qualification.canonical_json(requirement)
+        ):
+            return "fail", "cvr-qualification-authority-mismatch"
+        vector_set["authenticatedSessionStarts"][session_start_id] = copy.deepcopy(
+            authenticated_start
+        )
+        input_data["aggregationAuthority"] = {
+            "kind": "production",
+            "sessionStart": session_start_id,
+            "vetInput": copy.deepcopy(vet_input),
+        }
+    replayed = qualification.evaluate(input_data, vector_set)
+    if replayed == "error":
+        return "fail", "cvr-qualification-invalid"
+    if record.get("overallDecision") != replayed:
+        return "fail", "cvr-aggregation-mismatch"
+    if replayed != "pass":
         return "fail", "cvr-decision-not-pass"
     return "pass", "verified"
 
@@ -495,13 +755,29 @@ def validate_strong_proof(
             or commit_input.get("listingRef") != agreement.get("listingRef")
         ):
             return "fail", "commit-input-authority-mismatch", {}
-    minimum = 3 if stage == "terminal" else 2
+    parties = agreement.get("parties")
+    verifier_context = context.get("verifierContext")
+    if not isinstance(parties, list) or not isinstance(verifier_context, dict):
+        return "error", "malformed-input", {}
+    nonce = verifier_context.get("sessionNonce")
+    orchestrator = verifier_context.get("authenticatedOrchestrator")
+    if not isinstance(nonce, str) or not isinstance(orchestrator, str):
+        return "error", "malformed-input", {}
+    agreement_claims = {
+        party.get("primaryClaim")
+        for party in parties
+        if isinstance(party, dict) and isinstance(party.get("primaryClaim"), str)
+    }
+    if len(agreement_claims) != len(parties):
+        return "error", "malformed-input", {}
+    needs_orchestrator_companion = stage == "terminal" and orchestrator not in agreement_claims
+    minimum = len(parties) + (1 if needs_orchestrator_companion else 0)
     if len(companions) == 0:
         return "error", "malformed-input", {}
     if len(companions) < minimum:
         reason = (
             "orchestrator-companion-missing"
-            if stage == "terminal" and len(companions) == 2
+            if needs_orchestrator_companion and len(companions) == len(parties)
             else "required-companion-missing"
         )
         return "indeterminate", reason, {}
@@ -512,14 +788,6 @@ def validate_strong_proof(
         or not ({"identityBundle", "compositeRecord"} & set(companion))
         for companion in companions
     ):
-        return "error", "malformed-input", {}
-    parties = agreement.get("parties")
-    verifier_context = context.get("verifierContext")
-    if not isinstance(parties, list) or not isinstance(verifier_context, dict):
-        return "error", "malformed-input", {}
-    nonce = verifier_context.get("sessionNonce")
-    orchestrator = verifier_context.get("authenticatedOrchestrator")
-    if not isinstance(nonce, str) or not isinstance(orchestrator, str):
         return "error", "malformed-input", {}
     digests: dict[str, str] = {}
     used: set[int] = set()
@@ -570,13 +838,20 @@ def validate_strong_proof(
         if record is None:
             return "error", "malformed-input", {}
         status, reason = validate_cvr(
-            record, party.get("vetRecordRef"), party, digest,
-            agreement.get("jobId"), orchestrator,
+            record,
+            party.get("vetRecordRef"),
+            party,
+            bundle,
+            digest,
+            agreement.get("jobId"),
+            orchestrator,
+            context,
+            stage,
         )
         if status != "pass":
             return status, reason, {}
-        digests[party["role"]] = digest
-    if stage == "terminal":
+        digests[party["primaryClaim"]] = digest
+    if needs_orchestrator_companion:
         matches = [
             companion for companion in companions
             if isinstance(companion, dict)
@@ -594,7 +869,7 @@ def validate_strong_proof(
         )
         if status != "pass" or digest is None:
             return status, reason, {}
-        digests["orchestrator"] = digest
+        digests[orchestrator] = digest
     return "pass", "verified", digests
 
 
@@ -715,14 +990,15 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
         or not valid_ref(reference)
     ):
         return "error", "malformed-input"
-    if generator.hash_hex(disposition) != reference["contentHash"]:
+    disposition_hash = generator.artifact_hash(disposition, "signature")
+    if disposition_hash != reference["contentHash"]:
         return "fail", "prior-disposition-reference-mismatch"
     orchestrator = context.get("verifierContext", {}).get("authenticatedOrchestrator")
     if not verify_component(disposition, generator.DISPOSITION_DOMAIN, orchestrator):
         return "fail", "prior-disposition-signature-invalid"
     if (
         receipt.get("state") != "finalized"
-        or receipt.get("contentHash") != generator.hash_hex(disposition)
+        or receipt.get("contentHash") != disposition_hash
         or receipt.get("writer") != orchestrator
     ):
         return "fail", "prior-disposition-receipt-invalid"
@@ -731,7 +1007,7 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
     if disposition.get("priorJobId") != prior.get("jobId"):
         return "fail", "prior-job-mismatch"
     if disposition.get("priorAgreementRef") != generator.artifact_ref(
-        prior, "prior-agreement"
+        prior, "prior-agreement", "signatures"
     ):
         return "fail", "prior-agreement-reference-mismatch"
     prior_status, prior_artifact = artifact_type(prior)
@@ -781,7 +1057,7 @@ def validate_payment(
             return "error", "malformed-input"
         if (
             carrier.get("primaryClaim") != role_claims[role]
-            or carrier.get("bundleHash") != digests[role]
+            or carrier.get("bundleHash") != digests[role_claims[role]]
         ):
             return "fail", "payment-party-mismatch"
     if payment.get("agreement") != context.get("agreement"):
@@ -798,7 +1074,7 @@ def validate_payment(
         if (
             role not in sessions
             or sessions[role].get("primaryClaim") != role_claims[role]
-            or sessions[role].get("bundleHash") != digests[role]
+            or sessions[role].get("bundleHash") != digests[role_claims[role]]
         ):
             return "fail", "session-party-mismatch"
     agreement = context["agreement"]
@@ -877,25 +1153,33 @@ def validate_terminal(
     ):
         return "fail", "terminal-authority-mismatch"
     phase_summary = bundle.get("phaseSummary")
+    pipeline = context.get("listing", {}).get("pipeline")
     if (
         not isinstance(phase_summary, list)
-        or len(phase_summary) <= 1
+        or not isinstance(pipeline, list)
+        or len(phase_summary) != len(pipeline)
         or any(not isinstance(entry, dict) for entry in phase_summary)
-        or not isinstance(phase_summary[1].get("kind"), str)
         or any(
             not isinstance(entry.get("index"), int)
             or isinstance(entry.get("index"), bool)
             or entry.get("index") != index
             or not isinstance(entry.get("kind"), str)
+            or not isinstance(pipeline[index], dict)
             for index, entry in enumerate(phase_summary)
         )
     ):
         return "error", "malformed-input"
-    if phase_summary[1].get("index") != 1 or phase_summary[1].get("kind") != phase:
+    if (
+        any(
+            entry.get("kind") != pipeline[index].get("kind")
+            for index, entry in enumerate(phase_summary)
+        )
+        or sum(entry.get("kind") == phase for entry in phase_summary) != 1
+    ):
         return "fail", "terminal-phase-mismatch"
     agreement = context["agreement"]
     if bundle.get("agreementRef") != generator.artifact_ref(
-        agreement, f"{agreement.get('jobId', 'bad')}-agreement"
+        agreement, f"{agreement.get('jobId', 'bad')}-agreement", "signatures"
     ):
         return "fail", "terminal-agreement-reference-mismatch"
     status, terminal_parties = carrier_map(bundle.get("parties"))
@@ -928,7 +1212,7 @@ def validate_terminal(
         if (
             role not in sessions
             or sessions[role].get("primaryClaim") != expected_claims[role]
-            or sessions[role].get("bundleHash") != digests[role]
+            or sessions[role].get("bundleHash") != digests[expected_claims[role]]
         ):
             return "fail", "session-party-mismatch"
     status, parties = carrier_map(bundle.get("parties"))
@@ -938,16 +1222,20 @@ def validate_terminal(
         if (
             role not in parties
             or parties[role].get("primaryClaim") != expected_claims[role]
-            or parties[role].get("bundleHash") != digests[role]
+            or parties[role].get("bundleHash") != digests[expected_claims[role]]
         ):
             return "fail", "terminal-party-mismatch"
     return "pass", "verified"
 
 
 def modeled_old_reader(context: dict) -> tuple[str, str]:
-    status, reason, phase = listing_phase(context)
+    status, reason, phase = listing_phase(context, generator.BASE_SUPPORTED_PHASES)
     if status != "pass":
-        return status, reason
+        return (
+            ("fail", "unsupported-new-type")
+            if reason == "unsupported-phase"
+            else (status, reason)
+        )
     status, artifact = artifact_type(context.get("agreement"))
     if status != "pass" or artifact is None:
         return "fail", "agreement-discriminator-invalid"
@@ -975,6 +1263,9 @@ def apply_mutation(context: dict, mutation: dict) -> None:
     elif mutation["op"] == "append-copy":
         target = parent[leaf]  # type: ignore[index]
         target.append(copy.deepcopy(target[mutation["index"]]))
+    elif mutation["op"] == "append-value":
+        target = parent[leaf]  # type: ignore[index]
+        target.append(copy.deepcopy(mutation["value"]))
     else:
         raise ValueError("unknown mutation")
 
@@ -1035,11 +1326,106 @@ def phase_result(verdict: str) -> dict:
     return {"ok": False, "errorClass": "permanent", "contextDelta": {}}
 
 
+def derive_identity_bound_reputation(
+    context: dict,
+    unavailable: set[str],
+    party: str,
+    role_tag: dict,
+    window_start: int,
+    window_end: int,
+) -> tuple[str, str, dict | None]:
+    """Execute IBH admission before the existing DACS-5 metric consumer.
+
+    Like dacs5_reference.derive, this reference adapter receives an already
+    verified role-resolution tag. It is not a replacement for SR-2/BB-6 role
+    resolution or a complete deployed reputation reader. No new derivation
+    discriminator or historical metric algorithm is introduced here.
+    """
+    try:
+        verdict, reason, artifact, phase = dispatch(context)
+        if verdict != "pass":
+            return verdict, reason, None
+        if artifact not in generator.STRONG_ARTIFACTS or phase is None:
+            return "fail", "stronger-agreement-required", None
+        verdict, reason = validate_terminal(context, artifact, phase, unavailable)
+        if verdict != "pass":
+            return verdict, reason, None
+        bundle = context["terminalInput"]["bundle"]
+        if not isinstance(role_tag, dict) or role_tag.get("bundle") != bundle:
+            return "error", "role-resolution-bundle-mismatch", None
+        # Snapshot exactly the verified inputs; do not replace or strip the
+        # new phase kinds before the existing metric algorithm consumes them.
+        derivation = reputation_reference.derive(
+            party, [copy.deepcopy(role_tag)], window_start, window_end
+        )
+        return "pass", "verified", derivation
+    except (AttributeError, IndexError, KeyError, TypeError, ValueError):
+        return "error", "malformed-input", None
+
+
 class IdentityBundleHashBindingVectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.data = json.loads(VECTORS.read_text(encoding="utf-8"))
         cls.cases = {case["name"]: case for case in cls.data["vectors"]}
+
+    def test_listing_publication_does_not_require_a_session_nonce(self):
+        for artifact in generator.ARTIFACTS:
+            context = copy.deepcopy(self.data["scenarios"][artifact])
+            publication = context["listing"]["seller"]["identity"]
+            publication.pop("sessionNonce", None)
+            generator.resign_bundle(publication, "seller")
+            generator.resign_context(context, "listing-chain")
+            data = {"scenarios": {artifact: context}}
+            for stage in ("commit", "payment", "terminal"):
+                with self.subTest(artifact=artifact, stage=stage):
+                    vector = {
+                        "scenario": artifact, "commitment": "finality", "stage": stage,
+                    }
+                    self.assertEqual(evaluate(data, vector)[0], "pass")
+            if artifact in generator.STRONG_ARTIFACTS:
+                fresh = context["commitInput"]["identityBindingCompanions"][0]["identityBundle"]
+                self.assertEqual(validate_identity_bundle(fresh, "wrong-nonce")[0], "fail")
+
+    def test_reputation_counting_executes_only_after_identity_admission(self):
+        for artifact in generator.STRONG_ARTIFACTS:
+            context = materialize(self.data, {
+                "scenario": artifact, "commitment": "finality", "stage": "terminal",
+            })
+            tag = {
+                "bundle": context["terminalInput"]["bundle"],
+                "resolvedRole": "buyer", "counterpartyDisposition": "absent",
+            }
+            arguments = (
+                generator.CLAIMS["buyer"], tag,
+                generator.NOW - 100_000, generator.NOW + 100_000,
+            )
+            with mock.patch.object(
+                reputation_reference, "derive", wraps=reputation_reference.derive
+            ) as derive:
+                verdict, _, receipt = derive_identity_bound_reputation(
+                    context, set(), *arguments
+                )
+                self.assertEqual(verdict, "pass")
+                self.assertEqual(receipt["bundleCount"], 1)
+                derive.assert_called_once()
+            missing = {f"identity:{generator.CLAIMS['buyer']}"}
+            with mock.patch.object(reputation_reference, "derive") as derive:
+                verdict, _, receipt = derive_identity_bound_reputation(
+                    context, missing, *arguments
+                )
+                self.assertEqual(verdict, "indeterminate")
+                self.assertIsNone(receipt)
+                derive.assert_not_called()
+            invalid = copy.deepcopy(context)
+            invalid["terminalInput"]["identityBindingCompanions"][0]["identityBundle"]["presentedAt"] += 1
+            with mock.patch.object(reputation_reference, "derive") as derive:
+                verdict, _, receipt = derive_identity_bound_reputation(
+                    invalid, set(), *arguments
+                )
+                self.assertNotEqual(verdict, "pass")
+                self.assertIsNone(receipt)
+                derive.assert_not_called()
 
     def test_committed_file_is_deterministic(self):
         self.assertEqual(VECTORS.read_text(encoding="utf-8"), generator.rendered())
@@ -1058,6 +1444,120 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         self.assertEqual(
             len([name for name in self.cases if name.startswith("domain-")]), 16
         )
+
+    def test_listing_phase_sets_are_closed_and_versioned(self):
+        self.assertEqual(
+            generator.CURRENT_SUPPORTED_PHASES - generator.BASE_SUPPORTED_PHASES,
+            {
+                "commit-identity-bound-agreement",
+                "commit-identity-bound-payee-agreement",
+            },
+        )
+        for stage in ("commit", "payment", "terminal"):
+            case = self.cases[f"signed-listing-unknown-phase-refused-at-{stage}"]
+            self.assertEqual(evaluate(self.data, case)[0], "fail")
+
+    def test_references_use_signature_omitted_artifact_hashes(self):
+        scenario = self.data["scenarios"]["identityBoundAgreement"]
+        agreement = scenario["agreement"]
+        agreement_ref = scenario["terminalInput"]["bundle"]["agreementRef"]
+        self.assertEqual(
+            agreement_ref["contentHash"],
+            generator.artifact_hash(agreement, "signatures"),
+        )
+        self.assertNotEqual(agreement_ref["contentHash"], generator.hash_hex(agreement))
+        for party, companion in zip(
+            agreement["parties"], scenario["commitInput"]["identityBindingCompanions"]
+        ):
+            record = companion["compositeRecord"]
+            self.assertEqual(
+                party["vetRecordRef"]["contentHash"],
+                generator.artifact_hash(record, "signature"),
+            )
+            self.assertNotEqual(
+                party["vetRecordRef"]["contentHash"], generator.hash_hex(record)
+            )
+            self.assertEqual(
+                record["requirementHash"],
+                generator.hash_hex(scenario["listing"]["buyerRequirement"]),
+            )
+        for wrapped in scenario["commitments"].values():
+            self.assertEqual(
+                wrapped["anchorReceipt"]["contentHash"],
+                generator.commitment_record_hash(wrapped["record"]),
+            )
+        replacement = self.data["scenarios"]["identityBoundPayeeReplacement"]
+        disposition = replacement["priorPaymentDisposition"]["artifact"]
+        self.assertEqual(
+            replacement["agreement"]["terms"]["priorPaymentDispositionRef"]["contentHash"],
+            generator.artifact_hash(disposition, "signature"),
+        )
+        prior = replacement["priorAgreement"]
+        self.assertEqual(
+            disposition["priorAgreementRef"]["contentHash"],
+            generator.artifact_hash(prior, "signatures"),
+        )
+
+    def test_cvr_requirement_and_aggregate_are_replayed(self):
+        for name, expected in (
+            ("identityBoundAgreement-commit-verified", "pass"),
+            ("identityBoundAgreement-terminal-verified", "pass"),
+            ("signed-listing-requirement-does-not-match-cvr", "fail"),
+            ("signed-cvr-overall-decision-disagrees-with-replay", "fail"),
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(evaluate(self.data, self.cases[name])[0], expected)
+
+    def test_sealed_envelope_losing_bidder_compatibility(self):
+        historical = self.data["scenarios"]["historicalSealed"]["agreement"]
+        self.assertEqual(
+            [party["role"] for party in historical["parties"]],
+            ["buyer", "seller", "bidder-non-winning"],
+        )
+        self.assertEqual(len(historical["signatures"]), 2)
+        for commitment in ("legacy", "finality"):
+            self.assertEqual(
+                evaluate(
+                    self.data,
+                    self.cases[f"historical-sealed-envelope-losing-bidder-{commitment}"],
+                )[0],
+                "pass",
+            )
+        self.assertEqual(
+            evaluate(
+                self.data,
+                self.cases[
+                    "modeled-old-reader-historical-sealed-envelope-losing-bidder"
+                ],
+            )[0],
+            "pass",
+        )
+        for stage in ("commit", "payment", "terminal"):
+            self.assertEqual(
+                evaluate(
+                    self.data,
+                    self.cases[f"identity-bound-sealed-envelope-losing-bidder-{stage}"],
+                )[0],
+                "pass",
+            )
+
+    def test_fixture_receipt_authority_is_independent_and_tamper_checked(self):
+        evidence = self.data["provenance"]["receiptAuthorityEvidence"]
+        self.assertEqual(evidence["scope"], "deterministic offline conformance fixture only")
+        self.assertIs(evidence["liveSubstrateProof"], False)
+        self.assertNotEqual(evidence["observer"], evidence["commitmentProducer"])
+        names = {
+            "commitment-receipt-producer-cannot-self-attest-finality",
+            "commitment-receipt-native-content-tamper",
+            "commitment-receipt-native-transaction-tamper",
+            "commitment-receipt-native-location-tamper",
+            "commitment-receipt-native-ordering-tamper",
+            "commitment-receipt-native-block-tamper",
+            "commitment-receipt-native-finality-tamper",
+        }
+        for name in names:
+            with self.subTest(name=name):
+                self.assertEqual(evaluate(self.data, self.cases[name])[0], "fail")
 
     def test_historical_signed_bytes_survive_both_commitment_forms(self):
         for artifact in ("agreement", "payeeBoundAgreement"):
@@ -1102,7 +1602,8 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     "agreement": agreement,
                     "commitment": commitment,
                     "verifierContext": {
-                        "authenticatedOrchestrator": generator.CLAIMS["orchestrator"]
+                        "authenticatedOrchestrator": generator.CLAIMS["orchestrator"],
+                        "authenticatedReceiptAuthority": generator.RECEIPT_AUTHORITY_CLAIM,
                     },
                 }
                 self.assertEqual(verify_commitment(context)[0], "pass")

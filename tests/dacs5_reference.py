@@ -1662,6 +1662,8 @@ def validate_finality_bound_ebfab(
         expected_kind="finality-bound",
     )
     if not ok:
+        if reason == "missing listing, key, exact reference, or bundle-lifecycle authority":
+            return ("indeterminate", "shared SEB authority is unavailable", None)
         malformed = reason.startswith(("not the expected", "malformed", "pipeline or"))
         return ("error" if malformed else "fail", reason, None)
 
@@ -1715,6 +1717,7 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
         return {"decision": "indeterminate", "reason": "copy authentication authority unavailable", "bundle": None}
 
     requested_jobs = set()
+    requested_roles_by_job = {}
     authenticated = []
     nonpasses = []
     for entry in entries:
@@ -1730,6 +1733,7 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
             nonpasses.append((None, "error", "copy request job or role authority is malformed"))
             continue
         requested_jobs.add(expected_job)
+        requested_roles_by_job.setdefault(expected_job, set()).add(expected_role)
         disposition = entry.get("disposition", "present")
         if disposition == "absent":
             continue
@@ -1801,14 +1805,31 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
     # replaced by an otherwise-valid weaker representation of the same job.
     if len(requested_jobs) != 1:
         return {"decision": "fail", "reason": "copy requests bind different jobs", "bundle": None}
+    # A resolver must supply an authenticated presence disposition for both
+    # role-addresses. Omitting one side is not authoritative absence, and
+    # duplicate copies from one side cannot stand in for the other side.
+    requested_job = next(iter(requested_jobs))
     for scoped in (
         [item for item in nonpasses if item[0] == "finality-bound"],
         nonpasses,
     ):
-        for precedence in ("error", "fail", "indeterminate"):
+        for precedence in ("error", "fail"):
             for _kind, decision, reason in scoped:
                 if decision == precedence:
                     return {"decision": decision, "reason": reason, "bundle": None}
+    if not {"buyer", "seller"} <= requested_roles_by_job[requested_job]:
+        return {
+            "decision": "indeterminate",
+            "reason": "both buyer and seller copy dispositions are required",
+            "bundle": None,
+        }
+    for scoped in (
+        [item for item in nonpasses if item[0] == "finality-bound"],
+        nonpasses,
+    ):
+        for _kind, decision, reason in scoped:
+            if decision == "indeterminate":
+                return {"decision": decision, "reason": reason, "bundle": None}
     if not authenticated:
         return {"decision": "indeterminate", "reason": "no authenticated copies", "bundle": None}
     jobs = {bundle["jobId"] for bundle in authenticated}

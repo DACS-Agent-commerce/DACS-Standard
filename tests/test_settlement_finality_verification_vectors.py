@@ -357,6 +357,36 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertEqual("indeterminate", unavailable["decision"])
         self.assertIsNone(unavailable["bundle"])
 
+    def test_reconciliation_requires_both_role_address_dispositions(self):
+        case = self.strong["block-depth"]
+        buyer = self.entry(case["bundle"], case["authority"])
+        for entries in ([buyer], [buyer, copy.deepcopy(buyer)]):
+            with self.subTest(copy_count=len(entries)):
+                result = reconcile_authenticated_finality_copies(
+                    entries, self.pubkeys, self.trust
+                )
+                self.assertEqual("indeterminate", result["decision"])
+                self.assertIn("buyer and seller", result["reason"])
+                self.assertIsNone(result["bundle"])
+
+    def test_missing_shared_seb_authority_is_indeterminate(self):
+        case = self.strong["block-depth"]
+        for field in (
+            "listing",
+            "sessionExecutionAuthorityByPhaseKey",
+            "verifiedReceiptByCanonicalRef",
+            "referenceValidationByCanonicalRef",
+        ):
+            with self.subTest(field=field):
+                authority = copy.deepcopy(case["authority"])
+                authority[field] = None
+                decision, reason, phase_keys = self.strong_result(
+                    case, authority=authority
+                )
+                self.assertEqual("indeterminate", decision)
+                self.assertIn("unavailable", reason)
+                self.assertIsNone(phase_keys)
+
     def test_new_bundle_and_pointer_shapes_are_closed(self):
         case = self.strong["block-depth"]
         bundle = copy.deepcopy(case["bundle"])

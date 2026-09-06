@@ -376,14 +376,16 @@ class FixtureFactory:
             "status": "success",
         }
 
-    def agreement(self, job_id: str, rail_id: str, rail_version: int, currency: str) -> dict:
+    def agreement(
+        self, job_id: str, rail_id: str, rail_version: int, currency: str, listing: dict
+    ) -> dict:
         agreement = {
             "agreementVersion": "1",
             "jobId": job_id,
             "listingRef": {
-                "listingId": "listing-finality-fixture",
-                "version": 1,
-                "contentHash": hashlib.sha256(b"listing-finality-fixture").hexdigest(),
+                "listingId": listing["listingId"],
+                "version": listing["listingVersion"],
+                "contentHash": artifact_hash(listing, "signature"),
             },
             "parties": [
                 {
@@ -601,7 +603,8 @@ class FixtureFactory:
         rail_id = "fixture:" + model
         rail_version = 1
         currency = {"bft-final": "DEM", "provider-receipt": "USD"}.get(model, "USDC")
-        agreement = self.agreement(job_id, rail_id, rail_version, currency)
+        listing = self.listing(phase)
+        agreement = self.agreement(job_id, rail_id, rail_version, currency, listing)
         session = self.session(model, agreement, phase, rail_id, rail_version)
         self.trusted["sessionAuthorityByJob"][job_id] = copy.deepcopy(session)
         rail = self.rail(model, phase, rail_id, rail_version)

@@ -1694,6 +1694,9 @@ def validate_finality_bound_ebfab(
         if candidate.get("evidence") != record:
             results.append(("fail", "finality input does not bind the exact authenticated evidence"))
             continue
+        if candidate.get("agreement", {}).get("listingRef") != bundle.get("listingRef"):
+            results.append(("fail", "authenticated agreement binds a different listing"))
+            continue
         finality_result = verify_finality(candidate, finality_trust)
         decision = finality_result["decision"]
         finality_class = finality_result.get("finalityClass")
@@ -1769,6 +1772,33 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
         ):
             decision = "error" if kind is None else "fail"
             nonpasses.append((kind, decision, "copy type, job, or authenticated role binding is invalid"))
+            continue
+        trusted_presence = finality_trust.get("copyPresenceByJobRole")
+        key = expected_job + ":" + expected_role
+        presence = entry.get("copyPresence")
+        role_party = next(
+            (
+                party for party in bundle.get("parties", [])
+                if isinstance(party, dict) and party.get("role") == expected_role
+            ),
+            None,
+        )
+        if not (
+            isinstance(trusted_presence, dict)
+            and isinstance(presence, dict)
+            and trusted_presence.get(key) == presence
+        ):
+            nonpasses.append((kind, "indeterminate", "present copy authority is unavailable"))
+            continue
+        if not (
+            set(presence) == {"bundleHash", "nativeAddress", "writer"}
+            and presence.get("bundleHash") == bundle_hash(bundle)
+            and isinstance(presence.get("nativeAddress"), str)
+            and presence.get("nativeAddress")
+            and isinstance(role_party, dict)
+            and presence.get("writer") == role_party.get("primaryClaim")
+        ):
+            nonpasses.append((kind, "fail", "present copy role or address binding is invalid"))
             continue
         authority = entry.get("authority")
         if kind == "finality-bound":

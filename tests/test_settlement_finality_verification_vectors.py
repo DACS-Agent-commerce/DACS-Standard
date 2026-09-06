@@ -89,10 +89,21 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         )
 
     def entry(self, bundle, authority=None):
+        role = bundle["anchoredByRole"]
+        party = next(item for item in bundle["parties"] if item["role"] == role)
+        presence = {
+            "bundleHash": bundle_hash(bundle),
+            "nativeAddress": "dacs5:bundle:%s:%s" % (bundle["jobId"], role),
+            "writer": party["primaryClaim"],
+        }
+        self.trust.setdefault("copyPresenceByJobRole", {})[
+            bundle["jobId"] + ":" + role
+        ] = copy.deepcopy(presence)
         return {
             "bundle": bundle,
             "expectedJobId": bundle["jobId"],
-            "expectedRole": bundle["anchoredByRole"],
+            "expectedRole": role,
+            "copyPresence": presence,
             "authority": authority,
         }
 
@@ -248,6 +259,16 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertEqual("pass", decision, reason)
                 self.assertEqual([f"0:{case['bundle']['phaseSummary'][0]['kind']}"], keys)
 
+    def test_strong_bundle_rejects_cross_listing_agreement(self):
+        case = self.strong["block-depth"]
+        authority = copy.deepcopy(case["authority"])
+        candidate = next(iter(authority["finalityVerificationByCanonicalRef"].values()))
+        candidate["agreement"]["listingRef"]["contentHash"] = "00" * 32
+        decision, reason, phase_keys = self.strong_result(case, authority=authority)
+        self.assertEqual("fail", decision)
+        self.assertIn("different listing", reason)
+        self.assertIsNone(phase_keys)
+
     def test_dacs5_propagates_finality_fail_indeterminate_and_error(self):
         case = self.strong["block-depth"]
         source = next(iter(case["authority"]["finalityVerificationByCanonicalRef"].values()))
@@ -397,6 +418,19 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
                 self.assertEqual("indeterminate", result["decision"])
                 self.assertIn("buyer and seller", result["reason"])
                 self.assertIsNone(result["bundle"])
+
+    def test_present_copy_requires_authenticated_role_address_binding(self):
+        case = self.strong["block-depth"]
+        buyer = self.entry(case["bundle"], case["authority"])
+        seller_bundle = copy.deepcopy(case["bundle"])
+        seller_bundle["anchoredByRole"] = "seller"
+        seller = self.entry(seller_bundle, case["authority"])
+        seller["copyPresence"] = copy.deepcopy(buyer["copyPresence"])
+        result = reconcile_authenticated_finality_copies(
+            [buyer, seller], self.pubkeys, self.trust
+        )
+        self.assertNotEqual("pass", result["decision"])
+        self.assertIsNone(result["bundle"])
 
     def test_missing_shared_seb_authority_is_indeterminate(self):
         case = self.strong["block-depth"]

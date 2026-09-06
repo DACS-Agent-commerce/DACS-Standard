@@ -2687,6 +2687,33 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                     "fail",
                 )
 
+        changed = materialize(self.data, {
+            "scenario": "identityBoundAgreement",
+            "commitment": "finality",
+            "stage": "terminal",
+        })
+        runtime_destination = "demos:runtime-payee-destination"
+        changed["paymentInput"]["payer"]["payingKey"] = (
+            generator.SECONDARY_PAYER_CLAIM
+        )
+        changed["paymentInput"]["payee"]["payeeAddress"] = runtime_destination
+        execution = changed["verifierContext"]["terminalAuthority"][
+            "settlements"
+        ][0]["executionAuthority"]
+        event = execution["settlementObservation"]["event"]
+        event["payer"] = generator.SECONDARY_PAYER_CLAIM
+        event["payee"] = runtime_destination
+        execution["settlementObservation"] = (
+            generator.fixture_settlement_observation(event)
+        )
+        self.assertEqual(
+            validate_terminal(
+                changed, "identityBoundAgreement",
+                generator.PHASES["identityBoundAgreement"], set()
+            )[0],
+            "pass",
+        )
+
         for field, value in (
             ("payer", "key:" + "12" * 32),
             ("payee", "key:" + "34" * 32),

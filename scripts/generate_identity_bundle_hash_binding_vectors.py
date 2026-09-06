@@ -199,6 +199,8 @@ KEYS = {
 CLAIMS = {role: f"key:{public_hex(key)}" for role, key in KEYS.items()}
 RECEIPT_AUTHORITY_KEY = private_key("dacs-390-independent-receipt-observer")
 RECEIPT_AUTHORITY_CLAIM = f"key:{public_hex(RECEIPT_AUTHORITY_KEY)}"
+SECONDARY_PAYER_KEY = private_key("dacs-390-buyer-secondary-payment-key")
+SECONDARY_PAYER_CLAIM = f"key:{public_hex(SECONDARY_PAYER_KEY)}"
 
 
 def unsigned(value: dict[str, Any], field: str) -> dict[str, Any]:
@@ -230,6 +232,11 @@ def identity_bundle(role: str, nonce: str) -> dict[str, Any]:
         "sessionNonce": nonce,
         "claims": [{"ref": CLAIMS[role], "metadata": {"fixture": "dacs-390"}}],
     }
+    if role == "buyer":
+        bundle["claims"].append({
+            "ref": SECONDARY_PAYER_CLAIM,
+            "metadata": {"fixture": "dacs-390-secondary-payment-key"},
+        })
     digest = hash_hex(bundle)
     bundle["presentation"] = {
         "kind": "per-claim",
@@ -766,7 +773,7 @@ def settlement_evidence(
     phase_index: int,
     *,
     rail_ref: dict[str, Any],
-    currency: str,
+    payment_amount: dict[str, Any],
     payer: str,
     payee: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -784,7 +791,7 @@ def settlement_evidence(
                 "txHash": hash_hex({"jobId": job_id, "phaseIndex": phase_index}),
                 "blockNumber": 390,
             }],
-            "paymentAmount": {"amount": "1", "currency": currency},
+            "paymentAmount": copy.deepcopy(payment_amount),
             "settlementFinality": {
                 "model": "bft-final",
                 "finalityObservedAt": NOW + 5_000 + phase_index,
@@ -801,7 +808,7 @@ def settlement_evidence(
                 "logIndex": 0,
                 "protocolVersion": "1",
             }],
-            "paymentAmount": {"amount": "1", "currency": currency},
+            "paymentAmount": copy.deepcopy(payment_amount),
             "settlementFinality": {
                 "model": "block-depth",
                 "finalityBlocks": 1,
@@ -884,20 +891,16 @@ def terminal_bundle(
     records: dict[str, dict[str, Any]],
     selected_ref: dict[str, Any],
     handler: str,
-    currency: str,
+    payment_input: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     projected = effective_pipeline(signed_listing, selected_ref, handler)
     evidence_entries = []
     evidence_refs = []
     summary = []
-    payout_bindings = signed_agreement.get("terms", {}).get("payoutBindings")
-    payee = (
-        payout_bindings[0].get("payeeAddress")
-        if isinstance(payout_bindings, list)
-        and len(payout_bindings) == 1
-        and isinstance(payout_bindings[0], dict)
-        else CLAIMS["seller"]
-    )
+    payer = payment_input.get("payer")
+    payee = payment_input.get("payee")
+    if not isinstance(payer, dict) or not isinstance(payee, dict):
+        raise ValueError("payment input lacks payer or payee")
     for index, step in enumerate(projected):
         entry = {"index": index, "kind": step["kind"], "outcome": "ok"}
         if step["kind"] in {handler, "deliver-storage-program"}:
@@ -906,9 +909,9 @@ def terminal_bundle(
                 step["kind"],
                 index,
                 rail_ref=selected_ref,
-                currency=currency,
-                payer=CLAIMS["buyer"],
-                payee=payee,
+                payment_amount=payment_input["amount"],
+                payer=payer["payingKey"],
+                payee=payee["payeeAddress"],
             )
             entry["attestationRef"] = copy.deepcopy(reference)
             evidence_refs.append(copy.deepcopy(reference))
@@ -1284,7 +1287,7 @@ def scenario(
         records,
         selected_ref,
         handler,
-        currency,
+        payment_input,
     )
     commitment_set = commitments(signed_agreement, job_id)
     commit_input = {

@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
+import textwrap
 import unittest
 
 
@@ -142,6 +145,121 @@ class RawJsonProfileVectorTests(unittest.TestCase):
                         profile.classify(parser, raw),
                         ("reject-profile", "JSON-NESTING-TOO-DEEP"),
                     )
+
+    def test_nesting_boundary_is_independent_of_host_stack(self):
+        probe = textwrap.dedent(
+            r"""
+            import sys
+
+            root, limit_text = sys.argv[1:]
+            sys.path.insert(0, root + "/scripts")
+            import jcs
+            import raw_json_profile as profile
+
+            limit = int(limit_text)
+            sys.setrecursionlimit(limit)
+
+            def nested(kind, depth):
+                value = b"0"
+                for index in range(depth):
+                    if kind == "array" or (kind == "mixed" and index % 2 == 0):
+                        value = b"[" + value + b"]"
+                    else:
+                        value = b'{"a":' + value + b"}"
+                return value
+
+            def invoke(frames, function, *args):
+                if frames == 0:
+                    return function(*args)
+                return invoke(frames - 1, function, *args)
+
+            def check(condition, details):
+                if not condition:
+                    raise AssertionError(details)
+
+            for kind in ("array", "object", "mixed"):
+                raw = nested(kind, 128)
+                for parser in (profile.loads, profile.loads_reference):
+                    admitted = invoke(16, parser, raw)
+                    canonical = invoke(16, jcs.canonicalize, admitted).encode("utf-8")
+                    check(canonical == raw, (limit, kind, parser.__name__, canonical))
+
+            for kind in ("array", "object", "mixed"):
+                raw = nested(kind, 129)
+                for parser in (profile.loads, profile.loads_reference):
+                    try:
+                        invoke(16, parser, raw)
+                    except profile.RawJsonProfileError as error:
+                        check(
+                            (error.stage, error.code)
+                            == ("profile", "JSON-NESTING-TOO-DEEP"),
+                            (limit, kind, parser.__name__, error.stage, error.code),
+                        )
+                    else:
+                        raise AssertionError((limit, kind, parser.__name__, "accepted"))
+
+            controls = (
+                (b"null", b"null"),
+                (b'{"z":"cafe\\u0301","n":-0.0}',
+                 '{"n":0,"z":"caf\u00e9"}'.encode("utf-8")),
+                (b'[true,false,{"x":1e0}]', b'[true,false,{"x":1}]'),
+            )
+            for raw, expected in controls:
+                for parser in (profile.loads, profile.loads_reference):
+                    admitted = invoke(16, parser, raw)
+                    check(
+                        invoke(16, jcs.canonicalize, admitted).encode("utf-8")
+                        == expected,
+                        (limit, raw, parser.__name__),
+                    )
+
+            malformed = (
+                (b'{"a":1,}', "parse", "INVALID-JSON"),
+                (b"[0 1]", "parse", "INVALID-JSON"),
+                (b'{"a" 1}', "parse", "INVALID-JSON"),
+                (b'"unterminated', "parse", "INVALID-JSON"),
+                (b"0 1", "parse", "TRAILING-DATA"),
+                (b'{"a":1,"\\u0061":2}', "profile", "DUPLICATE-MEMBER"),
+            )
+            for raw, stage, code in malformed:
+                results = []
+                for parser in (profile.loads, profile.loads_reference):
+                    try:
+                        invoke(16, parser, raw)
+                    except profile.RawJsonProfileError as error:
+                        results.append((error.stage, error.code))
+                    else:
+                        results.append(("accept", None))
+                check(
+                    results == [(stage, code), (stage, code)],
+                    (limit, raw, results),
+                )
+
+            check(sys.getrecursionlimit() == limit, (limit, sys.getrecursionlimit()))
+            print("ok", limit)
+            """
+        )
+        environment = os.environ.copy()
+        environment["PYTHONDONTWRITEBYTECODE"] = "1"
+        for limit in (80, 150, 200, 260):
+            with self.subTest(limit=limit):
+                completed = subprocess.run(
+                    [sys.executable, "-c", probe, str(ROOT), str(limit)],
+                    cwd=ROOT,
+                    env=environment,
+                    text=True,
+                    capture_output=True,
+                    timeout=30,
+                )
+                self.assertEqual(
+                    completed.returncode,
+                    0,
+                    msg=(
+                        f"stdout:\n{completed.stdout}\n"
+                        f"stderr:\n{completed.stderr}"
+                    ),
+                )
+                self.assertEqual(completed.stdout.strip(), f"ok {limit}")
 
     def test_required_boundaries_and_hostile_forms_are_present(self):
         names = {vector["name"] for vector in self.data["vectors"]}

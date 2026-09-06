@@ -10,12 +10,13 @@ object model that may be passed to :mod:`jcs`.
 Two independent bytes-only parsers are exposed for the conformance corpus:
 
 ``loads``
-    CPython's JSON parser with token-preserving numeric hooks and a
-    duplicate-detecting object-pairs hook.
+    CPython's JSON tokenizer for scalar lexemes, combined with an explicit
+    container stack and token-preserving numeric hooks.
 
 ``loads_reference``
-    A small recursive-descent parser used only as an independent executable
-    oracle.  It shares the profile predicates, but not CPython's JSON parser.
+    A small independently implemented lexer and explicit-stack parser used
+    only as an executable oracle.  It shares the profile predicates, but not
+    CPython's JSON parser.
 
 Both require the exact externally received bytes; decoded ``str`` input is
 refused because it cannot prove that the original byte sequence passed strict
@@ -152,24 +153,210 @@ def _admit_number(token: str) -> int | float:
 
 
 def _admit_tree(value: Any) -> Any:
-    if isinstance(value, _RawNumber):
-        return _admit_number(value.token)
-    if isinstance(value, str):
-        if _contains_surrogate(value):
-            raise _error("profile", "INVALID-UNICODE", "lone UTF-16 surrogate in string")
-        return value
-    if isinstance(value, list):
-        return [_admit_tree(item) for item in value]
-    if isinstance(value, dict):
-        admitted: dict[str, Any] = {}
-        for key, item in value.items():
+    """Apply the profile predicates without consuming the Python call stack."""
+
+    result: Any = None
+    active_containers: set[int] = set()
+    # action, input value, output parent, output key/index, container depth
+    stack: list[tuple[str, Any, Any, Any, int]] = [
+        ("visit", value, None, None, 0)
+    ]
+
+    while stack:
+        action, item, parent, key, depth = stack.pop()
+        if action == "leave":
+            active_containers.remove(item)
+            continue
+        if action == "dict-item":
             if _contains_surrogate(key):
                 raise _error(
                     "profile", "INVALID-UNICODE", "lone UTF-16 surrogate in member name"
                 )
-            admitted[key] = _admit_tree(item)
-        return admitted
-    return value
+            stack.append(("visit", item, parent, key, depth))
+            continue
+
+        if isinstance(item, _RawNumber):
+            admitted = _admit_number(item.token)
+        elif isinstance(item, str):
+            if _contains_surrogate(item):
+                raise _error(
+                    "profile", "INVALID-UNICODE", "lone UTF-16 surrogate in string"
+                )
+            admitted = item
+        elif isinstance(item, (list, dict)):
+            identity = id(item)
+            if identity in active_containers:
+                # A JSON parser cannot construct this, but keeping the private
+                # traversal cycle-safe avoids an accidental unbounded loop.
+                raise _error("profile", "INVALID-JSON", "container cycle in parsed tree")
+            if depth >= MAX_NESTING_DEPTH:
+                raise _error(
+                    "profile",
+                    "JSON-NESTING-TOO-DEEP",
+                    f"container nesting exceeds {MAX_NESTING_DEPTH}",
+                )
+            active_containers.add(identity)
+            stack.append(("leave", identity, None, None, depth))
+            if isinstance(item, list):
+                admitted = [None] * len(item)
+                for index in range(len(item) - 1, -1, -1):
+                    stack.append(
+                        ("visit", item[index], admitted, index, depth + 1)
+                    )
+            else:
+                admitted = {}
+                for member_name, member_value in reversed(list(item.items())):
+                    stack.append(
+                        (
+                            "dict-item",
+                            member_value,
+                            admitted,
+                            member_name,
+                            depth + 1,
+                        )
+                    )
+        else:
+            admitted = item
+
+        if parent is None:
+            result = admitted
+        else:
+            parent[key] = admitted
+
+    return result
+
+
+def _parse_with_stdlib_tokens(text: str) -> Any:
+    """Parse containers iteratively while CPython decodes independent scalars."""
+
+    decoder = json.JSONDecoder(
+        parse_int=_RawNumber,
+        parse_float=_RawNumber,
+        parse_constant=_constant,
+    )
+    missing = object()
+    root: Any = missing
+    pos = 0
+    # Frames deliberately hold pairs until an object closes.  This preserves
+    # the existing parse-before-duplicate-error ordering for malformed objects.
+    frames: list[dict[str, Any]] = []
+
+    def add_value(item: Any) -> None:
+        nonlocal root
+        if not frames:
+            root = item
+            return
+        frame = frames[-1]
+        if frame["kind"] == "array":
+            frame["items"].append(item)
+        else:
+            frame["pairs"].append((frame["key"], item))
+            frame["key"] = None
+        frame["state"] = "comma-or-end"
+
+    while True:
+        while pos < len(text) and text[pos] in " \t\r\n":
+            pos += 1
+
+        needs_value = False
+        if not frames:
+            if root is not missing:
+                if pos != len(text):
+                    raise _error(
+                        "parse", "TRAILING-DATA", "data follows the first JSON value"
+                    )
+                return root
+            needs_value = True
+        else:
+            frame = frames[-1]
+            state = frame["state"]
+            char = text[pos] if pos < len(text) else ""
+            if frame["kind"] == "array":
+                if state == "first-value-or-end" and char == "]":
+                    pos += 1
+                    frames.pop()
+                    add_value(frame["items"])
+                    continue
+                if state in ("first-value-or-end", "value"):
+                    needs_value = True
+                elif char == "]":
+                    pos += 1
+                    frames.pop()
+                    add_value(frame["items"])
+                    continue
+                elif char == ",":
+                    pos += 1
+                    frame["state"] = "value"
+                    continue
+                else:
+                    raise _error(
+                        "parse", "INVALID-JSON", f"expected ',' or ']' at {pos}"
+                    )
+            elif state == "first-key-or-end" and char == "}":
+                pos += 1
+                frames.pop()
+                add_value(_pairs(frame["pairs"]))
+                continue
+            elif state in ("first-key-or-end", "key"):
+                if char != '"':
+                    raise _error(
+                        "parse", "INVALID-JSON", f"expected member name at {pos}"
+                    )
+                try:
+                    member_name, pos = decoder.raw_decode(text, pos)
+                except json.JSONDecodeError as exc:
+                    raise _error("parse", "INVALID-JSON", str(exc)) from exc
+                frame["key"] = member_name
+                frame["state"] = "colon"
+                continue
+            elif state == "colon":
+                if char != ":":
+                    raise _error("parse", "INVALID-JSON", f"expected ':' at {pos}")
+                pos += 1
+                frame["state"] = "value"
+                continue
+            elif state == "value":
+                needs_value = True
+            elif char == "}":
+                pos += 1
+                frames.pop()
+                add_value(_pairs(frame["pairs"]))
+                continue
+            elif char == ",":
+                pos += 1
+                frame["state"] = "key"
+                continue
+            else:
+                raise _error(
+                    "parse", "INVALID-JSON", f"expected ',' or '}}' at {pos}"
+                )
+
+        if needs_value:
+            if pos >= len(text):
+                raise _error("parse", "INVALID-JSON", f"expected a JSON value at {pos}")
+            char = text[pos]
+            if char == "[":
+                pos += 1
+                frames.append(
+                    {"kind": "array", "items": [], "state": "first-value-or-end"}
+                )
+                continue
+            if char == "{":
+                pos += 1
+                frames.append(
+                    {
+                        "kind": "object",
+                        "pairs": [],
+                        "key": None,
+                        "state": "first-key-or-end",
+                    }
+                )
+                continue
+            try:
+                item, pos = decoder.raw_decode(text, pos)
+            except json.JSONDecodeError as exc:
+                raise _error("parse", "INVALID-JSON", str(exc)) from exc
+            add_value(item)
 
 
 def loads(raw: bytes) -> Any:
@@ -178,13 +365,7 @@ def loads(raw: bytes) -> Any:
     text = _decode(raw)
     _check_nesting(text)
     try:
-        parsed = json.loads(
-            text,
-            object_pairs_hook=_pairs,
-            parse_int=_RawNumber,
-            parse_float=_RawNumber,
-            parse_constant=_constant,
-        )
+        parsed = _parse_with_stdlib_tokens(text)
     except RawJsonProfileError:
         raise
     except json.JSONDecodeError as exc:
@@ -203,19 +384,131 @@ def loads(raw: bytes) -> Any:
 
 
 class _ReferenceParser:
-    """Independent recursive-descent JSON parser for cross-parser vectors."""
+    """Independent explicit-stack JSON parser for cross-parser vectors."""
 
     def __init__(self, text: str):
         self.text = text
         self.pos = 0
 
     def parse(self) -> Any:
-        self._space()
-        value = self._value()
-        self._space()
-        if self.pos != len(self.text):
-            raise _error("parse", "TRAILING-DATA", "data follows the first JSON value")
-        return value
+        missing = object()
+        root: Any = missing
+        frames: list[dict[str, Any]] = []
+
+        def add_value(item: Any) -> None:
+            nonlocal root
+            if not frames:
+                root = item
+                return
+            frame = frames[-1]
+            if frame["kind"] == "array":
+                frame["items"].append(item)
+            else:
+                frame["pairs"].append((frame["key"], item))
+                frame["key"] = None
+            frame["state"] = "comma-or-end"
+
+        while True:
+            self._space()
+            needs_value = False
+            if not frames:
+                if root is not missing:
+                    if self.pos != len(self.text):
+                        raise _error(
+                            "parse",
+                            "TRAILING-DATA",
+                            "data follows the first JSON value",
+                        )
+                    return root
+                needs_value = True
+            else:
+                frame = frames[-1]
+                state = frame["state"]
+                char = self._peek()
+                if frame["kind"] == "array":
+                    if state == "first-value-or-end" and char == "]":
+                        self.pos += 1
+                        frames.pop()
+                        add_value(frame["items"])
+                        continue
+                    if state in ("first-value-or-end", "value"):
+                        needs_value = True
+                    elif char == "]":
+                        self.pos += 1
+                        frames.pop()
+                        add_value(frame["items"])
+                        continue
+                    elif char == ",":
+                        self.pos += 1
+                        frame["state"] = "value"
+                        continue
+                    else:
+                        raise _error(
+                            "parse",
+                            "INVALID-JSON",
+                            f"expected ',' or ']' at {self.pos}",
+                        )
+                elif state == "first-key-or-end" and char == "}":
+                    self.pos += 1
+                    frames.pop()
+                    add_value(_pairs(frame["pairs"]))
+                    continue
+                elif state in ("first-key-or-end", "key"):
+                    if char != '"':
+                        raise _error(
+                            "parse",
+                            "INVALID-JSON",
+                            f"expected member name at {self.pos}",
+                        )
+                    frame["key"] = self._string()
+                    frame["state"] = "colon"
+                    continue
+                elif state == "colon":
+                    self._take(":")
+                    frame["state"] = "value"
+                    continue
+                elif state == "value":
+                    needs_value = True
+                elif char == "}":
+                    self.pos += 1
+                    frames.pop()
+                    add_value(_pairs(frame["pairs"]))
+                    continue
+                elif char == ",":
+                    self.pos += 1
+                    frame["state"] = "key"
+                    continue
+                else:
+                    raise _error(
+                        "parse",
+                        "INVALID-JSON",
+                        f"expected ',' or '}}' at {self.pos}",
+                    )
+
+            if needs_value:
+                char = self._peek()
+                if char == "[":
+                    self.pos += 1
+                    frames.append(
+                        {
+                            "kind": "array",
+                            "items": [],
+                            "state": "first-value-or-end",
+                        }
+                    )
+                    continue
+                if char == "{":
+                    self.pos += 1
+                    frames.append(
+                        {
+                            "kind": "object",
+                            "pairs": [],
+                            "key": None,
+                            "state": "first-key-or-end",
+                        }
+                    )
+                    continue
+                add_value(self._scalar_value())
 
     def _space(self) -> None:
         while self.pos < len(self.text) and self.text[self.pos] in " \t\r\n":
@@ -229,14 +522,10 @@ class _ReferenceParser:
             raise _error("parse", "INVALID-JSON", f"expected {expected!r} at {self.pos}")
         self.pos += len(expected)
 
-    def _value(self) -> Any:
+    def _scalar_value(self) -> Any:
         char = self._peek()
         if char == '"':
             return self._string()
-        if char == "{":
-            return self._object()
-        if char == "[":
-            return self._array()
         if char == "t":
             self._take("true")
             return True
@@ -256,50 +545,6 @@ class _ReferenceParser:
             self.pos = match.end()
             return _RawNumber(match.group(0))
         raise _error("parse", "INVALID-JSON", f"expected a JSON value at {self.pos}")
-
-    def _object(self) -> dict[str, Any]:
-        self._take("{")
-        self._space()
-        pairs: list[tuple[str, Any]] = []
-        if self._peek() == "}":
-            self.pos += 1
-            return {}
-        while True:
-            if self._peek() != '"':
-                raise _error("parse", "INVALID-JSON", f"expected member name at {self.pos}")
-            key = self._string()
-            self._space()
-            self._take(":")
-            self._space()
-            pairs.append((key, self._value()))
-            self._space()
-            char = self._peek()
-            if char == "}":
-                self.pos += 1
-                return _pairs(pairs)
-            if char != ",":
-                raise _error("parse", "INVALID-JSON", f"expected ',' or '}}' at {self.pos}")
-            self.pos += 1
-            self._space()
-
-    def _array(self) -> list[Any]:
-        self._take("[")
-        self._space()
-        result: list[Any] = []
-        if self._peek() == "]":
-            self.pos += 1
-            return result
-        while True:
-            result.append(self._value())
-            self._space()
-            char = self._peek()
-            if char == "]":
-                self.pos += 1
-                return result
-            if char != ",":
-                raise _error("parse", "INVALID-JSON", f"expected ',' or ']' at {self.pos}")
-            self.pos += 1
-            self._space()
 
     def _string(self) -> str:
         self._take('"')

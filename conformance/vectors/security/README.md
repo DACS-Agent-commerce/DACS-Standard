@@ -125,8 +125,9 @@ limits.
 
 Positive cases pin the exact later JCS bytes. Negative cases separately name a
 `parse` or DACS `profile` refusal and never carry canonical output. The standard
-library adapter and a separate recursive-descent parser execute every case and
-must agree on verdict, refusal class, and accepted value before canonicalisation.
+library-tokenizer adapter and a separate hand-written lexer with an explicit
+container stack execute every case and must agree on verdict, refusal class,
+and accepted value before canonicalisation.
 This is raw-input coverage; it complements rather than replaces
 `canonical-json-v0.1.json`, which begins from an already constructed value.
 

@@ -43,6 +43,9 @@ VERIFY_RESULT_DOMAIN = "dacs-verifyresult:v1:"
 # this conformance fixture. It is not a DACS protocol domain and is deliberately
 # absent from CORE's domain registry.
 FIXTURE_OBSERVATION_PREFIX = b"fixture-only:dacs-390-native-observation:v1:"
+FIXTURE_SETTLEMENT_OBSERVATION_PREFIX = (
+    b"fixture-only:dacs-390-settlement-observation:v1:"
+)
 
 ARTIFACTS = (
     "agreement",
@@ -550,6 +553,24 @@ def fixture_observation_envelope(
     }
 
 
+def fixture_settlement_observation(
+    event: dict[str, Any],
+) -> dict[str, Any]:
+    """Sign independently observed payment semantics for the fixture only."""
+
+    payload = (
+        FIXTURE_SETTLEMENT_OBSERVATION_PREFIX
+        + hash_hex(event).encode("ascii")
+    )
+    return {
+        "fixtureSettlementObservationVersion": "1",
+        "scope": "offline-conformance-fixture-only",
+        "observer": RECEIPT_AUTHORITY_CLAIM,
+        "event": copy.deepcopy(event),
+        "signature": b64url(sign_ed25519(RECEIPT_AUTHORITY_KEY, payload)),
+    }
+
+
 def set_fixture_evidence(
     receipt: dict[str, Any],
     native_receipt: dict[str, Any],
@@ -746,6 +767,8 @@ def settlement_evidence(
     *,
     rail_ref: dict[str, Any],
     currency: str,
+    payer: str,
+    payee: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     record: dict[str, Any] = {
         "evidenceVersion": "1",
@@ -830,6 +853,16 @@ def settlement_evidence(
     }
     if phase.startswith("pay-"):
         execution["railId"] = rail_ref["railId"]
+        execution["settlementObservation"] = fixture_settlement_observation({
+            "jobId": job_id,
+            "phaseIndex": phase_index,
+            "phaseKind": phase,
+            "railId": rail_ref["railId"],
+            "paymentTxRefs": copy.deepcopy(record["paymentTxRefs"]),
+            "payer": payer,
+            "payee": payee,
+            "paymentAmount": copy.deepcopy(record["paymentAmount"]),
+        })
     else:
         execution["evidenceLogicalAddress"] = logical_address
     return record, reference, receipt, execution
@@ -857,6 +890,14 @@ def terminal_bundle(
     evidence_entries = []
     evidence_refs = []
     summary = []
+    payout_bindings = signed_agreement.get("terms", {}).get("payoutBindings")
+    payee = (
+        payout_bindings[0].get("payeeAddress")
+        if isinstance(payout_bindings, list)
+        and len(payout_bindings) == 1
+        and isinstance(payout_bindings[0], dict)
+        else CLAIMS["seller"]
+    )
     for index, step in enumerate(projected):
         entry = {"index": index, "kind": step["kind"], "outcome": "ok"}
         if step["kind"] in {handler, "deliver-storage-program"}:
@@ -866,6 +907,8 @@ def terminal_bundle(
                 index,
                 rail_ref=selected_ref,
                 currency=currency,
+                payer=CLAIMS["buyer"],
+                payee=payee,
             )
             entry["attestationRef"] = copy.deepcopy(reference)
             evidence_refs.append(copy.deepcopy(reference))
@@ -2674,15 +2717,18 @@ def build() -> dict[str, Any]:
                     "composite-verification-record",
                     "prior-payment-disposition",
                     "settlement-evidence",
+                    "payment-event-semantics",
                     "evidence-bound-fault-bundle",
                 ],
                 "liveSubstrateProof": False,
                 "note": (
-                    "The generic signed native observation exercises exact "
-                    "logical/native address, content, transaction, writer, "
-                    "nonce, inclusion/ordering, and finality joins. Its fixture "
-                    "cryptography is not a production-native codec and does not "
-                    "claim Demos or any other live consensus verification."
+                    "The signed native observations exercise exact logical/native "
+                    "address, content, transaction, writer, nonce, inclusion/order, "
+                    "and finality joins. Payment rows additionally carry an "
+                    "independently signed fixture observation binding the exact "
+                    "transaction reference, payer, payee, rail, phase, and amount. "
+                    "This fixture cryptography is not a production-native codec "
+                    "and does not claim Demos or other live consensus verification."
                 ),
             },
         },

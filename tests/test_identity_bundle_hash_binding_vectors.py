@@ -1358,16 +1358,93 @@ def validate_session_roster(
     if claims_status != "pass" or not isinstance(orchestrator, str):
         return "error", "malformed-input"
     expected_claims = {**role_claims, "orchestrator": orchestrator}
+    agreement = context.get("agreement")
+    agreement_parties = (
+        agreement.get("parties") if isinstance(agreement, dict) else None
+    )
+    if not isinstance(agreement_parties, list):
+        return "error", "malformed-input"
+    signed_hashes = {
+        party.get("primaryClaim"): party.get("bundleHash")
+        for party in agreement_parties
+        if isinstance(party, dict)
+        and isinstance(party.get("primaryClaim"), str)
+        and isinstance(party.get("bundleHash"), str)
+    }
     if set(sessions) != set(expected_claims):
         return "fail", "session-roster-mismatch"
     for role, claim in expected_claims.items():
         party = sessions.get(role)
+        expected_hash = digests.get(claim)
+        if expected_hash is None and claim in signed_hashes:
+            historical_hash = signed_hashes[claim]
+            expected_hash = (
+                historical_hash.removeprefix("sha256:")
+                if re.fullmatch(r"sha256:[0-9a-f]{64}", historical_hash)
+                else historical_hash
+            )
         if (
             not isinstance(party, dict)
             or party.get("primaryClaim") != claim
-            or (claim in digests and party.get("bundleHash") != digests[claim])
+            or (
+                expected_hash is not None
+                and party.get("bundleHash") != expected_hash
+            )
         ):
             return "fail", "session-party-mismatch"
+    return "pass", "verified"
+
+
+def validate_settlement_observation(
+    observation: object,
+    *,
+    context: dict,
+    record: dict,
+    execution: dict,
+    receipt_authority: str,
+) -> tuple[str, str]:
+    """Verify fixture-only ledger semantics independently of evidence anchoring."""
+
+    if not isinstance(observation, dict) or set(observation) != {
+        "fixtureSettlementObservationVersion", "scope", "observer", "event",
+        "signature",
+    }:
+        return "error", "malformed-input"
+    event = observation.get("event")
+    if (
+        observation.get("fixtureSettlementObservationVersion") != "1"
+        or observation.get("scope") != "offline-conformance-fixture-only"
+        or observation.get("observer") != receipt_authority
+        or not isinstance(event, dict)
+        or not isinstance(observation.get("signature"), str)
+    ):
+        return "fail", "terminal-settlement-observation-invalid"
+    try:
+        signature_valid = generator.verify_ed25519(
+            key_bytes(receipt_authority),
+            b64url_decode(observation["signature"]),
+            generator.FIXTURE_SETTLEMENT_OBSERVATION_PREFIX
+            + generator.hash_hex(event).encode("ascii"),
+        )
+    except (TypeError, ValueError):
+        signature_valid = False
+    payment = context.get("paymentInput")
+    if not isinstance(payment, dict):
+        return "error", "malformed-input"
+    payer = payment.get("payer")
+    payee = payment.get("payee")
+    expected = {
+        "jobId": execution.get("jobId"),
+        "phaseIndex": execution.get("phaseIndex"),
+        "phaseKind": execution.get("phaseKind"),
+        "railId": execution.get("railId"),
+        "paymentTxRefs": record.get("paymentTxRefs"),
+        "payer": payer.get("payingKey") if isinstance(payer, dict) else None,
+        "payee": payee.get("payeeAddress") if isinstance(payee, dict) else None,
+        "paymentAmount": payment.get("amount"),
+    }
+    if not signature_valid or event != expected:
+        return "fail", "terminal-settlement-observation-invalid"
     return "pass", "verified"
 
 
@@ -1843,7 +1920,6 @@ def validate_terminal_authority(
         )
         if status != "pass":
             return status, reason
-
     settlement_authorities = authority.get("settlements")
     settlement_refs = bundle.get("settlementEvidence")
     if not isinstance(settlement_authorities, list) or not isinstance(
@@ -1914,6 +1990,16 @@ def validate_terminal_authority(
         )
         if status != "pass":
             return status, reason
+        if phase_kind.startswith("pay-"):
+            status, reason = validate_settlement_observation(
+                execution.get("settlementObservation"),
+                context=context,
+                record=record,
+                execution=execution,
+                receipt_authority=receipt_authority,
+            )
+            if status != "pass":
+                return status, reason
         reference_key = canonical_key(reference)
         phase_key = f"{phase_index}:{phase_kind}"
         if reference_key in reference_validation or phase_key in execution_by_phase:
@@ -2538,6 +2624,59 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                         "bundle": context["terminalInput"]["bundle"],
                         "ebfabAuthority": malformed_authority,
                     })
+                )
+
+    def test_historical_session_hash_must_match_signed_agreement_hash(self):
+        for artifact in ("agreement", "payeeBoundAgreement"):
+            context = materialize(self.data, {
+                "scenario": artifact, "commitment": "legacy", "stage": "commit",
+            })
+            for role in ("buyer", "seller"):
+                with self.subTest(artifact=artifact, role=role):
+                    changed = copy.deepcopy(context)
+                    for surface in (
+                        changed["commitInput"]["sessionContext"],
+                        changed["verifierContext"]["authenticatedSessionContext"],
+                    ):
+                        for party in surface["parties"]:
+                            if party["role"] == role:
+                                party["bundleHash"] = "0" * 64
+                    self.assertEqual(
+                        validate_historical_stage(
+                            changed, artifact, "commit", set()
+                        )[0],
+                        "fail",
+                    )
+
+    def test_terminal_payment_observation_binds_actual_parties_and_amount(self):
+        context = materialize(self.data, {
+            "scenario": "identityBoundPayeeAgreement",
+            "commitment": "finality",
+            "stage": "terminal",
+        })
+        verdict, _, artifact, phase = dispatch(context)
+        self.assertEqual(verdict, "pass")
+        self.assertEqual(
+            validate_terminal(context, artifact, phase, set())[0], "pass"
+        )
+        for field, value in (
+            ("payer", "key:" + "12" * 32),
+            ("payee", "key:" + "34" * 32),
+            ("paymentAmount", {"amount": "2", "currency": "DEM"}),
+        ):
+            with self.subTest(field=field):
+                changed = copy.deepcopy(context)
+                execution = changed["verifierContext"]["terminalAuthority"][
+                    "settlements"
+                ][0]["executionAuthority"]
+                event = execution["settlementObservation"]["event"]
+                event[field] = value
+                execution["settlementObservation"] = (
+                    generator.fixture_settlement_observation(event)
+                )
+                self.assertEqual(
+                    validate_terminal(changed, artifact, phase, set())[0],
+                    "fail",
                 )
 
     def test_reputation_counting_executes_only_after_identity_admission(self):

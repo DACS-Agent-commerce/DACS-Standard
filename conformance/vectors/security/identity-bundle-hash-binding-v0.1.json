@@ -40,10 +40,11 @@
         "composite-verification-record",
         "prior-payment-disposition",
         "settlement-evidence",
+        "payment-event-semantics",
         "evidence-bound-fault-bundle"
       ],
       "liveSubstrateProof": false,
-      "note": "The generic signed native observation exercises exact logical/native address, content, transaction, writer, nonce, inclusion/ordering, and finality joins. Its fixture cryptography is not a production-native codec and does not claim Demos or any other live consensus verification."
+      "note": "The signed native observations exercise exact logical/native address, content, transaction, writer, nonce, inclusion/order, and finality joins. Payment rows additionally carry an independently signed fixture observation binding the exact transaction reference, payer, payee, rail, phase, and amount. This fixture cryptography is not a production-native codec and does not claim Demos or other live consensus verification."
     }
   },
   "otherApprovedReservationsNotImplemented": [
@@ -305,7 +306,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "8429c139f464d89e86064316bae72fb9d30830b560653f3e0ee9c789dc11a30f",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0A",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "b23ba9c02fe44212cb44a5555f5917e73316df1dbeb074a79c41042705705f68",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "CibbDs-ZVK4N32a6toR0y58r-_ZmWbO_mUBCe8Xo5LxdzdqWV_BbJHI6hGKaAGBeWTwxzaic_EDa1F1hZEyNDQ"
+                }
               },
               "lifecycle": {
                 "state": "finalized",
@@ -2246,7 +2272,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "7908f180d21c70949e4f17982731ee54cd3b6fa00efbeaef3fbbde8fdd5c3729",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0B",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "e3a248bfe2035792c51c30d72644ce28bc211395a0a5ab1b712642d3ac0d5323",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "0PGm89Nq7JsBbgE3w9nrD-iWRE_z8Br0U4rVAAjcTcxzN3kK7vNxtVbUmSdmq1iLDljyH6a9yBK5cZW8MDb0Dg"
+                }
               },
               "lifecycle": {
                 "state": "finalized",
@@ -4215,7 +4266,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "26a9dd45b2e17f06b94f310d343670c54356256ee478a662fc80b499b939d03c",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0C",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "1e864b3454cc1c7983563e32ddbbd014c312a6204a1dc74ad144fb065bc1c725",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "U_89MZTR_zjShZudW4YegDOTuqHlbLabF70eIGZahWA0x4Fj78uBGrTMVy3RSOiaBWFfER4ZmcBYxmnYYqLJCQ"
+                }
               },
               "lifecycle": {
                 "state": "finalized",
@@ -6260,7 +6336,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "b851f64497fc848cf53f3860ece6cf2b4f311e63e443c5f65ed1f8a62c3b17d2",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0D",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "20038cd4610e1aaa1cd0537a64ee67531a021678a331bb154fb9c50716ea0f56",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "5pNM5p95fnyhimR8Xa18DsqnAGtTwp-EGJS2BrDHDqVweMsGW-bxkgIHVZ5-pwhqoQ3-5iH3NZN3qxoUbzT7Dw"
+                }
               },
               "lifecycle": {
                 "state": "finalized",
@@ -8375,7 +8476,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "b3b43f36a05fa98f70c0672eb57e1304354c40ef5a7e7ebc9f4930de9f087be1",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0F",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "1f7d9310a90e8a592eb3815d24d5eb810dded37de55720838b8aa66bb5097ead",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "AR_kmyvb1DlyKGfbIJGz5w0K_1ZrWsoSdJ_K4CRga9o2Q5Q5afxOJahi1L3qb6KIrpmQSUgau807j8b_pkGwCQ"
+                }
               },
               "lifecycle": {
                 "state": "finalized",
@@ -10698,7 +10824,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "b3b43f36a05fa98f70c0672eb57e1304354c40ef5a7e7ebc9f4930de9f087be1",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0F",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "1f7d9310a90e8a592eb3815d24d5eb810dded37de55720838b8aa66bb5097ead",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "AR_kmyvb1DlyKGfbIJGz5w0K_1ZrWsoSdJ_K4CRga9o2Q5Q5afxOJahi1L3qb6KIrpmQSUgau807j8b_pkGwCQ"
+                }
               },
               "lifecycle": {
                 "state": "finalized",
@@ -13081,7 +13232,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "07525432b75298665904eaf2e03fd43e59a42d206b570290e78324e1fb5332b9",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0G",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "ce0904555e5f3314ffcccb03a801e6bef658f05dc785380e475c52d874b27b0e",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "0-NkVJ7RpyErOK6n_0LzCEgF0GWLctU-r6DHZQURzMmIXBlhqsrr2K3Oo-_VuzsPQ_55KgWbg7ukVgJPirnABw"
+                }
               },
               "lifecycle": {
                 "state": "finalized",
@@ -15419,7 +15595,32 @@
                 "phaseKind": "pay-dem",
                 "phaseOrchestrator": "key:b6d384d91cd48b504d5696999040295562cba79a81e4e91c2a33a1b79b6006a9",
                 "anchorNonce": "02503a834b2e8f2d5bdb049fa024fdc8f47c7f6ed63eafbbfbacd4627fa0a63f",
-                "railId": "demos-native:DEM"
+                "railId": "demos-native:DEM",
+                "settlementObservation": {
+                  "fixtureSettlementObservationVersion": "1",
+                  "scope": "offline-conformance-fixture-only",
+                  "observer": "key:af05da8f5c19cbc635967a1c29fa20dd14d85719457713237d39fbc4827fb5d8",
+                  "event": {
+                    "jobId": "01KTY8ZJ00CW7KSECW3FS6PQ0H",
+                    "phaseIndex": 3,
+                    "phaseKind": "pay-dem",
+                    "railId": "demos-native:DEM",
+                    "paymentTxRefs": [
+                      {
+                        "kind": "demos",
+                        "txHash": "c8c7a18289062674b8b783dcae406fb6a44f6cafbd44311355fd55ea95d73565",
+                        "blockNumber": 390
+                      }
+                    ],
+                    "payer": "key:a5892f5d1627150bef339b3a79820ffd044f07121c03cd10154d9b55d719bb2d",
+                    "payee": "key:49127fa1b8cb2ffc87c31f48ad73389425158a1483d0497eea86feddbe34f966",
+                    "paymentAmount": {
+                      "amount": "1",
+                      "currency": "DEM"
+                    }
+                  },
+                  "signature": "uKVCRSNar9M3-gfzmdrJGaoqml3MXqgae3gG_jzKheLi7vPJ1adyHF9B4anUg1MUNNfNA39PKhRBjH0ApEO9Cw"
+                }
               },
               "lifecycle": {
                 "state": "finalized",

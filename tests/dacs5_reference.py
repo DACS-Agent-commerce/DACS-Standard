@@ -1694,13 +1694,20 @@ def validate_finality_bound_ebfab(
         if candidate.get("evidence") != record:
             results.append(("fail", "finality input does not bind the exact authenticated evidence"))
             continue
-        if candidate.get("agreement", {}).get("listingRef") != bundle.get("listingRef"):
-            results.append(("fail", "authenticated agreement binds a different listing"))
+        agreement = candidate.get("agreement")
+        if not isinstance(agreement, dict):
+            results.append(("error", "finality agreement is not an object"))
             continue
         finality_result = verify_finality(candidate, finality_trust)
         decision = finality_result["decision"]
         finality_class = finality_result.get("finalityClass")
         detail = finality_result["reason"]
+        if decision == "error":
+            results.append((decision, "FV rejected successful payment: " + detail))
+            continue
+        if agreement.get("listingRef") != bundle.get("listingRef"):
+            results.append(("fail", "authenticated agreement binds a different listing"))
+            continue
         if decision != "pass":
             results.append((decision, "FV rejected successful payment: " + detail))
         elif finality_class not in {"profile-final", "provisional-provider-capture"}:
@@ -1740,7 +1747,7 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
         if (
             not isinstance(expected_job, str)
             or not expected_job
-            or expected_role not in {"buyer", "seller", "orchestrator"}
+            or not _string_member(expected_role, {"buyer", "seller", "orchestrator"})
         ):
             nonpasses.append((None, "error", "copy request job or role authority is malformed"))
             continue
@@ -1773,12 +1780,27 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
             decision = "error" if kind is None else "fail"
             nonpasses.append((kind, decision, "copy type, job, or authenticated role binding is invalid"))
             continue
+        # Reject malformed decoded bytes before unavailable presence authority
+        # can hide the error or canonical hashing can raise.
+        try:
+            shape_ok = (
+                _absolute_fault_bundle_shape_valid(bundle)
+                if kind in {"finality-bound", "evidence-bound", "fault"}
+                else _bundle_shape_ok(bundle)[0]
+            )
+            exact_bundle_hash = bundle_hash(bundle) if shape_ok else None
+        except (TypeError, ValueError, UnicodeError, RecursionError):
+            shape_ok = False
+        if not shape_ok:
+            nonpasses.append((kind, "error", "malformed copy bundle"))
+            continue
         trusted_presence = finality_trust.get("copyPresenceByJobRole")
         key = expected_job + ":" + expected_role
         presence = entry.get("copyPresence")
+        parties = bundle.get("parties")
         role_party = next(
             (
-                party for party in bundle.get("parties", [])
+                party for party in parties
                 if isinstance(party, dict) and party.get("role") == expected_role
             ),
             None,
@@ -1792,7 +1814,7 @@ def reconcile_authenticated_finality_copies(entries, pubkeys, finality_trust):
             continue
         if not (
             set(presence) == {"bundleHash", "nativeAddress", "writer"}
-            and presence.get("bundleHash") == bundle_hash(bundle)
+            and presence.get("bundleHash") == exact_bundle_hash
             and isinstance(presence.get("nativeAddress"), str)
             and presence.get("nativeAddress")
             and isinstance(role_party, dict)

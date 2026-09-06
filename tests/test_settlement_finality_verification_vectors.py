@@ -269,6 +269,54 @@ class SettlementFinalityVerificationVectorTests(unittest.TestCase):
         self.assertIn("different listing", reason)
         self.assertIsNone(phase_keys)
 
+    def test_dacs5_refuses_malformed_finality_agreement_without_exception(self):
+        case = self.strong["block-depth"]
+        self.assertEqual("pass", self.strong_result(case)[0])
+        for malformed in (
+            None, [], "agreement", True, 7, {},
+            {"listingRef": None}, {"listingRef": []}, {"listingRef": "x"},
+        ):
+            with self.subTest(agreement=malformed):
+                authority = copy.deepcopy(case["authority"])
+                candidate = next(iter(authority["finalityVerificationByCanonicalRef"].values()))
+                candidate["agreement"] = malformed
+                decision, reason, keys = self.strong_result(case, authority=authority)
+                self.assertEqual("error", decision)
+                self.assertIn("agreement", reason.lower())
+                self.assertIsNone(keys)
+
+    def test_reconciliation_refuses_malformed_parties_without_exception(self):
+        case = self.strong["block-depth"]
+        buyer = self.entry(case["bundle"], case["authority"])
+        seller_bundle = copy.deepcopy(case["bundle"])
+        seller_bundle["anchoredByRole"] = "seller"
+        seller = self.entry(seller_bundle, case["authority"])
+        self.assertEqual("pass", reconcile_authenticated_finality_copies(
+            [buyer, seller], self.pubkeys, self.trust
+        )["decision"])
+        malformed_parties = [
+            None, True, 7, "parties", {}, [None], [7], [], [{}], [{"role": "buyer"}],
+        ]
+        for bad_claim in (float("nan"), b"x", "\ud800"):
+            parties = copy.deepcopy(case["bundle"]["parties"])
+            parties[0]["primaryClaim"] = bad_claim
+            malformed_parties.append(parties)
+        for malformed in malformed_parties:
+            for index in (0, 1):
+                with self.subTest(parties=malformed, copy=index):
+                    entries = copy.deepcopy([buyer, seller])
+                    entries[index]["bundle"]["parties"] = malformed
+                    result = reconcile_authenticated_finality_copies(
+                        entries, self.pubkeys, self.trust
+                    )
+                    self.assertEqual("error", result["decision"])
+                    self.assertIsNone(result["bundle"])
+                    unavailable = copy.deepcopy(self.trust)
+                    unavailable.pop("copyPresenceByJobRole", None)
+                    self.assertEqual("error", reconcile_authenticated_finality_copies(
+                        entries, self.pubkeys, unavailable
+                    )["decision"])
+
     def test_dacs5_propagates_finality_fail_indeterminate_and_error(self):
         case = self.strong["block-depth"]
         source = next(iter(case["authority"]["finalityVerificationByCanonicalRef"].values()))

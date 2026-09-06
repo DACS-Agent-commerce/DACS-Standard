@@ -2086,6 +2086,14 @@ def validate_terminal(
     )
     if status != "pass":
         return status, reason
+    if any(
+        isinstance(step, dict)
+        and step.get("kind") in generator.CONCRETE_PAYMENT_PHASES
+        for step in effective
+    ):
+        status, reason = validate_payment(context, artifact, unavailable)
+        if status != "pass":
+            return status, reason
     phase_summary = bundle.get("phaseSummary")
     if (
         not isinstance(phase_summary, list)
@@ -2671,6 +2679,32 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                 ][0]["executionAuthority"]
                 event = execution["settlementObservation"]["event"]
                 event[field] = value
+                execution["settlementObservation"] = (
+                    generator.fixture_settlement_observation(event)
+                )
+                self.assertEqual(
+                    validate_terminal(changed, artifact, phase, set())[0],
+                    "fail",
+                )
+
+        for field, value in (
+            ("payer", "key:" + "12" * 32),
+            ("payee", "key:" + "34" * 32),
+            ("paymentAmount", {"amount": "2", "currency": "DEM"}),
+        ):
+            with self.subTest(field=field, matching_input_tamper=True):
+                changed = copy.deepcopy(context)
+                execution = changed["verifierContext"]["terminalAuthority"][
+                    "settlements"
+                ][0]["executionAuthority"]
+                event = execution["settlementObservation"]["event"]
+                event[field] = value
+                if field == "payer":
+                    changed["paymentInput"]["payer"]["payingKey"] = value
+                elif field == "payee":
+                    changed["paymentInput"]["payee"]["payeeAddress"] = value
+                else:
+                    changed["paymentInput"]["amount"] = value
                 execution["settlementObservation"] = (
                     generator.fixture_settlement_observation(event)
                 )

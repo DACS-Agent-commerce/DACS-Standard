@@ -998,6 +998,12 @@ def validate_strong_proof(
     minimum = len(parties) + (1 if needs_orchestrator_companion else 0)
     if len(companions) == 0:
         return "error", "malformed-input", {}
+    if any(
+        not isinstance(companion, dict)
+        or not ({"identityBundle", "compositeRecord"} & set(companion))
+        for companion in companions
+    ):
+        return "error", "malformed-input", {}
     if len(companions) < minimum:
         reason = (
             "orchestrator-companion-missing"
@@ -1007,12 +1013,6 @@ def validate_strong_proof(
         return "indeterminate", reason, {}
     if len(companions) > minimum:
         return "fail", "companion-cardinality-invalid", {}
-    if any(
-        not isinstance(companion, dict)
-        or not ({"identityBundle", "compositeRecord"} & set(companion))
-        for companion in companions
-    ):
-        return "error", "malformed-input", {}
     digests: dict[str, str] = {}
     used: set[int] = set()
     for party in parties:
@@ -1329,7 +1329,7 @@ def validate_effective_pipeline(
     bindings = agreement.get("terms", {}).get("payoutBindings")
     if artifact in generator.PAYEE_ARTIFACTS:
         expected = [
-            (selected["railId"], index, role_claims["seller"])
+            (selected["railId"], index)
             for index in payment_indexes
         ]
         if not isinstance(bindings, list) or any(
@@ -1340,11 +1340,18 @@ def validate_effective_pipeline(
             (
                 binding.get("railId"),
                 binding.get("phaseIndex"),
-                binding.get("payeeAddress"),
             )
             for binding in bindings
         ]
-        if sorted(actual) != sorted(expected) or len(actual) != len(set(actual)):
+        if (
+            sorted(actual) != sorted(expected)
+            or len(actual) != len(set(actual))
+            or any(
+                not isinstance(binding.get("payeeAddress"), str)
+                or not binding["payeeAddress"]
+                for binding in bindings
+            )
+        ):
             return "fail", "payout-binding-invalid", [], None
     elif bindings is not None:
         return "fail", "non-payee-terms-invalid", [], None
@@ -1587,12 +1594,20 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
         or isinstance(phase_index, bool)
     ):
         return "fail", "prior-selection-mismatch"
+    prior_verifier_context = context.get("priorVerifierContext")
     prior_context = {
         "listing": context.get("listing"),
         "agreement": prior,
-        "verifierContext": copy.deepcopy(context.get("verifierContext")),
+        "paymentInput": prior_payment,
+        "verifierContext": copy.deepcopy(prior_verifier_context),
     }
+    if not isinstance(prior_context["verifierContext"], dict):
+        return "indeterminate", "prior-disposition-proof-unavailable"
     prior_context["verifierContext"]["paymentPhaseIndex"] = phase_index
+    if isinstance(prior_payment, dict):
+        prior_context["verifierContext"]["authenticatedSessionContext"] = (
+            copy.deepcopy(prior_payment.get("sessionContext"))
+        )
     prior_pipeline_status, _, prior_effective, prior_definition = (
         validate_effective_pipeline(prior_context, prior_artifact)
     )
@@ -1613,6 +1628,11 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
         if evidence_refs != [] or resolved.get("authorizationJournalClosed") is not True:
             return "fail", "prior-disposition-proof-invalid"
     elif state == "closed-cannot-settle":
+        prior_payment_status, _ = validate_payment(
+            prior_context, prior_artifact, unavailable
+        )
+        if prior_payment_status != "pass":
+            return "fail", "prior-disposition-proof-invalid"
         materials = resolved.get("reconciliationEvidence")
         if (
             not isinstance(evidence_refs, list)
@@ -1654,27 +1674,15 @@ def validate_replacement(context: dict, unavailable: set[str]) -> tuple[str, str
                 or not isinstance(material_nonce, str)
             ):
                 return "fail", "prior-disposition-proof-invalid"
-            payer = prior_payment.get("payer") if isinstance(prior_payment, dict) else None
-            payee = prior_payment.get("payee") if isinstance(prior_payment, dict) else None
-            authorization = {
-                "jobId": prior.get("jobId"),
-                "phaseIndex": phase_index,
-                "phaseKind": expected_phase,
-                "railId": prior_selection.get("railId"),
-                "resource": prior_selection.get("parameters", {}).get("resource"),
-                "payer": payer.get("payingKey") if isinstance(payer, dict) else None,
-                "payee": payee.get("payeeAddress") if isinstance(payee, dict) else None,
-                "paymentAmount": (
-                    prior_payment.get("amount")
-                    if isinstance(prior_payment, dict) else None
-                ),
-            }
+            payment_authorization = prior_payment.get("paymentAuthorization")
+            if not isinstance(payment_authorization, dict):
+                return "fail", "prior-disposition-proof-invalid"
             expected_event = {
-                **authorization,
+                **generator.unsigned(payment_authorization, "signature"),
                 "outcome": "cannot-settle",
-                "authorizationRef": generator.hash_hex({
-                    "priorPaymentAuthorization": authorization
-                }),
+                "authorizationRef": generator.artifact_hash(
+                    payment_authorization, "signature"
+                ),
             }
             if not isinstance(observation, dict) or set(observation) != {
                 "fixtureSettlementObservationVersion", "scope", "observer",
@@ -1843,6 +1851,53 @@ def validate_payment(
         )
     ):
         return "fail", "paying-key-not-authorized"
+    authorization = payment.get("paymentAuthorization")
+    authorization_nonce = (
+        authorization.get("authorizationNonce")
+        if isinstance(authorization, dict) else None
+    )
+    if not isinstance(authorization_nonce, str) or not authorization_nonce:
+        return "fail", "payment-authorization-invalid"
+    expected_authorization = {
+        "fixturePaymentAuthorizationVersion": "1",
+        "authorizationId": generator.hash_hex({
+            "fixtureAuthorizationAttempt": agreement.get("jobId"),
+            "phaseIndex": context["verifierContext"]["paymentPhaseIndex"],
+            "nonce": authorization_nonce,
+        }),
+        "authorizationNonce": authorization_nonce,
+        "agreementHash": generator.hash_hex(
+            generator.unsigned(agreement, "signatures")
+        ),
+        "jobId": agreement.get("jobId"),
+        "phaseIndex": context["verifierContext"]["paymentPhaseIndex"],
+        "phaseKind": payment.get("rail", {}).get("phaseHandler"),
+        "railId": agreement.get("terms", {}).get("rail", {}).get("railId"),
+        "resource": agreement.get("terms", {}).get("rail", {}).get(
+            "parameters", {}
+        ).get("resource"),
+        "payer": paying_key,
+        "payee": payee.get("payeeAddress"),
+        "paymentAmount": payment.get("amount"),
+    }
+    if (
+        not isinstance(authorization, dict)
+        or set(authorization) != {*expected_authorization, "signature"}
+        or generator.unsigned(authorization, "signature") != expected_authorization
+        or not isinstance(authorization.get("signature"), str)
+    ):
+        return "fail", "payment-authorization-invalid"
+    try:
+        authorization_signature_valid = generator.verify_ed25519(
+            key_bytes(paying_key),
+            b64url_decode(authorization["signature"]),
+            generator.FIXTURE_PAYMENT_AUTHORIZATION_PREFIX
+            + generator.artifact_hash(authorization, "signature").encode("ascii"),
+        )
+    except (TypeError, ValueError):
+        authorization_signature_valid = False
+    if not authorization_signature_valid:
+        return "fail", "payment-authorization-invalid"
     return "pass", "verified"
 
 
@@ -2761,6 +2816,17 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
         event["payee"] = runtime_destination
         execution["settlementObservation"] = (
             generator.fixture_settlement_observation(event)
+        )
+        changed["paymentInput"]["paymentAuthorization"] = (
+            generator.fixture_payment_authorization(
+                agreement_value=changed["agreement"],
+                phase_index=changed["verifierContext"]["paymentPhaseIndex"],
+                phase_kind=changed["paymentInput"]["rail"]["phaseHandler"],
+                rail_ref=changed["agreement"]["terms"]["rail"],
+                payer=generator.SECONDARY_PAYER_CLAIM,
+                payee=runtime_destination,
+                payment_amount=changed["paymentInput"]["amount"],
+            )
         )
         self.assertEqual(
             validate_terminal(

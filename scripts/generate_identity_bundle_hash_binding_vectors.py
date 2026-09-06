@@ -46,6 +46,9 @@ FIXTURE_OBSERVATION_PREFIX = b"fixture-only:dacs-390-native-observation:v1:"
 FIXTURE_SETTLEMENT_OBSERVATION_PREFIX = (
     b"fixture-only:dacs-390-settlement-observation:v1:"
 )
+FIXTURE_PAYMENT_AUTHORIZATION_PREFIX = (
+    b"fixture-only:dacs-390-payment-authorization:v1:"
+)
 
 ARTIFACTS = (
     "agreement",
@@ -578,6 +581,48 @@ def fixture_settlement_observation(
     }
 
 
+def fixture_payment_authorization(
+    *,
+    agreement_value: dict[str, Any],
+    phase_index: int,
+    phase_kind: str,
+    rail_ref: dict[str, Any],
+    payer: str,
+    payee: str,
+    payment_amount: dict[str, Any],
+    authorization_nonce: str = "attempt-1",
+) -> dict[str, Any]:
+    """Sign one unique fixture payment-authorization attempt with its paying key."""
+
+    value: dict[str, Any] = {
+        "fixturePaymentAuthorizationVersion": "1",
+        "authorizationId": hash_hex({
+            "fixtureAuthorizationAttempt": agreement_value["jobId"],
+            "phaseIndex": phase_index,
+            "nonce": authorization_nonce,
+        }),
+        "authorizationNonce": authorization_nonce,
+        "agreementHash": hash_hex(unsigned(agreement_value, "signatures")),
+        "jobId": agreement_value["jobId"],
+        "phaseIndex": phase_index,
+        "phaseKind": phase_kind,
+        "railId": rail_ref["railId"],
+        "resource": rail_ref.get("parameters", {}).get("resource"),
+        "payer": payer,
+        "payee": payee,
+        "paymentAmount": copy.deepcopy(payment_amount),
+    }
+    signing_key = (
+        SECONDARY_PAYER_KEY if payer == SECONDARY_PAYER_CLAIM else KEYS["buyer"]
+    )
+    value["signature"] = b64url(sign_ed25519(
+        signing_key,
+        FIXTURE_PAYMENT_AUTHORIZATION_PREFIX
+        + hash_hex(value).encode("ascii"),
+    ))
+    return value
+
+
 def set_fixture_evidence(
     receipt: dict[str, Any],
     native_receipt: dict[str, Any],
@@ -1107,20 +1152,11 @@ def cannot_settle_evidence(
     )
     payer = prior_payment_input["payer"]["payingKey"]
     payee = prior_payment_input["payee"]["payeeAddress"]
-    authorization = {
-        "jobId": prior_agreement["jobId"],
-        "phaseIndex": phase_index,
-        "phaseKind": handler,
-        "railId": selection["railId"],
-        "resource": selection.get("parameters", {}).get("resource"),
-        "payer": payer,
-        "payee": payee,
-        "paymentAmount": copy.deepcopy(prior_payment_input["amount"]),
-    }
+    payment_authorization = prior_payment_input["paymentAuthorization"]
     cannot_settle_event = {
-        **authorization,
+        **unsigned(payment_authorization, "signature"),
         "outcome": "cannot-settle",
-        "authorizationRef": hash_hex({"priorPaymentAuthorization": authorization}),
+        "authorizationRef": artifact_hash(payment_authorization, "signature"),
     }
     logical_address = (
         f"dacs4:payment:{prior_agreement['jobId']}:"
@@ -1184,6 +1220,7 @@ def scenario(
     *,
     prior_agreement: dict[str, Any] | None = None,
     prior_payment_input: dict[str, Any] | None = None,
+    prior_verifier_context: dict[str, Any] | None = None,
     disposition: dict[str, Any] | None = None,
     sealed: bool = False,
     alternative: bool = False,
@@ -1305,6 +1342,15 @@ def scenario(
         "sessionContext": copy.deepcopy(session_context),
         "identityBindingCompanions": copy.deepcopy(companions),
     }
+    payment_input["paymentAuthorization"] = fixture_payment_authorization(
+        agreement_value=signed_agreement,
+        phase_index=payment_phase_index,
+        phase_kind=handler,
+        rail_ref=selected_ref,
+        payer=payment_input["payer"]["payingKey"],
+        payee=payment_input["payee"]["payeeAddress"],
+        payment_amount=payment_input["amount"],
+    )
     terminal, terminal_authority = terminal_bundle(
         job_id,
         signed_listing,
@@ -1404,10 +1450,12 @@ def scenario(
     if (
         prior_agreement is not None
         and prior_payment_input is not None
+        and prior_verifier_context is not None
         and disposition is not None
     ):
         result["priorAgreement"] = copy.deepcopy(prior_agreement)
         result["priorPaymentInput"] = copy.deepcopy(prior_payment_input)
+        result["priorVerifierContext"] = copy.deepcopy(prior_verifier_context)
         prior_reference = disposition_reference(disposition)
         result["priorPaymentDisposition"] = {
             "artifact": copy.deepcopy(disposition),
@@ -1683,6 +1731,18 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         material["settlementObservation"] = fixture_settlement_observation(
             material["settlementObservation"]["event"]
         )
+    elif action == "prior-payment-authorization":
+        authorization = context["priorPaymentInput"]["paymentAuthorization"]
+        payer = authorization["payer"]
+        signing_key = (
+            SECONDARY_PAYER_KEY
+            if payer == SECONDARY_PAYER_CLAIM else KEYS["buyer"]
+        )
+        authorization["signature"] = b64url(sign_ed25519(
+            signing_key,
+            FIXTURE_PAYMENT_AUTHORIZATION_PREFIX
+            + artifact_hash(authorization, "signature").encode("ascii"),
+        ))
     elif action.startswith("terminal-bundle-receipt-evidence:"):
         variant = action.split(":", 1)[1]
         mutate_fixture_evidence(
@@ -1702,6 +1762,17 @@ def resign_context(context: dict[str, Any], action: str) -> None:
         rail = context["paymentInput"]["rail"]
         rail["signature"] = component_signature(
             rail, RAIL_DOMAIN, "orchestrator"
+        )
+    elif action == "payment-authorization":
+        payment = context["paymentInput"]
+        payment["paymentAuthorization"] = fixture_payment_authorization(
+            agreement_value=context["agreement"],
+            phase_index=context["verifierContext"]["paymentPhaseIndex"],
+            phase_kind=payment["rail"]["phaseHandler"],
+            rail_ref=context["agreement"]["terms"]["rail"],
+            payer=payment["payer"]["payingKey"],
+            payee=payment["payee"]["payeeAddress"],
+            payment_amount=payment["amount"],
         )
     elif action == "disposition":
         value = context["priorPaymentDisposition"]["artifact"]
@@ -2193,7 +2264,8 @@ def build_vectors() -> list[dict[str, Any]]:
             scenario_name="identityBoundPayeeAgreement", stage="payment",
             mutations=[set_mutation([
                 "agreement", "terms", "payoutBindings", 0, "payeeAddress"
-            ], CLAIMS["buyer"])], resign=["agreement-chain"], reason="payout-binding-invalid",
+            ], CLAIMS["buyer"])], resign=["agreement-chain"],
+            reason="payout-destination-mismatch",
         ),
         vector(
             "identity-bound-payee-payout-rail-mismatch", "fail",
@@ -2512,6 +2584,26 @@ def build_vectors() -> list[dict[str, Any]]:
             reason="prior-disposition-proof-invalid",
         ),
         vector(
+            "closed-cannot-settle-observation-cannot-replay-across-attempts", "fail",
+            scenario_name="identityBoundPayeeCannotSettle", stage="commit",
+            mutations=[
+                set_mutation([
+                    "priorPaymentInput", "paymentAuthorization",
+                    "authorizationNonce",
+                ], "attempt-2"),
+                set_mutation([
+                    "priorPaymentInput", "paymentAuthorization",
+                    "authorizationId",
+                ], hash_hex({
+                    "fixtureAuthorizationAttempt": JOB_IDS["prior"],
+                    "phaseIndex": 3,
+                    "nonce": "attempt-2",
+                })),
+            ],
+            resign=["prior-payment-authorization"],
+            reason="prior-disposition-proof-invalid",
+        ),
+        vector(
             "completed-terminal-empty-settlement-evidence-rejected", "fail",
             scenario_name="identityBoundAgreement", stage="terminal",
             mutations=[set_mutation(
@@ -2553,8 +2645,37 @@ def build_vectors() -> list[dict[str, Any]]:
                     "executionAuthority", "settlementObservation", "event", "payee",
                 ], "demos:runtime-payee-destination"),
             ],
-            resign=["terminal-settlement-observation:0"],
+            resign=["payment-authorization", "terminal-settlement-observation:0"],
             reason="verified",
+        ),
+        vector(
+            "payee-bound-alternate-signed-destination-verified", "pass",
+            scenario_name="identityBoundPayeeAgreement", stage="terminal",
+            mutations=[
+                set_mutation([
+                    "agreement", "terms", "payoutBindings", 0, "payeeAddress",
+                ], "demos:alternate-signed-payout"),
+                set_mutation([
+                    "paymentInput", "payee", "payeeAddress",
+                ], "demos:alternate-signed-payout"),
+                set_mutation([
+                    "verifierContext", "terminalAuthority", "settlements", 0,
+                    "executionAuthority", "settlementObservation", "event", "payee",
+                ], "demos:alternate-signed-payout"),
+            ],
+            resign=[
+                "agreement-chain", "payment-authorization",
+                "terminal-settlement-observation:0",
+            ],
+            reason="verified",
+        ),
+        vector(
+            "malformed-supplied-companion-is-not-missing-authority", "error",
+            scenario_name="identityBoundAgreement", stage="payment",
+            mutations=[set_mutation([
+                "paymentInput", "identityBindingCompanions",
+            ], [{}])],
+            reason="malformed-input",
         ),
         vector(
             "terminal-signed-settlement-payer-contradiction-rejected", "fail",
@@ -2773,7 +2894,8 @@ def build() -> dict[str, Any]:
     scenarios["identityBoundPayeeReplacement"] = scenario(
         "identityBoundPayeeAgreement", JOB_IDS["replacement"],
         prior_agreement=prior["agreement"],
-        prior_payment_input=prior["paymentInput"], disposition=disposition,
+        prior_payment_input=prior["paymentInput"],
+        prior_verifier_context=prior["verifierContext"], disposition=disposition,
         alternative=True,
         selection="dem",
         listing_id=replacement_listing_id,
@@ -2789,6 +2911,7 @@ def build() -> dict[str, Any]:
         JOB_IDS["replacement"],
         prior_agreement=prior["agreement"],
         prior_payment_input=prior["paymentInput"],
+        prior_verifier_context=prior["verifierContext"],
         disposition=cannot_settle,
         alternative=True,
         selection="dem",

@@ -1178,7 +1178,7 @@ def validate_ebfab(
         pipeline = effective_pipeline
     phase_set = SUPPORTED_PHASES
     if additional_commit_phase is not None:
-        if additional_commit_phase not in ADDITIVE_COMMIT_PHASES:
+        if not _string_member(additional_commit_phase, ADDITIVE_COMMIT_PHASES):
             return (False, "additional commitment phase is unsupported", None)
         phase_set = phase_set | {additional_commit_phase}
     summary = bundle.get("phaseSummary")

@@ -2521,6 +2521,25 @@ class IdentityBundleHashBindingVectorTests(unittest.TestCase):
                         )
                     self.assertNotEqual(verdict, "pass")
 
+        context = materialize(self.data, {
+            "scenario": "identityBoundAgreement",
+            "commitment": "finality",
+            "stage": "terminal",
+        })
+        authority = terminal_reputation_authority(
+            context, "identityBoundAgreement"
+        )
+        for malformed in (7, [], {}):
+            with self.subTest(additional_commit_phase=malformed):
+                malformed_authority = copy.deepcopy(authority)
+                malformed_authority["additionalCommitPhase"] = malformed
+                self.assertFalse(
+                    reputation_reference._tagged_copy_valid_for_derive({
+                        "bundle": context["terminalInput"]["bundle"],
+                        "ebfabAuthority": malformed_authority,
+                    })
+                )
+
     def test_reputation_counting_executes_only_after_identity_admission(self):
         for artifact in generator.STRONG_ARTIFACTS:
             context = materialize(self.data, {

@@ -13,20 +13,28 @@ The format used per release:
 
 ## [Unreleased]
 
-### Fixed — cross-stage IdentityBundle hash encoding
+### Added — distinct identity-bound agreement paths
 
-- **One current `bundleHash` wire form** (CORE §B.2 IBH-1..IBH-6; #378) —
-  `CompositeVerificationRecord`, `AgreementParty`, payment-party,
-  `SessionParty`, and `BundleParty` values now use exactly 64 lowercase
-  hexadecimal characters with no `sha256:` prefix. A narrow reader preserves
-  previously signed DACS-3
-  agreement bytes authenticated by the legacy commitment type, parses the
-  historical prefix only after verification, and projects the same digest into
-  a bare DACS-5 terminal field. Current prefix insertion/removal, wrong digest,
-  role/claim substitution, and normalization-before-signature are rejected.
-  The earlier signed payee-destination corpus is machine-readably marked as a
-  historical prefixed-hash profile; current conformance independently derives
-  the digest from a concrete presentation-omitted `IdentityBundle`.
+- **Identity-bound agreement artifacts and dispatch** (CORE §B.2
+  IBH-1..IBH-6; DACS-1 through DACS-5; #390) — proposes the additive
+  `IdentityBoundAgreementDocument` and
+  `IdentityBoundPayeeAgreementDocument`, each with an exclusive version
+  discriminator, registered signature domain, and signed Listing commitment
+  phase. Exact four-way phase/artifact dispatch is enforced before commitment,
+  payment, terminal admission, or reputation counting.
+- **Authenticated cross-stage identity proof** — the new nested
+  `IdentityBoundAgreementParty` carries a bare recomputed IdentityBundleHash.
+  New phase-specific companions transport complete signed IdentityBundles and
+  CVRs, which consumers verify and uniquely join by agreement-derived role,
+  primary claim, `vetRecordRef`, job, presentation nonce, and digest. Missing
+  authority remains indeterminate; authenticated contradictions reject.
+- **Historical compatibility remains byte-stable** — `AgreementDocument`,
+  `PayeeBoundAgreementDocument`, `AgreementParty`, CVR, payment/session/bundle
+  carriers, and both commitment-record forms keep their released meanings.
+  Commitment kind does not select agreement era, historical prefixed party
+  hashes remain valid, and the existing payee corpus is not superseded. The
+  two new contracts are proposed without allocating competing per-stage minor
+  release numbers.
 
 ### Fixed — DACS-X conformance provenance
 

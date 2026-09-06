@@ -636,6 +636,7 @@ type PhaseType =
   // DACS-3
   | "negotiate-fixed-price" | "negotiate-rfq" | "negotiate-sealed-envelope" | "negotiate-sealed-envelope-procurement"
   | "commit-agreement" | "commit-payee-bound-agreement"
+  | "commit-identity-bound-agreement" | "commit-identity-bound-payee-agreement"
   // DACS-4
   | "pay-evm-erc20" | "pay-solana-spl"
   | "pay-cross-chain-htlc" | "pay-cross-chain-liquidity-tank"
@@ -656,6 +657,8 @@ Per-kind parameter shapes are normative in the owning chapter:
 | negotiate-sealed-envelope-procurement | {commitDeadline, revealWindow, selectionRule, auctionMode, channelSubnet?}; `auctionMode` MUST be `"procurement"` and is defined in §8.4.3 | 8 |
 | commit-agreement | none | 8 |
 | commit-payee-bound-agreement | none | 8 |
+| commit-identity-bound-agreement | none | 8 |
+| commit-identity-bound-payee-agreement | none | 8 |
 | pay-alternative | {alternatives: PaymentRailRef[]} (DACS-4 APR-1; listing projection only, never executable) | 9 |
 | pay-* | {rail: string} (railId) | 9 |
 | deliver-* | none (details come from the listing’s DeliverableSpec) | 9 |
@@ -669,6 +672,13 @@ Verifiers MUST:
 - recompute the canonical form, listing hash, and domain-separated signed bytes;
 - resolve signature.signer to the corresponding key (via seller.identity.claims, then via DACS-2 verification if a verifiable identifier);
 - verify the signature against signed_bytes.
+
+A transacting reader MUST validate every pipeline phase against its supported
+closed `PhaseType` set before negotiation, commitment, payment, or irreversible
+delivery. In particular, the two identity-bound commitment phases are distinct
+signed Listing values. A reader that does not implement them MUST refuse the
+Listing as unsupported and MUST NOT rename either phase to an older commitment
+phase or discard it and continue.
 
 If signature.algorithm is sr1-aggregate, the signer’s IdentityBundle.presentation MUST be of kind sr1-root and the signature is the SR-1 root signature over signed_bytes — the SR-1 aggregate signature scheme applies to the same domain-separated payload, not directly to the listing hash.
 

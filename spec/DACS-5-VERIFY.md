@@ -4,7 +4,7 @@
 
 ## Chapter 10 — DACS-5: Verify
 
-**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.6** on the common DACS v0.1 baseline. v0.6 requires the shared bare-lowercase `IdentityBundleHash` in current session and terminal party records and defines the exact typed projection for an authenticated legacy DACS-3 agreement. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
+**Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
 ### 10.1 Abstract
 
@@ -60,7 +60,7 @@ type SessionState =
   | "substrate-failure-paused" | "failed-substrate"
 type SessionParty = {
   role: "buyer" | "seller" | "orchestrator"
-  bundleHash: IdentityBundleHash             // exact bare-lowercase IBH-1 digest of the verified IdentityBundle (CORE §B.2)
+  bundleHash: string                         // sha256 of the verified IdentityBundle
   primaryClaim: ClaimReference               // bundle.presentedBy
   vetRecordRef?: AttestationRef              // post-Vet
 }
@@ -147,8 +147,11 @@ Transitions are deterministic and forward-only. The orchestrator advances state 
 - (ST-11) **Completed-bundle audit gate.** After the last successful settle/rate step, the session enters `audit-pending`; it does not enter `finalised` merely because commercial performance is complete. During `audit-pending`, the producer MUST:
   1. obtain and verify a CORE §5.1 `finalized` `AnchorReceipt` for every required DACS-2 composite record, the DACS-3 commitment, and every DACS-4 settlement/delivery evidence record;
   2. independently resolve each receipt's native address, recompute the referenced artifact's canonical content hash, and match its logical/session bindings;
-  3. construct and obtain all required signatures on the completed bundle, anchor the role-specific copy under §10.4.2, and obtain a verified `finalized` receipt for the bundle itself; and
-  4. publish the applicable logical→native `BundleBinding` on a write-input substrate.
+  3. resolve the exact signed Listing and agreement, enforce their four-way
+     commitment phase/artifact/domain dispatch, and for an identity-bound phase
+     obtain `verified` from the terminal proof above;
+  4. construct and obtain all required signatures on the completed bundle, anchor the role-specific copy under §10.4.2, and obtain a verified `finalized` receipt for the bundle itself; and
+  5. publish the applicable logical→native `BundleBinding` on a write-input substrate.
 
   Only then may `audit-pending → finalised`. External indexer visibility never gates this transition. A rail-final payment whose `SettlementEvidence` anchor is pending remains a successful payment under DACS-4 PC-7 while the session remains `audit-pending`; the producer MUST retry only the idempotent evidence anchor and MUST NOT resubmit payment. If a required anchor has an established `dropped`, `replaced`, `expired`, or `reorged` state, or an `indeterminate` observation disposition over its preserved state, the producer follows CORE §5.1 reconciliation and remains non-terminal. SR-2 unavailability transitions `audit-pending → substrate-failure-paused`; ST-7 resumes to `audit-pending` or, after its bounded retry period, transitions to `failed-substrate`. It MUST NOT rewrite a rail-final payment as a payment failure or attribute the substrate failure to either party.
 
@@ -230,7 +233,7 @@ type BundleParty = {
 
   role: "buyer" | "seller" | "orchestrator"
 
-  bundleHash: IdentityBundleHash
+  bundleHash: string
 
   primaryClaim: ClaimReference
 
@@ -264,24 +267,6 @@ type BundleSignature = {
 
 }
 ```
-
-**Cross-stage IdentityBundle binding.** Every current `SessionParty.bundleHash`
-and `BundleParty.bundleHash` MUST satisfy CORE §B.2 IBH-1..IBH-3. Before a
-terminal bundle is accepted, a consumer MUST resolve each buyer and seller's
-signed IdentityBundle, recompute its IBH-1 digest, and find exactly one
-`AgreementParty` with the same role and canonical primary claim. The digest
-must match the AgreementParty, SessionParty and BundleParty. An orchestrator
-that is not an agreement party is checked between its resolved IdentityBundle,
-SessionParty and BundleParty instead.
-
-For an agreement authenticated by a legacy DACS-3 `CommitmentRecord`, the
-AgreementParty alone MAY use the exact historical `sha256:<64-lowercase-hex>`
-form after the complete IBH-4 validation. The consumer compares its tagged
-decoded digest at this one boundary and emits the SessionParty and BundleParty
-values as bare lowercase hex. It MUST preserve the original agreement and its
-reference unchanged. Missing resolution, ambiguous party matching, unsupported
-legacy context, or a role, primary-claim or digest mismatch blocks terminal
-closure; prefix insertion/removal never repairs a signed artifact.
 
 **FaultAttestationBundle (v0.3 production type).** The absolute-fault variant of the end-of-session artifact. Identical to `AttestationBundle` in every shared field's meaning; it differs in exactly two ways: its version literal is `faultBundleVersion` (its structural discriminator — CORE §11.1.2 new-type refusal), and it carries the REQUIRED hashed `faultedParty`. It signs under its own `dacs-fault-bundle:v1:` domain (§B.7).
 
@@ -336,6 +321,55 @@ type EvidenceBoundFaultAttestationBundle = {
 A consumer that does not support `EvidenceBoundFaultAttestationBundle` MUST reject its discriminator as unsupported and MUST NOT strip or rename it to reinterpret the object as either older bundle type (CORE §11.1.2). Conversely, an SEB-conforming consumer MUST NOT claim SEB validation for an `AttestationBundle` or `FaultAttestationBundle`; those released types retain their v0.3 validity semantics.
 
 Except for discriminator, signature-domain, extended-pointer, and SEB-specific rules, every rule naming `FaultAttestationBundle` also applies to `EvidenceBoundFaultAttestationBundle`. For pair reconciliation both are absolute-fault types: any pair of absolute-fault copies uses the `faultedParty` plus outcome-class rule, including a mixed pair of these two types. Only an `EvidenceBoundFaultAttestationBundle` copy makes an SEB claim.
+
+**Identity-bound terminal verification input.** The existing terminal bundle
+types and `agreementRef` remain unchanged. A consumer combines them with
+resolved artifacts only when the signed Listing selects the stronger path:
+
+```
+type IdentityBoundTerminalCompanion = {
+  identityBundle: IdentityBundle
+  compositeRecord?: CompositeVerificationRecord
+}
+
+type IdentityBoundTerminalVerificationInput = {
+  bundle: AttestationBundle | FaultAttestationBundle | EvidenceBoundFaultAttestationBundle
+  listing: Listing
+  agreement: IdentityBoundAgreementArtifact
+  commitment: AgreementCommitmentRecord
+  identityBindingCompanions: IdentityBoundTerminalCompanion[]
+  sessionContext: SessionContext
+}
+```
+
+The terminal consumer MUST verify the Listing signature and find exactly one
+agreement commitment phase. It MUST require the matching signed
+`phaseSummary` entry, resolve `agreementRef`, and enforce DACS-3's four-way
+phase/artifact/domain matrix before admitting the bundle. A terminal bundle
+signature or caller type label cannot upgrade the fetched agreement.
+
+For an identity-bound phase, each buyer/seller role comes from the verified
+agreement. The consumer MUST run CORE IBH-1..IBH-5, match exactly one terminal
+party and one companion to each agreement party, and resolve the CVR only
+through that party's `vetRecordRef`. It also matches the authenticated
+`SessionParty` value retained by the active producer when performing ST-11.
+Caller-supplied role or digest labels are ignored.
+
+A distinct orchestrator is identified by the authenticated commitment
+authority, not by a companion label or SR-2 deployer. It MUST match exactly one
+`BundleParty` with role `orchestrator` and a valid session-bound IdentityBundle
+companion whose recomputed digest equals that terminal party's `bundleHash`.
+It MUST be distinct from the buyer and seller claims. Because a separate
+orchestrator is not an `IdentityBoundAgreementParty`, it has no agreement
+`vetRecordRef`; a supplied CVR cannot invent that join. If one of the agreement
+parties is also the orchestrator, no duplicate terminal party or companion is
+created.
+
+A resolved malformed proof, signature/domain failure, duplicate join, or
+job/phase/role/claim/hash contradiction is `rejected`. Missing or unavailable
+otherwise-consistent authority is `indeterminate`. Neither result may enter
+terminal closure or any reputation count. Only `verified` admits the bundle;
+no producer boolean or previously emitted `identityBindingDecision` is proof.
 
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
@@ -518,6 +552,21 @@ the raw Listing placeholder is not an executed phase. This gate applies even to
 released bundle shapes because the new Listing phase was unknown—and therefore
 unusable—to pre-APR readers; it does not reinterpret any historical valid
 Listing or bundle bytes.
+
+**Agreement dispatch and identity-bound admission.** For every terminal bundle
+that carries `agreementRef`, the producer and consumer MUST resolve and verify
+the signed Listing, fetched agreement, and commitment record before accepting
+the bundle as terminal evidence. They apply DACS-3's exact four-way signed
+phase/artifact/domain dispatch independently of the commitment-record form. An
+unsupported, missing, dual, renamed, or mismatched discriminator is rejected
+before terminal admission or counting; neither `agreementRef` nor a bundle type
+label establishes an agreement schema. When the signed phase selects either
+identity-bound artifact, both sides MUST run the §10.4
+`IdentityBoundTerminalVerificationInput` procedure and obtain `verified` before
+constructing, admitting, closing on, or counting the bundle. Missing or
+unavailable otherwise-consistent proof is `indeterminate` and leaves the
+session open or the bundle uncounted. Existing agreement phases retain their
+historical validation and require no new companion fields.
 
 A failed or aborted bundle MUST be produced when the session reaches its terminal state. A completed bundle MUST instead be constructed, signed, anchored, finalized, and made independently resolvable during `audit-pending`; its finalized receipt is the prerequisite for the `finalised` terminal transition (ST-11). The bundle MUST include references to:
 
@@ -743,6 +792,13 @@ The job-bound `derive_job_bound` path retains the released metric semantics but 
 ```
 derive_settlement_verified(party, bundles, windowStart, windowEnd):
 
+  # Resolve each copy's signed Listing, agreement, and commitment before it can
+  # enter scope. Exact DACS-3 four-way dispatch applies for every agreementRef.
+  # For either identity-bound phase, run §10.4 identity-bound terminal
+  # verification against actual bundle/CVR companions. Rejected, unsupported,
+  # or indeterminate copies are not admitted and therefore cannot be counted.
+  bundles := [b for b in bundles where terminal_agreement_admission(b) == verified]
+
   scoped := [b for b in bundles
 
               where party in {p.primaryClaim for p in b.parties}
@@ -778,8 +834,11 @@ derive_settlement_verified(party, bundles, windowStart, windowEnd):
     # (2b) Type-specific validation: require exactly one supported discriminator and its matching
     #     signature domain; on either absolute-fault type require faultedParty consistency; on EBFAB
     #     additionally run SEB-1..SEB-6. Invalid returned content is rejected, never absence and never
-    #     reinterpreted as an older type by stripping or renaming the discriminator.
-    copies := [b for b in copies where valid_type_domain_and_signatures(b)
+    #     reinterpreted as an older type by stripping or renaming the discriminator. Re-run the
+    #     exact agreement dispatch and identity-bound terminal admission above; no terminal type
+    #     label or prior producer decision can substitute for fetched proof.
+    copies := [b for b in copies where terminal_agreement_admission(b) == verified
+               AND valid_type_domain_and_signatures(b)
                AND anchoredByRole_matches_resolution_context(b)
                AND faultedParty_consistent_if_absolute(b)
                AND seb_valid_if_ebfab(b)]

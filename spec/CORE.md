@@ -2,7 +2,7 @@
 
 **Introduction and DACS-1 through DACS-5**
 
-> Draft — **DACS Core v0.3** (on the first-public-release DACS v0.1 baseline). v0.3 defines one byte-exact IdentityBundle digest wire profile across stages and a narrow typed reader for legacy DACS-3 agreement values; v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
+> Draft — **DACS Core v0.2** (on the first-public-release DACS v0.1 baseline). v0.2 defines the normative SR-2 write lifecycle, portable anchor receipts, and cross-stage anchoring gates. See [CHANGELOG](../CHANGELOG.md) for normative change history.
 
 ## About this document
 
@@ -275,54 +275,49 @@ In every case `{jobId}` is a ULID (no reserved delimiters), `{scheme}` is a rese
 - **Canonical form.** RFC 8785 JSON Canonicalization Scheme (JCS) serialisation of the document with the signature(s) field omitted.
 - **Content hash.** sha256 hex of the canonical form.
 
-**IdentityBundle digest wire profile (IBH-1..IBH-6).** `IdentityBundleHash`
-is the shared type used when one DACS artifact binds the exact DACS-1
-IdentityBundle presented by a party. It is not an artifact `contentHash`
-envelope and therefore does not carry the `sha256:` tag.
+**Identity-bound agreement digest profile (IBH-1..IBH-6).**
+`IdentityBundleHash` is the hash type used by DACS-3
+`IdentityBoundAgreementParty`. It is not an artifact `contentHash` envelope and
+does not carry a `sha256:` tag. Existing fields on `AgreementParty`,
+`CompositeVerificationRecord`, `PaymentPhaseInput`, `SessionParty`, and
+`BundleParty` remain `string` with their previously specified validity rules.
+As a wire alias, `type IdentityBundleHash = string`; IBH-1 and IBH-2 supply its
+complete lexical and derivation constraints wherever that alias is used.
 
 - **(IBH-1) Digest derivation.** Compute `bundle_digest =
   SHA-256(UTF8(JCS(identity_bundle_without_presentation)))` after applying the
   DACS canonical-form rules. `IdentityBundleHash` encodes those 32 bytes as
   exactly 64 lowercase hexadecimal characters.
-- **(IBH-2) Current wire form.** A current producer MUST emit the exact bare
-  `IdentityBundleHash`. The `sha256:` prefix, uppercase hexadecimal, whitespace,
-  Base64, multibase, and every other spelling are invalid in a current field.
-  A current reader MUST validate the string before comparing it and MUST NOT
-  insert, remove, lowercase, or otherwise normalise bytes supplied as a current
-  value.
-- **(IBH-3) Shared-field scope.** The current form applies to
-  `CompositeVerificationRecord.bundleHash`, `AgreementParty.bundleHash`,
-  `PaymentPhaseInput.payer.bundleHash`, `PaymentPhaseInput.payee.bundleHash`,
-  `SessionParty.bundleHash`, and `BundleParty.bundleHash`, plus any later field
-  explicitly typed `IdentityBundleHash`. Equality between current fields is
-  byte-for-byte string equality and each value MUST also equal an independently
-  recomputed IBH-1 digest of the resolved IdentityBundle.
-- **(IBH-4) Frozen legacy agreement reader.** A DACS-3 `AgreementArtifact`
-  authenticated by a legacy `CommitmentRecord` MAY carry the exact historical
-  spelling `sha256:` followed by 64 lowercase hexadecimal characters in an
-  `AgreementParty.bundleHash`. A reader MUST first verify the original
-  agreement bytes, party signatures, agreement hash, legacy commitment and its
-  authenticated historical anchor under §8.6. Only then may it parse the suffix
-  into an internal value tagged `legacy-sha256-prefixed`. The original field,
-  agreement hash, signatures and commitment remain unchanged. This exception
-  applies to no DACS-2, DACS-4, or DACS-5 field and to no agreement
-  authenticated by a `FinalityCommitmentRecord`.
-- **(IBH-5) Legacy terminal projection.** When an otherwise-permitted legacy
-  agreement closes under DACS-5, the consumer compares the parsed 32-byte
-  legacy digest with the independently recomputed IdentityBundle digest and
-  emits the terminal `SessionParty.bundleHash` and `BundleParty.bundleHash` in
-  the current bare form. It MUST also match the party role and canonical primary
-  claim across the agreement, resolved IdentityBundle, SessionParty and
-  BundleParty. A mismatch rejects closure. The terminal agreement reference
-  continues to bind the unmodified signed legacy agreement, so this projection
-  does not rewrite history.
-- **(IBH-6) No encoding substitution.** Prefix insertion/removal or any other
-  spelling change inside a signed artifact changes that artifact's canonical
-  bytes and MUST fail its ordinary hash/signature/commitment checks. A consumer
-  MUST NOT use equal decoded digest bytes to reinterpret a current artifact as
-  legacy, upgrade a legacy signed artifact in place, or make two differently
-  encoded current fields compare equal. Unsupported or era-indeterminate legacy
-  context is audit-only and cannot authorize terminal closure.
+- **(IBH-2) Strong wire form.** An `IdentityBoundAgreementParty.bundleHash`
+  MUST be the exact bare `IdentityBundleHash`. The `sha256:` prefix, uppercase
+  hexadecimal, whitespace, Base64, multibase, and every other spelling are
+  invalid. A reader MUST validate the string before comparing it and MUST NOT
+  insert, remove, lowercase, or otherwise normalise supplied bytes.
+- **(IBH-3) Artifact-scoped application.** IBH-1 and IBH-2 apply only after the
+  signed Listing phase selects an identity-bound agreement artifact. They MUST
+  NOT be applied retroactively to an `AgreementDocument` or
+  `PayeeBoundAgreementDocument`, regardless of whether a `CommitmentRecord` or
+  `FinalityCommitmentRecord` authenticates that historical agreement.
+- **(IBH-4) Authenticated bundle proof.** At identity-bound commitment,
+  payment, and terminal verification, a consumer MUST validate each complete
+  IdentityBundle presentation and its verifier-issued session nonce. It MUST
+  recompute IBH-1 from the received bundle with only `presentation` omitted.
+  A producer boolean, asserted digest, caller role, or mutable session label is
+  not proof.
+- **(IBH-5) Exact CVR and party join.** The consumer MUST resolve the
+  `CompositeVerificationRecord` through each identity-bound party's exact
+  `vetRecordRef`. It MUST verify the record hash and signature, then require one
+  unique join on job, authenticated agreement role, canonical primary claim,
+  and recomputed digest. Missing or unavailable consistent authority is
+  `indeterminate`; malformed data, a bad signature, or any resolved
+  contradiction is `rejected`.
+- **(IBH-6) Cross-stage enforcement.** The identity-bound commit handler, every
+  irreversible DACS-4 handler, and every DACS-5 terminal or counting consumer
+  MUST rerun IBH-4 and IBH-5 before action. The signed Listing phase and fetched
+  agreement discriminator/domain select the path. A stronger request MUST NOT
+  accept an older artifact. `verified` permits action, `rejected` forbids it,
+  and `indeterminate` permits no action while preserving that third result when
+  mapped to a boolean `PhaseHandlerResult`.
 
 - **Per-artifact canonical-form template.** Every signed DACS artifact follows the same discipline: canonical form = the JCS serialisation with the artifact's hash-excluded field(s) omitted (normally the signature field); artifact hash = the content hash of that form; signature = over the domain-separated payload per §B.7 — `signed_bytes := <separator> || <artifact hash>` for single-hash separators, composite-payload separators per the §B.7 note — with verifiers reconstructing everything independently (SIG-2). Each artifact's defining section states only the artifact-specific facts: the omitted field(s), the exact domain separator, and any exceptions to this template.
 - **Numeric safe-magnitude constraint.** Every JSON number in a signed or content-hashed DACS document MUST be finite, representable as an IEEE-754 binary64 value, and have magnitude no greater than 2^53−1 (9,007,199,254,740,991). Both integral and fractional numbers are permitted within that bound and MUST be serialised exactly as RFC 8785 §3.2.2.3 specifies; in particular, negative zero serialises as `0`, fixed notation is used for magnitudes from 10^−6 (inclusive) to 10^21 (exclusive), and scientific notation is used outside that interval. NaN and positive or negative Infinity are not JSON numbers and MUST be rejected. Any quantity that may exceed the DACS bound (token IDs, uint256 values, large on-chain counters or block numbers) MUST be carried as a decimal string — or, where ABI conventions apply, a `0x`-prefixed hex string — rather than a bare JSON number. Producers MUST NOT emit, and readers SHOULD reject, a signed or content-hashed document containing a JSON number outside this profile.
@@ -420,6 +415,8 @@ The v0.x registry of domain separators at this revision is closed:
 | DACS-3 channel message | "dacs-channelmsg:v1:" | §8.3.3 |
 | DACS-3 agreement | "dacs-agreement:v1:" | §8.5 |
 | DACS-3 payee-bound agreement | "dacs-payee-bound-agreement:v1:" | §8.5 |
+| DACS-3 identity-bound agreement | "dacs-identity-bound-agreement:v1:" | §8.5 |
+| DACS-3 identity-bound payee agreement | "dacs-identity-bound-payee-agreement:v1:" | §8.5 |
 | DACS-3 commitment record | "dacs-commitment:v1:" | §8.6 |
 | DACS-3 finality commitment record | "dacs-finality-commitment:v1:" | §8.6 |
 | DACS-3 channel transcript | "dacs-transcript:v1:" | §8.7 |
@@ -657,7 +654,7 @@ v0.1 rails are discrete-transaction. Streaming payment rails (Sablier-style, pay
 
 Each per-stage standard specifies forward-compatibility within itself (a later-minor reader handles earlier-minor bundles of the same standard). Cross-version compatibility (a DACS-1 v2 listing pipelined against a DACS-3 v0.1 negotiator) is deferred; pipelines MUST currently use a coherent set of per-stage versions.
 
-**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
+**Version-signalling scope.** Every anchored artifact carries a type-specific `*Version` literal (`dacsVersion`, `bundleVersion`, `faultBundleVersion`, `evidenceBoundFaultBundleVersion`, `agreementVersion`, `payeeBoundAgreementVersion`, `identityBoundAgreementVersion`, `identityBoundPayeeAgreementVersion`, `evidenceVersion`, `ratingVersion`, `resultVersion`) that records the **major** version of that artifact type only; in the v0.x line these are all `"1"`. The listing-validation "dacsVersion supported" gate (§6.3.4 step 2) is therefore a **major-version** check — it rejects a listing whose major the reader does not implement.
 
 The **§11.1.2 additivity contract** makes the major-only signal sufficient for *minor* skew, in both directions, with **no per-artifact minor-version field**:
 

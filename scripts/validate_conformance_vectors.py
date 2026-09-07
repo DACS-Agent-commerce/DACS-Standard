@@ -685,7 +685,8 @@ def validate_ap2_golden_output(
         isinstance(decisions, dict) and "ap2ReferencePass" in decisions
     )
     if not (
-        "ap2EvidenceHash" in settlement
+        "ap2Fixture" in settlement
+        or "ap2EvidenceHash" in settlement
         or "ap2JobId" in settlement
         or has_ap2_decision
     ):
@@ -702,8 +703,8 @@ def validate_ap2_golden_output(
         return errors
 
     fixture_name = settlement["ap2Fixture"]
-    if not isinstance(fixture_name, str):
-        return errors  # The structural fixture-path check reports this.
+    if not isinstance(fixture_name, str) or not fixture_name.strip():
+        return [fail(path, "settlement.ap2Fixture MUST be a non-empty fixture path string")]
     fixture_path = resolve_fixture_path(manifest_dir, fixture_name)
     if fixture_path is None:
         return errors  # The structural fixture-existence check reports this.

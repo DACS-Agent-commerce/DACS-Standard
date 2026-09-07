@@ -245,7 +245,6 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                     "settlement": {
                         "fixture": "conformance/fixtures/settlement.json",
                         "deliveryFixture": "conformance/fixtures/delivery.json",
-                        "ap2Fixture": "conformance/fixtures/ap2.json",
                         "decisions": {"timeout": "indeterminate"},
                     },
                     "dispute": {"decisions": {"opened": "pass"}},
@@ -325,6 +324,20 @@ class ConformanceVectorValidationTests(unittest.TestCase):
             errors = validator.validate_golden_outputs(golden, manifest)
         self.assertEqual(errors, [])
 
+    def test_complete_ap2_golden_group_rejects_unusable_fixture_paths(self):
+        validator = load_vector_validator()
+        for value in (None, "", "   ", 42, {}, []):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+                data = json.loads(golden.read_text())
+                data["settlement"]["ap2Fixture"] = value
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(any(
+                    "settlement.ap2Fixture MUST be a non-empty fixture path string" in error
+                    for error in errors
+                ), errors)
+
     def test_ap2_golden_rejects_stale_hash_job_and_decision_pins(self):
         cases = [
             (
@@ -360,6 +373,71 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                 golden.write_text(json.dumps(data), encoding="utf-8")
                 errors = validator.validate_golden_outputs(golden, manifest)
                 self.assertTrue(any(expected in error for error in errors), errors)
+
+    def test_ap2_golden_pins_are_all_or_none(self):
+        deletions = [
+            (
+                "fixture",
+                lambda settlement: settlement.pop("ap2Fixture"),
+                "ap2Fixture",
+            ),
+            (
+                "hash",
+                lambda settlement: settlement.pop("ap2EvidenceHash"),
+                "ap2EvidenceHash",
+            ),
+            (
+                "job",
+                lambda settlement: settlement.pop("ap2JobId"),
+                "ap2JobId",
+            ),
+            (
+                "decision",
+                lambda settlement: settlement["decisions"].pop(
+                    "ap2ReferencePass"
+                ),
+                "decisions.ap2ReferencePass",
+            ),
+        ]
+        validator = load_vector_validator()
+        for name, delete, expected in deletions:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, _fixture = self._write_ap2_golden_tree(
+                    Path(tmp)
+                )
+                data = json.loads(golden.read_text())
+                delete(data["settlement"])
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(
+                    any(
+                        "settlement AP2 golden is missing" in error
+                        and expected in error
+                        for error in errors
+                    ),
+                    errors,
+                )
+
+    def test_ap2_fixture_alone_is_rejected_as_a_partial_golden_group(self):
+        validator = load_vector_validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            manifest, golden, _fixture = self._write_ap2_golden_tree(Path(tmp))
+            data = json.loads(golden.read_text())
+            data["settlement"] = {
+                "ap2Fixture": data["settlement"]["ap2Fixture"]
+            }
+            golden.write_text(json.dumps(data), encoding="utf-8")
+            errors = validator.validate_golden_outputs(golden, manifest)
+        self.assertTrue(
+            any(
+                "settlement AP2 golden is missing" in error
+                and "ap2EvidenceHash" in error
+                and "ap2JobId" in error
+                and "decisions.ap2ReferencePass" in error
+                for error in errors
+            ),
+            errors,
+        )
 
     def test_ap2_golden_rejects_unsigned_fixture_evidence_drift(self):
         validator = load_vector_validator()

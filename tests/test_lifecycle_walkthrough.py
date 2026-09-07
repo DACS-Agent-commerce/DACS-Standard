@@ -127,6 +127,25 @@ class LifecycleWalkthroughTests(unittest.TestCase):
             with self.subTest(address=bad), self.assertRaises(ValueError):
                 self.module.payment_anchor_tuple(bad)
 
+    def test_phase_indices_are_exact_integers_before_keying_or_comparison(self):
+        for invalid in (True, False, 3.0, -1, 9_007_199_254_740_992):
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(
+                ValueError, "exact non-negative safe integer"
+            ):
+                self.module.require_phase_index(invalid)
+            with self.subTest(settlement=invalid), self.assertRaises(ValueError):
+                self.module.FakeSubstrate().claim_settlement(
+                    "evm:8453:" + "11" * 32,
+                    self.module.JOB_ID,
+                    invalid,
+                )
+
+        stages, context = self.module.build_happy_path(self.module.FakeSubstrate())
+        candidate = copy.deepcopy(context)
+        candidate["bundleBase"]["phaseSummary"][1]["index"] = True
+        with self.assertRaisesRegex(ValueError, "phaseSummary index"):
+            self.module.validate_happy_path(stages, candidate)
+
     def test_cross_stage_references_and_delivery_are_complete(self):
         listing = self.artifacts["listing-minimum-lifecycle"]
         agreement = self.artifacts["agreement-payee-bound-fixed-price"]

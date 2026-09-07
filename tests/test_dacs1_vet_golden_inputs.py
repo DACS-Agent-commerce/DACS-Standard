@@ -1,17 +1,16 @@
 import base64
 import copy
 import hashlib
-import ipaddress
 import json
 import math
 import re
 import subprocess
-import unicodedata
+import sys
 import unittest
+from dataclasses import dataclass
 from pathlib import Path
 from unittest import mock
 
-import idna
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import (
@@ -21,6 +20,20 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from dacs_reference import (  # noqa: E402
+    SAFE_INTEGER,
+    NonceLedger,
+    NonceRejected,
+    canonical_bytes,
+    canonical_equal,
+    canonical_hash,
+    composite_logical_address,
+    exact_safe_integer,
+    parse_claim_reference,
+    presentation_nonce,
+)
+
 FIXTURE = (
     ROOT / "conformance" / "fixtures" / "identity"
     / "dacs1-vet-golden-inputs-v0.1.json"
@@ -31,6 +44,8 @@ BUNDLE_DOMAIN = "dacs-bundle-presentation:v1:"
 RESULT_DOMAIN = "dacs-verifyresult:v1:"
 RECIPE_DOMAIN = "dacs-recipe:v1:"
 COMPOSITE_DOMAIN = "dacs-composite:v1:"
+# This pack retains an explicit deferred-cci-lei compatibility control. It is
+# not the default current v0.1 registry exported by dacs_reference.
 KNOWN_SCHEMES = {
     "key", "lei", "cci-lei", "did", "finra-crd", "domain",
 }
@@ -54,7 +69,7 @@ FINRA_CRD = re.compile(r"^[1-9][0-9]*$")
 DID_IDENTIFIER = re.compile(
     r"^[a-z0-9]+:[A-Za-z0-9._:%-]+(?::[A-Za-z0-9._:%-]+)*$"
 )
-SAFE_INT = 9_007_199_254_740_991
+SAFE_INT = SAFE_INTEGER
 
 
 def fixture_private_key(label):
@@ -75,14 +90,8 @@ RECIPE_STEWARD_REF = public_ref(fixture_private_key("recipe-steward"))
 AUTHORITY_REF = public_ref(fixture_private_key("authority"))
 
 
-def canonical_bytes(value):
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
-
-
 def hash_hex(value):
-    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+    return canonical_hash(value)
 
 
 def b64url_decode(value):
@@ -99,43 +108,8 @@ def b64url_encode(value):
 
 
 def parse_ref(value):
-    if (
-        not isinstance(value, str)
-        or value != unicodedata.normalize("NFC", value)
-        or ":" not in value
-    ):
-        raise ValueError("malformed ClaimReference")
-    scheme, identifier = value.split(":", 1)
-    if scheme not in KNOWN_SCHEMES or not identifier:
-        raise ValueError("unknown or empty ClaimReference")
-    if scheme == "key" and not KEY.fullmatch(identifier):
-        raise ValueError("key identifiers are 32-byte lowercase hex")
-    if scheme in {"lei", "cci-lei"} and not LEI.fullmatch(identifier):
-        raise ValueError("LEI identifiers are exactly 20 uppercase alphanumerics")
-    if scheme == "finra-crd" and not FINRA_CRD.fullmatch(identifier):
-        raise ValueError("FINRA CRD identifiers are canonical positive decimals")
-    if scheme == "did" and not DID_IDENTIFIER.fullmatch(identifier):
-        raise ValueError("DID identifier is not canonical")
-    if scheme == "domain":
-        try:
-            if (
-                not identifier.isascii()
-                or identifier != identifier.lower()
-                or identifier.endswith(".")
-                or idna.encode(
-                    identifier, uts46=False, std3_rules=True
-                ).decode("ascii") != identifier
-            ):
-                raise ValueError("domain identifier is not canonical")
-        except (idna.IDNAError, UnicodeError, ValueError) as error:
-            raise ValueError("domain identifier is not canonical") from error
-        try:
-            ipaddress.ip_address(identifier)
-        except ValueError:
-            pass
-        else:
-            raise ValueError("IP literals are not domain identifiers")
-    return scheme, identifier
+    parsed = parse_claim_reference(value, registered_schemes=KNOWN_SCHEMES)
+    return parsed.identity
 
 
 def all_safe_integers(value):
@@ -299,6 +273,7 @@ def well_formed_result_ref(value):
     return (
         isinstance(anchor, dict)
         and set(anchor) == {"kind", "locator"}
+        and isinstance(anchor.get("kind"), str)
         and anchor.get("kind") in {"storage-program", "ipfs", "https"}
         and isinstance(anchor.get("locator"), str)
         and bool(anchor["locator"])
@@ -322,6 +297,7 @@ def well_formed_attestation_ref(value):
     return (
         isinstance(anchor, dict)
         and set(anchor) == {"kind", "locator"}
+        and isinstance(anchor.get("kind"), str)
         and anchor.get("kind") in {"storage-program", "ipfs", "https"}
         and isinstance(anchor.get("locator"), str)
         and bool(anchor["locator"])
@@ -412,7 +388,177 @@ def authenticated_result_context(document, recipes):
     }
 
 
-def verify_bundle(bundle):
+@dataclass(frozen=True)
+class VetAdmissionCapability:
+    """One verifier-owned, nonce-consuming admission for nested Vet checks."""
+
+    invocation_id: str
+    challenge_id: str
+    nonce: str
+    job_id: str
+    actor: str
+    evaluated_party: str
+    primary_claim: str
+    phase_index: int
+    attempt: int
+    expected_verifier_role: str
+    expected_verifier: str
+    phase_orchestrator: str
+    anchor_writer: str
+    recipe_registry_version: int
+    trusted_now: int
+    session_start: str
+    record_receipt_id: str | None
+    record_anchor_binding: dict | None
+
+
+class VetReferenceRuntime:
+    """Mutable offline runtime; caller payloads cannot reset its nonce ledger."""
+
+    _INVOCATION_FIELDS = {
+        "jobId", "sessionStart", "sessionState", "phaseKind", "phaseIndex",
+        "attempt", "actor", "evaluatedParty", "primaryClaim",
+        "expectedVerifierRole",
+        "expectedVerifier", "phaseOrchestrator", "anchorWriter",
+        "recipeRegistryVersion", "challengeId", "trustedNow",
+        "recordReceiptId", "recordAnchorBinding",
+    }
+
+    def __init__(self, trusted_context):
+        if not isinstance(trusted_context, dict):
+            raise ValueError("trusted Vet context is missing")
+        invocations = trusted_context.get("vetInvocations")
+        receipts = trusted_context.get("authenticatedRecordReceipts")
+        sessions = trusted_context.get("authenticatedSessionStarts")
+        if (
+            not isinstance(invocations, dict)
+            or not isinstance(receipts, dict)
+            or not isinstance(sessions, dict)
+        ):
+            raise ValueError("trusted Vet registries are missing")
+        self.trusted_context = trusted_context
+        self.invocations = invocations
+        self.receipts = receipts
+        self.sessions = sessions
+        self.nonce_ledger = NonceLedger(
+            trusted_context.get("nonceIssuances"), registered_schemes=KNOWN_SCHEMES
+        )
+
+    def _trusted_invocation(self, invocation_id):
+        context = self.invocations.get(invocation_id)
+        if not isinstance(context, dict) or set(context) != self._INVOCATION_FIELDS:
+            return None
+        if (
+            context.get("sessionState") != "vet-pending"
+            or context.get("phaseKind") != "vet-credentials"
+            or not isinstance(context.get("actor"), str)
+            or context.get("actor") not in {"buyer", "seller"}
+            or not isinstance(context.get("expectedVerifierRole"), str)
+            or context.get("expectedVerifierRole") not in {
+                "counterparty", "orchestrator"
+            }
+            or not exact_safe_integer(context.get("phaseIndex"), minimum=0)
+            or not exact_safe_integer(context.get("attempt"), minimum=1)
+            or not exact_safe_integer(context.get("recipeRegistryVersion"), minimum=1)
+            or not exact_safe_integer(context.get("trustedNow"), minimum=0)
+            or not isinstance(context.get("sessionStart"), str)
+            or context["sessionStart"] not in self.sessions
+            or not isinstance(context.get("challengeId"), str)
+        ):
+            return None
+        session = self.sessions[context["sessionStart"]]
+        registry = self.trusted_context.get("recipeRegistry")
+        if (
+            not isinstance(session, dict)
+            or not isinstance(registry, dict)
+            or session.get("jobId") != context.get("jobId")
+            or not exact_safe_integer(session.get("recipeRegistryVersion"), minimum=1)
+            or not exact_safe_integer(registry.get("recipeRegistryVersion"), minimum=1)
+            or session["recipeRegistryVersion"] != context["recipeRegistryVersion"]
+            or registry["recipeRegistryVersion"] != context["recipeRegistryVersion"]
+        ):
+            return None
+        try:
+            for name in (
+                "evaluatedParty", "primaryClaim", "expectedVerifier",
+                "phaseOrchestrator", "anchorWriter",
+            ):
+                parse_ref(context.get(name))
+        except ValueError:
+            return None
+        if context["primaryClaim"] != context["evaluatedParty"]:
+            return None
+        if (
+            context["expectedVerifierRole"] == "orchestrator"
+            and context["expectedVerifier"] != context["phaseOrchestrator"]
+        ):
+            return None
+        receipt_id = context.get("recordReceiptId")
+        binding = context.get("recordAnchorBinding")
+        if (receipt_id is None) != (binding is None):
+            return None
+        if receipt_id is not None and (
+            not isinstance(receipt_id, str)
+            or receipt_id not in self.receipts
+            or not isinstance(binding, dict)
+        ):
+            return None
+        return context
+
+    def admit(self, authority, bundle):
+        if not isinstance(authority, dict):
+            return None
+        invocation_id = authority.get("invocation")
+        if not isinstance(invocation_id, str):
+            return None
+        context = self._trusted_invocation(invocation_id)
+        if context is None:
+            return None
+        try:
+            # SN-4 consumption deliberately precedes all candidate-controlled
+            # bundle, actor, record, signature, and requirement checks.
+            issuance = self.nonce_ledger.consume(
+                context["challengeId"],
+                presentation_nonce(bundle),
+                context["trustedNow"],
+            )
+        except NonceRejected:
+            return None
+        if (
+            issuance.job_id != context["jobId"]
+            or issuance.actor != context["actor"]
+            or issuance.evaluated_party != context["evaluatedParty"]
+            or issuance.phase_index != context["phaseIndex"]
+            or issuance.attempt != context["attempt"]
+            or issuance.expected_verifier != context["expectedVerifier"]
+            or issuance.issued_by != context["expectedVerifier"]
+            or not isinstance(bundle, dict)
+            or bundle.get("presentedBy") != context["primaryClaim"]
+        ):
+            return None
+        return VetAdmissionCapability(
+            invocation_id,
+            context["challengeId"],
+            issuance.nonce,
+            context["jobId"],
+            context["actor"],
+            context["evaluatedParty"],
+            context["primaryClaim"],
+            context["phaseIndex"],
+            context["attempt"],
+            context["expectedVerifierRole"],
+            context["expectedVerifier"],
+            context["phaseOrchestrator"],
+            context["anchorWriter"],
+            context["recipeRegistryVersion"],
+            context["trustedNow"],
+            context["sessionStart"],
+            context["recordReceiptId"],
+            copy.deepcopy(context["recordAnchorBinding"]),
+        )
+
+
+def verify_bundle(bundle, admission=None):
     if not isinstance(bundle, dict) or not all_safe_integers(bundle):
         return False
     if set(bundle) - {
@@ -424,10 +570,21 @@ def verify_bundle(bundle):
         "bundleVersion", "presentedBy", "presentedAt", "claims", "presentation"
     } <= set(bundle):
         return False
-    if bundle.get("bundleVersion") != "1" or type(bundle.get("presentedAt")) is not int:
+    if (
+        bundle.get("bundleVersion") != "1"
+        or not exact_safe_integer(bundle.get("presentedAt"), minimum=0)
+        or (
+            admission is not None
+            and presentation_nonce(bundle) != admission.nonce
+        )
+    ):
         return False
     claims = bundle.get("claims")
-    if not isinstance(claims, list) or not claims:
+    if (
+        not isinstance(claims, list)
+        or not claims
+        or any(not isinstance(item, dict) for item in claims)
+    ):
         return False
     try:
         canonical_presented = parse_ref(bundle.get("presentedBy"))
@@ -445,7 +602,10 @@ def verify_bundle(bundle):
     if not isinstance(signatures, list) or not signatures:
         return False
     unsigned = {key: value for key, value in bundle.items() if key != "presentation"}
-    payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+    try:
+        payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+    except (TypeError, ValueError, UnicodeError):
+        return False
     claim_refs = {item["ref"] for item in claims}
     return all(
         isinstance(item, dict)
@@ -473,7 +633,14 @@ def verify_result(resolved, recipes, result_context):
     } or signature.get("algorithm") != "ed25519":
         return False
     unsigned = {key: value for key, value in artifact.items() if key != "signature"}
-    if hash_hex(unsigned) != reference["contentHash"]:
+    try:
+        unsigned_hash = hash_hex(unsigned)
+        full_hash = hash_hex(artifact)
+        reference_key = canonical_bytes(reference)
+        attestation_key = canonical_bytes(artifact.get("attestation"))
+    except (TypeError, ValueError, UnicodeError):
+        return False
+    if unsigned_hash != reference["contentHash"]:
         return False
     method = artifact.get("method")
     family = (
@@ -492,12 +659,11 @@ def verify_result(resolved, recipes, result_context):
     ):
         return False
     authority = result_context["authorityByFamily"].get(family)
-    full_hash = hash_hex(artifact)
     authenticated_full_hash = result_context["resultHashByRef"].get(
-        canonical_bytes(reference)
+        reference_key
     )
     source_attestation = result_context["attestationByKey"].get(
-        canonical_bytes(artifact.get("attestation"))
+        attestation_key
     )
     try:
         canonical_identity = parse_ref(
@@ -521,12 +687,17 @@ def verify_result(resolved, recipes, result_context):
         or source_attestation["resultSigner"] != authority["signer"]
         or resolved.get("serializedArtifactHash") != full_hash
         or authenticated_full_hash != full_hash
+        or not exact_safe_integer(artifact.get("fetchedAt"), minimum=0)
+        or not exact_safe_integer(artifact.get("verifiedAt"), minimum=0)
+        or not exact_safe_integer(artifact.get("validUntil"), minimum=0)
+        or artifact["fetchedAt"] > artifact["verifiedAt"]
+        or artifact["verifiedAt"] > artifact["validUntil"]
     ):
         return False
     return verify_signature(
         authority["signer"],
         signature.get("value"),
-        (RESULT_DOMAIN + hash_hex(unsigned)).encode("ascii"),
+        (RESULT_DOMAIN + unsigned_hash).encode("ascii"),
     )
 
 
@@ -545,8 +716,8 @@ def resolved_by_ref(value):
     return resolved
 
 
-def matching_claims(value, req, exact_ref=None):
-    now = value["evaluatedAt"]
+def matching_claims(value, req, decision_time, exact_ref=None):
+    now = decision_time
     matches = []
     for item in value["bundle"]["claims"]:
         scheme, _ = parse_ref(item.get("ref"))
@@ -621,7 +792,7 @@ def parameters_match(result, req):
     )
 
 
-def result_outcome(value, claim, req, recipes, result_context):
+def result_outcome(value, claim, req, recipes, result_context, decision_time):
     reference = claim.get("verifiedBy")
     if not well_formed_result_ref(reference):
         return "fail" if reference is None else "error"
@@ -658,14 +829,14 @@ def result_outcome(value, claim, req, recipes, result_context):
     valid_until = result.get("validUntil")
     if type(verified_at) is not int or type(valid_until) is not int:
         return "fail"
-    now = value["evaluatedAt"]
+    now = decision_time
     expires_at = claim.get("expiresAt")
     effective_expiry = min(
         valid_until,
         expires_at if type(expires_at) is int else SAFE_INT,
     )
-    if valid_until < verified_at:
-        return "fail"
+    if verified_at > now:
+        return "error"
     if now > effective_expiry:
         return "not-applicable"
     max_age = req.get("maxAge")
@@ -676,8 +847,10 @@ def result_outcome(value, claim, req, recipes, result_context):
     return decision
 
 
-def classify_member(value, req, recipes, result_context, exact_ref=None):
-    matches = matching_claims(value, req, exact_ref)
+def classify_member(
+    value, req, recipes, result_context, decision_time, exact_ref=None
+):
+    matches = matching_claims(value, req, decision_time, exact_ref)
     if req.get("verificationRequired") is False:
         return "pass" if matches else "fail"
     parameters = req.get("parameters") or {}
@@ -688,7 +861,9 @@ def classify_member(value, req, recipes, result_context, exact_ref=None):
     ):
         return "error"
     outcomes = [
-        result_outcome(value, item, req, recipes, result_context)
+        result_outcome(
+            value, item, req, recipes, result_context, decision_time
+        )
         for item in matches
     ]
     if "qualification-error" in outcomes:
@@ -699,7 +874,9 @@ def classify_member(value, req, recipes, result_context, exact_ref=None):
     return "fail"
 
 
-def qualification_preflight(value, req, recipes, result_context):
+def qualification_preflight(
+    value, req, recipes, result_context, decision_time
+):
     if req.get("verificationRequired") is False:
         return True
     parameters = req.get("parameters") or {}
@@ -710,13 +887,15 @@ def qualification_preflight(value, req, recipes, result_context):
     ):
         return False
     return all(
-        result_outcome(value, claim, req, recipes, result_context)
+        result_outcome(
+            value, claim, req, recipes, result_context, decision_time
+        )
         != "qualification-error"
-        for claim in matching_claims(value, req)
+        for claim in matching_claims(value, req, decision_time)
     )
 
 
-def presented_control(value, recipes, result_context):
+def presented_control(value, recipes, result_context, decision_time):
     bundle = value["bundle"]
     presented = bundle["presentedBy"]
     scheme, _ = parse_ref(presented)
@@ -745,6 +924,7 @@ def presented_control(value, recipes, result_context):
              "recipeVersion": reference["recipeVersion"]},
             recipes,
             result_context,
+            decision_time,
         ) == "pass"
         and result.get("method") == "verifiable-credential"
         and isinstance(binding, dict)
@@ -752,14 +932,14 @@ def presented_control(value, recipes, result_context):
     )
 
 
-def selector_authorized(value, req, recipes, result_context):
+def selector_authorized(value, req, recipes, result_context, decision_time):
     selector = req.get("primaryClaimSelector")
     if selector is None:
         return True
     bundle = value["bundle"]
     scheme, _ = parse_ref(bundle["presentedBy"])
     if scheme != selector or not presented_control(
-        value, recipes, result_context
+        value, recipes, result_context, decision_time
     ):
         return False
     required = req.get("required", [])
@@ -775,7 +955,7 @@ def selector_authorized(value, req, recipes, result_context):
             and item.get("verificationRequired") is True
         )
         return classify_member(
-            value, selected_req, recipes, result_context,
+            value, selected_req, recipes, result_context, decision_time,
             exact_ref=bundle["presentedBy"]
         ) == "pass"
     presence_members = [
@@ -785,7 +965,7 @@ def selector_authorized(value, req, recipes, result_context):
     ]
     if any(
         classify_member(
-            value, item, recipes, result_context,
+            value, item, recipes, result_context, decision_time,
             exact_ref=bundle["presentedBy"]
         ) == "pass"
         for item in presence_members
@@ -796,7 +976,7 @@ def selector_authorized(value, req, recipes, result_context):
             item.get("scheme") == selector
             and item.get("verificationRequired") is False
             and classify_member(
-                value, item, recipes, result_context,
+                value, item, recipes, result_context, decision_time,
                 exact_ref=bundle["presentedBy"]
             ) == "pass"
             for item in group
@@ -806,6 +986,10 @@ def selector_authorized(value, req, recipes, result_context):
 
 
 def valid_requirement(req):
+    try:
+        canonical_bytes(req)
+    except (TypeError, ValueError, UnicodeError):
+        return False
     if (
         not isinstance(req, dict)
         or req.get("requirementVersion") != "1"
@@ -904,10 +1088,14 @@ def valid_supplementary_signals(signals):
     return True
 
 
-def evaluate(value, recipes, result_context):
-    if not isinstance(value, dict) or type(value.get("evaluatedAt")) is not int:
+def evaluate(value, recipes, result_context, *, decision_time, admission):
+    if (
+        not isinstance(value, dict)
+        or not exact_safe_integer(decision_time, minimum=0)
+        or not isinstance(admission, VetAdmissionCapability)
+    ):
         return "error", ["invalid evaluation time"]
-    if not verify_bundle(value.get("bundle")):
+    if not verify_bundle(value.get("bundle"), admission):
         return "error", ["invalid identity bundle"]
     req = value.get("requirement")
     if not valid_requirement(req):
@@ -922,7 +1110,9 @@ def evaluate(value, recipes, result_context):
         *(member for group in req.get("oneOf", []) for member in group),
     ]
     if any(
-        not qualification_preflight(value, member, recipes, result_context)
+        not qualification_preflight(
+            value, member, recipes, result_context, decision_time
+        )
         for member in members
     ):
         return "error", ["unresolved recipe family or version"]
@@ -930,7 +1120,9 @@ def evaluate(value, recipes, result_context):
     errors = []
     indeterminates = []
     for item in req.get("required", []):
-        outcome = classify_member(value, item, recipes, result_context)
+        outcome = classify_member(
+            value, item, recipes, result_context, decision_time
+        )
         if outcome == "fail":
             failures.append("required failing or absent: " + item["scheme"])
         elif outcome == "error":
@@ -939,7 +1131,9 @@ def evaluate(value, recipes, result_context):
             indeterminates.append("required indeterminate: " + item["scheme"])
     for group in req.get("oneOf", []):
         outcomes = [
-            classify_member(value, item, recipes, result_context)
+            classify_member(
+                value, item, recipes, result_context, decision_time
+            )
             for item in group
         ]
         if "pass" in outcomes:
@@ -952,7 +1146,9 @@ def evaluate(value, recipes, result_context):
             )
         else:
             failures.append("oneOf group: no claim satisfied")
-    if not selector_authorized(value, req, recipes, result_context):
+    if not selector_authorized(
+        value, req, recipes, result_context, decision_time
+    ):
         failures.append(
             "primaryClaimSelector is mismatched, uncontrolled, or unauthorized"
         )
@@ -965,8 +1161,16 @@ def evaluate(value, recipes, result_context):
     return "pass", []
 
 
-def evaluate_decision(value, recipes, result_context):
-    return evaluate(value, recipes, result_context)[0]
+def evaluate_decision(
+    value, recipes, result_context, *, decision_time, admission
+):
+    return evaluate(
+        value,
+        recipes,
+        result_context,
+        decision_time=decision_time,
+        admission=admission,
+    )[0]
 
 
 def well_formed_record_ref(value):
@@ -975,20 +1179,120 @@ def well_formed_record_ref(value):
     }:
         return False
     anchor = value.get("anchor")
+    try:
+        signer = parse_ref(value.get("signer"))
+    except ValueError:
+        return False
     return (
         isinstance(anchor, dict)
         and set(anchor) == {"kind", "locator"}
+        and isinstance(anchor.get("kind"), str)
         and anchor.get("kind") in {"storage-program", "ipfs", "https"}
         and isinstance(anchor.get("locator"), str)
         and bool(anchor["locator"])
         and isinstance(value.get("contentHash"), str)
         and bool(re.fullmatch(r"[0-9a-f]{64}", value["contentHash"]))
-        and isinstance(value.get("signer"), str)
+        and signer[0] == "key"
     )
 
 
+def authenticated_record_time(
+    record, record_ref, admission, runtime, *, terminal_replay=False
+):
+    """Validate the independent logical/native SR-2 receipt binding."""
+
+    receipt = runtime.receipts.get(admission.record_receipt_id)
+    binding = admission.record_anchor_binding
+    if not isinstance(receipt, dict) or not isinstance(binding, dict):
+        return None
+    if set(binding) != {
+        "anchorKind", "logicalAddress", "nativeAddress", "writer"
+    }:
+        return None
+    required = {
+        "receiptVersion", "substrate", "finalityProfile", "logicalAddress",
+        "nativeAddress", "contentHash", "transactionRef", "writer", "state",
+        "observationDisposition", "observedAt", "evidence",
+    }
+    if not required <= set(receipt) or set(receipt) - (required | {"blockRef"}):
+        return None
+    anchor = record_ref.get("anchor")
+    try:
+        expected_logical = composite_logical_address(
+            record.get("jobId"), record.get("evaluatedParty")
+        )
+        parse_ref(receipt.get("writer"))
+    except ValueError:
+        return None
+    if (
+        receipt.get("receiptVersion") != "1"
+        or not isinstance(receipt.get("substrate"), str)
+        or not receipt["substrate"]
+        or not isinstance(receipt.get("finalityProfile"), str)
+        or not receipt["finalityProfile"]
+        or not isinstance(receipt.get("logicalAddress"), str)
+        or not isinstance(receipt.get("nativeAddress"), str)
+        or not receipt["nativeAddress"]
+        or not isinstance(receipt.get("contentHash"), str)
+        or receipt.get("observationDisposition") != "established"
+        or receipt.get("state") not in {"accepted", "included", "finalized"}
+        or (terminal_replay and receipt.get("state") != "finalized")
+        or binding.get("anchorKind") != anchor.get("kind")
+        or not isinstance(binding.get("anchorKind"), str)
+        or binding.get("logicalAddress") != expected_logical
+        or receipt.get("logicalAddress") != expected_logical
+        or binding.get("nativeAddress") != anchor.get("locator")
+        or receipt.get("nativeAddress") != anchor.get("locator")
+        or receipt.get("nativeAddress") == receipt.get("logicalAddress")
+        or binding.get("writer") != admission.anchor_writer
+        or receipt.get("writer") != admission.anchor_writer
+        or receipt.get("contentHash") != record_ref.get("contentHash")
+    ):
+        return None
+    transaction_ref = receipt.get("transactionRef")
+    evidence = receipt.get("evidence")
+    if not all(
+        isinstance(item, dict)
+        and set(item) == {"kind", "value"}
+        and isinstance(item.get("kind"), str)
+        and bool(item["kind"])
+        and isinstance(item.get("value"), str)
+        and bool(item["value"])
+        for item in (transaction_ref, evidence)
+    ):
+        return None
+    observed_at = receipt.get("observedAt")
+    if (
+        not exact_safe_integer(observed_at, minimum=0)
+        or observed_at > admission.trusted_now
+    ):
+        return None
+    receipt_time = observed_at
+    if receipt["state"] in {"included", "finalized"}:
+        block_ref = receipt.get("blockRef")
+        if (
+            not isinstance(block_ref, dict)
+            or not {"id", "timestamp"} <= set(block_ref)
+            or set(block_ref) - {"id", "height", "timestamp"}
+            or not isinstance(block_ref.get("id"), str)
+            or not block_ref["id"]
+            or not exact_safe_integer(block_ref.get("timestamp"), minimum=0)
+            or block_ref["timestamp"] > observed_at
+            or (
+                "height" in block_ref
+                and (
+                    not isinstance(block_ref["height"], str)
+                    or re.fullmatch(r"0|[1-9][0-9]*", block_ref["height"]) is None
+                )
+            )
+        ):
+            return None
+        receipt_time = block_ref["timestamp"]
+    return receipt_time
+
+
 def authenticate_production_aggregate(
-    value, trusted_context, recipes, result_context
+    value, trusted_context, recipes, result_context, admission, runtime
 ):
     if not isinstance(value, dict) or not isinstance(trusted_context, dict):
         return None
@@ -999,7 +1303,11 @@ def authenticate_production_aggregate(
         not isinstance(record, dict)
         or not well_formed_record_ref(record_ref)
         or not isinstance(authority, dict)
+        or set(authority) != {
+            "kind", "invocation", "authenticatedSessionStart", "vetInput"
+        }
         or authority.get("kind") != "production"
+        or authority.get("invocation") != admission.invocation_id
     ):
         return None
     signature = record.get("signature")
@@ -1008,12 +1316,16 @@ def authenticate_production_aggregate(
         or set(signature) != {"algorithm", "signer", "value"}
         or signature.get("algorithm") != "ed25519"
         or signature.get("signer") != record_ref.get("signer")
+        or signature.get("signer") != admission.expected_verifier
     ):
         return None
     unsigned_record = {
         key: item for key, item in record.items() if key != "signature"
     }
-    record_hash = hash_hex(unsigned_record)
+    try:
+        record_hash = hash_hex(unsigned_record)
+    except (TypeError, ValueError, UnicodeError):
+        return None
     if (
         record_ref.get("contentHash") != record_hash
         or not verify_signature(
@@ -1030,17 +1342,30 @@ def authenticate_production_aggregate(
     authenticated_session = (
         sessions.get(session_name) if isinstance(sessions, dict) else None
     )
-    if not isinstance(vet_input, dict) or not isinstance(authenticated_session, dict):
+    if (
+        not isinstance(vet_input, dict)
+        or set(vet_input) != {
+            "jobId", "actor", "bundleToVet", "requirement",
+            "verifierIdentity", "sessionContext", "recipeRegistryVersion",
+            "attempt",
+        }
+        or not isinstance(authenticated_session, dict)
+    ):
         return None
     session_context = vet_input.get("sessionContext")
     job_id = record.get("jobId")
     registry_version = authenticated_session.get("recipeRegistryVersion")
     if (
         not isinstance(session_context, dict)
-        or canonical_bytes(session_context) != canonical_bytes(authenticated_session)
+        or not canonical_equal(session_context, authenticated_session)
+        or session_name != admission.session_start
         or vet_input.get("jobId") != job_id
         or session_context.get("jobId") != job_id
+        or job_id != admission.job_id
+        or vet_input.get("actor") != admission.actor
+        or vet_input.get("attempt") != admission.attempt
         or vet_input.get("recipeRegistryVersion") != registry_version
+        or registry_version != admission.recipe_registry_version
         or trusted_context.get("recipeRegistry", {}).get(
             "recipeRegistryVersion"
         ) != registry_version
@@ -1051,15 +1376,32 @@ def authenticate_production_aggregate(
     bundle = vet_input.get("bundleToVet")
     req = vet_input.get("requirement")
     verifier_identity = vet_input.get("verifierIdentity")
+    generated_at = record.get("generatedAt")
+    try:
+        bound_bundle_hash = hash_hex({
+            key: item for key, item in bundle.items() if key != "presentation"
+        })
+        requirement_hash = hash_hex(req)
+    except (AttributeError, TypeError, ValueError, UnicodeError):
+        return None
     if (
-        not verify_bundle(bundle)
-        or not verify_bundle(verifier_identity)
-        or signature.get("signer") != verifier_identity.get("presentedBy")
+        not verify_bundle(bundle, admission)
+        or not verify_bundle(verifier_identity, admission)
+        or verifier_identity.get("presentedBy") != admission.expected_verifier
+        or signature.get("signer") != admission.expected_verifier
+        or record_ref.get("signer") != admission.expected_verifier
+        or record.get("evaluatedParty") != admission.evaluated_party
         or record.get("evaluatedParty") != bundle.get("presentedBy")
-        or record.get("bundleHash")
-        != hash_hex({key: item for key, item in bundle.items() if key != "presentation"})
-        or record.get("requirementHash") != hash_hex(req)
+        or record.get("bundleHash") != bound_bundle_hash
+        or record.get("requirementHash") != requirement_hash
+        or not exact_safe_integer(generated_at, minimum=0)
+        or generated_at > admission.trusted_now
     ):
+        return None
+    receipt_time = authenticated_record_time(
+        record, record_ref, admission, runtime
+    )
+    if receipt_time is None or generated_at > receipt_time:
         return None
 
     committed = record.get("freshness")
@@ -1071,36 +1413,77 @@ def authenticate_production_aggregate(
         or not valid_supplementary_signals(supplementary)
         or not isinstance(deal_specific, list)
         or not isinstance(resolved, list)
+        or any(
+            signal["observedAt"] > generated_at
+            for signal in supplementary
+        )
     ):
         return None
     committed = committed + deal_specific
     resolved_refs = [item.get("ref") for item in resolved if isinstance(item, dict)]
-    canonical_refs = [canonical_bytes(item) for item in committed]
+    try:
+        canonical_refs = [canonical_bytes(item) for item in committed]
+        resolved_ref_keys = [canonical_bytes(item) for item in resolved_refs]
+    except (TypeError, ValueError, UnicodeError):
+        return None
     if (
         len(resolved_refs) != len(resolved)
-        or [canonical_bytes(item) for item in resolved_refs] != canonical_refs
+        or resolved_ref_keys != canonical_refs
         or len(set(canonical_refs)) != len(canonical_refs)
         or any(
             not verify_result(item, recipes, result_context)
             for item in resolved
         )
+        or any(
+            item["artifact"]["verifiedAt"] > generated_at
+            for item in resolved
+        )
     ):
         return None
     return {
-        "evaluatedAt": value.get("evaluatedAt"),
         "bundle": bundle,
         "requirement": req,
         "resolvedResults": resolved,
+        "decisionTime": generated_at,
     }
 
 
-def aggregate_output(value, trusted_context, recipes, result_context):
-    projection = authenticate_production_aggregate(
-        value, trusted_context, recipes, result_context
-    )
+def aggregate_output(value, trusted_context, recipes, result_context, runtime):
+    try:
+        if (
+            not isinstance(runtime, VetReferenceRuntime)
+            or runtime.trusted_context is not trusted_context
+        ):
+            raise ValueError("a verifier-owned runtime is required")
+        active_runtime = runtime
+        authority = value.get("authority") if isinstance(value, dict) else None
+        vet_input = authority.get("vetInput") if isinstance(authority, dict) else None
+        bundle = vet_input.get("bundleToVet") if isinstance(vet_input, dict) else None
+        admission = active_runtime.admit(authority, bundle)
+    except (AttributeError, TypeError, ValueError, UnicodeError):
+        admission = None
+    if admission is None:
+        return {"decision": "error", "reasons": ["aggregation authority invalid"]}
+    try:
+        projection = authenticate_production_aggregate(
+            value,
+            trusted_context,
+            recipes,
+            result_context,
+            admission,
+            active_runtime,
+        )
+    except (KeyError, TypeError, ValueError, UnicodeError):
+        projection = None
     if projection is None:
         return {"decision": "error", "reasons": ["aggregation authority invalid"]}
-    decision, reasons = evaluate(projection, recipes, result_context)
+    decision, reasons = evaluate(
+        projection,
+        recipes,
+        result_context,
+        decision_time=projection["decisionTime"],
+        admission=admission,
+    )
     if value["record"].get("overallDecision") != decision:
         return {
             "decision": "error",
@@ -1117,41 +1500,84 @@ def vpc4_error_class(decision, *, counterparty_malformed=False):
     return None
 
 
-def execute(evaluation, document):
-    operation = evaluation["operation"]
-    value = evaluation["input"]
-    recipes = authenticated_recipe_registry(document)
-    result_context = authenticated_result_context(document, recipes)
+def execute(evaluation, document, runtime):
+    operation = evaluation.get("operation") if isinstance(evaluation, dict) else None
+    try:
+        value = evaluation["input"]
+        trusted_context = document["trustedContext"]
+        if (
+            not isinstance(runtime, VetReferenceRuntime)
+            or runtime.trusted_context is not trusted_context
+        ):
+            raise ValueError("a verifier-owned runtime is required")
+        active_runtime = runtime
+        recipes = authenticated_recipe_registry(document)
+        result_context = authenticated_result_context(document, recipes)
+        if operation == "aggregate":
+            return aggregate_output(
+                value,
+                trusted_context,
+                recipes,
+                result_context,
+                runtime=active_runtime,
+            )
+        authority = value.get("authority") if isinstance(value, dict) else None
+        if (
+            not isinstance(authority, dict)
+            or set(authority) != {"kind", "invocation"}
+            or authority.get("kind") != "vet-invocation"
+        ):
+            admission = None
+        else:
+            admission = active_runtime.admit(authority, value.get("bundle"))
+        if admission is None:
+            decision = "error"
+        elif operation == "control-decision":
+            if not verify_bundle(value.get("bundle"), admission):
+                decision = "error"
+            else:
+                decision = (
+                    "pass"
+                    if presented_control(
+                        value, recipes, result_context, admission.trusted_now
+                    )
+                    else "fail"
+                )
+        else:
+            decision = evaluate_decision(
+                value,
+                recipes,
+                result_context,
+                decision_time=admission.trusted_now,
+                admission=admission,
+            )
+    except (KeyError, TypeError, ValueError, UnicodeError):
+        decision = "error"
+
     if operation == "match":
-        return evaluate_decision(value, recipes, result_context) == "pass"
+        return decision == "pass"
     if operation == "decision":
-        return evaluate_decision(value, recipes, result_context)
+        return decision
     if operation == "decision-no-throw":
-        try:
-            return {
-                "decision": evaluate_decision(value, recipes, result_context),
-                "throws": False,
-            }
-        except Exception:  # the vector explicitly proves this boundary
-            return {"decision": "error", "throws": True}
+        return {"decision": decision, "throws": False}
     if operation == "control-decision":
-        if not verify_bundle(value.get("bundle")):
-            return "error"
-        return (
-            "pass"
-            if presented_control(value, recipes, result_context)
-            else "fail"
-        )
+        return decision
     if operation == "aggregate":
-        return aggregate_output(
-            value, document["trustedContext"], recipes, result_context
-        )
+        return {"decision": "error", "reasons": ["aggregation authority invalid"]}
     raise AssertionError(f"unknown operation {operation!r}")
 
 
+def execute_once(evaluation, document):
+    """Fixture helper that explicitly initializes one isolated trusted runtime."""
+
+    runtime = VetReferenceRuntime(document["trustedContext"])
+    return execute(evaluation, document, runtime=runtime)
+
+
 def execute_case(case, document):
+    runtime = VetReferenceRuntime(document["trustedContext"])
     observed = {
-        name: execute(evaluation, document)
+        name: execute(evaluation, document, runtime=runtime)
         for name, evaluation in case["evaluations"].items()
     }
     return observed["result"] if list(observed) == ["result"] else observed
@@ -1304,7 +1730,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             if item["name"] == "vet-oneof-error-over-fail"
         )
         evaluation = case["evaluations"]["result"]
-        self.assertEqual(case["expectedOutput"], execute(evaluation, self.document))
+        self.assertEqual(case["expectedOutput"], execute_once(evaluation, self.document))
         for mutate in (
             lambda value: value["authority"].update(
                 authenticatedSessionStart="not-trusted"
@@ -1324,8 +1750,297 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                     "decision": "error",
                     "reasons": ["aggregation authority invalid"],
                 },
-                execute(changed, self.document),
+                execute_once(changed, self.document),
             )
+
+    def test_nonce_ledger_is_verifier_owned_consumed_on_attempt_and_reused_by_capability(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "dacs1-cci-lei-named-matches"
+        )
+        value = case["evaluations"]["result"]["input"]
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        invocation_id = value["authority"]["invocation"]
+        challenge_id = runtime.invocations[invocation_id]["challengeId"]
+        self.assertNotIn("consumed", value["authority"])
+        admission = runtime.admit(value["authority"], value["bundle"])
+        self.assertIsNotNone(admission)
+        self.assertTrue(runtime.nonce_ledger.consumed(challenge_id))
+        # Nested bundle checks consume only the capability, never the ledger.
+        self.assertTrue(verify_bundle(value["bundle"], admission))
+        self.assertTrue(verify_bundle(value["bundle"], admission))
+
+        execution_runtime = VetReferenceRuntime(self.document["trustedContext"])
+        self.assertTrue(execute(
+            case["evaluations"]["result"], self.document, execution_runtime
+        ))
+        self.assertFalse(execute(
+            case["evaluations"]["result"], self.document, execution_runtime
+        ))
+
+        for mutation in ("missing", "wrong"):
+            with self.subTest(mutation=mutation):
+                candidate = copy.deepcopy(value["bundle"])
+                if mutation == "missing":
+                    candidate.pop("sessionNonce")
+                else:
+                    candidate["sessionNonce"] = "00" * 16
+                fresh_runtime = VetReferenceRuntime(self.document["trustedContext"])
+                self.assertIsNone(fresh_runtime.admit(value["authority"], candidate))
+                self.assertFalse(fresh_runtime.nonce_ledger.consumed(challenge_id))
+
+        malformed = copy.deepcopy(value["bundle"])
+        malformed["presentedBy"] = "key:" + "00" * 32
+        fresh_runtime = VetReferenceRuntime(self.document["trustedContext"])
+        self.assertIsNone(fresh_runtime.admit(value["authority"], malformed))
+        self.assertTrue(
+            fresh_runtime.nonce_ledger.consumed(challenge_id),
+            "the exact issued nonce is consumed before later bundle binding fails",
+        )
+
+    def test_invocation_context_authenticates_phase_actor_and_authorities(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "dacs1-cci-lei-named-matches"
+        )
+        evaluation = case["evaluations"]["result"]
+        self.assertTrue(execute_once(evaluation, self.document))
+        invocation_id = evaluation["input"]["authority"]["invocation"]
+        mutations = (
+            lambda context: context.update(sessionState="completed"),
+            lambda context: context.update(actor="seller"),
+            lambda context: context.update(phaseIndex=True),
+            lambda context: context.update(primaryClaim="key:" + "00" * 32),
+            lambda context: context.update(expectedVerifier=context["phaseOrchestrator"]),
+            lambda context: context.update(expectedVerifierRole=[]),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                document = copy.deepcopy(self.document)
+                mutate(document["trustedContext"]["vetInvocations"][invocation_id])
+                self.assertFalse(execute_once(evaluation, document))
+
+        delegated = copy.deepcopy(self.document)
+        delegated_context = delegated["trustedContext"]["vetInvocations"][invocation_id]
+        delegated_context["expectedVerifierRole"] = "orchestrator"
+        delegated_context["expectedVerifier"] = delegated_context["phaseOrchestrator"]
+        issuance = next(
+            item for item in delegated["trustedContext"]["nonceIssuances"]
+            if item["challengeId"] == delegated_context["challengeId"]
+        )
+        issuance["expectedVerifier"] = delegated_context["phaseOrchestrator"]
+        issuance["issuedBy"] = delegated_context["phaseOrchestrator"]
+        self.assertTrue(execute_once(evaluation, delegated))
+
+        shared_roles = copy.deepcopy(self.document)
+        shared_context = shared_roles["trustedContext"]["vetInvocations"][invocation_id]
+        shared_context["phaseOrchestrator"] = shared_context["expectedVerifier"]
+        shared_context["anchorWriter"] = shared_context["expectedVerifier"]
+        self.assertTrue(execute_once(evaluation, shared_roles))
+
+        caller_snapshot = copy.deepcopy(evaluation)
+        caller_snapshot["input"]["authority"]["consumed"] = False
+        self.assertFalse(execute_once(caller_snapshot, self.document))
+
+    def test_aggregate_receipt_logical_native_writer_and_time_are_authoritative(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "vet-oneof-error-over-fail"
+        )
+        evaluation = case["evaluations"]["result"]
+        self.assertEqual(case["expectedOutput"], execute_once(evaluation, self.document))
+        invocation_id = evaluation["input"]["authority"]["invocation"]
+        invocation = self.document["trustedContext"]["vetInvocations"][invocation_id]
+        receipt_id = invocation["recordReceiptId"]
+        record = evaluation["input"]["record"]
+        record_ref = evaluation["input"]["recordRef"]
+        self.assertEqual(
+            invocation["recordAnchorBinding"]["logicalAddress"],
+            composite_logical_address(record["jobId"], record["evaluatedParty"]),
+        )
+        self.assertEqual(
+            invocation["recordAnchorBinding"]["nativeAddress"],
+            record_ref["anchor"]["locator"],
+        )
+        self.assertNotEqual(
+            invocation["recordAnchorBinding"]["logicalAddress"],
+            record_ref["anchor"]["locator"],
+        )
+        mutations = (
+            lambda document, context, receipt: receipt.update(
+                logicalAddress=receipt["nativeAddress"]
+            ),
+            lambda document, context, receipt: receipt.update(
+                writer=context["expectedVerifier"]
+            ),
+            lambda document, context, receipt: receipt.update(state="submitted"),
+            lambda document, context, receipt: receipt["blockRef"].update(
+                timestamp=record["generatedAt"] - 1
+            ),
+            lambda document, context, receipt: context["recordAnchorBinding"].update(
+                nativeAddress=context["recordAnchorBinding"]["logicalAddress"]
+            ),
+        )
+        for mutate in mutations:
+            with self.subTest(mutate=mutate):
+                document = copy.deepcopy(self.document)
+                context = document["trustedContext"]["vetInvocations"][invocation_id]
+                receipt = document["trustedContext"]["authenticatedRecordReceipts"][receipt_id]
+                mutate(document, context, receipt)
+                self.assertEqual(
+                    {"decision": "error", "reasons": ["aggregation authority invalid"]},
+                    execute_once(evaluation, document),
+                )
+
+    def test_signed_generated_at_not_unsigned_wrapper_is_decision_time(self):
+        case = next(
+            item for item in self.cases
+            if item["name"] == "vet-oneof-indeterminate-over-fail"
+        )
+        evaluation = case["evaluations"]["result"]
+        changed = copy.deepcopy(evaluation)
+        changed["input"]["evaluatedAt"] = SAFE_INT + 1
+        self.assertEqual(case["expectedOutput"], execute_once(changed, self.document))
+
+        invocation_id = evaluation["input"]["authority"]["invocation"]
+        runtime = VetReferenceRuntime(self.document["trustedContext"])
+        admission = runtime.admit(
+            evaluation["input"]["authority"],
+            evaluation["input"]["authority"]["vetInput"]["bundleToVet"],
+        )
+        projection = authenticate_production_aggregate(
+            evaluation["input"],
+            self.document["trustedContext"],
+            self.recipes,
+            self.result_context,
+            admission,
+            runtime,
+        )
+        self.assertEqual(
+            evaluation["input"]["record"]["generatedAt"],
+            projection["decisionTime"],
+        )
+        self.assertEqual(
+            invocation_id,
+            admission.invocation_id,
+        )
+
+        chronological = copy.deepcopy(evaluation)
+        result_times = [
+            item["artifact"]["verifiedAt"]
+            for item in chronological["input"]["resolvedResults"]
+        ]
+        chronological["input"]["record"]["generatedAt"] = min(result_times) - 1
+        chronological["input"] = resign_composite_input(chronological["input"])
+        new_hash = chronological["input"]["recordRef"]["contentHash"]
+        new_native = "stor-" + new_hash
+        chronological["input"]["recordRef"]["anchor"]["locator"] = new_native
+        document = copy.deepcopy(self.document)
+        context = document["trustedContext"]["vetInvocations"][invocation_id]
+        context["recordAnchorBinding"]["nativeAddress"] = new_native
+        receipt = document["trustedContext"]["authenticatedRecordReceipts"][
+            context["recordReceiptId"]
+        ]
+        receipt["nativeAddress"] = new_native
+        receipt["contentHash"] = new_hash
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            execute_once(chronological, document),
+        )
+
+    def test_jcs_and_claim_reference_boundaries_are_shared_and_fail_closed(self):
+        self.assertTrue(canonical_equal(1, 1.0))
+        demos = "did:demos:agent:" + "11" * 32
+        self.assertEqual(parse_ref(demos), ("did", demos.split(":", 1)[1]))
+        for escaped in ("did:example:subject%3Aretained", "did:example:subject%3aretained"):
+            self.assertEqual(parse_ref(escaped), ("did", escaped[4:]))
+        for reference in (
+            "did:example:subject%A",
+            "did:example:subject%3g",
+            "did:example:subject:",
+            "did:demos:agent:" + "AA" * 32,
+        ):
+            with self.subTest(reference=reference), self.assertRaises(ValueError):
+                parse_ref(reference)
+
+        case = next(
+            item for item in self.cases
+            if item["name"]
+            == "vet-control-existence-only-lei-supporting-context"
+        )
+        for invalid in (float("nan"), float("inf"), SAFE_INT + 1, "\ud800"):
+            with self.subTest(invalid=repr(invalid)):
+                changed = copy.deepcopy(case["evaluations"]["result"])
+                changed["input"]["requirement"]["required"][0]["parameters"] = {
+                    "required": invalid
+                }
+                self.assertEqual("error", execute_once(changed, self.document))
+
+    def test_registered_reference_component_shapes(self):
+        valid = (
+            "cci-xm:evm:mainnet:0x1234", "cci-web2:github:example",
+            "cci-pqc:falcon:issued-key", "stor-cred:certificate:issued-id",
+            "substrate-validator-set:demos:epoch-1", "sam-uei:ABC123DEF456",
+            "naics:541511", "erc8004:1:0x" + "ab" * 20 + ":0",
+        )
+        for value in valid:
+            with self.subTest(value=value):
+                self.assertEqual(parse_claim_reference(value).canonical, value)
+        for value in (
+            "cci-xm:evm:mainnet:", "cci-web2:github:", "cci-pqc:falcon",
+            "stor-cred:certificate", "substrate-validator-set:demos:",
+            "sam-uei:ABC", "naics:12345", "cci-lei:" + "A" * 20,
+            "erc8004:01:0x" + "ab" * 20 + ":0",
+            "erc8004:1:0x" + "ab" * 20 + ":" + str(2**256),
+        ):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                parse_claim_reference(value)
+
+    def test_every_invocation_binds_authenticated_session_and_recipe_pin(self):
+        for name in self.document["trustedContext"]["vetInvocations"]:
+            for source, field, value in (
+                ("invocation", "recipeRegistryVersion", 2),
+                ("session", "recipeRegistryVersion", 2),
+                ("session", "jobId", "01J00000000000000000000999"),
+                ("registry", "recipeRegistryVersion", 2),
+            ):
+                with self.subTest(invocation=name, source=source, field=field):
+                    context = copy.deepcopy(self.document["trustedContext"])
+                    invocation = context["vetInvocations"][name]
+                    target = {
+                        "invocation": invocation,
+                        "session": context["authenticatedSessionStarts"][invocation["sessionStart"]],
+                        "registry": context["recipeRegistry"],
+                    }[source]
+                    target[field] = value
+                    self.assertIsNone(VetReferenceRuntime(context)._trusted_invocation(name))
+
+    def test_verify_results_remain_session_agnostic_reusable_v1_artifacts(self):
+        artifacts = [
+            result["artifact"]
+            for case in self.cases
+            for evaluation in case["evaluations"].values()
+            for result in evaluation["input"]["resolvedResults"]
+        ]
+        self.assertTrue(artifacts)
+        for artifact in artifacts:
+            with self.subTest(reference=(artifact["scheme"], artifact["identifier"])):
+                self.assertFalse(
+                    {"jobId", "sessionNonce", "attempt", "challenge"} & set(artifact)
+                )
+        aggregate = next(
+            item for item in self.cases if item["name"] == "vet-oneof-error-over-fail"
+        )["evaluations"]["result"]["input"]
+        invocation = self.document["trustedContext"]["vetInvocations"][
+            aggregate["authority"]["invocation"]
+        ]
+        self.assertNotEqual(
+            aggregate["record"]["signature"]["signer"], AUTHORITY_REF
+        )
+        self.assertNotEqual(invocation["anchorWriter"], AUTHORITY_REF)
+        self.assertNotEqual(
+            invocation["anchorWriter"], aggregate["record"]["signature"]["signer"]
+        )
 
     def test_supplementary_signals_are_signed_but_not_result_references(self):
         case = next(
@@ -1350,7 +2065,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             for signal in record["supplementary"]
         ))
         self.assertEqual(
-            case["expectedOutput"], execute(evaluation, self.document)
+            case["expectedOutput"], execute_once(evaluation, self.document)
         )
 
         changed = copy.deepcopy(evaluation["input"])
@@ -1363,6 +2078,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 self.document["trustedContext"],
                 self.recipes,
                 self.result_context,
+                VetReferenceRuntime(self.document["trustedContext"]),
             ),
         )
 
@@ -1381,7 +2097,31 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             with self.subTest(resolved=resolved):
                 changed = copy.deepcopy(evaluation)
                 changed["input"]["resolvedResults"] = resolved
-                self.assertEqual("error", execute(changed, self.document))
+                self.assertEqual("error", execute_once(changed, self.document))
+
+        malformed_anchor = copy.deepcopy(evaluation)
+        malformed_anchor["input"]["resolvedResults"][0]["ref"]["anchor"] = {
+            "kind": [], "locator": "x"
+        }
+        self.assertEqual("error", execute_once(malformed_anchor, self.document))
+        self.assertFalse(
+            well_formed_attestation_ref({
+                "anchor": {"kind": [], "locator": "x"},
+                "contentHash": "00" * 32,
+                "signer": AUTHORITY_REF,
+            })
+        )
+
+        aggregate = next(
+            item for item in self.cases
+            if item["name"] == "vet-oneof-error-over-fail"
+        )["evaluations"]["result"]
+        malformed_record_anchor = copy.deepcopy(aggregate)
+        malformed_record_anchor["input"]["recordRef"]["anchor"] = []
+        self.assertEqual(
+            {"decision": "error", "reasons": ["aggregation authority invalid"]},
+            execute_once(malformed_record_anchor, self.document),
+        )
 
     def test_max_age_must_be_a_nonnegative_safe_integer(self):
         case = next(
@@ -1396,7 +2136,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 changed["input"]["requirement"]["required"][0][
                     "maxAge"
                 ] = max_age
-                self.assertEqual("error", execute(changed, self.document))
+                self.assertEqual("error", execute_once(changed, self.document))
 
     def test_authenticated_result_context_is_complete_and_independent(self):
         self.assertIsNotNone(self.result_context)
@@ -1539,7 +2279,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
         changed["input"]["resolvedResults"].append(
             copy.deepcopy(changed["input"]["resolvedResults"][0])
         )
-        self.assertFalse(execute(changed, self.document))
+        self.assertFalse(execute_once(changed, self.document))
 
     def test_signed_noncanonical_lei_cannot_satisfy_presence(self):
         case = next(
@@ -1564,6 +2304,9 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             "input": {
                 "evaluatedAt": 1_900_000_000_000,
                 "bundle": bundle,
+                "authority": copy.deepcopy(
+                    case["evaluations"]["result"]["input"]["authority"]
+                ),
                 "requirement": {
                     "requirementVersion": "1",
                     "required": [{
@@ -1573,7 +2316,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
                 "resolvedResults": [],
             },
         }
-        self.assertFalse(execute(evaluation, self.document))
+        self.assertFalse(execute_once(evaluation, self.document))
 
     def test_resigned_method_and_data_substitution_cannot_flip_control(self):
         case = next(
@@ -1605,7 +2348,7 @@ class Dacs1VetGoldenInputTests(unittest.TestCase):
             fixture_private_key("presenter"),
             public_ref(fixture_private_key("presenter")),
         )
-        self.assertNotEqual("pass", execute(changed, self.document))
+        self.assertNotEqual("pass", execute_once(changed, self.document))
 
     def test_vpc4_terminal_fault_attribution_is_derived(self):
         self.assertEqual("counterparty", vpc4_error_class("fail"))

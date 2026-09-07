@@ -129,6 +129,25 @@ class IdentityRiskAndDacsXPackTests(unittest.TestCase):
         self.assertEqual({r["kind"] for r in resolved["paymentTxRefs"]}, {"htlc-lock", "htlc-reveal", "htlc-claim"})
         self.assertNotIn("settlementAmendment", resolved)
 
+    def test_htlc9_receipt_reference_binding_and_path_policy(self):
+        _, ver = self._load_pack_modules()
+        interim = json.loads(INTERIM.read_text(encoding="utf-8"))["settlementEvidence"]
+        ref = json.loads(RESOLVED.read_text(encoding="utf-8"))["settlementEvidence"]["supersedesEvidenceRef"]
+        check = lambda value, receipt=True: ver.supersession_binding_errors(
+            value, interim, expected_phase_orchestrator=ver.EXPECTED_PHASE_ORCHESTRATOR,
+            require_fixture_receipt=receipt,
+        )
+        self.assertEqual(check(ref), [])
+        with_signer = dict(ref, signer=ver.EXPECTED_PHASE_ORCHESTRATOR)
+        self.assertEqual(check(with_signer), [])
+        self.assertTrue(check(dict(ref, signer="key:" + "11" * 32)))
+        alternate = dict(ref, anchor={"kind": "https", "locator": "https://example.invalid/record"})
+        self.assertTrue(check(alternate))
+        self.assertEqual(check(alternate, receipt=False), [])
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM, RESOLVED))
+        self.assertTrue(ver.requires_fixture_receipts(INTERIM.parent / ".." / "settlement" / INTERIM.name, RESOLVED))
+        self.assertFalse(ver.requires_fixture_receipts(Path("custom-interim.json"), Path("custom-resolved.json")))
+
     def test_htlc9_verifier_rejects_a_garbage_signature(self):
         gen, ver = self._load_pack_modules()
         for which in ("interim", "resolved"):

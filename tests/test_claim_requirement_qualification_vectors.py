@@ -3,7 +3,7 @@ import binascii
 import copy
 import hashlib
 import json
-import unicodedata
+import sys
 import unittest
 from pathlib import Path
 
@@ -12,6 +12,9 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from dacs_reference import canonical_bytes, exact_safe_integer  # noqa: E402
+
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "claim-requirement-qualification-v0.3.json"
 SPEC = ROOT / "spec" / "DACS-2-VET.md"
 
@@ -31,16 +34,7 @@ class QualificationError(ValueError):
 
 
 def canonical_json(value):
-    def normalize(item):
-        if isinstance(item, str):
-            return unicodedata.normalize("NFC", item)
-        if isinstance(item, list):
-            return [normalize(value) for value in item]
-        if isinstance(item, dict):
-            return {key: normalize(value) for key, value in item.items()}
-        return item
-
-    return json.dumps(normalize(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    return canonical_bytes(value)
 
 
 def decode_base64url_unpadded(value):
@@ -347,6 +341,12 @@ def applicable_results(input_data, claim_requirement, registry):
         if result["recipeVersion"] != expected_version:
             continue
         if "maxAge" in claim_requirement:
+            if (
+                not exact_safe_integer(result.get("verifiedAt"), minimum=0)
+                or not exact_safe_integer(input_data.get("generatedAt"), minimum=0)
+                or not exact_safe_integer(claim_requirement.get("maxAge"), minimum=0)
+            ):
+                raise QualificationError("age predicate timestamps are invalid")
             expires_at = result["verifiedAt"] + claim_requirement["maxAge"] * 1000
             if input_data["generatedAt"] > expires_at:
                 continue
@@ -388,7 +388,7 @@ def classify_required(input_data, claim_requirement, registry):
     return "indeterminate"
 
 
-def evaluate(input_data, vector_set, *, caller_requirement=None, **authority_options):
+def _evaluate(input_data, vector_set, *, caller_requirement=None, **authority_options):
     registry = resolve_authenticated_registry(input_data, vector_set, **authority_options)
     if registry is None:
         return "error"
@@ -443,6 +443,21 @@ def evaluate(input_data, vector_set, *, caller_requirement=None, **authority_opt
     return "pass"
 
 
+def evaluate(input_data, vector_set, *, caller_requirement=None, **authority_options):
+    """Ordinary aggregate entrypoint: malformed JSON values fail closed."""
+
+    try:
+        canonical_json(input_data)
+        return _evaluate(
+            input_data,
+            vector_set,
+            caller_requirement=caller_requirement,
+            **authority_options,
+        )
+    except (KeyError, QualificationError, TypeError, ValueError, UnicodeError):
+        return "error"
+
+
 class ClaimRequirementQualificationVectorTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -459,6 +474,21 @@ class ClaimRequirementQualificationVectorTests(unittest.TestCase):
         for vector in self.data["vectors"]:
             with self.subTest(vector=vector["name"]):
                 self.assertEqual(evaluate(vector["input"], self.data), vector["expected"])
+
+    def test_canonical_predicates_use_strict_repository_jcs(self):
+        self.assertEqual(canonical_json(1), canonical_json(1.0))
+        vector = next(
+            vector
+            for vector in self.data["vectors"]
+            if vector["name"] == "vet-claim-requirement-exact-match-pass"
+        )
+        for invalid in (float("nan"), float("inf"), 9_007_199_254_740_992, "\ud800"):
+            with self.subTest(invalid=repr(invalid)):
+                candidate = copy.deepcopy(vector["input"])
+                candidate["requirement"]["required"][0]["parameters"] = {
+                    "strictJcs": invalid
+                }
+                self.assertEqual(evaluate(candidate, self.data), "error")
 
     def test_omitted_version_uses_session_start_registry(self):
         vector = next(

@@ -13,6 +13,43 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — Vet admission, provenance, time, and receipt authority
+
+- The executable DACS-1/Vet reference now admits each presentation through a
+  verifier-owned active-phase context and an issuer-owned mutable SN-4 ledger.
+  Exact issued nonces are consumed on presentation attempt and retained by the
+  runtime; missing/wrong nonces and caller `consumed: false` snapshots cannot
+  authorize an invocation.  The context independently pins actor/evaluated
+  party, selected primary claim, attempt, expected verifier, phase orchestrator,
+  anchor writer, recipe
+  registry, trusted time, and composite receipt.  It also binds the expected
+  verifier to the verifier IdentityBundle and composite/reference signers while
+  keeping VerifyResult authority independent (#366).
+- Composite freshness now uses signed `generatedAt`, with safe-integer,
+  participating-result and authenticated receipt/execution chronology checks;
+  unsigned `evaluatedAt` is ignored as authority.  Record receipts validate the
+  CF-4 logical address separately from the native locator, content hash, writer,
+  transaction and finalized fixture lifecycle.  VerifyResult v1 remains
+  session-agnostic and reusable under VP-C1..VP-C3; no signed v1 shape changed.
+- A shared strict JCS/ClaimReference reference helper replaces ad-hoc
+  `json.dumps` equality/hashing in the affected paths, retains DID
+  method-specific bytes while enforcing exact percent escapes and the Demos
+  self-certifying DID profile, and rejects invalid numbers/Unicode without
+  changing four-disposition precedence.  The lifecycle walkthrough now rejects
+  bool/float phase indices before keying or comparison.
+- The HTLC-9/ST-8 fixtures use the registered `key:` signer spelling.  Their
+  existing public-key signatures remain under the frozen evidence domain, and
+  the regenerated wrappers add finalized receipt context; the verifier pins an
+  independent expected phase orchestrator and validates both receipts (#366).
+  Equivalent committed-file paths retain receipt validation; receipt-backed
+  supersession references bind the interim native anchor and any optional
+  signer to the expected authenticated authority. Custom pairs retain their
+  documented hash/signature-only locator contract.
+- Common invocation admission checks authenticated session/job/recipe pins
+  for every operation. The shared current registry excludes deferred CCI
+  contexts and validates specified structured identifier components, with the
+  existing deferred-LEI fixture arm explicitly selected for compatibility.
+
 ### Fixed — executable DACS-1 / Vet golden inputs
 
 - The 30 DACS-1/Vet manifest cases now use only registered DACS-2 method

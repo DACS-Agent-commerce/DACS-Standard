@@ -8,7 +8,7 @@
     "path": "conformance/run.ts"
   },
   "provenance": "Standard-owned deterministic reconstruction of the external runner's previously hidden inputs, normalized to current ClaimReference, IdentityBundle, VerifyResultRef, signed-recipe, production-authority, signature, freshness, and presence-only rules",
-  "hashScope": "SHA-256 of UTF-8 compact JSON with recursively sorted keys; each inputHash covers only that case's evaluations; fileSha256 is pinned by MANIFEST.json",
+  "hashScope": "SHA-256 of strict CORE RFC 8785/JCS UTF-8 bytes; each inputHash covers only that case's evaluations; fileSha256 is pinned by MANIFEST.json",
   "publicTestSeeds": {
     "derivation": "sha256(UTF8('dacs-363:' + label))",
     "labels": [
@@ -16,7 +16,9 @@
       "second-presenter",
       "authority",
       "recipe-steward",
-      "verifier"
+      "verifier",
+      "phase-orchestrator",
+      "anchor-writer"
     ]
   },
   "publicKeys": {
@@ -24,7 +26,9 @@
     "secondPresenter": "key:a688ca8598879716b4e7b84d30d861f63cb50a7e33eaf2b209b8090ff61abdb3",
     "authority": "key:f0d8316d36d40d1a7cbfc5591df7bc6f05af233b40dd9eb3db6b7d98efb3db59",
     "recipeSteward": "key:79d6d24fce9ae28d12d8288438d44634a21130816f3d39a4a0928840ce4511b9",
-    "verifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
+    "verifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+    "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+    "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec"
   },
   "trustedContext": {
     "recipeRegistry": {
@@ -895,16 +899,1564 @@
         },
         "serializedArtifactHash": "09daadba3f96f2b8f89b2522db02325b92a3c24b8282ec463677488ed13185ea"
       }
-    ]
+    ],
+    "vetInvocations": {
+      "dacs-366-vet-invocation-001": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "cci-lei:984500ABCDEF12345678",
+        "primaryClaim": "cci-lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-001",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-002": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "cci-lei:984500ABCDEF12345678",
+        "primaryClaim": "cci-lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-002",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-003": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-003",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-004": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-004",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-005": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-005",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-006": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-006",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-007": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-007",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-008": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-008",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-009": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-009",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-010": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-010",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-011": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-011",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-012": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-012",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-013": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-013",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-014": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-014",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-015": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-015",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-016": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-016",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-017": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-017",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-018": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-018",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-019": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-019",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-020": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-020",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-021": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-021",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-022": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-022",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-023": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-023",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-024": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-024",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-025": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-025",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-026": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-026",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-027": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-027",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-028": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-028",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-029": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-029",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-030": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-030",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-031": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-031",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-032": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-032",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-033": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-033",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-034": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-034",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-035": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-035",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-036": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-036",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-037": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-037",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-038": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-038",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-039": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-039",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-040": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-040",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-041": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "primaryClaim": "lei:984500ABCDEF12345678",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-041",
+        "trustedNow": 1900000000000,
+        "recordReceiptId": null,
+        "recordAnchorBinding": null
+      },
+      "dacs-366-vet-invocation-042": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-042",
+        "trustedNow": 1900000001000,
+        "recordReceiptId": "dacs-366-vet-invocation-042-record-receipt",
+        "recordAnchorBinding": {
+          "anchorKind": "storage-program",
+          "logicalAddress": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+          "nativeAddress": "stor-1babbc8555dfe4e6a49e745f6fa0f67d2e49c64e2905ec6c5c6b220e5a01e23d",
+          "writer": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec"
+        }
+      },
+      "dacs-366-vet-invocation-043": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-043",
+        "trustedNow": 1900000001000,
+        "recordReceiptId": "dacs-366-vet-invocation-043-record-receipt",
+        "recordAnchorBinding": {
+          "anchorKind": "storage-program",
+          "logicalAddress": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+          "nativeAddress": "stor-a52c0b638dab4452a6386ec7faedb006484c24ae4e1aa9bfb750d52cdffbb195",
+          "writer": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec"
+        }
+      },
+      "dacs-366-vet-invocation-044": {
+        "jobId": "01J00000000000000000000363",
+        "sessionStart": "dacs-363-session-start",
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "primaryClaim": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "phaseOrchestrator": "key:a7aa46ac355b1ff4a2fceaf4aa7b2b22cc37da58b1b54a524fb852297b94c988",
+        "anchorWriter": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "recipeRegistryVersion": 1,
+        "challengeId": "dacs-366-challenge-044",
+        "trustedNow": 1900000001000,
+        "recordReceiptId": "dacs-366-vet-invocation-044-record-receipt",
+        "recordAnchorBinding": {
+          "anchorKind": "storage-program",
+          "logicalAddress": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+          "nativeAddress": "stor-67a6bf8a6cec779f09ffdc21a6f97b0b5a9d11a5ae6ac83250ff951f5e3c4756",
+          "writer": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec"
+        }
+      }
+    },
+    "nonceIssuances": [
+      {
+        "challengeId": "dacs-366-challenge-001",
+        "nonce": "6af4d88ce5fcd872179755a30093775f9341a89ed1d39ed19f539e1259091156",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "cci-lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-002",
+        "nonce": "0fd8de866cd5dab1d3e26c144c6e60fdf31a6ace55030b2684cff71db2fddda6",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "cci-lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-003",
+        "nonce": "4f0aae764e0e760e5066b1ce30c1bf5fe954057c06c2e4ca93ca71f5422b69ee",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-004",
+        "nonce": "6371001b895d0b5d3d65deed9b7dcb073210374d6235c0b3e3d34529d21806aa",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-005",
+        "nonce": "f8b9c0c0deecdd87eb434b5245df5eef0e61628f7c47c0d4958b88a9f2f70c09",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-006",
+        "nonce": "1ea93013adae2713d598864697397517076974e0b987bdaf073ea2db4e4ce8df",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-007",
+        "nonce": "4c0d4ad587adcd84e559f8b2ffe953a33b17f0c2bf4b679157763f497dc42e90",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-008",
+        "nonce": "0f2959617f09f8f2ad024bd6560da482dd6ae7ec1d4b5c2c2cb4bd6ab4342317",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-009",
+        "nonce": "9fa1cd8cc795e7f1de60333bba0f66116fea47f920503aaf75ddc1c189e9210b",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-010",
+        "nonce": "d1b96951121ae76eeaed84dba77bd4de3474874a00050da0a7c1abc99a478830",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-011",
+        "nonce": "99779db6d13c44c21faeb3a98f056df84ae6fb210d9e42776f75a9f544e2f982",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-012",
+        "nonce": "39483d4baa6d46d0bc8de45aec46933c6cda212049669960263b6fc20ec7a63c",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-013",
+        "nonce": "019bac524094b8bc253598ae0359a63d8b7758c7f0148743877fc4634a0fdbde",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-014",
+        "nonce": "b270ed860a0605480fedcb8b15058af2fc1b12c41479ec46a1947519909eb686",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-015",
+        "nonce": "7adee8bf04e338c975bb0440a1d92356be8d4ab94109a5c7d187e2d653988f4e",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-016",
+        "nonce": "a9892c5b7f890584488595033b86ee4c62f85f1d741715edb2e33a5c2dbfb7d4",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-017",
+        "nonce": "90e7d4f90a6e837114025d1dc50046086265f1ab48029a19ecea81870bb8c3bc",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-018",
+        "nonce": "5fb9df3bee46c68380f4e7fdb7e2af04dd3a804c38e1c67751da047c4798ba0d",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-019",
+        "nonce": "96189e0ee642b1b12907059cf465eb994bffb2ce5bb9c778bf47a04c232f841f",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-020",
+        "nonce": "f0885a74e56ca5279b34db36aabe89e9575bfaa8f46745f8d04776248b76bc70",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-021",
+        "nonce": "6973691c884337c805f53f953467921b3cb45c9fa4cddfc34ef9b5cb49ac1e32",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-022",
+        "nonce": "2a813dc6a3474acf3f663c728ec109421a82d1c5eac3bae08b93ef23cd790a42",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-023",
+        "nonce": "9dda830f8e6b372502dfad1f3740ffa3c0aade5ddc4992b3f705eae456b3022e",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-024",
+        "nonce": "7741b14dc9a1f1cbbcfe24c02e7c73a758e42e5e11d1cc0cca82b66186a13312",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-025",
+        "nonce": "917b9a70df16caeb261f9e034de982e15865f82b202abee1fd294fa4340aecd7",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-026",
+        "nonce": "a40f3f1af8a9badb8c088b997857733587f410421f1263fa9713b681c64847d3",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-027",
+        "nonce": "d0f58416c0144a81630a94b60ab03e6c456794cef63188a84925f98d66b3b3fe",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-028",
+        "nonce": "3c6d4a9c459be225310cb625b8bd6d4234fbc8c3162549090c3cb7c027e0e920",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-029",
+        "nonce": "01905186ce875cab329abb7f8a2d3f0a615a1e2014e467881e8eb4b0f7602c7d",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-030",
+        "nonce": "2e13c7609e3b85c624cc149ab2f0e7dac264e64e827638950231df5a8e26503c",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-031",
+        "nonce": "b2b7d614a68e640c2b45e30cc76776d435a163ba572fe8b105287ef48043b1ab",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-032",
+        "nonce": "0b896f6302c1c37ac592cd22f7c593cb686c9fa811a4fbe9728e9f0c54c6173d",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-033",
+        "nonce": "97d55fc465fd0bd6b0ecad37edc8facc7dda274740b940e75695947cf36f6550",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-034",
+        "nonce": "a3532d03abbc8cfc40bf8d3faac72e605b573955ac48bbe08a5f7f619581ee84",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-035",
+        "nonce": "a7701e3f1311a4e45d4a35f7e25ba136771040cc88cb6f2452594dce7a87858a",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-036",
+        "nonce": "67b52b3e23873ac1f0591f1c21f763a169f9621ca9f557d478933a0954ddbac0",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-037",
+        "nonce": "187614dfcb488937e46f939f54587e8589b3dbdc986e1ff2c8f63027a40fe760",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-038",
+        "nonce": "0f8eacd0fcd0599613c9f6d716a6e86789e775844e9d442daa10ab9b2357df9f",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-039",
+        "nonce": "afa26107dfee83b69c163e4b6b24d71e7601dfe042b4b39953919e516ee4a130",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-040",
+        "nonce": "4fec79b46fe3aa49e440b6ca491c8d97f696105ccb66d6d776c5d88257d7ffd4",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-041",
+        "nonce": "f7e98ed14d9d749e79d39ea4c3ff935f8bc52f5d9f36df8d35348260cd64c39f",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "lei:984500ABCDEF12345678",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-042",
+        "nonce": "914de4c9abb6859ea9f0627df7a1f0881548ce01aa8cff5df85f4d9574594aaa",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-043",
+        "nonce": "478330181f550b9fa25ab2a60216ff2c28780b275ecbd6733910d74c23e086a2",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      },
+      {
+        "challengeId": "dacs-366-challenge-044",
+        "nonce": "597cf21fa42cf4dc204a2f33791e9ee891adc4d6607273e3b89eaa69fb6afbef",
+        "jobId": "01J00000000000000000000363",
+        "actor": "buyer",
+        "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "phaseIndex": 0,
+        "attempt": 1,
+        "expectedVerifier": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedBy": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
+        "issuedAt": 1899999990000,
+        "expiresAt": 1900000060000
+      }
+    ],
+    "authenticatedRecordReceipts": {
+      "dacs-366-vet-invocation-042-record-receipt": {
+        "receiptVersion": "1",
+        "substrate": "fixture-sr2",
+        "finalityProfile": "fixture-deterministic-finality",
+        "logicalAddress": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "nativeAddress": "stor-1babbc8555dfe4e6a49e745f6fa0f67d2e49c64e2905ec6c5c6b220e5a01e23d",
+        "contentHash": "1babbc8555dfe4e6a49e745f6fa0f67d2e49c64e2905ec6c5c6b220e5a01e23d",
+        "transactionRef": {
+          "kind": "fixture-transaction",
+          "value": "c6ad9d3ed7974c466a647b2efb5c91a0cdb34dd253d7908c5696b7d2686fce60"
+        },
+        "writer": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": 1900000000500,
+        "blockRef": {
+          "id": "3729b80391f65da2e79f534e45dbf314c03fc271efad7abd53150031fb2e4f5c",
+          "height": "366",
+          "timestamp": 1900000000250
+        },
+        "evidence": {
+          "kind": "fixture-finality-proof",
+          "value": "322edf8b4c1543c8a3398022db067786aec56b8a3a04d1ecbc381e61bddbf9fc"
+        }
+      },
+      "dacs-366-vet-invocation-043-record-receipt": {
+        "receiptVersion": "1",
+        "substrate": "fixture-sr2",
+        "finalityProfile": "fixture-deterministic-finality",
+        "logicalAddress": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "nativeAddress": "stor-a52c0b638dab4452a6386ec7faedb006484c24ae4e1aa9bfb750d52cdffbb195",
+        "contentHash": "a52c0b638dab4452a6386ec7faedb006484c24ae4e1aa9bfb750d52cdffbb195",
+        "transactionRef": {
+          "kind": "fixture-transaction",
+          "value": "f06d6cf5ffe5bf8492071a251888c6ac411482d06cd47dd0e498f00b9e379877"
+        },
+        "writer": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": 1900000000500,
+        "blockRef": {
+          "id": "c77799e7e5f6ac206248592a638d91e15638c7f33bb22ffbff6ca75a326217f3",
+          "height": "366",
+          "timestamp": 1900000000250
+        },
+        "evidence": {
+          "kind": "fixture-finality-proof",
+          "value": "c871e9c32eed6b5f5081031f9710fa247eb3ae4baebffe10be3de1423ebbb7d1"
+        }
+      },
+      "dacs-366-vet-invocation-044-record-receipt": {
+        "receiptVersion": "1",
+        "substrate": "fixture-sr2",
+        "finalityProfile": "fixture-deterministic-finality",
+        "logicalAddress": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
+        "nativeAddress": "stor-67a6bf8a6cec779f09ffdc21a6f97b0b5a9d11a5ae6ac83250ff951f5e3c4756",
+        "contentHash": "67a6bf8a6cec779f09ffdc21a6f97b0b5a9d11a5ae6ac83250ff951f5e3c4756",
+        "transactionRef": {
+          "kind": "fixture-transaction",
+          "value": "5f08e19b5b7fd05170d3e18b912ec97905f8bab0c8f20ec8b4f8401b02e5ed3b"
+        },
+        "writer": "key:ad5a1b40ef2fd1257370f038070364820b8fc3e8fc1ba6e99870de7a84edaeec",
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": 1900000000500,
+        "blockRef": {
+          "id": "e709e1bc7b9b360e47555523a8331036063e092535fb7d12a456213744c9a5fb",
+          "height": "366",
+          "timestamp": 1900000000250
+        },
+        "evidence": {
+          "kind": "fixture-finality-proof",
+          "value": "f862918c3395a5e975cd59d4d8556144844b66615de92363cc6fb96f33852baa"
+        }
+      }
+    }
   },
   "count": 30,
-  "hash": "d6182df8babee0e33b0048905fbca6403bee05166acc068562f302306e7591cb",
+  "hash": "c214cac85a77d5fc917922039d2ec139d8941672b234ab2ec346475de210da7f",
   "cases": [
     {
       "name": "dacs1-cci-lei-defect",
       "spec": "§6.3.3",
       "summary": "A cci-lei claim cannot satisfy a distinct bare lei requirement.",
-      "inputHash": "ae2eae4e0aed0b5961a90a3709726144cde701e2b45198ab0d50784cf48afff8",
+      "inputHash": "49c63484208bfcb0d69e04ef334162eaf475a6bd087459fcce632496fea4e19b",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -937,10 +2489,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "Ewr6GyqZ-V7ktBz_sFIXAgncAwX6v8g4huicV-iBdyZcqAU1aYZie8v51fTJAs-kOxZF2-5KInLB7tF7k30VCw"
+                    "signature": "PsKTM-tHwxrRmzOWwFQpkqySY_kNcRlNr4snhXkAAiXgVlVSNvzeHv1bpOnA1Icxb1VDPeN2BaKDKADfwTCnBg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "6af4d88ce5fcd872179755a30093775f9341a89ed1d39ed19f539e1259091156"
             },
             "resolvedResults": [
               {
@@ -980,6 +2533,10 @@
                 "serializedArtifactHash": "fa2e5e1ab62dfbd415907649f5410a2e921e6be5a48ea9cb1fb2f67ebb5cbe21"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-001"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -999,7 +2556,7 @@
       "name": "dacs1-cci-lei-named-matches",
       "spec": "§6.3.1",
       "summary": "The same signed cci-lei claim satisfies its own registered scheme.",
-      "inputHash": "780415ad3a570be503b274707b05f8c21fecab74f71a84e680d2ab286d49adb4",
+      "inputHash": "4fc0aaf5515386d71916a3a53fd1d1fdae6e00fe5c180b865b5be620d973ccae",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -1032,10 +2589,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "Ewr6GyqZ-V7ktBz_sFIXAgncAwX6v8g4huicV-iBdyZcqAU1aYZie8v51fTJAs-kOxZF2-5KInLB7tF7k30VCw"
+                    "signature": "MeZgvvASci_9CVYk0MJZQQITCZMzdjRvAYYw_u7gzcyLsR8FfUSP-2YVzR6epNbdvbts6s9_oAcYIPcbJWJKDA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "0fd8de866cd5dab1d3e26c144c6e60fdf31a6ace55030b2684cff71db2fddda6"
             },
             "resolvedResults": [
               {
@@ -1075,6 +2633,10 @@
                 "serializedArtifactHash": "fa2e5e1ab62dfbd415907649f5410a2e921e6be5a48ea9cb1fb2f67ebb5cbe21"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-002"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1094,7 +2656,7 @@
       "name": "dacs1-tier-laundering-guard",
       "spec": "§6.3.3",
       "summary": "Another same-scheme pass cannot authorize the exact selected claim.",
-      "inputHash": "42babf591c6143682a5bdbc2d7c81d6c5e5b5592b4c886a355da76a5b754d88c",
+      "inputHash": "f91dfcc77296f8981459f843399dbb8b50e213465a03557b70b5be3b8b1d087f",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -1139,10 +2701,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
+                    "signature": "H5JFJTYK7Lz6SOyd4tFI1w-433ZRbYZ4_WhLuwuBgmw4S5XvmPmnQZKJ5l_NX2gcmwHh25rkR9BGuby96mQrCQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "4f0aae764e0e760e5066b1ce30c1bf5fe954057c06c2e4ca93ca71f5422b69ee"
             },
             "resolvedResults": [
               {
@@ -1218,6 +2781,10 @@
                 "serializedArtifactHash": "941653c986c49b302eaa1c7de298c37a72c29e2839890e617779c68e366a7c45"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-003"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1238,7 +2805,7 @@
       "name": "vet-control-existence-only-lei-supporting-context",
       "spec": "§6.3.2 step (6)",
       "summary": "A registry pass is valid supporting evidence when the LEI is not used as control.",
-      "inputHash": "477b10cc3a331567cf6ecf1a25474cd81b3ec6840f4b465642170a6cee4e87ce",
+      "inputHash": "f2dd809379299b2f8fb2da369f26db22b8717e99aa4d42c7a0f4b6efeb6cd4db",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -1271,10 +2838,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "TEivRvNsdQ6JKbwfkx-L7JoyTexT9c2aATbEpDK9Lb7GUu8euK2rlYD5qeCHTCvs6rDYAvH7UzSIvwgM-nvmBg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "6371001b895d0b5d3d65deed9b7dcb073210374d6235c0b3e3d34529d21806aa"
             },
             "resolvedResults": [
               {
@@ -1314,6 +2882,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-004"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1333,7 +2905,7 @@
       "name": "vet-crq2-implicit-latest-family-version",
       "spec": "§7.7.1 CRQ-2",
       "summary": "An omitted recipeVersion resolves the exact authenticated family's latest live version.",
-      "inputHash": "639fd1b18f3eea7866968140ca19c11b95c689b3bc51422fdf2af69fba8b6514",
+      "inputHash": "1c15a341d1118109ad64f524d2dce85b4e0ef2b7c1df62ab9e5785cd4367e90b",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -1366,10 +2938,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "koIGJdLNEFm0kDslVf62gU0EFoD3yiCMlR6jAPI2kZtm2Z3P-cTG9d53pynq8HSQE7Zzp5zRf8Q0u3pLbRtOAw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "f8b9c0c0deecdd87eb434b5245df5eef0e61628f7c47c0d4958b88a9f2f70c09"
             },
             "resolvedResults": [
               {
@@ -1409,6 +2982,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-005"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1427,7 +3004,7 @@
       "name": "vet-crq2-metadata-only-parameter-rejected",
       "spec": "§7.7.1 CRQ-2",
       "summary": "Signed claim metadata cannot substitute for a required authenticated VerifyResult value.",
-      "inputHash": "f232118e223cd4f0009fef194b80d2e4677fc9ab568dfbc479d68277c17cc0a7",
+      "inputHash": "03de3f6494548724ca70f00cf80b339ec21b65c8c3697d1808376fb1cad2cdc4",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -1463,10 +3040,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "R-T0Xlhe5lUjCJLUrWWgpaleFI3KBHt6-ulppA7K0eVZDHZ1e5HiUd7huuohVerWnaTu33l7ndQ4mQx1QsywDQ"
+                    "signature": "6E-h1WmQVGudjIpFESeCX0JjLm0dxv2IDJOf1NIFaU44u1hPW4lafnr9oPH82kVyy6wd0Gp2grvJaO9ziXObDg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "1ea93013adae2713d598864697397517076974e0b987bdaf073ea2db4e4ce8df"
             },
             "resolvedResults": [
               {
@@ -1509,6 +3087,10 @@
                 "serializedArtifactHash": "46b959adf3ea5d38b72974ec1137fe99d95a7a3847f0770e7da5b80bed779a17"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-006"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1531,7 +3113,7 @@
       "name": "vet-crq2-selected-method-excludes-other-family",
       "spec": "§7.7.1 CRQ-2",
       "summary": "A result from another authenticated method family cannot satisfy the selected family.",
-      "inputHash": "74857c27c7062b147292cb22416417e208c549623cd18e4c72df6f413e71cc5c",
+      "inputHash": "feb35c6558541a00befafba343569af5b6428dc375ea53302f7f41d0dd887cc1",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -1564,10 +3146,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "2dDl_9dI_KangKTEh6tNUehSwxgWNam6d6FexaPqxBzYrUmrsWFwuHlbANXYrbOqdmgIdSFOhkw6MKvH-X1-Dw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "4c0d4ad587adcd84e559f8b2ffe953a33b17f0c2bf4b679157763f497dc42e90"
             },
             "resolvedResults": [
               {
@@ -1607,6 +3190,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-007"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1628,7 +3215,7 @@
       "name": "vet-crq2-malformed-requirement-fields",
       "spec": "§7.7.1 CRQ-2",
       "summary": "Malformed version, parameter, and method selectors fail closed without throwing.",
-      "inputHash": "91b902fe074bcb1bd950dc0eaf44dfeed68062afc0cd1c4d4d71005a49cfd50c",
+      "inputHash": "50a25cb045174925b55335a0b6ecc78f6257ea231920d6f6f5e56ca06c62b9c1",
       "evaluations": {
         "stringRecipeVersion": {
           "operation": "decision-no-throw",
@@ -1661,10 +3248,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "NA9hYIFTHOhvLvIvw3p2fhHHPaoMvpyK5DOCqtLK7YcusIsPaKwlghMFqyXlZlbOsKz_vrLKsc3qqJJ79SZNDA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "0f2959617f09f8f2ad024bd6560da482dd6ae7ec1d4b5c2c2cb4bd6ab4342317"
             },
             "resolvedResults": [
               {
@@ -1704,6 +3292,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-008"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1747,10 +3339,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "fmX8kWfcsKi4W27j-6kqUoOMeFYpGja7LIalgtoYAHBrrX37ppFa21eV7eTMFhrrJaafPTlBXbXz5KOqNTMiDg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "9fa1cd8cc795e7f1de60333bba0f66116fea47f920503aaf75ddc1c189e9210b"
             },
             "resolvedResults": [
               {
@@ -1790,6 +3383,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-009"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1834,10 +3431,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "6wrZl1QysFkYzymf_ZYqOJmaQ3hlVU9Pweb1F1pRWOnE2eM4SFSq2NMXjcnfhqthOGWMev1Ww2pwpjh6TtU4Dw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "d1b96951121ae76eeaed84dba77bd4de3474874a00050da0a7c1abc99a478830"
             },
             "resolvedResults": [
               {
@@ -1877,6 +3475,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-010"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -1912,7 +3514,7 @@
       "name": "vet-crq2-unresolved-family-or-version-errors",
       "spec": "§7.7.1 CRQ-2",
       "summary": "An absent selected family or explicit version is an error before classification.",
-      "inputHash": "1dff6fe482c6e46b22313cf80a80b6dd8cc19ab57e8efc78eb087885f03682d4",
+      "inputHash": "9aac42d92789e372489abfab6260e863518f181bef5147904f81fd8b8a92c143",
       "evaluations": {
         "missingFamily": {
           "operation": "decision",
@@ -1945,10 +3547,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "lKzzmQbBi0YIZJ80hjppTERcaw-sFqL1PON38Z6zqYo4PPp_BJfIJhzAYXhaDcdLJYv7VFUfkMDYBB2VI0vOAw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "99779db6d13c44c21faeb3a98f056df84ae6fb210d9e42776f75a9f544e2f982"
             },
             "resolvedResults": [
               {
@@ -1988,6 +3591,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-011"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2033,10 +3640,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "kwLOgKlu4qMT1jKxOZOqYQTqUls7_kXjazQgPW_YCV8hAPXUhzw8Ckou2wiBC6GYFuuMwjcQh2mBym8fx3cfBQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "39483d4baa6d46d0bc8de45aec46933c6cda212049669960263b6fc20ec7a63c"
             },
             "resolvedResults": [
               {
@@ -2076,6 +3684,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-012"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2098,7 +3710,7 @@
       "name": "vet-crq2-preflight-cannot-be-masked",
       "spec": "§7.7.1 CRQ-2 and CRQ-4",
       "summary": "An unresolved selected family is an evaluation-wide preflight error before either precedence ladder.",
-      "inputHash": "2d63403f700f4f1d1892207e2cbd39f2466354e064f8098ed958d01802e20b89",
+      "inputHash": "ca8081043bbc9a9b397055591353056c2952f8ae52c0e8f94a68d87669bd9c62",
       "evaluations": {
         "requiredFailMask": {
           "operation": "decision",
@@ -2131,10 +3743,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "AEk5ODGxD_HIL7Dl5HYktT17T6wH7waKt1e63CDoIdTKv9m57r2tPEVlB6RTP7RZRdQa7GgDe_UtrNry2-i3AA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "019bac524094b8bc253598ae0359a63d8b7758c7f0148743877fc4634a0fdbde"
             },
             "resolvedResults": [
               {
@@ -2174,6 +3787,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-013"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2223,10 +3840,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "UAK2odICKOInGFxoG6x97792lhPtbyb43aWAsJShpnW3dgPRZQCbekWXv2WntvCvx1Iv1kUNXUqgjjaYrhi1BA"
+                    "signature": "bikRQ5nOegwguwwfKHdvd7qEtC8V2jUd_-IdyIdg3ugNo02uraPc01iRAKjulWVWEDwDzVzCRDupeC6ve9dzCg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "b270ed860a0605480fedcb8b15058af2fc1b12c41479ec46a1947519909eb686"
             },
             "resolvedResults": [
               {
@@ -2266,6 +3884,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-014"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [],
@@ -2298,7 +3920,7 @@
       "name": "vet-control-existence-only-lei-presentedby-reject",
       "spec": "§6.3.2 step (6)",
       "summary": "The same existence-only result cannot control the selected LEI.",
-      "inputHash": "e813bfdc3754eeb3041c2a56cc4d34f59aa6eee47395abb9c71f563a53dc4ece",
+      "inputHash": "ac59de1c2ff8b66f8db11ed993ec55d7033e4b170b3918a29f18b9104d8a8936",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -2331,10 +3953,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "s9eQJUztmpTnm9rYmGqlkvdeuA_wmbXZsoxO930VN8aTfA6gPANioty91zFw2W-KR1zVcvRbByFRwxOq7WRjDg"
+                    "signature": "RjwjZr-Ownn-XmfazK6VZUE9YPLk7x2pmHEGr-TyGrLlCZFd22i4lQqC9VRzg_54_lLVLzEPNh3KRvTBMHcyDw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "7adee8bf04e338c975bb0440a1d92356be8d4ab94109a5c7d187e2d653988f4e"
             },
             "resolvedResults": [
               {
@@ -2374,6 +3997,10 @@
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-015"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2394,7 +4021,7 @@
       "name": "vet-control-existence-only-lei-reputation-key-reject",
       "spec": "§10.5.2",
       "summary": "An existence-only LEI cannot be used as a controlled reputation key.",
-      "inputHash": "70e4b773861820c29f0380f28cc182c3e24f22c6e0317ff8b033cf41a27ff882",
+      "inputHash": "14504be7b6d03f374045dbb110d9025557d459066fb09131c7faf4c265b709b9",
       "evaluations": {
         "result": {
           "operation": "control-decision",
@@ -2427,10 +4054,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "s9eQJUztmpTnm9rYmGqlkvdeuA_wmbXZsoxO930VN8aTfA6gPANioty91zFw2W-KR1zVcvRbByFRwxOq7WRjDg"
+                    "signature": "2ghtzHitux2SznvM20WM5pIKwB5d_JZOA_fls2_UnmNJ7lORcmrbRNjUl0DWu_uzpva6qAsk6vgx52HKoMuGAg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "a9892c5b7f890584488595033b86ee4c62f85f1d741715edb2e33a5c2dbfb7d4"
             },
             "resolvedResults": [
               {
@@ -2469,7 +4097,11 @@
                 },
                 "serializedArtifactHash": "eae294968dfb82e8e20d1f2065ee8d2b411606da114381808be7c74a59504db6"
               }
-            ]
+            ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-016"
+            }
           }
         }
       },
@@ -2479,7 +4111,7 @@
       "name": "vet-control-existence-method-forged-holderbinding-reject",
       "spec": "§6.3.2 step (6)",
       "summary": "Data cannot upgrade an existence-only method into a control method.",
-      "inputHash": "6446426383ff87aa46db51ccf13e82cce773317759d191ae6742ec605ad9fcdf",
+      "inputHash": "3f304176af71d383a58f088b6e25133e669e3536bc2bd490a771c086e9dddb12",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -2512,10 +4144,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "KcsNe90Rd75zLqkx3inzzrvyR-zr3ZKzgI5CBKeHbDzO8o6kXQOBz49qoLjxY014Fa9SEWW6qILHCEUbjZ33Dg"
+                    "signature": "KWGuaJ4nmGJTR2hprnitMM2jxlAzhXq-B722YHKl4QTh2PBIMsd6xYSYdt1g00xfX8XJF7cPE9v-4mlNnq0JDA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "90e7d4f90a6e837114025d1dc50046086265f1ab48029a19ecea81870bb8c3bc"
             },
             "resolvedResults": [
               {
@@ -2560,6 +4193,10 @@
                 "serializedArtifactHash": "b5a74bdc3e7b74e0ac8d511fe7630ddbe816d6ce245a15683ed1b3366ef2cc18"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-017"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2580,7 +4217,7 @@
       "name": "vet-control-key-presentation-accept",
       "spec": "§6.3.2 step (6)",
       "summary": "A lowercase-hex key claim is controlled by its exact bundle signature.",
-      "inputHash": "f5bb008b3841b8d1d6f3f82ae94a7d1a70c3809ea37f4dcdb38bf7f3e582c440",
+      "inputHash": "1542f1d14ccdff531952fcc1f126ecc97044f7e0334fe1ddab081162eacbe86b",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -2601,12 +4238,17 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "0Gtna6fftUmcmuZxm0CrMcUI7XglcWNYrAKfPSNGQcnv1SU4SlOHPUaBosHJ0j0STD0ArBQz9ZJ_OSVBXoCDDA"
+                    "signature": "5fEMl1XKi4VS_8ARsmw_GtLQSxh41VvgT7qo4AJRxFZcDsjS4n06tWFtY4a9IDmRvO-M5bI91RXCVHqhppkxDQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "5fb9df3bee46c68380f4e7fdb7e2af04dd3a804c38e1c67751da047c4798ba0d"
             },
             "resolvedResults": [],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-018"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2625,8 +4267,8 @@
     {
       "name": "vet-control-key-malformed-scope-reject-no-throw",
       "spec": "§6.3.2 step (6)/§7.5.1",
-      "summary": "An unsafe integer in signed scope is an error and never an exception.",
-      "inputHash": "c3a0c9e2c456e0227ff2bbe4b4a096a01ac659a0eeef75ecbc4afc03b2b0de4e",
+      "summary": "A boolean in an exact-integer signed field is an error and never an exception.",
+      "inputHash": "cb1fdba88edb26e1f94a6e2cac7f2641539064f6dd29930fd144135305897561",
       "evaluations": {
         "result": {
           "operation": "decision-no-throw",
@@ -2635,7 +4277,7 @@
             "bundle": {
               "bundleVersion": "1",
               "presentedBy": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-              "presentedAt": 9007199254740992,
+              "presentedAt": true,
               "claims": [
                 {
                   "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
@@ -2647,12 +4289,17 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "0Gtna6fftUmcmuZxm0CrMcUI7XglcWNYrAKfPSNGQcnv1SU4SlOHPUaBosHJ0j0STD0ArBQz9ZJ_OSVBXoCDDA"
+                    "signature": "_-_1N_Qo1TokGuFa8Z3CcgmHMbZql0ZRB2WleocBNGDjwf-c9IQkGsGI5XZxq4gkxGOm5bcmh_n-lBO3EjKLBw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "96189e0ee642b1b12907059cf465eb994bffb2ce5bb9c778bf47a04c232f841f"
             },
             "resolvedResults": [],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-019"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2675,7 +4322,7 @@
       "name": "vet-control-key-unresolvable-binding-indeterminate",
       "spec": "§6.3.2 step (6)/§7.5.1",
       "summary": "An unavailable required key-binding result remains indeterminate.",
-      "inputHash": "4a65caab4bc2bac6b8d0440bb083eb3327509d485361fc9c475161f68b00cf46",
+      "inputHash": "47edb4f4e0e87dc4abb9af69ba73b938f29291c91f5c7fbfc83b865d665e7908",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -2704,12 +4351,17 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "oTqOgHVLWavpBXL1vIM7BjCR50IISvpAPHS7Q4EP3X_EMtZHaidHIPln0frtfqJJMqS4hwihMQlJ5i3BniBjCA"
+                    "signature": "y95-tKnJaIkrLIZyktywJFd6FOXMG-pRINNGFBjN1FHMNJVlOcj1omP6ebJ8f2KMZSO6yd22yIQo2FaUfdenAg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "f0885a74e56ca5279b34db36aabe89e9575bfaa8f46745f8d04776248b76bc70"
             },
             "resolvedResults": [],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-020"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2729,7 +4381,7 @@
       "name": "vet-control-key-stale-reject",
       "spec": "§6.3.2 step (6)",
       "summary": "A valid key signature cannot make its expired selected claim current.",
-      "inputHash": "e0f587fd0bcc633c15241653e58680bc54f75d9554d15e797d3047fb64e8a441",
+      "inputHash": "ee5fe35ff5a0a868c98d15a9d55e24ba4d7d8995147d3d9fe29a6eb38efacb84",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -2755,12 +4407,17 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "J7HXWwbDeNWDqOSBqS8qUKdsaWpE6-jmAAa7fNthUAs56RB4mPT1HrdiReBb5JP0d10ORNnZQTewpjf-mQyPAA"
+                    "signature": "GBa86GsNLeuu1vK1XNnHh_xEYpjcNxz48yWKihnEt8LGDF2IErdVk2Zx5nA0IhRgL-pEBm__j-uGVYQMAm4nCQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "6973691c884337c805f53f953467921b3cb45c9fa4cddfc34ef9b5cb49ac1e32"
             },
             "resolvedResults": [],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-021"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2780,7 +4437,7 @@
       "name": "vet-control-key-verified-selector-laundering-reject",
       "spec": "§6.3.2 step (6)",
       "summary": "A different verified key cannot satisfy a verified selector for presentedBy.",
-      "inputHash": "39ab5e3db643aeb830ccd87deb57853645248409fe5eacc5bf1e1392987b08a4",
+      "inputHash": "654e1232abc6ad4f4488e5329ae22d68e70b7b311be0d2bcc71cf80f561b24a4",
       "evaluations": {
         "result": {
           "operation": "decision",
@@ -2813,10 +4470,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "AgJfob9y4MkG7ihUW-O6SU9hTsgQJdfqBYqiB15zwHIpR0D0VMqj47eCUbV5WnRvn0Tix-cR6CTm2bzA3xrcDw"
+                    "signature": "Kb3LHkKw31kE1AK3Mjl5zlhFt7LenHW14TP9YcwspKaLCukm-kBd4H6ZpLwkFEhf0M-P0lC_tfikRAgzPXLABg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "2a813dc6a3474acf3f663c728ec109421a82d1c5eac3bae08b93ef23cd790a42"
             },
             "resolvedResults": [
               {
@@ -2856,6 +4514,10 @@
                 "serializedArtifactHash": "3883af3b33f4ff956a7178073c8f2d13f68d77f9612c2c2abcba30e4afd69b20"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-022"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2876,7 +4538,7 @@
       "name": "dacs1-freshness-fail-closed",
       "spec": "§6.3.2/§6.3.3",
       "summary": "Verified claims use resolved authority time, clamp expiresAt, and fail closed on unavailable time evidence.",
-      "inputHash": "721b4d7f00c20ce04d0ed018ed7233856892f3f727899bece8414633b3659917",
+      "inputHash": "e6747134c2e9c9ec65debc7cfec0129ccb7c695e16bd1c42d1146bddfce304f1",
       "evaluations": {
         "absentBoth": {
           "operation": "match",
@@ -2908,12 +4570,17 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "P3L0egwZypKq1R45o3gA6YaB9oFPLyayOh8hb4jfcGi0nU0bRmmcahTbTIe4phjQ4IWNkpKKg7srrUJOzav8DA"
+                    "signature": "-6G-9kpaYLZPOuSUShtCx9yxc3mq8I8XENxtHGQ1ALy8pGIGIUQXjCvAAm5-1qDfHJyvCkkyTsOV5rWkPpfTCA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "9dda830f8e6b372502dfad1f3740ffa3c0aade5ddc4992b3f705eae456b3022e"
             },
             "resolvedResults": [],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-023"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -2958,10 +4625,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "7GDh6gCB_umALiVLZFkMmRuxIh3WO9k-g5JTkL-vm5ZQ_vkS0Eghx1KtxvH7VhtAdQ2025UfUmrx62Deu0TTAQ"
+                    "signature": "JmvYlxU5JG_N32Ax6wRUBzmzv318QGhpX2mie5EWTiNw8RzLXzrf3mBMH8dFPTt1UMIfH9J6zXxDxRkFJE-gAA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "7741b14dc9a1f1cbbcfe24c02e7c73a758e42e5e11d1cc0cca82b66186a13312"
             },
             "resolvedResults": [
               {
@@ -3001,6 +4669,10 @@
                 "serializedArtifactHash": "7d99a372cc71f6cd8367a736b924b89374eb85126e2c227a73d7a12c4c0e7eca"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-024"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -3044,10 +4716,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "7cRCp7bp7_1UwCU_FVOX23WCGI9eR4AuhslFkSrqj3KA3cdyKhybGlxfw1rKT57BcUTpm3NizkugjwSWhmLsAA"
+                    "signature": "bHmlxou5HaBJIXb_yOt125bytMPjbiQjGDwC8UDbH28nTzMaIxTTrdpQmKVLVwCcY41N0EIuscgaQ00okvZ0Cg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "917b9a70df16caeb261f9e034de982e15865f82b202abee1fd294fa4340aecd7"
             },
             "resolvedResults": [
               {
@@ -3087,6 +4760,10 @@
                 "serializedArtifactHash": "2a10f973228e34ed781e7f668e136608c070c40fc6177984b9dc64284d8e0af9"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-025"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -3130,10 +4807,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "rlj-bxDj1mHtWcSGaitLBSMd34nDEDJluQaaBDitCWGIkZryIJ5qXVyBCu84dPbIqeQ4jWrCXPDjGU7jE1ohDQ"
+                    "signature": "nPEwqVpR2O5Cqu3Ak4o_zzgfzsdWpHWQ6VrK2ZWWKq2LyGpQEmuoz4UM8zbPbltZW4Z0PhW49H6eGuxIJgmwAg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "a40f3f1af8a9badb8c088b997857733587f410421f1263fa9713b681c64847d3"
             },
             "resolvedResults": [
               {
@@ -3173,6 +4851,10 @@
                 "serializedArtifactHash": "0a23d33e6fc3251d1630bb97c2c5dfde7c4802a0e3b0302120a8dab08e4bc0ee"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-026"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -3230,10 +4912,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "-x5NyqFYJWQbm1MN_5nTwEJ6vWNo5QG4-P6Kr6pb2tXfzLOMqFKiR0cJInUjzHKDe94NnBfy3vHEjy0XJI9aDg"
+                    "signature": "VkrfPcbjMVw5yves3RoLgyKRcPOh-wXKXPhW5V-wrK61v9D9klGsVWn69tzJjpP3WuAmjIBXl38VBEywnl0sCA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "d0f58416c0144a81630a94b60ab03e6c456794cef63188a84925f98d66b3b3fe"
             },
             "resolvedResults": [
               {
@@ -3314,6 +4997,10 @@
                 "serializedArtifactHash": "da9ee2255d1938797df90085c28c281b3b54ff6371a0d1064b30ee47c631dac2"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-027"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -3341,7 +5028,7 @@
       "name": "vet-ma1-required-missing",
       "spec": "§6.3.3",
       "summary": "A signed bundle without the required scheme is rejected.",
-      "inputHash": "bf4ae9cb870d1122a8637d39f92adceed2dd1de6a70f78ddadff90aae4fcf264",
+      "inputHash": "ccbf89a2d2b765087f54f3004b2fb5d81c28d2ac1f38be9657feb9de708ff37d",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -3374,10 +5061,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "OrxPq5WalejFSFBW0tUZ81A1hnFX5bjMqV1hejFPSvRnduwpw29U-t9jhceZll6lxUdavz8J3AS66YqeT_-UAw"
+                    "signature": "uBFyo3bf11L7dh0JVuJ-YX-9ke5in9GzxOyKhmdT04yrK70fCfQEelT_-ZKcCXWM5_y-0wwlyWy09YzK--ZJDg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "3c6d4a9c459be225310cb625b8bd6d4234fbc8c3162549090c3cb7c027e0e920"
             },
             "resolvedResults": [
               {
@@ -3417,6 +5105,10 @@
                 "serializedArtifactHash": "edeaca759f14a4eab5f3329e4caf9f3ac41582683140dda60e05be0aa3e48936"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-028"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -3436,7 +5128,7 @@
       "name": "vet-ma1-oneof",
       "spec": "§6.3.3",
       "summary": "OneOf passes with a matching member and fails when no member is present.",
-      "inputHash": "33242565f75e698ef587ccee243a5dc00fbb840421fee690a622e5155e7deaaf",
+      "inputHash": "2b4680678e0695e6182f79aa72509b78669607d8c77a3c0161b85261065d8c20",
       "evaluations": {
         "satisfied": {
           "operation": "match",
@@ -3469,10 +5161,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "Gw4A0XijO4O5S3uuCQveUBBTHNvyaKlzRe1YrGSknu4XjXas39G43Bmt3B4pMqeBvbKzAncUcf32NVnluwcJDw"
+                    "signature": "w5I6B1-eNy_Q2fLUANmgDumOHrQDevUoRKeDsCHFdD9i9YC82L4Qf_7PHqRaxKpWz_cAy5r-kUIEROoIQvBbCQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "01905186ce875cab329abb7f8a2d3f0a615a1e2014e467881e8eb4b0f7602c7d"
             },
             "resolvedResults": [
               {
@@ -3512,6 +5205,10 @@
                 "serializedArtifactHash": "fbf39947c1e014a5305f0374a515528b3c43da136fc6c3274152138353a94b96"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-029"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [],
@@ -3563,10 +5260,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "OrxPq5WalejFSFBW0tUZ81A1hnFX5bjMqV1hejFPSvRnduwpw29U-t9jhceZll6lxUdavz8J3AS66YqeT_-UAw"
+                    "signature": "OOrlJHuk0JVVveHpH2TEtkCwwEaPOhys09M2pF959VQthGBhIiDxFkLTp3CkJ9gJaQ2CGM8cTsC5lRKJaX_RBw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "2e13c7609e3b85c624cc149ab2f0e7dac264e64e827638950231df5a8e26503c"
             },
             "resolvedResults": [
               {
@@ -3606,6 +5304,10 @@
                 "serializedArtifactHash": "edeaca759f14a4eab5f3329e4caf9f3ac41582683140dda60e05be0aa3e48936"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-030"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [],
@@ -3636,7 +5338,7 @@
       "name": "vet-ma2-scheme-mismatch",
       "spec": "§6.3.3",
       "summary": "The exact presentedBy scheme must equal primaryClaimSelector.",
-      "inputHash": "02dba205f6abc6ae00c95bb3bddd3aa00a60f714d0b4795870c2ef363cbd35b4",
+      "inputHash": "935255b3e92f31abc06c03dac1778a8a8338c484f79cf7d970f071dd3c8f9f72",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -3669,10 +5371,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "gOebzeawGIkKq4gOAFsQ1zRU9skQ6mtuv6vcUJpkuESWBPrzzw_so6FVeICL8PCaDgnS9_x4fhBk8KGd8fN3Aw"
+                    "signature": "pBKO1AIoLuHkRgH1snaBm7ttWIsA7RKKYXWY5fBV23_na-_MhC4LhJi09qFUJ8xvCsDqu1_j95lxRmqM0kVOCA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "b2b7d614a68e640c2b45e30cc76776d435a163ba572fe8b105287ef48043b1ab"
             },
             "resolvedResults": [
               {
@@ -3717,6 +5420,10 @@
                 "serializedArtifactHash": "9160ea477ae516924a53f1a2f394d4347801c4cee3f89c67b778a57934e68c45"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-031"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -3737,7 +5444,7 @@
       "name": "vet-ma3-unverified-reject",
       "spec": "§6.3.3",
       "summary": "A failing selected claim is not laundered by another same-scheme pass.",
-      "inputHash": "42babf591c6143682a5bdbc2d7c81d6c5e5b5592b4c886a355da76a5b754d88c",
+      "inputHash": "95180ebcfa3a72d5bb5e4c1d9854977cca639ec3471b5895dffe4dbecf8c4a87",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -3782,10 +5489,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
+                    "signature": "qzxVcyp3nTKIi3Oi3m5wGrUm6zDJyl7c_CCyUjLXIziyJz9XBT0TYO5iYMpOZpRjs_iQ72Ijb1bTenOgINxPAQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "0b896f6302c1c37ac592cd22f7c593cb686c9fa811a4fbe9728e9f0c54c6173d"
             },
             "resolvedResults": [
               {
@@ -3861,6 +5569,10 @@
                 "serializedArtifactHash": "941653c986c49b302eaa1c7de298c37a72c29e2839890e617779c68e366a7c45"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-032"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -3881,7 +5593,7 @@
       "name": "vet-ma3-resolution-vs-presence",
       "spec": "§6.3.3",
       "summary": "Presence can match without resolving an optional failure; verified use cannot.",
-      "inputHash": "9aace723626c6e910eb403a659d278edacdb334d9d32109036afc010ae817a1a",
+      "inputHash": "529d7c2ea8fd1575c28e86ce0b30640f273652e620012c4a48aebc8f191de410",
       "evaluations": {
         "dacs1Presence": {
           "operation": "match",
@@ -3926,10 +5638,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
+                    "signature": "xJl3oNQcIUw8fly-C75f1hcGPfm2vHSQzRHztX_Gj_DhwgDcmA0pI7tu-JhikZ2mTKQZWFWBMnwLdCpQMxD1Ag"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "97d55fc465fd0bd6b0ecad37edc8facc7dda274740b940e75695947cf36f6550"
             },
             "resolvedResults": [
               {
@@ -4005,6 +5718,10 @@
                 "serializedArtifactHash": "941653c986c49b302eaa1c7de298c37a72c29e2839890e617779c68e366a7c45"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-033"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4059,10 +5776,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "3Gw5qxcpO71MiwFcFAi779MXX8oBjRyWLs9xqp-k1qDg2lPT5RhDiuDP47gd1HjYBsJxU6wpofBEL11RODe3Bg"
+                    "signature": "6ijhjXB7mgre6dm82aCxzL1GiRHEEqs4jWQCPKvldyC7FNvYu0HcQC2GLcbHwVHHzqT8IHEvmvOeKLHBAzR0DQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "a3532d03abbc8cfc40bf8d3faac72e605b573955ac48bbe08a5f7f619581ee84"
             },
             "resolvedResults": [
               {
@@ -4138,6 +5856,10 @@
                 "serializedArtifactHash": "941653c986c49b302eaa1c7de298c37a72c29e2839890e617779c68e366a7c45"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-034"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4161,7 +5883,7 @@
       "name": "vet-ma3-verified-accept",
       "spec": "§6.3.3",
       "summary": "A fresh selected vLEI result with holder binding is accepted.",
-      "inputHash": "788bec51701284a1486170df755f5319acbbef45e99412bc2eca24e1595aa6ed",
+      "inputHash": "c07b9cff9d5c749b3da197468c16c5078a67c73f43d9da3362a96bba2c9897f9",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -4194,10 +5916,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "4jrIF-hKBZtaYcFOLS_B3zYnhLkUZKvsthqmiecKeWJWW_iU34u9BUYMenZCKXfTDgPMDBAOYCIo-bJu2zIEDw"
+                    "signature": "hFYBlplU8tg-lb_kycmE2Q-zvMk2VhXOsNvsDNvtiUcFkxBHnQxnESZhiFWs_rkTVMzPEwL9XGW8iIqzdA1HBw"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "a7701e3f1311a4e45d4a35f7e25ba136771040cc88cb6f2452594dce7a87858a"
             },
             "resolvedResults": [
               {
@@ -4242,6 +5965,10 @@
                 "serializedArtifactHash": "eb512f8f5dd381863db2a7b7a15a05384437cd4b16664267f6285016b3bc47ec"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-035"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4262,7 +5989,7 @@
       "name": "vet-findclaim-decision",
       "spec": "§6.3.3",
       "summary": "An indeterminate required claim does not count as a matching pass.",
-      "inputHash": "a139443da6096cd1cfb20d87ab3eeb08b2e39cad8ccb554ece6403ce68bd83ca",
+      "inputHash": "2296616c4fb6478a22e396f3e2b1b0b9f5f91fc2abf7763694caa5563c51188f",
       "evaluations": {
         "result": {
           "operation": "match",
@@ -4295,10 +6022,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "m0CLlAOK-5ZUxyJ5_JJwPdCKBaazJYiVtBdUbj_XjENccQqBz5sxEHeb4lIdVX8BO5renTLLWWS_ABpBX_O0Bw"
+                    "signature": "QiNLVoL3GNp4-qTNO0Sh8Fq118GyumExKbRT4nCXLD05Lj9OglLBbS-IW-vb8KUEtG7rQ5ppsGIrS6rehftCBQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "67b52b3e23873ac1f0591f1c21f763a169f9621ca9f557d478933a0954ddbac0"
             },
             "resolvedResults": [
               {
@@ -4338,6 +6066,10 @@
                 "serializedArtifactHash": "d092b339c8f0d2e7fefaf4c696416051c003c3eefc979da02aa3815c4a78f454"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-036"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4357,7 +6089,7 @@
       "name": "vet-freshness-fail-closed",
       "spec": "§6.3.2/§6.3.3",
       "summary": "Vet applies the same resolved authority window and presenter clamp.",
-      "inputHash": "720264f0c44c4c55cf129c02f8e28f7a07fefe99065f6251c50a063fb90f8523",
+      "inputHash": "cf8cce0fc808204f31e38c70fe760b4755441333a30ea35ad4d8c9da9877149a",
       "evaluations": {
         "absentBoth": {
           "operation": "match",
@@ -4389,12 +6121,17 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "SPDF3S7kjYr-d25e86Jpw_cGxnwAJWnTF6XuC15MPamCFSgWfMgohoV4a74X7aE0TFY2lsBgAJC11hoLoMK0Aw"
+                    "signature": "z70tPMyQ3WP11NGA9HqgFi_0gnxZnJXq7cZpLp-vZdCl1eTNnXWjpUGoACmYoM6hmAk9IBcraxMa_6dQJNDvCQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "187614dfcb488937e46f939f54587e8589b3dbdc986e1ff2c8f63027a40fe760"
             },
             "resolvedResults": [],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-037"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4439,10 +6176,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "kDKL_O3kU9wqS-e07PvGg_IRZ2eQTMuRcOUbDg4xdiRK9FselrN6TAyDUidSLX9wKbMzCowjMWQyY4F9BAmSBw"
+                    "signature": "WUE4g93Ym3qPg21tQDMxV711wB5TXaiZLYrtJfoalFvzgHCM1LF9CGDvd93IvI46StenKZQSg1kuSvRRX5n-CQ"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "0f8eacd0fcd0599613c9f6d716a6e86789e775844e9d442daa10ab9b2357df9f"
             },
             "resolvedResults": [
               {
@@ -4482,6 +6220,10 @@
                 "serializedArtifactHash": "86ac418ed3a0d6c52c0c3384188ea1175c699dc0eabd80b5ef1b23ec4e2bbd07"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-038"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4525,10 +6267,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "hHnyWTLn59v82EzaXwf2MDd1zs33PsMDr8bN2Fbxg0XTZ1wAmlAA7_UELYapZ63kSoD3fnTElp3I6fIQX2YEAg"
+                    "signature": "JYQpQ3Rt9AKusyHlXKvTuDJrm_ZVu9QRUaZugo8zFP5t6Hq6WAiy2XF_CQW8UXOSZNY3CDWNfs-oHXtRKwRoDA"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "afa26107dfee83b69c163e4b6b24d71e7601dfe042b4b39953919e516ee4a130"
             },
             "resolvedResults": [
               {
@@ -4568,6 +6311,10 @@
                 "serializedArtifactHash": "013657f84942fee55ff096fb94ac93c1e0f480d7c89ff24172fbe51ae75d3873"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-039"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4611,10 +6358,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "RvLJ8j4i4u4PghTFaIPrDDMMSn_6WVnpoSJ0IDyYf3pzhovTAWeDTmB5Y9-4IZqOWIgQwNNwxUZYE0wsyuTTBA"
+                    "signature": "2TAm7wy5BUkVAKsU12XDy_Xv0-vzspmiXIAow1Zjr2IUXs6aU-RLtMWvYSzM_YaysvZSqwS-62tZZIU2as3GBg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "4fec79b46fe3aa49e440b6ca491c8d97f696105ccb66d6d776c5d88257d7ffd4"
             },
             "resolvedResults": [
               {
@@ -4654,6 +6402,10 @@
                 "serializedArtifactHash": "54f64f14ec56e1cf6ee0fb4598326148501172939f07bdefb98f968ab4f93931"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-040"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4711,10 +6463,11 @@
                 "signatures": [
                   {
                     "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                    "signature": "bjxfJqMC-qvP_fQ_NX-lwgA8wy_2Fl5GCzrWKUR0yX3WA1TJB7EH3Q4C31jUx9zTjUWZ-G4sPhAhHlrUYIr0Ag"
+                    "signature": "O4qnifEQfxWVwXjL0PhKnfpnzn_poERCfFDy9r69sNxAV2NvxpjNeBTQYS9J-coSWYDYyTqCN1cNpJ9o8VbLAg"
                   }
                 ]
-              }
+              },
+              "sessionNonce": "f7e98ed14d9d749e79d39ea4c3ff935f8bc52f5d9f36df8d35348260cd64c39f"
             },
             "resolvedResults": [
               {
@@ -4795,6 +6548,10 @@
                 "serializedArtifactHash": "7b9d6491ab70ac680558dbb838c39aa08ab9cb6552958388734495c5531391dd"
               }
             ],
+            "authority": {
+              "kind": "vet-invocation",
+              "invocation": "dacs-366-vet-invocation-041"
+            },
             "requirement": {
               "requirementVersion": "1",
               "required": [
@@ -4822,7 +6579,7 @@
       "name": "vet-oneof-error-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, retryable error outranks a conclusive failing alternative.",
-      "inputHash": "af4910c9b57c9878c1967d58e6b142c5b856c5c0c41358cf92364018bfe9abeb",
+      "inputHash": "364ee816f6ed07610b416af1a3b7bc5bf77d1afcaa9b10e8149eed4100f7b121",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -4832,7 +6589,7 @@
               "recordVersion": "1",
               "jobId": "01J00000000000000000000363",
               "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-              "bundleHash": "04b64b199566c166a639a1eb55d97ce6e62edc8903e84e8d2af2bbed42abc746",
+              "bundleHash": "47e5e02c6cbccdbca4e678aa6c22f20a72456479f14b6a6a548579b5114687e6",
               "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
               "freshness": [],
               "supplementary": [
@@ -4866,15 +6623,15 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                "value": "vJURh1KW8SuX6o8m18urcF5KV4iz1dARrvPjIuAH0UFgU-ZDHx3F-TkYNf9Y0Ch9J4tsqjINDu8uvudS36BFCQ"
+                "value": "M0z6pf6JnT8koViWAxUvD3fL97yTMQimfvmtpFsexPVNo6EAtJfWDk6THfAZOzWkQafn455ZT31mA-8q3T2TDw"
               }
             },
             "recordRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
+                "locator": "stor-1babbc8555dfe4e6a49e745f6fa0f67d2e49c64e2905ec6c5c6b220e5a01e23d"
               },
-              "contentHash": "cc7555147222621e68754b707c995cbfce437c6388987b7951e537d33c3ca492",
+              "contentHash": "1babbc8555dfe4e6a49e745f6fa0f67d2e49c64e2905ec6c5c6b220e5a01e23d",
               "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
@@ -4953,6 +6710,7 @@
             ],
             "authority": {
               "kind": "production",
+              "invocation": "dacs-366-vet-invocation-042",
               "authenticatedSessionStart": "dacs-363-session-start",
               "vetInput": {
                 "jobId": "01J00000000000000000000363",
@@ -4996,10 +6754,11 @@
                     "signatures": [
                       {
                         "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                        "signature": "dBAb1HpnJzC3HlY5pczkOhHf85vmstZ0RF5RcF2L_oUjiNL5tCxzzcw8w9xGLss04yFP1vLxTHokjCXlYkUHDg"
+                        "signature": "TBvVWZPw3SSo2Lf_o1lUIGWnatVr1LAzbdJRm6KO8sv2WBum39IPdqrqLdPWp3QXf_zgqWDTtQuJGGdi7rLzBg"
                       }
                     ]
-                  }
+                  },
+                  "sessionNonce": "914de4c9abb6859ea9f0627df7a1f0881548ce01aa8cff5df85f4d9574594aaa"
                 },
                 "requirement": {
                   "requirementVersion": "1",
@@ -5034,10 +6793,11 @@
                     "signatures": [
                       {
                         "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                        "signature": "_N70XDY0J03DY3_yxYIF3NvW_-vSrwTuwBIpkpxQp9UzzM6o5qTMAebM32TELn7k3MfcvE8WQn9grht_tpRFDQ"
+                        "signature": "kmgP6S6IK_LvBqpbGEYCRJUzhEHRnsSPPQsTeRo2EyAMKMnLFXi9CMX43MouVrUTAmo1vohRWBONWIsAvsnRCg"
                       }
                     ]
-                  }
+                  },
+                  "sessionNonce": "914de4c9abb6859ea9f0627df7a1f0881548ce01aa8cff5df85f4d9574594aaa"
                 },
                 "sessionContext": {
                   "jobId": "01J00000000000000000000363",
@@ -5061,7 +6821,7 @@
       "name": "vet-oneof-indeterminate-over-fail",
       "spec": "§7.7.1",
       "summary": "Within oneOf, indeterminate outranks fail when no error or pass exists.",
-      "inputHash": "dcb8837a0c78890ed9eb7e5e541c191d36ad63df9142557494fc93351e82a4c2",
+      "inputHash": "db3e2f03a74ea5f4e6d584a985669f416bbeb1e13d64fc390553c44438795cef",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -5071,7 +6831,7 @@
               "recordVersion": "1",
               "jobId": "01J00000000000000000000363",
               "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-              "bundleHash": "a6c18a2306f0bc84e80cc4742ec0c4578146859b389444a6f2ddd3cb70cf3b9c",
+              "bundleHash": "2827bf3a6bff881e72ef302c5cbaf6ea42671329d30587cc3ddb33117f093f02",
               "requirementHash": "3dd7b26d16741eb1aba0adf9651d21711f2cface4b981c3463aab031149039f0",
               "freshness": [],
               "supplementary": [
@@ -5105,15 +6865,15 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                "value": "zQFDSzhU7qliRCqSWrkZK3Y5WGDMHH7ILcr_PruVR2ZSq6f4TddOpI0VyehuDb99FztS6xIOeHt9-WiDHs-IBA"
+                "value": "aiukFy1M-z5pgsGs1r1Hxs2iq7aI5cJZROorkKo64oExjaGAu5Uupy3UhfWoFw50XpeCNu_UbNACydvbFAKnDQ"
               }
             },
             "recordRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
+                "locator": "stor-a52c0b638dab4452a6386ec7faedb006484c24ae4e1aa9bfb750d52cdffbb195"
               },
-              "contentHash": "d6ace1d7a2c01eb52be8acc06adff252cb0272e851bcee5df62246d18be67990",
+              "contentHash": "a52c0b638dab4452a6386ec7faedb006484c24ae4e1aa9bfb750d52cdffbb195",
               "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
@@ -5192,6 +6952,7 @@
             ],
             "authority": {
               "kind": "production",
+              "invocation": "dacs-366-vet-invocation-043",
               "authenticatedSessionStart": "dacs-363-session-start",
               "vetInput": {
                 "jobId": "01J00000000000000000000363",
@@ -5235,10 +6996,11 @@
                     "signatures": [
                       {
                         "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                        "signature": "An72gh0lDD-gOaLCV5P280CgeF0LE1eCVFxM_xwbR_kSL0JORDswtAfNA7FfQLkrJcqS0m60fW5tkBd6bxdxCw"
+                        "signature": "NciplsXGjFKQ1zmez3bwiX2ZjKPPa9ArV2ecIFX_yBt-kyxJ_lVBFTjGvCNgMPLXK00Z9-KANbBpr_SJm-wVCQ"
                       }
                     ]
-                  }
+                  },
+                  "sessionNonce": "478330181f550b9fa25ab2a60216ff2c28780b275ecbd6733910d74c23e086a2"
                 },
                 "requirement": {
                   "requirementVersion": "1",
@@ -5273,10 +7035,11 @@
                     "signatures": [
                       {
                         "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                        "signature": "_N70XDY0J03DY3_yxYIF3NvW_-vSrwTuwBIpkpxQp9UzzM6o5qTMAebM32TELn7k3MfcvE8WQn9grht_tpRFDQ"
+                        "signature": "znVRNm7qCpA_SCO15biSVgoMpMYz8dtaW1fQ_-x1tsu-Kq198NOh6AWVBxUhI9tfTjlXVzYElykcA2Kf7PklBw"
                       }
                     ]
-                  }
+                  },
+                  "sessionNonce": "478330181f550b9fa25ab2a60216ff2c28780b275ecbd6733910d74c23e086a2"
                 },
                 "sessionContext": {
                   "jobId": "01J00000000000000000000363",
@@ -5300,7 +7063,7 @@
       "name": "vet-cross-accumulator-fail-over-error",
       "spec": "§7.7.1",
       "summary": "A required hard fail outranks a separate oneOf error globally.",
-      "inputHash": "f263ea2a2eae0353826cd9e33ed1b55ede8297678035f8d4682575766257d29c",
+      "inputHash": "a515040485b68d10fa8bcb9cf3224317cd571870e5e12ca44cd8c483fc3c9ad0",
       "evaluations": {
         "result": {
           "operation": "aggregate",
@@ -5310,7 +7073,7 @@
               "recordVersion": "1",
               "jobId": "01J00000000000000000000363",
               "evaluatedParty": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-              "bundleHash": "04b64b199566c166a639a1eb55d97ce6e62edc8903e84e8d2af2bbed42abc746",
+              "bundleHash": "de20d6a211fb12e98b3307939927f910e3cac6c5e7d01b288679ceec21b75a6f",
               "requirementHash": "647b7eb216c46142f051b8f2857e696fcfd7cf142543a0b6f4f4b9aca930cadf",
               "freshness": [],
               "supplementary": [
@@ -5344,15 +7107,15 @@
               "signature": {
                 "algorithm": "ed25519",
                 "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                "value": "vA5nZtBZR1ZoDgN-eyBAb71l_qeoodKIkQJ4fwqqLMv5SXnFWN6E5fMciSHwaxnXMwcv4w9FLHMczVEL0kFXAA"
+                "value": "566PdqaV0MhpoZYBRd5jp6nrKzo5qrnNzszfDkrWW7l8LtaNmHV7S--z2FCWf12jtTXmv6mfvI6C6CHrxFu8BA"
               }
             },
             "recordRef": {
               "anchor": {
                 "kind": "storage-program",
-                "locator": "dacs2:composite:01J00000000000000000000363:key%3A27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73"
+                "locator": "stor-67a6bf8a6cec779f09ffdc21a6f97b0b5a9d11a5ae6ac83250ff951f5e3c4756"
               },
-              "contentHash": "3b48030e03870f9eeee4526407e80aca62ee2c00bc23f33b15651f024ad24050",
+              "contentHash": "67a6bf8a6cec779f09ffdc21a6f97b0b5a9d11a5ae6ac83250ff951f5e3c4756",
               "signer": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781"
             },
             "resolvedResults": [
@@ -5431,6 +7194,7 @@
             ],
             "authority": {
               "kind": "production",
+              "invocation": "dacs-366-vet-invocation-044",
               "authenticatedSessionStart": "dacs-363-session-start",
               "vetInput": {
                 "jobId": "01J00000000000000000000363",
@@ -5474,10 +7238,11 @@
                     "signatures": [
                       {
                         "ref": "key:27e08920619144947e951b67a25743153d95f3fc691bc013939c0c9f931a1f73",
-                        "signature": "dBAb1HpnJzC3HlY5pczkOhHf85vmstZ0RF5RcF2L_oUjiNL5tCxzzcw8w9xGLss04yFP1vLxTHokjCXlYkUHDg"
+                        "signature": "-gv4RzVgoOmCTmVXDR5LrNFV0dIpnTiblfK1jUkdu3yR9-P54elRNKklFocL7N4HoR7dEdQuwlk1YXLaeM3jDA"
                       }
                     ]
-                  }
+                  },
+                  "sessionNonce": "597cf21fa42cf4dc204a2f33791e9ee891adc4d6607273e3b89eaa69fb6afbef"
                 },
                 "requirement": {
                   "requirementVersion": "1",
@@ -5513,10 +7278,11 @@
                     "signatures": [
                       {
                         "ref": "key:93bfd8cd2936730d71dfc629469748b9e13367e1d466de0bf8efbc7a4f533781",
-                        "signature": "_N70XDY0J03DY3_yxYIF3NvW_-vSrwTuwBIpkpxQp9UzzM6o5qTMAebM32TELn7k3MfcvE8WQn9grht_tpRFDQ"
+                        "signature": "CLqhLsNRvx3XcCkbB6yJuWR8RC53nlLYcdMgfjBvISATwLTYhO0M9-oT4xlEPiMWynwjlVz2elEqiwmnLGLMCQ"
                       }
                     ]
-                  }
+                  },
+                  "sessionNonce": "597cf21fa42cf4dc204a2f33791e9ee891adc4d6607273e3b89eaa69fb6afbef"
                 },
                 "sessionContext": {
                   "jobId": "01J00000000000000000000363",

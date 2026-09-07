@@ -89,7 +89,15 @@ The output map describes the intended DACS-X step-3 policy boundary: a full tran
   bundle, available result, recipe, and composite record carries a genuine
   signature. The three aggregation cases bind the signed record to the exact
   production `VetCredentialsInput`, trusted session start, registry pin,
-  requirement, bundle, and complete ordered result-reference set. Every case
+  requirement, bundle, and complete ordered result-reference set. Every
+  evaluation also has a separately initialized verifier-owned invocation and
+  nonce ledger, with session/job/recipe pins checked for every operation;
+  aggregate evaluations bind an independently authenticated
+  logical/native record receipt. These fixture-only contexts are not signed
+  fields and do not add job/nonce/session requirements to reusable
+  `VerifyResult` v1 artifacts. This pack retains its per-claim presentation
+  scope; SIWD, session-key, and SR-1-root signature verification are not
+  exercised here. Every case
   also resolves each result through an independent expected-authority,
   authenticated-source, and full-serialized-artifact binding; duplicate result
   references, malformed members, and non-canonical exercised identifiers fail
@@ -136,7 +144,7 @@ python3 scripts/generate_evidence_bound_fault_bundle_fixture.py --check
 
 Vectors that double as executable evidence of implementation friction. Stated as observations for the group to confirm or correct, not as normative claims:
 
-- **DACS-VERIFY-0001** — a `cci-lei:` claim does **not** satisfy a bare `lei` requirement (§6.3.1 registers `cci-lei`; §6.3.3/§7.4.2 use bare `lei`; `find_claim` does exact-scheme equality). Adjacent to issue **#42**'s broader `ClaimReference` canonical-equality discussion.
+- **DACS-VERIFY-0001** — a `cci-lei:` claim does **not** satisfy a bare `lei` requirement. The pack explicitly retains this deferred-scheme compatibility control; `cci-lei` is absent from the current v0.1 default registry. Bare `lei` remains live under §6.3.3/§7.4.2. Adjacent to issue **#42**'s broader `ClaimReference` canonical-equality discussion.
 - **DACS-VERIFY-0002** — separators used normatively in the spec body (e.g. `dacs-session-binding:v1:`, `dacs-sealed-bid:v1:`) are absent from the §7.7 closed registry and are not `x-`-prefixed (SIG-4).
 - **DACS-VERIFY-0004** — `conformance/fixtures/attestation-bundle-0004.json` is a full completed §10.4 `AttestationBundle`, signed by buyer + seller with deterministic issuer-kit keys. `conformance/fixtures/attestation-bundle-0004-seller.json` is a same-`jobId` divergent seller-side bundle with outcome `failed-counterparty`; it also verifies and has a distinct bundle hash. Divergent-bundle dispute/disclosure vectors pin both refs. The bundle verifier accepts valid bundles, rejects a completed bundle missing a required signer, and surfaces malformed resolved keys as `error`.
 

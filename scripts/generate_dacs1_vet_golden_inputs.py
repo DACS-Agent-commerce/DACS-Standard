@@ -14,13 +14,20 @@ import copy
 import hashlib
 import json
 from pathlib import Path
-from urllib.parse import quote
+import sys
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dacs_reference import (  # noqa: E402
+    canonical_bytes,
+    canonical_hash,
+    composite_logical_address,
+)
+
 OUTPUT = (
     ROOT / "conformance" / "fixtures" / "identity"
     / "dacs1-vet-golden-inputs-v0.1.json"
@@ -34,16 +41,16 @@ COMPOSITE_DOMAIN = "dacs-composite:v1:"
 RECIPE_REGISTRY_VERSION = 1
 JOB_ID = "01J00000000000000000000363"
 SESSION_START = "dacs-363-session-start"
+PHASE_INDEX = 0
 
-
-def canonical_bytes(value: object) -> bytes:
-    return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+_INVOCATIONS: dict[str, dict] = {}
+_NONCE_ISSUANCES: list[dict] = []
+_RECORD_RECEIPTS: dict[str, dict] = {}
+_INVOCATION_SEQUENCE = 0
 
 
 def hash_hex(value: object) -> str:
-    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+    return canonical_hash(value)
 
 
 def b64url(value: bytes) -> str:
@@ -68,13 +75,109 @@ SECOND_PRESENTER = private_key("second-presenter")
 AUTHORITY = private_key("authority")
 RECIPE_STEWARD = private_key("recipe-steward")
 VERIFIER = private_key("verifier")
+PHASE_ORCHESTRATOR = private_key("phase-orchestrator")
+ANCHOR_WRITER = private_key("anchor-writer")
 PRESENTER_REF = f"key:{public_hex(PRESENTER)}"
 SECOND_REF = f"key:{public_hex(SECOND_PRESENTER)}"
 AUTHORITY_REF = f"key:{public_hex(AUTHORITY)}"
 RECIPE_STEWARD_REF = f"key:{public_hex(RECIPE_STEWARD)}"
 VERIFIER_REF = f"key:{public_hex(VERIFIER)}"
+PHASE_ORCHESTRATOR_REF = f"key:{public_hex(PHASE_ORCHESTRATOR)}"
+ANCHOR_WRITER_REF = f"key:{public_hex(ANCHOR_WRITER)}"
 LEI_A = "lei:984500ABCDEF12345678"
 LEI_B = "lei:529900T8BM49AABBCC11"
+SIGNER_KEYS = {
+    PRESENTER_REF: PRESENTER,
+    SECOND_REF: SECOND_PRESENTER,
+    VERIFIER_REF: VERIFIER,
+}
+
+
+def reset_generation_state() -> None:
+    global _INVOCATION_SEQUENCE
+    _INVOCATIONS.clear()
+    _NONCE_ISSUANCES.clear()
+    _RECORD_RECEIPTS.clear()
+    _INVOCATION_SEQUENCE = 0
+
+
+def bind_session_nonce(bundle: dict, nonce: str) -> dict:
+    """Copy and re-sign a per-claim presentation over the issued challenge."""
+
+    bound = copy.deepcopy(bundle)
+    presentation = bound.get("presentation")
+    signatures = presentation.get("signatures") if isinstance(presentation, dict) else None
+    if presentation is None or presentation.get("kind") != "per-claim" or not isinstance(signatures, list):
+        raise ValueError("golden fixture bundles must use per-claim presentation")
+    bound["sessionNonce"] = nonce
+    unsigned = {key: value for key, value in bound.items() if key != "presentation"}
+    payload = (BUNDLE_DOMAIN + hash_hex(unsigned)).encode("ascii")
+    rebound = []
+    for envelope in signatures:
+        signer_ref = envelope.get("ref") if isinstance(envelope, dict) else None
+        signer = SIGNER_KEYS.get(signer_ref)
+        if signer is None:
+            raise ValueError("golden fixture presentation signer is not a public test key")
+        rebound.append({"ref": signer_ref, "signature": b64url(signer.sign(payload))})
+    bound["presentation"] = {"kind": "per-claim", "signatures": rebound}
+    return bound
+
+
+def begin_invocation(bundle: dict) -> tuple[str, str, dict]:
+    global _INVOCATION_SEQUENCE
+    _INVOCATION_SEQUENCE += 1
+    invocation_id = f"dacs-366-vet-invocation-{_INVOCATION_SEQUENCE:03d}"
+    challenge_id = f"dacs-366-challenge-{_INVOCATION_SEQUENCE:03d}"
+    nonce = hashlib.sha256(
+        f"dacs-366:verifier-issued:{_INVOCATION_SEQUENCE}".encode("ascii")
+    ).hexdigest()
+    return invocation_id, challenge_id, bind_session_nonce(bundle, nonce)
+
+
+def register_invocation(
+    invocation_id: str,
+    challenge_id: str,
+    bundle: dict,
+    *,
+    actor: str = "buyer",
+    record_receipt_id: str | None = None,
+    record_anchor_binding: dict | None = None,
+) -> None:
+    nonce = bundle["sessionNonce"]
+    evaluated_party = bundle["presentedBy"]
+    _NONCE_ISSUANCES.append({
+        "challengeId": challenge_id,
+        "nonce": nonce,
+        "jobId": JOB_ID,
+        "actor": actor,
+        "evaluatedParty": evaluated_party,
+        "phaseIndex": PHASE_INDEX,
+        "attempt": 1,
+        "expectedVerifier": VERIFIER_REF,
+        "issuedBy": VERIFIER_REF,
+        "issuedAt": NOW - 10_000,
+        "expiresAt": NOW + 60_000,
+    })
+    _INVOCATIONS[invocation_id] = {
+        "jobId": JOB_ID,
+        "sessionStart": SESSION_START,
+        "sessionState": "vet-pending",
+        "phaseKind": "vet-credentials",
+        "phaseIndex": PHASE_INDEX,
+        "attempt": 1,
+        "actor": actor,
+        "evaluatedParty": evaluated_party,
+        "primaryClaim": evaluated_party,
+        "expectedVerifierRole": "counterparty",
+        "expectedVerifier": VERIFIER_REF,
+        "phaseOrchestrator": PHASE_ORCHESTRATOR_REF,
+        "anchorWriter": ANCHOR_WRITER_REF,
+        "recipeRegistryVersion": RECIPE_REGISTRY_VERSION,
+        "challengeId": challenge_id,
+        "trustedNow": NOW + (1_000 if record_receipt_id else 0),
+        "recordReceiptId": record_receipt_id,
+        "recordAnchorBinding": copy.deepcopy(record_anchor_binding),
+    }
 
 
 def claim(ref: str, **fields: object) -> dict:
@@ -327,10 +430,18 @@ def evaluation(
     *,
     resolved: list[dict] | None = None,
 ) -> dict:
+    invocation_id, challenge_id, bound_bundle = begin_invocation(bundle)
+    register_invocation(invocation_id, challenge_id, bound_bundle)
     input_value = {
+        # Compatibility-only wrapper metadata: the verifier uses trustedNow
+        # from the verifier-owned invocation, never this unsigned value.
         "evaluatedAt": NOW,
-        "bundle": copy.deepcopy(bundle),
+        "bundle": bound_bundle,
         "resolvedResults": copy.deepcopy(resolved or []),
+        "authority": {
+            "kind": "vet-invocation",
+            "invocation": invocation_id,
+        },
     }
     if req is not None:
         input_value["requirement"] = copy.deepcopy(req)
@@ -375,10 +486,10 @@ def signed_composite(
     record_ref = {
         "anchor": {
             "kind": "storage-program",
-            "locator": (
-                f"dacs2:composite:{JOB_ID}:"
-                f"{quote(bundle['presentedBy'], safe='')}"
-            ),
+            # The signed reference carries the substrate-native locator.  The
+            # canonical logical address is authenticated independently by the
+            # verifier-owned receipt/binding context below.
+            "locator": f"stor-{hash_hex(unsigned)}",
         },
         "contentHash": hash_hex(unsigned),
         "signer": VERIFIER_REF,
@@ -392,12 +503,54 @@ def aggregate_evaluation(
     resolved: list[dict],
     decision: str,
 ) -> dict:
-    record, record_ref = signed_composite(bundle, req, resolved, decision)
-    verifier_identity = signed_bundle(
+    invocation_id, challenge_id, bound_bundle = begin_invocation(bundle)
+    record, record_ref = signed_composite(bound_bundle, req, resolved, decision)
+    verifier_identity = bind_session_nonce(signed_bundle(
         [claim(VERIFIER_REF, issuedAt=NOW - 1_000)],
         presented_by=VERIFIER_REF,
         signer=VERIFIER,
         signer_ref=VERIFIER_REF,
+    ), bound_bundle["sessionNonce"])
+    logical_address = composite_logical_address(JOB_ID, bound_bundle["presentedBy"])
+    native_address = record_ref["anchor"]["locator"]
+    receipt_id = invocation_id + "-record-receipt"
+    anchor_binding = {
+        "anchorKind": "storage-program",
+        "logicalAddress": logical_address,
+        "nativeAddress": native_address,
+        "writer": ANCHOR_WRITER_REF,
+    }
+    _RECORD_RECEIPTS[receipt_id] = {
+        "receiptVersion": "1",
+        "substrate": "fixture-sr2",
+        "finalityProfile": "fixture-deterministic-finality",
+        "logicalAddress": logical_address,
+        "nativeAddress": native_address,
+        "contentHash": record_ref["contentHash"],
+        "transactionRef": {
+            "kind": "fixture-transaction",
+            "value": hashlib.sha256(receipt_id.encode("ascii")).hexdigest(),
+        },
+        "writer": ANCHOR_WRITER_REF,
+        "state": "finalized",
+        "observationDisposition": "established",
+        "observedAt": NOW + 500,
+        "blockRef": {
+            "id": hashlib.sha256((receipt_id + ":block").encode("ascii")).hexdigest(),
+            "height": "366",
+            "timestamp": NOW + 250,
+        },
+        "evidence": {
+            "kind": "fixture-finality-proof",
+            "value": hashlib.sha256((receipt_id + ":proof").encode("ascii")).hexdigest(),
+        },
+    }
+    register_invocation(
+        invocation_id,
+        challenge_id,
+        bound_bundle,
+        record_receipt_id=receipt_id,
+        record_anchor_binding=anchor_binding,
     )
     return {
         "operation": "aggregate",
@@ -408,11 +561,12 @@ def aggregate_evaluation(
             "resolvedResults": copy.deepcopy(resolved),
             "authority": {
                 "kind": "production",
+                "invocation": invocation_id,
                 "authenticatedSessionStart": SESSION_START,
                 "vetInput": {
                     "jobId": JOB_ID,
                     "actor": "buyer",
-                    "bundleToVet": copy.deepcopy(bundle),
+                    "bundleToVet": bound_bundle,
                     "requirement": copy.deepcopy(req),
                     "verifierIdentity": verifier_identity,
                     "sessionContext": authenticated_session_start(),
@@ -525,6 +679,7 @@ def freshness_evaluations(prefix: str) -> dict[str, dict]:
 
 
 def build_cases() -> list[dict]:
+    reset_generation_state()
     cases: list[dict] = []
 
     cci_claim, cci_result = verified_claim(
@@ -823,16 +978,20 @@ def build_cases() -> list[dict]:
         "pass",
     )
 
-    malformed_bundle = copy.deepcopy(key_bundle)
-    malformed_bundle["presentedAt"] = 9_007_199_254_740_992
+    malformed_evaluation = evaluation(
+        "decision-no-throw", key_bundle, presence_key
+    )
+    # Mutate only after the legitimate nonce-bound presentation is signed.  The
+    # ordinary verifier path must consume its issued nonce and reject a JSON
+    # boolean masquerading as the required exact integer.  Out-of-range values
+    # are exercised directly because no strict-JCS inputHash can cover them.
+    malformed_evaluation["input"]["bundle"]["presentedAt"] = True
     add_case(
         cases,
         "vet-control-key-malformed-scope-reject-no-throw",
         "§6.3.2 step (6)/§7.5.1",
-        "An unsafe integer in signed scope is an error and never an exception.",
-        {"result": evaluation(
-            "decision-no-throw", malformed_bundle, presence_key
-        )},
+        "A boolean in an exact-integer signed field is an error and never an exception.",
+        {"result": malformed_evaluation},
         {"decision": "error", "throws": False},
     )
 
@@ -1169,14 +1328,15 @@ def build_document() -> dict:
             "signature, freshness, and presence-only rules"
         ),
         "hashScope": (
-            "SHA-256 of UTF-8 compact JSON with recursively sorted keys; each inputHash "
+            "SHA-256 of strict CORE RFC 8785/JCS UTF-8 bytes; each inputHash "
             "covers only that case's evaluations; fileSha256 is pinned by MANIFEST.json"
         ),
         "publicTestSeeds": {
             "derivation": "sha256(UTF8('dacs-363:' + label))",
             "labels": [
                 "presenter", "second-presenter", "authority",
-                "recipe-steward", "verifier",
+                "recipe-steward", "verifier", "phase-orchestrator",
+                "anchor-writer",
             ],
         },
         "publicKeys": {
@@ -1185,6 +1345,8 @@ def build_document() -> dict:
             "authority": AUTHORITY_REF,
             "recipeSteward": RECIPE_STEWARD_REF,
             "verifier": VERIFIER_REF,
+            "phaseOrchestrator": PHASE_ORCHESTRATOR_REF,
+            "anchorWriter": ANCHOR_WRITER_REF,
         },
         "trustedContext": {
             "recipeRegistry": registry,
@@ -1209,6 +1371,15 @@ def build_document() -> dict:
                 authenticated_results[key]
                 for key in sorted(authenticated_results)
             ],
+            # These are harness-initialisation inputs, not fields accepted from
+            # an evaluation candidate and not part of any signed artifact.
+            "vetInvocations": {
+                key: _INVOCATIONS[key] for key in sorted(_INVOCATIONS)
+            },
+            "nonceIssuances": copy.deepcopy(_NONCE_ISSUANCES),
+            "authenticatedRecordReceipts": {
+                key: _RECORD_RECEIPTS[key] for key in sorted(_RECORD_RECEIPTS)
+            },
         },
         "count": len(cases),
         "hash": hash_hex(cases),

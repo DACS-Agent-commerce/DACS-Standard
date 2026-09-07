@@ -17,13 +17,15 @@ import hashlib
 import json
 import re
 import sys
-import unicodedata
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote, unquote
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+import jcs  # noqa: E402
+
 PROFILE = ROOT / "spec" / "PROFILE.md"
 MANIFEST = ROOT / "conformance" / "MANIFEST.json"
 SB2_VECTORS = (
@@ -81,34 +83,33 @@ JOB_ID_RE = re.compile(r"[0-7][0-9A-HJKMNP-TV-Z]{25}\Z")
 PHASE_INDEX_RE = re.compile(r"(?:0|[1-9][0-9]*)\Z")
 
 
-def nfc_deep(value: Any) -> Any:
-    """Apply CORE CF-1 recursively and reject key collisions after NFC."""
+def canonical_json(value: Any) -> bytes:
+    """Produce strict repository CORE §B.2 JCS bytes."""
 
-    if isinstance(value, str):
-        return unicodedata.normalize("NFC", value)
-    if isinstance(value, list):
-        return [nfc_deep(item) for item in value]
-    if isinstance(value, dict):
-        result: dict[str, Any] = {}
-        for key, item in value.items():
-            normal_key = unicodedata.normalize("NFC", key)
-            if normal_key in result:
-                raise ValueError("object keys collide after NFC normalisation")
-            result[normal_key] = nfc_deep(item)
-        return result
+    return jcs.canonicalize(value).encode("utf-8")
+
+
+def require_phase_index(value: Any, *, label: str = "phaseIndex") -> int:
+    """Reject bool/float aliases before comparison, keying, or addressing."""
+
+    if type(value) is not int or not 0 <= value <= 9_007_199_254_740_991:
+        raise ValueError(f"{label} must be an exact non-negative safe integer")
     return value
 
 
-def canonical_json(value: Any) -> bytes:
-    """Produce the repository's integer/string-only RFC 8785 byte form."""
-
-    return json.dumps(
-        nfc_deep(value),
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")
+def phase_summary_by_index(bundle: dict[str, Any]) -> dict[int, dict[str, Any]]:
+    summary = bundle.get("phaseSummary")
+    if not isinstance(summary, list):
+        raise ValueError("phaseSummary must be an array")
+    indexed: dict[int, dict[str, Any]] = {}
+    for entry in summary:
+        if not isinstance(entry, dict):
+            raise ValueError("phaseSummary entries must be objects")
+        index = require_phase_index(entry.get("index"), label="phaseSummary index")
+        if index in indexed:
+            raise ValueError("phaseSummary indices must be unique")
+        indexed[index] = entry
+    return indexed
 
 
 def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
@@ -129,7 +130,10 @@ def payment_anchor_tuple(logical_address: str) -> tuple[str, str, int, bool]:
         raise ValueError("payment evidence railId is not canonically CF-4 encoded")
     if PHASE_INDEX_RE.fullmatch(phase_text) is None:
         raise ValueError("payment evidence phaseIndex is not a bare integer")
-    return job_id, rail_id, int(phase_text), len(parts) == 6
+    phase_index = require_phase_index(
+        int(phase_text), label="payment evidence phaseIndex"
+    )
+    return job_id, rail_id, phase_index, len(parts) == 6
 
 
 def sha256_hex(value: bytes) -> str:
@@ -312,6 +316,9 @@ class FakeSubstrate:
         return None if binding is None else self.native_anchors.get(binding["nativeAddress"])
 
     def claim_settlement(self, tx_id: str, job_id: str, phase_index: int) -> str:
+        phase_index = require_phase_index(
+            phase_index, label="settlement claim phaseIndex"
+        )
         binding = (job_id, phase_index)
         prior = self.settlement_claims.get(tx_id)
         if prior is None:
@@ -556,6 +563,18 @@ def validate_agreement_against_listing(
         result["signer"] for result in signature_results if result["verified"]
     }
     selected_rail = agreement.get("terms", {}).get("rail", {}).get("railId")
+    payout_bindings = agreement.get("terms", {}).get("payoutBindings")
+    payout_indices_valid = isinstance(payout_bindings, list)
+    if payout_indices_valid:
+        try:
+            for binding in payout_bindings:
+                if not isinstance(binding, dict):
+                    raise ValueError("payout binding must be an object")
+                require_phase_index(
+                    binding.get("phaseIndex"), label="payout binding phaseIndex"
+                )
+        except ValueError:
+            payout_indices_valid = False
     accepted_rails = {
         rail.get("railId") for rail in listing.get("acceptedRails", [])
     }
@@ -568,6 +587,8 @@ def validate_agreement_against_listing(
         reason = "agreement is missing a required buyer or seller signature"
     elif selected_rail not in accepted_rails:
         reason = "agreement selected a rail outside listing policy"
+    elif not payout_indices_valid:
+        reason = "agreement payout binding phaseIndex is invalid"
     return {
         "accepted": reason is None,
         "observed": "accept" if reason is None else "reject-before-settle",
@@ -670,8 +691,16 @@ def consume_bundle_pair(
             "reason": "bundle copies identify different jobs",
             "signatureResults": signature_results,
         }
-    left_phases = {entry["index"]: entry for entry in left.get("phaseSummary", [])}
-    right_phases = {entry["index"]: entry for entry in right.get("phaseSummary", [])}
+    try:
+        left_phases = phase_summary_by_index(left)
+        right_phases = phase_summary_by_index(right)
+    except ValueError as error:
+        return {
+            "disposition": "invalid",
+            "reputationDisposition": "exclude",
+            "reason": str(error),
+            "signatureResults": signature_results,
+        }
     phase_keys = ("kind", "outcome", "errorClass")
     divergent = left.get("outcome") != right.get("outcome") or set(
         left_phases
@@ -1028,6 +1057,7 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     payment = context["payment"]
     delivery = context["delivery"]
     bundle = context["bundleBase"]
+    phase_summary_by_index(bundle)
     pipeline = listing["pipeline"]
     kinds = [step["kind"] for step in pipeline]
 
@@ -1044,9 +1074,12 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     agreement_validation = validate_agreement_against_listing(listing, agreement)
     if not agreement_validation["accepted"]:
         raise ValueError(agreement_validation["reason"])
-    expected_vet = {json.dumps(ref, sort_keys=True) for ref in context["vetRefs"].values()}
+    expected_vet = {
+        canonical_json(ref) for ref in context["vetRefs"].values()
+    }
     actual_party_vet = {
-        json.dumps(party["vetRecordRef"], sort_keys=True) for party in agreement["parties"]
+        canonical_json(party["vetRecordRef"])
+        for party in agreement["parties"]
     }
     if expected_vet != actual_party_vet:
         raise ValueError("agreement parties do not bind the DACS-2 records")
@@ -1097,7 +1130,9 @@ def validate_happy_path(stages: list[dict[str, Any]], context: dict[str, Any]) -
     if [entry["kind"] for entry in bundle["phaseSummary"]] != kinds:
         raise ValueError("bundle phaseSummary diverges from the listing pipeline")
     for entry, index in zip(bundle["phaseSummary"], range(len(pipeline))):
-        if entry["index"] != index:
+        if require_phase_index(
+            entry.get("index"), label="bundle phaseSummary index"
+        ) != index:
             raise ValueError("bundle phaseSummary index is not the bare pipeline index")
     if {item["party"] for item in bundle["signatures"]} != set(CLAIMS.values()):
         raise ValueError("completed bundle is missing a required signer")

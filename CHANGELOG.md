@@ -21,6 +21,10 @@ The format used per release:
   discriminators without consuming contextual or inert version extensions, preserve
   self-signed payload closure without a native transaction, and distinguish complete
   DeliverableSpec/VerificationMethod hashes from signature-omitted envelope hashes.
+  Current `DeliveryEvidence` and PDE-7 legacy delivery-shaped `SettlementEvidence`
+  now share the same phase-specific inner closure checks while legacy reads retain
+  their signed unindexed addresses, never synthesize PDE-5 credential binding, and
+  remain indeterminate when required artifact or native authority is unavailable.
 
 ### Fixed — DACS-X conformance provenance
 

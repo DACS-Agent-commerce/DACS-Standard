@@ -1419,7 +1419,7 @@ def validate_delivery_method_evidence(
     return _closure_result("pass")
 
 
-def _validate_current_delivery_artifact_closure_disposition(
+def _validate_delivery_artifact_closure_disposition(
     record,
     phase_key,
     listing,
@@ -1428,8 +1428,10 @@ def _validate_current_delivery_artifact_closure_disposition(
     execution,
     closure,
     trusted_native_observations_by_canonical_ref,
+    *,
+    legacy,
 ):
-    """Validate current delivery closure without collapsing outages into failure."""
+    """Validate delivery closure under an explicit current or PDE-7 address policy."""
     if record.get("outcome") != "success":
         return _closure_result("pass")
 
@@ -1450,12 +1452,15 @@ def _validate_current_delivery_artifact_closure_disposition(
         )
 
     phase = record.get("phase")
-    phase_index = record.get("phaseIndex")
     job_id = record.get("jobId")
     completed = bundle.get("outcome") == "completed"
-    if phase_key != f"{phase_index}:{phase}":
+    phase_index = None if legacy else record.get("phaseIndex")
+    if not legacy and phase_key != f"{phase_index}:{phase}":
         results.append(_closure_result("fail", "delivery closure phase key does not match signed evidence"))
-    deliverable_address = f"dacs4:deliverable:{job_id}:{phase_index}"
+    deliverable_address = (
+        f"dacs4:deliverable:{job_id}"
+        if legacy else f"dacs4:deliverable:{job_id}:{phase_index}"
+    )
     anchor = record.get("deliverableAnchor")
 
     if phase == "deliver-storage-program":
@@ -1493,7 +1498,11 @@ def _validate_current_delivery_artifact_closure_disposition(
             return _combine_closure_results(results + [
                 _closure_result("error", "entitlement delivery parties are missing or ambiguous")
             ])
-        if set(closure) - {"entitlementRecord", "credential"}:
+        permitted_closure_fields = (
+            {"entitlementRecord"}
+            if legacy else {"entitlementRecord", "credential"}
+        )
+        if set(closure) - permitted_closure_fields:
             results.append(_closure_result("error", "entitlement delivery closure is ambiguous"))
         offering = listing.get("offering")
         deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
@@ -1523,7 +1532,11 @@ def _validate_current_delivery_artifact_closure_disposition(
             return _combine_closure_results(results)
 
         renewal_seq = entitlement.get("renewalSeq")
-        entitlement_address = f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
+        entitlement_address = (
+            f"dacs4:entitlement:{job_id}:{renewal_seq}"
+            if legacy
+            else f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
+        )
         required = {
             "entitlementVersion", "jobId", "grantee", "grantor", "startsAt",
             "endsAt", "scope", "renewable", "renewalSeq", "signature",
@@ -1567,6 +1580,27 @@ def _validate_current_delivery_artifact_closure_disposition(
             results.append(_closure_result("fail", "entitlement record does not close over the signed offering, job, and phase"))
 
         credential_ref = entitlement.get("credentialRef")
+        if legacy:
+            # Frozen SettlementEvidence has no signed PDE-5 binding. The record is
+            # still validated as historical audit data, but no credential input can
+            # upgrade it to a delivered/DV-5 assertion.
+            credential_value = (
+                credential_ref.get("ref")
+                if isinstance(credential_ref, dict) else None
+            )
+            if credential_ref is not None and (
+                not isinstance(credential_ref, dict)
+                or set(credential_ref) != {"ref", "accessModel"}
+                or not _attestation_ref_shape_valid(credential_value)
+                or not _string_member(
+                    credential_ref.get("accessModel"),
+                    {"buyer-only", "encrypt-to-buyer"},
+                )
+            ):
+                results.append(_closure_result(
+                    "error", "historical entitlement credential reference is malformed"
+                ))
+            return _combine_closure_results(results)
         binding = record.get("credentialDelivery")
         if credential_ref is None:
             if binding is not None or "credential" in closure:
@@ -1627,8 +1661,16 @@ def _validate_current_delivery_artifact_closure_disposition(
             attestation_entry = dependency_entry
         else:
             method_entry = dependency_entry
-    if closure.get("agreementHash") is None:
+    execution_agreement_hash = execution.get("agreementHash")
+    closure_agreement_hash = closure.get("agreementHash")
+    if execution_agreement_hash is None:
+        results.append(_closure_result("indeterminate", "session agreement hash authority is unavailable"))
+    elif not _sha256_hex(execution_agreement_hash):
+        results.append(_closure_result("error", "session agreement hash authority is malformed"))
+    if closure_agreement_hash is None:
         results.append(_closure_result("indeterminate", "agreement hash authority is unavailable"))
+    elif not _sha256_hex(closure_agreement_hash):
+        results.append(_closure_result("error", "agreement hash authority is malformed"))
     if not isinstance(anchor, dict) or anchor.get("locator") != deliverable_address:
         results.append(_closure_result("fail", "attested payload anchor does not bind the exact job and phase"))
     if delivered is not None and (
@@ -1674,7 +1716,11 @@ def _validate_current_delivery_artifact_closure_disposition(
         results.append(_closure_result("error", "payload attestation record lacks required fields or has an unsupported type"))
     attempt = payload_record.get("attempt")
     method_hash = payload_record.get("verificationMethodHash")
-    attestation_address = f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:{attempt}"
+    attestation_address = (
+        f"dacs4:payload-attestation:{job_id}:{method_hash}:{attempt}"
+        if legacy
+        else f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:{attempt}"
+    )
     signature = payload_record.get("signature")
     if (
         isinstance(attempt, bool)
@@ -1709,8 +1755,14 @@ def _validate_current_delivery_artifact_closure_disposition(
         or not isinstance(method, dict)
         or deliverable_spec.get("kind") != "attested-payload"
         or payload_record.get("jobId") != job_id
-        or payload_record.get("agreementHash") != execution.get("agreementHash")
-        or payload_record.get("agreementHash") != closure.get("agreementHash")
+        or (
+            execution_agreement_hash is not None
+            and payload_record.get("agreementHash") != execution_agreement_hash
+        )
+        or (
+            closure_agreement_hash is not None
+            and payload_record.get("agreementHash") != closure_agreement_hash
+        )
         or payload_record.get("deliverableSpecHash")
         != _complete_object_hash(deliverable_spec)
         or payload_record.get("payloadFormat") != deliverable_spec.get("payloadFormat")
@@ -2147,23 +2199,25 @@ def _validate_ebfab_boolean(
         )
         if not isinstance(summary_entry, dict) or record["outcome"] != expected_record_outcome:
             return (False, "evidence record contradicts the signed phase result", None)
-        if evidence_type == "delivery":
+        if record_phase in DELIVERY_PHASES:
             delivery_authority = (
                 delivery_artifact_authority_by_phase_key
                 if isinstance(delivery_artifact_authority_by_phase_key, dict)
                 else {}
             )
             closure_disposition, closure_reason = (
-                _validate_current_delivery_artifact_closure_disposition(
-                record,
-                phase_key,
-                listing,
-                bundle,
-                pubkeys,
-                session_execution_authority_by_phase_key.get(phase_key),
-                delivery_authority.get(phase_key),
-                trusted_native_observations_by_canonical_ref,
-            ))
+                _validate_delivery_artifact_closure_disposition(
+                    record,
+                    phase_key,
+                    listing,
+                    bundle,
+                    pubkeys,
+                    session_execution_authority_by_phase_key.get(phase_key),
+                    delivery_authority.get(phase_key),
+                    trusted_native_observations_by_canonical_ref,
+                    legacy=evidence_type == "settlement",
+                )
+            )
             if closure_disposition in {"fail", "error"}:
                 return (
                     False,

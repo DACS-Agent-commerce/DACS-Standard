@@ -2,7 +2,7 @@
   "set": "bundle-settlement-evidence-bijection-v0.4",
   "spec": "DACS-5 §10.4.3 SEB-1..SEB-6",
   "artifactType": "EvidenceBoundFaultAttestationBundle",
-  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator requires an ordered, outcome-consistent execution prefix and derives phase keys locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. authenticatedRecordByRef represents independently resolved, job-bound evidence content: payment members are SettlementEvidence and current delivery members are DeliveryEvidence. deliveryArtifactAuthorityByPhaseKey supplies the independently resolved, lifecycle-gated deliverable, entitlement/credential, or payload-attestation/method-proof closure required before a successful current DeliveryEvidence member can authorize its phase. trustedNativeTransactionObservationsByCanonicalRef is fixture-only authority keyed by the complete canonical methodTransactionRef; it is not a portable consensus-proof format. The record outcome and hashed supersedesEvidenceRef, not caller-supplied class or edge labels, determine ST-8 terminal selection. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
+  "inputModel": "executionAuthorityRef selects a domain-verified EBFAB phaseSummary plus its content-hash-bound, signature-verified DACS-1 listing pipeline; the evaluator requires an ordered, outcome-consistent execution prefix and derives phase keys locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. authenticatedRecordByRef represents independently resolved, job-bound evidence content: payment members are SettlementEvidence, current delivery members are DeliveryEvidence, and PDE-7 permits only a single unambiguous delivery-shaped SettlementEvidence. deliveryArtifactAuthorityByPhaseKey supplies the independently resolved, lifecycle-gated deliverable, entitlement/credential, or payload-attestation/method-proof closure required before successful current or legacy delivery evidence can authorize its phase; legacy closure retains its original unindexed addresses and cannot synthesize credential binding. trustedNativeTransactionObservationsByCanonicalRef is fixture-only authority keyed by the complete canonical methodTransactionRef; it is not a portable consensus-proof format. The record outcome and hashed supersedesEvidenceRef, not caller-supplied class or edge labels, determine ST-8 terminal selection. Completed authorities require finalized and independently resolvable evidence; failed or aborted authorities require included or finalized evidence. Optional pointers never create phase authority.",
   "reasonCodes": [
     "ok",
     "execution-authority",
@@ -8044,10 +8044,1052 @@
         "state": "finalized",
         "independentlyResolvable": true
       }
+    },
+    "legacy-storage-completed": {
+      "listing": {
+        "listingId": "listing-seb-legacy-storage-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-storage-program"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "storage-program",
+            "payloadFormat": "application/octet-stream"
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "gkd7ysCIjEUFWpc1fmHBsL78IdxsPRScwnTXSJNKRl5JoQv5soFNElwEr_LYIs1lQOREieDLTiMCw1EG5CWtBw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-legacy-storage-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-legacy-storage-completed",
+          "version": 1,
+          "contentHash": "da014a8e4a3b09f3e2bd28e9c124ab5134e96178c8d668253d4f90b31dd0c554"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-9e707a93254355766392be427e927ac316b125086b69680f5d304c4cb4685653"
+              },
+              "contentHash": "e63ee7d56476f032400b0a7c996c8ca9bdc8a012d981d2bfc7436057af5e7c2c"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-9e707a93254355766392be427e927ac316b125086b69680f5d304c4cb4685653"
+            },
+            "contentHash": "e63ee7d56476f032400b0a7c996c8ca9bdc8a012d981d2bfc7436057af5e7c2c"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "rJPObOKA1FdCJiY0etHrlohAVpLpIZA9Z5lS7BVCUKN3KaLbE7MOwt90PCqp1RP5MznSh75h5Qxl0_p1LnZXDw"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "xQXcun4jSAoNWxULhSO3u5goUfzNtDEKQ8G9ZUM2GuJrtuOgWbtNUtxmjCQ1P2lUKkbtp0P7zA5iBlbnWJjICw"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9e707a93254355766392be427e927ac316b125086b69680f5d304c4cb4685653\"},\"contentHash\":\"e63ee7d56476f032400b0a7c996c8ca9bdc8a012d981d2bfc7436057af5e7c2c\"}": {
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-legacy-storage-completed",
+            "phase": "deliver-storage-program",
+            "outcome": "success",
+            "deliverableContentHash": "2a218e9f3a1d2d02b9fb5966175af350266e7cbe355789bf73d07c56b12e9fb3",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-legacy-storage-completed"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "kaFflSESt3JaQOwDkcF9bEeAqxWMmkQcMXnZqzddyAtVf0Ymqe56AyqCuXx8WSIyvdNkhOjXwfgDsgCPkxLsAw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-storage-program": {
+          "jobId": "SEB-AUTHORITY-legacy-storage-completed",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-storage-program",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-storage-completed:deliver-storage-program"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-9e707a93254355766392be427e927ac316b125086b69680f5d304c4cb4685653\"},\"contentHash\":\"e63ee7d56476f032400b0a7c996c8ca9bdc8a012d981d2bfc7436057af5e7c2c\"}": {
+          "logicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-storage-completed:deliver-storage-program",
+          "nativeAddress": "stor-9e707a93254355766392be427e927ac316b125086b69680f5d304c4cb4685653",
+          "contentHash": "e63ee7d56476f032400b0a7c996c8ca9bdc8a012d981d2bfc7436057af5e7c2c",
+          "transaction": "demos-testnet:tx-0b78378c91480a5dfedccb307180766c",
+          "writer": "did:demos:seller",
+          "nonce": 0
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-storage-program": {
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-storage-completed",
+            "cleartextUtf8": "storage delivery:SEB-AUTHORITY-legacy-storage-completed:0",
+            "cleartextHash": "2a218e9f3a1d2d02b9fb5966175af350266e7cbe355789bf73d07c56b12e9fb3",
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "legacy-entitlement-completed": {
+      "listing": {
+        "listingId": "listing-seb-legacy-entitlement-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-entitlement"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "entitlement",
+            "durationSec": 86400,
+            "renewable": true
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "eNNV43IVUkr_vu_SCwxDI812cZ4HtBSGpWFhEaDHVzqr7ii_RuV4TR_2p67MCF3nOKyYm69rAOpNFzmw2zFiCw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-legacy-entitlement-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-legacy-entitlement-completed",
+          "version": 1,
+          "contentHash": "08cddca393081e835bb603b3a133cac9f758b61a961755027feecac53f13d567"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-entitlement",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-7494be7f48786f70ad15b357aced6cc74fae70cfad54e106f0d64db366814506"
+              },
+              "contentHash": "6ab184a3d552da4fabe159393ce5c08288e9729660ac9a2d87f0d9283bbdbdac"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-7494be7f48786f70ad15b357aced6cc74fae70cfad54e106f0d64db366814506"
+            },
+            "contentHash": "6ab184a3d552da4fabe159393ce5c08288e9729660ac9a2d87f0d9283bbdbdac"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "jdWNHREi1zIQgJLUlppc-2H4_ZRZZCejEKzs-43iQSHaLVCt5oJ2ofTWmOpF-HOROiPQ3Xr-eK0vAL4fWGVfAA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "d0S2HsUtInvjP_glpTJDJCH3N17ljieYDSx1PGd2ERN7-tk1bcFT6I5Frq1mPkibGb82ewz1BQW-sK46CmyqCQ"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-7494be7f48786f70ad15b357aced6cc74fae70cfad54e106f0d64db366814506\"},\"contentHash\":\"6ab184a3d552da4fabe159393ce5c08288e9729660ac9a2d87f0d9283bbdbdac\"}": {
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-legacy-entitlement-completed",
+            "phase": "deliver-entitlement",
+            "outcome": "success",
+            "deliverableContentHash": "6d0ce7123564941ce66ffc3f52898150041ca2293398e9f2611f0d7016f3416a",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:entitlement:SEB-AUTHORITY-legacy-entitlement-completed:0"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "CvYORW6Q2vLUtMH3YEXm8Ityr8gMveBeWzEuWM5Wt1NFG1_GaE2PgTihmAkRyPbJVQiELofkap103WGsa1DUCg"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-entitlement": {
+          "jobId": "SEB-AUTHORITY-legacy-entitlement-completed",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-entitlement",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-entitlement-completed:deliver-entitlement"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-7494be7f48786f70ad15b357aced6cc74fae70cfad54e106f0d64db366814506\"},\"contentHash\":\"6ab184a3d552da4fabe159393ce5c08288e9729660ac9a2d87f0d9283bbdbdac\"}": {
+          "logicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-entitlement-completed:deliver-entitlement",
+          "nativeAddress": "stor-7494be7f48786f70ad15b357aced6cc74fae70cfad54e106f0d64db366814506",
+          "contentHash": "6ab184a3d552da4fabe159393ce5c08288e9729660ac9a2d87f0d9283bbdbdac",
+          "transaction": "demos-testnet:tx-a0a129565d9a3fb5ad66831a7ba8f6c3",
+          "writer": "did:demos:seller",
+          "nonce": 0
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-entitlement": {
+          "entitlementRecord": {
+            "logicalAddress": "dacs4:entitlement:SEB-AUTHORITY-legacy-entitlement-completed:0",
+            "artifact": {
+              "entitlementVersion": "1",
+              "jobId": "SEB-AUTHORITY-legacy-entitlement-completed",
+              "grantee": "did:demos:buyer",
+              "grantor": "did:demos:seller",
+              "startsAt": 1785772799000,
+              "endsAt": 1785859199000,
+              "scope": {
+                "service": "https://service.example.test",
+                "tier": "pro"
+              },
+              "serviceEndpoint": "https://service.example.test/access",
+              "renewable": true,
+              "renewalSeq": 0,
+              "credentialRef": {
+                "ref": {
+                  "anchor": {
+                    "kind": "storage-program",
+                    "locator": "dacs4:credential:SEB-AUTHORITY-legacy-entitlement-completed:0"
+                  },
+                  "contentHash": "f7109e8e6c99d4d2b410c4bb0a1b1a767700f882160b1e039c7fc911c2b7c4b2",
+                  "signer": "did:demos:seller"
+                },
+                "accessModel": "buyer-only"
+              },
+              "signature": {
+                "signer": "did:demos:seller",
+                "algorithm": "ed25519",
+                "value": "-S2mnOHKgbnqNVMqDPDZxUxr8fZcCfvcJfX5fVk1GAv3Xpp95pIR6ZQiwUCjeoLw_GYTgAyF3tdgnIDXAPkFDA"
+              }
+            },
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "legacy-attested-completed": {
+      "listing": {
+        "listingId": "listing-seb-legacy-attested-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/delivery/SEB-AUTHORITY-legacy-attested-completed/0"
+              }
+            }
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "wG3GqYktO2vp1xZ4csbj-5NgTWEI9IxMK2KXqAwSBcZnvZsJOOP-8RKgrWoL2lCxkATTpBLA6VRS3ZYFsLjyCg"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-legacy-attested-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-legacy-attested-completed",
+          "version": 1,
+          "contentHash": "98bfb1460d7359a8261e071f59ffe21c22d0f30927e4672e68edc3a4dff0ca6d"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-3e848a504eb2b54652601518718cf825f9aa8d92b293cde6d3e5feaf94d5ef2e"
+              },
+              "contentHash": "a97b215391126936eee30219775a88c8cb3bdf374b2c2a9547eb81b46ee628dd"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-3e848a504eb2b54652601518718cf825f9aa8d92b293cde6d3e5feaf94d5ef2e"
+            },
+            "contentHash": "a97b215391126936eee30219775a88c8cb3bdf374b2c2a9547eb81b46ee628dd"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "zswOnzCgw3FPjKD7cHdriXjiLhVHB1-tis18DUTu3gMflYm4HKn8GHhK2iK-o6Vf8hIn6_J59xS3PysV3SOwCA"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "gUVd-bv8pXE0eOiGL0ygLy6-1JeAWjl3UKqtrIU3XCWA-XxLeSTqlb5b0YBIAFD-N0A6wFFy3iHmWtpGSndyBg"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3e848a504eb2b54652601518718cf825f9aa8d92b293cde6d3e5feaf94d5ef2e\"},\"contentHash\":\"a97b215391126936eee30219775a88c8cb3bdf374b2c2a9547eb81b46ee628dd\"}": {
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-legacy-attested-completed",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "b2a243e9795912317629166127e4b8298ab9a402a06938cefcea0d6210701c96",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-legacy-attested-completed"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-legacy-attested-completed:517e7f6b66b7d1f91fad1a4dfa301ab49f8f82426dac693163463bf9ec896b7d:0"
+              },
+              "contentHash": "ec46768aa42808e6b948c09d64278437fb2b03c93d6db7584b9c70cea64e8aea",
+              "signer": "did:demos:orchestrator"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "bLic8IfSj5wSXogn7duakr9rnijSrXWBPg3XqSRZ4bB13t2-kDnsby6U0y3aehaB7pJOG4kI4oIUivbFY9q8Aw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "jobId": "SEB-AUTHORITY-legacy-attested-completed",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-attested-payload",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-attested-completed:deliver-attested-payload",
+          "agreementHash": "73cc61cd76eb3db1b89803690d9028d648a79d5526d6edf0af02d119d0f476f8"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-3e848a504eb2b54652601518718cf825f9aa8d92b293cde6d3e5feaf94d5ef2e\"},\"contentHash\":\"a97b215391126936eee30219775a88c8cb3bdf374b2c2a9547eb81b46ee628dd\"}": {
+          "logicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-attested-completed:deliver-attested-payload",
+          "nativeAddress": "stor-3e848a504eb2b54652601518718cf825f9aa8d92b293cde6d3e5feaf94d5ef2e",
+          "contentHash": "a97b215391126936eee30219775a88c8cb3bdf374b2c2a9547eb81b46ee628dd",
+          "transaction": "demos-testnet:tx-e2309cca2063a4ce45113cd722735515",
+          "writer": "did:demos:seller",
+          "nonce": 0
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "agreementHash": "73cc61cd76eb3db1b89803690d9028d648a79d5526d6edf0af02d119d0f476f8",
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-attested-completed",
+            "cleartextUtf8": "attested payload:SEB-AUTHORITY-legacy-attested-completed:0",
+            "cleartextHash": "b2a243e9795912317629166127e4b8298ab9a402a06938cefcea0d6210701c96",
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          },
+          "payloadAttestationRecord": {
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-legacy-attested-completed:517e7f6b66b7d1f91fad1a4dfa301ab49f8f82426dac693163463bf9ec896b7d:0",
+            "artifact": {
+              "payloadAttestationVersion": "1",
+              "jobId": "SEB-AUTHORITY-legacy-attested-completed",
+              "agreementHash": "73cc61cd76eb3db1b89803690d9028d648a79d5526d6edf0af02d119d0f476f8",
+              "deliverableSpecHash": "27a0de711eb3be1a7cc3b3e1f2b24c620cc3d78a34c0796305a66e74fa7c4ba9",
+              "payloadFormat": "application/octet-stream",
+              "payloadContentHash": "b2a243e9795912317629166127e4b8298ab9a402a06938cefcea0d6210701c96",
+              "verificationMethod": "consensus-backed-proxy",
+              "verificationMethodHash": "517e7f6b66b7d1f91fad1a4dfa301ab49f8f82426dac693163463bf9ec896b7d",
+              "attempt": 0,
+              "decision": "pass",
+              "reason": "deterministic test proof",
+              "methodEvidenceRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "dacs4:method-evidence:SEB-AUTHORITY-legacy-attested-completed"
+                },
+                "contentHash": "086291d9b6d4bb721e9a192b7a9a7fc05be29a2b5af90707ca416b00b3b83bff",
+                "signer": "did:demos:orchestrator"
+              },
+              "methodTransactionRef": {
+                "kind": "demos-web2-request",
+                "value": "ba1ea5b9996e464e4c2e3df8a9c4d728207eaec7c1164704c67b497347043ce3"
+              },
+              "verifiedAt": 1785772800000,
+              "signature": {
+                "signer": "did:demos:orchestrator",
+                "algorithm": "ed25519",
+                "value": "FotSjtU_EBlOZm5ZjCbpoSs1qpYJVCLdcMLEt-MYVpPMcSJuuHfZPr_v72z-pT6fKqVhj2Db4dRbIOfk_rKPCg"
+              }
+            },
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          },
+          "methodEvidence": {
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-legacy-attested-completed",
+            "artifact": {
+              "kind": "demos-web2-request",
+              "request": {
+                "method": "GET",
+                "url": "https://api.example.test/delivery/SEB-AUTHORITY-legacy-attested-completed/0"
+              },
+              "response": {
+                "status": 200,
+                "data": "attested payload:SEB-AUTHORITY-legacy-attested-completed:0",
+                "responseHash": "b2a243e9795912317629166127e4b8298ab9a402a06938cefcea0d6210701c96",
+                "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+              },
+              "transaction": {
+                "kind": "demos-web2-request",
+                "value": "ba1ea5b9996e464e4c2e3df8a9c4d728207eaec7c1164704c67b497347043ce3",
+                "state": "finalized",
+                "authenticated": true
+              },
+              "proofValid": true
+            },
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"ba1ea5b9996e464e4c2e3df8a9c4d728207eaec7c1164704c67b497347043ce3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "ba1ea5b9996e464e4c2e3df8a9c4d728207eaec7c1164704c67b497347043ce3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/delivery/SEB-AUTHORITY-legacy-attested-completed/0"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/delivery/SEB-AUTHORITY-legacy-attested-completed/0"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "b2a243e9795912317629166127e4b8298ab9a402a06938cefcea0d6210701c96",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "legacy-self-signed-attested-completed": {
+      "listing": {
+        "listingId": "listing-seb-legacy-self-signed-attested-completed",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "g7IvQWaS1uqZsBpCHRqpjjyHv8FcVDYbCIi2pFK4hqIv3WBaIzN387-Jtz6F_1vJmDfa8Gkeo7Lmx6McXONBDw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-legacy-self-signed-attested-completed",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-legacy-self-signed-attested-completed",
+          "version": 1,
+          "contentHash": "019de582b2800b545966580995e9f5a76ceb764769acd6f5ad5f9d23a521fa9f"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-ed224735631e0116017893911d56ad5d39d8056ef3e729fb04371f04fc09ca68"
+              },
+              "contentHash": "d27cde923d0adf2fefec1f4c153e8ec103fe16950d11517454c3fc8342b04cbd"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-ed224735631e0116017893911d56ad5d39d8056ef3e729fb04371f04fc09ca68"
+            },
+            "contentHash": "d27cde923d0adf2fefec1f4c153e8ec103fe16950d11517454c3fc8342b04cbd"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "Ovx9IMQK5IPgXo5TNamd12O7BWxX91uMl7EcGhsm8jOSh38yXfvNZzcXVQ9SeoXHWGdHWLlvguAksu4h6lKsBQ"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "zXPMWw8lVceYvBm2awIC_9gZl50PPeh8pcdXYkmVUuZytRjnRCe03F9U7vMDCz6Z47u73_jlkGablCXfRNYPBw"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ed224735631e0116017893911d56ad5d39d8056ef3e729fb04371f04fc09ca68\"},\"contentHash\":\"d27cde923d0adf2fefec1f4c153e8ec103fe16950d11517454c3fc8342b04cbd\"}": {
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-legacy-self-signed-attested-completed",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "7f093cf6b65e22503400b455532ceeee23b50571bb2a66015078ca589ec20bd3",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-legacy-self-signed-attested-completed"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:SEB-AUTHORITY-legacy-self-signed-attested-completed:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+              },
+              "contentHash": "0f72ecfe9df2cde16943294089a25a2d8e2e66d4a20d010e2b4a03da79563547",
+              "signer": "did:demos:orchestrator"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "AZwrBoiGSHWrTmtB7Uo-AUyTPGkUVKtWy5YonGsE46wDQob1AGYupb_K4N9oxjNHKuw4iVgR-jKegRV9MjU-Dw"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "jobId": "SEB-AUTHORITY-legacy-self-signed-attested-completed",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-attested-payload",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-self-signed-attested-completed:deliver-attested-payload",
+          "agreementHash": "a2370f0ce98fc8b5592eed66183d3b4be602a5157a5192062683e0eb89de2362"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-ed224735631e0116017893911d56ad5d39d8056ef3e729fb04371f04fc09ca68\"},\"contentHash\":\"d27cde923d0adf2fefec1f4c153e8ec103fe16950d11517454c3fc8342b04cbd\"}": {
+          "logicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-self-signed-attested-completed:deliver-attested-payload",
+          "nativeAddress": "stor-ed224735631e0116017893911d56ad5d39d8056ef3e729fb04371f04fc09ca68",
+          "contentHash": "d27cde923d0adf2fefec1f4c153e8ec103fe16950d11517454c3fc8342b04cbd",
+          "transaction": "demos-testnet:tx-58cf204664147b1520361447fd3adff8",
+          "writer": "did:demos:seller",
+          "nonce": 0
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-attested-payload": {
+          "agreementHash": "a2370f0ce98fc8b5592eed66183d3b4be602a5157a5192062683e0eb89de2362",
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-self-signed-attested-completed",
+            "cleartextUtf8": "attested payload:SEB-AUTHORITY-legacy-self-signed-attested-completed:0",
+            "cleartextHash": "7f093cf6b65e22503400b455532ceeee23b50571bb2a66015078ca589ec20bd3",
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          },
+          "payloadAttestationRecord": {
+            "logicalAddress": "dacs4:payload-attestation:SEB-AUTHORITY-legacy-self-signed-attested-completed:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+            "artifact": {
+              "payloadAttestationVersion": "1",
+              "jobId": "SEB-AUTHORITY-legacy-self-signed-attested-completed",
+              "agreementHash": "a2370f0ce98fc8b5592eed66183d3b4be602a5157a5192062683e0eb89de2362",
+              "deliverableSpecHash": "a4d83ee78f9727d373bac8472b18b42216bdda8290604f05cca3bfc3cf667cff",
+              "payloadFormat": "application/octet-stream",
+              "payloadContentHash": "7f093cf6b65e22503400b455532ceeee23b50571bb2a66015078ca589ec20bd3",
+              "verificationMethod": "self-signed",
+              "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+              "attempt": 0,
+              "decision": "pass",
+              "reason": "deterministic test proof",
+              "methodEvidenceRef": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "dacs4:method-evidence:SEB-AUTHORITY-legacy-self-signed-attested-completed"
+                },
+                "contentHash": "0c02544aebcc5842cd1f12d5a485812180cce02a8bbe7b13c855bf722a728161",
+                "signer": "did:demos:orchestrator"
+              },
+              "verifiedAt": 1785772800000,
+              "signature": {
+                "signer": "did:demos:orchestrator",
+                "algorithm": "ed25519",
+                "value": "2PKPKGOyGVXxAvhC7iggfFK2ta8R5Q8lV2ieGMAgPKT0bKlPGTiDRkZQNd_OffygFupQhARF5xjgocVwBj8FBg"
+              }
+            },
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          },
+          "methodEvidence": {
+            "logicalAddress": "dacs4:method-evidence:SEB-AUTHORITY-legacy-self-signed-attested-completed",
+            "artifact": {
+              "kind": "self-signed-payload",
+              "payloadContentHash": "7f093cf6b65e22503400b455532ceeee23b50571bb2a66015078ca589ec20bd3",
+              "methodInput": {
+                "identifier": "d404bc44565aedbb899150e5b0b3b32b9441bf0cb7884c33130da8dbc27dd2cf",
+                "assertion": "attested payload:SEB-AUTHORITY-legacy-self-signed-attested-completed:0",
+                "signature": "Iwt1CIcM-kmeQOaFtJqFwgbiLF8EMi_sF-QuAHWDBkrD8kAxoesIhj5C9CpBAiircoHx40FptSbXp_EpFvUjAg"
+              }
+            },
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
+    },
+    "legacy-repeated-storage-invalid": {
+      "listing": {
+        "listingId": "listing-seb-legacy-repeated-storage-invalid",
+        "listingVersion": 1,
+        "sellerPrimaryClaim": "did:demos:seller",
+        "pipeline": [
+          {
+            "kind": "deliver-storage-program"
+          },
+          {
+            "kind": "deliver-storage-program"
+          }
+        ],
+        "offering": {
+          "deliverable": {
+            "kind": "storage-program",
+            "payloadFormat": "application/octet-stream"
+          }
+        },
+        "signature": {
+          "signer": "did:demos:seller",
+          "algorithm": "ed25519",
+          "value": "WbOyYkFSoWdSrt2IiL4yafna2tp5zm_V6kXV6HxRJPOOg1uNIRZzcELHQX2gx-7LZ5llUFpAxI5mBGptNOthAw"
+        }
+      },
+      "bundle": {
+        "evidenceBoundFaultBundleVersion": "1",
+        "jobId": "SEB-AUTHORITY-legacy-repeated-storage-invalid",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "seller",
+        "listingRef": {
+          "listingId": "listing-seb-legacy-repeated-storage-invalid",
+          "version": 1,
+          "contentHash": "09686ccb2198f001bfd23ef295a68b874f71726cc3c04e270eb8ac6bae6ca498"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "e13d0b6a3dec667b9e350897b3e99851d7fc4b1373ca72a51c2a26b387739b01",
+            "primaryClaim": "did:demos:buyer"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "e5aaf3c975020a6de9a2d299316406e6153fb4295e76aa639641067eefd4a1ee",
+            "primaryClaim": "did:demos:seller"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-2915ac1df7e95bc548b129678c0bc84eec512fb531327e0ab25fdaf48e834a02"
+              },
+              "contentHash": "9c2edf637bc47199b60d5c9bd1ce88d79f1dfaf08c04c6a911134bcd0c5cdd56"
+            }
+          },
+          {
+            "index": 1,
+            "kind": "deliver-storage-program",
+            "outcome": "ok",
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "stor-c8c0c3863aa6eb7b4397d5bf9c0cc6f6287f7b23b6bae70a6c33adfd29af2de6"
+              },
+              "contentHash": "6f3017b9ceb571e9014adae10ee0d67e4bf419112d7d648f6059ca5b8713b04c"
+            }
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-2915ac1df7e95bc548b129678c0bc84eec512fb531327e0ab25fdaf48e834a02"
+            },
+            "contentHash": "9c2edf637bc47199b60d5c9bd1ce88d79f1dfaf08c04c6a911134bcd0c5cdd56"
+          },
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "stor-c8c0c3863aa6eb7b4397d5bf9c0cc6f6287f7b23b6bae70a6c33adfd29af2de6"
+            },
+            "contentHash": "6f3017b9ceb571e9014adae10ee0d67e4bf419112d7d648f6059ca5b8713b04c"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1785859200000,
+        "signatures": [
+          {
+            "party": "did:demos:buyer",
+            "algorithm": "ed25519",
+            "value": "U-tmhtelbFqVFayaoqvl1ERT5r2LvL8vrLClcqe3BeM42B5Gp8oDzDFpfujr26zdhy8t8Bo4s4a1owk1hhsEBw"
+          },
+          {
+            "party": "did:demos:seller",
+            "algorithm": "ed25519",
+            "value": "Bw5HkdlaZ4obDxY_V_cUqWxvuMUidw-Hhbj4UHhobNdpYQBLfHMrGAiLW-F9beUos5GlgWymt5i4Yxp_nUR-AA"
+          }
+        ]
+      },
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "referenceValidationByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2915ac1df7e95bc548b129678c0bc84eec512fb531327e0ab25fdaf48e834a02\"},\"contentHash\":\"9c2edf637bc47199b60d5c9bd1ce88d79f1dfaf08c04c6a911134bcd0c5cdd56\"}": {
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-legacy-repeated-storage-invalid",
+            "phase": "deliver-storage-program",
+            "outcome": "success",
+            "deliverableContentHash": "56f649fcfcfb2d76faa7db1d57601a5d9f10a064bce5fbfafe25f6fbdcb4e2b1",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-legacy-repeated-storage-invalid"
+            },
+            "observedAt": 1785772799000,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "l1XZ69T5gNA0oxHoWTbMLujmG8l6REL1nlmo1FEh6aw3ra4F5C1J-XRYYxgziRayo723S1w12Beq0toWby2qDQ"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c8c0c3863aa6eb7b4397d5bf9c0cc6f6287f7b23b6bae70a6c33adfd29af2de6\"},\"contentHash\":\"6f3017b9ceb571e9014adae10ee0d67e4bf419112d7d648f6059ca5b8713b04c\"}": {
+          "record": {
+            "evidenceVersion": "1",
+            "jobId": "SEB-AUTHORITY-legacy-repeated-storage-invalid",
+            "phase": "deliver-storage-program",
+            "outcome": "success",
+            "deliverableContentHash": "2c34c6a3359a7063403d1d7828991b517c9715fd54811460f23379200f9c654a",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:SEB-AUTHORITY-legacy-repeated-storage-invalid"
+            },
+            "observedAt": 1785772799001,
+            "signature": {
+              "signer": "did:demos:seller",
+              "algorithm": "ed25519",
+              "value": "JiyVXiWA2UrrYkNetdVczq3mP2bCkG5iNFFzw1hwEZfXxgO19QSkRJvgfwoDsnhbSWlF_QAuAlKaFFNW2aFcCA"
+            }
+          },
+          "lifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": true
+          }
+        }
+      },
+      "sessionExecutionAuthorityByPhaseKey": {
+        "0:deliver-storage-program": {
+          "jobId": "SEB-AUTHORITY-legacy-repeated-storage-invalid",
+          "phaseIndex": 0,
+          "phaseKind": "deliver-storage-program",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-repeated-storage-invalid:deliver-storage-program"
+        },
+        "1:deliver-storage-program": {
+          "jobId": "SEB-AUTHORITY-legacy-repeated-storage-invalid",
+          "phaseIndex": 1,
+          "phaseKind": "deliver-storage-program",
+          "phaseOrchestrator": "did:demos:seller",
+          "evidenceLogicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-repeated-storage-invalid:deliver-storage-program"
+        }
+      },
+      "verifiedReceiptByCanonicalRef": {
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-2915ac1df7e95bc548b129678c0bc84eec512fb531327e0ab25fdaf48e834a02\"},\"contentHash\":\"9c2edf637bc47199b60d5c9bd1ce88d79f1dfaf08c04c6a911134bcd0c5cdd56\"}": {
+          "logicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-repeated-storage-invalid:deliver-storage-program",
+          "nativeAddress": "stor-2915ac1df7e95bc548b129678c0bc84eec512fb531327e0ab25fdaf48e834a02",
+          "contentHash": "9c2edf637bc47199b60d5c9bd1ce88d79f1dfaf08c04c6a911134bcd0c5cdd56",
+          "transaction": "demos-testnet:tx-9b3e15fad40ae65494587f5d554c883a",
+          "writer": "did:demos:seller",
+          "nonce": 0
+        },
+        "{\"anchor\":{\"kind\":\"storage-program\",\"locator\":\"stor-c8c0c3863aa6eb7b4397d5bf9c0cc6f6287f7b23b6bae70a6c33adfd29af2de6\"},\"contentHash\":\"6f3017b9ceb571e9014adae10ee0d67e4bf419112d7d648f6059ca5b8713b04c\"}": {
+          "logicalAddress": "legacy:dacs4:evidence:SEB-AUTHORITY-legacy-repeated-storage-invalid:deliver-storage-program",
+          "nativeAddress": "stor-c8c0c3863aa6eb7b4397d5bf9c0cc6f6287f7b23b6bae70a6c33adfd29af2de6",
+          "contentHash": "6f3017b9ceb571e9014adae10ee0d67e4bf419112d7d648f6059ca5b8713b04c",
+          "transaction": "demos-testnet:tx-cc4207bf1ef3ec8a491f7dea3a9d0f5d",
+          "writer": "did:demos:seller",
+          "nonce": 1
+        }
+      },
+      "deliveryArtifactAuthorityByPhaseKey": {
+        "0:deliver-storage-program": {
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-repeated-storage-invalid",
+            "cleartextUtf8": "storage delivery:SEB-AUTHORITY-legacy-repeated-storage-invalid:0",
+            "cleartextHash": "56f649fcfcfb2d76faa7db1d57601a5d9f10a064bce5fbfafe25f6fbdcb4e2b1",
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          }
+        },
+        "1:deliver-storage-program": {
+          "deliverable": {
+            "logicalAddress": "dacs4:deliverable:SEB-AUTHORITY-legacy-repeated-storage-invalid",
+            "cleartextUtf8": "storage delivery:SEB-AUTHORITY-legacy-repeated-storage-invalid:1",
+            "cleartextHash": "2c34c6a3359a7063403d1d7828991b517c9715fd54811460f23379200f9c654a",
+            "available": true,
+            "lifecycle": {
+              "state": "finalized",
+              "independentlyResolvable": true
+            }
+          }
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundleLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      }
     }
   },
-  "hash": "a18f9580a071d67cd884424413f898c06ede179b95acd2ea5a469b53bfcb2e35",
-  "count": 41,
+  "hash": "2dbaa9878eae19e23a636d28395742ff9d35450a42af032ee7c8c1a8520def35",
+  "count": 46,
   "vectors": [
     {
       "name": "bundle-settlement-bijection-exact-pointerless-pass",
@@ -9061,6 +10103,113 @@
         "disposition": "rejected",
         "reasonCode": "execution-authority"
       }
+    },
+    {
+      "name": "bundle-settlement-bijection-legacy-storage-closure-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "legacy-storage-completed",
+        "topLevelRefs": [
+          "ref-legacy-storage"
+        ],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-legacy-storage": {
+            "jobId": "SEB-AUTHORITY-legacy-storage-completed",
+            "phaseKey": "0:deliver-storage-program",
+            "outcome": "success"
+          }
+        }
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-legacy-entitlement-closure-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "legacy-entitlement-completed",
+        "topLevelRefs": [
+          "ref-legacy-entitlement"
+        ],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-legacy-entitlement": {
+            "jobId": "SEB-AUTHORITY-legacy-entitlement-completed",
+            "phaseKey": "0:deliver-entitlement",
+            "outcome": "success"
+          }
+        }
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-legacy-attested-closure-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "legacy-attested-completed",
+        "topLevelRefs": [
+          "ref-legacy-attested"
+        ],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-legacy-attested": {
+            "jobId": "SEB-AUTHORITY-legacy-attested-completed",
+            "phaseKey": "0:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-legacy-self-signed-closure-pass",
+      "expected": "pass",
+      "input": {
+        "executionAuthorityRef": "legacy-self-signed-attested-completed",
+        "topLevelRefs": [
+          "ref-legacy-self-signed"
+        ],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {
+          "ref-legacy-self-signed": {
+            "jobId": "SEB-AUTHORITY-legacy-self-signed-attested-completed",
+            "phaseKey": "0:deliver-attested-payload",
+            "outcome": "success"
+          }
+        }
+      },
+      "want": {
+        "disposition": "verified",
+        "reasonCode": "ok"
+      }
+    },
+    {
+      "name": "bundle-settlement-bijection-legacy-repeated-delivery-reject",
+      "expected": "fail",
+      "input": {
+        "executionAuthorityRef": "legacy-repeated-storage-invalid",
+        "topLevelRefs": [],
+        "pointerMap": {},
+        "unrelatedAuthorityDisposition": "verified",
+        "authenticatedRecordByRef": {}
+      },
+      "want": {
+        "disposition": "rejected",
+        "reasonCode": "execution-authority"
+      }
     }
   ],
   "generator": "scripts/generate_bundle_settlement_evidence_vectors.py",
@@ -9989,6 +11138,103 @@
         "independentlyResolvable": true
       },
       "innerArtifactMutation": "native-terminal-included"
+    },
+    "legacy-storage-completed": {
+      "bundleOutcome": "completed",
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "legacyDeliveryEvidence": true,
+      "listingPipeline": [
+        "deliver-storage-program"
+      ],
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-storage-program",
+          "outcome": "ok"
+        }
+      ]
+    },
+    "legacy-entitlement-completed": {
+      "bundleOutcome": "completed",
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "legacyDeliveryEvidence": true,
+      "listingPipeline": [
+        "deliver-entitlement"
+      ],
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-entitlement",
+          "outcome": "ok"
+        }
+      ]
+    },
+    "legacy-attested-completed": {
+      "bundleOutcome": "completed",
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "legacyDeliveryEvidence": true,
+      "listingPipeline": [
+        "deliver-attested-payload"
+      ],
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ]
+    },
+    "legacy-self-signed-attested-completed": {
+      "bundleOutcome": "completed",
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "legacyDeliveryEvidence": true,
+      "listingPipeline": [
+        "deliver-attested-payload"
+      ],
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-attested-payload",
+          "outcome": "ok"
+        }
+      ],
+      "legacySelfSigned": true
+    },
+    "legacy-repeated-storage-invalid": {
+      "bundleOutcome": "completed",
+      "defaultReferenceLifecycle": {
+        "state": "finalized",
+        "independentlyResolvable": true
+      },
+      "legacyDeliveryEvidence": true,
+      "listingPipeline": [
+        "deliver-storage-program",
+        "deliver-storage-program"
+      ],
+      "phaseSummary": [
+        {
+          "index": 0,
+          "kind": "deliver-storage-program",
+          "outcome": "ok"
+        },
+        {
+          "index": 1,
+          "kind": "deliver-storage-program",
+          "outcome": "ok"
+        }
+      ]
     }
   }
 }

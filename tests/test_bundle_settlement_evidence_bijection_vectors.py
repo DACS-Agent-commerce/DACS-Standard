@@ -496,6 +496,183 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 ))
                 self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
 
+    def test_legacy_delivery_closes_every_kind_without_synthesizing_an_index(self):
+        expected = {
+            "legacy-storage-completed": (
+                "0:deliver-storage-program",
+                "deliverable",
+                "dacs4:deliverable:SEB-AUTHORITY-legacy-storage-completed",
+            ),
+            "legacy-entitlement-completed": (
+                "0:deliver-entitlement",
+                "entitlementRecord",
+                "dacs4:entitlement:SEB-AUTHORITY-legacy-entitlement-completed:0",
+            ),
+            "legacy-attested-completed": (
+                "0:deliver-attested-payload",
+                "deliverable",
+                "dacs4:deliverable:SEB-AUTHORITY-legacy-attested-completed",
+            ),
+            "legacy-self-signed-attested-completed": (
+                "0:deliver-attested-payload",
+                "deliverable",
+                "dacs4:deliverable:SEB-AUTHORITY-legacy-self-signed-attested-completed",
+            ),
+        }
+        for authority_name, (phase_key, closure_key, address) in expected.items():
+            authority = self.data["executionAuthorities"][authority_name]
+            disposition, reason, phase_keys = derive_phase_disposition(
+                authority, self.pubkeys
+            )
+            with self.subTest(authority=authority_name):
+                self.assertEqual(disposition, "pass", reason)
+                self.assertEqual(phase_keys, [phase_key])
+                record = next(
+                    resolution["record"]
+                    for resolution in authority[
+                        "referenceValidationByCanonicalRef"
+                    ].values()
+                )
+                self.assertTrue(R._settlement_evidence_shape_valid(record))
+                self.assertEqual(record.get("evidenceVersion"), "1")
+                self.assertNotIn("deliveryEvidenceVersion", record)
+                self.assertNotIn("phaseIndex", record)
+                self.assertNotIn("credentialDelivery", record)
+                self.assertEqual(
+                    authority["deliveryArtifactAuthorityByPhaseKey"][phase_key][
+                        closure_key
+                    ]["logicalAddress"],
+                    address,
+                )
+
+        entitlement_closure = self.data["executionAuthorities"][
+            "legacy-entitlement-completed"
+        ]["deliveryArtifactAuthorityByPhaseKey"]["0:deliver-entitlement"]
+        self.assertIn(
+            "credentialRef", entitlement_closure["entitlementRecord"]["artifact"]
+        )
+        self.assertNotIn("credential", entitlement_closure)
+        credential_ref = entitlement_closure["entitlementRecord"]["artifact"][
+            "credentialRef"
+        ]
+        self.assertEqual(
+            credential_ref["ref"]["anchor"]["locator"],
+            "dacs4:credential:SEB-AUTHORITY-legacy-entitlement-completed:0",
+        )
+
+        for authority_name in (
+            "legacy-attested-completed",
+            "legacy-self-signed-attested-completed",
+        ):
+            authority = self.data["executionAuthorities"][authority_name]
+            closure = authority["deliveryArtifactAuthorityByPhaseKey"][
+                "0:deliver-attested-payload"
+            ]
+            payload_record = closure["payloadAttestationRecord"]["artifact"]
+            expected_address = (
+                f"dacs4:payload-attestation:{authority['bundle']['jobId']}:"
+                f"{payload_record['verificationMethodHash']}:"
+                f"{payload_record['attempt']}"
+            )
+            self.assertEqual(
+                closure["payloadAttestationRecord"]["logicalAddress"],
+                expected_address,
+            )
+            self.assertEqual(
+                payload_record["methodEvidenceRef"]["anchor"]["locator"],
+                f"dacs4:method-evidence:{authority['bundle']['jobId']}",
+            )
+
+        self_signed = self.data["executionAuthorities"][
+            "legacy-self-signed-attested-completed"
+        ]
+        self_signed_record = self_signed["deliveryArtifactAuthorityByPhaseKey"][
+            "0:deliver-attested-payload"
+        ]["payloadAttestationRecord"]["artifact"]
+        self.assertNotIn("methodTransactionRef", self_signed_record)
+        self.assertEqual(
+            self_signed["trustedNativeTransactionObservationsByCanonicalRef"], {}
+        )
+
+    def test_legacy_receipt_alone_never_replaces_required_delivery_closure(self):
+        dependencies = (
+            ("legacy-storage-completed", "0:deliver-storage-program", "deliverable"),
+            ("legacy-entitlement-completed", "0:deliver-entitlement", "entitlementRecord"),
+            ("legacy-attested-completed", "0:deliver-attested-payload", "methodEvidence"),
+        )
+        for authority_name, phase_key, dependency in dependencies:
+            authority = copy.deepcopy(
+                self.data["executionAuthorities"][authority_name]
+            )
+            authority["deliveryArtifactAuthorityByPhaseKey"][phase_key][dependency][
+                "available"
+            ] = False
+            with self.subTest(authority=authority_name, dependency=dependency):
+                disposition, reason, _ = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertEqual(disposition, "indeterminate", reason)
+
+            receipt_only = copy.deepcopy(
+                self.data["executionAuthorities"][authority_name]
+            )
+            receipt_only["deliveryArtifactAuthorityByPhaseKey"] = {}
+            with self.subTest(authority=authority_name, dependency="all"):
+                disposition, reason, _ = derive_phase_disposition(
+                    receipt_only, self.pubkeys
+                )
+                self.assertEqual(disposition, "indeterminate", reason)
+
+        native_missing = copy.deepcopy(
+            self.data["executionAuthorities"]["legacy-attested-completed"]
+        )
+        native_missing["trustedNativeTransactionObservationsByCanonicalRef"] = {}
+        disposition, reason, _ = derive_phase_disposition(native_missing, self.pubkeys)
+        self.assertEqual(disposition, "indeterminate", reason)
+
+        for authority_map, field in (
+            ("sessionExecutionAuthorityByPhaseKey", "agreementHash"),
+            ("deliveryArtifactAuthorityByPhaseKey", "agreementHash"),
+        ):
+            agreement_missing = copy.deepcopy(
+                self.data["executionAuthorities"]["legacy-attested-completed"]
+            )
+            agreement_missing[authority_map][
+                "0:deliver-attested-payload"
+            ].pop(field)
+            disposition, reason, _ = derive_phase_disposition(
+                agreement_missing, self.pubkeys
+            )
+            with self.subTest(authority=authority_map, dependency=field):
+                self.assertEqual(disposition, "indeterminate", reason)
+
+        malformed = copy.deepcopy(
+            self.data["executionAuthorities"]["legacy-storage-completed"]
+        )
+        malformed["deliveryArtifactAuthorityByPhaseKey"][
+            "0:deliver-storage-program"
+        ]["deliverable"] = "malformed"
+        disposition, reason, _ = derive_phase_disposition(malformed, self.pubkeys)
+        self.assertEqual(disposition, "error", reason)
+
+        contradiction = copy.deepcopy(
+            self.data["executionAuthorities"]["legacy-storage-completed"]
+        )
+        contradiction["deliveryArtifactAuthorityByPhaseKey"][
+            "0:deliver-storage-program"
+        ]["deliverable"]["cleartextHash"] = "00" * 32
+        disposition, reason, _ = derive_phase_disposition(
+            contradiction, self.pubkeys
+        )
+        self.assertEqual(disposition, "fail", reason)
+
+        repeated = self.data["executionAuthorities"][
+            "legacy-repeated-storage-invalid"
+        ]
+        disposition, _, phase_keys = derive_phase_disposition(repeated, self.pubkeys)
+        self.assertEqual(disposition, "fail")
+        self.assertIsNone(phase_keys)
+
     def test_entitlement_terms_are_bound_to_the_signed_offering(self):
         for name in (
             "invalid-entitlement-duration-closure",

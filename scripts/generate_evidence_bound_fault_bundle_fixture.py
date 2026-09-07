@@ -522,6 +522,178 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
     return record, ref, closure, trusted_native_observations
 
 
+def make_legacy_delivery_evidence(
+    job_id,
+    phase,
+    phase_index,
+    signing_keys,
+    *,
+    outcome="success",
+    reason=None,
+    self_signed=False,
+):
+    """Create a byte-stable SettlementEvidence delivery with unindexed closure."""
+    if outcome == "failure":
+        record = {
+            "evidenceVersion": "1",
+            "jobId": job_id,
+            "phase": phase,
+            "outcome": "failure",
+            "reason": reason or "permanent",
+            "observedAt": 1785772799000 + phase_index,
+        }
+        sign_artifact(
+            record,
+            signing_keys["seller"],
+            CLAIMS["seller"],
+            SETTLEMENT_EVIDENCE_DOMAIN,
+        )
+        label = f"legacy:{job_id}:{phase_index}:{phase}"
+        ref = {
+            "anchor": {
+                "kind": "storage-program",
+                "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}",
+            },
+            "contentHash": evidence_hash(record),
+        }
+        return record, ref, None, {}
+
+    current, _, closure, native_observations = make_current_delivery_evidence(
+        job_id, phase, phase_index, signing_keys
+    )
+    fields = {
+        "deliverableContentHash": current["deliverableContentHash"],
+    }
+    if phase == "deliver-storage-program":
+        address = f"dacs4:deliverable:{job_id}"
+        closure["deliverable"]["logicalAddress"] = address
+        fields["deliverableAnchor"] = {
+            "kind": "storage-program",
+            "locator": address,
+        }
+    elif phase == "deliver-entitlement":
+        entitlement = closure["entitlementRecord"]["artifact"]
+        renewal_seq = entitlement["renewalSeq"]
+        credential_ref = entitlement.get("credentialRef")
+        if isinstance(credential_ref, dict) and isinstance(
+            credential_ref.get("ref"), dict
+        ):
+            credential_ref["ref"]["anchor"]["locator"] = (
+                f"dacs4:credential:{job_id}:{renewal_seq}"
+            )
+            sign_artifact(
+                entitlement,
+                signing_keys["seller"],
+                CLAIMS["seller"],
+                ENTITLEMENT_DOMAIN,
+            )
+            fields["deliverableContentHash"] = evidence_hash(entitlement)
+        address = f"dacs4:entitlement:{job_id}:{renewal_seq}"
+        closure["entitlementRecord"]["logicalAddress"] = address
+        # The credential may remain referenced by the historical entitlement,
+        # but no unsigned closure input can synthesize PDE-5's signed binding.
+        closure.pop("credential", None)
+        fields["deliverableAnchor"] = {
+            "kind": "storage-program",
+            "locator": address,
+        }
+    elif phase == "deliver-attested-payload":
+        payload = closure["deliverable"]
+        payload_record_entry = closure["payloadAttestationRecord"]
+        payload_record = payload_record_entry["artifact"]
+        if self_signed:
+            method = {"kind": "self-signed"}
+            spec = delivery_spec(job_id, phase, phase_index)
+            spec["verificationMethod"] = method
+            assertion = payload["cleartextUtf8"]
+            proof_key = signing_keys["seller"]
+            proof = {
+                "kind": "self-signed-payload",
+                "payloadContentHash": payload["cleartextHash"],
+                "methodInput": {
+                    "identifier": proof_key.public_key().public_bytes_raw().hex(),
+                    "assertion": assertion,
+                    "signature": b64u(proof_key.sign(assertion.encode("utf-8"))),
+                },
+            }
+            closure["methodEvidence"]["artifact"] = proof
+            payload_record["deliverableSpecHash"] = hashlib.sha256(
+                canonical(spec)
+            ).hexdigest()
+            payload_record["verificationMethod"] = method["kind"]
+            payload_record["verificationMethodHash"] = hashlib.sha256(
+                canonical(method)
+            ).hexdigest()
+            payload_record["methodEvidenceRef"]["contentHash"] = hashlib.sha256(
+                canonical(proof)
+            ).hexdigest()
+            payload_record.pop("methodTransactionRef")
+            sign_artifact(
+                payload_record,
+                signing_keys["orchestrator"],
+                CLAIMS["orchestrator"],
+                PAYLOAD_ATTESTATION_DOMAIN,
+            )
+            native_observations = {}
+
+        method_address = f"dacs4:method-evidence:{job_id}"
+        payload_record["methodEvidenceRef"]["anchor"]["locator"] = method_address
+        closure["methodEvidence"]["logicalAddress"] = method_address
+        sign_artifact(
+            payload_record,
+            signing_keys["orchestrator"],
+            CLAIMS["orchestrator"],
+            PAYLOAD_ATTESTATION_DOMAIN,
+        )
+        payload_address = f"dacs4:deliverable:{job_id}"
+        attestation_address = (
+            f"dacs4:payload-attestation:{job_id}:"
+            f"{payload_record['verificationMethodHash']}:{payload_record['attempt']}"
+        )
+        payload["logicalAddress"] = payload_address
+        payload_record_entry["logicalAddress"] = attestation_address
+        fields.update({
+            "deliverableAnchor": {
+                "kind": "storage-program",
+                "locator": payload_address,
+            },
+            "attestationRef": {
+                "anchor": {
+                    "kind": "storage-program",
+                    "locator": attestation_address,
+                },
+                "contentHash": evidence_hash(payload_record),
+                "signer": payload_record["signature"]["signer"],
+            },
+        })
+    else:
+        raise ValueError(f"unsupported legacy delivery phase: {phase}")
+
+    record = {
+        "evidenceVersion": "1",
+        "jobId": job_id,
+        "phase": phase,
+        "outcome": "success",
+        **fields,
+        "observedAt": 1785772799000 + phase_index,
+    }
+    sign_artifact(
+        record,
+        signing_keys["seller"],
+        CLAIMS["seller"],
+        SETTLEMENT_EVIDENCE_DOMAIN,
+    )
+    label = f"legacy:{job_id}:{phase_index}:{phase}"
+    ref = {
+        "anchor": {
+            "kind": "storage-program",
+            "locator": f"stor-{hashlib.sha256(label.encode()).hexdigest()}",
+        },
+        "contentHash": evidence_hash(record),
+    }
+    return record, ref, closure, native_observations
+
+
 def make_session_execution_authority(job_id, phase, phase_index, *, signer_role="seller",
                                      rail_id="test-rail"):
     signer = CLAIMS[signer_role]

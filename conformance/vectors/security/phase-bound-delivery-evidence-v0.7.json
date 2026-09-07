@@ -3,8 +3,8 @@
   "spec": "DACS-4 §9.7 PDE-1..PDE-8; §9.6 DV-5/DPA-1..DPA-9; DACS-5 §10.4.3; CORE §B.1/§B.7",
   "decisionModel": "Current delivery evidence signs exact phase identity and artifact/credential closure; attested delivery resolves the payload, method proof, and authenticated native transaction; contradictions fail, malformed/unsupported input errors, and unavailable otherwise-valid private evidence remains indeterminate.",
   "hashRecipe": "sha256(RFC 8785 JCS of vectors)",
-  "hash": "bb8c762af8e4555810a3a7698c32154fc50ff3458ce3bfad9104697ddb28c3f5",
-  "count": 57,
+  "hash": "242f80f1bf7fc4e5b14622cd534faf0eca24bb912e0acdb8d8e8d6b3b6f280c4",
+  "count": 63,
   "publicTestSeeds": {
     "orchestratorEd25519": "4141414141414141414141414141414141414141414141414141414141414141",
     "sellerEd25519": "4242424242424242424242424242424242424242424242424242424242424242",
@@ -1823,7 +1823,7 @@
       "reason": "legacy evidence never satisfies repeated delivery"
     },
     {
-      "name": "legacy-credential-entitlement-cannot-claim-dv5",
+      "name": "legacy-entitlement-closure-readable",
       "pipeline": [
         {
           "index": 5,
@@ -1838,7 +1838,7 @@
             "jobId": "01K2PDE0000000000000000000",
             "phase": "deliver-entitlement",
             "outcome": "success",
-            "deliverableContentHash": "6e34a42393416d6881186441b09b47e3219342ba916d200f55d116886c7e3619",
+            "deliverableContentHash": "5bc0155a50e899ab8815776bf19abe60bb5abb3f210a8e0b4289affa7f9c2453",
             "deliverableAnchor": {
               "kind": "storage-program",
               "locator": "dacs4:entitlement:01K2PDE0000000000000000000:0"
@@ -1847,7 +1847,7 @@
             "signature": {
               "algorithm": "ed25519",
               "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
-              "value": "nX5xesXMJtSH-auETz0sXZcXLCAKNqzCww2vc047mrfrn-K0mDOHM7wq3PzU5Z8aZeQd1Zf9dfGVf5pJvOvSDA"
+              "value": "SDh0gI2Hen9jgJKUwS2ecn-bX9DzcYFIPestv9W1q4U3XUFj1psRyxddskWuSW3yCihK62JGmHBIeH-NcMk3DQ"
             }
           },
           "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
@@ -1874,40 +1874,21 @@
             "signature": {
               "algorithm": "ed25519",
               "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
-              "value": "Ljy7qY7UoXs9Ws3VoNF77YuzeJameU5LydKwPUuDLaSxCapSo63C-DsuoOHPuFh3JWxeDF3oWfgd4m93z5KcBw"
-            },
-            "credentialRef": {
-              "ref": {
-                "anchor": {
-                  "kind": "storage-program",
-                  "locator": "dacs4:credential:01K2PDE0000000000000000000:5:0"
-                },
-                "contentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-                "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
-              },
-              "accessModel": "buyer-only"
+              "value": "gMJZr1YR9AjeV-W7R_SDZR9Th7dhXjesVxEQCR8leqytiOc4kUeXXJsLiAUYRQu6aDKuHyC4_W6gKZMXiioyAg"
             }
           },
           "available": true
         }
       ],
-      "credentials": [
+      "credentials": [],
+      "deliveryAuthorities": [
         {
-          "credentialRef": {
-            "ref": {
-              "anchor": {
-                "kind": "storage-program",
-                "locator": "dacs4:credential:01K2PDE0000000000000000000:5:0"
-              },
-              "contentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-              "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
-            },
-            "accessModel": "buyer-only"
-          },
-          "cleartextHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "storedHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
-          "ciphertextHash": "ace50d1583a8d939fde93d46730de374a02453a12014056a30b905b9a5ee54af",
-          "available": true
+          "phaseIndex": 5,
+          "deliverable": {
+            "kind": "entitlement",
+            "durationSec": 86400,
+            "renewable": true
+          }
         }
       ],
       "bundle": {
@@ -1960,7 +1941,7 @@
               "kind": "storage-program",
               "locator": "legacy:dacs4:evidence:01K2PDE0000000000000000000:entitlement"
             },
-            "contentHash": "1449117b25806d2157b49524797641a3b676c49d970ef04276194c346e5c42c0",
+            "contentHash": "9d28a1aca212c99c754f6f68da1ffc1549244ebe26963794728236cb86148c4e",
             "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
           }
         ],
@@ -1971,17 +1952,1135 @@
           {
             "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
             "algorithm": "ed25519",
-            "value": "Fs7ZjXbgp33Qhps7IJPBco7-1DCCFmAmLSrR2ZC3wt6G7jCedSFGVafnzccVq_N3xsdW3yRj7XVYYFOufnwUBA"
+            "value": "6fIXeQja2YHqxSW0Yal_IIF4MwM-Fa0Kom_iqHD_QG9o09LbPfoMr77lt5xO1CAlPOPXvUG1YyhzKifzJEV7AA"
           },
           {
             "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
             "algorithm": "ed25519",
-            "value": "GqrgokZex68QfxmYMX9OAGlzhROnZgc5i2dJA2jZGOmnCM8QTAq8DYs5n__f8teWeQi72G1O1V2K8c6mWlmgAg"
+            "value": "pO9yED8C-QXcyPeNPAUP88NFisNbocidA7PLoOCt-s2eXK2Gp-A1iDBdpXHtGA_bD0dv3icv6iJpYoSIZbZ4DQ"
           },
           {
             "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
             "algorithm": "ed25519",
-            "value": "4D2JizBjCQLUcBphGbiZRUUND17P6zkRY4u74CrPmvvfUbE03xppMLzbav373dSFQcB3sAEkovU_B722h4BeCg"
+            "value": "AqdI4NxnFPY91ncNeMB55mgLdNVIb3E-dsPVemKAqOnhOlE34jiDDbIqli2DaFJm_l-vT1XpEmuobpny0jfCDA"
+          }
+        ]
+      },
+      "executionAuthority": {
+        "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      "expected": "pass",
+      "reason": "the unindexed signed entitlement and authenticated roles close without a synthetic phase binding"
+    },
+    {
+      "name": "legacy-attested-payload-closure-readable",
+      "pipeline": [
+        {
+          "index": 6,
+          "kind": "deliver-attested-payload"
+        }
+      ],
+      "evidenceRecords": [
+        {
+          "logicalAddress": "legacy:dacs4:evidence:01K2PDE0000000000000000000:attested-payload",
+          "artifact": {
+            "evidenceVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:01K2PDE0000000000000000000"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:01K2PDE0000000000000000000:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0"
+              },
+              "contentHash": "7d0201fc3b06d05a8191cbbcff18ab26102951c331f1a57eaafaf4a7a4dd740a",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+            },
+            "observedAt": 1786000000000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "value": "OsYviLOotbiwaH8ptuqELxR0DyQ6WCk6p9WApP-_c-SKfL3Orc35dKw7WDPkJDxwgyDt4VgNpVLK0ewgSK_RCg"
+            }
+          },
+          "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      ],
+      "artifactRecords": [
+        {
+          "kind": "deliverable",
+          "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
+          "cleartextHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "cleartextUtf8": "legacy attested payload",
+          "storedHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "available": true
+        },
+        {
+          "kind": "PayloadAttestationRecord",
+          "logicalAddress": "dacs4:payload-attestation:01K2PDE0000000000000000000:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0",
+          "artifact": {
+            "payloadAttestationVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "deliverableSpecHash": "00c6cd83048766a23a47b4735702f38e98856cafd0fccb0f5590c6ecc8d53c19",
+            "payloadFormat": "application/octet-stream",
+            "payloadContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "verificationMethod": "consensus-backed-proxy",
+            "verificationMethodHash": "25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9",
+            "attempt": 0,
+            "decision": "pass",
+            "reason": "deterministic test proof",
+            "methodEvidenceRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:method-evidence:01K2PDE0000000000000000000"
+              },
+              "contentHash": "a7ba6c313816974edc9313f4d25bfa77ae3791465ef4e562e77707932c1e2781",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+            },
+            "methodTransactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67"
+            },
+            "verifiedAt": 1786000001006,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
+              "value": "0580Z4ACwj7-mrO3Qzs-tc_j0YbhX5_x6JC_T590j38ssnRhanGDpUWt9z4Iod2jQZQjpTEoytDOg-QEyErQAg"
+            }
+          },
+          "available": true
+        },
+        {
+          "kind": "methodEvidence",
+          "logicalAddress": "dacs4:method-evidence:01K2PDE0000000000000000000",
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/delivery/6"
+            },
+            "response": {
+              "status": 200,
+              "data": "legacy attested payload",
+              "responseHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          },
+          "available": true
+        }
+      ],
+      "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 6,
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/delivery/6"
+              }
+            }
+          },
+          "agreement": {
+            "jobId": "01K2PDE0000000000000000000",
+            "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "deliverable": {
+              "deliverableType": "attested-payload",
+              "hash": "00c6cd83048766a23a47b4735702f38e98856cafd0fccb0f5590c6ecc8d53c19"
+            }
+          }
+        }
+      ],
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/delivery/6"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/delivery/6"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "01K2PDE0000000000000000000",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "phase-bound-delivery",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:01K2PDE0000000000000000000"
+          },
+          "contentHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "5151515151515151515151515151515151515151515151515151515151515151",
+            "primaryClaim": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5252525252525252525252525252525252525252525252525252525252525252",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          },
+          {
+            "role": "orchestrator",
+            "bundleHash": "5353535353535353535353535353535353535353535353535353535353535353",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 6,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "legacy:dacs4:evidence:01K2PDE0000000000000000000:attested-payload"
+            },
+            "contentHash": "46012922a71abd358fb929c6682226554320bddfff4ebbe915fb3db1a0a75d68",
+            "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1786000010000,
+        "signatures": [
+          {
+            "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "algorithm": "ed25519",
+            "value": "MFSD4sCVmxNVW8bGUq8D7qq1S194FGA9hsqrG7J27CvZrEqVXXPsRsoFUlll2HwTSXDnA9t25Rd904ojeGCMAg"
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "dzT84a-6x1dLHsWlCuYnP1GFGCEBDl7NyJoPt6mKdlaq8PRV6YJQ3FokbXy_rSWbgpbGVNq_zjwC-gQYUBTRCw"
+          },
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "agvVGPc_lWIAlt-rurTuuzSiQK1wSX6JfjyWdKVYcm8jTaUUnaHUI2awkKLrVvUeLelHyNgM-30EXWlfBoLaBQ"
+          }
+        ]
+      },
+      "executionAuthority": {
+        "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      "expected": "pass",
+      "reason": "the unindexed payload, attestation record, and method proof retain their historical addresses"
+    },
+    {
+      "name": "legacy-self-signed-payload-closure-readable",
+      "pipeline": [
+        {
+          "index": 6,
+          "kind": "deliver-attested-payload"
+        }
+      ],
+      "evidenceRecords": [
+        {
+          "logicalAddress": "legacy:dacs4:evidence:01K2PDE0000000000000000000:attested-payload",
+          "artifact": {
+            "evidenceVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:01K2PDE0000000000000000000"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:01K2PDE0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+              },
+              "contentHash": "e7d8e397c1664ab1b16d986cdef0ffb7fd1cda6c470beb69ed2496c6a6cc361a",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+            },
+            "observedAt": 1786000000000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "value": "eJdix9DnXwp70L8Jyf9lrhd5SgZOkUD8WyOAwDdoQ7b4EjEeUMj89OTQloEvAuXWbmMN1aHRpcIaaKevxi5uBg"
+            }
+          },
+          "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      ],
+      "artifactRecords": [
+        {
+          "kind": "deliverable",
+          "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
+          "cleartextHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "cleartextUtf8": "legacy attested payload",
+          "storedHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "available": true
+        },
+        {
+          "kind": "PayloadAttestationRecord",
+          "logicalAddress": "dacs4:payload-attestation:01K2PDE0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0",
+          "artifact": {
+            "payloadAttestationVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "deliverableSpecHash": "a4d83ee78f9727d373bac8472b18b42216bdda8290604f05cca3bfc3cf667cff",
+            "payloadFormat": "application/octet-stream",
+            "payloadContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "verificationMethod": "self-signed",
+            "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+            "attempt": 0,
+            "decision": "pass",
+            "reason": "deterministic test proof",
+            "methodEvidenceRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:method-evidence:01K2PDE0000000000000000000"
+              },
+              "contentHash": "e4b4d7db6d79fc98a5973fc778c1957cc6c28375b80969366beb9c3ca701e581",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+            },
+            "verifiedAt": 1786000001006,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
+              "value": "hXVPbldKbWZmdoHCVJDs9Zy2ot86iELi5BfRu0FK56RzKzKZEwoFsyklpmijktV-JHRxr5TZxCB8qJtC3DDDCQ"
+            }
+          },
+          "available": true
+        },
+        {
+          "kind": "methodEvidence",
+          "logicalAddress": "dacs4:method-evidence:01K2PDE0000000000000000000",
+          "artifact": {
+            "kind": "self-signed-payload",
+            "payloadContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "methodInput": {
+              "identifier": "2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+              "assertion": "legacy attested payload",
+              "signature": "j1gFk0EYjQGwsudARKGH3GwJqzxaj0YU08miB98yP_66Hl2Pt5TwhAAGdhg8LSnTsafkTg0565gcnzfjql7ODQ"
+            }
+          },
+          "available": true
+        }
+      ],
+      "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 6,
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
+          },
+          "agreement": {
+            "jobId": "01K2PDE0000000000000000000",
+            "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "deliverable": {
+              "deliverableType": "attested-payload",
+              "hash": "a4d83ee78f9727d373bac8472b18b42216bdda8290604f05cca3bfc3cf667cff"
+            }
+          }
+        }
+      ],
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "01K2PDE0000000000000000000",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "phase-bound-delivery",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:01K2PDE0000000000000000000"
+          },
+          "contentHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "5151515151515151515151515151515151515151515151515151515151515151",
+            "primaryClaim": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5252525252525252525252525252525252525252525252525252525252525252",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          },
+          {
+            "role": "orchestrator",
+            "bundleHash": "5353535353535353535353535353535353535353535353535353535353535353",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 6,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "legacy:dacs4:evidence:01K2PDE0000000000000000000:attested-payload"
+            },
+            "contentHash": "645d08bfad473e2e7f4291d3155bb2c9d0fe9914f6d9856e5b143356742d7489",
+            "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1786000010000,
+        "signatures": [
+          {
+            "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "algorithm": "ed25519",
+            "value": "AfpRumYMivYMY8zXvk5XiNnqxWvAYnUn0cc_3Ym_7hvjr7AslqHXHOoVK966MA5PjyvoXaASsDLGRb3MfDGSCg"
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "KY-d_sAgBi0QQMEjetMt4ex1ki9-TST2ebcKJVt8SUguQvIdj2C9LQ6Qv1BkpNGfAqNfMBO5JCnFYqfCwFY8AQ"
+          },
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "10fQqHpogLUZvenyuzNyttJsI_D1ZmEtmh7FR3HNgKAhFW33thKuTRcC9WoyqX43mXX1XSAKEa8qU0zYQRPyCw"
+          }
+        ]
+      },
+      "executionAuthority": {
+        "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      "expected": "pass",
+      "reason": "a genuine self-signed method proof needs no native transaction in the legacy arm"
+    },
+    {
+      "name": "legacy-storage-dependency-unavailable",
+      "pipeline": [
+        {
+          "index": 1,
+          "kind": "deliver-storage-program"
+        }
+      ],
+      "evidenceRecords": [
+        {
+          "logicalAddress": "legacy:dacs4:evidence:01K2PDE0000000000000000000",
+          "artifact": {
+            "evidenceVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "phase": "deliver-storage-program",
+            "outcome": "success",
+            "deliverableContentHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:01K2PDE0000000000000000000"
+            },
+            "observedAt": 1786000000000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "value": "TCTpxFDFilaaxLvR1-apG_-5-DcvXF8DSGV1Soq21arjNOerdYUUWxUEajcUpOEqTKRf5vyL-adSE90erDthCA"
+            }
+          },
+          "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      ],
+      "artifactRecords": [
+        {
+          "kind": "deliverable",
+          "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
+          "cleartextHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
+          "cleartextUtf8": "legacy delivery",
+          "storedHash": "ee0a0b838c2e82a07ea49971121cc0edd76db54f2c38bc8db0dfd3e1f068bd8f",
+          "available": false
+        }
+      ],
+      "credentials": [],
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "01K2PDE0000000000000000000",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "phase-bound-delivery",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:01K2PDE0000000000000000000"
+          },
+          "contentHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "5151515151515151515151515151515151515151515151515151515151515151",
+            "primaryClaim": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5252525252525252525252525252525252525252525252525252525252525252",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          },
+          {
+            "role": "orchestrator",
+            "bundleHash": "5353535353535353535353535353535353535353535353535353535353535353",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 1,
+            "kind": "deliver-storage-program",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "legacy:dacs4:evidence:01K2PDE0000000000000000000"
+            },
+            "contentHash": "960f01f4c3daf4080b382b1f7bdde1547e7d07b6dfb259d1cd13a451f0b8d62e",
+            "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1786000010000,
+        "signatures": [
+          {
+            "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "algorithm": "ed25519",
+            "value": "5MSOX-3x2cci9UrkfwUkbnauT6YKs_Qo2QqRrMZF81mlsuLhMYpPa5Djc9LABglgH-xOFbxNSiTNoKOHloX9BA"
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "JlESYqpm0O6lIOXs6zujEOnDaltMZVeUSKx0x-mv6QUHWEcmZrGNsI60KELDB7j0ZT2E7tCimQndCEjcvrn1Dw"
+          },
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "NU3DK3fz97w73zNYfu04yn0Q4gxMrchK4k8ZWgDprgd8m05qn4gbkBx2n7qqa4oaKmHklbUoqUVQGiS59nEuBw"
+          }
+        ]
+      },
+      "executionAuthority": {
+        "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      "expected": "indeterminate",
+      "reason": "an unresolved historical deliverable is not proof of delivery"
+    },
+    {
+      "name": "legacy-entitlement-dependency-unavailable",
+      "pipeline": [
+        {
+          "index": 5,
+          "kind": "deliver-entitlement"
+        }
+      ],
+      "evidenceRecords": [
+        {
+          "logicalAddress": "legacy:dacs4:evidence:01K2PDE0000000000000000000:entitlement",
+          "artifact": {
+            "evidenceVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "phase": "deliver-entitlement",
+            "outcome": "success",
+            "deliverableContentHash": "5bc0155a50e899ab8815776bf19abe60bb5abb3f210a8e0b4289affa7f9c2453",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:entitlement:01K2PDE0000000000000000000:0"
+            },
+            "observedAt": 1786000000000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "value": "SDh0gI2Hen9jgJKUwS2ecn-bX9DzcYFIPestv9W1q4U3XUFj1psRyxddskWuSW3yCihK62JGmHBIeH-NcMk3DQ"
+            }
+          },
+          "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      ],
+      "artifactRecords": [
+        {
+          "kind": "EntitlementRecord",
+          "logicalAddress": "dacs4:entitlement:01K2PDE0000000000000000000:0",
+          "artifact": {
+            "entitlementVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "grantee": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "grantor": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "startsAt": 1786000000000,
+            "endsAt": 1786086400000,
+            "scope": {
+              "service": "https://service.example.test",
+              "tier": "pro"
+            },
+            "serviceEndpoint": "https://service.example.test/access",
+            "renewable": true,
+            "renewalSeq": 0,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+              "value": "gMJZr1YR9AjeV-W7R_SDZR9Th7dhXjesVxEQCR8leqytiOc4kUeXXJsLiAUYRQu6aDKuHyC4_W6gKZMXiioyAg"
+            }
+          },
+          "available": false
+        }
+      ],
+      "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 5,
+          "deliverable": {
+            "kind": "entitlement",
+            "durationSec": 86400,
+            "renewable": true
+          }
+        }
+      ],
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "01K2PDE0000000000000000000",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "phase-bound-delivery",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:01K2PDE0000000000000000000"
+          },
+          "contentHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "5151515151515151515151515151515151515151515151515151515151515151",
+            "primaryClaim": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5252525252525252525252525252525252525252525252525252525252525252",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          },
+          {
+            "role": "orchestrator",
+            "bundleHash": "5353535353535353535353535353535353535353535353535353535353535353",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 5,
+            "kind": "deliver-entitlement",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "legacy:dacs4:evidence:01K2PDE0000000000000000000:entitlement"
+            },
+            "contentHash": "9d28a1aca212c99c754f6f68da1ffc1549244ebe26963794728236cb86148c4e",
+            "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1786000010000,
+        "signatures": [
+          {
+            "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "algorithm": "ed25519",
+            "value": "6fIXeQja2YHqxSW0Yal_IIF4MwM-Fa0Kom_iqHD_QG9o09LbPfoMr77lt5xO1CAlPOPXvUG1YyhzKifzJEV7AA"
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "pO9yED8C-QXcyPeNPAUP88NFisNbocidA7PLoOCt-s2eXK2Gp-A1iDBdpXHtGA_bD0dv3icv6iJpYoSIZbZ4DQ"
+          },
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "AqdI4NxnFPY91ncNeMB55mgLdNVIb3E-dsPVemKAqOnhOlE34jiDDbIqli2DaFJm_l-vT1XpEmuobpny0jfCDA"
+          }
+        ]
+      },
+      "executionAuthority": {
+        "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      "expected": "indeterminate",
+      "reason": "an unresolved historical entitlement remains indeterminate"
+    },
+    {
+      "name": "legacy-method-proof-dependency-unavailable",
+      "pipeline": [
+        {
+          "index": 6,
+          "kind": "deliver-attested-payload"
+        }
+      ],
+      "evidenceRecords": [
+        {
+          "logicalAddress": "legacy:dacs4:evidence:01K2PDE0000000000000000000:attested-payload",
+          "artifact": {
+            "evidenceVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "phase": "deliver-attested-payload",
+            "outcome": "success",
+            "deliverableContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:deliverable:01K2PDE0000000000000000000"
+            },
+            "attestationRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:payload-attestation:01K2PDE0000000000000000000:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0"
+              },
+              "contentHash": "7d0201fc3b06d05a8191cbbcff18ab26102951c331f1a57eaafaf4a7a4dd740a",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+            },
+            "observedAt": 1786000000000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "value": "OsYviLOotbiwaH8ptuqELxR0DyQ6WCk6p9WApP-_c-SKfL3Orc35dKw7WDPkJDxwgyDt4VgNpVLK0ewgSK_RCg"
+            }
+          },
+          "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      ],
+      "artifactRecords": [
+        {
+          "kind": "deliverable",
+          "logicalAddress": "dacs4:deliverable:01K2PDE0000000000000000000",
+          "cleartextHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "cleartextUtf8": "legacy attested payload",
+          "storedHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+          "available": true
+        },
+        {
+          "kind": "PayloadAttestationRecord",
+          "logicalAddress": "dacs4:payload-attestation:01K2PDE0000000000000000000:25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9:0",
+          "artifact": {
+            "payloadAttestationVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "deliverableSpecHash": "00c6cd83048766a23a47b4735702f38e98856cafd0fccb0f5590c6ecc8d53c19",
+            "payloadFormat": "application/octet-stream",
+            "payloadContentHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "verificationMethod": "consensus-backed-proxy",
+            "verificationMethodHash": "25521f8ab2a76447342dfcd4d4849ac2ef08a72d6aea52ce65b4fd9670dcd2d9",
+            "attempt": 0,
+            "decision": "pass",
+            "reason": "deterministic test proof",
+            "methodEvidenceRef": {
+              "anchor": {
+                "kind": "storage-program",
+                "locator": "dacs4:method-evidence:01K2PDE0000000000000000000"
+              },
+              "contentHash": "a7ba6c313816974edc9313f4d25bfa77ae3791465ef4e562e77707932c1e2781",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6"
+            },
+            "methodTransactionRef": {
+              "kind": "demos-web2-request",
+              "value": "f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67"
+            },
+            "verifiedAt": 1786000001006,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:22fc297792f0b6ffc0bfcfdb7edb0c0aa14e025a365ec0e342e86e3829cb74b6",
+              "value": "0580Z4ACwj7-mrO3Qzs-tc_j0YbhX5_x6JC_T590j38ssnRhanGDpUWt9z4Iod2jQZQjpTEoytDOg-QEyErQAg"
+            }
+          },
+          "available": true
+        },
+        {
+          "kind": "methodEvidence",
+          "logicalAddress": "dacs4:method-evidence:01K2PDE0000000000000000000",
+          "artifact": {
+            "kind": "demos-web2-request",
+            "request": {
+              "method": "GET",
+              "url": "https://api.example.test/delivery/6"
+            },
+            "response": {
+              "status": 200,
+              "data": "legacy attested payload",
+              "responseHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+              "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+            },
+            "transaction": {
+              "kind": "demos-web2-request",
+              "value": "f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67",
+              "state": "finalized",
+              "authenticated": true
+            },
+            "proofValid": true
+          },
+          "available": false
+        }
+      ],
+      "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 6,
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/octet-stream",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/delivery/6"
+              }
+            }
+          },
+          "agreement": {
+            "jobId": "01K2PDE0000000000000000000",
+            "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+            "deliverable": {
+              "deliverableType": "attested-payload",
+              "hash": "00c6cd83048766a23a47b4735702f38e98856cafd0fccb0f5590c6ecc8d53c19"
+            }
+          }
+        }
+      ],
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "f8c2932f986bb6335eb1322609a1fcb86b49682b471394fc48d63933bfdc1a67",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/delivery/6"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/delivery/6"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "2eb4698e05b268efb0f4942ceb4d91602f3e05cb45448d010060b4447e3ed765",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "01K2PDE0000000000000000000",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "phase-bound-delivery",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:01K2PDE0000000000000000000"
+          },
+          "contentHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "5151515151515151515151515151515151515151515151515151515151515151",
+            "primaryClaim": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5252525252525252525252525252525252525252525252525252525252525252",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          },
+          {
+            "role": "orchestrator",
+            "bundleHash": "5353535353535353535353535353535353535353535353535353535353535353",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 6,
+            "kind": "deliver-attested-payload",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "legacy:dacs4:evidence:01K2PDE0000000000000000000:attested-payload"
+            },
+            "contentHash": "46012922a71abd358fb929c6682226554320bddfff4ebbe915fb3db1a0a75d68",
+            "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1786000010000,
+        "signatures": [
+          {
+            "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "algorithm": "ed25519",
+            "value": "MFSD4sCVmxNVW8bGUq8D7qq1S194FGA9hsqrG7J27CvZrEqVXXPsRsoFUlll2HwTSXDnA9t25Rd904ojeGCMAg"
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "dzT84a-6x1dLHsWlCuYnP1GFGCEBDl7NyJoPt6mKdlaq8PRV6YJQ3FokbXy_rSWbgpbGVNq_zjwC-gQYUBTRCw"
+          },
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "agvVGPc_lWIAlt-rurTuuzSiQK1wSX6JfjyWdKVYcm8jTaUUnaHUI2awkKLrVvUeLelHyNgM-30EXWlfBoLaBQ"
+          }
+        ]
+      },
+      "executionAuthority": {
+        "phaseOrchestrator": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+      },
+      "expected": "indeterminate",
+      "reason": "an unresolved historical method proof cannot close attested delivery"
+    },
+    {
+      "name": "legacy-credential-entitlement-cannot-claim-dv5",
+      "pipeline": [
+        {
+          "index": 5,
+          "kind": "deliver-entitlement"
+        }
+      ],
+      "evidenceRecords": [
+        {
+          "logicalAddress": "legacy:dacs4:evidence:01K2PDE0000000000000000000:entitlement",
+          "artifact": {
+            "evidenceVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "phase": "deliver-entitlement",
+            "outcome": "success",
+            "deliverableContentHash": "685ad8691b81e74aacecb410eb9e7efe39c10f6f2c4c760b826d14142e81c7bf",
+            "deliverableAnchor": {
+              "kind": "storage-program",
+              "locator": "dacs4:entitlement:01K2PDE0000000000000000000:0"
+            },
+            "observedAt": 1786000000000,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+              "value": "d-NudwweRFDmqKloUd_R5ty99C89HlZCVkmgAGjGCxTD5lGKfZyT3nm1dYi6FCWW93oDS-Jb22oCcqljo_5LBg"
+            }
+          },
+          "receiptWriter": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+        }
+      ],
+      "artifactRecords": [
+        {
+          "kind": "EntitlementRecord",
+          "logicalAddress": "dacs4:entitlement:01K2PDE0000000000000000000:0",
+          "artifact": {
+            "entitlementVersion": "1",
+            "jobId": "01K2PDE0000000000000000000",
+            "grantee": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "grantor": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "startsAt": 1786000000000,
+            "endsAt": 1786086400000,
+            "scope": {
+              "service": "https://service.example.test",
+              "tier": "pro"
+            },
+            "serviceEndpoint": "https://service.example.test/access",
+            "renewable": true,
+            "renewalSeq": 0,
+            "signature": {
+              "algorithm": "ed25519",
+              "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+              "value": "O4feR9MAQzwJfl6ms0YRQDGIIdgwCPaFIbIbADgFqUgVj6FA_RnRKraDNKNLaNIWF8iNc77KJC5-mimr2PgtCg"
+            },
+            "credentialRef": {
+              "ref": {
+                "anchor": {
+                  "kind": "storage-program",
+                  "locator": "dacs4:credential:01K2PDE0000000000000000000:0"
+                },
+                "contentHash": "7f0d8d8211996f5396a0f10e9f76ed00d6c632286c44601e9fb5ffced0e18bc5",
+                "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+              },
+              "accessModel": "buyer-only"
+            }
+          },
+          "available": true
+        }
+      ],
+      "credentials": [],
+      "deliveryAuthorities": [
+        {
+          "phaseIndex": 5,
+          "deliverable": {
+            "kind": "entitlement",
+            "durationSec": 86400,
+            "renewable": true
+          }
+        }
+      ],
+      "bundle": {
+        "faultBundleVersion": "1",
+        "jobId": "01K2PDE0000000000000000000",
+        "outcome": "completed",
+        "faultedParty": "none",
+        "anchoredByRole": "buyer",
+        "listingRef": {
+          "listingId": "phase-bound-delivery",
+          "version": 1,
+          "contentHash": "9191919191919191919191919191919191919191919191919191919191919191"
+        },
+        "agreementRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs3:agreement:01K2PDE0000000000000000000"
+          },
+          "contentHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+          "signer": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+        },
+        "parties": [
+          {
+            "role": "buyer",
+            "bundleHash": "5151515151515151515151515151515151515151515151515151515151515151",
+            "primaryClaim": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48"
+          },
+          {
+            "role": "seller",
+            "bundleHash": "5252525252525252525252525252525252525252525252525252525252525252",
+            "primaryClaim": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12"
+          },
+          {
+            "role": "orchestrator",
+            "bundleHash": "5353535353535353535353535353535353535353535353535353535353535353",
+            "primaryClaim": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "phaseSummary": [
+          {
+            "index": 5,
+            "kind": "deliver-entitlement",
+            "outcome": "ok"
+          }
+        ],
+        "vetRecords": [],
+        "settlementEvidence": [
+          {
+            "anchor": {
+              "kind": "storage-program",
+              "locator": "legacy:dacs4:evidence:01K2PDE0000000000000000000:entitlement"
+            },
+            "contentHash": "bf04181cf25a27b6133a32257f95cd69e4f9eadcb8dd32d517cbb6a7de8a9c7b",
+            "signer": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d"
+          }
+        ],
+        "recipeRegistryVersion": 1,
+        "railRegistryVersion": 1,
+        "finalisedAt": 1786000010000,
+        "signatures": [
+          {
+            "party": "cci:d759793bbc13a2819a827c76adb6fba8a49aee007f49f2d0992d99b825ad2c48",
+            "algorithm": "ed25519",
+            "value": "A-aHBqMeocjnqjUexOb32Il8-weBqth1Dd2lVk33qIqAjY2_36NQu23QH-3WX6oI7bIjEcnKg5-TSgOD-hKsDQ"
+          },
+          {
+            "party": "cci:2152f8d19b791d24453242e15f2eab6cb7cffa7b6a5ed30097960e069881db12",
+            "algorithm": "ed25519",
+            "value": "JvWhyzQnKqDmCVMnuXl02DlT5NyPRDn-j8i2frzDizgjM2auLTagpRtYp2tz29JrBqrWG2SUAB_Mlnj3D4HgCw"
+          },
+          {
+            "party": "cci:db995fe25169d141cab9bbba92baa01f9f2e1ece7df4cb2ac05190f37fcc1f9d",
+            "algorithm": "ed25519",
+            "value": "Aw3PN-YfY-aHL_wIDujafV3PcHG-6vDLRfoNpYat3svjSbpD3NrYCBZJLp8VvtN-ASTQ-uDG2E65E9dBfjfFDA"
           }
         ]
       },

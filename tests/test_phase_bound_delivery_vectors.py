@@ -163,9 +163,13 @@ def validate_entitlement_roles(bundle, record):
     return "pass"
 
 
-def validate_delivery_artifact(case, evidence):
+def validate_delivery_artifact(
+    case, evidence, *, associated_phase_index=None, legacy=False
+):
     job = evidence["jobId"]
-    index = evidence["phaseIndex"]
+    index = associated_phase_index if legacy else evidence["phaseIndex"]
+    if isinstance(index, bool) or not isinstance(index, int) or index < 0:
+        return "error"
     phase = evidence["phase"]
     content_hash = evidence.get("deliverableContentHash")
     anchor = evidence.get("deliverableAnchor")
@@ -182,7 +186,11 @@ def validate_delivery_artifact(case, evidence):
     address = anchor.get("locator")
 
     if phase == "deliver-storage-program":
-        if address != f"dacs4:deliverable:{job}:{index}":
+        expected_address = (
+            f"dacs4:deliverable:{job}"
+            if legacy else f"dacs4:deliverable:{job}:{index}"
+        )
+        if address != expected_address:
             return "fail"
         stored = find_artifact(case, address, "deliverable")
         if stored is None or stored.get("available") is False:
@@ -197,7 +205,10 @@ def validate_delivery_artifact(case, evidence):
         return "pass"
 
     if phase == "deliver-entitlement":
-        prefix = f"dacs4:entitlement:{job}:{index}:"
+        prefix = (
+            f"dacs4:entitlement:{job}:"
+            if legacy else f"dacs4:entitlement:{job}:{index}:"
+        )
         if not isinstance(address, str) or not address.startswith(prefix):
             return "fail"
         record_entry = find_artifact(case, address, "EntitlementRecord")
@@ -219,7 +230,11 @@ def validate_delivery_artifact(case, evidence):
         renewal = record.get("renewalSeq")
         if isinstance(renewal, bool) or not isinstance(renewal, int) or renewal < 0:
             return "error"
-        if address != f"dacs4:entitlement:{job}:{index}:{renewal}":
+        expected_address = (
+            f"dacs4:entitlement:{job}:{renewal}"
+            if legacy else f"dacs4:entitlement:{job}:{index}:{renewal}"
+        )
+        if address != expected_address:
             return "fail"
         if record.get("jobId") != job or content_hash != artifact_hash(record):
             return "fail"
@@ -255,6 +270,18 @@ def validate_delivery_artifact(case, evidence):
             return "fail"
         binding = evidence.get("credentialDelivery")
         credential_ref = record.get("credentialRef")
+        if legacy:
+            # A frozen SettlementEvidence has no signed PDE-5 binding. Resolving
+            # credential bytes cannot promote this audit record to DV-5-verified.
+            if credential_ref is not None and (
+                not isinstance(credential_ref, dict)
+                or set(credential_ref) != {"ref", "accessModel"}
+                or not exact_ref_shape(credential_ref.get("ref"))
+                or credential_ref.get("accessModel")
+                not in {"buyer-only", "encrypt-to-buyer"}
+            ):
+                return "error"
+            return "fail" if case.get("requestedGate") == "dv5-verified" else "pass"
         if credential_ref is None:
             return "fail" if binding is not None else "pass"
         if binding is None:
@@ -283,7 +310,10 @@ def validate_delivery_artifact(case, evidence):
         return "pass"
 
     if phase == "deliver-attested-payload":
-        payload_address = f"dacs4:deliverable:{job}:{index}"
+        payload_address = (
+            f"dacs4:deliverable:{job}"
+            if legacy else f"dacs4:deliverable:{job}:{index}"
+        )
         if address != payload_address:
             return "fail"
         payload = find_artifact(case, payload_address, "deliverable")
@@ -318,7 +348,12 @@ def validate_delivery_artifact(case, evidence):
         method_hash, attempt = record.get("verificationMethodHash"), record.get("attempt")
         if isinstance(attempt, bool) or not isinstance(attempt, int) or attempt < 0:
             return "error"
-        if record_address != f"dacs4:payload-attestation:{job}:{index}:{method_hash}:{attempt}":
+        expected_record_address = (
+            f"dacs4:payload-attestation:{job}:{method_hash}:{attempt}"
+            if legacy
+            else f"dacs4:payload-attestation:{job}:{index}:{method_hash}:{attempt}"
+        )
+        if record_address != expected_record_address:
             return "fail"
         if (record.get("jobId") != job or record.get("payloadContentHash") != content_hash
                 or record.get("decision") != "pass"):
@@ -337,7 +372,7 @@ def validate_delivery_artifact(case, evidence):
             not isinstance(deliverable, dict)
             or deliverable.get("kind") != "attested-payload"
             or not isinstance(method, dict)
-            or method.get("kind") != "consensus-backed-proxy"
+            or method.get("kind") not in {"consensus-backed-proxy", "self-signed"}
             or not isinstance(agreement, dict)
             or agreement.get("jobId") != job
             or agreement.get("agreementHash") != record.get("agreementHash")
@@ -498,41 +533,25 @@ def evaluate(case):
             candidates = [pair for pair in expected if pair[1] == kind]
             if len(candidates) != 1:
                 return "fail"
-            if artifact.get("jobId") != bundle.get("jobId") or not verify_signature(artifact, LEGACY_DOMAIN):
+            if not R._settlement_evidence_shape_valid(artifact):
+                return "error"
+            authority = case.get("executionAuthority", {}).get("phaseOrchestrator")
+            if (
+                artifact.get("jobId") != bundle.get("jobId")
+                or artifact.get("signature", {}).get("signer") != authority
+                or entry.get("receiptWriter") != authority
+                or not verify_signature(artifact, LEGACY_DOMAIN)
+            ):
                 return "fail"
-            anchor = artifact.get("deliverableAnchor")
-            if not isinstance(anchor, dict):
-                return "fail"
-            if kind == "deliver-entitlement":
-                delivered = find_artifact(case, anchor.get("locator"), "EntitlementRecord")
-                if delivered is None or delivered.get("available") is False:
-                    return "indeterminate"
-                record = delivered.get("artifact")
-                if (
-                    not isinstance(record, dict)
-                    or not R._delivery_inner_type_valid(record, "entitlementVersion")
-                    or not verify_signature(record, ENTITLEMENT_DOMAIN)
-                ):
-                    return "fail"
-                role_status = validate_entitlement_roles(bundle, record)
-                if role_status != "pass":
-                    return role_status
-                if artifact.get("deliverableContentHash") != artifact_hash(record):
-                    return "fail"
-                if record.get("credentialRef") is not None and case.get("requestedGate") == "dv5-verified":
-                    return "fail"
-            else:
-                delivered = find_artifact(case, anchor.get("locator"), "deliverable")
-                if delivered is None or delivered.get("available") is False:
-                    return "indeterminate"
-                storage_status = validate_delivered_cleartext(
-                    delivered,
-                    artifact.get("deliverableContentHash"),
-                    "legacy storage deliverable cleartext",
-                )
-                if storage_status != "pass":
-                    return storage_status
             mapping = candidates[0]
+            status = validate_delivery_artifact(
+                case,
+                artifact,
+                associated_phase_index=mapping[0],
+                legacy=True,
+            )
+            if status != "pass":
+                return status
         else:
             return "error"
         if mapping in mapped:
@@ -697,6 +716,127 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             malformed["artifactRecords"][0]["cleartextUtf8"] = chr(0xD800)
             with self.subTest(factory=factory.__name__, condition="malformed-utf8"):
                 self.assertEqual(evaluate(malformed), "error")
+
+    def test_legacy_consumers_close_every_delivery_kind_at_frozen_addresses(self):
+        cases = {
+            "storage": G.legacy_case(),
+            "entitlement": G.legacy_entitlement_case(),
+            "attested": G.legacy_attested_case(),
+            "self-signed": G.legacy_attested_case(self_signed=True),
+        }
+        for name, case in cases.items():
+            evidence = case["evidenceRecords"][0]["artifact"]
+            with self.subTest(kind=name):
+                self.assertEqual(evaluate(G.make(
+                    "legacy-" + name,
+                    "pass",
+                    "historical compatibility",
+                    lambda case=case: copy.deepcopy(case),
+                )), "pass")
+                self.assertEqual(evidence.get("evidenceVersion"), "1")
+                self.assertNotIn("deliveryEvidenceVersion", evidence)
+                self.assertNotIn("phaseIndex", evidence)
+                self.assertNotIn("credentialDelivery", evidence)
+                self.assertTrue(verify_signature(evidence, LEGACY_DOMAIN))
+
+        self.assertEqual(
+            cases["storage"]["evidenceRecords"][0]["artifact"][
+                "deliverableAnchor"
+            ]["locator"],
+            f"dacs4:deliverable:{G.JOB}",
+        )
+        entitlement = cases["entitlement"]
+        entitlement_record = entitlement["artifactRecords"][0]["artifact"]
+        self.assertEqual(
+            entitlement["evidenceRecords"][0]["artifact"]["deliverableAnchor"][
+                "locator"
+            ],
+            f"dacs4:entitlement:{G.JOB}:{entitlement_record['renewalSeq']}",
+        )
+        legacy_credential = G.make(
+            "legacy-credential-audit",
+            "pass",
+            "credential reference remains audit-only",
+            G.legacy_credential_case,
+        )
+        credential_record = legacy_credential["artifactRecords"][0]["artifact"]
+        self.assertEqual(evaluate(legacy_credential), "pass")
+        self.assertEqual(
+            credential_record["credentialRef"]["ref"]["anchor"]["locator"],
+            f"dacs4:credential:{G.JOB}:0",
+        )
+        self.assertNotIn(
+            "credentialDelivery",
+            legacy_credential["evidenceRecords"][0]["artifact"],
+        )
+        for name in ("attested", "self-signed"):
+            case = cases[name]
+            evidence = case["evidenceRecords"][0]["artifact"]
+            payload_record = next(
+                entry["artifact"] for entry in case["artifactRecords"]
+                if entry.get("kind") == "PayloadAttestationRecord"
+            )
+            expected = (
+                f"dacs4:payload-attestation:{G.JOB}:"
+                f"{payload_record['verificationMethodHash']}:"
+                f"{payload_record['attempt']}"
+            )
+            self.assertEqual(evidence["attestationRef"]["anchor"]["locator"], expected)
+            self.assertEqual(
+                payload_record["methodEvidenceRef"]["anchor"]["locator"],
+                f"dacs4:method-evidence:{G.JOB}",
+            )
+
+        self_signed_record = next(
+            entry["artifact"] for entry in cases["self-signed"]["artifactRecords"]
+            if entry.get("kind") == "PayloadAttestationRecord"
+        )
+        self.assertNotIn("methodTransactionRef", self_signed_record)
+        self.assertEqual(
+            cases["self-signed"][
+                "trustedNativeTransactionObservationsByCanonicalRef"
+            ],
+            {},
+        )
+
+    def test_legacy_missing_dependencies_keep_their_contract_dispositions(self):
+        for factory, kind in (
+            (G.legacy_case, "deliverable"),
+            (G.legacy_entitlement_case, "EntitlementRecord"),
+            (G.legacy_attested_case, "methodEvidence"),
+        ):
+            case = G.make(
+                "legacy-missing-dependency",
+                "indeterminate",
+                "required historical dependency unavailable",
+                factory,
+            )
+            next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == kind
+            )["available"] = False
+            with self.subTest(factory=factory.__name__, dependency=kind):
+                self.assertEqual(evaluate(case), "indeterminate")
+
+        malformed = G.make(
+            "legacy-malformed-dependency",
+            "error",
+            "resolved historical payload is malformed",
+            G.legacy_case,
+        )
+        malformed["artifactRecords"][0]["cleartextUtf8"] = chr(0xD800)
+        self.assertEqual(evaluate(malformed), "error")
+
+        for factory in (G.legacy_entitlement_case, G.legacy_attested_case):
+            authority_missing = G.make(
+                "legacy-authority-missing",
+                "indeterminate",
+                "authenticated commerce authority unavailable",
+                factory,
+            )
+            authority_missing["deliveryAuthorities"] = []
+            with self.subTest(factory=factory.__name__, dependency="authority"):
+                self.assertEqual(evaluate(authority_missing), "indeterminate")
 
     def test_entitlement_roles_come_from_the_authenticated_bundle(self):
         current = G.make(

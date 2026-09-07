@@ -481,13 +481,18 @@ def payload_record(index: int, payload_text: str) -> tuple[dict, dict, dict, dic
     return artifact, method_proof, deliverable, agreement, trusted_observation
 
 
-def attested_case() -> dict:
+def attested_case(
+    deliveries: tuple[tuple[int, bytes], ...] | None = None,
+) -> dict:
     case = {
         "pipeline": [], "evidenceRecords": [], "artifactRecords": [], "credentials": [],
         "deliveryAuthorities": [],
         "trustedNativeTransactionObservationsByCanonicalRef": {},
     }
-    for index, payload in [(6, b"attested one"), (7, b"attested two")]:
+    for index, payload in deliveries or (
+        (6, b"attested one"),
+        (7, b"attested two"),
+    ):
         digest = bytes_hash(payload)
         payload_text = payload.decode("utf-8")
         record, method_proof, deliverable, agreement, observation = payload_record(
@@ -549,9 +554,14 @@ def legacy_case(repeated: bool = False) -> dict:
     return case
 
 
-def legacy_credential_case() -> dict:
-    current = credential_case()
+def legacy_credential_case(include_credential: bool = True) -> dict:
+    current = credential_case(include_credential=include_credential)
     record = current["artifactRecords"][0]["artifact"]
+    if include_credential:
+        record["credentialRef"]["ref"]["anchor"]["locator"] = (
+            f"dacs4:credential:{JOB}:0"
+        )
+        sign(record, SELLER_SEED, ENTITLEMENT_DOMAIN)
     address = f"dacs4:entitlement:{JOB}:0"
     artifact = legacy_evidence(
         "deliver-entitlement",
@@ -570,8 +580,84 @@ def legacy_credential_case() -> dict:
             "artifact": record,
             "available": True,
         }],
-        "credentials": current["credentials"],
+        "credentials": [],
+        "deliveryAuthorities": current["deliveryAuthorities"],
     }
+    bundle(case)
+    return case
+
+
+def legacy_entitlement_case() -> dict:
+    return legacy_credential_case(include_credential=False)
+
+
+def legacy_attested_case(self_signed: bool = False) -> dict:
+    """Build one genuine historical attested-payload closure without adding an index."""
+    index = 6
+    case = attested_case(((index, b"legacy attested payload"),))
+    payload_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "deliverable"
+    )
+    record_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "PayloadAttestationRecord"
+    )
+    method_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "methodEvidence"
+    )
+    payload_record = record_entry["artifact"]
+    authority = case["deliveryAuthorities"][0]
+
+    if self_signed:
+        method = {"kind": "self-signed"}
+        authority["deliverable"]["verificationMethod"] = method
+        authority["agreement"]["deliverable"]["hash"] = hash_hex(
+            authority["deliverable"]
+        )
+        assertion = payload_entry["cleartextUtf8"]
+        proof_key = Ed25519PrivateKey.from_private_bytes(SELLER_SEED)
+        method_proof = {
+            "kind": "self-signed-payload",
+            "payloadContentHash": payload_entry["cleartextHash"],
+            "methodInput": {
+                "identifier": proof_key.public_key().public_bytes_raw().hex(),
+                "assertion": assertion,
+                "signature": b64url(proof_key.sign(assertion.encode("utf-8"))),
+            },
+        }
+        method_entry["artifact"] = method_proof
+        payload_record["deliverableSpecHash"] = hash_hex(authority["deliverable"])
+        payload_record["verificationMethod"] = method["kind"]
+        payload_record["verificationMethodHash"] = hash_hex(method)
+        payload_record["methodEvidenceRef"]["contentHash"] = hash_hex(method_proof)
+        payload_record.pop("methodTransactionRef")
+        sign(payload_record, VERIFIER_SEED, PAYLOAD_DOMAIN)
+        case["trustedNativeTransactionObservationsByCanonicalRef"] = {}
+
+    method_address = f"dacs4:method-evidence:{JOB}"
+    payload_record["methodEvidenceRef"]["anchor"]["locator"] = method_address
+    method_entry["logicalAddress"] = method_address
+    sign(payload_record, VERIFIER_SEED, PAYLOAD_DOMAIN)
+    payload_address = f"dacs4:deliverable:{JOB}"
+    method_hash = payload_record["verificationMethodHash"]
+    attempt = payload_record["attempt"]
+    record_address = f"dacs4:payload-attestation:{JOB}:{method_hash}:{attempt}"
+    payload_entry["logicalAddress"] = payload_address
+    record_entry["logicalAddress"] = record_address
+
+    current = case["evidenceRecords"][0]["artifact"]
+    artifact = legacy_evidence(
+        "deliver-attested-payload",
+        deliverableContentHash=current["deliverableContentHash"],
+        deliverableAnchor={"kind": "storage-program", "locator": payload_address},
+        attestationRef=ref(record_address, payload_record),
+    )
+    case["evidenceRecords"] = [{
+        "logicalAddress": f"legacy:dacs4:evidence:{JOB}:attested-payload",
+        "artifact": artifact,
+    }]
     bundle(case)
     return case
 
@@ -632,6 +718,54 @@ def build_vectors() -> list[dict]:
 
     vectors.append(make("legacy-single-delivery-readable", "pass", "one unambiguous legacy delivery remains readable unchanged", legacy_case))
     vectors.append(make("legacy-unindexed-evidence-cannot-cover-repetition", "fail", "legacy evidence never satisfies repeated delivery", lambda: legacy_case(True)))
+    vectors.append(make(
+        "legacy-entitlement-closure-readable",
+        "pass",
+        "the unindexed signed entitlement and authenticated roles close without a synthetic phase binding",
+        legacy_entitlement_case,
+    ))
+    vectors.append(make(
+        "legacy-attested-payload-closure-readable",
+        "pass",
+        "the unindexed payload, attestation record, and method proof retain their historical addresses",
+        legacy_attested_case,
+    ))
+    vectors.append(make(
+        "legacy-self-signed-payload-closure-readable",
+        "pass",
+        "a genuine self-signed method proof needs no native transaction in the legacy arm",
+        lambda: legacy_attested_case(self_signed=True),
+    ))
+
+    def unavailable_artifact(kind: str) -> Callable[[dict], None]:
+        def apply(case: dict) -> None:
+            next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == kind
+            )["available"] = False
+        return apply
+
+    vectors.append(make(
+        "legacy-storage-dependency-unavailable",
+        "indeterminate",
+        "an unresolved historical deliverable is not proof of delivery",
+        legacy_case,
+        unavailable_artifact("deliverable"),
+    ))
+    vectors.append(make(
+        "legacy-entitlement-dependency-unavailable",
+        "indeterminate",
+        "an unresolved historical entitlement remains indeterminate",
+        legacy_entitlement_case,
+        unavailable_artifact("EntitlementRecord"),
+    ))
+    vectors.append(make(
+        "legacy-method-proof-dependency-unavailable",
+        "indeterminate",
+        "an unresolved historical method proof cannot close attested delivery",
+        legacy_attested_case,
+        unavailable_artifact("methodEvidence"),
+    ))
     vectors.append(make("legacy-credential-entitlement-cannot-claim-dv5", "fail", "legacy entitlement evidence is audit-only and cannot establish the DV-5 delivered gate", legacy_credential_case, requestedGate="dv5-verified"))
     vectors.append(make("repeated-entitlements-each-renewal-zero", "pass", "phaseIndex separates two renewalSeq zero streams", entitlement_case))
     vectors.append(make("entitlement-renewal-streams-independent", "pass", "each repeated phase can independently reach renewalSeq one", lambda: entitlement_case((1, 1))))

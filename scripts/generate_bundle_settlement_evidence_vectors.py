@@ -60,6 +60,19 @@ def make_authority(name, definition, signing_keys):
         definition.get("listingSignerRole", "seller"),
         job_id,
     )
+    legacy_self_signed = definition.get("legacySelfSigned") is True
+    if legacy_self_signed:
+        listing["offering"]["deliverable"]["verificationMethod"] = {
+            "kind": "self-signed"
+        }
+        payload = (F.LISTING_DOMAIN + F.listing_hash(listing)).encode("utf-8")
+        listing["signature"] = {
+            "signer": F.CLAIMS[definition.get("listingSignerRole", "seller")],
+            "algorithm": "ed25519",
+            "value": F.b64u(signing_keys[
+                definition.get("listingSignerRole", "seller")
+            ].sign(payload)),
+        }
     phase_summary = []
     settlement_evidence = []
     reference_validation_by_canonical_ref = {}
@@ -110,16 +123,33 @@ def make_authority(name, definition, signing_keys):
                 }.get(entry["kind"], evidence_reason)
             if definition.get("evidenceReasonOverride") is not None:
                 evidence_reason = definition["evidenceReasonOverride"]
+            legacy_delivery = False
             if entry["kind"].startswith("deliver-"):
-                record, ref, delivery_closure, native_observations = F.make_current_delivery_evidence(
-                    job_id,
-                    entry["kind"],
-                    entry["index"],
-                    signing_keys,
-                    outcome="success" if entry["outcome"] == "ok" else "failure",
-                    reason=evidence_reason,
-                    mutation=definition.get("innerArtifactMutation"),
-                )
+                legacy_delivery = definition.get("legacyDeliveryEvidence") is True
+                if legacy_delivery:
+                    record, ref, delivery_closure, native_observations = (
+                        F.make_legacy_delivery_evidence(
+                            job_id,
+                            entry["kind"],
+                            entry["index"],
+                            signing_keys,
+                            outcome=(
+                                "success" if entry["outcome"] == "ok" else "failure"
+                            ),
+                            reason=evidence_reason,
+                            self_signed=legacy_self_signed,
+                        )
+                    )
+                else:
+                    record, ref, delivery_closure, native_observations = F.make_current_delivery_evidence(
+                        job_id,
+                        entry["kind"],
+                        entry["index"],
+                        signing_keys,
+                        outcome="success" if entry["outcome"] == "ok" else "failure",
+                        reason=evidence_reason,
+                        mutation=definition.get("innerArtifactMutation"),
+                    )
             else:
                 record, ref = F.make_evidence(
                     job_id,
@@ -140,6 +170,12 @@ def make_authority(name, definition, signing_keys):
             execution_authority = F.make_session_execution_authority(
                 job_id, entry["kind"], entry["index"]
             )
+            legacy_evidence_address = None
+            if entry["kind"].startswith("deliver-") and legacy_delivery:
+                legacy_evidence_address = (
+                    f"legacy:dacs4:evidence:{job_id}:{entry['kind']}"
+                )
+                execution_authority["evidenceLogicalAddress"] = legacy_evidence_address
             if isinstance(delivery_closure, dict):
                 if "agreementHash" in delivery_closure:
                     execution_authority["agreementHash"] = delivery_closure["agreementHash"]
@@ -148,10 +184,12 @@ def make_authority(name, definition, signing_keys):
                     native_observations
                 )
             session_execution_authority_by_phase_key[phase_key] = execution_authority
-            verified_receipt_by_canonical_ref[F.canonical(ref).decode("utf-8")] = (
-                F.make_verified_anchor_receipt(
-                    ref, job_id, entry["kind"], entry["index"], resolved=st8_resolved)
+            receipt = F.make_verified_anchor_receipt(
+                ref, job_id, entry["kind"], entry["index"], resolved=st8_resolved
             )
+            if legacy_evidence_address is not None:
+                receipt["logicalAddress"] = legacy_evidence_address
+            verified_receipt_by_canonical_ref[F.canonical(ref).decode("utf-8")] = receipt
             reference_validation_by_canonical_ref[F.canonical(ref).decode("utf-8")] = {
                 "record": record,
                 "lifecycle": copy.deepcopy(default_lifecycle),
@@ -239,10 +277,12 @@ def generate(source):
         "locally. sessionExecutionAuthorityByPhaseKey and verifiedReceiptByCanonicalRef are "
         "independently authenticated SB-1/SR-2 inputs, separate from resolved evidence content. "
         "authenticatedRecordByRef represents independently resolved, job-bound evidence content: "
-        "payment members are SettlementEvidence and current delivery members are DeliveryEvidence. "
+        "payment members are SettlementEvidence, current delivery members are DeliveryEvidence, "
+        "and PDE-7 permits only a single unambiguous delivery-shaped SettlementEvidence. "
         "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved, lifecycle-gated "
         "deliverable, entitlement/credential, or payload-attestation/method-proof closure required "
-        "before a successful current DeliveryEvidence member can authorize its phase. "
+        "before successful current or legacy delivery evidence can authorize its phase; legacy "
+        "closure retains its original unindexed addresses and cannot synthesize credential binding. "
         "trustedNativeTransactionObservationsByCanonicalRef is fixture-only authority keyed by the "
         "complete canonical methodTransactionRef; it is not a portable consensus-proof format. "
         "The record outcome and hashed supersedesEvidenceRef, not "
@@ -268,6 +308,39 @@ def generate(source):
             "state": "finalized",
             "independentlyResolvable": True,
         },
+    }
+    legacy_completed = {
+        "bundleOutcome": "completed",
+        "defaultReferenceLifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": True,
+        },
+        "legacyDeliveryEvidence": True,
+    }
+    for name, phase in (
+        ("legacy-storage-completed", "deliver-storage-program"),
+        ("legacy-entitlement-completed", "deliver-entitlement"),
+        ("legacy-attested-completed", "deliver-attested-payload"),
+    ):
+        definitions[name] = {
+            **copy.deepcopy(legacy_completed),
+            "listingPipeline": [phase],
+            "phaseSummary": [{"index": 0, "kind": phase, "outcome": "ok"}],
+        }
+    definitions["legacy-self-signed-attested-completed"] = copy.deepcopy(
+        definitions["legacy-attested-completed"]
+    )
+    definitions["legacy-self-signed-attested-completed"]["legacySelfSigned"] = True
+    definitions["legacy-repeated-storage-invalid"] = {
+        **copy.deepcopy(legacy_completed),
+        "listingPipeline": [
+            "deliver-storage-program",
+            "deliver-storage-program",
+        ],
+        "phaseSummary": [
+            {"index": 0, "kind": "deliver-storage-program", "outcome": "ok"},
+            {"index": 1, "kind": "deliver-storage-program", "outcome": "ok"},
+        ],
     }
     if "invalid-bundle-signature" not in definitions:
         definitions["invalid-bundle-signature"] = copy.deepcopy(definitions["standard-completed"])
@@ -409,6 +482,68 @@ def generate(source):
                     "execution-authority-indeterminate"
                     if indeterminate else "execution-authority"
                 ),
+            },
+        })
+
+    legacy_vector_definitions = (
+        (
+            "bundle-settlement-bijection-legacy-storage-closure-pass",
+            "legacy-storage-completed",
+            "0:deliver-storage-program",
+            "ref-legacy-storage",
+        ),
+        (
+            "bundle-settlement-bijection-legacy-entitlement-closure-pass",
+            "legacy-entitlement-completed",
+            "0:deliver-entitlement",
+            "ref-legacy-entitlement",
+        ),
+        (
+            "bundle-settlement-bijection-legacy-attested-closure-pass",
+            "legacy-attested-completed",
+            "0:deliver-attested-payload",
+            "ref-legacy-attested",
+        ),
+        (
+            "bundle-settlement-bijection-legacy-self-signed-closure-pass",
+            "legacy-self-signed-attested-completed",
+            "0:deliver-attested-payload",
+            "ref-legacy-self-signed",
+        ),
+    )
+    for vector_name, authority_name, phase_key, ref_name in legacy_vector_definitions:
+        if any(vector["name"] == vector_name for vector in data["vectors"]):
+            continue
+        data["vectors"].append({
+            "name": vector_name,
+            "expected": "pass",
+            "input": {
+                "executionAuthorityRef": authority_name,
+                "topLevelRefs": [ref_name],
+                "resolvedReferencePhaseKeys": {ref_name: phase_key},
+                "pointerMap": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {"disposition": "verified", "reasonCode": "ok"},
+        })
+
+    repeated_legacy_vector = (
+        "bundle-settlement-bijection-legacy-repeated-delivery-reject"
+    )
+    if not any(vector["name"] == repeated_legacy_vector for vector in data["vectors"]):
+        data["vectors"].append({
+            "name": repeated_legacy_vector,
+            "expected": "fail",
+            "input": {
+                "executionAuthorityRef": "legacy-repeated-storage-invalid",
+                "topLevelRefs": [],
+                "resolvedReferencePhaseKeys": {},
+                "pointerMap": {},
+                "unrelatedAuthorityDisposition": "verified",
+            },
+            "want": {
+                "disposition": "rejected",
+                "reasonCode": "execution-authority",
             },
         })
 

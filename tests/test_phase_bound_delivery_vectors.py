@@ -131,6 +131,38 @@ def resolve_evidence(case, supplied_ref):
     return "pass", position, entry
 
 
+def authenticated_delivery_roles(bundle):
+    """Resolve the unique buyer and seller from the already-authenticated bundle."""
+    return R.authenticated_delivery_roles(bundle)
+
+
+def validate_delivered_cleartext(stored, expected_hash, subject):
+    cleartext_status, cleartext_bytes = R._utf8_bytes(
+        stored.get("cleartextUtf8"), subject
+    )
+    if cleartext_status[0] != "pass":
+        return cleartext_status[0]
+    actual_hash = hashlib.sha256(cleartext_bytes).hexdigest()
+    if expected_hash != stored.get("cleartextHash") or actual_hash != expected_hash:
+        return "fail"
+    return "pass"
+
+
+def validate_entitlement_roles(bundle, record):
+    role_status, claims_by_role = authenticated_delivery_roles(bundle)
+    if role_status != "pass":
+        return role_status
+    signature = record.get("signature")
+    if (
+        record.get("grantee") != claims_by_role["buyer"]
+        or record.get("grantor") != claims_by_role["seller"]
+        or not isinstance(signature, dict)
+        or signature.get("signer") != record.get("grantor")
+    ):
+        return "fail"
+    return "pass"
+
+
 def validate_delivery_artifact(case, evidence):
     job = evidence["jobId"]
     index = evidence["phaseIndex"]
@@ -155,8 +187,11 @@ def validate_delivery_artifact(case, evidence):
         stored = find_artifact(case, address, "deliverable")
         if stored is None or stored.get("available") is False:
             return "indeterminate"
-        if content_hash != stored.get("cleartextHash"):
-            return "fail"
+        storage_status = validate_delivered_cleartext(
+            stored, content_hash, "storage deliverable cleartext"
+        )
+        if storage_status != "pass":
+            return storage_status
         if "attestationRef" in evidence or "credentialDelivery" in evidence:
             return "fail"
         return "pass"
@@ -178,6 +213,9 @@ def validate_delivery_artifact(case, evidence):
                 or not R._delivery_inner_type_valid(record, "entitlementVersion")
                 or not verify_signature(record, ENTITLEMENT_DOMAIN)):
             return "fail"
+        role_status = validate_entitlement_roles(case.get("bundle"), record)
+        if role_status != "pass":
+            return role_status
         renewal = record.get("renewalSeq")
         if isinstance(renewal, bool) or not isinstance(renewal, int) or renewal < 0:
             return "error"
@@ -428,11 +466,8 @@ def evaluate(case):
             return "fail"
         used_entries.add(position)
         artifact = entry["artifact"]
-        current = artifact.get("deliveryEvidenceVersion") == "1"
-        legacy = artifact.get("evidenceVersion") == "1"
-        if current and legacy:
-            return "error"
-        if current:
+        evidence_type = R._delivery_artifact_type(artifact)
+        if evidence_type == "delivery":
             if not exact_delivery_evidence_shape(artifact):
                 return "error"
             index, kind = artifact.get("phaseIndex"), artifact.get("phase")
@@ -454,9 +489,7 @@ def evaluate(case):
             if status != "pass":
                 return status
             mapping = (index, kind)
-        elif legacy:
-            if "deliveryEvidenceVersion" in artifact:
-                return "error"
+        elif evidence_type == "settlement":
             kind = artifact.get("phase")
             if kind not in DELIVERY_KINDS:
                 if not verify_signature(artifact, LEGACY_DOMAIN):
@@ -475,8 +508,15 @@ def evaluate(case):
                 if delivered is None or delivered.get("available") is False:
                     return "indeterminate"
                 record = delivered.get("artifact")
-                if not isinstance(record, dict) or not verify_signature(record, ENTITLEMENT_DOMAIN):
+                if (
+                    not isinstance(record, dict)
+                    or not R._delivery_inner_type_valid(record, "entitlementVersion")
+                    or not verify_signature(record, ENTITLEMENT_DOMAIN)
+                ):
                     return "fail"
+                role_status = validate_entitlement_roles(bundle, record)
+                if role_status != "pass":
+                    return role_status
                 if artifact.get("deliverableContentHash") != artifact_hash(record):
                     return "fail"
                 if record.get("credentialRef") is not None and case.get("requestedGate") == "dv5-verified":
@@ -485,8 +525,13 @@ def evaluate(case):
                 delivered = find_artifact(case, anchor.get("locator"), "deliverable")
                 if delivered is None or delivered.get("available") is False:
                     return "indeterminate"
-                if artifact.get("deliverableContentHash") != delivered.get("cleartextHash"):
-                    return "fail"
+                storage_status = validate_delivered_cleartext(
+                    delivered,
+                    artifact.get("deliverableContentHash"),
+                    "legacy storage deliverable cleartext",
+                )
+                if storage_status != "pass":
+                    return storage_status
             mapping = candidates[0]
         else:
             return "error"
@@ -590,6 +635,8 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             case = G.make("extension", "pass", "signed optional extension", factory)
             record = next(entry["artifact"] for entry in case["artifactRecords"] if entry["kind"] == kind)
             record["laterMinorAuditLabel"] = "preserve-me"
+            record["auditVersion"] = "2026-09"
+            record["recipeVersion"] = 7
             refresh(case)
             G.sign_bundle(case["bundle"])
             with self.subTest(kind=kind):
@@ -598,6 +645,91 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 refresh(case)
                 G.sign_bundle(case["bundle"])
                 self.assertNotEqual(evaluate(case), "pass")
+
+    def test_shared_delivery_classifier_uses_registered_type_signals_only(self):
+        contextual_versions = {
+            "recipeVersion": 3,
+            "railVersion": 4,
+            "listingVersion": 5,
+            "recipeRegistryVersion": 6,
+            "railRegistryVersion": 7,
+            "protocolVersion": "2",
+            "auditVersion": "inert-extension",
+        }
+        entitlement = {"entitlementVersion": "1", **contextual_versions}
+        self.assertEqual(R._delivery_artifact_type(entitlement), "entitlement")
+        self.assertTrue(R._delivery_inner_type_valid(entitlement, "entitlementVersion"))
+
+        for discriminator, artifact_type in R._DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR.items():
+            with self.subTest(discriminator=discriminator):
+                self.assertEqual(
+                    R._delivery_artifact_type({discriminator: "1"}), artifact_type
+                )
+                for expected in ("entitlementVersion", "payloadAttestationVersion"):
+                    self.assertEqual(
+                        R._delivery_inner_type_valid({expected: "1", discriminator: "1"}, expected),
+                        discriminator == expected,
+                    )
+
+        self.assertIsNone(R._delivery_artifact_type({
+            "entitlementVersion": "1", "agreementVersion": "1"
+        }))
+        self.assertIsNone(R._delivery_artifact_type({
+            "entitlementVersion": "1", "futureEntitlementVersion": "1"
+        }))
+
+    def test_storage_delivery_hashes_exact_utf8_in_current_and_legacy_arms(self):
+        for factory in (G.storage_case, G.legacy_case):
+            case = G.make("storage-contract", "pass", "exact UTF-8", factory)
+            with self.subTest(factory=factory.__name__, condition="valid"):
+                self.assertEqual(evaluate(case), "pass")
+
+            unavailable = G.make(
+                "storage-unavailable", "indeterminate", "unavailable", factory
+            )
+            unavailable["artifactRecords"][0]["available"] = False
+            with self.subTest(factory=factory.__name__, condition="unavailable"):
+                self.assertEqual(evaluate(unavailable), "indeterminate")
+
+            malformed = G.make(
+                "storage-malformed", "error", "malformed UTF-8", factory
+            )
+            malformed["artifactRecords"][0]["cleartextUtf8"] = chr(0xD800)
+            with self.subTest(factory=factory.__name__, condition="malformed-utf8"):
+                self.assertEqual(evaluate(malformed), "error")
+
+    def test_entitlement_roles_come_from_the_authenticated_bundle(self):
+        current = G.make(
+            "entitlement-role-contract", "pass", "authenticated roles", G.entitlement_case
+        )
+        self.assertEqual(evaluate(current), "pass")
+        record = current["artifactRecords"][0]["artifact"]
+        self.assertEqual(record["grantee"], G.BUYER)
+        self.assertEqual(record["grantor"], G.SELLER)
+        self.assertEqual(record["signature"]["signer"], record["grantor"])
+
+        legacy = G.make(
+            "legacy-entitlement-role-contract",
+            "pass",
+            "authenticated legacy roles",
+            G.legacy_credential_case,
+        )
+        self.assertEqual(evaluate(legacy), "pass")
+
+        missing_role = {"parties": [{"role": "buyer", "primaryClaim": G.BUYER}]}
+        self.assertEqual(authenticated_delivery_roles(missing_role)[0], "error")
+        ambiguous_role = {
+            "parties": [
+                {"role": "buyer", "primaryClaim": G.BUYER},
+                {"role": "buyer", "primaryClaim": G.BUYER},
+                {"role": "seller", "primaryClaim": G.SELLER},
+            ]
+        }
+        self.assertEqual(authenticated_delivery_roles(ambiguous_role)[0], "error")
+
+        mismatched = copy.deepcopy(record)
+        mismatched["grantee"] = G.SELLER
+        self.assertEqual(validate_entitlement_roles(current["bundle"], mismatched), "fail")
 
     def test_credential_binding_members_are_all_signed(self):
         vector = next(v for v in self.data["vectors"] if v["name"] == "credential-buyer-only-exact-binding")

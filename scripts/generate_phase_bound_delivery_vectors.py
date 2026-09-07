@@ -249,7 +249,8 @@ def storage_case(pointers: bool = False) -> dict:
         case["pipeline"].append({"index": index, "kind": "deliver-storage-program"})
         case["artifactRecords"].append({
             "kind": "deliverable", "logicalAddress": address,
-            "cleartextHash": digest, "storedHash": digest, "available": True,
+            "cleartextHash": digest, "cleartextUtf8": text.decode("utf-8"),
+            "storedHash": digest, "available": True,
         })
         case["evidenceRecords"].append({
             "logicalAddress": f"dacs4:delivery:{JOB}:{index}",
@@ -307,7 +308,7 @@ def mixed_payment_delivery_case() -> dict:
 
 def entitlement_record(index: int, renewal: int, credential_ref: dict | None = None) -> dict:
     artifact = {
-        "entitlementVersion": "1", "jobId": JOB, "grantee": "cci:" + "55" * 32,
+        "entitlementVersion": "1", "jobId": JOB, "grantee": BUYER,
         "grantor": SELLER, "startsAt": 1786000000000, "endsAt": 1786086400000,
         "scope": {"service": "https://service.example.test", "tier": "pro"},
         "serviceEndpoint": "https://service.example.test/access", "renewable": True,
@@ -540,7 +541,8 @@ def legacy_case(repeated: bool = False) -> dict:
         "pipeline": pipeline,
         "evidenceRecords": [{"logicalAddress": f"legacy:dacs4:evidence:{JOB}", "artifact": artifact}],
         "artifactRecords": [{"kind": "deliverable", "logicalAddress": address,
-                             "cleartextHash": digest, "storedHash": digest, "available": True}],
+                             "cleartextHash": digest, "cleartextUtf8": "legacy delivery",
+                             "storedHash": digest, "available": True}],
         "credentials": [],
     }
     bundle(case)

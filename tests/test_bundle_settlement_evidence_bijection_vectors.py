@@ -82,7 +82,7 @@ def resign_inner_artifact(artifact, seed, domain):
         "algorithm": "ed25519",
         "value": "",
     }
-    payload = (domain + R._artifact_content_hash(artifact)).encode("utf-8")
+    payload = (domain + R._signed_envelope_content_hash(artifact)).encode("utf-8")
     artifact["signature"]["value"] = encode(
         Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed)).sign(payload)
     )
@@ -122,6 +122,35 @@ def replace_top_record(authority, phase, mutate, seeds):
             resign_ebfab(bundle, seeds)
             return
     raise AssertionError("top-level record for phase %s not found" % phase)
+
+
+def relink_payload_attestation(authority, seeds):
+    """Re-sign one closure's payload record and refresh its current evidence link."""
+    closure = authority["deliveryArtifactAuthorityByPhaseKey"][
+        "3:deliver-attested-payload"
+    ]
+    record_entry = closure["payloadAttestationRecord"]
+    record = record_entry["artifact"]
+    resign_inner_artifact(
+        record, seeds["orchestrator"], R.PAYLOAD_ATTESTATION_DOMAIN
+    )
+    record_hash = R._signed_envelope_content_hash(record)
+    record_address = (
+        "dacs4:payload-attestation:"
+        f"{record['jobId']}:3:{record['verificationMethodHash']}:{record['attempt']}"
+    )
+    record_entry["logicalAddress"] = record_address
+
+    def relink(evidence):
+        evidence["attestationRef"] = {
+            "anchor": {"kind": "storage-program", "locator": record_address},
+            "contentHash": record_hash,
+            "signer": record["signature"]["signer"],
+        }
+
+    replace_top_record(
+        authority, "deliver-attested-payload", relink, seeds
+    )
 
 
 def valid_htlc_tx_refs():
@@ -500,7 +529,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                 self.data["seeds"]["seller"],
                 R.ENTITLEMENT_DOMAIN,
             )
-            entitlement_hash = R._artifact_content_hash(entitlement)
+            entitlement_hash = R._signed_envelope_content_hash(entitlement)
             replace_top_record(
                 authority,
                 "deliver-entitlement",
@@ -524,8 +553,18 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         ):
             for mutation, expected in (
                 ({"laterMinorAuditLabel": "preserve-me"}, "pass"),
+                ({
+                    "auditVersion": "inert-extension",
+                    "recipeVersion": 3,
+                    "railVersion": 4,
+                    "listingVersion": 5,
+                    "recipeRegistryVersion": 6,
+                    "railRegistryVersion": 7,
+                    "protocolVersion": "2",
+                }, "pass"),
                 ({discriminator: "99"}, "non-pass"),
                 ({"evidenceVersion": "1"}, "non-pass"),
+                ({"agreementVersion": "1"}, "non-pass"),
                 ({"future" + discriminator[0].upper() + discriminator[1:]: "1"}, "non-pass"),
             ):
                 authority = copy.deepcopy(self.data["executionAuthorities"][name])
@@ -533,7 +572,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     phase_key][artifact_key]["artifact"]
                 artifact.update(mutation)
                 resign_inner_artifact(artifact, self.data["seeds"][signer], domain)
-                content_hash = R._artifact_content_hash(artifact)
+                content_hash = R._signed_envelope_content_hash(artifact)
 
                 def relink(record):
                     if artifact_key == "entitlementRecord":
@@ -564,6 +603,108 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
         resign_ebfab(authority["bundle"], self.data["seeds"])
         self.assertEqual(
             derive_phase_disposition(authority, self.pubkeys)[0], "pass"
+        )
+
+    def test_complete_deliverable_and_method_hashes_preserve_signature_named_extensions(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        listing = authority["listing"]
+        deliverable = listing["offering"]["deliverable"]
+        method = deliverable["verificationMethod"]
+        deliverable["signature"] = {"purpose": "inert-deliverable-extension"}
+        method["signature"] = {"purpose": "inert-method-extension"}
+
+        record = authority["deliveryArtifactAuthorityByPhaseKey"][
+            "3:deliver-attested-payload"
+        ]["payloadAttestationRecord"]["artifact"]
+        record["deliverableSpecHash"] = R._complete_object_hash(deliverable)
+        record["verificationMethodHash"] = R._complete_object_hash(method)
+        transaction_key = R.canonical(record["methodTransactionRef"]).decode("utf-8")
+        authority["trustedNativeTransactionObservationsByCanonicalRef"][transaction_key][
+            "verificationMethod"
+        ] = copy.deepcopy(method)
+
+        resign_listing(listing, self.data["seeds"]["seller"])
+        authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(listing)
+        relink_payload_attestation(authority, self.data["seeds"])
+
+        self.assertNotEqual(
+            R._complete_object_hash(deliverable),
+            R._signed_envelope_content_hash(deliverable),
+        )
+        self.assertNotEqual(
+            R._complete_object_hash(method),
+            R._signed_envelope_content_hash(method),
+        )
+        disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+    def test_full_payload_closure_supports_self_signed_without_native_transaction(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        closure = authority["deliveryArtifactAuthorityByPhaseKey"][
+            "3:deliver-attested-payload"
+        ]
+        deliverable = authority["listing"]["offering"]["deliverable"]
+        method = {"kind": "self-signed"}
+        deliverable["verificationMethod"] = method
+        assertion = closure["deliverable"]["cleartextUtf8"]
+        proof_key = Ed25519PrivateKey.from_private_bytes(
+            bytes.fromhex(self.data["seeds"]["seller"])
+        )
+        proof = {
+            "kind": "self-signed-payload",
+            "payloadContentHash": closure["deliverable"]["cleartextHash"],
+            "methodInput": {
+                "identifier": proof_key.public_key().public_bytes_raw().hex(),
+                "assertion": assertion,
+                "signature": encode(proof_key.sign(assertion.encode("utf-8"))),
+            },
+        }
+        closure["methodEvidence"]["artifact"] = proof
+
+        record = closure["payloadAttestationRecord"]["artifact"]
+        record["deliverableSpecHash"] = R._complete_object_hash(deliverable)
+        record["verificationMethod"] = "self-signed"
+        record["verificationMethodHash"] = R._complete_object_hash(method)
+        record["methodEvidenceRef"]["contentHash"] = R._complete_object_hash(proof)
+        record.pop("methodTransactionRef")
+        authority["trustedNativeTransactionObservationsByCanonicalRef"] = {}
+
+        resign_listing(authority["listing"], self.data["seeds"]["seller"])
+        authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+            authority["listing"]
+        )
+        relink_payload_attestation(authority, self.data["seeds"])
+        disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+        self.assertEqual(disposition, "pass", reason)
+
+        with_native_transaction = copy.deepcopy(authority)
+        supplied_record = with_native_transaction[
+            "deliveryArtifactAuthorityByPhaseKey"
+        ]["3:deliver-attested-payload"]["payloadAttestationRecord"]["artifact"]
+        supplied_record["methodTransactionRef"] = {
+            "kind": "demos-web2-request",
+            "value": "ab" * 32,
+        }
+        relink_payload_attestation(with_native_transaction, self.data["seeds"])
+        self.assertNotEqual(
+            derive_phase_disposition(with_native_transaction, self.pubkeys)[0], "pass"
+        )
+
+        missing_native_transaction = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        transaction_bound_record = missing_native_transaction[
+            "deliveryArtifactAuthorityByPhaseKey"
+        ]["3:deliver-attested-payload"]["payloadAttestationRecord"]["artifact"]
+        transaction_bound_record.pop("methodTransactionRef")
+        relink_payload_attestation(missing_native_transaction, self.data["seeds"])
+        self.assertNotEqual(
+            derive_phase_disposition(missing_native_transaction, self.pubkeys)[0],
+            "pass",
         )
 
     def test_native_authority_and_terminal_finality_have_distinct_dispositions(self):
@@ -631,7 +772,7 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
             authority,
             "deliver-attested-payload",
             lambda record: record["attestationRef"].__setitem__(
-                "contentHash", R._artifact_content_hash(payload_record)
+                "contentHash", R._signed_envelope_content_hash(payload_record)
             ),
             self.data["seeds"],
         )

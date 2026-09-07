@@ -13,6 +13,15 @@ The format used per release:
 
 ## [Unreleased]
 
+### Fixed — delivery closure reference validation
+
+- **Signed-format and legacy closure parity** (#333) — the executable DACS-4/DACS-5
+  reference consumers now hash exact delivered UTF-8 bytes, bind entitlement
+  grant roles to authenticated bundle parties, classify current registered artifact
+  discriminators without consuming contextual or inert version extensions, preserve
+  self-signed payload closure without a native transaction, and distinguish complete
+  DeliverableSpec/VerificationMethod hashes from signature-omitted envelope hashes.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

@@ -211,6 +211,8 @@ class PayloadAttestationVectorTests(unittest.TestCase):
         deliverable = case["listing"]["offering"]["deliverable"]
         method = deliverable["verificationMethod"]
         method["endpoint"]["laterMinorAuditLabel"] = "preserve-me"
+        method["signature"] = {"purpose": "inert-method-extension"}
+        deliverable["signature"] = {"purpose": "inert-deliverable-extension"}
         record = case["payloadAttestationRecord"]
         record["laterMinorAuditLabel"] = "preserve-me"
         case["agreement"]["deliverable"]["hash"] = G.hash_hex(deliverable)
@@ -221,6 +223,8 @@ class PayloadAttestationVectorTests(unittest.TestCase):
             G.trusted_native_observation(method, case["methodEvidence"])
         )
         G.refresh_record_and_evidence(case)
+        self.assertEqual(record["deliverableSpecHash"], R._complete_object_hash(deliverable))
+        self.assertEqual(record["verificationMethodHash"], R._complete_object_hash(method))
         self.assertEqual(evaluate(case, seeds), "pass")
         record["laterMinorAuditLabel"] = "unsigned-tampering"
         self.assertNotEqual(evaluate(case, seeds), "pass")

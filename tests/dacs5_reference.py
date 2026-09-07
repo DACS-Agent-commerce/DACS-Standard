@@ -1052,14 +1052,39 @@ def _delivery_evidence_shape_valid(record):
     return True
 
 
-def _artifact_content_hash(record):
+def authenticated_delivery_roles(bundle):
+    """Resolve unique delivery parties after the caller authenticates the bundle."""
+    parties = bundle.get("parties") if isinstance(bundle, dict) else None
+    if not isinstance(parties, list) or any(not isinstance(party, dict) for party in parties):
+        return "error", None
+    claims_by_role = {}
+    for role in ("buyer", "seller"):
+        matches = [party for party in parties if party.get("role") == role]
+        if len(matches) != 1:
+            return "error", None
+        claim = matches[0].get("primaryClaim")
+        if not isinstance(claim, str) or not claim:
+            return "error", None
+        claims_by_role[role] = claim
+    return "pass", claims_by_role
+
+
+def _complete_object_hash(value):
+    """Hash every member of a complete, non-envelope object as received."""
+    if not isinstance(value, dict):
+        return None
+    try:
+        return hashlib.sha256(canonical(value)).hexdigest()
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+
+
+def _signed_envelope_content_hash(record):
+    """Hash a signed DACS envelope while omitting only its signature member."""
     if not isinstance(record, dict):
         return None
     unsigned = {key: value for key, value in record.items() if key != "signature"}
-    try:
-        return hashlib.sha256(canonical(unsigned)).hexdigest()
-    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
-        return None
+    return _complete_object_hash(unsigned)
 
 
 def _signed_inner_artifact_valid(record, domain, pubkeys, expected_signer=None):
@@ -1076,7 +1101,7 @@ def _signed_inner_artifact_valid(record, domain, pubkeys, expected_signer=None):
     ):
         return False
     canonical_ok, _ = sig6_canonical(signature.get("value"))
-    content_hash = _artifact_content_hash(record)
+    content_hash = _signed_envelope_content_hash(record)
     return bool(
         canonical_ok
         and content_hash
@@ -1170,19 +1195,79 @@ def _canonical_method_transaction_ref(transaction_ref):
         return None
 
 
+_DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR = {
+    # Current type-specific major-version signals registered by the repository's
+    # schemas. Contextual recipe/listing/rail/registry/protocol versions are not
+    # structural discriminators and therefore deliberately do not appear here.
+    "receiptVersion": "receipt",
+    "bundleVersion": "bundle",
+    "requirementVersion": "requirement",
+    "dacsVersion": "dacs",
+    "indexVersion": "index",
+    "resultVersion": "result",
+    "recordVersion": "record",
+    "agreementVersion": "agreement",
+    "payeeBoundAgreementVersion": "payee-bound-agreement",
+    "finalityCommitmentVersion": "finality-commitment",
+    "transcriptVersion": "transcript",
+    "entitlementVersion": "entitlement",
+    "payloadAttestationVersion": "payload-attestation",
+    "evidenceVersion": "settlement",
+    "deliveryEvidenceVersion": "delivery",
+    "amendmentVersion": "amendment",
+    "priorPaymentDispositionVersion": "prior-payment-disposition",
+    "faultBundleVersion": "fault-bundle",
+    "evidenceBoundFaultBundleVersion": "evidence-bound-fault-bundle",
+    "bindingVersion": "binding",
+    "derivationVersion": "derivation",
+    "replayableDerivationVersion": "replayable-derivation",
+    "settlementVerifiedDerivationVersion": "settlement-verified-derivation",
+    "replayableSettlementVerifiedDerivationVersion": (
+        "replayable-settlement-verified-derivation"
+    ),
+    "jobBoundReplayableDerivationVersion": "job-bound-replayable-derivation",
+    "ratingVersion": "rating",
+    "manifestVersion": "manifest",
+}
+
+_DELIVERY_FAMILY_DISCRIMINATOR_SUFFIXES = (
+    "EntitlementVersion",
+    "PayloadAttestationVersion",
+)
+
+
+def _delivery_artifact_type(record):
+    """Classify one delivery-scope artifact before any type-specific action.
+
+    Exact current registry names are authoritative. The two existing delivery-inner
+    families also retain their narrow future-discriminator refusal. Other unknown
+    fields, including contextual or inert ``*Version`` extensions, remain additive.
+    """
+    if not isinstance(record, dict):
+        return None
+    present = [
+        key for key in _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR if key in record
+    ]
+    unknown_family_discriminators = {
+        key
+        for key in record
+        if isinstance(key, str)
+        and key not in _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR
+        and key.endswith(_DELIVERY_FAMILY_DISCRIMINATOR_SUFFIXES)
+    }
+    if len(present) != 1 or unknown_family_discriminators:
+        return None
+    discriminator = present[0]
+    if record.get(discriminator) != "1":
+        return None
+    return _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR[discriminator]
+
+
 def _delivery_inner_type_valid(record, discriminator):
-    """Retain inert signed extensions, but never coerce a different record type."""
-    discriminators = {
-        "entitlementVersion", "payloadAttestationVersion", "resultVersion",
-        "evidenceVersion", "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
-    }
-    present = {
-        key for key in record
-        if key in discriminators
-        or (isinstance(key, str)
-            and key.endswith(("EntitlementVersion", "PayloadAttestationVersion")))
-    }
-    return present == {discriminator} and record.get(discriminator) == "1"
+    expected = _DELIVERY_ARTIFACT_TYPE_BY_DISCRIMINATOR.get(discriminator)
+    return expected in {"entitlement", "payload-attestation"} and (
+        _delivery_artifact_type(record) == expected
+    )
 
 
 def validate_delivery_method_evidence(
@@ -1402,12 +1487,12 @@ def _validate_current_delivery_artifact_closure_disposition(
             results.append(_closure_result("fail", "storage delivery carries phase-only fields"))
         return _combine_closure_results(results)
 
-    parties = {
-        party.get("role"): party.get("primaryClaim")
-        for party in bundle.get("parties", [])
-        if isinstance(party, dict)
-    }
     if phase == "deliver-entitlement":
+        role_status, parties = authenticated_delivery_roles(bundle)
+        if role_status != "pass":
+            return _combine_closure_results(results + [
+                _closure_result("error", "entitlement delivery parties are missing or ambiguous")
+            ])
         if set(closure) - {"entitlementRecord", "credential"}:
             results.append(_closure_result("error", "entitlement delivery closure is ambiguous"))
         offering = listing.get("offering")
@@ -1475,7 +1560,8 @@ def _validate_current_delivery_artifact_closure_disposition(
             )
             or anchor != {"kind": "storage-program", "locator": entitlement_address}
             or entitlement_entry.get("logicalAddress") != entitlement_address
-            or record.get("deliverableContentHash") != _artifact_content_hash(entitlement)
+            or record.get("deliverableContentHash")
+            != _signed_envelope_content_hash(entitlement)
             or "attestationRef" in record
         ):
             results.append(_closure_result("fail", "entitlement record does not close over the signed offering, job, and phase"))
@@ -1579,7 +1665,7 @@ def _validate_current_delivery_artifact_closure_disposition(
         "payloadAttestationVersion", "jobId", "agreementHash",
         "deliverableSpecHash", "payloadFormat", "payloadContentHash",
         "verificationMethod", "verificationMethodHash", "attempt", "decision",
-        "reason", "methodEvidenceRef", "methodTransactionRef", "verifiedAt",
+        "reason", "methodEvidenceRef", "verifiedAt",
         "signature",
     }
     if not required <= set(payload_record) or not _delivery_inner_type_valid(
@@ -1599,7 +1685,8 @@ def _validate_current_delivery_artifact_closure_disposition(
         or attestation_ref.get("anchor")
         != {"kind": "storage-program", "locator": attestation_address}
         or attestation_entry.get("logicalAddress") != attestation_address
-        or attestation_ref.get("contentHash") != _artifact_content_hash(payload_record)
+        or attestation_ref.get("contentHash")
+        != _signed_envelope_content_hash(payload_record)
         or (
             "signer" in attestation_ref
             and isinstance(signature, dict)
@@ -1624,15 +1711,32 @@ def _validate_current_delivery_artifact_closure_disposition(
         or payload_record.get("jobId") != job_id
         or payload_record.get("agreementHash") != execution.get("agreementHash")
         or payload_record.get("agreementHash") != closure.get("agreementHash")
-        or payload_record.get("deliverableSpecHash") != _artifact_content_hash(deliverable_spec)
+        or payload_record.get("deliverableSpecHash")
+        != _complete_object_hash(deliverable_spec)
         or payload_record.get("payloadFormat") != deliverable_spec.get("payloadFormat")
         or payload_record.get("payloadContentHash") != record.get("deliverableContentHash")
         or payload_record.get("verificationMethod") != method.get("kind")
-        or payload_record.get("verificationMethodHash") != _artifact_content_hash(method)
+        or payload_record.get("verificationMethodHash") != _complete_object_hash(method)
         or payload_record.get("decision") != "pass"
         or "credentialDelivery" in record
     ):
         results.append(_closure_result("fail", "payload attestation does not bind authenticated commerce context"))
+
+    method_kind = method.get("kind") if isinstance(method, dict) else None
+    if method_kind == "self-signed":
+        if "methodTransactionRef" in payload_record:
+            results.append(_closure_result(
+                "fail", "self-signed payload attestation carries a native transaction"
+            ))
+    elif method_kind == "consensus-backed-proxy":
+        if "methodTransactionRef" not in payload_record:
+            results.append(_closure_result(
+                "fail", "transaction-bound payload attestation lacks its native transaction"
+            ))
+    else:
+        results.append(_closure_result(
+            "error", "payload attestation uses an unsupported verification method"
+        ))
 
     method_ref = payload_record.get("methodEvidenceRef")
     method_evidence = method_entry.get("artifact") if method_entry is not None else None
@@ -1643,7 +1747,7 @@ def _validate_current_delivery_artifact_closure_disposition(
         results.append(_closure_result("error", "method evidence reference is malformed"))
     elif method_entry is not None and (
         method_entry.get("logicalAddress") != method_ref.get("anchor", {}).get("locator")
-        or method_ref.get("contentHash") != _artifact_content_hash(method_evidence)
+        or method_ref.get("contentHash") != _complete_object_hash(method_evidence)
     ):
         results.append(_closure_result("fail", "method evidence does not match its authenticated reference"))
     if method_evidence is not None and cleartext_bytes is not None:
@@ -1662,14 +1766,8 @@ def _validate_current_delivery_artifact_closure_disposition(
 
 def _evidence_wire_type(record):
     """Classify an evidence artifact by its exclusive structural discriminator."""
-    if not isinstance(record, dict):
-        return None
-    candidates = []
-    if record.get("evidenceVersion") == "1":
-        candidates.append("settlement")
-    if record.get("deliveryEvidenceVersion") == "1":
-        candidates.append("delivery")
-    return candidates[0] if len(candidates) == 1 else None
+    evidence_type = _delivery_artifact_type(record)
+    return evidence_type if evidence_type in {"settlement", "delivery"} else None
 
 
 def _resolve_authenticated_evidence_binding(ref, record, signer, bundle,

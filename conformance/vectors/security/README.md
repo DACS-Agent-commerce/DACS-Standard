@@ -788,20 +788,25 @@ a fallback after current-message failure. Within that historical arm, admission
 requires all of:
 
 - **CH-6** — the session's `channelId` MUST NOT be one reused from a prior session
-  (`priorChannelIds`); a reused session channel → `fail` (the whole session is rejected).
+  according to the verifier-owned retained registry; a reused session channel
+  → `fail` (the whole session is rejected).
 - **channel binding** — `message.channelId == sessionChannelId`; a foreign-channel
   message (a genuine message from another session presented here) → `fail`.
 - **signature** — over `UTF8("dacs-channelmsg:v1:") || raw_32_byte_sha256(UTF8(JCS(envelope − signature)))`
-  by the sender's self-describing `cci:<hex>` key. An unresolvable sender key →
-  `indeterminate` (NOT `fail`); an invalid signature → `fail`.
+  by the independently authenticated channel member key. The retained historical
+  `cci:<hex>` spelling is not membership authority. A known algorithm mismatch
+  → `fail`; matching authenticated metadata with unavailable key bytes →
+  `indeterminate`; an invalid signature → `fail`.
 - **monotonic sequence** — strictly greater than the highest already seen in the
   channel (starts at 1, §8.3.3); a duplicate or decreasing `sequence` → `fail`.
 
 A cross-session replay fails **both** ways: keep the old `channelId` → channel-binding
 `fail`; rewrite it → the signature (computed over the original `channelId`) breaks.
-Malformed artifacts — a non-canonicalisable `body`, a non-integer/negative
-`ctx.lastSequence`, or a non-string `priorChannelIds` element — return `error`,
-never collapsing to `fail` (so bad context cannot bypass the replay gate).
+Malformed artifacts or malformed trusted setup return `error`. The frozen
+`ctx` field is retained test metadata, compared against independently reviewed
+setup in `tests/channel_message_fixture_authority.py`; it never initializes
+state from the presented candidate. The runtime evaluator accepts a previously
+issued state capability, not a `ctx` object.
 
 #### Vector schema
 | field      | meaning |
@@ -809,10 +814,16 @@ never collapsing to `fail` (so bad context cannot bypass the replay gate).
 | `name`     | stable case id |
 | `expected` | §7.5.1 verdict (4-value, never collapsed) |
 | `message`  | the `LegacyDemosChannelMessage` under test (channelId, sequence, sender, signature, body…) |
-| `ctx`      | per-case `{ sessionChannelId, lastSequence, priorChannelIds }` |
+| `ctx`      | frozen scenario metadata; compared with separate trusted harness configuration, never state authority |
 
-Self-contained (sender keys are self-describing `cci:<hex>`; signatures are real
-Ed25519 over the frozen historical scope). The shipped executable oracle is
+Signatures are real Ed25519 over the frozen historical scope; member/key
+authority and initial state are supplied independently by the harness. Each
+fixture is an isolated verifier lifetime. Within a lifetime, a caller-supplied
+retained registry preserves identifiers, sequences and terminal status across
+issuer facade reconstruction; live and audit registries are distinct. This
+in-memory reference does not establish durable restart or distributed-storage
+guarantees. Production adapters must retain transactional state for their replay
+horizon and demonstrate continuity across restart. The shipped executable oracle is
 `python3 -m unittest tests.test_channel_message_vectors`; it replays all 15
 persisted cases and pins the complete legacy file SHA-256. The previously cited
 external TypeScript runner is not part of this repository and is not the

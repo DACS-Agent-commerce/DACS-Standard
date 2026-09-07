@@ -176,11 +176,28 @@ artifact/reference wherever the serialized message is committed. Legacy
 message bytes and signature bytes MUST remain unchanged when retained for
 audit.
 
-After structural and cryptographic verification, both arms apply CH-6 channel
-binding/reuse and monotonic-sequence checks. An unavailable authenticated key
-is `indeterminate`; malformed structure/encoding/context is `error`; a proven
-signature, binding, reuse, or replay violation is `fail`. The frozen legacy
-corpus and the generated current/mixed-wire corpus are identified in §14.3.
+Both operations require a verifier-owned replay/session/terminal capability
+that is separate from the received message, caller-presented context, and CH-1
+membership authority. A trusted live-state issuer MUST reserve and retain every
+used `channelId` across issuer reconstruction and restarts for the applicable
+replay horizon; it MUST NOT recreate or seed sequence or terminal state from
+the message or request context. After the selected arm's shape, binding,
+membership, algorithm, and signature checks succeed, consumption MUST compare
+and advance the monotonic sequence and terminal status atomically. Arbitrary
+increases remain valid; an authenticated `abort` closes the state, while an
+`accept` message alone is not a signed AgreementArtifact and does not close it.
+Agreement and timeout closure are separate trusted lifecycle events and MUST
+NOT be inferred from an untrusted message body.
+
+The historical importer MUST use a distinct historical audit cursor with no
+live negotiation or publication authority. Explicit trusted audit setup MAY initialize that cursor from separately authenticated history, but the
+legacy candidate and its adjacent context cannot initialize it. A proven
+algorithm-metadata mismatch, binding contradiction, terminated state, reuse,
+or replay is `fail` even when key bytes are unavailable; matching authenticated
+algorithm metadata with unavailable key bytes remains `indeterminate`.
+Malformed structure or encoding is `error`. Both arms retain their exact
+signature validation and frozen signed bytes/domains. The frozen legacy corpus
+and the generated current/mixed-wire corpus are identified in §14.3.
 
 #### 8.3.4 Channel failure detection and abort
 

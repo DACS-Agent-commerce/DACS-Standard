@@ -45,6 +45,19 @@ The format used per release:
   parameters. A correctly signed outsider, caller-supplied authority map,
   parameter-variant key selection, and member message signed by another key
   cannot establish admission.
+- **Atomic verifier-owned channel state** (#367) — replay, session, and terminal
+  state now comes from an issuer-retained capability rather than presented
+  vector context. Trusted fixture setup is separately reviewed, and the retained
+  registry is explicitly injected across issuer reconstruction. This in-memory
+  reference does not claim durable restart guarantees. Current negotiation state
+  and historical audit cursors are
+  separate; successful verification atomically advances arbitrary increasing
+  sequences, authenticated aborts terminate, and agreement/timeout closure is
+  recorded only through trusted lifecycle events. Known authenticated
+  algorithm mismatches fail before unavailable-key indeterminacy, and malformed
+  enum containers produce controlled errors without changing state. Signed
+  current and frozen historical wire bytes, domains, and shapes are unchanged.
+
 ### Fixed — DACS-X conformance provenance
 
 - **Output-only rows demoted** (#99/#351) — reclassifies the 8 dispute and 9

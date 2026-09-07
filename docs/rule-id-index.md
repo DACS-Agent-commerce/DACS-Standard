@@ -18,6 +18,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | CH-* | Private-channel message handling | §8.3.1 | §14.3 |
 | CM-* | Content-addressed anchoring | §7.3.1 | §14.8 |
 | CRQ-* | ClaimRequirement candidate qualification before aggregation | §7.7.1 | §14.2 |
+| CUR-* | Explicit all-or-nothing current-use reputation derivation and full dependency replay | §10.5.1 | §14.5 |
 | DV-* | Deliverable access / privacy (private delivery, credential handover) | §9.6.1 / §9.6.2 | §14.4 |
 | DCR-* | Canonical DNS-domain identity, Demos legacy alias compatibility, deduplication, metadata, and control boundary | §6.3.1 | §14.1 |
 | DGCR-* | Persistent Demos GCR domain verification | §7.3.10 | §14.2 |
@@ -30,6 +31,7 @@ This non-normative index helps implementers locate labelled conformance rules in
 | HTLC-* | Cross-chain HTLC payment rail | §9.5.4 | §14.4 |
 | IT-* | Deterministic identity-tier derivation | §6.3.2.1 | §14.1 |
 | IM-* | Implementation manifest claims, capability status, and evidence | §14.10 | §14.10 |
+| LAB-* | Current-use admission of original legacy bundle mappings and strictly pre-checkpoint receipts | §10.4 | §14.5 |
 | LP-* | Listing publishers | §6.3 | §14.1 |
 | LR-* | Listing readers | §6.3 | §14.1 |
 | LRR-* | Listing-time canonical payment-rail resolution and pay-phase binding | §6.3.4 | §14.1 |

@@ -65,6 +65,22 @@ does not invoke DAHR and does not claim a fresh ACME challenge.
 
 In both cases implementations MUST anchor at the native address, the anchor transaction is the canonical pointer, and consumers MUST verify the content hash after dereferencing.
 
+**DACS-5 legacy-checkpoint mapping.** The unallocated current-use candidate's
+`dacs5:legacy-bundle-checkpoint:v1:{CF-4(substrate)}` address follows the same
+two mapping cases. On Demos it is a write-input mapping, so checkpoint discovery
+MUST resolve the signed `LegacyBundleCheckpointBinding`, then authenticate the
+exact Demos transaction, writer, nonce, native address, checkpoint hash and BFT-
+final receipt under CORE §5.1. The checkpoint producer's timestamp, a storage API
+read, an Indexer row, or a candidate-supplied steward list cannot establish the
+activation position. Historical bundle eligibility likewise requires the
+original signed `BundleBinding`, original BB-6 selection context and original
+finalized Demos write receipt; a current read or writer label cannot reconstruct
+that authority. The repository's current-use corpus uses independently pinned
+signed synthetic native proofs solely to execute this offline boundary. It does
+not specify a production Demos proof wire codec; until an adapter supplies the
+authenticated Demos evidence above, the production mapping is unavailable and
+the stronger consumer returns `indeterminate`.
+
 **Operational write notes (informative).** Storage Program writes have two observable completion points: broadcast acceptance and later read visibility. A DACS implementer should not publish a new SR-2 anchor to counterparties until the native address can be read back and its content hash matches the written artifact. Updates and granular writes can be stale-visible from a lagging node, so read-back checks should compare parsed canonical content (RFC 8785 / JCS for DACS JSON artifacts), not raw JSON text or byte-for-byte serialization. Because native address derivation includes the signer nonce, same-signer dependent writes and batches MUST use explicit sequential nonces or wait for observed nonce advancement before deriving and signing the next native address. An account-nonce read can lag inclusion, so deriving `nonce + 1` from a stale read can fail even after the previous transaction was accepted. Re-broadcasting an idempotent write to the same derived native address remains a safe recovery path when the failure is observable, but only when the payload and logical→native binding are unchanged; consumers still verify the content hash plus createdByTx / lastModifiedByTx provenance.
 
 **SR-2 lifecycle binding (normative).** Demos applies CORE §5.1 as follows:

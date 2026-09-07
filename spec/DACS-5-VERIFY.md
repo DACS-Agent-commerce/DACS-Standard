@@ -6,7 +6,12 @@
 
 **Stage:** Verify (5th of 5). **Status:** Draft — **DACS-5 v0.5** on the common DACS v0.1 baseline. v0.5 makes APR-7 effective-pipeline recomputation mandatory for `pay-alternative` Listings before phase-summary or SettlementEvidence admission. v0.4 adds the non-terminal `audit-pending` gate, requires every successful bundle dependency plus the completed bundle itself to be finalized and independently resolvable, adds the `EvidenceBoundFaultAttestationBundle` type with SEB-1..SEB-6 exact settlement-evidence binding, and adds structurally distinct settlement-verified reputation derivation types while preserving the released v0.3 `ReputationDerivation` and `ReplayableReputationDerivation` version-1 semantics. v0.3 added `PayeeBoundAgreementDocument` consumption alongside the legacy agreement artifact, the signed `BundleBinding` artifact with BB-1..BB-8 logical→native bundle resolution §10.4.2, and the `FaultAttestationBundle` artifact — absolute hashed `faultedParty` attribution as a distinct type under its own `dacs-fault-bundle:v1:` domain §10.4.1. **Depends on:** SR-1 for cross-substrate primary-claim keying, SR-2 for bundle anchoring; composes with the ERC-8004 reputation registry as an OPTIONAL publication surface. **Used by:** all subsequent DACS-1 reputation lookups, external auditors and regulators.
 
-**Unallocated compatibility proposal (#392).** The finality-bound bundle and pointer below are candidate additive types. They do not allocate a DACS-5 minor, alter any existing bundle or derivation discriminator, or declare the coordinated #391+#392 reputation output complete.
+**Unallocated compatibility proposals (#391/#392).** The finality-bound bundle,
+pointer, legacy activation artifacts, and coordinated current-use derivation below
+are candidate additive types. They do not allocate a DACS-5 minor or alter any
+existing bundle or derivation discriminator. The combined current-use consumer is
+complete only under CUR-1..CUR-8 and LAB-1..LAB-7; none of its guarantees attach to
+an older output label.
 
 ### 10.1 Abstract
 
@@ -350,6 +355,87 @@ For this type only, every successful payment member in the exact `settlementEvid
 
 **Authenticated-copy reconciliation for the new type.** Before precedence, verify each copy's authorized role, exact requested `jobId`, binding/content hash, matching signature domain, and complete type-specific validity. Compatible valid copies rank `FinalityBoundEvidenceFaultAttestationBundle` > `EvidenceBoundFaultAttestationBundle` > `FaultAttestationBundle` > `AttestationBundle`; new/new pairs use the same signed outcome/fault/phase checks and exact settlement-reference multiset comparison. A present new copy whose required FV or authority is `error`, `fail`, or `indeterminate` MUST NOT fall back to an older copy. Divergence rejects the pair. These rules apply only when this new consumer contract is explicitly selected and do not change any old-only pair.
 
+**LegacyBundleActivationCheckpoint (unallocated current-use candidate).** The
+combined current-use consumer uses a per-substrate governed order boundary. The
+stage minor carrying this addition is deliberately unallocated; the artifact's
+own initial type version is nevertheless `"1"`.
+
+```
+type LegacyBundleActivationCheckpoint = {
+  legacyBundleCheckpointVersion: "1"
+  substrate: string
+  policy: "legacy-attestation-pre-checkpoint-only"
+  createdAt: number                    // signed metadata, never the activation clock
+  signature: ComponentSignature        // externally authorized DACS steward
+}
+
+type LegacyBundleCheckpointBinding = {
+  legacyBundleCheckpointBindingVersion: "1"
+  substrate: string
+  logicalAddress: string
+  nativeAddress: string
+  checkpointContentHash: string
+  anchorTx: string
+  signer: ClaimReference
+  signature: ComponentSignature
+}
+```
+
+The checkpoint canonical form omits `signature`; it is signed over
+`"dacs-legacy-bundle-checkpoint:v1:" || lowerhex(SHA-256(JCS(checkpoint)))`.
+The binding canonical form likewise omits `signature` and is signed over
+`"dacs-legacy-bundle-checkpoint-binding:v1:" ||
+lowerhex(SHA-256(JCS(binding)))`. The checkpoint logical address is
+`dacs5:legacy-bundle-checkpoint:v1:{CF-4(substrate)}`. On a pure-mapping
+substrate the native address is recomputed through that substrate's authenticated
+mapping and no checkpoint binding is used. On a write-input-mapping substrate the
+consumer discovers bindings for the exact logical address, authenticates and
+discards invalid or unauthorized candidates, and deduplicates canonically equal
+authorized survivors before testing multiplicity. Only conflicting authorized
+survivors make discovery `indeterminate`; outsider junk cannot veto a valid
+checkpoint.
+
+Checkpoint steward trust is separate verifier configuration established under
+§11.1.1. A candidate's `authorizedStewards`, producer flag, scalar summary, or
+self-selected native address has no authority. The resolved checkpoint, binding,
+and finalized native receipt MUST join the substrate, logical and native addresses,
+checkpoint content hash, anchor transaction, writer/signer, applicable nonce, and
+authenticated total-order position. `createdAt` and other producer clocks do not
+activate the boundary. Missing, pruned, reorganized, unorderable, or conflicting
+required authority is non-passing.
+
+**Current-use legacy admission (LAB-1..LAB-7).** These rules are selected only by
+the distinct combined current-use derivation below. They do not change historical
+validation or any existing derivation algorithm.
+
+- **(LAB-1) Governed checkpoint.** Resolve and verify exactly one checkpoint as
+  above from independently configured stewardship and native-proof trust.
+- **(LAB-2) Original mapping authority.** Before a legacy copy enters BB-6, verify
+  either (a) its original signed write-input `BundleBinding` and the original
+  authenticated party map, candidate set, per-signer budget and selected result,
+  or (b) a genuine deterministic pure-mapping proof from the role logical address
+  to the original native address. A current role label is not historical proof.
+- **(LAB-3) Exact historical join.** The original finalized receipt MUST bind the
+  exact `jobId`, buyer/seller role, logical and native address, bundle content hash,
+  anchor transaction, writer/signer and applicable nonce. Its role MUST equal the
+  copy's independently resolved `anchoredByRole`.
+- **(LAB-4) Strict order.** The historical receipt MUST be strictly before the
+  checkpoint in one comparable authenticated native order. Equal positions pass
+  only when an authenticated intra-position transaction order makes them strict;
+  otherwise equal, cross-domain, pruned, reorganized or unorderable evidence is
+  non-passing.
+- **(LAB-5) Replay without rewrite.** A qualifying old copy remains the original
+  `AttestationBundle` under `dacs-bundle:v1:`. A later presentation or same-role
+  re-anchor neither upgrades nor invalidates it; replay re-verifies the original
+  proof. Re-signing or relabelling it as an absolute-fault bundle is forbidden.
+- **(LAB-6) Non-qualification is not absence or blame.** Missing or invalid era
+  evidence contributes no count, denominator, rating, volume, `bundleRef`, party
+  fault, or authoritative absence.
+- **(LAB-7) Admission order.** Apply every type-specific authority check and LAB
+  independently to candidates before BB-6 standing/budget selection, role
+  reconciliation, one-copy attribution, RSV, ratings, or metrics. An unresolved
+  required stronger proof cannot be bypassed through a weaker copy.
+
 #### 10.4.1 Canonical serialisation, hash, and domain-separated signature
 
 Per the §B.2 canonical-form template, omit `signatures` and `anchoredByRole` identically for all four bundle types. Every other field is hashed, including exactly one type discriminator and `faultedParty` on each absolute-fault type. The **attestation-bundle hash** (`attestation_bundle_hash`) is sha256(canonical_form), hex-encoded. Each `BundleSignature.value` MUST use the matching domain-separated payload:
@@ -680,6 +766,86 @@ type ReplayableSettlementVerifiedReputationDerivation =
     resolutionContext: JobBoundResolutionContextEntry[]  // settlement-verified replay is job-bound; EBFAB evidence cannot be replayed through the released context contract
   }
 
+type CurrentUseReplayableReputationDerivation =
+  Omit<ReplayableReputationDerivation, "replayableDerivationVersion" | "metrics" | "resolutionContext"> & {
+    currentUseReplayableDerivationVersion: "1" // exclusive; carries no other *DerivationVersion member
+    metrics: ReputationDerivation["metrics"] & {
+      finalityClassifiedVolume: {
+        profileFinal: {
+          observedTransactionalVolume: PriceTerm[]
+          transactionCountByCurrency: { currency: string; count: number }[]
+        }
+        provisionalProviderCapture: {
+          observedTransactionalVolume: PriceTerm[]
+          transactionCountByCurrency: { currency: string; count: number }[]
+        }
+      }
+    }
+    requestContext: CurrentUseRequestedJob[]   // all explicitly requested jobs, not only metric-bearing jobs
+    resolutionContext: CurrentUseResolutionContextEntry[]
+  }
+
+type CurrentUseRequestedJob = {
+  jobId: string
+  substrate: string
+  roles: { buyer: CurrentUseRoleRequest; seller: CurrentUseRoleRequest }
+}
+
+type CurrentUseRoleRequest =
+  | { disposition: "absent" | "indeterminate" }
+  | {
+      disposition: "present"
+      mappingKind: "binding"
+      selectionContext: {
+        candidateBindings: BundleBinding[]
+        partyMap: object
+        budget: number
+      }
+      anchorReceiptsByNativeAddress: object
+      legacyEraEvidenceByNativeAddress: object // nativeAddress -> LegacyBundleEraEvidence; legacy only
+    }
+  | {
+      disposition: "present"
+      mappingKind: "pure"
+      resolvedAddress: string
+      anchorReceipt: AnchorReceipt
+      legacyEraEvidence?: LegacyBundleEraEvidence // REQUIRED for legacy; forbidden otherwise
+    }
+
+type LegacyBundleEraEvidence = {
+  bundleContentHash: string
+  resolvedJobId: string
+  resolvedRole: "buyer" | "seller"
+  substrate: string
+  checkpointCandidates: LegacyBundleCheckpointBinding[] // [] on pure mapping
+  checkpointReceipt: AnchorReceipt
+  historicalAnchorReceipt: AnchorReceipt
+  originalMapping:
+    | {
+        kind: "binding"
+        binding: BundleBinding
+        selectionContext: { candidateBindings: BundleBinding[]; partyMap: object; budget: number }
+        anchorTransaction: string
+        writer: ClaimReference
+        nonce: number
+      }
+    | {
+        kind: "pure"
+        logicalAddress: string
+        nativeAddress: string
+        anchorTransaction: string
+        writer: ClaimReference
+        nonce: number
+      }
+}
+
+type CurrentUseResolutionContextEntry = JobBoundResolutionContextEntry & {
+  bundleType: "legacy" | "fault" | "evidence-bound" | "finality-bound"
+  legacyEraEvidence?: LegacyBundleEraEvidence
+  counterpartyLegacyEraEvidence?: LegacyBundleEraEvidence
+  finalityClasses: ("profile-final" | "provisional-provider-capture")[]
+}
+
 type ResolutionContextEntry = {
   contentHash: string                           // keys the entry to its bundleRefs member (ascending-contentHash order, §10.5.3)
   resolvedRole: "buyer" | "seller"              // the §10.5.1 input-precondition role under which the authoritative copy was resolved
@@ -723,7 +889,22 @@ type JobBoundResolutionContextEntry = ResolutionContextEntry & {
 
 The released v1 path neither requires nor acts on `resolvedJobId`; adding, removing, or changing such an unknown extension cannot strengthen or alter its semantics. A job-bound consumer instead verifies `resolvedJobId` against the dereferenced authoritative copy and uses it for every role, counterparty, candidate-binding, and absence-binding job relation before reconciliation. EBFAB is not admissible to the released v1 derivation path. A producer replaying EBFAB with released metric semantics uses `JobBoundReplayableReputationDerivation`; a producer also claiming RSV-1 through RSV-4 uses `ReplayableSettlementVerifiedReputationDerivation`, whose context is job-bound by definition.
 
-**Settlement-verified type boundary (normative).** The two `*SettlementVerified*` types are the only derivation types that apply RSV-1 through RSV-4, settlement-reference multiset comparison, and the successful-payment floor for volume. Their shared fields have the settlement-verified meanings defined in §10.5.1. A producer claiming those semantics MUST emit exactly one matching settlement-verified discriminator and MUST NOT emit `derivationVersion`, `replayableDerivationVersion`, `jobBoundReplayableDerivationVersion`, or the sibling settlement-verified discriminator. A consumer that does not support the encountered settlement-verified discriminator MUST reject the object as unsupported before type-specific action; it MUST NOT discard or rename the discriminator and reinterpret the object as either released version-1 type. Conversely, `ReputationDerivation` and `ReplayableReputationDerivation` retain their DACS-5 v0.3 meanings and MUST NOT be evaluated under RSV. The discriminator therefore distinguishes pre-RSV from RSV-enforced output using object bytes alone, without repository-revision knowledge.
+**Settlement-verified type boundary (normative).** The two existing
+`*SettlementVerified*` types apply their frozen RSV-1 through RSV-4,
+settlement-reference multiset, and successful-payment volume rules. The distinct
+current-use type separately composes those checks with LAB and exact FV under
+CUR-1..CUR-8; it does not change either existing algorithm. A producer claiming
+the existing settlement-verified semantics MUST emit exactly one matching
+settlement-verified discriminator and MUST NOT emit `derivationVersion`,
+`replayableDerivationVersion`, `jobBoundReplayableDerivationVersion`,
+`currentUseReplayableDerivationVersion`, or the sibling settlement-verified
+discriminator. A consumer that does not support the encountered discriminator
+MUST reject the object as unsupported before type-specific action; it MUST NOT
+discard or rename the discriminator and reinterpret the object as either released
+version-1 type. Conversely, `ReputationDerivation` and
+`ReplayableReputationDerivation` retain their DACS-5 v0.3 meanings and MUST NOT be
+evaluated under RSV. The discriminator therefore distinguishes pre-RSV from
+RSV-enforced output using object bytes alone, without repository-revision knowledge.
 
 A supported replay receipt's `resolutionContext`:
 
@@ -1000,7 +1181,69 @@ For `ReplayableSettlementVerifiedReputationDerivation`, RSV is re-executed from 
 
 **Versioning.** DACS-5 v0.3 and both existing version-1 derivation types were released in the DACS v0.4 profile at `4bb9e48a1095ab32c06c25b7c0b52018d3ce4091`. RSV changes which bundles enter metrics and therefore ships additively in DACS-5 v0.4 only through `settlementVerifiedDerivationVersion: "1"` and `replayableSettlementVerifiedDerivationVersion: "1"`. Existing discriminators retain their released meaning. Any future action-bearing change to either settlement-verified type requires another structurally distinguishable type or a major compatibility path under CORE §11.1.2.
 
-**Reserved coordinated current-use derivation contract (not implemented or allocated).** `CurrentUseReplayableReputationDerivation`, with the exclusive `currentUseReplayableDerivationVersion: "1"` discriminator, is reserved for one #391+#392 output that combines authenticated historical-era/role admission, exact job-bound replay, and the finality-bound bundle consumer above. It is unsigned like existing derivations, so its label is never authority: an explicitly selected consumer must re-authenticate every dependency and recompute admission and metrics. This #392 layer supplies only the finality consumer interface. Until #391 supplies the historical role/mapping, ordering, and checkpoint admission path, an implementation MUST NOT emit or accept a passing object under the reserved discriminator; it MUST NOT substitute a boolean legacy-verification tag or relabel an existing derivation. Every existing derivation type and metric algorithm remains unchanged.
+**Combined current-use derivation (CUR-1..CUR-8; stage minor unallocated).**
+`CurrentUseReplayableReputationDerivation` is the one coordinated #391+#392
+output. Its type version is `"1"`, but this candidate text does not allocate a
+DACS-5 minor number. It is unsigned derivation data, like the existing
+derivations; no signature domain exists or is implied for it.
+
+- **(CUR-1) Explicit, exclusive selection.** The caller MUST explicitly request
+  this consumer contract. The output carries exactly
+  `currentUseReplayableDerivationVersion: "1"` and no old, sibling, unknown, or
+  second `*DerivationVersion` member. Unsupported readers reject before
+  type-specific dereference. Stripping or relabelling the discriminator cannot
+  satisfy a current-use request.
+- **(CUR-2) Closed request set.** `requestContext` records both buyer and seller
+  role requests for every distinct requested `jobId`. The consumer validates
+  every requested job before computing any metric. If any job is `error`,
+  `fail`, or `indeterminate`, it emits no derivation—not a partial derivation,
+  fabricated zero, silently reduced `bundleRefs`, or party blame.
+- **(CUR-3) Admission order.** Authenticate current role presence or absence,
+  validate each copy's exact type/domain and all type-specific authority, and
+  apply LAB to each legacy candidate before BB-6, role reconciliation, or metric
+  work. Only then apply the precedence
+  finality-bound > EBFAB > FAB > legacy. A non-passing required stronger proof
+  cannot fall back to a weaker candidate or copy.
+- **(CUR-4) Current successful payments.** A selected job containing a successful
+  payment MUST be represented by a valid
+  `FinalityBoundEvidenceFaultAttestationBundle`. Re-run its exact-set SEB checks,
+  FV-1..FV-10 against verifier-local finality authority, and RSV-1..RSV-4 against
+  the authenticated Agreement/session/phase/rail economics. Re-run SB-1..SB-3;
+  when the authenticated rail declares SB-3 binding, absent, unavailable,
+  pruned, reorganized, malformed, or mismatching binding evidence is non-passing
+  and MUST NOT fall back to exact-but-unbound transfer evidence.
+- **(CUR-5) Conservative historical payment rule.** An older or historical job
+  with successful-payment evidence but without the exact stronger authorized
+  finality path is `indeterminate` for the whole current-use request. Historical
+  non-payment outcomes may qualify through LAB. The unchanged historical
+  derivations remain available under their own discriminators.
+- **(CUR-6) Complete metrics.** After all requested jobs pass, compute the existing
+  scalar, rating, observed-volume, per-currency count, cancellation, neutral-fault,
+  and SB-2 rules over the reconciled in-window set. `observedTransactionalVolume`
+  keeps its observed-volume meaning. `finalityClassifiedVolume.profileFinal` and
+  `.provisionalProviderCapture` partition its qualifying payment jobs; provider
+  capture is never described as irreversible or silently placed in the
+  profile-final bucket. Because CUR-2 requires every requested job to pass, an
+  SB-2 cross-job reuse rejects the later evidence and therefore makes the whole
+  stronger request non-passing; the consumer MUST NOT emit a partial result that
+  silently retains only the earlier winner.
+- **(CUR-7) Complete replay.** Replay starts with the exclusive discriminator gate,
+  then repeats checkpoint discovery, original historical mapping/receipt joins,
+  current role resolution, BB-6, authenticated absence, type validation,
+  reconciliation, FV, RSV/SB-3, ratings, Agreement resolution, and every metric.
+  It compares the complete canonical result—including request and resolution
+  contexts, refs, classifications, windows and metrics—not a signature, claimed
+  scalar, or metric subset.
+- **(CUR-8) Deterministic non-pass.** Malformed nested containers and unsupported
+  unions return deterministic `error`, `fail`, or `indeterminate`; they do not
+  raise through the consumer boundary. Missing/pruned/reorganized/unorderable
+  authority is not successful verification or authoritative absence.
+
+The fixture-only executable oracle uses independently pinned signed synthetic
+native observations so the offline tests can execute exact joins and ordering.
+Those fixtures are labelled synthetic and do not define or claim a production
+Demos native cryptographic codec; a production implementation supplies its real
+substrate verifier at the same trust boundary.
 
 **Fault attribution.** "party_at_fault" is otherwise recorded in the bundle’s phaseSummary errorClass. `counterparty` implies the other party. `permanent` on a non-cross-chain rail, with no settlement-atomicity flag and a successful pre-pay state, generally implies the local party at fault — absent the §7.8.2 counterparty-malformed-presentation carve-out, which maps a counterparty-malformed `error` to `counterparty`, not `permanent`. The classification rules are spelled out in the per-phase errorClass tables in chapters 7 and 9.
 
@@ -1150,9 +1393,10 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Role | Requirements |
 | --- | --- |
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
+| Checkpoint producer | For each activated substrate, publish one steward-signed `LegacyBundleActivationCheckpoint`; on a write-input substrate also publish `LegacyBundleCheckpointBinding`. Preserve the exact finalized native receipt and transaction/nonce/order evidence. A producer timestamp or advertised steward list is not activation authority. |
 | Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3. A producer explicitly claiming the unallocated #392 completion contract instead emits the distinct `FinalityBoundEvidenceFaultAttestationBundle`; it does not modify an EBFAB. |
-| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run the unchanged SEB-1..SEB-6 contract on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile old-only copies by EBFAB > FAB > legacy only after validity and non-divergence. Under the explicitly selected new contract, additionally run FV for every successful payment and apply finality-bound > EBFAB > FAB > legacy without weaker fallback. |
-| Reputation deriver | Select the output type before derivation; apply RSV-1 through RSV-4 only for a settlement-verified discriminator, require a job-bound replay type for EBFAB, and preserve released v1 semantics otherwise; partition by primary claim; treat failed-substrate per the denominator rule; return null for zero-denominator scalar metrics; set `bundleRefs` to exactly the applicable algorithm's `reconciled` set in canonical ascending-`contentHash` order, record the `windowingBasis` used, and emit a derivation reproducible byte-for-byte from `bundleRefs` per the §10.5.3 determinism receipt. Do not emit the reserved current-use type before the combined #391+#392 gate exists. |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run the unchanged SEB-1..SEB-6 contract on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile old-only copies by EBFAB > FAB > legacy only after validity and non-divergence. Under the explicitly selected current-use contract, additionally run LAB before BB-6 for each legacy candidate, run FV plus RSV/SB-3 for every successful payment, and apply finality-bound > EBFAB > FAB > legacy without weaker fallback. |
+| Reputation deriver | Select the output type before derivation and preserve every existing discriminator's algorithm and metrics. For the explicit current-use contract, require exclusive `currentUseReplayableDerivationVersion: "1"`, validate every requested job under CUR-1..CUR-8 and LAB-1..LAB-7 before computing any metric, classify provider capture as provisional, emit no partial result, and replay the complete dependency chain and result. Otherwise apply RSV-1 through RSV-4 only for an existing settlement-verified discriminator and require a job-bound replay type for EBFAB. |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |
 

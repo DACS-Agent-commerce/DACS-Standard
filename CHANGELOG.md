@@ -13,6 +13,29 @@ The format used per release:
 
 ## [Unreleased]
 
+### Added — unallocated #391+#392 combined current-use reputation candidate
+
+- **Distinct all-or-nothing derivation** — adds the unsigned
+  `CurrentUseReplayableReputationDerivation` with the exclusive
+  `currentUseReplayableDerivationVersion: "1"` discriminator. It validates every
+  explicitly requested job before emitting metrics, composes finality-bound FV
+  with existing RSV/SB-3 checks, preserves provider capture as provisional, and
+  replays the complete authenticated dependency chain and canonical result.
+  Existing derivation discriminators, algorithms, metrics and bytes are unchanged;
+  unsupported old readers reject the new type. No DACS-5 minor is allocated.
+- **Authenticated historical arm** — adds the steward-signed
+  `LegacyBundleActivationCheckpoint` and write-input
+  `LegacyBundleCheckpointBinding` types/domains plus LAB-1..LAB-7. Current-use
+  admission proves an original signed BundleBinding and original BB-6 context,
+  or genuine pure mapping, then joins the exact finalized native receipt and
+  strict pre-checkpoint order under verifier-configured trust. Missing,
+  conflicting, pruned, reorganized or unorderable authority remains non-passing.
+- **Offline executable coverage** — adds deterministic, independently pinned
+  synthetic proof fixtures for both historical mapping arms, all six FV models,
+  role/BB-6/reconciliation/finality/replay negatives, old-reader refusal and
+  malformed-container totality. These fixtures do not claim a production Demos
+  native cryptographic codec.
+
 ### Added — unallocated #392 consumer-verifiable settlement finality candidate
 
 - **Finality-bound evidence** (#392) — adds the structurally distinct

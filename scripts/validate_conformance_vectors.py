@@ -37,6 +37,7 @@ MANIFEST_STATUSES = {"golden", "candidate"}
 REGISTRY_CASE_ID = "sig-registry-closed"
 HISTORICAL_CHANNEL_DOMAIN = "dacs-channelmsg:v1:"
 GOLDEN_DECISIONS = {"pass", "fail", "indeterminate", "error"}
+AP2_GOLDEN_FIXTURE = "conformance/fixtures/settlement/settlement-ap2-reference.json"
 REQUIRED_TOP_LEVEL = {
     "vectorId",
     "title",
@@ -705,6 +706,8 @@ def validate_ap2_golden_output(
     fixture_name = settlement["ap2Fixture"]
     if not isinstance(fixture_name, str) or not fixture_name.strip():
         return [fail(path, "settlement.ap2Fixture MUST be a non-empty fixture path string")]
+    if fixture_name != AP2_GOLDEN_FIXTURE:
+        return [fail(path, f"settlement.ap2Fixture MUST equal {AP2_GOLDEN_FIXTURE}")]
     fixture_path = resolve_fixture_path(manifest_dir, fixture_name)
     if fixture_path is None:
         return errors  # The structural fixture-existence check reports this.

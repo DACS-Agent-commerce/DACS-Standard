@@ -338,6 +338,28 @@ class ConformanceVectorValidationTests(unittest.TestCase):
                     for error in errors
                 ), errors)
 
+    def test_ap2_golden_requires_canonical_fixture_selector(self):
+        validator = load_vector_validator()
+        for selector in (
+            "fixtures/settlement/settlement-ap2-reference.json",
+            "conformance/fixtures/settlement/copied-reference.json",
+        ):
+            with self.subTest(selector=selector), tempfile.TemporaryDirectory() as tmp:
+                manifest, golden, fixture = self._write_ap2_golden_tree(Path(tmp))
+                shutil.copy2(fixture, fixture.with_name("copied-reference.json"))
+                self.assertIsNotNone(
+                    validator.resolve_fixture_path(manifest.parent, selector)
+                )
+                data = json.loads(golden.read_text())
+                data["settlement"]["ap2Fixture"] = selector
+                golden.write_text(json.dumps(data), encoding="utf-8")
+                errors = validator.validate_golden_outputs(golden, manifest)
+                self.assertTrue(any(
+                    "settlement.ap2Fixture MUST equal conformance/fixtures/"
+                    "settlement/settlement-ap2-reference.json" in error
+                    for error in errors
+                ), errors)
+
     def test_ap2_golden_rejects_stale_hash_job_and_decision_pins(self):
         cases = [
             (

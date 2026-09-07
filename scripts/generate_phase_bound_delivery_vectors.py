@@ -200,6 +200,47 @@ def refresh_evidence(case: dict, position: int, domain: str = DELIVERY_DOMAIN) -
         summary["attestationRef"] = copy.deepcopy(new)
 
 
+def refresh_entitlement_chain(case: dict, position: int = 0) -> None:
+    evidence_artifact = case["evidenceRecords"][position]["artifact"]
+    address = evidence_artifact["deliverableAnchor"]["locator"]
+    entitlement_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "EntitlementRecord"
+        and entry.get("logicalAddress") == address
+    )
+    sign(entitlement_entry["artifact"], SELLER_SEED, ENTITLEMENT_DOMAIN)
+    evidence_artifact["deliverableContentHash"] = hash_hex({
+        key: value for key, value in entitlement_entry["artifact"].items()
+        if key != "signature"
+    })
+    refresh_evidence(case, position)
+
+
+def refresh_payload_chain(case: dict, position: int = 0) -> None:
+    evidence_artifact = case["evidenceRecords"][position]["artifact"]
+    old_record_ref = evidence_artifact["attestationRef"]
+    payload_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "PayloadAttestationRecord"
+        and entry.get("logicalAddress") == old_record_ref["anchor"]["locator"]
+    )
+    payload_record = payload_entry["artifact"]
+    method_entry = next(
+        entry for entry in case["artifactRecords"]
+        if entry.get("kind") == "methodEvidence"
+        and entry.get("logicalAddress")
+        == payload_record["methodEvidenceRef"]["anchor"]["locator"]
+    )
+    payload_record["methodEvidenceRef"]["contentHash"] = hash_hex(
+        method_entry["artifact"]
+    )
+    sign(payload_record, VERIFIER_SEED, PAYLOAD_DOMAIN)
+    evidence_artifact["attestationRef"] = ref(
+        payload_entry["logicalAddress"], payload_record
+    )
+    refresh_evidence(case, position)
+
+
 def storage_case(pointers: bool = False) -> dict:
     case = {"pipeline": [], "evidenceRecords": [], "artifactRecords": [], "credentials": []}
     for index, text in [(1, b"first delivery"), (2, b"second delivery")]:
@@ -280,11 +321,25 @@ def entitlement_record(index: int, renewal: int, credential_ref: dict | None = N
 
 
 def entitlement_case(renewals: tuple[int, int] = (0, 0)) -> dict:
-    case = {"pipeline": [], "evidenceRecords": [], "artifactRecords": [], "credentials": []}
+    case = {
+        "pipeline": [],
+        "evidenceRecords": [],
+        "artifactRecords": [],
+        "credentials": [],
+        "deliveryAuthorities": [],
+    }
     for index, renewal in zip((3, 4), renewals):
         record = entitlement_record(index, renewal)
         address = f"dacs4:entitlement:{JOB}:{index}:{renewal}"
         case["pipeline"].append({"index": index, "kind": "deliver-entitlement"})
+        case["deliveryAuthorities"].append({
+            "phaseIndex": index,
+            "deliverable": {
+                "kind": "entitlement",
+                "durationSec": 86400,
+                "renewable": True,
+            },
+        })
         case["artifactRecords"].append({
             "kind": "EntitlementRecord", "logicalAddress": address,
             "artifact": record, "available": True,
@@ -342,12 +397,20 @@ def credential_case(access_model: str = "buyer-only", include_credential: bool =
             "storedHash": stored_hash, "ciphertextHash": ciphertext_hash,
             "available": True,
         }] if include_credential else []),
+        "deliveryAuthorities": [{
+            "phaseIndex": index,
+            "deliverable": {
+                "kind": "entitlement",
+                "durationSec": 86400,
+                "renewable": True,
+            },
+        }],
     }
     bundle(case)
     return case
 
 
-def payload_record(index: int, payload_text: str) -> tuple[dict, dict, dict, dict]:
+def payload_record(index: int, payload_text: str) -> tuple[dict, dict, dict, dict, dict]:
     payload_hash = bytes_hash(payload_text.encode("utf-8"))
     endpoint = f"https://api.example.test/delivery/{index}"
     method = {
@@ -403,18 +466,34 @@ def payload_record(index: int, payload_text: str) -> tuple[dict, dict, dict, dic
         "signature": {"algorithm": "ed25519", "signer": VERIFIER, "value": ""},
     }
     sign(artifact, VERIFIER_SEED, PAYLOAD_DOMAIN)
-    return artifact, method_proof, deliverable, agreement
+    trusted_observation = {
+        "available": True,
+        "transaction": copy.deepcopy(method_proof["transaction"]),
+        "verificationMethod": copy.deepcopy(method),
+        "request": copy.deepcopy(method_proof["request"]),
+        "response": {
+            "status": method_proof["response"]["status"],
+            "responseHash": method_proof["response"]["responseHash"],
+            "responseHeadersHash": method_proof["response"]["responseHeadersHash"],
+        },
+    }
+    return artifact, method_proof, deliverable, agreement, trusted_observation
 
 
 def attested_case() -> dict:
     case = {
         "pipeline": [], "evidenceRecords": [], "artifactRecords": [], "credentials": [],
         "deliveryAuthorities": [],
+        "trustedNativeTransactionObservationsByCanonicalRef": {},
     }
     for index, payload in [(6, b"attested one"), (7, b"attested two")]:
         digest = bytes_hash(payload)
         payload_text = payload.decode("utf-8")
-        record, method_proof, deliverable, agreement = payload_record(index, payload_text)
+        record, method_proof, deliverable, agreement, observation = payload_record(
+            index, payload_text
+        )
+        transaction_key = canonical_bytes(record["methodTransactionRef"]).decode("utf-8")
+        case["trustedNativeTransactionObservationsByCanonicalRef"][transaction_key] = observation
         method_hash = record["verificationMethodHash"]
         record_address = f"dacs4:payload-attestation:{JOB}:{index}:{method_hash}:0"
         payload_address = f"dacs4:deliverable:{JOB}:{index}"
@@ -578,7 +657,131 @@ def build_vectors() -> list[dict]:
         signature["value"] = ("A" if value[0] != "A" else "B") + value[1:]
     vectors.append(make("entitlement-record-signature-invalid", "fail", "an invalid EntitlementRecord signature cannot satisfy delivery", entitlement_case, invalid_entitlement_signature))
 
+    def entitlement_duration_mismatch(case: dict) -> None:
+        case["artifactRecords"][0]["artifact"]["endsAt"] = (
+            case["artifactRecords"][0]["artifact"]["startsAt"] + 1
+        )
+        refresh_entitlement_chain(case)
+    vectors.append(make(
+        "entitlement-duration-does-not-match-signed-offering",
+        "fail",
+        "signed EntitlementRecord duration must equal DeliverableSpec.durationSec",
+        entitlement_case,
+        entitlement_duration_mismatch,
+    ))
+
+    def entitlement_renewable_mismatch(case: dict) -> None:
+        case["artifactRecords"][0]["artifact"]["renewable"] = False
+        refresh_entitlement_chain(case)
+    vectors.append(make(
+        "entitlement-renewable-does-not-match-signed-offering",
+        "fail",
+        "signed EntitlementRecord renewable must equal DeliverableSpec.renewable",
+        entitlement_case,
+        entitlement_renewable_mismatch,
+    ))
+
+    def fractional_entitlement(case: dict) -> None:
+        authority = case["deliveryAuthorities"][0]["deliverable"]
+        authority["durationSec"] = 0.5
+        record = case["artifactRecords"][0]["artifact"]
+        record["endsAt"] = record["startsAt"] + 500
+        refresh_entitlement_chain(case)
+    vectors.append(make(
+        "fractional-entitlement-duration-preserved",
+        "pass",
+        "finite fractional durationSec remains valid and binds exact milliseconds",
+        entitlement_case,
+        fractional_entitlement,
+    ))
+
+    def zero_entitlement(case: dict) -> None:
+        authority = case["deliveryAuthorities"][0]["deliverable"]
+        authority["durationSec"] = 0
+        record = case["artifactRecords"][0]["artifact"]
+        record["endsAt"] = record["startsAt"]
+        refresh_entitlement_chain(case)
+    vectors.append(make(
+        "zero-duration-entitlement-is-coherent",
+        "pass",
+        "a coherent zero duration is not rejected by a positivity rule the contract lacks",
+        entitlement_case,
+        zero_entitlement,
+    ))
+
     vectors.append(make("repeated-attested-payload-each-attempt-zero", "pass", "phaseIndex separates identical attempt counters", attested_case))
+
+    def arbitrary_native_transaction(case: dict) -> None:
+        record = next(
+            entry["artifact"] for entry in case["artifactRecords"]
+            if entry.get("kind") == "PayloadAttestationRecord"
+        )
+        method = next(
+            entry["artifact"] for entry in case["artifactRecords"]
+            if entry.get("kind") == "methodEvidence"
+            and entry.get("logicalAddress") == record["methodEvidenceRef"]["anchor"]["locator"]
+        )
+        replacement = "ee" * 32
+        method["transaction"]["value"] = replacement
+        record["methodTransactionRef"]["value"] = replacement
+        refresh_payload_chain(case)
+    vectors.append(make(
+        "resigned-arbitrary-native-transaction-unobserved",
+        "indeterminate",
+        "synchronized signed references and true booleans do not replace native authority",
+        attested_case,
+        arbitrary_native_transaction,
+    ))
+
+    def native_observation_unavailable(case: dict) -> None:
+        key = next(iter(case["trustedNativeTransactionObservationsByCanonicalRef"]))
+        case["trustedNativeTransactionObservationsByCanonicalRef"][key] = {
+            "available": False
+        }
+    vectors.append(make(
+        "native-transaction-observation-unavailable",
+        "indeterminate",
+        "well-formed native transaction authority unavailability is not a clean negative",
+        attested_case,
+        native_observation_unavailable,
+    ))
+
+    def native_observation_mismatch(case: dict) -> None:
+        observation = next(iter(
+            case["trustedNativeTransactionObservationsByCanonicalRef"].values()
+        ))
+        observation["response"]["responseHeadersHash"] = "00" * 32
+    vectors.append(make(
+        "native-transaction-observation-mismatch",
+        "fail",
+        "trusted status and response commitments must match the method envelope exactly",
+        attested_case,
+        native_observation_mismatch,
+    ))
+
+    def terminal_included_native_transaction(case: dict) -> None:
+        record = next(
+            entry["artifact"] for entry in case["artifactRecords"]
+            if entry.get("kind") == "PayloadAttestationRecord"
+        )
+        method = next(
+            entry["artifact"] for entry in case["artifactRecords"]
+            if entry.get("kind") == "methodEvidence"
+            and entry.get("logicalAddress") == record["methodEvidenceRef"]["anchor"]["locator"]
+        )
+        method["transaction"]["state"] = "included"
+        key = canonical_bytes(record["methodTransactionRef"]).decode("utf-8")
+        case["trustedNativeTransactionObservationsByCanonicalRef"][key]["transaction"][
+            "state"
+        ] = "included"
+        refresh_payload_chain(case)
+    vectors.append(make(
+        "terminal-bundle-requires-finalized-native-transaction",
+        "fail",
+        "included remains provisional and cannot support terminal DACS-5 production",
+        attested_case,
+        terminal_included_native_transaction,
+    ))
 
     def replay_attestation(case: dict) -> None:
         case["evidenceRecords"][1]["artifact"]["attestationRef"] = copy.deepcopy(case["evidenceRecords"][0]["artifact"]["attestationRef"])

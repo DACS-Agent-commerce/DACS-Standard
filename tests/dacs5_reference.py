@@ -32,6 +32,8 @@ import re
 import unicodedata
 from urllib.parse import quote, urlsplit
 
+from scripts import jcs
+
 try:
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
     from cryptography.exceptions import InvalidSignature
@@ -165,8 +167,8 @@ def _required_bundle_signers(bundle):
 # Canonicalisation + hashing (extracted from test_bundle_binding_vectors.py)
 # --------------------------------------------------------------------------- #
 def canonical(value):
-    """RFC 8785-style JCS: sorted keys, tight separators, non-ASCII preserved."""
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    """CORE §B.2 RFC 8785/JCS bytes from the repository canonicalizer."""
+    return jcs.canonicalize(value).encode("utf-8")
 
 
 def bundle_hash(bundle):
@@ -1084,21 +1086,255 @@ def _signed_inner_artifact_valid(record, domain, pubkeys, expected_signer=None):
     )
 
 
-def _resolved_delivery_dependency_valid(entry, completed):
-    if not isinstance(entry, dict) or entry.get("available") is not True:
-        return False
+_CLOSURE_DISPOSITION_PRIORITY = {
+    "pass": 0,
+    "indeterminate": 1,
+    "fail": 2,
+    "error": 3,
+}
+
+
+def _closure_result(disposition, reason="ok"):
+    if disposition not in _CLOSURE_DISPOSITION_PRIORITY:
+        raise ValueError("unknown closure disposition: %r" % (disposition,))
+    return (disposition, reason)
+
+
+class _DispositionReason(str):
+    """Carry a closure disposition through the legacy Boolean core."""
+
+    def __new__(cls, value, disposition):
+        instance = super().__new__(cls, value)
+        instance.disposition = disposition
+        return instance
+
+
+def _combine_closure_results(results):
+    """Keep deterministic contradictions and malformed input visible over outages."""
+    selected = _closure_result("pass")
+    for result in results:
+        if _CLOSURE_DISPOSITION_PRIORITY[result[0]] > _CLOSURE_DISPOSITION_PRIORITY[selected[0]]:
+            selected = result
+    return selected
+
+
+def _utf8_bytes(value, subject):
+    if not isinstance(value, str):
+        return (_closure_result("error", subject + " is not a string"), None)
+    try:
+        return (_closure_result("pass"), value.encode("utf-8"))
+    except UnicodeEncodeError:
+        return (_closure_result("error", subject + " is not valid UTF-8"), None)
+
+
+def _resolved_delivery_dependency(entry, completed, subject):
+    if entry is None:
+        return (_closure_result("indeterminate", subject + " authority is unavailable"), None)
+    if not isinstance(entry, dict):
+        return (_closure_result("error", subject + " authority is malformed"), None)
+    available = entry.get("available")
+    if available is False:
+        return (_closure_result("indeterminate", subject + " authority is unavailable"), None)
+    if available is not True:
+        return (_closure_result("error", subject + " availability is malformed"), None)
     lifecycle = entry.get("lifecycle")
     if not isinstance(lifecycle, dict):
-        return False
+        return (_closure_result("error", subject + " lifecycle is malformed"), entry)
     if completed:
-        return (
-            lifecycle.get("state") == "finalized"
-            and lifecycle.get("independentlyResolvable") is True
+        if (
+            lifecycle.get("state") != "finalized"
+            or lifecycle.get("independentlyResolvable") is not True
+        ):
+            return (
+                _closure_result(
+                    "fail", subject + " is not finalized and independently resolvable"
+                ),
+                entry,
+            )
+    elif not _string_member(lifecycle.get("state"), {"included", "finalized"}):
+        return (_closure_result("fail", subject + " is not included or finalized"), entry)
+    return (_closure_result("pass"), entry)
+
+
+def _canonical_method_transaction_ref(transaction_ref):
+    if (
+        not isinstance(transaction_ref, dict)
+        or set(transaction_ref) != {"kind", "value"}
+        or not _nonempty_jcs_string(transaction_ref.get("kind"))
+        or not _nonempty_jcs_string(transaction_ref.get("value"))
+    ):
+        return None
+    try:
+        return canonical(transaction_ref).decode("utf-8")
+    except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+        return None
+
+
+def _delivery_inner_type_valid(record, discriminator):
+    """Retain inert signed extensions, but never coerce a different record type."""
+    discriminators = {
+        "entitlementVersion", "payloadAttestationVersion", "resultVersion",
+        "evidenceVersion", "deliveryEvidenceVersion", "finalityBoundEvidenceVersion",
+    }
+    present = {
+        key for key in record
+        if key in discriminators
+        or (isinstance(key, str)
+            and key.endswith(("EntitlementVersion", "PayloadAttestationVersion")))
+    }
+    return present == {discriminator} and record.get(discriminator) == "1"
+
+
+def validate_delivery_method_evidence(
+    method,
+    method_evidence,
+    transaction_ref,
+    trusted_native_observations_by_canonical_ref,
+    *,
+    delivered_cleartext,
+    delivered_bytes,
+    payload_content_hash,
+    require_finalized,
+):
+    """Fixture-only method dispatch; no production consensus-proof format is implied."""
+    if not isinstance(method, dict) or not isinstance(method.get("kind"), str):
+        return _closure_result("error", "verification method is malformed")
+    if not isinstance(method_evidence, dict):
+        return _closure_result("error", "method evidence is malformed")
+
+    method_kind = method["kind"]
+    if method_kind == "self-signed":
+        if transaction_ref is not None:
+            return _closure_result("fail", "self-signed method carries a native transaction")
+        method_input = method_evidence.get("methodInput")
+        if (
+            method_evidence.get("kind") != "self-signed-payload"
+            or not isinstance(method_input, dict)
+            or set(method_input) != {"identifier", "assertion", "signature"}
+            or method_evidence.get("payloadContentHash") != payload_content_hash
+        ):
+            return _closure_result("error", "self-signed method input is malformed")
+        identifier = method_input.get("identifier")
+        assertion_result, assertion_bytes = _utf8_bytes(
+            method_input.get("assertion"), "self-signed assertion"
         )
-    return _string_member(lifecycle.get("state"), {"included", "finalized"})
+        if assertion_result[0] != "pass":
+            return assertion_result
+        if assertion_bytes != delivered_bytes:
+            return _closure_result("fail", "self-signed assertion is not the delivered payload")
+        signature_value = method_input.get("signature")
+        canonical_ok, _ = sig6_canonical(signature_value)
+        if (
+            not isinstance(identifier, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", identifier)
+            or not canonical_ok
+        ):
+            return _closure_result("error", "self-signed method key or signature is malformed")
+        try:
+            raw_signature = base64.urlsafe_b64decode(
+                signature_value + "=" * (-len(signature_value) % 4)
+            )
+            Ed25519PublicKey.from_public_bytes(bytes.fromhex(identifier)).verify(
+                raw_signature, assertion_bytes
+            )
+        except (InvalidSignature, TypeError, ValueError):
+            return _closure_result("fail", "self-signed method signature does not verify")
+        return _closure_result("pass")
+
+    if method_kind != "consensus-backed-proxy":
+        return _closure_result("error", "unsupported delivery verification method")
+
+    endpoint = method.get("endpoint")
+    request = method_evidence.get("request")
+    response = method_evidence.get("response")
+    transaction = method_evidence.get("transaction")
+    if (
+        not isinstance(endpoint, dict)
+        or not _string_member(endpoint.get("method"), {"GET", "POST"})
+        or not _nonempty_jcs_string(endpoint.get("urlTemplate"))
+        or not isinstance(request, dict)
+        or not isinstance(response, dict)
+        or not isinstance(transaction, dict)
+    ):
+        return _closure_result("error", "consensus-backed proxy evidence is malformed")
+
+    expected_request = {
+        "method": endpoint["method"],
+        "url": endpoint["urlTemplate"],
+    }
+    for optional in ("headers", "body"):
+        if optional in endpoint:
+            expected_request[optional] = endpoint[optional]
+    if request != expected_request:
+        return _closure_result("fail", "native request contradicts the signed method")
+
+    status = response.get("status")
+    response_data_result, response_data_bytes = _utf8_bytes(
+        response.get("data"), "native response data"
+    )
+    if response_data_result[0] != "pass":
+        return response_data_result
+    if (
+        isinstance(status, bool)
+        or not isinstance(status, int)
+        or not 200 <= status < 300
+        or response.get("data") != delivered_cleartext
+        or response.get("responseHash")
+        != hashlib.sha256(response_data_bytes).hexdigest()
+        or response.get("responseHash") != payload_content_hash
+        or not _sha256_hex(response.get("responseHeadersHash"))
+    ):
+        return _closure_result("fail", "native response does not commit to delivered bytes")
+
+    transaction_key = _canonical_method_transaction_ref(transaction_ref)
+    if (
+        transaction_key is None
+        or transaction.get("kind") != transaction_ref.get("kind")
+        or transaction.get("value") != transaction_ref.get("value")
+        or not _string_member(transaction.get("state"), {"included", "finalized"})
+        or method_evidence.get("proofValid") is not True
+        or transaction.get("authenticated") is not True
+    ):
+        return _closure_result("fail", "method envelope contradicts its native transaction")
+    if require_finalized and transaction.get("state") != "finalized":
+        return _closure_result("fail", "terminal delivery native transaction is not finalized")
+
+    observations = trusted_native_observations_by_canonical_ref
+    if observations is None:
+        return _closure_result("indeterminate", "trusted native transaction authority is unavailable")
+    if not isinstance(observations, dict):
+        return _closure_result("error", "trusted native transaction authority is malformed")
+    observation = observations.get(transaction_key)
+    if observation is None:
+        return _closure_result("indeterminate", "trusted native transaction observation is unavailable")
+    if not isinstance(observation, dict):
+        return _closure_result("error", "trusted native transaction observation is malformed")
+    if observation.get("available") is False:
+        if set(observation) != {"available"}:
+            return _closure_result("error", "unavailable native observation has ambiguous fields")
+        return _closure_result("indeterminate", "trusted native transaction observation is unavailable")
+    if (
+        set(observation)
+        != {"available", "transaction", "verificationMethod", "request", "response"}
+        or observation.get("available") is not True
+    ):
+        return _closure_result("error", "trusted native transaction observation is malformed")
+    observed_response = {
+        "status": response.get("status"),
+        "responseHash": response.get("responseHash"),
+        "responseHeadersHash": response.get("responseHeadersHash"),
+    }
+    if (
+        observation.get("transaction") != transaction
+        or observation.get("verificationMethod") != method
+        or observation.get("request") != request
+        or observation.get("response") != observed_response
+    ):
+        return _closure_result("fail", "method envelope contradicts trusted native observation")
+    return _closure_result("pass")
 
 
-def _validate_current_delivery_artifact_closure(
+def _validate_current_delivery_artifact_closure_disposition(
     record,
     phase_key,
     listing,
@@ -1106,46 +1342,65 @@ def _validate_current_delivery_artifact_closure(
     pubkeys,
     execution,
     closure,
+    trusted_native_observations_by_canonical_ref,
 ):
-    """Validate the phase-specific inner closure for successful DeliveryEvidence."""
+    """Validate current delivery closure without collapsing outages into failure."""
     if record.get("outcome") != "success":
-        return (True, "ok")
-    if not isinstance(execution, dict) or not isinstance(closure, dict):
-        return (False, "successful delivery lacks resolved inner-artifact authority")
+        return _closure_result("pass")
+
+    results = []
+    if execution is None:
+        results.append(_closure_result("indeterminate", "session execution authority is unavailable"))
+        execution = {}
+    elif not isinstance(execution, dict):
+        results.append(_closure_result("error", "session execution authority is malformed"))
+        execution = {}
+    if closure is None:
+        return _combine_closure_results(
+            results + [_closure_result("indeterminate", "delivery artifact authority is unavailable")]
+        )
+    if not isinstance(closure, dict):
+        return _combine_closure_results(
+            results + [_closure_result("error", "delivery artifact authority is malformed")]
+        )
+
     phase = record.get("phase")
     phase_index = record.get("phaseIndex")
     job_id = record.get("jobId")
-    if phase_key != f"{phase_index}:{phase}":
-        return (False, "delivery closure phase key does not match signed evidence")
     completed = bundle.get("outcome") == "completed"
-
-    def dependency(name):
-        value = closure.get(name)
-        return value if _resolved_delivery_dependency_valid(value, completed) else None
-
+    if phase_key != f"{phase_index}:{phase}":
+        results.append(_closure_result("fail", "delivery closure phase key does not match signed evidence"))
     deliverable_address = f"dacs4:deliverable:{job_id}:{phase_index}"
     anchor = record.get("deliverableAnchor")
+
     if phase == "deliver-storage-program":
-        if set(closure) != {"deliverable"}:
-            return (False, "storage delivery closure is incomplete or ambiguous")
-        delivered = dependency("deliverable")
-        if (
-            delivered is None
-            or anchor != {"kind": "storage-program", "locator": deliverable_address}
-            or delivered.get("logicalAddress") != deliverable_address
-            or delivered.get("cleartextHash") != record.get("deliverableContentHash")
-        ):
-            return (False, "storage deliverable does not close over the exact job and phase")
-        cleartext = delivered.get("cleartextUtf8")
-        if (
-            not isinstance(cleartext, str)
-            or hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
-            != record.get("deliverableContentHash")
-            or "attestationRef" in record
-            or "credentialDelivery" in record
-        ):
-            return (False, "storage deliverable bytes or phase-only fields are invalid")
-        return (True, "ok")
+        if set(closure) - {"deliverable"}:
+            results.append(_closure_result("error", "storage delivery closure is ambiguous"))
+        dependency_result, delivered = _resolved_delivery_dependency(
+            closure.get("deliverable"), completed, "storage deliverable"
+        )
+        results.append(dependency_result)
+        if anchor != {"kind": "storage-program", "locator": deliverable_address}:
+            results.append(_closure_result("fail", "storage anchor does not bind the exact job and phase"))
+        if delivered is not None:
+            if (
+                delivered.get("logicalAddress") != deliverable_address
+                or delivered.get("cleartextHash") != record.get("deliverableContentHash")
+            ):
+                results.append(_closure_result("fail", "storage deliverable does not close over the exact job and phase"))
+            cleartext_result, cleartext_bytes = _utf8_bytes(
+                delivered.get("cleartextUtf8"), "storage deliverable cleartext"
+            )
+            results.append(cleartext_result)
+            if (
+                cleartext_bytes is not None
+                and hashlib.sha256(cleartext_bytes).hexdigest()
+                != record.get("deliverableContentHash")
+            ):
+                results.append(_closure_result("fail", "storage deliverable bytes do not match delivery evidence"))
+        if "attestationRef" in record or "credentialDelivery" in record:
+            results.append(_closure_result("fail", "storage delivery carries phase-only fields"))
+        return _combine_closure_results(results)
 
     parties = {
         party.get("role"): party.get("primaryClaim")
@@ -1153,25 +1408,52 @@ def _validate_current_delivery_artifact_closure(
         if isinstance(party, dict)
     }
     if phase == "deliver-entitlement":
-        entitlement_entry = dependency("entitlementRecord")
-        if entitlement_entry is None:
-            return (False, "entitlement delivery lacks a resolved finalized record")
-        entitlement = entitlement_entry.get("artifact")
-        if not isinstance(entitlement, dict):
-            return (False, "resolved entitlement record is malformed")
-        renewal_seq = entitlement.get("renewalSeq")
-        entitlement_address = (
-            f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
+        if set(closure) - {"entitlementRecord", "credential"}:
+            results.append(_closure_result("error", "entitlement delivery closure is ambiguous"))
+        offering = listing.get("offering")
+        deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
+        duration_sec = (
+            deliverable_spec.get("durationSec") if isinstance(deliverable_spec, dict) else None
         )
+        renewable = (
+            deliverable_spec.get("renewable") if isinstance(deliverable_spec, dict) else None
+        )
+        if (
+            not isinstance(deliverable_spec, dict)
+            or deliverable_spec.get("kind") != "entitlement"
+            or not _non_boolean_number(duration_sec)
+            or not isinstance(renewable, bool)
+        ):
+            results.append(_closure_result("fail", "signed entitlement DeliverableSpec is malformed"))
+
+        dependency_result, entitlement_entry = _resolved_delivery_dependency(
+            closure.get("entitlementRecord"), completed, "entitlement record"
+        )
+        results.append(dependency_result)
+        entitlement = entitlement_entry.get("artifact") if entitlement_entry is not None else None
+        if entitlement_entry is not None and not isinstance(entitlement, dict):
+            results.append(_closure_result("error", "resolved entitlement record is malformed"))
+            entitlement = None
+        if entitlement is None:
+            return _combine_closure_results(results)
+
+        renewal_seq = entitlement.get("renewalSeq")
+        entitlement_address = f"dacs4:entitlement:{job_id}:{phase_index}:{renewal_seq}"
         required = {
             "entitlementVersion", "jobId", "grantee", "grantor", "startsAt",
             "endsAt", "scope", "renewable", "renewalSeq", "signature",
         }
-        optional = {"serviceEndpoint", "credentialRef"}
+        terms_match = (
+            _non_boolean_number(duration_sec)
+            and _non_boolean_number(entitlement.get("startsAt"))
+            and _non_boolean_number(entitlement.get("endsAt"))
+            and entitlement["endsAt"] == entitlement["startsAt"] + duration_sec * 1000
+            and isinstance(renewable, bool)
+            and entitlement.get("renewable") == renewable
+        )
         if (
             not required <= set(entitlement)
-            or set(entitlement) - required - optional
-            or entitlement.get("entitlementVersion") != "1"
+            or not _delivery_inner_type_valid(entitlement, "entitlementVersion")
             or entitlement.get("jobId") != job_id
             or entitlement.get("grantee") != parties.get("buyer")
             or entitlement.get("grantor") != parties.get("seller")
@@ -1181,9 +1463,10 @@ def _validate_current_delivery_artifact_closure(
             or renewal_seq > _MAX_SAFE_JSON_INTEGER
             or not _non_boolean_number(entitlement.get("startsAt"))
             or not _non_boolean_number(entitlement.get("endsAt"))
-            or entitlement["endsAt"] < entitlement["startsAt"]
+            or entitlement.get("endsAt", 0) < entitlement.get("startsAt", 0)
             or not isinstance(entitlement.get("scope"), dict)
             or not isinstance(entitlement.get("renewable"), bool)
+            or not terms_match
             or not _signed_inner_artifact_valid(
                 entitlement,
                 ENTITLEMENT_DOMAIN,
@@ -1192,65 +1475,106 @@ def _validate_current_delivery_artifact_closure(
             )
             or anchor != {"kind": "storage-program", "locator": entitlement_address}
             or entitlement_entry.get("logicalAddress") != entitlement_address
-            or record.get("deliverableContentHash")
-            != _artifact_content_hash(entitlement)
+            or record.get("deliverableContentHash") != _artifact_content_hash(entitlement)
             or "attestationRef" in record
         ):
-            return (False, "entitlement record does not close over the exact job and phase")
+            results.append(_closure_result("fail", "entitlement record does not close over the signed offering, job, and phase"))
 
         credential_ref = entitlement.get("credentialRef")
         binding = record.get("credentialDelivery")
         if credential_ref is None:
-            if binding is not None or set(closure) != {"entitlementRecord"}:
-                return (False, "credential-free entitlement has contradictory delivery data")
-            return (True, "ok")
-        if binding is None or set(closure) != {"entitlementRecord", "credential"}:
-            return (False, "credential entitlement lacks its exact delivery binding")
-        credential = dependency("credential")
+            if binding is not None or "credential" in closure:
+                results.append(_closure_result("fail", "credential-free entitlement has contradictory delivery data"))
+            return _combine_closure_results(results)
+        if not isinstance(binding, dict):
+            results.append(_closure_result("fail", "credential entitlement lacks its exact delivery binding"))
+            binding = {}
+        credential_result, credential = _resolved_delivery_dependency(
+            closure.get("credential"), completed, "entitlement credential"
+        )
+        results.append(credential_result)
         ref_value = credential_ref.get("ref") if isinstance(credential_ref, dict) else None
+        ref_content_hash = (
+            ref_value.get("contentHash") if isinstance(ref_value, dict) else None
+        )
+        try:
+            exact_credential_ref = canonical(binding.get("credentialRef")) == canonical(credential_ref)
+        except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+            exact_credential_ref = False
         if (
-            credential is None
-            or not _attestation_ref_shape_valid(ref_value)
-            or canonical(binding.get("credentialRef")) != canonical(credential_ref)
+            not _attestation_ref_shape_valid(ref_value)
+            or not exact_credential_ref
             or binding.get("renewalSeq") != renewal_seq
-            or credential.get("credentialRef") != credential_ref
-            or credential.get("storedContentHash") != ref_value.get("contentHash")
-            or credential.get("cleartextHash")
-            != binding.get("credentialCleartextHash")
         ):
-            return (False, "credential delivery does not close over the signed entitlement")
-        return (True, "ok")
+            results.append(_closure_result("fail", "credential delivery does not close over the signed entitlement"))
+        if credential is not None and (
+            credential.get("credentialRef") != credential_ref
+            or credential.get("storedContentHash") != ref_content_hash
+            or credential.get("cleartextHash") != binding.get("credentialCleartextHash")
+        ):
+            results.append(_closure_result("fail", "credential delivery does not close over the signed entitlement"))
+        return _combine_closure_results(results)
 
     if phase != "deliver-attested-payload":
-        return (False, "unsupported delivery phase closure")
-    if set(closure) != {
+        return _combine_closure_results(
+            results + [_closure_result("error", "unsupported delivery phase closure")]
+        )
+
+    expected_closure_fields = {
         "agreementHash", "deliverable", "payloadAttestationRecord", "methodEvidence"
-    }:
-        return (False, "attested-payload closure is incomplete or ambiguous")
-    delivered = dependency("deliverable")
-    attestation_entry = dependency("payloadAttestationRecord")
-    method_entry = dependency("methodEvidence")
-    if delivered is None or attestation_entry is None or method_entry is None:
-        return (False, "attested payload dependency is unresolved or below lifecycle threshold")
-    if (
-        not isinstance(anchor, dict)
-        or anchor.get("locator") != deliverable_address
-        or delivered.get("logicalAddress") != deliverable_address
+    }
+    if set(closure) - expected_closure_fields:
+        results.append(_closure_result("error", "attested-payload closure is ambiguous"))
+    delivered = attestation_entry = method_entry = None
+    for name, subject in (
+        ("deliverable", "attested payload"),
+        ("payloadAttestationRecord", "payload attestation record"),
+        ("methodEvidence", "method evidence"),
+    ):
+        dependency_result, dependency_entry = _resolved_delivery_dependency(
+            closure.get(name), completed, subject
+        )
+        results.append(dependency_result)
+        if name == "deliverable":
+            delivered = dependency_entry
+        elif name == "payloadAttestationRecord":
+            attestation_entry = dependency_entry
+        else:
+            method_entry = dependency_entry
+    if closure.get("agreementHash") is None:
+        results.append(_closure_result("indeterminate", "agreement hash authority is unavailable"))
+    if not isinstance(anchor, dict) or anchor.get("locator") != deliverable_address:
+        results.append(_closure_result("fail", "attested payload anchor does not bind the exact job and phase"))
+    if delivered is not None and (
+        delivered.get("logicalAddress") != deliverable_address
         or delivered.get("cleartextHash") != record.get("deliverableContentHash")
     ):
-        return (False, "attested payload does not close over the exact job and phase")
-    cleartext = delivered.get("cleartextUtf8")
-    if (
-        not isinstance(cleartext, str)
-        or hashlib.sha256(cleartext.encode("utf-8")).hexdigest()
-        != record.get("deliverableContentHash")
-    ):
-        return (False, "attested payload bytes do not match delivery evidence")
+        results.append(_closure_result("fail", "attested payload does not close over the exact job and phase"))
+
+    cleartext = delivered.get("cleartextUtf8") if delivered is not None else None
+    cleartext_bytes = None
+    if delivered is not None:
+        cleartext_result, cleartext_bytes = _utf8_bytes(
+            cleartext, "attested payload cleartext"
+        )
+        results.append(cleartext_result)
+        if (
+            cleartext_bytes is not None
+            and hashlib.sha256(cleartext_bytes).hexdigest()
+            != record.get("deliverableContentHash")
+        ):
+            results.append(_closure_result("fail", "attested payload bytes do not match delivery evidence"))
 
     attestation_ref = record.get("attestationRef")
-    payload_record = attestation_entry.get("artifact")
-    if not isinstance(payload_record, dict) or not _attestation_ref_shape_valid(attestation_ref):
-        return (False, "payload attestation reference or record is malformed")
+    payload_record = attestation_entry.get("artifact") if attestation_entry is not None else None
+    if attestation_entry is not None and not isinstance(payload_record, dict):
+        results.append(_closure_result("error", "resolved payload attestation record is malformed"))
+        payload_record = None
+    if not _attestation_ref_shape_valid(attestation_ref):
+        results.append(_closure_result("error", "payload attestation reference is malformed"))
+    if payload_record is None:
+        return _combine_closure_results(results)
+
     required = {
         "payloadAttestationVersion", "jobId", "agreementHash",
         "deliverableSpecHash", "payloadFormat", "payloadContentHash",
@@ -1258,19 +1582,20 @@ def _validate_current_delivery_artifact_closure(
         "reason", "methodEvidenceRef", "methodTransactionRef", "verifiedAt",
         "signature",
     }
-    if set(payload_record) != required:
-        return (False, "payload attestation record does not satisfy its closed pass shape")
+    if not required <= set(payload_record) or not _delivery_inner_type_valid(
+        payload_record, "payloadAttestationVersion"
+    ):
+        results.append(_closure_result("error", "payload attestation record lacks required fields or has an unsupported type"))
     attempt = payload_record.get("attempt")
     method_hash = payload_record.get("verificationMethodHash")
-    attestation_address = (
-        f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:{attempt}"
-    )
+    attestation_address = f"dacs4:payload-attestation:{job_id}:{phase_index}:{method_hash}:{attempt}"
     signature = payload_record.get("signature")
     if (
         isinstance(attempt, bool)
         or not isinstance(attempt, int)
         or attempt < 0
         or attempt > _MAX_SAFE_JSON_INTEGER
+        or not isinstance(attestation_ref, dict)
         or attestation_ref.get("anchor")
         != {"kind": "storage-program", "locator": attestation_address}
         or attestation_entry.get("logicalAddress") != attestation_address
@@ -1284,7 +1609,7 @@ def _validate_current_delivery_artifact_closure(
             payload_record, PAYLOAD_ATTESTATION_DOMAIN, pubkeys
         )
     ):
-        return (False, "payload attestation does not bind its exact phase-indexed artifact")
+        results.append(_closure_result("fail", "payload attestation does not bind its exact phase-indexed artifact"))
 
     offering = listing.get("offering")
     deliverable_spec = offering.get("deliverable") if isinstance(offering, dict) else None
@@ -1293,55 +1618,46 @@ def _validate_current_delivery_artifact_closure(
         if isinstance(deliverable_spec, dict) else None
     )
     if (
-        not isinstance(method, dict)
+        not isinstance(deliverable_spec, dict)
+        or not isinstance(method, dict)
         or deliverable_spec.get("kind") != "attested-payload"
         or payload_record.get("jobId") != job_id
         or payload_record.get("agreementHash") != execution.get("agreementHash")
         or payload_record.get("agreementHash") != closure.get("agreementHash")
-        or payload_record.get("deliverableSpecHash")
-        != _artifact_content_hash(deliverable_spec)
+        or payload_record.get("deliverableSpecHash") != _artifact_content_hash(deliverable_spec)
         or payload_record.get("payloadFormat") != deliverable_spec.get("payloadFormat")
-        or payload_record.get("payloadContentHash")
-        != record.get("deliverableContentHash")
+        or payload_record.get("payloadContentHash") != record.get("deliverableContentHash")
         or payload_record.get("verificationMethod") != method.get("kind")
         or payload_record.get("verificationMethodHash") != _artifact_content_hash(method)
         or payload_record.get("decision") != "pass"
         or "credentialDelivery" in record
     ):
-        return (False, "payload attestation does not bind authenticated commerce context")
+        results.append(_closure_result("fail", "payload attestation does not bind authenticated commerce context"))
 
     method_ref = payload_record.get("methodEvidenceRef")
-    method_evidence = method_entry.get("artifact")
-    if not _attestation_ref_shape_valid(method_ref) or not isinstance(method_evidence, dict):
-        return (False, "method evidence reference or record is malformed")
-    endpoint = method.get("endpoint")
-    request = method_evidence.get("request")
-    response = method_evidence.get("response")
-    transaction = method_evidence.get("transaction")
-    transaction_ref = payload_record.get("methodTransactionRef")
-    if (
+    method_evidence = method_entry.get("artifact") if method_entry is not None else None
+    if method_entry is not None and not isinstance(method_evidence, dict):
+        results.append(_closure_result("error", "resolved method evidence is malformed"))
+        method_evidence = None
+    if not _attestation_ref_shape_valid(method_ref):
+        results.append(_closure_result("error", "method evidence reference is malformed"))
+    elif method_entry is not None and (
         method_entry.get("logicalAddress") != method_ref.get("anchor", {}).get("locator")
         or method_ref.get("contentHash") != _artifact_content_hash(method_evidence)
-        or not isinstance(endpoint, dict)
-        or not isinstance(request, dict)
-        or not isinstance(response, dict)
-        or not isinstance(transaction, dict)
-        or request.get("method") != endpoint.get("method")
-        or request.get("url") != endpoint.get("urlTemplate")
-        or isinstance(response.get("status"), bool)
-        or not isinstance(response.get("status"), int)
-        or not 200 <= response["status"] < 300
-        or response.get("data") != cleartext
-        or response.get("responseHash") != record.get("deliverableContentHash")
-        or method_evidence.get("proofValid") is not True
-        or not isinstance(transaction_ref, dict)
-        or transaction_ref.get("kind") != transaction.get("kind")
-        or transaction_ref.get("value") != transaction.get("value")
-        or not _string_member(transaction.get("state"), {"included", "finalized"})
-        or transaction.get("authenticated") is not True
     ):
-        return (False, "payload method proof does not authenticate the delivered bytes")
-    return (True, "ok")
+        results.append(_closure_result("fail", "method evidence does not match its authenticated reference"))
+    if method_evidence is not None and cleartext_bytes is not None:
+        results.append(validate_delivery_method_evidence(
+            method,
+            method_evidence,
+            payload_record.get("methodTransactionRef"),
+            trusted_native_observations_by_canonical_ref,
+            delivered_cleartext=cleartext,
+            delivered_bytes=cleartext_bytes,
+            payload_content_hash=record.get("deliverableContentHash"),
+            require_finalized=completed,
+        ))
+    return _combine_closure_results(results)
 
 
 def _evidence_wire_type(record):
@@ -1464,7 +1780,7 @@ def _known_authenticated_st8_successor(
     return False
 
 
-def validate_ebfab(
+def _validate_ebfab_boolean(
     bundle,
     listing,
     pubkeys,
@@ -1473,6 +1789,7 @@ def validate_ebfab(
     session_execution_authority_by_phase_key,
     verified_receipt_by_canonical_ref,
     delivery_artifact_authority_by_phase_key=None,
+    trusted_native_observations_by_canonical_ref=None,
 ):
     """Execute the authenticated SEB gate needed before EBFAB reconciliation.
 
@@ -1662,6 +1979,7 @@ def validate_ebfab(
         return (False, "settlementEvidence member lacks exact authenticated resolution", None)
     authenticated_records = []
     actual_keys = []
+    pending_closure_result = None
     for ref, resolution in zip(actual_refs, exact_resolutions):
         record = resolution.get("record")
         if not isinstance(record, dict):
@@ -1737,7 +2055,8 @@ def validate_ebfab(
                 if isinstance(delivery_artifact_authority_by_phase_key, dict)
                 else {}
             )
-            closure_ok, closure_reason = _validate_current_delivery_artifact_closure(
+            closure_disposition, closure_reason = (
+                _validate_current_delivery_artifact_closure_disposition(
                 record,
                 phase_key,
                 listing,
@@ -1745,9 +2064,16 @@ def validate_ebfab(
                 pubkeys,
                 session_execution_authority_by_phase_key.get(phase_key),
                 delivery_authority.get(phase_key),
-            )
-            if not closure_ok:
-                return (False, closure_reason, None)
+                trusted_native_observations_by_canonical_ref,
+            ))
+            if closure_disposition in {"fail", "error"}:
+                return (
+                    False,
+                    _DispositionReason(closure_reason, closure_disposition),
+                    None,
+                )
+            if closure_disposition == "indeterminate" and pending_closure_result is None:
+                pending_closure_result = (closure_disposition, closure_reason)
         actual_keys.append(phase_key)
         authenticated_records.append((ref, resolution, record, phase_key, resolved_record))
     if (
@@ -1906,21 +2232,39 @@ def validate_ebfab(
         bundle_lifecycle.get("state"), {"included", "finalized"}
     ):
         return (False, "failed or aborted EBFAB is not included or finalized", None)
+    if pending_closure_result is not None:
+        disposition, reason = pending_closure_result
+        return (False, _DispositionReason(reason, disposition), None)
     return (True, "ok", expected_keys)
 
 
-def _tagged_copy_valid_for_derive(tagged):
-    """Reject an EBFAB before divergence/ranking unless its authenticated SEB gate passes."""
+def validate_ebfab_disposition(*args, **kwargs):
+    """Return pass/fail/indeterminate/error while retaining phase keys on pass."""
+    ok, reason, phase_keys = _validate_ebfab_boolean(*args, **kwargs)
+    if ok:
+        return ("pass", str(reason), phase_keys)
+    disposition = getattr(reason, "disposition", "fail")
+    return (disposition, str(reason), None)
+
+
+def validate_ebfab(*args, **kwargs):
+    """Backward-compatible Boolean wrapper for existing reference consumers."""
+    disposition, reason, phase_keys = validate_ebfab_disposition(*args, **kwargs)
+    return (disposition == "pass", reason, phase_keys)
+
+
+def _tagged_copy_validation_for_derive(tagged):
+    """Preserve the SEB disposition/reason before divergence and ranking."""
     bundle = tagged.get("bundle")
     kind = bundle_type(bundle)
     if kind is None:
-        return False
+        return ("error", "tagged copy has an unsupported bundle type")
     if kind != "evidence-bound":
-        return True
+        return ("pass", "non-EBFAB copy uses its existing admission path")
     authority = tagged.get("ebfabAuthority")
     if not isinstance(authority, dict):
-        return False
-    ok, _, _ = validate_ebfab(
+        return ("indeterminate", "EBFAB validation authority is unavailable")
+    disposition, reason, _ = validate_ebfab_disposition(
         bundle,
         authority.get("listing"),
         authority.get("publicKeys"),
@@ -1929,8 +2273,15 @@ def _tagged_copy_valid_for_derive(tagged):
         authority.get("sessionExecutionAuthorityByPhaseKey"),
         authority.get("verifiedReceiptByCanonicalRef"),
         authority.get("deliveryArtifactAuthorityByPhaseKey"),
+        authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
     )
-    return ok
+    return (disposition, reason)
+
+
+def _tagged_copy_valid_for_derive(tagged):
+    """Backward-compatible Boolean admission wrapper."""
+    disposition, _ = _tagged_copy_validation_for_derive(tagged)
+    return disposition == "pass"
 
 
 def _post_fetch_valid(fetched, binding, pubkeys):
@@ -2401,8 +2752,12 @@ def resolve_absolute_fault_pointer(
         return {"ok": False, "reason": "faultedParty is outside the §10.4.1 permissible set"}
     if pointer_kind == "evidence-bound":
         if not isinstance(ebfab_authority, dict):
-            return {"ok": False, "reason": "EBFAB pointer lacks SEB validation authority"}
-        seb_ok, seb_reason, _ = validate_ebfab(
+            return {
+                "ok": False,
+                "disposition": "indeterminate",
+                "reason": "EBFAB pointer lacks SEB validation authority",
+            }
+        seb_disposition, seb_reason, _ = validate_ebfab_disposition(
             dereferenced_bundle,
             ebfab_authority.get("listing"),
             pubkeys,
@@ -2411,9 +2766,14 @@ def resolve_absolute_fault_pointer(
             ebfab_authority.get("sessionExecutionAuthorityByPhaseKey"),
             ebfab_authority.get("verifiedReceiptByCanonicalRef"),
             ebfab_authority.get("deliveryArtifactAuthorityByPhaseKey"),
+            ebfab_authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
         )
-        if not seb_ok:
-            return {"ok": False, "reason": "dereferenced EBFAB fails SEB: " + seb_reason}
+        if seb_disposition != "pass":
+            return {
+                "ok": False,
+                "disposition": seb_disposition,
+                "reason": "dereferenced EBFAB fails SEB: " + seb_reason,
+            }
 
     signature = pointer.get("signature")
     if not isinstance(signature, dict) or signature.get("algorithm") != "ed25519":
@@ -2448,7 +2808,11 @@ def resolve_absolute_fault_pointer(
         )
         if not binding_result["ok"]:
             return {"ok": False, "reason": "binding invalid: " + binding_result["reason"]}
-    return {"ok": True, "reason": "pointer type, signature, and triple identity hold"}
+    return {
+        "ok": True,
+        "disposition": "pass",
+        "reason": "pointer type, signature, and triple identity hold",
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -2466,7 +2830,16 @@ def _role_of_party(bundle, party):
     return None
 
 
-def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt", *, job_bound=False):
+def _derive(
+    party,
+    tagged_bundles,
+    window_start,
+    window_end,
+    basis="finalisedAt",
+    *,
+    job_bound=False,
+    excluded_dispositions=None,
+):
     """Executes the named §10.5.1 reputation-derivation predicates over selected fields; not a
     complete ReplayableReputationDerivation implementation.
 
@@ -2531,9 +2904,17 @@ def _derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt"
             if bundle.get("jobId") != resolved_job:
                 rejected_selected_jobs.add(resolved_job)
                 continue
-            if kind == "evidence-bound" and not _tagged_copy_valid_for_derive(tagged):
-                rejected_selected_jobs.add(resolved_job)
-                continue
+            if kind == "evidence-bound":
+                disposition, reason = _tagged_copy_validation_for_derive(tagged)
+                if disposition != "pass":
+                    rejected_selected_jobs.add(resolved_job)
+                    if isinstance(excluded_dispositions, list):
+                        excluded_dispositions.append({
+                            "resolvedJobId": resolved_job,
+                            "disposition": disposition,
+                            "reason": reason,
+                        })
+                    continue
             if party not in _primary_claims(bundle):
                 continue
             timestamp = bundle.get(clock)
@@ -2686,9 +3067,25 @@ def derive(party, tagged_bundles, window_start, window_end, basis="finalisedAt")
     return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=False)
 
 
-def derive_job_bound(party, tagged_bundles, window_start, window_end, basis="finalisedAt"):
+def derive_job_bound(
+    party,
+    tagged_bundles,
+    window_start,
+    window_end,
+    basis="finalisedAt",
+    *,
+    excluded_dispositions=None,
+):
     """Emit the distinct job-bound replay receipt used by strengthened EBFAB replay."""
-    return _derive(party, tagged_bundles, window_start, window_end, basis, job_bound=True)
+    return _derive(
+        party,
+        tagged_bundles,
+        window_start,
+        window_end,
+        basis,
+        job_bound=True,
+        excluded_dispositions=excluded_dispositions,
+    )
 
 
 def is_replayable_derivation(d):

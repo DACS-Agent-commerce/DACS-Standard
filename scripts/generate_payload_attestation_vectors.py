@@ -17,6 +17,8 @@ from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+import jcs
+
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = (
@@ -39,12 +41,7 @@ PAYLOAD_TEXT = '{"classification":"approved","score":0.98}'
 
 
 def canonical_bytes(value: Any) -> bytes:
-    return json.dumps(
-        value,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
+    return jcs.canonicalize(value).encode("utf-8")
 
 
 def hash_hex(value: Any) -> str:
@@ -80,6 +77,21 @@ def attestation_ref(record: dict) -> dict:
         },
         "contentHash": hash_hex(unsigned),
         "signer": record["signature"]["signer"],
+    }
+
+
+def trusted_native_observation(method: dict, method_evidence: dict) -> dict:
+    response = method_evidence["response"]
+    return {
+        "available": True,
+        "transaction": copy.deepcopy(method_evidence["transaction"]),
+        "verificationMethod": copy.deepcopy(method),
+        "request": copy.deepcopy(method_evidence["request"]),
+        "response": {
+            "status": response["status"],
+            "responseHash": response["responseHash"],
+            "responseHeadersHash": response["responseHeadersHash"],
+        },
     }
 
 
@@ -125,6 +137,10 @@ def base_case() -> dict:
         "contentHash": hash_hex(method_evidence),
         "signer": "substrate-validator-set:demos-mainnet:42",
     }
+    transaction_ref = {
+        "kind": "demos-web2-request",
+        "value": "c3" * 32,
+    }
     record = {
         "payloadAttestationVersion": "1",
         "jobId": JOB_ID,
@@ -138,10 +154,7 @@ def base_case() -> dict:
         "decision": "pass",
         "reason": "DAHR response commitment verified",
         "methodEvidenceRef": method_ref,
-        "methodTransactionRef": {
-            "kind": "demos-web2-request",
-            "value": "c3" * 32,
-        },
+        "methodTransactionRef": transaction_ref,
         "verifiedAt": 1785495600000,
         "signature": {
             "algorithm": "ed25519",
@@ -185,6 +198,11 @@ def base_case() -> dict:
         },
         "payloadUtf8": PAYLOAD_TEXT,
         "methodEvidence": method_evidence,
+        "trustedNativeTransactionObservationsByCanonicalRef": {
+            canonical_bytes(transaction_ref).decode("utf-8"): trusted_native_observation(
+                method, method_evidence
+            ),
+        },
         "payloadAttestationRecord": record,
         "payloadAttestationRef": record_ref,
         "settlementEvidence": settlement,
@@ -220,11 +238,16 @@ def build_vectors() -> list[dict]:
         deliverable = case["listing"]["offering"]["deliverable"]
         deliverable["verificationMethod"] = method
         case["agreement"]["deliverable"]["hash"] = hash_hex(deliverable)
+        assertion = case["payloadUtf8"]
+        signer = Ed25519PrivateKey.from_private_bytes(VERIFIER_SEED)
         proof = {
             "kind": "self-signed-payload",
-            "payloadContentHash": hash_bytes(case["payloadUtf8"].encode("utf-8")),
-            "signer": VERIFIER,
-            "signatureValid": True,
+            "payloadContentHash": hash_bytes(assertion.encode("utf-8")),
+            "methodInput": {
+                "identifier": signer.public_key().public_bytes_raw().hex(),
+                "assertion": assertion,
+                "signature": b64url(signer.sign(assertion.encode("utf-8"))),
+            },
         }
         case["methodEvidence"] = proof
         record = case["payloadAttestationRecord"]
@@ -241,6 +264,7 @@ def build_vectors() -> list[dict]:
             "signer": VERIFIER,
         }
         record.pop("methodTransactionRef")
+        case["trustedNativeTransactionObservationsByCanonicalRef"] = {}
         refresh_record_and_evidence(case)
 
     vectors.append(vector(
@@ -248,6 +272,24 @@ def build_vectors() -> list[dict]:
         "pass",
         "self-signed is permitted only as an explicit minimal-trust method with a payload-bound proof",
         self_signed,
+    ))
+
+    def invalid_self_signed(case: dict) -> None:
+        self_signed(case)
+        signature = case["methodEvidence"]["methodInput"]["signature"]
+        case["methodEvidence"]["methodInput"]["signature"] = (
+            ("A" if signature[0] != "A" else "B") + signature[1:]
+        )
+        case["payloadAttestationRecord"]["methodEvidenceRef"]["contentHash"] = hash_hex(
+            case["methodEvidence"]
+        )
+        refresh_record_and_evidence(case)
+
+    vectors.append(vector(
+        "self-signed-method-input-signature-invalid",
+        "fail",
+        "self-signed verifies the actual method input signature, not a Boolean assertion",
+        invalid_self_signed,
     ))
 
     def missing_method(case: dict) -> None:
@@ -422,6 +464,69 @@ def build_vectors() -> list[dict]:
         "fail",
         "broadcast/RPC acknowledgement is not consensus evidence",
         unauthenticated_tx,
+    ))
+
+    def arbitrary_resigned_tx(case: dict) -> None:
+        replacement = "ee" * 32
+        case["methodEvidence"]["transaction"]["value"] = replacement
+        case["payloadAttestationRecord"]["methodTransactionRef"]["value"] = replacement
+        case["payloadAttestationRecord"]["methodEvidenceRef"]["contentHash"] = hash_hex(
+            case["methodEvidence"]
+        )
+        refresh_record_and_evidence(case)
+
+    vectors.append(vector(
+        "resigned-arbitrary-native-transaction-unobserved",
+        "indeterminate",
+        "self-consistent booleans cannot authenticate a transaction absent trusted observation",
+        arbitrary_resigned_tx,
+    ))
+
+    def native_observation_mismatch(case: dict) -> None:
+        observation = next(iter(
+            case["trustedNativeTransactionObservationsByCanonicalRef"].values()
+        ))
+        observation["response"]["responseHash"] = "00" * 32
+
+    vectors.append(vector(
+        "native-transaction-observation-contradicts-envelope",
+        "fail",
+        "a resolved trusted native contradiction is a clean failure",
+        native_observation_mismatch,
+    ))
+
+    def native_observation_unavailable(case: dict) -> None:
+        key = next(iter(case["trustedNativeTransactionObservationsByCanonicalRef"]))
+        case["trustedNativeTransactionObservationsByCanonicalRef"][key] = {
+            "available": False
+        }
+
+    vectors.append(vector(
+        "native-transaction-observation-unavailable",
+        "indeterminate",
+        "well-formed native authority unavailability remains indeterminate",
+        native_observation_unavailable,
+    ))
+
+    def standalone_included(case: dict) -> None:
+        case["methodEvidence"]["transaction"]["state"] = "included"
+        case["payloadAttestationRecord"]["methodEvidenceRef"]["contentHash"] = hash_hex(
+            case["methodEvidence"]
+        )
+        key = next(iter(case["trustedNativeTransactionObservationsByCanonicalRef"]))
+        case["trustedNativeTransactionObservationsByCanonicalRef"][key] = (
+            trusted_native_observation(
+                case["listing"]["offering"]["deliverable"]["verificationMethod"],
+                case["methodEvidence"],
+            )
+        )
+        refresh_record_and_evidence(case)
+
+    vectors.append(vector(
+        "standalone-included-native-observation",
+        "pass",
+        "DPA-3 standalone verification retains included-or-stronger compatibility",
+        standalone_included,
     ))
 
     def request_mismatch(case: dict) -> None:

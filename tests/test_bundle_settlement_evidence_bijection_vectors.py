@@ -18,7 +18,7 @@ CORE = ROOT / "spec/CORE.md"
 
 
 def canonical_json(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    return R.canonical(value)
 
 
 def decode(value):
@@ -75,6 +75,19 @@ def resign_listing(listing, seed):
     )
 
 
+def resign_inner_artifact(artifact, seed, domain):
+    signer = artifact["signature"]["signer"]
+    artifact["signature"] = {
+        "signer": signer,
+        "algorithm": "ed25519",
+        "value": "",
+    }
+    payload = (domain + R._artifact_content_hash(artifact)).encode("utf-8")
+    artifact["signature"]["value"] = encode(
+        Ed25519PrivateKey.from_private_bytes(bytes.fromhex(seed)).sign(payload)
+    )
+
+
 def replace_top_record(authority, phase, mutate, seeds):
     """Replace one authenticated top-level record and every hash-bound reference."""
     bundle = authority["bundle"]
@@ -86,9 +99,18 @@ def replace_top_record(authority, phase, mutate, seeds):
             authority["referenceValidationByCanonicalRef"].pop(old_key)
             record = resolution["record"]
             mutate(record)
-            resign_evidence(record, seeds["seller"])
+            try:
+                resign_evidence(record, seeds["seller"])
+                replacement_hash = R.settlement_evidence_hash(record)
+            except (TypeError, ValueError, UnicodeEncodeError, RecursionError):
+                # Malformed/non-JCS records cannot honestly be re-signed. Keep the
+                # mutated record at its original resolution key so the real shape
+                # gate, which precedes hash/signature verification, exercises it.
+                authority["referenceValidationByCanonicalRef"][old_key] = resolution
+                authority["verifiedReceiptByCanonicalRef"][old_key] = receipt
+                return
             new_ref = copy.deepcopy(old_ref)
-            new_ref["contentHash"] = R.settlement_evidence_hash(record)
+            new_ref["contentHash"] = replacement_hash
             new_key = R.canonical(new_ref).decode("utf-8")
             receipt["contentHash"] = new_ref["contentHash"]
             authority["referenceValidationByCanonicalRef"][new_key] = resolution
@@ -110,8 +132,8 @@ def valid_htlc_tx_refs():
     ]
 
 
-def derive_phase_keys(authority, pubkeys):
-    ok, _, phase_keys = R.validate_ebfab(
+def derive_phase_disposition(authority, pubkeys):
+    return R.validate_ebfab_disposition(
         authority.get("bundle"),
         authority.get("listing"),
         pubkeys,
@@ -120,14 +142,23 @@ def derive_phase_keys(authority, pubkeys):
         authority.get("sessionExecutionAuthorityByPhaseKey"),
         authority.get("verifiedReceiptByCanonicalRef"),
         authority.get("deliveryArtifactAuthorityByPhaseKey"),
+        authority.get("trustedNativeTransactionObservationsByCanonicalRef"),
     )
-    return phase_keys if ok else None
+
+
+def derive_phase_keys(authority, pubkeys):
+    disposition, _, phase_keys = derive_phase_disposition(authority, pubkeys)
+    return phase_keys if disposition == "pass" else None
 
 
 def evaluate(vector_data, authorities, pubkeys):
     authority = authorities.get(vector_data.get("executionAuthorityRef"))
-    expected = derive_phase_keys(authority or {}, pubkeys)
-    if expected is None:
+    if authority is None:
+        return "rejected", "execution-authority"
+    authority_disposition, _, expected = derive_phase_disposition(authority, pubkeys)
+    if authority_disposition == "indeterminate":
+        return "indeterminate", "execution-authority-indeterminate"
+    if authority_disposition != "pass":
         return "rejected", "execution-authority"
 
     refs = vector_data["topLevelRefs"]
@@ -435,6 +466,204 @@ class BundleSettlementEvidenceBijectionTests(unittest.TestCase):
                     signature["value"],
                 ))
                 self.assertIsNone(derive_phase_keys(authority, self.pubkeys))
+
+    def test_entitlement_terms_are_bound_to_the_signed_offering(self):
+        for name in (
+            "invalid-entitlement-duration-closure",
+            "invalid-entitlement-renewable-closure",
+        ):
+            with self.subTest(authority=name):
+                disposition, reason, _ = derive_phase_disposition(
+                    self.data["executionAuthorities"][name], self.pubkeys
+                )
+                self.assertEqual(disposition, "fail", reason)
+
+        for duration, start_shift in ((0.5, 123_456), (0, 86_400_000), (0.0001, 0)):
+            authority = copy.deepcopy(
+                self.data["executionAuthorities"]["repeated-pay-completed"]
+            )
+            deliverable_spec = authority["listing"]["offering"]["deliverable"]
+            deliverable_spec["durationSec"] = duration
+            resign_listing(authority["listing"], self.data["seeds"]["seller"])
+            authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+                authority["listing"]
+            )
+            entitlement = authority["deliveryArtifactAuthorityByPhaseKey"][
+                "2:deliver-entitlement"
+            ]["entitlementRecord"]["artifact"]
+            entitlement["startsAt"] += start_shift
+            if duration == 0.0001:
+                entitlement["startsAt"] = 0.2
+            entitlement["endsAt"] = entitlement["startsAt"] + duration * 1000
+            resign_inner_artifact(
+                entitlement,
+                self.data["seeds"]["seller"],
+                R.ENTITLEMENT_DOMAIN,
+            )
+            entitlement_hash = R._artifact_content_hash(entitlement)
+            replace_top_record(
+                authority,
+                "deliver-entitlement",
+                lambda record: record.__setitem__(
+                    "deliverableContentHash", entitlement_hash
+                ),
+                self.data["seeds"],
+            )
+            with self.subTest(duration=duration, start_shift=start_shift):
+                disposition, reason, _ = derive_phase_disposition(
+                    authority, self.pubkeys
+                )
+                self.assertEqual(disposition, "pass", reason)
+
+    def test_inner_signed_extensions_preserved_but_other_types_refused(self):
+        for name, phase_key, artifact_key, discriminator, domain, signer in (
+            ("repeated-pay-completed", "2:deliver-entitlement", "entitlementRecord",
+             "entitlementVersion", R.ENTITLEMENT_DOMAIN, "seller"),
+            ("standard-completed", "3:deliver-attested-payload", "payloadAttestationRecord",
+             "payloadAttestationVersion", R.PAYLOAD_ATTESTATION_DOMAIN, "orchestrator"),
+        ):
+            for mutation, expected in (
+                ({"laterMinorAuditLabel": "preserve-me"}, "pass"),
+                ({discriminator: "99"}, "non-pass"),
+                ({"evidenceVersion": "1"}, "non-pass"),
+                ({"future" + discriminator[0].upper() + discriminator[1:]: "1"}, "non-pass"),
+            ):
+                authority = copy.deepcopy(self.data["executionAuthorities"][name])
+                artifact = authority["deliveryArtifactAuthorityByPhaseKey"][
+                    phase_key][artifact_key]["artifact"]
+                artifact.update(mutation)
+                resign_inner_artifact(artifact, self.data["seeds"][signer], domain)
+                content_hash = R._artifact_content_hash(artifact)
+
+                def relink(record):
+                    if artifact_key == "entitlementRecord":
+                        record["deliverableContentHash"] = content_hash
+                    else:
+                        record["attestationRef"]["contentHash"] = content_hash
+
+                replace_top_record(authority, phase_key.split(":", 1)[1], relink, self.data["seeds"])
+                with self.subTest(artifact=artifact_key, mutation=mutation):
+                    disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+                    if expected == "pass":
+                        self.assertEqual(disposition, "pass", reason)
+                        # An extension must remain hash/signature-bound, not stripped.
+                        artifact["laterMinorAuditLabel"] = "unsigned-tampering"
+                        self.assertNotEqual(derive_phase_disposition(authority, self.pubkeys)[0], "pass")
+                    else:
+                        self.assertNotEqual(disposition, "pass", reason)
+
+    def test_signed_listing_extension_remains_compatible(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["repeated-pay-completed"]
+        )
+        authority["listing"]["signedExtension"] = {"preserved": True}
+        resign_listing(authority["listing"], self.data["seeds"]["seller"])
+        authority["bundle"]["listingRef"]["contentHash"] = R.listing_hash(
+            authority["listing"]
+        )
+        resign_ebfab(authority["bundle"], self.data["seeds"])
+        self.assertEqual(
+            derive_phase_disposition(authority, self.pubkeys)[0], "pass"
+        )
+
+    def test_native_authority_and_terminal_finality_have_distinct_dispositions(self):
+        expected = {
+            "unavailable-native-transaction-observation": "indeterminate",
+            "unobserved-resigned-native-transaction": "indeterminate",
+            "invalid-native-transaction-observation": "fail",
+            "invalid-terminal-included-native-transaction": "fail",
+        }
+        for name, disposition in expected.items():
+            with self.subTest(authority=name):
+                actual, reason, _ = derive_phase_disposition(
+                    self.data["executionAuthorities"][name], self.pubkeys
+                )
+                self.assertEqual(actual, disposition, reason)
+                self.assertIsNone(
+                    derive_phase_keys(self.data["executionAuthorities"][name], self.pubkeys)
+                )
+
+    def test_job_bound_derivation_exposes_excluded_disposition_reason(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"][
+                "unavailable-native-transaction-observation"
+            ]
+        )
+        validation_authority = copy.deepcopy(authority)
+        validation_authority["publicKeys"] = self.pubkeys
+        tag = {
+            "bundle": authority["bundle"],
+            "resolvedRole": "buyer",
+            "counterpartyDisposition": None,
+            "resolvedJobId": authority["bundle"]["jobId"],
+            "selectedByRoleResolution": True,
+            "ebfabAuthority": validation_authority,
+        }
+        excluded = []
+        derivation = R.derive_job_bound(
+            "did:demos:buyer",
+            [tag],
+            0,
+            2_000_000_000_000,
+            excluded_dispositions=excluded,
+        )
+        self.assertEqual(derivation["bundleCount"], 0)
+        self.assertEqual(len(excluded), 1)
+        self.assertEqual(excluded[0]["disposition"], "indeterminate")
+        self.assertIn("unavailable", excluded[0]["reason"])
+
+    def test_signed_contradiction_precedes_unresolved_delivery_dependency(self):
+        authority = copy.deepcopy(
+            self.data["executionAuthorities"]["standard-completed"]
+        )
+        closure = authority["deliveryArtifactAuthorityByPhaseKey"][
+            "3:deliver-attested-payload"
+        ]
+        closure["deliverable"]["available"] = False
+        payload_record = closure["payloadAttestationRecord"]["artifact"]
+        payload_record["decision"] = "fail"
+        resign_inner_artifact(
+            payload_record,
+            self.data["seeds"]["orchestrator"],
+            R.PAYLOAD_ATTESTATION_DOMAIN,
+        )
+        replace_top_record(
+            authority,
+            "deliver-attested-payload",
+            lambda record: record["attestationRef"].__setitem__(
+                "contentHash", R._artifact_content_hash(payload_record)
+            ),
+            self.data["seeds"],
+        )
+        disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+        self.assertEqual(disposition, "fail", reason)
+
+    def test_malformed_cleartext_is_error_in_both_actual_delivery_branches(self):
+        cases = (
+            ("standard-completed", "3:deliver-attested-payload"),
+            ("completed-storage-delivery", "0:deliver-storage-program"),
+        )
+        for authority_name, phase_key in cases:
+            authority = copy.deepcopy(self.data["executionAuthorities"][authority_name])
+            authority["deliveryArtifactAuthorityByPhaseKey"][phase_key]["deliverable"][
+                "cleartextUtf8"
+            ] = chr(0xD800)
+            with self.subTest(authority=authority_name):
+                disposition, reason, _ = derive_phase_disposition(authority, self.pubkeys)
+                self.assertEqual(disposition, "error", reason)
+
+    def test_reference_canonical_uses_repository_jcs_without_ascii_hash_churn(self):
+        from jcs import canonicalize
+
+        for value, expected in ((1.0, "1"), (-0.0, "0"), (1e-7, "1e-7")):
+            with self.subTest(value=value):
+                self.assertEqual(R.canonical({"n": value}), ('{"n":' + expected + '}').encode())
+        ascii_value = {"a": 1, "z": ["ASCII", True]}
+        historical = json.dumps(
+            ascii_value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+        self.assertEqual(R.canonical(ascii_value), historical)
+        self.assertEqual(R.canonical(ascii_value), canonicalize(ascii_value).encode())
 
     def test_resolution_binding_rejects_every_unauthenticated_dimension(self):
         mutations = {

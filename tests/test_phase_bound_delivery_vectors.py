@@ -13,6 +13,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import jcs  # noqa: E402
+import dacs5_reference as R  # noqa: E402
+import generate_phase_bound_delivery_vectors as G  # noqa: E402
 from validate_artifact_shapes import parse_type_fields, check_attestation_ref  # noqa: E402
 
 VECTORS = ROOT / "conformance" / "vectors" / "security" / "phase-bound-delivery-evidence-v0.7.json"
@@ -172,7 +174,9 @@ def validate_delivery_artifact(case, evidence):
         if record_entry.get("available") is False:
             return "indeterminate"
         record = record_entry.get("artifact")
-        if not isinstance(record, dict) or not verify_signature(record, ENTITLEMENT_DOMAIN):
+        if (not isinstance(record, dict)
+                or not R._delivery_inner_type_valid(record, "entitlementVersion")
+                or not verify_signature(record, ENTITLEMENT_DOMAIN)):
             return "fail"
         renewal = record.get("renewalSeq")
         if isinstance(renewal, bool) or not isinstance(renewal, int) or renewal < 0:
@@ -182,6 +186,34 @@ def validate_delivery_artifact(case, evidence):
         if record.get("jobId") != job or content_hash != artifact_hash(record):
             return "fail"
         if "attestationRef" in evidence:
+            return "fail"
+        authorities = [
+            item for item in case.get("deliveryAuthorities", [])
+            if item.get("phaseIndex") == index
+        ]
+        if len(authorities) != 1:
+            return "indeterminate"
+        deliverable_spec = authorities[0].get("deliverable")
+        duration = (
+            deliverable_spec.get("durationSec")
+            if isinstance(deliverable_spec, dict) else None
+        )
+        if (
+            not isinstance(deliverable_spec, dict)
+            or deliverable_spec.get("kind") != "entitlement"
+            or not R._non_boolean_number(duration)
+            or not isinstance(deliverable_spec.get("renewable"), bool)
+        ):
+            return "error"
+        if (
+            not R._non_boolean_number(record.get("startsAt"))
+            or not R._non_boolean_number(record.get("endsAt"))
+        ):
+            return "error"
+        if (
+            record["endsAt"] != record["startsAt"] + duration * 1000
+            or record.get("renewable") != deliverable_spec["renewable"]
+        ):
             return "fail"
         binding = evidence.get("credentialDelivery")
         credential_ref = record.get("credentialRef")
@@ -217,9 +249,8 @@ def validate_delivery_artifact(case, evidence):
         if address != payload_address:
             return "fail"
         payload = find_artifact(case, payload_address, "deliverable")
-        if payload is None or payload.get("available") is False:
-            return "indeterminate"
-        if content_hash != payload.get("cleartextHash"):
+        payload_unavailable = payload is None or payload.get("available") is False
+        if not payload_unavailable and content_hash != payload.get("cleartextHash"):
             return "fail"
         supplied = evidence.get("attestationRef")
         if not exact_ref_shape(supplied):
@@ -242,10 +273,7 @@ def validate_delivery_artifact(case, evidence):
         present = set(record)
         if (
             not PAYLOAD_ATTESTATION_REQUIRED_FIELDS <= present
-            or present - PAYLOAD_ATTESTATION_REQUIRED_FIELDS - PAYLOAD_ATTESTATION_OPTIONAL_FIELDS
-            or record.get("payloadAttestationVersion") != "1"
-            or "resultVersion" in record
-            or "evidenceVersion" in record
+            or not R._delivery_inner_type_valid(record, "payloadAttestationVersion")
             or not verify_signature(record, PAYLOAD_DOMAIN)
         ):
             return "fail"
@@ -283,11 +311,15 @@ def validate_delivery_artifact(case, evidence):
             or record.get("verificationMethodHash") != hash_hex(method)
         ):
             return "fail"
+        if payload_unavailable:
+            return "indeterminate"
         cleartext = payload.get("cleartextUtf8")
-        if (
-            not isinstance(cleartext, str)
-            or hashlib.sha256(cleartext.encode("utf-8")).hexdigest() != content_hash
-        ):
+        cleartext_disposition, cleartext_bytes = R._utf8_bytes(
+            cleartext, "attested payload cleartext"
+        )
+        if cleartext_disposition[0] != "pass":
+            return cleartext_disposition[0]
+        if hashlib.sha256(cleartext_bytes).hexdigest() != content_hash:
             return "fail"
         method_ref = record.get("methodEvidenceRef")
         if not exact_ref_shape(method_ref):
@@ -301,32 +333,20 @@ def validate_delivery_artifact(case, evidence):
         if (
             not isinstance(method_evidence, dict)
             or method_ref.get("contentHash") != hash_hex(method_evidence)
-            or method_evidence.get("proofValid") is not True
         ):
             return "fail"
-        endpoint = method.get("endpoint", {})
-        request = method_evidence.get("request", {})
-        response = method_evidence.get("response", {})
-        response_data = response.get("data")
-        transaction = method_evidence.get("transaction", {})
-        method_transaction = record.get("methodTransactionRef")
-        if (
-            request.get("method") != endpoint.get("method")
-            or request.get("url") != endpoint.get("urlTemplate")
-            or not isinstance(response.get("status"), int)
-            or not 200 <= response["status"] < 300
-            or not isinstance(response_data, str)
-            or response_data != cleartext
-            or response.get("responseHash")
-            != hashlib.sha256(response_data.encode("utf-8")).hexdigest()
-            or response.get("responseHash") != content_hash
-            or not isinstance(method_transaction, dict)
-            or transaction.get("kind") != method_transaction.get("kind")
-            or transaction.get("value") != method_transaction.get("value")
-            or transaction.get("state") not in {"included", "finalized"}
-            or transaction.get("authenticated") is not True
-        ):
-            return "fail"
+        method_disposition, _ = R.validate_delivery_method_evidence(
+            method,
+            method_evidence,
+            record.get("methodTransactionRef"),
+            case.get("trustedNativeTransactionObservationsByCanonicalRef"),
+            delivered_cleartext=cleartext,
+            delivered_bytes=cleartext_bytes,
+            payload_content_hash=content_hash,
+            require_finalized=case.get("bundle", {}).get("outcome") == "completed",
+        )
+        if method_disposition != "pass":
+            return method_disposition
         if "credentialDelivery" in evidence:
             return "fail"
         return "pass"
@@ -515,7 +535,7 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
 
     def test_generator_is_byte_deterministic(self):
         result = subprocess.run(
-            ["python3", str(GENERATOR), "--check"], cwd=ROOT, text=True,
+            [sys.executable, str(GENERATOR), "--check"], cwd=ROOT, text=True,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
@@ -546,6 +566,38 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
             self.assertFalse(bundle_shape["required"] - bundle_present)
             self.assertFalse(bundle_present - bundle_shape["required"] - bundle_shape["optional"])
             self.assertTrue(verify_bundle_signatures(vector["bundle"]))
+
+    def test_fractional_entitlement_endpoint_uses_forward_computation(self):
+        case = G.make("fractional-rounding", "pass", "binary64 endpoint", G.entitlement_case)
+        self.assertEqual(evaluate(case), "pass")
+        case["deliveryAuthorities"][0]["deliverable"]["durationSec"] = 0.0001
+        record = case["artifactRecords"][0]["artifact"]
+        record["startsAt"] = 0.2
+        record["endsAt"] = record["startsAt"] + 0.0001 * 1000
+        G.refresh_entitlement_chain(case)
+        G.sign_bundle(case["bundle"])
+        self.assertEqual(evaluate(case), "pass")
+        record["endsAt"] += 0.01
+        G.refresh_entitlement_chain(case)
+        G.sign_bundle(case["bundle"])
+        self.assertEqual(evaluate(case), "fail")
+
+    def test_signed_inner_extensions_and_version_refusal(self):
+        for factory, kind, refresh, discriminator in (
+            (G.entitlement_case, "EntitlementRecord", G.refresh_entitlement_chain, "entitlementVersion"),
+            (G.attested_case, "PayloadAttestationRecord", G.refresh_payload_chain, "payloadAttestationVersion"),
+        ):
+            case = G.make("extension", "pass", "signed optional extension", factory)
+            record = next(entry["artifact"] for entry in case["artifactRecords"] if entry["kind"] == kind)
+            record["laterMinorAuditLabel"] = "preserve-me"
+            refresh(case)
+            G.sign_bundle(case["bundle"])
+            with self.subTest(kind=kind):
+                self.assertEqual(evaluate(case), "pass")
+                record[discriminator] = "99"
+                refresh(case)
+                G.sign_bundle(case["bundle"])
+                self.assertNotEqual(evaluate(case), "pass")
 
     def test_credential_binding_members_are_all_signed(self):
         vector = next(v for v in self.data["vectors"] if v["name"] == "credential-buyer-only-exact-binding")
@@ -588,6 +640,58 @@ class PhaseBoundDeliveryVectorTests(unittest.TestCase):
                 method_entry["artifact"]["response"]["responseHash"],
                 evidence["deliverableContentHash"],
             )
+
+    def test_malformed_and_empty_utf8_take_closed_actual_consumer_paths(self):
+        vector = copy.deepcopy(next(
+            item for item in self.data["vectors"]
+            if item["name"] == "repeated-attested-payload-each-attempt-zero"
+        ))
+        payload = next(
+            entry for entry in vector["artifactRecords"]
+            if entry.get("kind") == "deliverable"
+        )
+        payload["cleartextUtf8"] = chr(0xD800)
+        self.assertEqual(evaluate(vector), "error")
+
+        def empty_payload(case):
+            evidence = case["evidenceRecords"][0]["artifact"]
+            payload_entry = next(
+                entry for entry in case["artifactRecords"]
+                if entry.get("kind") == "deliverable"
+                and entry.get("logicalAddress") == evidence["deliverableAnchor"]["locator"]
+            )
+            payload_record = next(
+                entry["artifact"] for entry in case["artifactRecords"]
+                if entry.get("kind") == "PayloadAttestationRecord"
+                and entry.get("logicalAddress") == evidence["attestationRef"]["anchor"]["locator"]
+            )
+            method_evidence = next(
+                entry["artifact"] for entry in case["artifactRecords"]
+                if entry.get("kind") == "methodEvidence"
+                and entry.get("logicalAddress")
+                == payload_record["methodEvidenceRef"]["anchor"]["locator"]
+            )
+            empty_hash = hashlib.sha256(b"").hexdigest()
+            payload_entry["cleartextUtf8"] = ""
+            payload_entry["cleartextHash"] = empty_hash
+            evidence["deliverableContentHash"] = empty_hash
+            payload_record["payloadContentHash"] = empty_hash
+            method_evidence["response"]["data"] = ""
+            method_evidence["response"]["responseHash"] = empty_hash
+            key = canonical_bytes(payload_record["methodTransactionRef"]).decode("utf-8")
+            case["trustedNativeTransactionObservationsByCanonicalRef"][key]["response"][
+                "responseHash"
+            ] = empty_hash
+            G.refresh_payload_chain(case)
+
+        empty = G.make(
+            "empty-utf8-control",
+            "pass",
+            "empty UTF-8 remains a valid exact payload",
+            G.attested_case,
+            empty_payload,
+        )
+        self.assertEqual(evaluate(empty), "pass")
 
     def test_spec_registers_type_domain_addresses_rules_and_versions(self):
         core = (ROOT / "spec" / "CORE.md").read_text(encoding="utf-8")

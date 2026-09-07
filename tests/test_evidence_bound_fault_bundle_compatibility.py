@@ -636,6 +636,21 @@ class EvidenceBoundFaultBundleCompatibilityTests(unittest.TestCase):
                 if "reasonContains" in case["want"]:
                     self.assertIn(case["want"]["reasonContains"], result["reason"])
 
+    def test_ebfab_pointer_exposes_missing_authority_as_indeterminate(self):
+        case = next(
+            item for item in self.data["pointerCases"]
+            if item.get("useEbfabAuthority") and item["want"]["ok"]
+        )
+        result = R.resolve_absolute_fault_pointer(
+            case["pointer"],
+            case["bundle"],
+            binding=case.get("binding"),
+            pubkeys=self.pubkeys,
+            ebfab_authority=None,
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["disposition"], "indeterminate")
+
     def test_malformed_pointer_inputs_fail_closed_without_exceptions(self):
         valid = self.data["pointerCases"][0]
         for pointer, bundle, binding in (

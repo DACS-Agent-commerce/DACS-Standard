@@ -3,8 +3,8 @@
   "spec": "DACS-4 §9.6.3 DPA-1..DPA-9; §9.7; CORE §B.7; Demos §A.3",
   "decisionModel": "A successful attested-payload delivery requires a distinct signed PayloadAttestationRecord, a passing exact-byte method proof, and matching listing/agreement/settlement bindings. Resolved contradictions fail; unavailable otherwise-valid evidence remains indeterminate.",
   "hashRecipe": "sha256(compact sorted-key UTF-8 JSON of vectors)",
-  "hash": "a880df153902679247f00a44dbcb9313153ae9fa9ff0ba8b1786db88a40fbbce",
-  "count": 22,
+  "hash": "4c6284591c75fa31a24a97f16472c88c5084bde5f786cae71e89952896fec64a",
+  "count": 27,
   "publicTestSeeds": {
     "verifierEd25519": "3131313131313131313131313131313131313131313131313131313131313131",
     "orchestratorEd25519": "3232323232323232323232323232323232323232323232323232323232323232"
@@ -60,6 +60,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -158,9 +185,13 @@
       "methodEvidence": {
         "kind": "self-signed-payload",
         "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
-        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
-        "signatureValid": true
+        "methodInput": {
+          "identifier": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+          "assertion": "{\"classification\":\"approved\",\"score\":0.98}",
+          "signature": "1_oVBlfM5Ga03yDiFZGGLoOVZ1I1dTzbzJtJJgxjQU6T-xa3_Oy7wQ_ZxuInWq6EfZ9iSkCvN04Bn4jb_K1pCA"
+        }
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -178,14 +209,14 @@
             "kind": "storage-program",
             "locator": "dacs4:self-signed-proof:01K1DPA0000000000000000000"
           },
-          "contentHash": "40ee846a7ab409b65d4bf018c6d81ca43cce339fae21c01fde4506361eaeff78",
+          "contentHash": "b8c3c8f3805dab10cacc92f15496656c888f19c384223ff4a94b5ae4e92cb7b4",
           "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
         },
         "verifiedAt": 1785495600000,
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
-          "value": "wzQP6fAgdpPI1hao811W8C9A9tpZTDJy1kw9UMQ_qPY_BGk53Gpq-9G0RXk9R9Lm5UL5UFxkHf2fLVX-BYLMAA"
+          "value": "fThofJ6Y7y7d1bar5S84XwK8SEkwcnFG4NE8ZsPLnCBCcgurw04iWei96AWfjs5SiYCcJDbsTLpfSftvzLF3BQ"
         }
       },
       "payloadAttestationRef": {
@@ -193,7 +224,7 @@
           "kind": "storage-program",
           "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
         },
-        "contentHash": "62a91add514c9326e5029e1f517908e6256b87a2695a5935d70ee03888f242ff",
+        "contentHash": "e1655de386e80d8fbe79ed5ab12f198335e0cf7a859f64f72133a7866560d570",
         "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
       },
       "settlementEvidence": {
@@ -211,18 +242,118 @@
             "kind": "storage-program",
             "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
           },
-          "contentHash": "62a91add514c9326e5029e1f517908e6256b87a2695a5935d70ee03888f242ff",
+          "contentHash": "e1655de386e80d8fbe79ed5ab12f198335e0cf7a859f64f72133a7866560d570",
           "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
         },
         "observedAt": 1785495601000,
         "signature": {
           "algorithm": "ed25519",
           "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
-          "value": "v8L-KZfiPQIY0xs5ew4rZTma-EaCEcG32MlAJ7VnuR6vS2ltqKuSTzTkGiMuhDKnamXocWtFjze7EhQ24n0oCQ"
+          "value": "-MW1urYkq5rCfon0KqolTPbjnZ-2T1VNOqkwPOL0w1KR4iq6iEhOMS9Gp4XTmdmaCgGUns0OpsiRqwY0q91ADA"
         }
       },
       "expected": "pass",
       "reason": "self-signed is permitted only as an explicit minimal-trust method with a payload-bound proof"
+    },
+    {
+      "name": "self-signed-method-input-signature-invalid",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "self-signed"
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "ba3cc4b40cb6f8d164ae7a983a699505f3014da7fffbe6c392d6090e778719b0"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "self-signed-payload",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "methodInput": {
+          "identifier": "48075a597e721a156e2e0799de5cc0c5324dc6e7eaf1cdd46250868ec53215dd",
+          "assertion": "{\"classification\":\"approved\",\"score\":0.98}",
+          "signature": "A_oVBlfM5Ga03yDiFZGGLoOVZ1I1dTzbzJtJJgxjQU6T-xa3_Oy7wQ_ZxuInWq6EfZ9iSkCvN04Bn4jb_K1pCA"
+        }
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {},
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "ba3cc4b40cb6f8d164ae7a983a699505f3014da7fffbe6c392d6090e778719b0",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "self-signed",
+        "verificationMethodHash": "41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "explicit minimal-trust self-signed payload proof verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:self-signed-proof:01K1DPA0000000000000000000"
+          },
+          "contentHash": "c0b577a91026c0d891a66235c3b3286bd67153a5cb206dd9a51f24b7526f0be0",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "UYp_uzC3kiYjE3qeuVsQhggBjYDQ8TzpljWqWxPhObEPvxBILTOGg7ro4HMmhc88WcfppF1LwMs7Hvr_eZNVBw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+        },
+        "contentHash": "e018bffebbb6da235a5493242a28a1b6ff52a49b40a66147657840d152bacaff",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:41ded4d37d75fa1fcdafe4318c0f1ac42390637ceba873ff170cc39affd3de04:0"
+          },
+          "contentHash": "e018bffebbb6da235a5493242a28a1b6ff52a49b40a66147657840d152bacaff",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "4MgxDHoEGxNSqAQ7cPv4MT5O5YcfcHw_oL76TfWwcfBfs_gWTYDrPQqaD6SAkhEXbOfvegX-Rm-qumG99gJ4Dw"
+        }
+      },
+      "expected": "fail",
+      "reason": "self-signed verifies the actual method input signature, not a Boolean assertion"
     },
     {
       "name": "listing-method-missing-rejected-before-payment",
@@ -267,6 +398,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -386,6 +544,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -495,6 +680,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "jobId": "01K1DPA0000000000000000000",
@@ -614,6 +826,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "2",
         "jobId": "01K1DPA0000000000000000000",
@@ -731,6 +970,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -850,6 +1116,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -967,6 +1260,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -1086,6 +1406,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -1203,6 +1550,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -1322,6 +1696,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -1439,6 +1840,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -1558,6 +1986,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -1658,6 +2113,33 @@
       "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
       "methodEvidence": {
         "disposition": "unavailable"
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -1777,6 +2259,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -1891,6 +2400,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -1959,6 +2495,564 @@
       "reason": "broadcast/RPC acknowledgement is not consensus evidence"
     },
     {
+      "name": "resigned-arbitrary-native-transaction-unobserved",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "f64d9407220f83df61f56af3c52840e1e3d2ed285d0109133983f82e1faba3c2",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "mNdY_c1GK3QPJQ59cUb7DNqvr1iC27R1uO5jfUL_zhDCTt-3nYUiHKzPWgjWFM2NWe9epX5oMTq8RidjWXWDAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "052b097c7ecbca4ea7571895f5ec50856ad229c0710d5d41513d8b8537ba0fb8",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "052b097c7ecbca4ea7571895f5ec50856ad229c0710d5d41513d8b8537ba0fb8",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "jN63DGJtFJR_91YI-cninqJ5i8x611s-I6yY7eZPOq5pbShVw9rptzR_mnZZSw815xMSEhF8rtWiqm4MOAAsBA"
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "self-consistent booleans cannot authenticate a transaction absent trusted observation"
+    },
+    {
+      "name": "native-transaction-observation-contradicts-envelope",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "fail",
+      "reason": "a resolved trusted native contradiction is a clean failure"
+    },
+    {
+      "name": "native-transaction-observation-unavailable",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "finalized",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": false
+        }
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "dba2cbb0cd0f7f0f867b9ae88f243942dd30376b1065169bc5928dc4c8ac7f8f",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "5JyagufjNhviWEF16Z3PtPVAaZZLKlEgFiJ76sJJ-dm4RBggsrxdLy8MwcfGGw7tqb-w_al2aJ_1nJvE4D9HAw"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "d0de15c9cd8cc6292eb6abdaac38e19392140898da796711c759646be7e459dc",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "53GNYJC1Yh1IOR6TO8zmAPapgdFT6sZrOMnmJtas7RDjg-D8rsi-hu3HnHYDecQ2lL_T-JIm3NEXDWiN1sX1AA"
+        }
+      },
+      "expected": "indeterminate",
+      "reason": "well-formed native authority unavailability remains indeterminate"
+    },
+    {
+      "name": "standalone-included-native-observation",
+      "listing": {
+        "offering": {
+          "deliverable": {
+            "kind": "attested-payload",
+            "payloadFormat": "application/json",
+            "verificationMethod": {
+              "kind": "consensus-backed-proxy",
+              "endpoint": {
+                "method": "GET",
+                "urlTemplate": "https://api.example.test/classification/42"
+              }
+            }
+          }
+        },
+        "pipeline": [
+          {
+            "kind": "deliver-attested-payload"
+          }
+        ]
+      },
+      "agreement": {
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverable": {
+          "deliverableType": "attested-payload",
+          "hash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c"
+        }
+      },
+      "payloadUtf8": "{\"classification\":\"approved\",\"score\":0.98}",
+      "methodEvidence": {
+        "kind": "demos-web2-request",
+        "request": {
+          "method": "GET",
+          "url": "https://api.example.test/classification/42"
+        },
+        "response": {
+          "status": 200,
+          "data": "{\"classification\":\"approved\",\"score\":0.98}",
+          "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+          "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+        },
+        "transaction": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+          "state": "included",
+          "authenticated": true
+        },
+        "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "included",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
+      "payloadAttestationRecord": {
+        "payloadAttestationVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "agreementHash": "a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1",
+        "deliverableSpecHash": "e22b8b46a61f09f5418648c6eeef5ebdac515423ebf9fdcdcd02c7b37bed0c3c",
+        "payloadFormat": "application/json",
+        "payloadContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "verificationMethod": "consensus-backed-proxy",
+        "verificationMethodHash": "3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0",
+        "attempt": 0,
+        "decision": "pass",
+        "reason": "DAHR response commitment verified",
+        "methodEvidenceRef": {
+          "anchor": {
+            "kind": "https",
+            "locator": "https://rpc.example.test/tx/c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+          },
+          "contentHash": "f53fddf709f8885bff0139076ad9cc61657c0067e7b0270ec803e80f7038d5b8",
+          "signer": "substrate-validator-set:demos-mainnet:42"
+        },
+        "methodTransactionRef": {
+          "kind": "demos-web2-request",
+          "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3"
+        },
+        "verifiedAt": 1785495600000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131",
+          "value": "QohalvRJ0IZyNzZj5WUCilhl8GZc7nkT1b2j0IiuW4vuRvVat_qzK-ju7-nNU4SpBDqqG_LcIMkaUnaYIlM5Ag"
+        }
+      },
+      "payloadAttestationRef": {
+        "anchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+        },
+        "contentHash": "6fd00605b3b043862b29a6daef5fb03b58014706482c36dd026c41d51401deb9",
+        "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+      },
+      "settlementEvidence": {
+        "evidenceVersion": "1",
+        "jobId": "01K1DPA0000000000000000000",
+        "phase": "deliver-attested-payload",
+        "outcome": "success",
+        "deliverableContentHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+        "deliverableAnchor": {
+          "kind": "storage-program",
+          "locator": "dacs4:deliverable:01K1DPA0000000000000000000"
+        },
+        "attestationRef": {
+          "anchor": {
+            "kind": "storage-program",
+            "locator": "dacs4:payload-attestation:01K1DPA0000000000000000000:3eff934ddd3da67da0ac748502f660500c44c06562a0cf7070b320c5e5a996d0:0"
+          },
+          "contentHash": "6fd00605b3b043862b29a6daef5fb03b58014706482c36dd026c41d51401deb9",
+          "signer": "did:demos:agent:3131313131313131313131313131313131313131313131313131313131313131"
+        },
+        "observedAt": 1785495601000,
+        "signature": {
+          "algorithm": "ed25519",
+          "signer": "did:demos:agent:3232323232323232323232323232323232323232323232323232323232323232",
+          "value": "1_J1yx1Lvvqjx_YVsURWCAL2fjvgBvuRpWKezdGCkZz9EyGPA2ArkAYxKoha1pnToAUXo5i6yrJGlXqeNPv9CQ"
+        }
+      },
+      "expected": "pass",
+      "reason": "DPA-3 standalone verification retains included-or-stronger compatibility"
+    },
+    {
       "name": "dahr-request-does-not-match-method",
       "listing": {
         "offering": {
@@ -2008,6 +3102,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -2127,6 +3248,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -2244,6 +3392,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
@@ -2363,6 +3538,33 @@
         },
         "proofValid": true
       },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
+      },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",
         "jobId": "01K1DPA0000000000000000000",
@@ -2480,6 +3682,33 @@
           "authenticated": true
         },
         "proofValid": true
+      },
+      "trustedNativeTransactionObservationsByCanonicalRef": {
+        "{\"kind\":\"demos-web2-request\",\"value\":\"c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3\"}": {
+          "available": true,
+          "transaction": {
+            "kind": "demos-web2-request",
+            "value": "c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+            "state": "finalized",
+            "authenticated": true
+          },
+          "verificationMethod": {
+            "kind": "consensus-backed-proxy",
+            "endpoint": {
+              "method": "GET",
+              "urlTemplate": "https://api.example.test/classification/42"
+            }
+          },
+          "request": {
+            "method": "GET",
+            "url": "https://api.example.test/classification/42"
+          },
+          "response": {
+            "status": 200,
+            "responseHash": "d48eff9c6abc2bd83c7ad11326a525d78ab7558a7bbc8a73128095e5ff656c36",
+            "responseHeadersHash": "b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2"
+          }
+        }
       },
       "payloadAttestationRecord": {
         "payloadAttestationVersion": "1",

@@ -15,6 +15,8 @@ import sys
 from pathlib import Path
 from urllib.parse import quote
 
+import jcs
+
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = ROOT / "conformance" / "fixtures" / "evidence-bound-fault-bundle-compatibility-v0.4.json"
@@ -58,7 +60,7 @@ EVIDENCE_PHASES = {
 
 
 def canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return jcs.canonicalize(value).encode("utf-8")
 
 
 def b64u(value):
@@ -241,7 +243,7 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
         record, ref = make_evidence(
             job_id, phase, phase_index, signing_keys, outcome=outcome, reason=reason
         )
-        return record, ref, None
+        return record, ref, None, {}
 
     artifact_lifecycle = {"state": "finalized", "independentlyResolvable": True}
     closure = {}
@@ -293,6 +295,10 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
             "renewalSeq": renewal_seq,
             "credentialRef": credential_ref,
         }
+        if mutation == "entitlement-duration":
+            entitlement["endsAt"] = entitlement["startsAt"] + 1
+        elif mutation == "entitlement-renewable":
+            entitlement["renewable"] = False
         sign_artifact(
             entitlement,
             signing_keys["seller"],
@@ -334,6 +340,10 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
         transaction_value = hashlib.sha256(
             f"dahr:{job_id}:{phase_index}".encode("utf-8")
         ).hexdigest()
+        trusted_transaction_value = transaction_value
+        if mutation == "native-transaction":
+            transaction_value = "ff" * 32
+        transaction_state = "included" if mutation == "native-terminal-included" else "finalized"
         method_evidence = {
             "kind": "demos-web2-request",
             "request": {
@@ -344,11 +354,12 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
                 "status": 200,
                 "data": cleartext,
                 "responseHash": digest,
+                "responseHeadersHash": "b2" * 32,
             },
             "transaction": {
                 "kind": "demos-web2-request",
                 "value": transaction_value,
-                "state": "finalized",
+                "state": transaction_state,
                 "authenticated": True,
             },
             "proofValid": True,
@@ -423,8 +434,39 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
                 "lifecycle": artifact_lifecycle,
             },
         })
+        transaction_ref = payload_attestation["methodTransactionRef"]
+        trusted_transaction_ref = {
+            "kind": "demos-web2-request",
+            "value": trusted_transaction_value,
+        }
+        observed_transaction = copy.deepcopy(method_evidence["transaction"])
+        observed_transaction["value"] = trusted_transaction_value
+        observed_response = {
+            "status": method_evidence["response"]["status"],
+            "responseHash": method_evidence["response"]["responseHash"],
+            "responseHeadersHash": method_evidence["response"]["responseHeadersHash"],
+        }
+        if mutation == "native-observation-mismatch":
+            observed_response["responseHash"] = "00" * 32
+        observation = (
+            {"available": False}
+            if mutation == "native-observation-unavailable"
+            else {
+                "available": True,
+                "transaction": observed_transaction,
+                "verificationMethod": copy.deepcopy(method),
+                "request": copy.deepcopy(method_evidence["request"]),
+                "response": observed_response,
+            }
+        )
+        trusted_native_observations = {
+            canonical(trusted_transaction_ref).decode("utf-8"): observation
+        }
     else:
         raise ValueError(f"unsupported delivery phase: {phase}")
+
+    if phase != "deliver-attested-payload":
+        trusted_native_observations = {}
 
     if mutation == "deliverable-locator":
         fields["deliverableAnchor"]["locator"] = (
@@ -442,6 +484,15 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
         )
     elif mutation == "omit-credential-delivery":
         fields.pop("credentialDelivery", None)
+    elif mutation in {
+        "entitlement-duration",
+        "entitlement-renewable",
+        "native-transaction",
+        "native-terminal-included",
+        "native-observation-mismatch",
+        "native-observation-unavailable",
+    }:
+        pass
     elif mutation is not None:
         raise ValueError(f"unsupported inner-artifact mutation: {mutation}")
 
@@ -468,7 +519,7 @@ def make_current_delivery_evidence(job_id, phase, phase_index, signing_keys, *,
         },
         "contentHash": evidence_hash(record),
     }
-    return record, ref, closure
+    return record, ref, closure, trusted_native_observations
 
 
 def make_session_execution_authority(job_id, phase, phase_index, *, signer_role="seller",

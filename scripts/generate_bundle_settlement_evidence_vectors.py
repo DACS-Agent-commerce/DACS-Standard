@@ -66,6 +66,7 @@ def make_authority(name, definition, signing_keys):
     session_execution_authority_by_phase_key = {}
     verified_receipt_by_canonical_ref = {}
     delivery_artifact_authority_by_phase_key = {}
+    trusted_native_transaction_observations_by_canonical_ref = {}
     default_lifecycle = definition["defaultReferenceLifecycle"]
     for source in definition["phaseSummary"]:
         entry = copy.deepcopy(source)
@@ -110,7 +111,7 @@ def make_authority(name, definition, signing_keys):
             if definition.get("evidenceReasonOverride") is not None:
                 evidence_reason = definition["evidenceReasonOverride"]
             if entry["kind"].startswith("deliver-"):
-                record, ref, delivery_closure = F.make_current_delivery_evidence(
+                record, ref, delivery_closure, native_observations = F.make_current_delivery_evidence(
                     job_id,
                     entry["kind"],
                     entry["index"],
@@ -143,6 +144,9 @@ def make_authority(name, definition, signing_keys):
                 if "agreementHash" in delivery_closure:
                     execution_authority["agreementHash"] = delivery_closure["agreementHash"]
                 delivery_artifact_authority_by_phase_key[phase_key] = delivery_closure
+                trusted_native_transaction_observations_by_canonical_ref.update(
+                    native_observations
+                )
             session_execution_authority_by_phase_key[phase_key] = execution_authority
             verified_receipt_by_canonical_ref[F.canonical(ref).decode("utf-8")] = (
                 F.make_verified_anchor_receipt(
@@ -206,6 +210,9 @@ def make_authority(name, definition, signing_keys):
         "sessionExecutionAuthorityByPhaseKey": session_execution_authority_by_phase_key,
         "verifiedReceiptByCanonicalRef": verified_receipt_by_canonical_ref,
         "deliveryArtifactAuthorityByPhaseKey": delivery_artifact_authority_by_phase_key,
+        "trustedNativeTransactionObservationsByCanonicalRef": (
+            trusted_native_transaction_observations_by_canonical_ref
+        ),
         "bundleLifecycle": bundle_lifecycle,
     }
 
@@ -236,13 +243,32 @@ def generate(source):
         "deliveryArtifactAuthorityByPhaseKey supplies the independently resolved, lifecycle-gated "
         "deliverable, entitlement/credential, or payload-attestation/method-proof closure required "
         "before a successful current DeliveryEvidence member can authorize its phase. "
+        "trustedNativeTransactionObservationsByCanonicalRef is fixture-only authority keyed by the "
+        "complete canonical methodTransactionRef; it is not a portable consensus-proof format. "
         "The record outcome and hashed supersedesEvidenceRef, not "
         "caller-supplied class or edge labels, determine ST-8 terminal selection. Completed "
         "authorities require finalized and independently resolvable evidence; failed or "
         "aborted authorities require included or finalized evidence. Optional pointers never "
         "create phase authority."
     )
+    if "execution-authority-indeterminate" not in data["reasonCodes"]:
+        data["reasonCodes"].append("execution-authority-indeterminate")
+    if "execution-authority-indeterminate" not in data["reasonPrecedence"]:
+        data["reasonPrecedence"].insert(1, "execution-authority-indeterminate")
     definitions = semantic_definitions(data)
+    definitions["completed-storage-delivery"] = {
+        "listingPipeline": ["deliver-storage-program"],
+        "bundleOutcome": "completed",
+        "phaseSummary": [{
+            "index": 0,
+            "kind": "deliver-storage-program",
+            "outcome": "ok",
+        }],
+        "defaultReferenceLifecycle": {
+            "state": "finalized",
+            "independentlyResolvable": True,
+        },
+    }
     if "invalid-bundle-signature" not in definitions:
         definitions["invalid-bundle-signature"] = copy.deepcopy(definitions["standard-completed"])
         definitions["invalid-bundle-signature"]["corruptBundleSignature"] = True
@@ -336,6 +362,24 @@ def generate(source):
         "invalid-credential-delivery-omitted": (
             "repeated-pay-completed", "omit-credential-delivery"
         ),
+        "invalid-entitlement-duration-closure": (
+            "repeated-pay-completed", "entitlement-duration"
+        ),
+        "invalid-entitlement-renewable-closure": (
+            "repeated-pay-completed", "entitlement-renewable"
+        ),
+        "unavailable-native-transaction-observation": (
+            "standard-completed", "native-observation-unavailable"
+        ),
+        "unobserved-resigned-native-transaction": (
+            "standard-completed", "native-transaction"
+        ),
+        "invalid-native-transaction-observation": (
+            "standard-completed", "native-observation-mismatch"
+        ),
+        "invalid-terminal-included-native-transaction": (
+            "standard-completed", "native-terminal-included"
+        ),
     }
     for authority_name, (source_name, mutation) in inner_mutations.items():
         definitions[authority_name] = copy.deepcopy(definitions[source_name])
@@ -345,9 +389,13 @@ def generate(source):
         vector_name = f"bundle-settlement-bijection-{authority_name}-reject"
         if any(vector["name"] == vector_name for vector in data["vectors"]):
             continue
+        indeterminate = authority_name in {
+            "unavailable-native-transaction-observation",
+            "unobserved-resigned-native-transaction",
+        }
         data["vectors"].append({
             "name": vector_name,
-            "expected": "fail",
+            "expected": "indeterminate" if indeterminate else "fail",
             "input": {
                 "executionAuthorityRef": authority_name,
                 "topLevelRefs": [],
@@ -356,8 +404,11 @@ def generate(source):
                 "unrelatedAuthorityDisposition": "verified",
             },
             "want": {
-                "disposition": "rejected",
-                "reasonCode": "execution-authority",
+                "disposition": "indeterminate" if indeterminate else "rejected",
+                "reasonCode": (
+                    "execution-authority-indeterminate"
+                    if indeterminate else "execution-authority"
+                ),
             },
         })
 

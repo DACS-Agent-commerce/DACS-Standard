@@ -402,14 +402,22 @@ and finalized native receipt MUST join the substrate, logical and native address
 checkpoint content hash, anchor transaction, writer/signer, applicable nonce, and
 authenticated total-order position. `createdAt` and other producer clocks do not
 activate the boundary. Missing, pruned, reorganized, unorderable, or conflicting
-required authority is non-passing.
+required authority is non-passing. The fixture-only synthetic proof envelope's
+existing signed `purpose` also binds its use: the checkpoint join requires
+`"checkpoint"`, an original legacy anchor requires `"historical-bundle"`, and a
+current role read requires `"current-bundle"`; a valid synthetic proof for one
+purpose cannot satisfy either of the others. This does not add a field to CORE's
+`AnchorReceipt` or change its signed shape.
 
 **Current-use legacy admission (LAB-1..LAB-7).** These rules are selected only by
 the distinct combined current-use derivation below. They do not change historical
 validation or any existing derivation algorithm.
 
 - **(LAB-1) Governed checkpoint.** Resolve and verify exactly one checkpoint as
-  above from independently configured stewardship and native-proof trust.
+  above from independently configured stewardship and native-proof trust. The
+  checkpoint, original mapping and historical receipt substrate MUST equal the
+  substrate in the caller's `CurrentUseRequestedJob`; era evidence cannot select
+  a different substrate for either the pure or write-input arm.
 - **(LAB-2) Original mapping authority.** Before a legacy copy enters BB-6, verify
   either (a) its original signed write-input `BundleBinding` and the original
   authenticated party map, candidate set, per-signer budget and selected result,
@@ -1201,7 +1209,12 @@ derivations; no signature domain exists or is implied for it.
 - **(CUR-3) Admission order.** Authenticate current role presence or absence,
   validate each copy's exact type/domain and all type-specific authority, and
   apply LAB to each legacy candidate before BB-6, role reconciliation, or metric
-  work. Only then apply the precedence
+  work. Every present pure- or binding-resolved copy requires a current receipt;
+  the fixture oracle requires `"current-bundle"` in its existing synthetic
+  envelope. The copy's authenticated `parties[]` MUST contain exactly one buyer
+  and one seller entry whose `primaryClaim` values equal the verifier-owned role
+  map for that job. Missing, duplicate, reversed, or otherwise inconsistent
+  buyer/seller assignments are rejected. Only then apply the precedence
   finality-bound > EBFAB > FAB > legacy. A non-passing required stronger proof
   cannot fall back to a weaker candidate or copy.
 - **(CUR-4) Current successful payments.** A selected job containing a successful
@@ -1215,7 +1228,17 @@ derivations; no signature domain exists or is implied for it.
 - **(CUR-5) Conservative historical payment rule.** An older or historical job
   with successful-payment evidence but without the exact stronger authorized
   finality path is `indeterminate` for the whole current-use request. Historical
-  non-payment outcomes may qualify through LAB. The unchanged historical
+  non-payment outcomes may qualify through LAB only when a verifier-authenticated
+  signed Listing and the bundle's authenticated, outcome-consistent complete
+  execution prefix establish which phases ran, and every executed evidence phase
+  has the exact authenticated `settlementEvidence[]` member. An empty summary may
+  establish zero executed phases only for an authenticated abort before the first
+  phase of a nonempty signed pipeline; a strict prefix must account for every
+  executed phase and be consistent with the authenticated terminal outcome.
+  Unsupported empty or incomplete `phaseSummary[]`, omitted or incomplete
+  `settlementEvidence[]`, and unavailable listing/execution authority cannot
+  establish absence of successful payment and are `indeterminate`; they emit no
+  current-use metrics. The unchanged historical
   derivations remain available under their own discriminators.
 - **(CUR-6) Complete metrics.** After all requested jobs pass, compute the existing
   scalar, rating, observed-volume, per-currency count, cancellation, neutral-fault,
@@ -1395,7 +1418,7 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 | Orchestrator | Maintain SessionRecord per §10.3; transition states deterministically; produce bundle on terminal state |
 | Checkpoint producer | For each activated substrate, publish one steward-signed `LegacyBundleActivationCheckpoint`; on a write-input substrate also publish `LegacyBundleCheckpointBinding`. Preserve the exact finalized native receipt and transaction/nonce/order evidence. A producer timestamp or advertised steward list is not activation authority. |
 | Bundle producer | Anchor `FaultAttestationBundle` under v0.3 semantics, or `EvidenceBoundFaultAttestationBundle` when claiming SEB-1..SEB-6; set `faultedParty` per §10.4.1; sign under the selected type domain; preserve ST-11 for completed bundles; anchor per §10.4.2; publish a signed BundleBinding per anchored copy on a write-input substrate (BB-1/BB-2); include all required references per §10.4.3. A producer explicitly claiming the unallocated #392 completion contract instead emits the distinct `FinalityBoundEvidenceFaultAttestationBundle`; it does not modify an EBFAB. |
-| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run the unchanged SEB-1..SEB-6 contract on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile old-only copies by EBFAB > FAB > legacy only after validity and non-divergence. Under the explicitly selected current-use contract, additionally run LAB before BB-6 for each legacy candidate, run FV plus RSV/SB-3 for every successful payment, and apply finality-bound > EBFAB > FAB > legacy without weaker fallback. |
+| Bundle consumer | Resolve native addresses per BB-4..BB-8 (verify bindings and role authorization, prune to the co-signed party map where available, apply the authorized-candidate multiplicity rule, fail closed to `indeterminate`; one-sided classification only after a resolved binding plus policy-qualified authoritative absence); require exactly one supported discriminator and its matching domain; reject a copy whose `faultedParty` contradicts its (outcome, anchoredByRole); run the unchanged SEB-1..SEB-6 contract on EBFAB before pair selection; recompute canonical hashes, verify domain-separated signatures, and dereference and validate every contained AttestationRef; reconcile old-only copies by EBFAB > FAB > legacy only after validity and non-divergence. Under the explicitly selected current-use contract, additionally require purpose-specific receipts and an exact verifier-owned buyer/seller roster, run LAB against the caller-requested substrate before BB-6 for each legacy candidate, require authenticated complete historical execution/evidence before treating a job as non-payment, run FV plus RSV/SB-3 for every successful payment, and apply finality-bound > EBFAB > FAB > legacy without weaker fallback. |
 | Reputation deriver | Select the output type before derivation and preserve every existing discriminator's algorithm and metrics. For the explicit current-use contract, require exclusive `currentUseReplayableDerivationVersion: "1"`, validate every requested job under CUR-1..CUR-8 and LAB-1..LAB-7 before computing any metric, classify provider capture as provisional, emit no partial result, and replay the complete dependency chain and result. Otherwise apply RSV-1 through RSV-4 only for an existing settlement-verified discriminator and require a job-bound replay type for EBFAB. |
 | Rate phase handler | One RatingRecord per direction; reject out-of-range `value` (non-integer or ∉[1,5]) / over-length `freeText` before anchoring (RT-1); anchor each; include in bundle |
 | ERC-8004 publisher (optional) | §10.7.1 mapping; rate-limit writes; sign with token-owner key |
@@ -1457,3 +1480,22 @@ EVM-side consumers MAY read ERC-8004 entries as a discovery surface for DACS-5 b
 **Time-bound reputation windows.** *Threat:* an old, no-longer-representative reputation is presented as current; or a producer backdates or forward-dates the self-asserted `finalisedAt` to move a session out of a scrutinised window or to cluster volume into a favourable one. *Mitigation:* derivations are window-bounded; consumers querying reputation MUST specify a window and SHOULD weight recent windows more heavily. The algorithm does not specify weighting (consumers choose); it does require explicit window bounds in every derivation. Against producer-chosen `finalisedAt`, consumers performing high-stakes derivation SHOULD window against the SR-2 anchor timestamp per §10.5.1, so that the substrate — not the bundle producer — decides window membership.
 
 **ERC-8004 write spamming.** *Threat:* an attacker writes many fake ERC-8004 entries pointing at fabricated bundles. *Mitigation:* ERC-8004 entries are pointers; consumers MUST fetch and validate the bundle. Fake bundles fail at validation. The cost of writing many ERC-8004 entries (gas) is a natural rate limit; DACS-5 publishers SHOULD additionally enforce per-session rate limits.
+
+**Current-use candidate scope.** The unallocated #391/#392 combined derivation
+proves the selected historical-admission and finality contract. It does not
+satisfy a request for the separate recent-outcome reputation profile: its
+window clock is not independently verified business-outcome occurrence. The
+approved #394/#395 recent-outcomes policy requires that separate authenticated
+outcome-time gate; neither producer finalisation time nor anchor publication
+time is a substitute.
+
+**Offline reference boundary.** The current-use reference and its vectors use
+the existing bounded signed Listing projection (`sellerPrimaryClaim` and
+`pipeline`) used by the SEB fixture oracle. That projection is not the normative
+DACS-1 Listing wire shape and does not establish production Listing or
+procurement conformance. Production consumers must authenticate a full Listing
+under DACS-1, including its normal/procurement publisher-role rules, before
+supplying execution authority. Native substrate proof codecs and this full
+Listing integration remain outside the fixture implementation. The reference
+also leaves historical HTLC/liquidity-tank evidence indeterminate; it does not
+claim terminal cross-chain nonpayment availability.

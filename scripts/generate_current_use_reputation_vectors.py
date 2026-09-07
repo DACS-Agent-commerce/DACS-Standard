@@ -38,12 +38,14 @@ try:
         CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
+        LISTING_DOMAIN,
         RATING_DOMAIN,
         bundle_hash,
         current_use_synthetic_proof_hash,
         legacy_checkpoint_binding_hash,
         legacy_checkpoint_hash,
         legacy_checkpoint_logical_address,
+        listing_hash,
         logical_address,
     )
 except ImportError:
@@ -60,12 +62,14 @@ except ImportError:
         CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
         LEGACY_BUNDLE_CHECKPOINT_DOMAIN,
+        LISTING_DOMAIN,
         RATING_DOMAIN,
         bundle_hash,
         current_use_synthetic_proof_hash,
         legacy_checkpoint_binding_hash,
         legacy_checkpoint_hash,
         legacy_checkpoint_logical_address,
+        listing_hash,
         logical_address,
     )
 
@@ -301,8 +305,25 @@ class CurrentUseFixtureFactory:
         self.checkpoints[substrate] = result
         return result
 
-    def _legacy_bundle(self, job_id: str, role: str) -> dict:
-        outcome = "failed-counterparty" if role == "buyer" else "failed-perm"
+    def _historical_listing(self) -> dict:
+        listing = {
+            "listingId": "listing-historical-nonpayment",
+            "listingVersion": 1,
+            "sellerPrimaryClaim": CLAIMS["seller"],
+            "pipeline": [{"kind": "deliver-storage-program"}],
+            "signature": {},
+        }
+        listing["signature"] = {
+            "signer": CLAIMS["seller"],
+            "algorithm": "ed25519",
+            "value": self._sign(
+                self.finality.keys["seller"], LISTING_DOMAIN, listing_hash(listing)
+            ),
+        }
+        return listing
+
+    def _legacy_bundle(self, job_id: str, role: str, listing: dict) -> dict:
+        outcome = "aborted-by-other" if role == "buyer" else "aborted-by-self"
         bundle = {
             "bundleVersion": "1",
             "jobId": job_id,
@@ -311,7 +332,7 @@ class CurrentUseFixtureFactory:
             "listingRef": {
                 "listingId": "listing-historical-nonpayment",
                 "version": 1,
-                "contentHash": hashlib.sha256(b"historical-listing").hexdigest(),
+                "contentHash": listing_hash(listing),
             },
             "parties": [
                 {
@@ -338,10 +359,14 @@ class CurrentUseFixtureFactory:
         self.config["partyRolesByJob"][job_id] = {
             "buyer": CLAIMS["buyer"], "seller": CLAIMS["seller"],
         }
+        listing = self._historical_listing()
         roles = {}
         for role_index, role in enumerate(("buyer", "seller")):
-            bundle = self._legacy_bundle(job_id, role)
+            bundle = self._legacy_bundle(job_id, role, listing)
             digest = bundle_hash(bundle)
+            self.dependencies["bundleAuthorityByContentHash"][digest] = {
+                "listing": copy.deepcopy(listing),
+            }
             logical = logical_address(job_id, role)
             if pure:
                 native = pure_native(logical)

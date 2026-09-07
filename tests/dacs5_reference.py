@@ -3668,6 +3668,25 @@ def _configured_party_maps(verifier_config, job_id):
     return (role_map, {signer: role for role, signer in role_map.items()})
 
 
+def _current_use_roster_matches_role_map(bundle, role_map):
+    """Bind every authenticated buyer/seller roster copy to verifier authority."""
+    parties = bundle.get("parties") if isinstance(bundle, dict) else None
+    if not isinstance(parties, list) or not isinstance(role_map, dict):
+        return False
+    expected_by_claim = {role_map.get(role): role for role in ("buyer", "seller")}
+    observed = {"buyer": [], "seller": []}
+    for party in parties:
+        if not isinstance(party, dict):
+            return False
+        role = party.get("role")
+        claim = party.get("primaryClaim")
+        if role in observed:
+            observed[role].append(claim)
+        if claim in expected_by_claim and role != expected_by_claim[claim]:
+            return False
+    return all(observed[role] == [role_map[role]] for role in ("buyer", "seller"))
+
+
 def _proof_signature_valid(proof, domain, keys, authorized_signer):
     signature = proof.get("signature") if isinstance(proof, dict) else None
     if (
@@ -4046,7 +4065,8 @@ def validate_legacy_bundle_admission(bundle, evidence, dependencies, verifier_co
         ):
             return ("fail", "resolved checkpoint shape, hash, or steward signature is invalid")
         if not (
-            checkpoint_receipt.get("substrate") == substrate
+            checkpoint_receipt.get("purpose") == "checkpoint"
+            and checkpoint_receipt.get("substrate") == substrate
             and checkpoint_receipt.get("subjectId") == substrate
             and checkpoint_receipt.get("subjectRole") == "steward"
             and checkpoint_receipt.get("logicalAddress") == checkpoint_binding["logicalAddress"]
@@ -4063,7 +4083,8 @@ def validate_legacy_bundle_admission(bundle, evidence, dependencies, verifier_co
         if historical_decision != "pass":
             return (historical_decision, historical_reason)
         if not (
-            historical_receipt.get("substrate") == substrate
+            historical_receipt.get("purpose") == "historical-bundle"
+            and historical_receipt.get("substrate") == substrate
             and historical_receipt.get("subjectId") == job_id
             and historical_receipt.get("subjectRole") == role
             and historical_receipt.get("contentHash") == evidence["bundleContentHash"]
@@ -4240,7 +4261,8 @@ def _current_anchor_join(receipt, binding, bundle, substrate, verifier_config):
     if decision != "pass":
         return (decision, reason)
     if not (
-        receipt.get("substrate") == substrate
+        receipt.get("purpose") == "current-bundle"
+        and receipt.get("substrate") == substrate
         and receipt.get("subjectId") == binding.get("jobId")
         and receipt.get("subjectRole") == binding.get("role")
         and receipt.get("logicalAddress") == binding.get("logicalAddress")
@@ -4355,6 +4377,15 @@ def _resolve_current_use_role(job, role, role_request, dependencies, verifier_co
             expected_jobid=job_id, pure_mapping_resolver=lambda _job, _role: expected_native)
         if not post_ok:
             return {"decision": "fail", "reason": post_reason}
+        if not _current_use_roster_matches_role_map(bundle, role_map):
+            return {"decision": "fail", "reason": "bundle buyer/seller roster differs from verifier authority"}
+        era = role_request.get("legacyEraEvidence")
+        if (
+            bundle_type(bundle) == "legacy"
+            and isinstance(era, dict)
+            and era.get("substrate") != substrate
+        ):
+            return {"decision": "fail", "reason": "legacy era substrate differs from requested substrate"}
         synthetic_binding = {
             "jobId": job_id, "role": role, "logicalAddress": logical,
             "nativeAddress": expected_native, "bundleContentHash": bundle_hash(bundle),
@@ -4368,7 +4399,6 @@ def _resolve_current_use_role(job, role, role_request, dependencies, verifier_co
             bundle, dependencies, verifier_config)
         if type_decision != "pass":
             return {"decision": type_decision, "reason": type_reason}
-        era = role_request.get("legacyEraEvidence")
         if bundle_type(bundle) == "legacy":
             era_decision, era_reason = validate_legacy_bundle_admission(
                 bundle, era, dependencies, verifier_config)
@@ -4423,6 +4453,15 @@ def _resolve_current_use_role(job, role, role_request, dependencies, verifier_co
         post_ok, _ = _post_fetch_valid(bundle, candidate, public_keys)
         if not post_ok:
             continue
+        if not _current_use_roster_matches_role_map(bundle, role_map):
+            return {"decision": "fail", "reason": "bundle buyer/seller roster differs from verifier authority"}
+        era = era_by_address.get(native)
+        if (
+            bundle_type(bundle) == "legacy"
+            and isinstance(era, dict)
+            and era.get("substrate") != substrate
+        ):
+            return {"decision": "fail", "reason": "legacy era substrate differs from requested substrate"}
         anchor_decision, anchor_reason = _current_anchor_join(
             receipts.get(native), candidate, bundle, substrate, verifier_config)
         if anchor_decision != "pass":
@@ -4432,7 +4471,6 @@ def _resolve_current_use_role(job, role, role_request, dependencies, verifier_co
         if type_decision != "pass":
             # A required stronger proof cannot be bypassed by a weaker candidate.
             return {"decision": type_decision, "reason": type_reason}
-        era = era_by_address.get(native)
         if bundle_type(bundle) == "legacy":
             era_decision, era_reason = validate_legacy_bundle_admission(
                 bundle, era, dependencies, verifier_config)
@@ -4460,9 +4498,215 @@ def _resolve_current_use_role(job, role, role_request, dependencies, verifier_co
     }
 
 
-def _job_successful_payment_without_strong_finality(bundle, role_result, dependencies):
-    if bundle_type(bundle) == "finality-bound":
+def _current_use_execution_trace_complete(bundle, pipeline):
+    """Check the signed ordinary-listing execution prefix used by current-use only."""
+    summary = bundle.get("phaseSummary")
+    if not isinstance(pipeline, list) or not pipeline or not isinstance(summary, list):
         return False
+    if any(
+        not isinstance(step, dict) or not _string_member(step.get("kind"), SUPPORTED_PHASES)
+        for step in pipeline
+    ):
+        return False
+    kinds = [step["kind"] for step in pipeline]
+    for expected_index, entry in enumerate(summary):
+        if (
+            not isinstance(entry, dict)
+            or entry.get("index") != expected_index
+            or expected_index >= len(kinds)
+            or entry.get("kind") != kinds[expected_index]
+            or not _string_member(entry.get("outcome"), {"ok", "fail"})
+        ):
+            return False
+    outcome = bundle.get("outcome")
+    retry_indices = [index for index, entry in enumerate(summary) if "retryExhausted" in entry]
+    retry_expected = (
+        outcome == "failed-perm"
+        and bool(summary)
+        and summary[-1].get("outcome") == "fail"
+        and summary[-1].get("errorClass") == "transient"
+    )
+    if retry_expected:
+        if retry_indices != [len(summary) - 1] or summary[-1].get("retryExhausted") is not True:
+            return False
+    elif retry_indices:
+        return False
+    if outcome == "completed":
+        return len(summary) == len(pipeline) and not any(
+            entry.get("outcome") == "fail" and entry.get("kind") != "rate"
+            for entry in summary
+        )
+    if outcome in {"failed-perm", "failed-counterparty"}:
+        allowed_errors = {
+            "failed-perm": {"permanent", "transient"},
+            "failed-counterparty": {"counterparty", "settlement-atomicity"},
+        }
+        return bool(
+            summary
+            and summary[-1].get("outcome") == "fail"
+            and all(entry.get("outcome") == "ok" for entry in summary[:-1])
+            and _string_member(summary[-1].get("errorClass"), allowed_errors[outcome])
+            and (
+                summary[-1].get("errorClass") != "transient"
+                or summary[-1].get("retryExhausted") is True
+            )
+        )
+    if outcome == "failed-substrate":
+        return bool(
+            (
+                summary
+                and summary[-1].get("outcome") == "fail"
+                and summary[-1].get("errorClass") == "substrate"
+                and all(entry.get("outcome") == "ok" for entry in summary[:-1])
+            )
+            or (
+                len(summary) == len(pipeline)
+                and all(
+                    entry.get("outcome") == "ok"
+                    or (entry.get("kind") == "rate" and entry.get("outcome") == "fail")
+                    for entry in summary
+                )
+            )
+        )
+    if outcome in _ABORT:
+        return len(summary) < len(pipeline) and all(
+            entry.get("outcome") == "ok" for entry in summary
+        )
+    return False
+
+
+def _validate_current_use_historical_nonpayment(bundle, dependencies, verifier_config):
+    """Require authenticated complete evidence before an older copy proves no payment."""
+    kind = bundle_type(bundle)
+    if kind == "finality-bound":
+        return ("pass", "finality-bound copy uses the stronger payment path")
+    authority = _authority_for_bundle(bundle, dependencies)
+    if kind == "evidence-bound":
+        # SEB was already executed for this exact copy by type admission.
+        if _job_successful_payment_without_strong_finality(bundle, dependencies):
+            return ("indeterminate", "successful historical payment lacks exact stronger finality")
+        return ("pass", "authenticated EBFAB exact-set evidence establishes nonpayment")
+    if kind not in {"legacy", "fault"}:
+        return ("error", "unsupported historical bundle type")
+    if not isinstance(authority, dict) or not isinstance(authority.get("listing"), dict):
+        return ("indeterminate", "authenticated historical listing authority is unavailable")
+    listing = authority["listing"]
+    signature = listing.get("signature")
+    role_map, _ = _configured_party_maps(verifier_config, bundle.get("jobId"))
+    public_keys = verifier_config.get("publicKeys")
+    signer = signature.get("signer") if isinstance(signature, dict) else None
+    listing_ref = bundle.get("listingRef")
+    digest = listing_hash(listing)
+    if (
+        role_map is None
+        or not isinstance(signature, dict)
+        or set(signature) != {"signer", "algorithm", "value"}
+        or signer != listing.get("sellerPrimaryClaim")
+        or signer != role_map["seller"]
+        or signature.get("algorithm") != "ed25519"
+        or not isinstance(public_keys, dict)
+        or signer not in public_keys
+        or not isinstance(listing_ref, dict)
+        or listing_ref.get("listingId") != listing.get("listingId")
+        or listing_ref.get("version") != listing.get("listingVersion")
+        or listing_ref.get("contentHash") != digest
+    ):
+        return ("fail", "historical listing identity or signer is not verifier-authenticated")
+    canonical_ok, _ = sig6_canonical(signature.get("value"))
+    if not canonical_ok or not verify_sig(
+        public_keys[signer], LISTING_DOMAIN, digest, signature["value"]
+    ):
+        return ("fail", "historical listing signature does not verify")
+    pipeline = listing.get("pipeline")
+    if not _current_use_execution_trace_complete(bundle, pipeline):
+        return ("indeterminate", "historical execution trace is incomplete or outcome-inconsistent")
+    evidence_refs = bundle.get("settlementEvidence")
+    if not isinstance(evidence_refs, list):
+        return ("indeterminate", "historical settlementEvidence is unavailable")
+    summary = bundle["phaseSummary"]
+    expected_entries = [entry for entry in summary if entry.get("kind") in EVIDENCE_PHASES]
+    if not expected_entries:
+        if evidence_refs:
+            return ("indeterminate", "historical evidence cannot be matched to the complete execution trace")
+        return ("pass", "authenticated complete historical trace establishes no payment invocation")
+    if any(entry.get("kind") in PAYMENT_PHASES and entry.get("outcome") == "ok"
+           for entry in expected_entries):
+        return ("indeterminate", "successful historical payment lacks exact stronger finality")
+    resolutions = authority.get("referenceValidationByCanonicalRef")
+    execution = authority.get("sessionExecutionAuthorityByPhaseKey")
+    receipts = authority.get("verifiedReceiptByCanonicalRef")
+    if not all(isinstance(value, dict) for value in (resolutions, execution, receipts)):
+        return ("indeterminate", "authenticated historical execution evidence is unavailable")
+    raw_ids = [canonical(ref) for ref in evidence_refs if isinstance(ref, dict)]
+    if len(raw_ids) != len(evidence_refs) or len(raw_ids) != len(set(raw_ids)):
+        return ("fail", "historical settlementEvidence is malformed or duplicated")
+    actual_keys = []
+    actual_ref_by_key = {}
+    for ref in evidence_refs:
+        resolution = resolutions.get(canonical(ref).decode("utf-8"))
+        record = resolution.get("record") if isinstance(resolution, dict) else None
+        record_signature = record.get("signature") if isinstance(record, dict) else None
+        if (
+            not _attestation_ref_shape_valid(ref)
+            or not _settlement_evidence_shape_valid(record)
+            or record.get("jobId") != bundle.get("jobId")
+            or ref.get("contentHash") != settlement_evidence_hash(record)
+            or not isinstance(record_signature, dict)
+            or record_signature.get("algorithm") != "ed25519"
+            or record_signature.get("signer") not in public_keys
+        ):
+            return ("fail", "historical settlement evidence is not authenticated")
+        canonical_ok, _ = sig6_canonical(record_signature.get("value"))
+        if not canonical_ok or not verify_sig(
+            public_keys[record_signature["signer"]], SETTLEMENT_EVIDENCE_DOMAIN,
+            settlement_evidence_hash(record), record_signature["value"]
+        ):
+            return ("fail", "historical settlement evidence signature does not verify")
+        binding_ok, binding_result, _ = _resolve_authenticated_evidence_binding(
+            ref, record, record_signature["signer"], bundle, execution, receipts
+        )
+        if not binding_ok:
+            return ("indeterminate", "historical settlement evidence lacks authenticated execution binding")
+        phase_key, resolved = binding_result
+        if (
+            resolved
+            or (
+                record.get("phase") in PAYMENT_PHASES
+                and record.get("outcome") == "success"
+            )
+        ):
+            return ("indeterminate", "successful or superseding historical payment lacks exact stronger finality")
+        if record.get("phase") in {
+            "pay-cross-chain-htlc", "pay-cross-chain-liquidity-tank",
+        }:
+            return ("indeterminate", "historical cross-chain settlement requires stronger finality")
+        summary_entry = next((
+            entry for entry in expected_entries
+            if phase_key == "%d:%s" % (entry["index"], entry["kind"])
+        ), None)
+        lifecycle = resolution.get("lifecycle")
+        if (
+            not isinstance(summary_entry, dict)
+            or record.get("phase") != summary_entry.get("kind")
+            or record.get("outcome") != ("success" if summary_entry.get("outcome") == "ok" else "failure")
+            or not isinstance(lifecycle, dict)
+            or not _string_member(lifecycle.get("state"), {"included", "finalized"})
+        ):
+            return ("fail", "historical evidence contradicts the authenticated phase result")
+        actual_keys.append(phase_key)
+        actual_ref_by_key[phase_key] = ref
+    expected_keys = ["%d:%s" % (entry["index"], entry["kind"]) for entry in expected_entries]
+    if len(actual_keys) != len(set(actual_keys)) or set(actual_keys) != set(expected_keys):
+        return ("indeterminate", "historical settlementEvidence is not the complete phase-result set")
+    for entry in expected_entries:
+        pointer = entry.get("attestationRef")
+        phase_key = "%d:%s" % (entry["index"], entry["kind"])
+        if pointer is not None and canonical(pointer) != canonical(actual_ref_by_key[phase_key]):
+            return ("fail", "historical phase pointer contradicts settlementEvidence")
+    return ("pass", "authenticated complete historical evidence establishes nonpayment")
+
+
+def _job_successful_payment_without_strong_finality(bundle, dependencies):
     authority = _authority_for_bundle(bundle, dependencies)
     if isinstance(authority, dict):
         resolutions = authority.get("referenceValidationByCanonicalRef")
@@ -4520,8 +4764,10 @@ def _resolve_current_use_job(job, dependencies, verifier_config):
     if reconciled.get("decision") != "pass":
         return {"decision": reconciled.get("decision", "error"), "reason": reconciled.get("reason", "reconciliation failed")}
     authoritative = reconciled["bundle"]
-    if _job_successful_payment_without_strong_finality(authoritative, resolved, dependencies):
-        return {"decision": "indeterminate", "reason": "successful historical payment lacks exact stronger finality"}
+    historical_decision, historical_reason = _validate_current_use_historical_nonpayment(
+        authoritative, dependencies, verifier_config)
+    if historical_decision != "pass":
+        return {"decision": historical_decision, "reason": historical_reason}
     role_of_party = _role_of_party(authoritative, verifier_config.get("scoredParty"))
     present_results = [resolved[role] for role in ("buyer", "seller") if resolved[role]["disposition"] == "present"]
     selected = next((item for item in present_results

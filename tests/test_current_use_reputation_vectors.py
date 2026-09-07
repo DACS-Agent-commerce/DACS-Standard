@@ -19,8 +19,10 @@ from dacs5_reference import (  # noqa: E402
     CURRENT_USE_SYNTHETIC_ANCHOR_PROOF_DOMAIN,
     CURRENT_USE_SYNTHETIC_SETTLEMENT_BINDING_PROOF_DOMAIN,
     LEGACY_BUNDLE_CHECKPOINT_BINDING_DOMAIN,
+    _current_use_roster_matches_role_map,
     _current_use_sb2_conflict,
     _current_use_settlement_tx_ids,
+    _validate_current_use_historical_nonpayment,
     bundle_hash,
     current_use_synthetic_proof_hash,
     derive,
@@ -154,7 +156,8 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         base_binding = role_request["selectionContext"]["candidateBindings"][0]
         base_bundle = self.fixture["dependencies"]["bundlesByNativeAddress"][base_binding["nativeAddress"]]
         alternate = copy.deepcopy(base_bundle)
-        alternate["outcome"] = "aborted-by-other"
+        alternate["outcome"] = "aborted-by-self"
+        alternate["finalisedAt"] += 1
         self.factory.finality.sign_bundle(alternate, BUNDLE_DOMAIN)
         if not full_standing:
             alternate["signatures"] = [
@@ -294,6 +297,166 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
             for request in receipt["requestContext"]
         }
         self.assertEqual({"binding", "pure"}, kinds)
+
+    def test_anchor_receipt_purposes_are_bound_to_each_call_site(self):
+        cases = (
+            ("checkpoint", "historical-bundle"),
+            ("historical", "current-bundle"),
+            ("current", "historical-bundle"),
+        )
+        for receipt_kind, wrong_purpose in cases:
+            with self.subTest(receipt=receipt_kind):
+                self.setUp()
+                if receipt_kind == "current":
+                    request = self.fixture["currentRequestsByModel"]["block-depth"]
+                    role_request = request["roles"]["buyer"]
+                    native = role_request["selectionContext"]["candidateBindings"][0]["nativeAddress"]
+                    proof = role_request["anchorReceiptsByNativeAddress"][native]
+                else:
+                    request = self.fixture["historicalRequests"][0]
+                    _, _, era = self._binding_era(request)
+                    proof = era[
+                        "checkpointReceipt" if receipt_kind == "checkpoint"
+                        else "historicalAnchorReceipt"
+                    ]
+                proof["purpose"] = wrong_purpose
+                self._resign_anchor(proof, repin=True)
+                result = self.derive([request])
+                self.assertNotEqual("pass", result["decision"])
+                self.assertIsNone(result["derivation"])
+
+    def test_legacy_era_substrate_must_equal_the_requested_substrate_on_both_mapping_arms(self):
+        for index, other_substrate in (
+            (0, generator.PURE_SUBSTRATE),
+            (1, generator.WRITE_SUBSTRATE),
+        ):
+            with self.subTest(mapping=self.fixture["historicalRequests"][index]["roles"]["buyer"]["mappingKind"]):
+                self.setUp()
+                request = self.fixture["historicalRequests"][index]
+                role_request = request["roles"]["buyer"]
+                if role_request["mappingKind"] == "binding":
+                    _, _, era = self._binding_era(request)
+                else:
+                    era = role_request["legacyEraEvidence"]
+                era["substrate"] = other_substrate
+                result = self.derive([request])
+                self.assertEqual("fail", result["decision"])
+                self.assertIn("differs from requested substrate", result["reason"])
+                self.assertIsNone(result["derivation"])
+
+    def test_historical_nonpayment_requires_authenticated_complete_execution_evidence(self):
+        request = self.fixture["historicalRequests"][0]
+        binding = request["roles"]["buyer"]["selectionContext"]["candidateBindings"][0]
+        bundle = self.fixture["dependencies"]["bundlesByNativeAddress"][binding["nativeAddress"]]
+        decision, reason = _validate_current_use_historical_nonpayment(
+            bundle, self.fixture["dependencies"], self.fixture["verifierConfig"]
+        )
+        self.assertEqual("pass", decision, reason)
+
+        for mutation in ("empty-failed-summary", "partial-completed-summary", "omitted-evidence"):
+            with self.subTest(mutation=mutation):
+                changed = copy.deepcopy(bundle)
+                if mutation == "empty-failed-summary":
+                    changed["outcome"] = "failed-counterparty"
+                elif mutation == "partial-completed-summary":
+                    changed["outcome"] = "completed"
+                else:
+                    changed.pop("settlementEvidence")
+                changed_dependencies = copy.deepcopy(self.fixture["dependencies"])
+                changed_dependencies["bundleAuthorityByContentHash"][bundle_hash(changed)] = (
+                    copy.deepcopy(
+                        self.fixture["dependencies"]["bundleAuthorityByContentHash"][
+                            bundle_hash(bundle)
+                        ]
+                    )
+                )
+                decision, _ = _validate_current_use_historical_nonpayment(
+                    changed, changed_dependencies, self.fixture["verifierConfig"]
+                )
+                self.assertNotEqual("pass", decision)
+
+        for role_request in request["roles"].values():
+            role_binding = role_request["selectionContext"]["candidateBindings"][0]
+            role_bundle = self.fixture["dependencies"]["bundlesByNativeAddress"][
+                role_binding["nativeAddress"]
+            ]
+            self.fixture["dependencies"]["bundleAuthorityByContentHash"][
+                bundle_hash(role_bundle)
+            ].pop("listing")
+        result = self.derive([request])
+        self.assertEqual("indeterminate", result["decision"])
+        self.assertIsNone(result["derivation"])
+
+    def test_present_copy_rosters_match_verifier_owned_job_roles(self):
+        role_map = {
+            "buyer": generator.CLAIMS["buyer"],
+            "seller": generator.CLAIMS["seller"],
+        }
+        request = self.fixture["historicalRequests"][1]
+        native = request["roles"]["buyer"]["resolvedAddress"]
+        bundle = self.fixture["dependencies"]["bundlesByNativeAddress"][native]
+        self.assertTrue(_current_use_roster_matches_role_map(bundle, role_map))
+        for mutation in ("missing", "duplicate", "reversed", "inconsistent"):
+            with self.subTest(mutation=mutation):
+                changed = copy.deepcopy(bundle)
+                if mutation == "missing":
+                    changed["parties"] = [
+                        party for party in changed["parties"] if party["role"] != "buyer"
+                    ]
+                elif mutation == "duplicate":
+                    changed["parties"].append(copy.deepcopy(changed["parties"][0]))
+                elif mutation == "reversed":
+                    changed["parties"][0]["primaryClaim"], changed["parties"][1]["primaryClaim"] = (
+                        changed["parties"][1]["primaryClaim"], changed["parties"][0]["primaryClaim"]
+                    )
+                else:
+                    changed["parties"][0]["primaryClaim"] = "did:fixture:untrusted-buyer"
+                self.assertFalse(_current_use_roster_matches_role_map(changed, role_map))
+
+        changed = copy.deepcopy(bundle)
+        changed["parties"][0]["primaryClaim"], changed["parties"][1]["primaryClaim"] = (
+            changed["parties"][1]["primaryClaim"], changed["parties"][0]["primaryClaim"]
+        )
+        self.factory.finality.sign_bundle(changed, BUNDLE_DOMAIN)
+        self.fixture["dependencies"]["bundlesByNativeAddress"][native] = changed
+        result = self.derive([request])
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("roster differs", result["reason"])
+
+        self.setUp()
+        request = self.fixture["currentRequestsByModel"]["block-depth"]
+        old_binding = request["roles"]["buyer"]["selectionContext"]["candidateBindings"][0]
+        current = copy.deepcopy(
+            self.fixture["dependencies"]["bundlesByNativeAddress"][old_binding["nativeAddress"]]
+        )
+        current["parties"].append(copy.deepcopy(current["parties"][0]))
+        self.factory.finality.sign_bundle(current, generator.FINALITY_BUNDLE_DOMAIN)
+        binding = self.factory.bundle_binding(current, "buyer", "current-roster-mismatch")
+        native = binding["nativeAddress"]
+        self.fixture["dependencies"]["bundlesByNativeAddress"][native] = current
+        receipt = self.factory.anchor_proof(
+            purpose="current-bundle", substrate=generator.WRITE_SUBSTRATE,
+            subject_id=request["jobId"], subject_role="buyer",
+            logical=binding["logicalAddress"], native=native,
+            content_hash=binding["bundleContentHash"], transaction="fixture-current-roster-mismatch",
+            writer=generator.CLAIMS["buyer"], nonce=313, height=205, index=0,
+        )
+        request["roles"]["buyer"] = {
+            "disposition": "present", "mappingKind": "binding",
+            "selectionContext": {
+                "candidateBindings": [binding],
+                "partyMap": {
+                    generator.CLAIMS["buyer"]: "buyer",
+                    generator.CLAIMS["seller"]: "seller",
+                },
+                "budget": 8,
+            },
+            "anchorReceiptsByNativeAddress": {native: receipt},
+            "legacyEraEvidenceByNativeAddress": {},
+        }
+        result = self.derive([request])
+        self.assertEqual("fail", result["decision"])
+        self.assertIn("roster differs", result["reason"])
 
     def test_every_historical_exact_join_rejects_mutation(self):
         evidence_fields = ("bundleContentHash", "resolvedJobId", "resolvedRole", "substrate")
@@ -463,12 +626,16 @@ class CurrentUseReputationVectorTests(unittest.TestCase):
         self.assertEqual("indeterminate", self.derive([request])["decision"])
 
     def test_bb6_standing_budget_and_admission_order(self):
-        request, base, _alternate = self._add_alternate_legacy_candidate(full_standing=False)
+        request, base, alternate = self._add_alternate_legacy_candidate(full_standing=False)
         result = self.derive([request])
         self.assertEqual("pass", result["decision"], result["reason"])
-        self.assertEqual(
-            base["bundleContentHash"], result["derivation"]["bundleRefs"][0]["contentHash"]
-        )
+        context = result["derivation"]["resolutionContext"][0]
+        admitted_hashes = {
+            result["derivation"]["bundleRefs"][0]["contentHash"],
+            context["counterpartyRef"]["contentHash"],
+        }
+        self.assertIn(base["bundleContentHash"], admitted_hashes)
+        self.assertNotIn(alternate["bundleContentHash"], admitted_hashes)
 
         self.setUp()
         request, _base, _alternate = self._add_alternate_legacy_candidate(full_standing=True)
